@@ -532,8 +532,8 @@ impl Database {
                 None if expected == 0 => {
                     sql.execute(
                         "INSERT INTO import_candidate_state \
-                             (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision) \
-                         VALUES (?, ?, ?, ?, ?, '{}', '{}', 0)",
+                             (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision) \
+                         VALUES (?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
                         params![
                             verdict.content_hash,
                             verdict.folder_path,
@@ -576,6 +576,8 @@ impl Database {
             .map_err(|e| DbError::Message(format!("encoding candidate sheet bindings: {e}")))?;
         let roles = serde_json::to_string(&edits.file_roles)
             .map_err(|e| DbError::Message(format!("encoding candidate file roles: {e}")))?;
+        let discs = serde_json::to_string(&edits.sheet_discs)
+            .map_err(|e| DbError::Message(format!("encoding candidate sheet discs: {e}")))?;
         let settled_candidates = settled_candidates.to_vec();
         let next_revision = expected_revision.checked_add(1).ok_or_else(|| {
             DbError::Message("candidate edit revision exhausted the u64 range".to_string())
@@ -623,7 +625,7 @@ impl Database {
             let changed = if current_revision.is_some() {
                 sql.execute(
                     "UPDATE import_candidate_state SET \
-                         folder_path = ?, sheet_bindings = ?, file_roles = ?, \
+                         folder_path = ?, sheet_bindings = ?, file_roles = ?, sheet_discs = ?, \
                          verdict = NULL, probed_total_duration_ms = NULL, identified_at = NULL, \
                          edit_revision = ? \
                      WHERE content_hash = ? AND edit_revision = ?",
@@ -631,6 +633,7 @@ impl Database {
                         folder_path,
                         bindings,
                         roles,
+                        discs,
                         next_revision_i64,
                         content_hash,
                         expected_revision_i64,
@@ -639,13 +642,14 @@ impl Database {
             } else {
                 sql.execute(
                     "INSERT INTO import_candidate_state \
-                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision) \
-                     VALUES (?, ?, NULL, NULL, NULL, ?, ?, ?)",
+                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision) \
+                     VALUES (?, ?, NULL, NULL, NULL, ?, ?, ?, ?)",
                     params![
                         content_hash,
                         folder_path,
                         bindings,
                         roles,
+                        discs,
                         next_revision_i64
                     ],
                 )?
@@ -755,7 +759,7 @@ impl Database {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT sheet_bindings, file_roles, edit_revision \
+                "SELECT sheet_bindings, file_roles, sheet_discs, edit_revision \
                  FROM import_candidate_state WHERE content_hash = ?",
                 [&content_hash],
                 |row| Ok(decode_candidate_file_edits_row(row, &content_hash)),
@@ -778,7 +782,7 @@ impl Database {
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
         self.read(move |sql| {
             let states = sql.query(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision \
+                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision \
                      FROM import_candidate_state",
                 [],
                 |row| Ok(decode_import_candidate_state_row(row)),
@@ -800,7 +804,7 @@ impl Database {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision \
+                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision \
                  FROM import_candidate_state WHERE content_hash = ?",
                 [content_hash],
                 |row| Ok(decode_import_candidate_state_row(row)),
@@ -859,6 +863,12 @@ fn decode_candidate_file_edits_row(
             "import_candidate_state row {content_hash} has unreadable file roles: {error}"
         ))
     })?;
+    let stored: String = row.get("sheet_discs")?;
+    let sheet_discs = serde_json::from_str(&stored).map_err(|error| {
+        DbError::Message(format!(
+            "import_candidate_state row {content_hash} has unreadable sheet discs: {error}"
+        ))
+    })?;
     let edit_revision: i64 = row.get("edit_revision")?;
     let edit_revision = u64::try_from(edit_revision).map_err(|_| {
         DbError::Message(format!(
@@ -868,6 +878,7 @@ fn decode_candidate_file_edits_row(
     Ok(CandidateFileEdits {
         sheet_bindings,
         file_roles,
+        sheet_discs,
         revision: edit_revision,
     })
 }

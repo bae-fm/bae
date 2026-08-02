@@ -204,62 +204,104 @@ impl SlotTable {
     }
 }
 
-/// The audio the folder offers, one entry per track it can produce, in the
-/// order it sits on disk.
-///
-/// A track sheet that is bound and carves at least one track contributes one
-/// [`AudioFile::SheetSlice`] per track it describes, at its container's
-/// position; the audio it speaks for contributes nothing of its own. Every
-/// other audio file contributes one [`AudioFile::Standalone`]. That is what
-/// makes the mapping additive rather than one shape winning.
-///
-/// The order is the scan's own, which is what "disk order" means everywhere
-/// else in the import — the same order the Unknown path reads embedded tags in,
-/// so the two cannot pair a file's tags with another file's samples.
-pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
-    let bound = files.bound_sheets();
+/// What one of the folder's audio files contributes to the unit list.
+#[derive(Debug, Clone)]
+pub(crate) enum UnitContribution<'a> {
+    /// The file backs one unit of its own.
+    Whole,
+    /// Track-sheet runs occupy this file's place in the order. Which run sits
+    /// here is the disc assignment's to say, so a run's own container is not
+    /// necessarily this file.
+    Runs(Vec<BoundTrackSheet<'a>>),
+    /// A carving sheet speaks for this file, so it adds nothing of its own.
+    SpokenFor,
+}
 
-    // A sheet that describes no playable track carves nothing, so it neither
-    // leads with its audio nor speaks for it: the container stays a track of
-    // its own instead of vanishing with the sheet.
-    let carving: Vec<&BoundTrackSheet<'_>> = bound
-        .iter()
-        .filter(|sheet| sheet.sheet.playable_track_count() > 0)
-        .collect();
+/// Every one of the folder's audio files, in the order it sits on disk, with
+/// what each contributes to [`audio_units`].
+///
+/// A carving track sheet contributes one run — one entry per track it describes
+/// — and the audio it speaks for contributes nothing of its own. Every other
+/// audio file contributes one whole unit. That is what makes the mapping
+/// additive rather than one shape winning.
+///
+/// Runs sit at the disk positions of the sheet-carved containers, but **which
+/// run lands in which of those positions is the assignment's to say**: the runs
+/// are ordered by `(disc number, sheet relative_path)` and laid into those
+/// positions in that order, so disc one's tracks precede disc two's however the
+/// rip spelled its filenames. Loose audio is untouched.
+pub(crate) fn audio_layout(files: &CategorizedFiles) -> Vec<(&ScannedFile, UnitContribution<'_>)> {
+    let carving = files.carving_sheets();
 
-    let mut leads: HashMap<&str, Vec<&BoundTrackSheet<'_>>> = HashMap::new();
+    // How many runs each container's position hosts, and which audio the
+    // carving sheets speak for.
+    let mut hosted: HashMap<&str, usize> = HashMap::new();
     let mut spoken_for: HashSet<&str> = HashSet::new();
     for sheet in &carving {
         for file_id in sheet_audio_ids(files, sheet) {
             spoken_for.insert(file_id);
         }
-        leads
+        *hosted
             .entry(sheet.audio.relative_path.as_str())
-            .or_default()
-            .push(sheet);
+            .or_default() += 1;
     }
 
+    let mut ordered = carving;
+    ordered.sort_by(|left, right| {
+        left.disc_number()
+            .cmp(&right.disc_number())
+            .then_with(|| natord::compare(&left.file.relative_path, &right.file.relative_path))
+    });
+    let mut runs = ordered.into_iter();
+
+    files
+        .audio()
+        .map(|file| {
+            let contribution = match hosted.get(file.relative_path.as_str()) {
+                Some(count) => UnitContribution::Runs(runs.by_ref().take(*count).collect()),
+                None if spoken_for.contains(file.relative_path.as_str()) => {
+                    UnitContribution::SpokenFor
+                }
+                None => UnitContribution::Whole,
+            };
+            (file, contribution)
+        })
+        .collect()
+}
+
+/// The audio the folder offers, one entry per track it can produce, in the
+/// order [`audio_layout`] lays it down.
+pub(crate) fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<AudioFile> {
     let mut units = Vec::new();
-    for file in files.audio() {
-        match leads.get(file.relative_path.as_str()) {
-            Some(sheets) => {
+    for (file, contribution) in layout {
+        match contribution {
+            UnitContribution::Whole => units.push(AudioFile::Standalone {
+                file_id: file.relative_path.clone(),
+            }),
+            UnitContribution::Runs(sheets) => {
                 for sheet in sheets {
                     for index in 0..sheet.sheet.playable_track_count() {
                         units.push(AudioFile::SheetSlice {
-                            file_id: file.relative_path.clone(),
+                            file_id: sheet.audio.relative_path.clone(),
                             sheet_id: sheet.file.relative_path.clone(),
                             index: index as u32,
                         });
                     }
                 }
             }
-            None if spoken_for.contains(file.relative_path.as_str()) => {}
-            None => units.push(AudioFile::Standalone {
-                file_id: file.relative_path.clone(),
-            }),
+            UnitContribution::SpokenFor => {}
         }
     }
     units
+}
+
+/// The audio the folder offers, one entry per track it can produce.
+///
+/// The order is the scan's own, which is what "disk order" means everywhere
+/// else in the import — the same order the Unknown path reads embedded tags in,
+/// so the two cannot pair a file's tags with another file's samples.
+pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
+    units_of(&audio_layout(files))
 }
 
 /// Which of the folder's audio one bound sheet speaks for.
@@ -693,7 +735,8 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<ProbeRes
 mod tests {
     use super::*;
     use crate::import::folder_scanner::{
-        collect_release_candidate_files_with_scope, StoredCandidateEdits,
+        collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDisc, SheetDiscEdits,
+        StoredCandidateEdits,
     };
     use std::fs;
     use std::path::Path;
@@ -990,6 +1033,93 @@ mod tests {
         assert_eq!(
             file_ids(&slots),
             expected.iter().map(|id| id.as_deref()).collect::<Vec<_>>(),
+        );
+    }
+
+    /// Settle `files` as if the user had made these disc assignments.
+    fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetDisc)]) {
+        let mut sheet_discs = SheetDiscEdits::default();
+        for (sheet_id, disc) in assignments {
+            sheet_discs.set((*sheet_id).to_string(), *disc);
+        }
+        files
+            .apply_candidate_file_edits(&CandidateFileEdits {
+                sheet_discs,
+                ..Default::default()
+            })
+            .expect("the folder stays valid");
+    }
+
+    /// Cue filenames are arbitrary, so the assignment is what says which sheet
+    /// holds which disc. Two sheets whose names read the other way round still
+    /// lay disc one's tracks down first.
+    #[test]
+    fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("alpha.flac"));
+        fs::write(
+            tmp.path().join("alpha.cue"),
+            cue_sheet_text("alpha.flac", 2),
+        )
+        .expect("write cue");
+        write_flac(&tmp.path().join("beta.flac"));
+        fs::write(tmp.path().join("beta.cue"), cue_sheet_text("beta.flac", 3)).expect("write cue");
+
+        let mut files = scan(tmp.path());
+        assign_discs(
+            &mut files,
+            &[
+                ("alpha.cue", SheetDisc::Disc { number: 2 }),
+                ("beta.cue", SheetDisc::Disc { number: 1 }),
+            ],
+        );
+
+        let slice = |sheet: &str, container: &str, index: u32| AudioFile::SheetSlice {
+            file_id: container.to_string(),
+            sheet_id: sheet.to_string(),
+            index,
+        };
+        assert_eq!(
+            audio_units(&files),
+            vec![
+                slice("beta.cue", "beta.flac", 0),
+                slice("beta.cue", "beta.flac", 1),
+                slice("beta.cue", "beta.flac", 2),
+                slice("alpha.cue", "alpha.flac", 0),
+                slice("alpha.cue", "alpha.flac", 1),
+            ],
+        );
+    }
+
+    /// A sheet taken out of the tracklist stops speaking for its container, so
+    /// the container is loose audio again. Everything else the folder offers is
+    /// where it was.
+    #[test]
+    fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("CDImage.flac"));
+        fs::write(
+            tmp.path().join("CDImage.cue"),
+            cue_sheet_text("CDImage.flac", 3),
+        )
+        .expect("write cue");
+        write_flac(&tmp.path().join("bonus.flac"));
+
+        let mut files = scan(tmp.path());
+        assert_eq!(audio_units(&files).len(), 4, "three slices and the bonus");
+
+        assign_discs(&mut files, &[("CDImage.cue", SheetDisc::Ignored)]);
+
+        assert_eq!(
+            audio_units(&files),
+            vec![
+                AudioFile::Standalone {
+                    file_id: "CDImage.flac".to_string(),
+                },
+                AudioFile::Standalone {
+                    file_id: "bonus.flac".to_string(),
+                },
+            ],
         );
     }
 

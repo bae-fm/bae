@@ -1,6 +1,10 @@
 use super::*;
 use crate::util::rate_limiter::CallPriority;
 
+/// The row identity the mapping table's tracks carry when a picked release
+/// names them.
+const IMPORT_TRACK_ID_PREFIX: &str = "import-track";
+
 enum ProviderSearchParams {
     MusicBrainz(crate::musicbrainz::ReleaseSearchParams),
     Discogs(crate::discogs::client::DiscogsSearchParams),
@@ -292,19 +296,32 @@ impl ImportServiceHandle {
             })
             .collect();
 
-        let slots = match self.get_candidate(candidate_key) {
+        let (slots, mapping) = match self.get_candidate(candidate_key) {
             Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
                 // One FFmpeg open per container, so it goes off the async
                 // executor rather than holding it for the length of a folder.
                 tokio::task::spawn_blocking(move || {
-                    crate::import::track_slots::slot_table(&source_tracks, &candidate.files)
+                    let slots =
+                        crate::import::track_slots::slot_table(&source_tracks, &candidate.files);
+                    let mapping = crate::import::mapping::mapping_table(
+                        &candidate.files,
+                        Some(crate::import::mapping::PickedTracklist {
+                            slots: &slots,
+                            track_id_prefix: IMPORT_TRACK_ID_PREFIX,
+                            source: crate::import::mapping::TracklistSource::Release,
+                        }),
+                    );
+                    (slots, mapping)
                 })
                 .await
                 .map_err(|e| crate::import::ImportError::Internal {
                     detail: format!("slot table task failed: {e}"),
                 })?
             }
-            _ => crate::import::track_slots::SlotTable::empty(),
+            _ => (
+                crate::import::track_slots::SlotTable::empty(),
+                crate::import::mapping::MappingTable::empty(),
+            ),
         };
 
         Ok(crate::import::search::ImportReleasePrefetch {
@@ -312,6 +329,7 @@ impl ImportServiceHandle {
             seed,
             claim,
             slots,
+            mapping,
         })
     }
 

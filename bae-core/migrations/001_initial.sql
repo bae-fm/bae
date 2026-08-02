@@ -498,6 +498,13 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- the scan's proposal. Only files the scan read as audio can appear, so a
     -- decision never survives the file it names ceasing to be audio.
     file_roles               TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(file_roles)),
+    -- `folder_scanner::SheetDiscEdits`, JSON-encoded: which disc of the release
+    -- each track sheet's entries become, and which sheets the user took out of
+    -- the tracklist entirely. `{}` when they have decided nothing — a sheet
+    -- absent from the map takes its position among the folder's bound sheets.
+    -- Cue filenames are arbitrary, so this is the only thing that says which
+    -- cue is which disc.
+    sheet_discs              TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(sheet_discs)),
     -- Monotonic compare-and-set revision for file decisions. Identification
     -- writes carry the revision they observed and cannot overwrite a verdict
     -- cleared by a later edit.

@@ -407,7 +407,9 @@ pub fn compute_discid_from_categorized(
         }
     }
 
-    for bound in categorized.bound_sheets() {
+    // Only the sheets that carve: one the user took out of the tracklist
+    // describes a disc this folder is no longer presenting.
+    for bound in categorized.carving_sheets() {
         if let Some(id) = discid_from_cue_audio(bound.sheet, &bound.audio.path) {
             return Some(id);
         }

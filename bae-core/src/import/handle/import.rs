@@ -1,6 +1,10 @@
 use super::*;
 use crate::util::rate_limiter::CallPriority;
 
+/// The row identity the mapping table's tracks carry when the folder's own
+/// files name them.
+const UNKNOWN_TRACK_ID_PREFIX: &str = "unknown-track";
+
 impl ImportServiceHandle {
     /// Project an Unknown import candidate into a `ReleaseUserEdit` so the
     /// edit-metadata form can seed itself from what's on disk: the parsed CUE
@@ -15,11 +19,105 @@ impl ImportServiceHandle {
         &self,
         candidate_key: String,
     ) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError> {
+        Ok(self.unknown_seed(&candidate_key).await?.0)
+    }
+
+    /// The Unknown seed and the mapping table it produces: what the folder's
+    /// own files say the release is, and how each of the folder's audio units
+    /// lands on one of those tracks.
+    ///
+    /// The table carries no tally. Unknown is not a release picked from
+    /// anywhere — the tracklist was read off this very folder, so there is no
+    /// second account of it to reconcile against.
+    pub async fn unknown_mapping(
+        &self,
+        candidate_key: String,
+    ) -> Result<
+        (
+            crate::import::ReleaseUserEdit,
+            crate::import::mapping::MappingTable,
+        ),
+        crate::import::ImportError,
+    > {
+        let (seed, categorized) = self.unknown_seed(&candidate_key).await?;
+
+        // The folder's own tracklist knows no position string beyond the track
+        // number it printed, and states no length: a length here would be the
+        // folder's own audio compared against itself.
+        let source_tracks: Vec<crate::import::track_slots::SourceTrack> = seed
+            .tracks
+            .iter()
+            .map(|edit| crate::import::track_slots::SourceTrack {
+                edit: edit.clone(),
+                position: edit.track_number.map(|n| n.to_string()).unwrap_or_default(),
+                duration_ms: None,
+            })
+            .collect();
+
+        // One FFmpeg open per container, so it goes off the async executor
+        // rather than holding it for the length of a folder.
+        let mapping = tokio::task::spawn_blocking(move || {
+            let slots = crate::import::track_slots::slot_table(&source_tracks, &categorized);
+            crate::import::mapping::mapping_table(
+                &categorized,
+                Some(crate::import::mapping::PickedTracklist {
+                    slots: &slots,
+                    track_id_prefix: UNKNOWN_TRACK_ID_PREFIX,
+                    source: crate::import::mapping::TracklistSource::FileTags,
+                }),
+            )
+        })
+        .await
+        .map_err(|e| crate::import::ImportError::Internal {
+            detail: format!("unknown mapping task failed: {e}"),
+        })?;
+
+        Ok((seed, mapping))
+    }
+
+    /// The mapping table for a candidate nobody has picked a release for: every
+    /// source unit the folder offers, with what it becomes left open.
+    ///
+    /// Costs no disk read — which is what lets the pane render the same table
+    /// through the identify phase as it does after a pick.
+    pub fn candidate_mapping(
+        &self,
+        candidate_key: &str,
+    ) -> Result<crate::import::mapping::MappingTable, crate::import::ImportError> {
         let Some(ImportCandidateSnapshot::Folder {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(&candidate_key)
+        }) = self.get_candidate(candidate_key)
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        Ok(crate::import::mapping::mapping_table(
+            &candidate.files,
+            None,
+        ))
+    }
+
+    /// The release the folder's own files describe: the parsed CUE track layout
+    /// for CUE-backed candidates, embedded tags for per-track-file ones, with
+    /// the files it was read from.
+    async fn unknown_seed(
+        &self,
+        candidate_key: &str,
+    ) -> Result<
+        (
+            crate::import::ReleaseUserEdit,
+            crate::import::folder_scanner::CategorizedFiles,
+        ),
+        crate::import::ImportError,
+    > {
+        let Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        }) = self.get_candidate(candidate_key)
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -37,7 +135,7 @@ impl ImportServiceHandle {
                 clock.as_ref(),
                 ids.as_ref(),
             )?;
-            Ok(parsed_album_to_user_edit(&parsed))
+            Ok((parsed_album_to_user_edit(&parsed), categorized))
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {

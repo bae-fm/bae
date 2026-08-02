@@ -414,19 +414,25 @@ pub(crate) fn build_mb_detail(
 /// [`crate::import::shape_user_edit_for_choice`], which is what the bridge does
 /// before the record crosses.
 ///
-/// `slots` is the file↔release mapping this pick produces: one row per track the
+/// `slots` is the file↔release pairing this pick produces: one row per track the
 /// import will write, each naming the audio bound to it, carrying both
 /// durations, and saying whether the two sides agree. It is computed here so a
 /// disagreement is something to look at and correct rather than something the
 /// commit discovers, and so the commit consumes the mapping the user saw. Empty
 /// when `candidate_key` names no scanned folder — re-identify picks a release
 /// for a release already in the library, whose files are bound already.
+///
+/// `mapping` is that pairing projected into the pane's own structure: every
+/// source unit the folder offers with the track committing makes of it, the
+/// editable row inside the row that produces it. It reads the same pairing, so
+/// the two cannot describe different releases.
 #[derive(Debug, Clone)]
 pub struct ImportReleasePrefetch {
     pub detail: ImportSearchReleaseDetail,
     pub seed: crate::import::ReleaseUserEdit,
     pub claim: crate::import::ClaimLine,
     pub slots: crate::import::track_slots::SlotTable,
+    pub mapping: crate::import::mapping::MappingTable,
 }
 
 /// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed Discogs

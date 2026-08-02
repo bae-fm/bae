@@ -305,6 +305,7 @@ mod tests {
                         binding: crate::import::folder_scanner::SheetBinding::Describes {
                             file_id: "Album.flac".to_string(),
                         },
+                        disc: crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
                     },
                 },
                 CandidateFile {

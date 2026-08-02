@@ -81,11 +81,13 @@ impl ScannedFile {
 pub enum FileRole {
     /// Playable audio.
     Audio,
-    /// A track sheet (CUE) that parsed, carrying its parsed sheet and what its
-    /// `FILE` directive resolved to.
+    /// A track sheet (CUE) that parsed, carrying its parsed sheet, what its
+    /// `FILE` directive resolved to, and which disc of the release its entries
+    /// become.
     TrackSheet {
         sheet: crate::cue_flac::CueSheet,
         binding: SheetBinding,
+        disc: SheetDisc,
     },
     /// The image that leads the release, proposed from the conventional cover
     /// filenames. At most one per folder.
@@ -128,6 +130,47 @@ impl SheetBinding {
             Self::Describes { file_id } => Some(file_id),
             Self::Unresolved | Self::RefusedCodec { .. } => None,
         }
+    }
+}
+
+/// Which disc of the release one track sheet's entries become.
+///
+/// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so the mapping
+/// cannot read the order off the names. This is the answer, and like a sheet's
+/// binding and a file's role it is the user's to overrule and it survives a
+/// restart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SheetDisc {
+    /// The sheet's entries are the release's disc `number`, counting from one.
+    Disc { number: u32 },
+    /// The sheet contributes nothing to the tracklist. Its container is loose
+    /// audio again, exactly as an unbound sheet leaves it.
+    Ignored,
+}
+
+/// Every disc assignment the user has decided for one candidate, keyed by the
+/// sheet's [`ScannedFile::relative_path`].
+///
+/// A sheet *absent* from this is not a decision — it takes its own position
+/// among the folder's bound sheets, in `relative_path` order.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct SheetDiscEdits(BTreeMap<String, SheetDisc>);
+
+impl SheetDiscEdits {
+    /// The user's decision for one sheet, or `None` when they have made none.
+    pub fn get(&self, sheet_file_id: &str) -> Option<SheetDisc> {
+        self.0.get(sheet_file_id).copied()
+    }
+
+    /// Record one sheet's decision, replacing any previous one.
+    pub fn set(&mut self, sheet_file_id: String, disc: SheetDisc) {
+        self.0.insert(sheet_file_id, disc);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
@@ -221,21 +264,23 @@ impl SheetBindingEdits {
 }
 
 /// Everything the user has settled about one candidate's files: which audio
-/// each track sheet describes, and which files are the release's tracks.
+/// each track sheet describes, which disc each sheet's entries become, and
+/// which files are the release's tracks.
 ///
-/// One value because it is one stored row — both halves are keyed by the same
-/// content hash and read by the same scan, and splitting them would be two
+/// One value because it is one stored row — every part is keyed by the same
+/// content hash and read by the same scan, and splitting them would be several
 /// things to keep in step.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateFileEdits {
     pub sheet_bindings: SheetBindingEdits,
     pub file_roles: FileRoleEdits,
+    pub sheet_discs: SheetDiscEdits,
     pub revision: u64,
 }
 
 impl CandidateFileEdits {
     pub fn is_empty(&self) -> bool {
-        self.sheet_bindings.is_empty() && self.file_roles.is_empty()
+        self.sheet_bindings.is_empty() && self.file_roles.is_empty() && self.sheet_discs.is_empty()
     }
 }
 
@@ -388,6 +433,7 @@ pub struct TrackSheetFile<'a> {
     pub file: &'a ScannedFile,
     pub sheet: &'a crate::cue_flac::CueSheet,
     pub binding: &'a SheetBinding,
+    pub disc: SheetDisc,
 }
 
 /// A track sheet whose `FILE` directive resolved, paired with the audio it
@@ -397,6 +443,28 @@ pub struct BoundTrackSheet<'a> {
     pub file: &'a ScannedFile,
     pub sheet: &'a crate::cue_flac::CueSheet,
     pub audio: &'a ScannedFile,
+    pub disc: SheetDisc,
+}
+
+impl BoundTrackSheet<'_> {
+    /// Whether this sheet carves the release's tracks out of its container.
+    ///
+    /// One rule, stated once, so "bound but ignored" and "assigned but unbound"
+    /// cannot mean two different things: a sheet speaks for its container only
+    /// when it is bound, assigned to a disc, and describes something. A sheet
+    /// that carves nothing leaves its container a track of its own.
+    pub fn carves(&self) -> bool {
+        self.disc_number().is_some() && self.sheet.playable_track_count() > 0
+    }
+
+    /// The disc this sheet's entries become, or `None` when it is out of the
+    /// tracklist.
+    pub fn disc_number(&self) -> Option<u32> {
+        match self.disc {
+            SheetDisc::Disc { number } => Some(number),
+            SheetDisc::Ignored => None,
+        }
+    }
 }
 
 /// A release's files, each carrying the role the scan proposed for it.
@@ -454,10 +522,15 @@ impl CategorizedFiles {
     /// Every parsed track sheet, bound or not.
     pub fn track_sheets(&self) -> impl Iterator<Item = TrackSheetFile<'_>> {
         self.files.iter().filter_map(|entry| match &entry.role {
-            FileRole::TrackSheet { sheet, binding } => Some(TrackSheetFile {
+            FileRole::TrackSheet {
+                sheet,
+                binding,
+                disc,
+            } => Some(TrackSheetFile {
                 file: &entry.file,
                 sheet,
                 binding,
+                disc: *disc,
             }),
             _ => None,
         })
@@ -474,21 +547,31 @@ impl CategorizedFiles {
                     file: sheet.file,
                     sheet: sheet.sheet,
                     audio,
+                    disc: sheet.disc,
                 })
             })
             .collect()
     }
 
-    /// Total track count across the release: the tracks the bound sheets carve,
-    /// or — with no sheet bound — one per audio file.
+    /// The bound sheets that carve the release's tracks — the ones the
+    /// tracklist, the disc IDs and the Unknown seed are all read from.
+    pub fn carving_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
+        self.bound_sheets()
+            .into_iter()
+            .filter(BoundTrackSheet::carves)
+            .collect()
+    }
+
+    /// Total track count across the release: the tracks the carving sheets
+    /// carve, or — with no sheet carving — one per audio file.
     pub fn track_count(&self) -> u32 {
-        let bound = self.bound_sheets();
-        if bound.is_empty() {
+        let carving = self.carving_sheets();
+        if carving.is_empty() {
             self.audio().count() as u32
         } else {
-            bound
+            carving
                 .iter()
-                .map(|bound| bound.sheet.playable_track_count() as u32)
+                .map(|carving| carving.sheet.playable_track_count() as u32)
                 .sum()
         }
     }
@@ -576,7 +659,9 @@ impl CategorizedFiles {
     /// Roles settle first. A file taken out of the tracklist stops being audio,
     /// so a sheet bound to it describes nothing — settling the bindings against
     /// the roles that are still standing is what keeps those two from
-    /// disagreeing.
+    /// disagreeing. Disc assignments settle last, because the position a sheet
+    /// with no stored decision takes is a position among the sheets that ended
+    /// up bound.
     ///
     /// Idempotent, and it only ever *overrides*: a file or sheet with no
     /// decision keeps what it already has, which is what makes a cleared
@@ -594,6 +679,7 @@ impl CategorizedFiles {
         .expect("a fresh cancellation token cannot be cancelled")
         {
             SettledBindings::Settled { cue_codec } => {
+                settle_sheet_discs(&mut self.files, &edits.sheet_discs);
                 self.format_label = derive_format_label(&self.files, cue_codec)
                     .ok_or(InvalidReason::NoValidAudio)?;
                 Ok(())
@@ -1340,6 +1426,32 @@ fn settle_sheet_bindings(
     Ok(SettledBindings::Settled { cue_codec })
 }
 
+/// Settle every parsed sheet's disc assignment: the user's decision where they
+/// made one, and the sheet's own position among the folder's bound sheets where
+/// they made none.
+///
+/// Total over the folder's parsed sheets, and run after
+/// [`settle_sheet_bindings`] at every call site, because the position it hands
+/// out is a position among the sheets that are *bound*. A sheet nobody bound
+/// carves nothing either way, so it takes disc one and says nothing by it.
+fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscEdits) {
+    let mut bound_so_far = 0u32;
+    for entry in files.iter_mut() {
+        let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role else {
+            continue;
+        };
+        let position = if binding.describes().is_some() {
+            bound_so_far += 1;
+            bound_so_far
+        } else {
+            1
+        };
+        *disc = edits
+            .get(&entry.file.relative_path)
+            .unwrap_or(SheetDisc::Disc { number: position });
+    }
+}
+
 /// The release's format label: `CUE+<codec>` when a sheet stayed bound — the
 /// probed codec, never the extension — and otherwise the audio's own extension,
 /// which is what a file-per-track release is called. `None` only when the folder
@@ -1568,6 +1680,10 @@ fn categorize_files_from_tree(
                 binding: bindings
                     .remove(&index)
                     .expect("every parsed sheet got a binding above"),
+                // The scan proposes no disc: a cue filename says nothing about
+                // which disc it holds. `settle_sheet_discs` below assigns every
+                // parsed sheet, against the bindings that end up in force.
+                disc: SheetDisc::Disc { number: 1 },
             },
             ProposedRole::Image if Some(index) == cover_index => FileRole::Cover,
             ProposedRole::Image => FileRole::Artwork,
@@ -1596,6 +1712,7 @@ fn categorize_files_from_tree(
             return invalid(InvalidReason::CorruptAudioFile { path })
         }
     };
+    settle_sheet_discs(&mut files, &stored.sheet_discs);
 
     let Some(format_label) = derive_format_label(&files, cue_codec) else {
         info!("Invalid candidate: no valid audio files after categorization");

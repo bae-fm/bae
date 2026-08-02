@@ -3347,6 +3347,129 @@ mod import_candidate_state_tests {
         assert!(db.load_folder_scan_snapshots().await.is_err());
     }
 
+    /// A disc assignment the user set survives a relaunch: it is stored under
+    /// the candidate's content hash, read back from a cold database, and the
+    /// scan that follows lays the discs down as they settled them rather than
+    /// in the order the cue filenames read.
+    #[tokio::test]
+    async fn a_disc_assignment_survives_a_relaunch() {
+        use crate::import::folder_scanner::{
+            collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDisc,
+            SheetDiscEdits, StoredCandidateEdits,
+        };
+
+        let (db, _tmp) = empty_db().await;
+        let folder = two_sheet_folder();
+        let scanned = collect_release_candidate_files_with_scope(
+            folder.path(),
+            crate::import::ReleaseFileScope::Recursive,
+            &StoredCandidateEdits::none(),
+        )
+        .unwrap();
+        let root = folder.path().to_string_lossy().into_owned();
+        db.add_watched_import_folder(&root).await.unwrap();
+        let generation = db.begin_folder_scan(&root).await.unwrap();
+        let candidate = crate::import::folder_scanner::FolderCandidate {
+            path: folder.path().to_path_buf(),
+            file_root: folder.path().to_path_buf(),
+            name: "Release".to_string(),
+            files: scanned.clone(),
+            watched_folder_path: root.clone(),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            display_path: String::new(),
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
+        };
+        db.save_folder_scan_item(
+            &root,
+            generation,
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
+            &[],
+        )
+        .await
+        .unwrap();
+        db.finish_folder_scan(&root, generation, None)
+            .await
+            .unwrap();
+
+        // The rip named its sheets the other way round: `alpha.cue` is disc two.
+        let mut sheet_discs = SheetDiscEdits::default();
+        sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
+        sheet_discs.set("beta.cue".to_string(), SheetDisc::Disc { number: 1 });
+        let candidate_edits = CandidateFileEdits {
+            sheet_discs,
+            ..Default::default()
+        };
+        let mut settled = scanned.clone();
+        settled
+            .apply_candidate_file_edits(&candidate_edits)
+            .unwrap();
+        db.save_import_candidate_file_edits(
+            &scanned.content_hash(),
+            &folder.path().to_string_lossy(),
+            0,
+            &candidate_edits,
+            &[(folder.path().to_string_lossy().into_owned(), settled)],
+        )
+        .await
+        .unwrap();
+
+        let current = db
+            .load_candidate_file_edits(&scanned.content_hash())
+            .await
+            .unwrap();
+        assert_eq!(current.revision, 1);
+        assert_eq!(
+            current.sheet_discs.get("alpha.cue"),
+            Some(SheetDisc::Disc { number: 2 })
+        );
+
+        // A subsequent scan reads the same decisions, so the folder's audio
+        // comes out in the order the user settled rather than in path order.
+        let stored = db.load_stored_candidate_edits().await.unwrap();
+        let reopened = collect_release_candidate_files_with_scope(
+            folder.path(),
+            crate::import::ReleaseFileScope::Recursive,
+            &stored,
+        )
+        .unwrap();
+        assert_eq!(
+            reopened
+                .carving_sheets()
+                .iter()
+                .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
+                .collect::<Vec<_>>(),
+            vec![
+                ("alpha.cue", SheetDisc::Disc { number: 2 }),
+                ("beta.cue", SheetDisc::Disc { number: 1 }),
+            ],
+        );
+    }
+
+    /// Two bound single-track sheets, each naming the audio beside it.
+    fn two_sheet_folder() -> tempfile::TempDir {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        for stem in ["alpha", "beta"] {
+            std::fs::copy(
+                fixtures.join("tests/fixtures/cue_flac/Test Album.flac"),
+                tmp.path().join(format!("{stem}.flac")),
+            )
+            .unwrap();
+            std::fs::write(
+                tmp.path().join(format!("{stem}.cue")),
+                format!(
+                    "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
+                     FILE \"{stem}.flac\" WAVE\n  TRACK 01 AUDIO\n    \
+                     TITLE \"Track Title\"\n    INDEX 01 00:00:00\n",
+                ),
+            )
+            .unwrap();
+        }
+        tmp
+    }
+
     /// The walkthrough folder on disk: a twelve-track sheet written against a
     /// WAV, the FLAC it was actually encoded to, and the rip log.
     fn walkthrough_folder() -> tempfile::TempDir {

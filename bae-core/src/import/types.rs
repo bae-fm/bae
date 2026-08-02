@@ -319,7 +319,7 @@ impl PressingEdit {
 /// never by absolute path. A binding is decided when a release is picked and
 /// read again when the commit re-walks the folder; only the relative path
 /// survives the folder being moved or renamed in between.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AudioFile {
     /// The whole file holds this one track.
@@ -551,14 +551,7 @@ impl RawReleaseEdit {
             .tracks
             .into_iter()
             .enumerate()
-            .map(|(index, t)| RawTrackEdit {
-                id: format!("{track_id_prefix}-{index}"),
-                title: t.title,
-                artist_text: join_artists(&t.artist_names),
-                side: t.side,
-                track_number: t.track_number,
-                file: t.file,
-            })
+            .map(|(index, t)| RawTrackEdit::from_user_edit(t, format!("{track_id_prefix}-{index}")))
             .collect();
 
         Self {
@@ -566,6 +559,22 @@ impl RawReleaseEdit {
             album_artist_text: join_artists(&edit.album_artist_names),
             pressing: RawPressingEdit::from_pressing(&edit.pressing),
             tracks,
+        }
+    }
+}
+
+impl RawTrackEdit {
+    /// Seed one raw editor row from a wire [`TrackUserEdit`], under the row
+    /// identity `id`. Joins the artist list into comma text and carries the
+    /// bound audio through untouched.
+    pub fn from_user_edit(edit: TrackUserEdit, id: String) -> Self {
+        Self {
+            id,
+            title: edit.title,
+            artist_text: join_artists(&edit.artist_names),
+            side: edit.side,
+            track_number: edit.track_number,
+            file: edit.file,
         }
     }
 }

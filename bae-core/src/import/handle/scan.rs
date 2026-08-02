@@ -156,6 +156,47 @@ impl ImportServiceHandle {
         .await
     }
 
+    /// Say which disc of the release one of a candidate's track sheets holds,
+    /// or take the sheet out of the tracklist with
+    /// [`SheetDisc::Ignored`](crate::import::folder_scanner::SheetDisc::Ignored).
+    ///
+    /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so which
+    /// disc a sheet carves is a decision rather than something read off a name.
+    /// Like a binding it is stored with the candidate and it clears the stored
+    /// identify verdict: re-assigning a sheet re-shapes the tracklist, and
+    /// ignoring one hands its container back to the release as loose audio.
+    ///
+    /// Discs count from one, so disc zero is refused: there is no such disc to
+    /// put the sheet's entries on.
+    pub async fn set_sheet_disc(
+        &self,
+        candidate_key: String,
+        sheet_file_id: String,
+        disc: crate::import::folder_scanner::SheetDisc,
+    ) -> Result<(), crate::import::ImportError> {
+        use crate::import::folder_scanner::SheetDisc;
+
+        if let SheetDisc::Disc { number: 0 } = disc {
+            return Err(crate::import::ImportError::SheetBinding {
+                detail: format!("{sheet_file_id} cannot be disc zero; discs count from one"),
+            });
+        }
+        let (files, offered_revision) = self.folder_files_for_binding(&candidate_key)?;
+        if files
+            .track_sheets()
+            .all(|sheet| sheet.file.relative_path != sheet_file_id)
+        {
+            return Err(crate::import::ImportError::SheetBinding {
+                detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
+            });
+        }
+
+        self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
+            edits.sheet_discs.set(sheet_file_id, disc);
+        })
+        .await
+    }
+
     /// Put one of a candidate's files in a role, or put it back in the one the
     /// scan proposed.
     ///

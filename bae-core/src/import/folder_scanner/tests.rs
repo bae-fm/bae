@@ -1510,6 +1510,111 @@ FILE "02 - Track Two.flac" WAVE
     assert_eq!(bound[0].sheet.tracks.len(), 2);
 }
 
+/// Nobody has said which cue is which disc, so each bound sheet takes its
+/// position among the folder's bound sheets, in path order. An unbound sheet
+/// takes no place in that count — it carves nothing either way.
+#[test]
+fn bound_sheets_take_their_positions_as_discs_by_default() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+
+    std::fs::write(root.join("alpha.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        root.join("alpha.cue"),
+        make_cue_content_n_tracks("alpha.flac", "Album Title", 2),
+    )
+    .unwrap();
+    std::fs::write(root.join("beta.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        root.join("beta.cue"),
+        make_cue_content_n_tracks("beta.flac", "Album Title", 3),
+    )
+    .unwrap();
+    // Names audio the folder does not hold, so it never binds.
+    std::fs::write(
+        root.join("zeta.cue"),
+        make_cue_content_n_tracks("zeta.flac", "Album Title", 4),
+    )
+    .unwrap();
+
+    let files = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
+
+    assert_eq!(
+        files
+            .track_sheets()
+            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
+            .collect::<Vec<_>>(),
+        vec![
+            ("alpha.cue", SheetDisc::Disc { number: 1 }),
+            ("beta.cue", SheetDisc::Disc { number: 2 }),
+            ("zeta.cue", SheetDisc::Disc { number: 1 }),
+        ],
+    );
+}
+
+/// A stored assignment wins over the position the folder would hand out, and it
+/// survives being read back off disk by a later scan.
+#[test]
+fn a_stored_disc_assignment_overrules_the_default_position() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+
+    std::fs::write(root.join("alpha.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        root.join("alpha.cue"),
+        make_cue_content_n_tracks("alpha.flac", "Album Title", 2),
+    )
+    .unwrap();
+    std::fs::write(root.join("beta.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        root.join("beta.cue"),
+        make_cue_content_n_tracks("beta.flac", "Album Title", 3),
+    )
+    .unwrap();
+
+    let scanned = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
+
+    let mut sheet_discs = SheetDiscEdits::default();
+    sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
+    sheet_discs.set("beta.cue".to_string(), SheetDisc::Ignored);
+    let edits = CandidateFileEdits {
+        sheet_discs,
+        ..Default::default()
+    };
+
+    let reopened = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::new(HashMap::from([(scanned.content_hash(), edits)])),
+    )
+    .expect("scan should succeed");
+
+    assert_eq!(
+        reopened
+            .track_sheets()
+            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
+            .collect::<Vec<_>>(),
+        vec![
+            ("alpha.cue", SheetDisc::Disc { number: 2 }),
+            ("beta.cue", SheetDisc::Ignored),
+        ],
+    );
+    // The ignored sheet carves nothing, so only the other one's tracks count —
+    // and its own container is loose audio again.
+    assert_eq!(reopened.carving_sheets().len(), 1);
+    assert_eq!(reopened.track_count(), 2);
+}
+
 #[test]
 fn test_cue_pair_codec_label_covers_supported_extensions() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));

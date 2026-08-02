@@ -1520,6 +1520,29 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
+    /// Say which disc of the release one of a candidate's track sheets holds,
+    /// or take it out of the tracklist with `BridgeSheetDisc::Ignored`.
+    ///
+    /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so the
+    /// assignment is the truth about which cue is which disc, and no UI reads
+    /// it off a name. Discs count from one.
+    ///
+    /// Persists the decision and clears the candidate's stored identify
+    /// verdict, because a re-assigned or ignored sheet is a different
+    /// tracklist. The candidate invalidation makes the import view read it.
+    pub async fn set_sheet_disc(
+        &self,
+        candidate_key: String,
+        sheet_file_id: String,
+        disc: crate::types::BridgeSheetDisc,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .import()
+            .set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
+            .await
+            .map_err(BridgeError::import)
+    }
+
     /// Put one of a candidate's files in a role, or put it back in the one the
     /// scan proposed. `choice` must be one of that file's
     /// `BridgeCandidateFile::alternatives`.
@@ -1692,6 +1715,42 @@ impl AppHandle {
             .await
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
+    }
+
+    /// The Unknown seed and the mapping table it produces: what the folder's
+    /// own files say the release is, and how each of the folder's audio units
+    /// lands on one of those tracks.
+    ///
+    /// The table carries no tally — the tracklist was read off this very
+    /// folder, so there is no second account of it to reconcile against.
+    pub async fn unknown_mapping(
+        &self,
+        candidate_key: String,
+    ) -> Result<crate::types::BridgeUnknownMapping, BridgeError> {
+        let (seed, mapping) = self
+            .services
+            .import()
+            .unknown_mapping(candidate_key)
+            .await
+            .map_err(BridgeError::import)?;
+        Ok(crate::types::BridgeUnknownMapping {
+            seed: crate::types::BridgeReleaseUserEdit::from_core(seed),
+            mapping: crate::types::BridgeMappingTable::from_core(mapping),
+        })
+    }
+
+    /// The mapping table for a candidate nobody has picked a release for:
+    /// every source unit the folder offers, with what it becomes left open.
+    pub fn candidate_mapping(
+        &self,
+        candidate_key: String,
+    ) -> Result<crate::types::BridgeMappingTable, BridgeError> {
+        let mapping = self
+            .services
+            .import()
+            .candidate_mapping(&candidate_key)
+            .map_err(BridgeError::import)?;
+        Ok(crate::types::BridgeMappingTable::from_core(mapping))
     }
 
     /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a

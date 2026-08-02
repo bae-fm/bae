@@ -27,6 +27,10 @@ mod image_response;
 mod handle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod loudness;
+// Projects the folder's audio units against a picked tracklist — the desktop
+// import pane's one structure, and desktop-only like the slots it reads.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod mapping;
 pub mod musicbrainz_mapper;
 // The payload store's projections build the picker detail and the commit's
 // `ParsedAlbum` from archived documents — both desktop-only import shapes.
@@ -100,6 +104,12 @@ pub use handle::{
     CandidateRuntimeSnapshot, DiscogsSaveOutcome, FolderImportCandidateSnapshot, FolderScanStatus,
     GroupedSearchResults, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportEvent,
     ImportServiceHandle, ScanEvent, SearchQuery, WatchedFolderScanStatus,
+};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use mapping::{
+    mapping_table, mapping_tracks, MappingBecomes, MappingContainer, MappingEntry, MappingFile,
+    MappingRole, MappingRow, MappingSource, MappingTable, MappingUnit, PickedTracklist, SheetGroup,
+    TracklistSource,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;

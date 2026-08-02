@@ -2833,11 +2833,16 @@ pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
     pub seed: BridgeReleaseUserEdit,
     pub claim: BridgeClaimLine,
-    /// The file↔release mapping this pick produces: one row per track the
+    /// The file↔release pairing this pick produces: one row per track the
     /// import will write, each naming the audio bound to it and saying whether
     /// the source's tracklist and the folder's audio agree about it. Empty for
     /// a key that names no scanned folder.
     pub slots: BridgeSlotTable,
+    /// That pairing as the mapping pane's own structure: every source unit the
+    /// folder offers with the track committing makes of it, the editable row
+    /// inside the row that produces it. Empty for a key that names no scanned
+    /// folder.
+    pub mapping: BridgeMappingTable,
 }
 
 /// What identified the picked release. Mirrors
@@ -3062,6 +3067,199 @@ pub struct BridgeSlotTable {
     /// file is offered to choose from, and what re-pairing two rows swaps
     /// between them.
     pub audio: Vec<BridgeSlotFile>,
+}
+
+/// Which disc of the release one track sheet's entries become. Mirror of
+/// bae-core's `SheetDisc`.
+///
+/// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so this is a
+/// decision, set through `AppHandle::set_sheet_disc`, and never something a UI
+/// reads off a name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSheetDisc {
+    /// The sheet's entries are the release's disc `number`, counting from one.
+    Disc { number: u32 },
+    /// The sheet contributes nothing to the tracklist. Its container is loose
+    /// audio again.
+    Ignored,
+}
+
+/// What one of the folder's files is, as a row of the mapping table. Mirror of
+/// bae-core's `MappingRole`.
+///
+/// Narrower than the role the scan proposes: a track sheet is not a row here —
+/// it heads a group of rows — so it has no variant.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMappingRole {
+    Audio,
+    /// The image that leads the release.
+    Cover {
+        choice: BridgeCoverChoice,
+    },
+    Artwork {
+        choice: BridgeCoverChoice,
+    },
+    Document,
+    Other,
+}
+
+/// A file of the folder, as the mapping table's left half shows it. Mirror of
+/// bae-core's `MappingFile`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingFile {
+    /// The file's identity within the release (its relative path) — the id
+    /// `AppHandle::set_file_role` and the sheet bindings take.
+    pub file_id: String,
+    /// The file's own name, without its directory prefix.
+    pub name: String,
+    pub size: u64,
+    /// Absolute path — what auditioning this row plays.
+    pub local_path: String,
+    /// Probed playing time in milliseconds, where the folder's audio has been
+    /// read. `None` for anything that is not audio, for audio nothing could be
+    /// read from, and while no release is picked.
+    pub probed_duration_ms: Option<u64>,
+    pub role: BridgeMappingRole,
+    /// The roles this file can be put in, the one in force first. Empty when
+    /// its role is nobody's decision to make.
+    pub alternatives: Vec<BridgeFileRoleChoice>,
+    /// The role in force as a choice — what a picker shows selected. `None`
+    /// exactly when `alternatives` is empty.
+    pub role_choice: Option<BridgeFileRoleChoice>,
+}
+
+/// One entry of a track sheet, as the mapping table's left half shows it.
+/// Mirror of bae-core's `MappingEntry`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingEntry {
+    pub sheet_id: String,
+    /// Counts this sheet's playable entries from zero — the index the audio
+    /// binding carries.
+    pub index: u32,
+    /// The number the sheet prints for this entry.
+    pub number: u32,
+    pub title: Option<String>,
+    /// How long the sheet says this entry runs, in milliseconds.
+    pub duration_ms: Option<u64>,
+    /// The container this entry's samples come from — what auditioning plays.
+    pub container_id: String,
+    pub container_name: String,
+    pub container_local_path: String,
+}
+
+/// The left half of a mapping row: what the folder offers for it. Mirror of
+/// bae-core's `MappingSource`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMappingSource {
+    /// A file the folder holds, whole.
+    File { file: BridgeMappingFile },
+    /// One entry of a track sheet, carved out of the container it is bound to.
+    SheetEntry { entry: BridgeMappingEntry },
+    /// The source names a track this folder has nothing for: the left half is
+    /// empty, and the row is offered the folder's audio to point it at.
+    Missing,
+}
+
+/// The right half of a mapping row: what committing makes of the source unit.
+/// Mirror of bae-core's `MappingBecomes`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMappingBecomes {
+    /// A track of the release being committed. The row edits it in place, and
+    /// `bridge_mapping_tracks` reads the edited rows back out in commit order.
+    Track {
+        track: BridgeRawTrackEdit,
+        /// The source's own position string — `A1`, `1`, `1-2`, or prose —
+        /// where the picked release names one for this track.
+        source_position: Option<String>,
+        source_duration_ms: Option<u64>,
+    },
+    /// The image that leads the release.
+    Cover,
+    /// Carried with the release, not one of its tracks.
+    NotImported,
+    /// No release is picked yet, so what this becomes is the open question.
+    AwaitingPick,
+}
+
+/// One source unit and the track committing makes of it. Mirror of bae-core's
+/// `MappingUnit`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingUnit {
+    pub source: BridgeMappingSource,
+    pub becomes: BridgeMappingBecomes,
+}
+
+/// The audio a track sheet describes. Mirror of bae-core's `MappingContainer`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingContainer {
+    pub file_id: String,
+    pub name: String,
+    pub size: u64,
+}
+
+/// A track sheet, as the header of the group of rows it carves. Mirror of
+/// bae-core's `SheetGroup`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSheetGroup {
+    /// The sheet's `file_id` — the id `AppHandle::set_sheet_binding` and
+    /// `AppHandle::set_sheet_disc` take.
+    pub sheet_id: String,
+    pub name: String,
+    /// The audio the sheet describes; `None` when it describes nothing.
+    pub container: Option<BridgeMappingContainer>,
+    pub assignment: BridgeSheetDisc,
+    /// The discs this sheet may be assigned to, counting from one.
+    pub disc_options: Vec<u32>,
+}
+
+/// One row of the mapping table. Mirror of bae-core's `MappingRow`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMappingRow {
+    /// One source unit and what it becomes.
+    Unit { unit: BridgeMappingUnit },
+    /// A track sheet and the entries it carves, which are its child rows.
+    Sheet {
+        sheet: BridgeSheetGroup,
+        entries: Vec<BridgeMappingUnit>,
+    },
+    /// A directory whose files all do the same job, shown as one row.
+    Directory { directory: BridgeCollapsedDirectory },
+}
+
+/// The mapping table: every source unit the folder offers, alongside the track
+/// committing makes of it. Mirror of bae-core's `MappingTable`.
+///
+/// One structure, not two lists to keep aligned: the editable track row lives
+/// *inside* the row that produces it, so removing a row removes both halves and
+/// no index addresses anything.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingTable {
+    pub rows: Vec<BridgeMappingRow>,
+    /// The tally over the rows that become tracks. `None` when there is nothing
+    /// to reconcile the folder against — no release is picked, or the tracklist
+    /// was read off the folder's own files and so cannot disagree with it.
+    pub reconciliation: Option<BridgeSlotReconciliation>,
+}
+
+/// What committing a folder as Unknown produces: the release its own files
+/// describe, and the mapping table that lands each of its audio units on one of
+/// those tracks.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeUnknownMapping {
+    pub seed: BridgeReleaseUserEdit,
+    pub mapping: BridgeMappingTable,
+}
+
+/// The table's track rows in commit order — what the editor shapes into the
+/// release it writes. Core decides the order, so the two desktop surfaces
+/// cannot commit two different tracklists from one table.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdit> {
+    bae_core::import::mapping_tracks(&table.into_core())
+        .into_iter()
+        .map(BridgeRawTrackEdit::from_core)
+        .collect()
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
@@ -4463,6 +4661,7 @@ impl BridgeReleasePrefetch {
             seed,
             claim,
             slots,
+            mapping,
         } = p;
         // The seed crosses masked for the claim the pick settled, so the editor
         // binds it directly. Doing it here rather than in the UI is what keeps
@@ -4474,6 +4673,7 @@ impl BridgeReleasePrefetch {
             seed: BridgeReleaseUserEdit::from_core(seed),
             claim: BridgeClaimLine::from_core(claim),
             slots: BridgeSlotTable::from_core(slots),
+            mapping: BridgeMappingTable::from_core(mapping),
         }
     }
 }
@@ -4833,7 +5033,14 @@ impl BridgeCandidateFile {
         };
         let role = match role {
             FileRole::Audio => BridgeFileRole::Audio,
-            FileRole::TrackSheet { sheet, binding } => BridgeFileRole::TrackSheet {
+            // The disc assignment is the mapping table's to show, on the group
+            // header that carries the picker for it. A roles row states what
+            // the sheet's slots are, which already reflects the assignment.
+            FileRole::TrackSheet {
+                sheet,
+                binding,
+                disc: _,
+            } => BridgeFileRole::TrackSheet {
                 binding: match binding {
                     SheetBinding::Describes { file_id } => {
                         BridgeSheetBinding::Describes { file_id }
@@ -4922,6 +5129,26 @@ impl BridgeCollapsedDirectory {
                 FileRowKind::Image => BridgeFileRowKind::Image,
                 FileRowKind::Document => BridgeFileRowKind::Document,
                 FileRowKind::Other => BridgeFileRowKind::Other,
+            },
+            count,
+            total_size,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::folder_scanner::CollapsedDirectory {
+        use bae_core::import::folder_scanner::{CollapsedDirectory, FileRowKind};
+        let BridgeCollapsedDirectory {
+            dir_prefix,
+            kind,
+            count,
+            total_size,
+        } = self;
+        CollapsedDirectory {
+            dir_prefix,
+            kind: match kind {
+                BridgeFileRowKind::Image => FileRowKind::Image,
+                BridgeFileRowKind::Document => FileRowKind::Document,
+                BridgeFileRowKind::Other => FileRowKind::Other,
             },
             count,
             total_size,
@@ -5112,9 +5339,30 @@ impl BridgeSlotFile {
 }
 
 #[cfg(feature = "desktop")]
+impl BridgeSlotReconciliation {
+    fn from_core(reconciliation: bae_core::import::SlotReconciliation) -> Self {
+        use bae_core::import::SlotReconciliation;
+        match reconciliation {
+            SlotReconciliation::Agrees { count } => Self::Agrees { count },
+            SlotReconciliation::MoreFiles { files, tracks } => Self::MoreFiles { files, tracks },
+            SlotReconciliation::MoreTracks { files, tracks } => Self::MoreTracks { files, tracks },
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::SlotReconciliation {
+        use bae_core::import::SlotReconciliation;
+        match self {
+            Self::Agrees { count } => SlotReconciliation::Agrees { count },
+            Self::MoreFiles { files, tracks } => SlotReconciliation::MoreFiles { files, tracks },
+            Self::MoreTracks { files, tracks } => SlotReconciliation::MoreTracks { files, tracks },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl BridgeSlotTable {
     fn from_core(table: bae_core::import::SlotTable) -> Self {
-        use bae_core::import::{SlotReconciliation, SlotTable};
+        use bae_core::import::SlotTable;
         let SlotTable {
             rows,
             reconciliation,
@@ -5122,16 +5370,383 @@ impl BridgeSlotTable {
         } = table;
         BridgeSlotTable {
             rows: rows.into_iter().map(BridgeTrackSlot::from_core).collect(),
-            reconciliation: match reconciliation {
-                SlotReconciliation::Agrees { count } => BridgeSlotReconciliation::Agrees { count },
-                SlotReconciliation::MoreFiles { files, tracks } => {
-                    BridgeSlotReconciliation::MoreFiles { files, tracks }
-                }
-                SlotReconciliation::MoreTracks { files, tracks } => {
-                    BridgeSlotReconciliation::MoreTracks { files, tracks }
-                }
-            },
+            reconciliation: BridgeSlotReconciliation::from_core(reconciliation),
             audio: audio.into_iter().map(BridgeSlotFile::from_core).collect(),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSheetDisc {
+    fn from_core(disc: bae_core::import::folder_scanner::SheetDisc) -> Self {
+        use bae_core::import::folder_scanner::SheetDisc;
+        match disc {
+            SheetDisc::Disc { number } => Self::Disc { number },
+            SheetDisc::Ignored => Self::Ignored,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::folder_scanner::SheetDisc {
+        use bae_core::import::folder_scanner::SheetDisc;
+        match self {
+            Self::Disc { number } => SheetDisc::Disc { number },
+            Self::Ignored => SheetDisc::Ignored,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingRole {
+    /// `local_path` is the file's own, which is what an image role's cover
+    /// choice points the picker at — the role itself carries no path.
+    fn from_core(role: bae_core::import::MappingRole, file_id: &str, local_path: &str) -> Self {
+        use bae_core::import::MappingRole;
+        let choice = || BridgeCoverChoice {
+            selection: BridgeCoverSelection::ReleaseImage {
+                file_id: file_id.to_string(),
+            },
+            preview_source: BridgeCoverImageSource::Local {
+                path: local_path.to_string(),
+            },
+            thumbnail_source: BridgeCoverImageSource::Local {
+                path: local_path.to_string(),
+            },
+        };
+        match role {
+            MappingRole::Audio => Self::Audio,
+            MappingRole::Cover => Self::Cover { choice: choice() },
+            MappingRole::Artwork => Self::Artwork { choice: choice() },
+            MappingRole::Document => Self::Document,
+            MappingRole::Other => Self::Other,
+        }
+    }
+
+    /// The cover choice is derived from the file rather than carried, so it is
+    /// not read back.
+    fn into_core(self) -> bae_core::import::MappingRole {
+        use bae_core::import::MappingRole;
+        match self {
+            Self::Audio => MappingRole::Audio,
+            Self::Cover { .. } => MappingRole::Cover,
+            Self::Artwork { .. } => MappingRole::Artwork,
+            Self::Document => MappingRole::Document,
+            Self::Other => MappingRole::Other,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingFile {
+    fn from_core(file: bae_core::import::MappingFile) -> Self {
+        let bae_core::import::MappingFile {
+            file_id,
+            name,
+            size,
+            path,
+            probed_duration_ms,
+            role,
+            alternatives,
+            role_choice,
+        } = file;
+        let local_path = path.to_string_lossy().to_string();
+        BridgeMappingFile {
+            role: BridgeMappingRole::from_core(role, &file_id, &local_path),
+            file_id,
+            name,
+            size,
+            local_path,
+            probed_duration_ms,
+            alternatives: alternatives
+                .into_iter()
+                .map(BridgeFileRoleChoice::from_core)
+                .collect(),
+            role_choice: role_choice.map(BridgeFileRoleChoice::from_core),
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingFile {
+        let BridgeMappingFile {
+            file_id,
+            name,
+            size,
+            local_path,
+            probed_duration_ms,
+            role,
+            alternatives,
+            role_choice,
+        } = self;
+        bae_core::import::MappingFile {
+            file_id,
+            name,
+            size,
+            path: std::path::PathBuf::from(local_path),
+            probed_duration_ms,
+            role: role.into_core(),
+            alternatives: alternatives
+                .into_iter()
+                .map(BridgeFileRoleChoice::into_core)
+                .collect(),
+            role_choice: role_choice.map(BridgeFileRoleChoice::into_core),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingEntry {
+    fn from_core(entry: bae_core::import::MappingEntry) -> Self {
+        let bae_core::import::MappingEntry {
+            sheet_id,
+            index,
+            number,
+            title,
+            duration_ms,
+            container_id,
+            container_name,
+            container_path,
+        } = entry;
+        BridgeMappingEntry {
+            sheet_id,
+            index,
+            number,
+            title,
+            duration_ms,
+            container_id,
+            container_name,
+            container_local_path: container_path.to_string_lossy().to_string(),
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingEntry {
+        let BridgeMappingEntry {
+            sheet_id,
+            index,
+            number,
+            title,
+            duration_ms,
+            container_id,
+            container_name,
+            container_local_path,
+        } = self;
+        bae_core::import::MappingEntry {
+            sheet_id,
+            index,
+            number,
+            title,
+            duration_ms,
+            container_id,
+            container_name,
+            container_path: std::path::PathBuf::from(container_local_path),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingSource {
+    fn from_core(source: bae_core::import::MappingSource) -> Self {
+        use bae_core::import::MappingSource;
+        match source {
+            MappingSource::File(file) => Self::File {
+                file: BridgeMappingFile::from_core(file),
+            },
+            MappingSource::SheetEntry(entry) => Self::SheetEntry {
+                entry: BridgeMappingEntry::from_core(entry),
+            },
+            MappingSource::Missing => Self::Missing,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingSource {
+        use bae_core::import::MappingSource;
+        match self {
+            Self::File { file } => MappingSource::File(file.into_core()),
+            Self::SheetEntry { entry } => MappingSource::SheetEntry(entry.into_core()),
+            Self::Missing => MappingSource::Missing,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingBecomes {
+    fn from_core(becomes: bae_core::import::MappingBecomes) -> Self {
+        use bae_core::import::MappingBecomes;
+        match becomes {
+            MappingBecomes::Track {
+                track,
+                source_position,
+                source_duration_ms,
+            } => Self::Track {
+                track: BridgeRawTrackEdit::from_core(track),
+                source_position,
+                source_duration_ms,
+            },
+            MappingBecomes::Cover => Self::Cover,
+            MappingBecomes::NotImported => Self::NotImported,
+            MappingBecomes::AwaitingPick => Self::AwaitingPick,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingBecomes {
+        use bae_core::import::MappingBecomes;
+        match self {
+            Self::Track {
+                track,
+                source_position,
+                source_duration_ms,
+            } => MappingBecomes::Track {
+                track: track.into_core(),
+                source_position,
+                source_duration_ms,
+            },
+            Self::Cover => MappingBecomes::Cover,
+            Self::NotImported => MappingBecomes::NotImported,
+            Self::AwaitingPick => MappingBecomes::AwaitingPick,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingUnit {
+    fn from_core(unit: bae_core::import::MappingUnit) -> Self {
+        let bae_core::import::MappingUnit { source, becomes } = unit;
+        BridgeMappingUnit {
+            source: BridgeMappingSource::from_core(source),
+            becomes: BridgeMappingBecomes::from_core(becomes),
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingUnit {
+        let BridgeMappingUnit { source, becomes } = self;
+        bae_core::import::MappingUnit {
+            source: source.into_core(),
+            becomes: becomes.into_core(),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingContainer {
+    fn from_core(container: bae_core::import::MappingContainer) -> Self {
+        let bae_core::import::MappingContainer {
+            file_id,
+            name,
+            size,
+        } = container;
+        BridgeMappingContainer {
+            file_id,
+            name,
+            size,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingContainer {
+        let BridgeMappingContainer {
+            file_id,
+            name,
+            size,
+        } = self;
+        bae_core::import::MappingContainer {
+            file_id,
+            name,
+            size,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSheetGroup {
+    fn from_core(sheet: bae_core::import::SheetGroup) -> Self {
+        let bae_core::import::SheetGroup {
+            sheet_id,
+            name,
+            container,
+            assignment,
+            disc_options,
+        } = sheet;
+        BridgeSheetGroup {
+            sheet_id,
+            name,
+            container: container.map(BridgeMappingContainer::from_core),
+            assignment: BridgeSheetDisc::from_core(assignment),
+            disc_options,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::SheetGroup {
+        let BridgeSheetGroup {
+            sheet_id,
+            name,
+            container,
+            assignment,
+            disc_options,
+        } = self;
+        bae_core::import::SheetGroup {
+            sheet_id,
+            name,
+            container: container.map(BridgeMappingContainer::into_core),
+            assignment: assignment.into_core(),
+            disc_options,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingRow {
+    fn from_core(row: bae_core::import::MappingRow) -> Self {
+        use bae_core::import::MappingRow;
+        match row {
+            MappingRow::Unit(unit) => Self::Unit {
+                unit: BridgeMappingUnit::from_core(unit),
+            },
+            MappingRow::Sheet { sheet, entries } => Self::Sheet {
+                sheet: BridgeSheetGroup::from_core(sheet),
+                entries: entries
+                    .into_iter()
+                    .map(BridgeMappingUnit::from_core)
+                    .collect(),
+            },
+            MappingRow::Directory(directory) => Self::Directory {
+                directory: BridgeCollapsedDirectory::from_core(directory),
+            },
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingRow {
+        use bae_core::import::MappingRow;
+        match self {
+            Self::Unit { unit } => MappingRow::Unit(unit.into_core()),
+            Self::Sheet { sheet, entries } => MappingRow::Sheet {
+                sheet: sheet.into_core(),
+                entries: entries
+                    .into_iter()
+                    .map(BridgeMappingUnit::into_core)
+                    .collect(),
+            },
+            Self::Directory { directory } => MappingRow::Directory(directory.into_core()),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingTable {
+    pub(crate) fn from_core(table: bae_core::import::MappingTable) -> Self {
+        let bae_core::import::MappingTable {
+            rows,
+            reconciliation,
+        } = table;
+        BridgeMappingTable {
+            rows: rows.into_iter().map(BridgeMappingRow::from_core).collect(),
+            reconciliation: reconciliation.map(BridgeSlotReconciliation::from_core),
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingTable {
+        let BridgeMappingTable {
+            rows,
+            reconciliation,
+        } = self;
+        bae_core::import::MappingTable {
+            rows: rows.into_iter().map(BridgeMappingRow::into_core).collect(),
+            reconciliation: reconciliation.map(BridgeSlotReconciliation::into_core),
         }
     }
 }
