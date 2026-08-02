@@ -140,7 +140,7 @@ jobs:
           echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Install uniffi-bindgen-cs
-        run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
+        run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked
 
       - name: Build the Windows bridge (release, full edition)
         # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.

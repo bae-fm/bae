@@ -33,9 +33,22 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# The generator must be built against the same uniffi as the bridge. A generator
+# from an older uniffi reads the metadata layout it expects, lands mid-string,
+# and dies with "Invalid string data: invalid utf-8 sequence" a long way from
+# the cause -- so check the version rather than mere presence.
+BINDGEN_CS_VERSION="0.11.0+v0.32.0"
+BINDGEN_CS_INSTALL="cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked"
 if ! command -v uniffi-bindgen-cs >/dev/null 2>&1; then
     echo "uniffi-bindgen-cs is required. Install the pinned generator:" >&2
-    echo "cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked" >&2
+    echo "$BINDGEN_CS_INSTALL" >&2
+    exit 1
+fi
+INSTALLED_BINDGEN_CS_VERSION="$(uniffi-bindgen-cs --version | awk '{print $NF}')"
+if [[ "$INSTALLED_BINDGEN_CS_VERSION" != "$BINDGEN_CS_VERSION" ]]; then
+    echo "uniffi-bindgen-cs $INSTALLED_BINDGEN_CS_VERSION is installed, but this tree needs $BINDGEN_CS_VERSION." >&2
+    echo "Reinstall the pinned generator:" >&2
+    echo "$BINDGEN_CS_INSTALL" >&2
     exit 1
 fi
 

@@ -27,7 +27,7 @@ echo "== ffmpeg dist (${FFMPEG_VERSION}, self-contained) =="
 $SSH "powershell -Command \"\$dist = 'C:\\bae\\bae-ffmpeg\\dist'; New-Item -ItemType Directory -Force \$dist | Out-Null; curl.exe -fsSL --retry 5 --retry-delay 3 https://github.com/bae-fm/bae-ffmpeg/releases/download/${FFMPEG_VERSION}/ffmpeg-windows-aarch64.zip -o \$env:TEMP\\ffmpeg.zip; Expand-Archive -Path \$env:TEMP\\ffmpeg.zip -DestinationPath \$dist -Force; Remove-Item \$env:TEMP\\ffmpeg.zip; New-Item -ItemType Directory -Force \$dist\\lib | Out-Null; Copy-Item \$dist\\bin\\*.lib \$dist\\lib\\ -Force\""
 
 echo "== uniffi-bindgen-cs =="
-$SSH '"%USERPROFILE%\.cargo\bin\cargo" install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag "v0.11.0+v0.31.0" uniffi-bindgen-cs --locked'
+$SSH '"%USERPROFILE%\.cargo\bin\cargo" install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked'
 
 echo "== vpk (Velopack CLI, version-locked to the app's Velopack package) =="
 $SSH 'dotnet tool install --global vpk --version 1.2.0 || dotnet tool update --global vpk --version 1.2.0'

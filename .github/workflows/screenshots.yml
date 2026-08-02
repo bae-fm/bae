@@ -138,7 +138,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - name: Install uniffi-bindgen-cs
-        run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
+        run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked
       - name: Build the Windows bridge (full edition, OAuth + desktop)
         shell: bash
         run: BAE_BRIDGE_TARGET=x86_64-pc-windows-msvc BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
