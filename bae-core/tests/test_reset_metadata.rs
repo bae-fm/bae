@@ -119,7 +119,7 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
 
 /// Build a minimal-but-valid MB release JSON with a release group, an
 /// artist credit, and one track per supplied title. Mirrors the shape
-/// `commit_mb_release` archives in `release_metadata`.
+/// identification archives in `source_release_payloads`.
 fn mb_release_json(
     release_id: &str,
     release_group_id: &str,
