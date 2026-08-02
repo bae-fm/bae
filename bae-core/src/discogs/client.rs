@@ -27,8 +27,8 @@ static MASTER_CACHE: SessionCache<MasterCacheValue> = SessionCache::new("Discogs
 static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
 
 /// Pre-populate the release cache, so a test can drive `prepare_release` without an
-/// HTTP call. The raw JSON is what gets archived in `release_metadata`; pass an empty
-/// string when the test doesn't assert on it.
+/// HTTP call. The raw JSON is what gets archived, and what a later projection
+/// replays from, so it has to be the release handed over with it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_cache(id: &str, value: (DiscogsRelease, String)) {
     RELEASE_CACHE.put(id, value);
@@ -228,7 +228,7 @@ fn extra_artist_to_model(a: ExtraArtistCredit) -> Option<DiscogsRoleArtist> {
 
 /// Raw Discogs release JSON to the public `DiscogsRelease`. The same projection
 /// `get_release` applies to a fresh response, exposed as a free function so an
-/// archived `release_metadata` row can be replayed without re-fetching.
+/// archived `source_release_payloads` row can be replayed without re-fetching.
 pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, DiscogsError> {
     let release: ReleaseResponse = serde_json::from_str(raw_json)?;
     let tracklist = release
@@ -308,7 +308,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
 
 /// The original release year out of an archived Discogs master payload, which
 /// carries `{"year": …}` at the top level. Callers archive that JSON in
-/// `release_metadata` and call this to replay the year on reset.
+/// `source_release_payloads` and call this to replay the year on reset.
 pub fn parse_discogs_master_year(raw_json: &str) -> Result<Option<u32>, DiscogsError> {
     let parsed: serde_json::Value = serde_json::from_str(raw_json)?;
     Ok(parsed
@@ -329,6 +329,42 @@ pub enum DiscogsKeySignal {
 /// validation state tracks reality without each call site recording it. Injected by
 /// `LibraryManager::discogs_client`.
 pub type DiscogsValidationObserver = std::sync::Arc<dyn Fn(DiscogsKeySignal) + Send + Sync>;
+
+/// Where every Discogs request goes.
+const API_BASE_URL: &str = "https://api.discogs.com";
+
+#[cfg(not(any(test, feature = "test-utils")))]
+fn api_base_url() -> String {
+    API_BASE_URL.to_string()
+}
+
+/// The redirectable form of [`API_BASE_URL`], compiled only into test builds —
+/// the same seam `musicbrainz::set_base_url_for_test` gives that client. A
+/// client is built per call site rather than held as one static, so the
+/// override is read at construction.
+#[cfg(any(test, feature = "test-utils"))]
+fn api_base_url() -> String {
+    BASE_URL_OVERRIDE
+        .lock()
+        .expect("Discogs base URL mutex poisoned")
+        .clone()
+        .unwrap_or_else(|| API_BASE_URL.to_string())
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+static BASE_URL_OVERRIDE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// Point every Discogs request built after this call at `url` (`None` restores
+/// the live API), so a test never reaches the real service — and never spends a
+/// fixture's fake key on a real auth check, which would come back 401 and mark
+/// the stored key rejected for everything after it. Process-wide, like the
+/// caches it sits next to.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn set_base_url_for_test(url: Option<String>) {
+    *BASE_URL_OVERRIDE
+        .lock()
+        .expect("Discogs base URL mutex poisoned") = url;
+}
 
 pub struct DiscogsClient {
     client: Client,
@@ -355,7 +391,7 @@ impl DiscogsClient {
                 .build()
                 .expect("Failed to build HTTP client"),
             api_key,
-            base_url: "https://api.discogs.com".to_string(),
+            base_url: api_base_url(),
             observer,
         }
     }
@@ -653,7 +689,9 @@ impl DiscogsClient {
 
 /// The Discogs cross-reference for an MB release: given the Discogs URL from MB's
 /// url-rels, fetch the linked release and, if it has one, its master. Returns the
-/// `DiscogsRelease` plus the raw JSON pairs for the caller's `release_metadata`.
+/// `DiscogsRelease` plus the documents to store, each keyed by its own entity —
+/// so the release a reader reaches through the MB document's url-rels is the same
+/// row a Discogs-seeded import would have written.
 ///
 /// `None` when the URL holds no numeric release ID, or the release fetch fails — an
 /// auth failure included, which marks the stored key `Rejected` through the client's
@@ -664,7 +702,7 @@ pub async fn fetch_discogs_xref(
     client: &DiscogsClient,
     discogs_url: &str,
     priority: CallPriority,
-) -> Option<(DiscogsRelease, Vec<(String, String)>)> {
+) -> Option<(DiscogsRelease, Vec<crate::import::SourcePayload>)> {
     let id = match crate::import::musicbrainz_mapper::extract_discogs_release_id(discogs_url) {
         Some(id) => id,
         None => {
@@ -681,11 +719,12 @@ pub async fn fetch_discogs_xref(
         discogs_url,
         id
     );
-    let mut pairs: Vec<(String, String)> = Vec::new();
+    let mut payloads: Vec<crate::import::SourcePayload> = Vec::new();
     let discogs_release = match client.get_release(&id, priority).await {
         Ok((release, raw)) => {
-            pairs.push((
-                crate::import::MetadataSource::Discogs.as_str().to_string(),
+            payloads.push(crate::import::SourcePayload::new(
+                crate::import::PayloadSource::Discogs,
+                &id,
                 raw,
             ));
             release
@@ -699,7 +738,11 @@ pub async fn fetch_discogs_xref(
     if let Some(ref master_id) = discogs_release.master_id {
         match client.get_master(master_id, priority).await {
             Ok((_year, master_json)) => {
-                pairs.push(("discogs_master".to_string(), master_json));
+                payloads.push(crate::import::SourcePayload::new(
+                    crate::import::PayloadSource::DiscogsMaster,
+                    master_id,
+                    master_json,
+                ));
             }
             Err(e) => {
                 tracing::warn!("Failed to fetch Discogs master {}: {}", master_id, e);
@@ -707,7 +750,7 @@ pub async fn fetch_discogs_xref(
         }
     }
 
-    Some((discogs_release, pairs))
+    Some((discogs_release, payloads))
 }
 
 #[cfg(test)]

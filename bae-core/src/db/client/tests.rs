@@ -909,7 +909,6 @@ mod composer_mode_tests {
             &[],
             &[],
             &[],
-            &[],
             &[file],
             &[],
             &[],
@@ -1102,7 +1101,6 @@ mod composer_mode_tests {
             &track_files,
             &[],
             &[],
-            &[],
             &works,
             &work_artists,
             &[],
@@ -1249,7 +1247,6 @@ mod composer_mode_tests {
             Some(&album),
             &release,
             &track_files,
-            &[],
             &[],
             &[],
             &[],
@@ -1436,7 +1433,6 @@ mod composer_mode_tests {
             &[],
             &[],
             &[],
-            &[],
             &[file],
             &[],
             &[],
@@ -1550,7 +1546,6 @@ mod composer_mode_tests {
             &release(RELEASE_PRIOR, ALBUM_PRIOR),
             &[track(TRACK_PRIOR, RELEASE_PRIOR)],
             &[],
-            &[],
         )
         .await
         .unwrap();
@@ -1602,7 +1597,6 @@ mod composer_mode_tests {
             Some(&album_a),
             &release_a,
             &track_files,
-            &[],
             &[],
             &album_artists,
             &[],
@@ -3502,7 +3496,6 @@ mod injected_ids_tests {
             &album.id,
             &target.id,
             Some(&target),
-            &[],
         )
         .await
         .unwrap();

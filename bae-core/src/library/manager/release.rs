@@ -92,7 +92,7 @@ impl LibraryManager {
     /// Read-only — the editor populates its form from the result, and the user
     /// re-edits or saves through `apply_release_metadata_user_edit`.
     ///
-    /// - `MusicBrainz` / `Discogs` — re-project the cached `release_metadata` rows
+    /// - `MusicBrainz` / `Discogs` — re-project the archived provider documents
     ///   under the same rules import uses. Exact vs Approximate comes from the
     ///   matching `release_identities` row's `source_release_id`: present = Exact
     ///   (full pressing data), NULL = Approximate (album-group fields only, pressing
@@ -119,56 +119,52 @@ impl LibraryManager {
 
         let identities = self.database.get_release_identities(release_id).await?;
 
-        let parsed =
-            match release.metadata_source {
-                ReleaseMetadataSource::MusicBrainz => {
-                    let source_release_id = release
+        // Which external source seeded this release, or `None` for the one
+        // pointer that names no source at all.
+        let external_source = match release.metadata_source {
+            ReleaseMetadataSource::MusicBrainz => Some(MetadataSource::MusicBrainz),
+            ReleaseMetadataSource::Discogs => Some(MetadataSource::Discogs),
+            ReleaseMetadataSource::FileTags => None,
+        };
+
+        let parsed = match external_source {
+            Some(source) => {
+                // The pointer names which source release seeded this one, and
+                // the documents are keyed by exactly that — so what is read back
+                // cannot belong to a pressing the release was pointed away from.
+                let source_release_id =
+                    release
                         .metadata_source_release_id
                         .as_deref()
                         .ok_or_else(|| {
-                            LibraryError::Import(
-                            "metadata_source = 'musicbrainz' but metadata_source_release_id is NULL"
-                                .to_string(),
-                        )
+                            LibraryError::Import(format!(
+                                "metadata_source = '{}' but metadata_source_release_id is NULL",
+                                source.as_str()
+                            ))
                         })?;
-                    project_musicbrainz_from_cache(
-                        &self.database,
-                        release_id,
-                        source_release_id,
-                        self.clock.as_ref(),
-                        self.ids.as_ref(),
-                    )
-                    .await?
-                }
-                ReleaseMetadataSource::Discogs => {
-                    let source_release_id = release
-                        .metadata_source_release_id
-                        .as_deref()
-                        .ok_or_else(|| {
-                            LibraryError::Import(
-                            "metadata_source = 'discogs' but metadata_source_release_id is NULL"
-                                .to_string(),
-                        )
-                        })?;
-                    project_discogs_from_cache(
-                        &self.database,
-                        release_id,
-                        source_release_id,
-                        self.clock.as_ref(),
-                        self.ids.as_ref(),
-                    )
-                    .await?
-                }
-                ReleaseMetadataSource::FileTags => {
-                    project_file_tags(
-                        &self.database,
-                        &release,
-                        self.clock.clone(),
-                        self.ids.clone(),
-                    )
-                    .await?
-                }
-            };
+                let payloads = crate::import::payloads::load(
+                    &self.database,
+                    &crate::import::MetadataRef::new(source_release_id, source),
+                )
+                .await?
+                .ok_or_else(|| {
+                    LibraryError::Import(format!(
+                        "no archived {} payload for release '{release_id}' (source release {source_release_id})",
+                        source.as_str()
+                    ))
+                })?;
+                payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?
+            }
+            None => {
+                project_file_tags(
+                    &self.database,
+                    &release,
+                    self.clock.clone(),
+                    self.ids.clone(),
+                )
+                .await?
+            }
+        };
 
         // The matching identity row decides Exact vs Approximate, per source.
         // file_tags has no identity row to inspect — its pressing fields come
@@ -196,17 +192,17 @@ impl LibraryManager {
     /// the import commit pipeline, so a re-identified release lands with the same
     /// identity-row shape an initial import would produce.
     ///
-    /// - **Exact / Approximate** — fetch the picked release through
-    ///   `prepare_release` (which composes the MB↔Discogs cross-linking) and project
-    ///   the mapper's identity vec through `apply_identity_choice`. The fetched
-    ///   `metadata_pairs` flow into `set_identity` so the cached source payload lines
-    ///   up with the new pointer and reset-to-source can replay the seed without
-    ///   divergence. The picked release's track count is checked against the existing
+    /// - **Exact / Approximate** — resolve the picked release's documents through
+    ///   `prepare_release` (which composes the MB↔Discogs cross-linking, fetching
+    ///   and storing when nothing has yet) and project the mapper's identity vec
+    ///   through `apply_identity_choice`. Those documents are keyed by the picked
+    ///   release, which is what the new pointer names, so reset-to-source replays
+    ///   the same seed. The picked release's track count is checked against the existing
     ///   track rows, and a mismatch errors before the identity write — a 12-track
     ///   release can't replace a 10-track rip. Album/release/track row data is not
     ///   touched: the identity pointer flips, the rows stay as the user last had them.
     /// - **Unknown** — empty identities, `metadata_source = file_tags`,
-    ///   `metadata_source_release_id = NULL`, no cached payload; the release always
+    ///   `metadata_source_release_id = NULL`; the release always
     ///   lands on a fresh album. The old source's album/release/track rows would
     ///   still show its metadata, so the same call reseeds them from the local file
     ///   tags, projecting through the now-`FileTags` pointer with
@@ -221,9 +217,15 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         use crate::import::{IdentityChoice, MetadataPointer};
 
-        let (new_identities, metadata_pointer, metadata_pairs) = match &identity_choice {
+        let (new_identities, metadata_pointer) = match &identity_choice {
             IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref } => {
-                let prepared = crate::import::service::prepare_release(self, release_ref).await?;
+                let payloads = crate::import::service::prepare_release(
+                    self,
+                    release_ref,
+                    crate::util::rate_limiter::CallPriority::Interactive,
+                )
+                .await?;
+                let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
 
                 // The source pressing's track count must match the local
                 // release's row count. Re-identify only re-points the identity;
@@ -237,7 +239,7 @@ impl LibraryManager {
                     .get_tracks_for_release(release_id)
                     .await?
                     .len();
-                let new_track_count = prepared.parsed.tracks.len();
+                let new_track_count = parsed.tracks.len();
                 if existing_track_count != new_track_count {
                     return Err(LibraryError::Import(format!(
                         "Track count mismatch: release has {existing_track_count} tracks, \
@@ -246,25 +248,20 @@ impl LibraryManager {
                 }
 
                 let identities = crate::import::service::apply_identity_choice(
-                    &prepared.parsed.identities,
+                    &parsed.identities,
                     &identity_choice,
                 );
                 let pointer = MetadataPointer::External {
                     source: release_ref.source,
                     release_id: release_ref.id.clone(),
                 };
-                (identities, pointer, prepared.metadata_pairs)
+                (identities, pointer)
             }
-            IdentityChoice::Unknown => (Vec::new(), MetadataPointer::FileTags, Vec::new()),
+            IdentityChoice::Unknown => (Vec::new(), MetadataPointer::FileTags),
         };
 
-        self.set_identity(
-            release_id,
-            new_identities,
-            metadata_pointer,
-            &metadata_pairs,
-        )
-        .await?;
+        self.set_identity(release_id, new_identities, metadata_pointer)
+            .await?;
 
         // Unknown flips the pointer to FileTags but leaves the old source's rows
         // in place, still showing the prior metadata. Reseed them here by projecting
@@ -288,11 +285,10 @@ impl LibraryManager {
         album: &DbAlbum,
         release: &DbRelease,
         tracks: &[DbTrack],
-        metadata: &[crate::db::DbReleaseMetadata],
         track_artists: &[crate::db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database
-            .insert_album_with_release_and_tracks(album, release, tracks, metadata, track_artists)
+            .insert_album_with_release_and_tracks(album, release, tracks, track_artists)
             .await?;
         Ok(())
     }
@@ -303,11 +299,10 @@ impl LibraryManager {
         &self,
         release: &DbRelease,
         tracks: &[DbTrack],
-        metadata: &[crate::db::DbReleaseMetadata],
         track_artists: &[crate::db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database
-            .insert_release_with_tracks(release, tracks, metadata, track_artists)
+            .insert_release_with_tracks(release, tracks, track_artists)
             .await?;
         Ok(())
     }
@@ -438,7 +433,7 @@ impl LibraryManager {
     /// `tracks[i].artist_names` becomes the `position` column on the
     /// `album_artists` / `track_artists` rows.
     ///
-    /// `release_metadata` rows, `release_identities`, and the `metadata_source`
+    /// archived provider documents, `release_identities`, and the `metadata_source`
     /// columns are deliberately not touched. Identity is orthogonal to
     /// metadata; the cached source payload stays put.
     ///
@@ -813,118 +808,6 @@ impl LibraryManager {
         }
         Ok(plans)
     }
-}
-
-/// Project cached MusicBrainz `release_metadata` rows back into a `ParsedAlbum`:
-/// what `commit_mb_release` did at import, minus the network calls, from whatever
-/// the importer archived (the MB release JSON, plus a cross-linked Discogs release
-/// JSON if there is one).
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-async fn project_musicbrainz_from_cache(
-    database: &Database,
-    release_id: &str,
-    source_release_id: &str,
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
-) -> Result<crate::import::ParsedAlbum, LibraryError> {
-    let pairs = database.get_release_metadata_by_source(release_id).await?;
-    let mb_json = pairs.get("musicbrainz").ok_or_else(|| {
-        LibraryError::Import(format!(
-            "no cached MusicBrainz payload for release '{release_id}' (source release {source_release_id})"
-        ))
-    })?;
-    let response: crate::musicbrainz::MbReleaseResponse =
-        serde_json::from_str(mb_json).map_err(|e| {
-            LibraryError::Import(format!("failed to parse cached MusicBrainz JSON: {e}"))
-        })?;
-
-    // The cached payload may belong to an earlier pressing if `set_identity`
-    // redirected `metadata_source_release_id` without re-fetching. Refuse to
-    // project stale data — caller must re-fetch (e.g. via Re-identify) first.
-    if response.id != source_release_id {
-        return Err(LibraryError::Import(format!(
-            "cached MusicBrainz payload (release '{}') doesn't match current pointer '{}'; re-fetch via Re-identify first",
-            response.id, source_release_id
-        )));
-    }
-
-    let discogs_release = match pairs.get("discogs") {
-        Some(json) => Some(
-            crate::discogs::client::parse_discogs_release_json(json).map_err(|e| {
-                LibraryError::Import(format!(
-                    "failed to parse cached Discogs cross-ref JSON: {e}"
-                ))
-            })?,
-        ),
-        None => None,
-    };
-
-    crate::import::musicbrainz_mapper::map_mb_response_to_db(
-        &response,
-        None,
-        discogs_release,
-        clock,
-        ids,
-    )
-    .map_err(LibraryError::from)
-}
-
-/// Project cached Discogs `release_metadata` rows back into a `ParsedAlbum`: the
-/// import-time projection replayed from the archived raw JSON (the Discogs release,
-/// plus its master and an MB cross-ref if archived).
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-async fn project_discogs_from_cache(
-    database: &Database,
-    release_id: &str,
-    source_release_id: &str,
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
-) -> Result<crate::import::ParsedAlbum, LibraryError> {
-    let pairs = database.get_release_metadata_by_source(release_id).await?;
-    let discogs_json = pairs.get("discogs").ok_or_else(|| {
-        LibraryError::Import(format!(
-            "no cached Discogs payload for release '{release_id}' (source release {source_release_id})"
-        ))
-    })?;
-    let release = crate::discogs::client::parse_discogs_release_json(discogs_json)
-        .map_err(|e| LibraryError::Import(format!("failed to parse cached Discogs JSON: {e}")))?;
-
-    // The cached payload may belong to an earlier pressing if `set_identity`
-    // redirected `metadata_source_release_id` without re-fetching. Refuse to
-    // project stale data — caller must re-fetch (e.g. via Re-identify) first.
-    if release.id != source_release_id {
-        return Err(LibraryError::Import(format!(
-            "cached Discogs payload (release '{}') doesn't match current pointer '{}'; re-fetch via Re-identify first",
-            release.id, source_release_id
-        )));
-    }
-
-    let master_year = match pairs.get("discogs_master") {
-        Some(json) => crate::discogs::client::parse_discogs_master_year(json).map_err(|e| {
-            LibraryError::Import(format!("failed to parse cached Discogs master JSON: {e}"))
-        })?,
-        None => release.year,
-    };
-
-    let mb_xref = match pairs.get("musicbrainz") {
-        Some(json) => Some(
-            serde_json::from_str::<crate::musicbrainz::MbReleaseResponse>(json).map_err(|e| {
-                LibraryError::Import(format!(
-                    "failed to parse cached MusicBrainz cross-ref JSON: {e}"
-                ))
-            })?,
-        ),
-        None => None,
-    };
-
-    crate::import::discogs_mapper::map_discogs_to_db(
-        &release,
-        master_year,
-        mb_xref.as_ref(),
-        clock,
-        ids,
-    )
-    .map_err(LibraryError::from)
 }
 
 /// Project the embedded tags of a release's local audio files into a `ParsedAlbum`,

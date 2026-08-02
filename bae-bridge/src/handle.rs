@@ -4078,6 +4078,7 @@ mod tests {
             ids,
             bae_core::diagnostics::Diagnostics::noop(),
             runtime.handle().clone(),
+            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
         let playback = bae_core::playback::PlaybackService::start(
             manager.clone(),
@@ -4090,19 +4091,16 @@ mod tests {
         // five-argument form whether or not this crate's `desktop` feature is on.
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let services = {
-            let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::new();
             let import = runtime
                 .block_on(bae_core::import::ImportService::start(
                     runtime.handle().clone(),
                     manager.clone(),
-                    cover_art.clone(),
                 ))
                 .expect("start import service");
             let identify = bae_core::identify::IdentifyServiceHandle::new(
                 manager.clone(),
                 runtime.handle().clone(),
                 import.event_sender_for_test(),
-                cover_art,
             );
             let extraction = bae_core::signals::ExtractionService::start(
                 runtime.handle().clone(),

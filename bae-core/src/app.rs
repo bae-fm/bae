@@ -223,6 +223,7 @@ fn bootstrap_inner(
         diagnostics.clone(),
         runtime.handle().clone(),
         cloudkit_ops,
+        crate::import::cover_art::CoverArtArchiveClient::new(),
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
@@ -267,12 +268,10 @@ fn bootstrap_inner(
     // library manager and the in-core player.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let app_services = {
-        let cover_art_archive = crate::import::cover_art::CoverArtArchiveClient::new();
         let import_handle = runtime
             .block_on(crate::import::ImportService::start(
                 runtime.handle().clone(),
                 library_manager.clone(),
-                cover_art_archive.clone(),
             ))
             .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
@@ -280,7 +279,6 @@ fn bootstrap_inner(
             library_manager.clone(),
             runtime.handle().clone(),
             import_handle.event_tx.clone(),
-            cover_art_archive,
         );
 
         let extraction_handle = crate::signals::ExtractionService::start(

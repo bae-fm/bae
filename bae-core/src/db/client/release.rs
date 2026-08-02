@@ -35,22 +35,20 @@ impl Database {
         .await
     }
 
-    /// Insert album, release, tracks, track-artist links, and cached source
-    /// metadata in one transaction. The `artists` rows and the album's
-    /// `album_artists` links must already exist — insert them first.
+    /// Insert album, release, tracks, and track-artist links in one
+    /// transaction. The `artists` rows and the album's `album_artists` links
+    /// must already exist — insert them first.
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
         release: &DbRelease,
         tracks: &[DbTrack],
-        metadata: &[DbReleaseMetadata],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (album, release, tracks, metadata, track_artists) = (
+        let (album, release, tracks, track_artists) = (
             album.clone(),
             release.clone(),
             tracks.to_vec(),
-            metadata.to_vec(),
             track_artists.to_vec(),
         );
         self.call_sql(move |sql| {
@@ -65,9 +63,6 @@ impl Database {
             for ta in &track_artists {
                 insert_track_artist_row(tx, ta, &reg)?;
             }
-            for meta in &metadata {
-                insert_release_metadata_row(tx, meta)?;
-            }
             Ok(())
         })
         .await?;
@@ -78,15 +73,10 @@ impl Database {
         &self,
         release: &DbRelease,
         tracks: &[DbTrack],
-        metadata: &[DbReleaseMetadata],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (release, tracks, metadata, track_artists) = (
-            release.clone(),
-            tracks.to_vec(),
-            metadata.to_vec(),
-            track_artists.to_vec(),
-        );
+        let (release, tracks, track_artists) =
+            (release.clone(), tracks.to_vec(), track_artists.to_vec());
         self.call_sql(move |sql| {
             let tx = &sql;
             // One HLC stamp for every synced row this transaction writes.
@@ -97,9 +87,6 @@ impl Database {
             }
             for ta in &track_artists {
                 insert_track_artist_row(tx, ta, &reg)?;
-            }
-            for meta in &metadata {
-                insert_release_metadata_row(tx, meta)?;
             }
             Ok(())
         })
@@ -112,9 +99,10 @@ impl Database {
     /// by `track_updates` (existing track ID → edited row), plus a full replace of
     /// the `album_artists` and `track_artists` links.
     ///
-    /// Deliberately untouched: `release_metadata` (the cached source payload is
-    /// independent of a user edit) and `release_identities` / `metadata_source` /
-    /// `metadata_source_release_id` (identity is orthogonal to metadata).
+    /// Deliberately untouched: `source_release_payloads` (the archived provider
+    /// document is what the source said, independent of a user edit) and
+    /// `release_identities` / `metadata_source` / `metadata_source_release_id`
+    /// (identity is orthogonal to metadata).
     #[allow(clippy::too_many_arguments)]
     pub async fn update_release_metadata_user_edit(
         &self,
@@ -544,7 +532,6 @@ impl Database {
         album: Option<&DbAlbum>,
         release: &DbRelease,
         tracks_to_files: &[crate::import::TrackFile],
-        metadata: &[DbReleaseMetadata],
         track_artists: &[DbTrackArtist],
         album_artists: &[DbAlbumArtist],
         works: &[DbWork],
@@ -579,7 +566,6 @@ impl Database {
             .iter()
             .map(|tf| tf.db_track().clone())
             .collect();
-        let metadata = metadata.to_vec();
         let track_artists = track_artists.to_vec();
         let album_artists = album_artists.to_vec();
         let works = works.to_vec();
@@ -734,10 +720,6 @@ impl Database {
 
                     for role in &track_artist_roles {
                         insert_track_artist_role_row(tx, role, &reg)?;
-                    }
-
-                    for meta in &metadata {
-                        insert_release_metadata_row(tx, meta)?;
                     }
 
                     // Each file is also registered as a coven user-provided external
@@ -971,42 +953,6 @@ impl Database {
             .map_err(Self::coven_error)
     }
 
-    /// Cached `release_metadata` rows for a release, keyed by `source` — which
-    /// tells the editorial payload (`'musicbrainz'` / `'discogs'`) apart from the
-    /// supporting ones captured at import (`'discogs_master'`,
-    /// `'musicbrainz_release_group'`). `reset_metadata_to_source` replays the
-    /// seeding projection from these instead of re-fetching from the network.
-    pub async fn get_release_metadata_by_source(
-        &self,
-        release_id: &str,
-    ) -> Result<HashMap<String, String>, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |sql| {
-            Ok(sql
-                .query(
-                    "SELECT source, json FROM release_metadata WHERE release_id = ?",
-                    params![release_id],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>("source")?,
-                            row.get::<_, String>("json")?,
-                        ))
-                    },
-                )?
-                .into_iter()
-                .collect())
-        })
-        .await
-    }
-
-    /// Insert a single `release_metadata` row. Used by tests to seed cached
-    /// payloads without going through the full import pipeline.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn insert_release_metadata(&self, meta: &DbReleaseMetadata) -> Result<(), DbError> {
-        let meta = meta.clone();
-        self.call(move |conn| insert_release_metadata_row(conn, &meta))
-            .await
-    }
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();

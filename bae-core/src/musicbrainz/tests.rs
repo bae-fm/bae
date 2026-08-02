@@ -242,10 +242,19 @@ async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
         response.release_group.as_ref().map(|rg| rg.id.as_str()),
         Some(mb_group_id)
     );
-    // Two pairs: MB release JSON + MB release-group JSON.
+    // Two documents: the MB release, re-keyed under the Discogs release the
+    // lookup started from, and its release group under its own id.
     assert_eq!(pairs.len(), 2);
-    assert_eq!(pairs[0].0, "musicbrainz");
-    assert_eq!(pairs[1].0, "musicbrainz_release_group");
+    assert_eq!(
+        pairs[0].source,
+        crate::import::PayloadSource::MusicBrainzDiscogsXref
+    );
+    assert_eq!(pairs[0].source_release_id, discogs_id);
+    assert_eq!(
+        pairs[1].source,
+        crate::import::PayloadSource::MusicBrainzReleaseGroup
+    );
+    assert_eq!(pairs[1].source_release_id, mb_group_id);
 }
 
 #[tokio::test]
@@ -284,9 +293,13 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
     let (response, pairs) = result.expect("expected response even without release_group");
     assert_eq!(response.id, mb_release_id);
     assert!(response.release_group.is_none());
-    // Only one pair (no release-group JSON to fetch).
+    // Only one document (no release-group JSON to fetch).
     assert_eq!(pairs.len(), 1);
-    assert_eq!(pairs[0].0, "musicbrainz");
+    assert_eq!(
+        pairs[0].source,
+        crate::import::PayloadSource::MusicBrainzDiscogsXref
+    );
+    assert_eq!(pairs[0].source_release_id, discogs_id);
 }
 
 /// Only a failure a retry could fix is retried. A `NotFound` is the ordinary
@@ -357,25 +370,23 @@ async fn fetch_release_with_metadata_archives_release_and_group() {
     );
     seed_release_group_json_cache(group_id, r#"{"id":"group"}"#.to_string());
 
-    let (response, discogs_url, pairs) =
-        fetch_release_with_metadata(release_id, CallPriority::Interactive)
-            .await
-            .unwrap();
+    let fetched = fetch_release_with_metadata(release_id, CallPriority::Interactive)
+        .await
+        .unwrap();
 
-    assert_eq!(response.id, release_id);
+    assert_eq!(fetched.response.id, release_id);
     assert_eq!(
-        discogs_url.as_deref(),
+        fetched.discogs_url.as_deref(),
         Some("https://www.discogs.com/release/1")
     );
+    assert_eq!(fetched.raw_json, r#"{"id":"release"}"#);
     assert_eq!(
-        pairs,
-        vec![
-            ("musicbrainz".to_string(), r#"{"id":"release"}"#.to_string()),
-            (
-                "musicbrainz_release_group".to_string(),
-                r#"{"id":"group"}"#.to_string()
-            ),
-        ]
+        fetched.release_group,
+        Some(crate::import::SourcePayload::new(
+            crate::import::PayloadSource::MusicBrainzReleaseGroup,
+            group_id,
+            r#"{"id":"group"}"#.to_string()
+        ))
     );
 }
 
@@ -393,16 +404,13 @@ async fn fetch_release_with_metadata_without_group_archives_only_the_release() {
         ),
     );
 
-    let (_, discogs_url, pairs) =
-        fetch_release_with_metadata(release_id, CallPriority::Interactive)
-            .await
-            .unwrap();
+    let fetched = fetch_release_with_metadata(release_id, CallPriority::Interactive)
+        .await
+        .unwrap();
 
-    assert_eq!(discogs_url, None);
-    assert_eq!(
-        pairs,
-        vec![("musicbrainz".to_string(), r#"{"id":"release"}"#.to_string())]
-    );
+    assert_eq!(fetched.discogs_url, None);
+    assert_eq!(fetched.raw_json, r#"{"id":"release"}"#);
+    assert_eq!(fetched.release_group, None);
 }
 
 // ── label_and_catno ────────────────────────────────────────────────────────

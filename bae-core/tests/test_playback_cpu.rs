@@ -371,6 +371,7 @@ impl PlaybackTestFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
 

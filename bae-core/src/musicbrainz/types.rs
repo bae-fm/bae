@@ -154,7 +154,7 @@ impl MbReleaseResponse {
     /// The Discogs release URL from this release's url-rels, falling back to
     /// the inline release-group relations when the release-level ones carry
     /// none.
-    pub(super) fn discogs_release_url(&self) -> Option<String> {
+    pub fn discogs_release_url(&self) -> Option<String> {
         first_discogs_release_url(&self.relations).or_else(|| {
             self.release_group
                 .as_ref()

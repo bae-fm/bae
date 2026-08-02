@@ -292,6 +292,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
         // A device-less output, not the real cpal sink: this test drives the
@@ -312,11 +313,9 @@ mod tests {
 
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let services = {
-            let cover_art = crate::import::cover_art::CoverArtArchiveClient::hermetic();
             let import = crate::import::ImportService::start(
                 tokio::runtime::Handle::current(),
                 manager.clone(),
-                cover_art.clone(),
             )
             .await
             .unwrap();
@@ -324,7 +323,6 @@ mod tests {
                 manager.clone(),
                 tokio::runtime::Handle::current(),
                 import.event_sender_for_test(),
-                cover_art,
             );
             let extraction = crate::signals::ExtractionService::start(
                 tokio::runtime::Handle::current(),

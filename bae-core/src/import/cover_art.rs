@@ -178,7 +178,26 @@ impl CoverArtArchiveClient {
     /// transient failures (network errors, 5xx), but never a 404 (no cover art
     /// exists) or another client error.
     pub async fn fetch_release(&self, release_id: &str) -> Option<RemoteCover> {
-        self.fetch_entity(
+        self.lookup_release(release_id).await.flatten()
+    }
+
+    /// Cover art from the Cover Art Archive for a MusicBrainz release group. This
+    /// endpoint returns the community-selected cover for the album as a concept,
+    /// which may differ from any specific release's cover.
+    pub async fn fetch_release_group(&self, release_group_id: &str) -> Option<RemoteCover> {
+        self.lookup_release_group(release_group_id).await.flatten()
+    }
+
+    /// The archive's answer for a release, with "it never answered" kept apart
+    /// from "it answered and has no cover" — the outer `None` is the failure.
+    ///
+    /// Only the second is a fact about the release, so only the second may be
+    /// stored: a row saying "no cover" written because the network was down
+    /// would hide a cover the archive does have for as long as the row lives.
+    /// [`Self::fetch_release`] flattens the two for the callers that show
+    /// whatever is there and move on.
+    pub async fn lookup_release(&self, release_id: &str) -> Option<Option<RemoteCover>> {
+        self.lookup_entity(
             "release",
             "release",
             release_id,
@@ -187,11 +206,12 @@ impl CoverArtArchiveClient {
         .await
     }
 
-    /// Cover art from the Cover Art Archive for a MusicBrainz release group. This
-    /// endpoint returns the community-selected cover for the album as a concept,
-    /// which may differ from any specific release's cover.
-    pub async fn fetch_release_group(&self, release_group_id: &str) -> Option<RemoteCover> {
-        self.fetch_entity(
+    /// The archive's answer for a release group, as [`Self::lookup_release`].
+    pub async fn lookup_release_group(
+        &self,
+        release_group_id: &str,
+    ) -> Option<Option<RemoteCover>> {
+        self.lookup_entity(
             "release-group",
             "release group",
             release_group_id,
@@ -223,13 +243,13 @@ fn lookup_cache_key(caa_entity: &str, id: &str) -> String {
 }
 
 impl CoverArtArchiveClient {
-    async fn fetch_entity(
+    async fn lookup_entity(
         &self,
         caa_entity: &str,
         log_entity: &str,
         id: &str,
         label: String,
-    ) -> Option<RemoteCover> {
+    ) -> Option<Option<RemoteCover>> {
         self.fetch_url(
             lookup_cache_key(caa_entity, id),
             format!("https://coverartarchive.org/{caa_entity}/{id}"),
@@ -247,7 +267,7 @@ impl CoverArtArchiveClient {
         entity: &str,
         id: &str,
         label: String,
-    ) -> Option<RemoteCover> {
+    ) -> Option<Option<RemoteCover>> {
         if let Some(cached) = self
             .lookup_cache
             .lock()
@@ -255,7 +275,7 @@ impl CoverArtArchiveClient {
             .get(&cache_key)
             .cloned()
         {
-            return cached;
+            return Some(cached);
         }
 
         #[cfg(feature = "test-utils")]
@@ -307,7 +327,6 @@ impl CoverArtArchiveClient {
         })
         .await
         .clone()
-        .flatten()
     }
 }
 
@@ -998,7 +1017,8 @@ mod tests {
         let cover = client
             .fetch_url(cache_key, url, "release", "transient-cache-test", label)
             .await
-            .expect("transient failure should not be cached");
+            .expect("transient failure should not be cached")
+            .expect("the retry answers with a cover");
 
         assert_eq!(cover.url, "https://caa.example/cover.jpg");
         assert_eq!(cover.thumbnail_url, "https://caa.example/thumb.jpg");
@@ -1044,10 +1064,12 @@ mod tests {
                 label.clone(),
             )
             .await
+            .unwrap()
             .unwrap();
         let second = client
             .fetch_url(cache_key, url, "release", "cover-cache-test", label)
             .await
+            .unwrap()
             .unwrap();
 
         assert_eq!(first.url, "https://caa.example/cover-a.jpg");
@@ -1073,20 +1095,26 @@ mod tests {
         let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
         let client = CoverArtArchiveClient::new();
 
-        assert!(client
-            .fetch_url(
-                cache_key.clone(),
-                url.clone(),
-                "release",
-                "not-found-cache-test",
-                label.clone(),
-            )
-            .await
-            .is_none());
-        assert!(client
-            .fetch_url(cache_key, url, "release", "not-found-cache-test", label,)
-            .await
-            .is_none());
+        // A 404 is the archive answering that it has no cover: an answer, and a
+        // cacheable one, so the second call never reaches the wire.
+        assert_eq!(
+            client
+                .fetch_url(
+                    cache_key.clone(),
+                    url.clone(),
+                    "release",
+                    "not-found-cache-test",
+                    label.clone(),
+                )
+                .await,
+            Some(None)
+        );
+        assert_eq!(
+            client
+                .fetch_url(cache_key, url, "release", "not-found-cache-test", label,)
+                .await,
+            Some(None)
+        );
     }
 
     /// Spawn a localhost server that counts every request and always answers
@@ -1164,8 +1192,12 @@ mod tests {
             ),
         );
 
-        let a = a.expect("first concurrent fetch resolves a cover");
-        let b = b.expect("second concurrent fetch resolves a cover");
+        let a = a
+            .flatten()
+            .expect("first concurrent fetch resolves a cover");
+        let b = b
+            .flatten()
+            .expect("second concurrent fetch resolves a cover");
         assert_eq!(a.url, "https://caa.example/cover.jpg");
         assert_eq!(a.url, b.url);
         assert_eq!(

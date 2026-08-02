@@ -36,17 +36,18 @@ pub struct MetadataResult {
     /// count and total length agree with the candidate's.
     ///
     /// **`None` means nobody has asked yet** — not that the source has
-    /// nothing. Which responses answer for free is fixed and verified (see the
-    /// verified source facts: the disc-ID lookup requests `inc=recordings`
-    /// and carries every track with its `length`, so a disc-ID match arrives
-    /// already filled; the search endpoint takes no `inc` and returns no
-    /// `tracks` array, so barcode and text matches arrive `None` until
-    /// something pays for [`fetch_source_tracks`].
+    /// nothing. A result arrives this way from every lookup identification
+    /// makes: the disc-ID endpoint carries track lengths but not the rest of
+    /// what opening the candidate needs, and the search endpoint takes no `inc`
+    /// and returns no `tracks` array at all. It is filled when the sweep settles
+    /// the lead, from the release document that settling archives.
     ///
     /// Keeping "unasked" distinct from "asked, and there is nothing" is what
-    /// lets a stored verdict say whether it is still waiting on that paid
-    /// lookup. Collapsing them would either strand a verdict at unverified
-    /// forever or re-buy the same empty answer on every launch.
+    /// lets a stored verdict say whether its lead was settled: the two are
+    /// written together, so a `Some` here is also the readable marker that this
+    /// release's documents are stored. Collapsing them would either strand a
+    /// verdict at unverified forever or re-buy the same empty answer on every
+    /// launch.
     pub source_tracks: Option<SourceTracks>,
 }
 
@@ -303,72 +304,10 @@ pub async fn lookup_by_discid(
         .collect())
 }
 
-/// One result's tracklist, fetched from its source.
-///
-/// This is the one paid check, and it is background-only: it
-/// exists so a single unverified match can be admitted to Ready without a
-/// person looking at it, and nothing on the path of an opened candidate waits
-/// on it. A result that already carries `source_tracks` — every disc-ID match —
-/// must not be passed here at all; the caller checks first, which is what keeps
-/// the disc-ID path free.
-///
-/// Two outcomes, and the boundary between them is what a stored verdict
-/// records:
-///
-/// - `Ok(tracks)` — the source answered. `SourceTracks::Nothing` is an answer
-///   too, and a final one: nothing about it will be different next launch.
-/// - `Err(failure)` — no answer, or no way to ask (a Discogs result with the
-///   key since withdrawn). The caller writes no row and retries, exactly as for
-///   a failed identify lookup — the operation did not complete, so nothing is
-///   committed.
-///
-/// **Cost.** For MusicBrainz this is `lookup_release_by_id`, which spends a
-/// second limiter slot on `release-group/{id}` whenever the release carries no
-/// Discogs url-rel — so budget up to two slots, not one. On a 130-candidate
-/// queue that is mostly barcode and text matches, the sweep takes about
-/// 6.5 minutes rather than 4.3, and this paid half is two thirds of the wall
-/// clock rather than a half. It is kept for what the second request buys: the
-/// response lands in `RELEASE_CACHE`, so the commit that usually follows the
-/// candidate being imported costs nothing.
-pub async fn fetch_source_tracks(
-    result: &MetadataResult,
-    discogs_client: Option<&DiscogsClient>,
-    priority: CallPriority,
-) -> Result<SourceTracks, LookupFailure> {
-    match result.source {
-        MetadataSource::MusicBrainz => {
-            match musicbrainz::lookup_release_by_id(&result.release_id, priority).await {
-                Ok((response, _, _)) => Ok(mb_source_tracks(&response)),
-                // The id was merged away or deleted. That is permanent, so it
-                // is an answer rather than something to ask again.
-                Err(musicbrainz::MusicBrainzError::NotFound(_)) => Ok(SourceTracks::Nothing),
-                Err(e) => Err(mb_error_to_lookup_failure(e)),
-            }
-        }
-        MetadataSource::Discogs => {
-            let Some(client) = discogs_client else {
-                // A Discogs result can only exist because a Discogs search ran,
-                // so the key has been withdrawn since. We could not ask, which
-                // is not the source saying no.
-                return Err(LookupFailure::Diagnostic {
-                    detail: "no Discogs client to look the release up with".to_string(),
-                });
-            };
-            match client.get_release(&result.release_id, priority).await {
-                Ok((release, _)) => Ok(discogs_source_tracks(&release)),
-                Err(DiscogsError::NotFound) => Ok(SourceTracks::Nothing),
-                Err(e) => Err(LookupFailure::Diagnostic {
-                    detail: e.to_string(),
-                }),
-            }
-        }
-    }
-}
-
 /// A Discogs release's tracklist. Headings and index entries are not tracks and
 /// are skipped; a real track with no parseable duration leaves the total
 /// unknown while the count still stands.
-fn discogs_source_tracks(release: &crate::discogs::DiscogsRelease) -> SourceTracks {
+pub(crate) fn discogs_source_tracks(release: &crate::discogs::DiscogsRelease) -> SourceTracks {
     let tracks: Vec<&crate::discogs::DiscogsTrack> = release
         .tracklist
         .iter()
@@ -407,7 +346,7 @@ pub fn parse_duration_to_ms(duration: &str) -> Option<u64> {
 
 /// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed MB response,
 /// for the picker and the confirmation pane.
-fn build_mb_detail(
+pub(crate) fn build_mb_detail(
     release_id: &str,
     mb_response: &crate::musicbrainz::MbReleaseResponse,
     cover_art: Vec<RemoteCover>,
@@ -490,74 +429,11 @@ pub struct ImportReleasePrefetch {
     pub slots: crate::import::track_slots::SlotTable,
 }
 
-/// Prefetch path for MusicBrainz: pure MB fetch + picker/confirm detail. No
-/// Discogs cross-ref (the picker doesn't render any cross-source data) and
-/// no DB-shape mapping. Pairs with `commit_mb_release`, which composes the
-/// same `fetch_mb_response` with cross-ref enrichment and DB mapping.
-pub async fn prefetch_mb_release(
-    cover_art_archive: &CoverArtArchiveClient,
-    release_id: &str,
-) -> Result<ImportSearchReleaseDetail, ImportError> {
-    let (response, _, _) = crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
-    let release_group_id = response.release_group.as_ref().map(|rg| rg.id.as_str());
-    let cover_art = cover_art_archive
-        .fetch_candidates(Some(response.id.as_str()), release_group_id)
-        .await;
-    build_mb_detail(release_id, &response, cover_art)
-}
-
-/// Commit-ready release data: the parsed DB-shape album/release/tracks plus the
-/// raw JSON pairs for archival. Built worker-side by `commit_mb_release` /
-/// `commit_discogs_release`. The prefetch path never builds one — the picker
-/// wants `ImportSearchReleaseDetail`, not the DB shape.
-#[derive(Debug, Clone)]
-pub struct PreparedRelease {
-    pub parsed: crate::import::ParsedAlbum,
-    /// `(source_name, raw_json)` pairs for the `release_metadata` table.
-    pub metadata_pairs: Vec<(String, String)>,
-}
-
-/// Commit path for MusicBrainz: fetch + Discogs cross-ref + map to DB shape.
-/// Cross-ref runs only here because pressing-level Discogs IDs are commit-only
-/// — the picker never reads them. The worker consumes `parsed` and
-/// `metadata_pairs`; no picker detail is built.
-pub async fn commit_mb_release(
-    library_manager: &crate::library::LibraryManager,
-    release_id: &str,
-    discogs_client: Option<&DiscogsClient>,
-) -> Result<PreparedRelease, ImportError> {
-    let (response, discogs_url, mut metadata_pairs) =
-        crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
-    let discogs_release = match (discogs_client, discogs_url.as_deref()) {
-        (Some(client), Some(url)) => {
-            match crate::discogs::client::fetch_discogs_xref(client, url, CallPriority::Interactive)
-                .await
-            {
-                Some((release, pairs)) => {
-                    metadata_pairs.extend(pairs);
-                    Some(release)
-                }
-                None => None,
-            }
-        }
-        _ => None,
-    };
-    let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
-        &response,
-        None,
-        discogs_release,
-        library_manager.clock().as_ref(),
-        library_manager.ids().as_ref(),
-    )?;
-    Ok(PreparedRelease {
-        parsed,
-        metadata_pairs,
-    })
-}
-
 /// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed Discogs
 /// release, for the picker and the confirmation pane.
-fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearchReleaseDetail {
+pub(crate) fn build_discogs_detail(
+    release: &crate::discogs::DiscogsRelease,
+) -> ImportSearchReleaseDetail {
     let processed = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
 
     let format_string = if release.format.is_empty() {
@@ -624,37 +500,6 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
         tracks,
         cover_art,
     }
-}
-
-/// Prefetch path for Discogs: pure Discogs fetch + picker/confirm detail.
-/// No MB cross-ref (the picker doesn't render any cross-source data) and
-/// no DB-shape mapping. Pairs with `commit_discogs_release`, which composes
-/// the same `fetch_discogs_release` with cross-ref enrichment and DB mapping.
-pub async fn prefetch_discogs_release(
-    client: &DiscogsClient,
-    release_id: &str,
-) -> Result<ImportSearchReleaseDetail, ImportError> {
-    let (discogs_release, _master_year, _metadata_pairs) =
-        crate::import::commit::fetch_discogs_release(client, release_id).await?;
-    Ok(build_discogs_detail(&discogs_release))
-}
-
-/// Commit path for Discogs: fetch + MB cross-ref + map to DB shape.
-/// Cross-ref runs only here because pressing-level MB IDs are commit-only
-/// — the picker never reads them. The worker consumes `parsed` and
-/// `metadata_pairs`; no picker detail is built.
-pub async fn commit_discogs_release(
-    client: &DiscogsClient,
-    release_id: &str,
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
-) -> Result<PreparedRelease, ImportError> {
-    let (parsed, metadata_pairs) =
-        crate::import::commit::fetch_and_map_discogs(client, release_id, clock, ids).await?;
-    Ok(PreparedRelease {
-        parsed,
-        metadata_pairs,
-    })
 }
 
 #[cfg(test)]

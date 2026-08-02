@@ -2,6 +2,7 @@ use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::import::folder_registry::host_root;
+use crate::import::MetadataSource;
 use crate::keys::StoreKeys;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
@@ -44,6 +45,7 @@ async fn setup_import_service() -> (ImportService, TempDir) {
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let (event_tx, _) = tokio::sync::broadcast::channel(16);

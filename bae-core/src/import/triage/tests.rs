@@ -947,14 +947,11 @@ mod load {
                 ids,
                 crate::diagnostics::Diagnostics::noop(),
                 tokio::runtime::Handle::current(),
-            );
-            let import = ImportService::start(
-                tokio::runtime::Handle::current(),
-                manager.clone(),
                 crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-            )
-            .await
-            .unwrap();
+            );
+            let import = ImportService::start(tokio::runtime::Handle::current(), manager.clone())
+                .await
+                .unwrap();
             let root = temp.path().join("watched");
             std::fs::create_dir_all(&root).unwrap();
             Fixture {
@@ -1095,7 +1092,7 @@ mod load {
                 created_at: now,
             };
             self.manager
-                .insert_album_with_release_and_tracks(&album, &release, &[track], &[], &[])
+                .insert_album_with_release_and_tracks(&album, &release, &[track], &[])
                 .await
                 .unwrap();
             self.manager

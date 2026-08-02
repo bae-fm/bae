@@ -56,6 +56,7 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     (manager, temp_dir)
 }
@@ -375,7 +376,7 @@ async fn insert_with_identities(
 ) {
     let track = make_track(&release.id, 1);
     manager
-        .insert_album_with_release_and_tracks(album, release, &[track], &[], &[])
+        .insert_album_with_release_and_tracks(album, release, &[track], &[])
         .await
         .unwrap();
     manager
@@ -611,7 +612,7 @@ async fn test_merge_release_into_existing_album() {
     release2.album_id = existing_album_id.unwrap();
     let track2 = make_track(&release2.id, 1);
     manager
-        .insert_release_with_tracks(&release2, &[track2], &[], &[])
+        .insert_release_with_tracks(&release2, &[track2], &[])
         .await
         .unwrap();
     manager
@@ -1438,13 +1439,10 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         std::fs::write(release_folder.join(img), minimal_jpeg()).unwrap();
     }
 
-    let import_handle = crate::import::ImportService::start(
-        tokio::runtime::Handle::current(),
-        manager.clone(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-    .await
-    .unwrap();
+    let import_handle =
+        crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
+            .await
+            .unwrap();
     let extraction = ExtractionService::start(
         tokio::runtime::Handle::current(),
         import_handle.event_sender_for_test(),
@@ -1528,13 +1526,9 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    let handle = crate::import::ImportService::start(
-        tokio::runtime::Handle::current(),
-        manager,
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-    .await
-    .unwrap();
+    let handle = crate::import::ImportService::start(tokio::runtime::Handle::current(), manager)
+        .await
+        .unwrap();
     handle
         .folder_registry
         .lock()

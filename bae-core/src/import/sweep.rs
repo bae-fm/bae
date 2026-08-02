@@ -5,8 +5,9 @@
 //! already found, drives each through the existing extraction → identify pair
 //! at [`CallPriority::Background`], and writes the terminal verdict to
 //! `import_candidate_state`. What it adds over the per-selection path is
-//! scheduling: which candidates still need answering, how many at once, and one
-//! paid lookup for the single matches that cannot otherwise be checked.
+//! scheduling: which candidates still need answering, how many at once, and the
+//! one settle step that buys a single match's documents — the tracklist that
+//! decides Ready, and everything opening the candidate would otherwise re-fetch.
 //!
 //! **It starts and stops with the library, not with a view.**
 //! [`crate::library::AppServices`] constructs one and its `Drop` stops it, so
@@ -22,12 +23,12 @@
 //! is what brings a re-bound candidate back to this sweep.
 //!
 //! **A candidate whose content hash already holds a finished verdict is
-//! skipped**, which is what makes every launch after the first instant. A row
-//! that is a verdict but still owes the paid tracklist lookup is topped up
-//! instead — one lookup, no re-identification.
+//! skipped**, which is what makes every launch after the first instant. There
+//! is nothing left to finish on such a row: the settle step and the verdict are
+//! written together, so a stored verdict is a settled one.
 //!
 //! **Nothing durable is written for work that did not complete.** A transport
-//! failure, a cancelled shutdown, a paid lookup that never answered, a
+//! failure, a cancelled shutdown, a settle lookup that never answered, a
 //! candidate that vanished mid-flight — each leaves no row, and absence is the
 //! retry signal. There are no attempt counters and no backoff, because a stored
 //! failure is a stored answer, and the retry that would have succeeded then
@@ -38,7 +39,7 @@ use super::handle::{ImportCandidateSnapshot, ImportEvent, ImportServiceHandle, S
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::verdict::decode_stored as decode;
 use crate::identify::{IdentifyServiceHandle, IdentifyState, TerminalVerdict};
-use crate::import::search::{fetch_source_tracks, MetadataResult};
+use crate::import::MetadataRef;
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionServiceHandle, ExtractionSource};
 use crate::util::rate_limiter::CallPriority;
@@ -100,9 +101,9 @@ impl QueueSweepHandle {
     /// finds nothing there and writes nothing — a second guard on the same
     /// fact.
     ///
-    /// No paid lookup happens here: nothing on the path of an opened candidate
-    /// buys the source's tracklist. The row lands with `source_tracks: None`,
-    /// and the next sweep tops it up.
+    /// The verdict settles before it stores, here as in the sweep's own pass:
+    /// the lead's documents are bought and written first, so a candidate a
+    /// person answered opens with no network on every launch after.
     /// Identify a folder candidate for a person who is looking at it.
     ///
     /// The three steps have to happen together and in this order: the recorder
@@ -313,30 +314,11 @@ struct Finished {
     stored: bool,
 }
 
-enum SweepTaskResult {
-    Identify(Finished),
-    TopUp {
-        identity: CandidateIdentity,
-        stored: bool,
-    },
-}
-
 type CandidateIdentity = (String, u64);
 
 struct IdentifyJob {
     identity: CandidateIdentity,
     candidates: Vec<FolderCandidate>,
-}
-
-struct TopUpJob {
-    row: DbImportCandidateState,
-    identity: CandidateIdentity,
-}
-
-impl TopUpJob {
-    fn identity(&self) -> CandidateIdentity {
-        self.identity.clone()
-    }
 }
 
 impl IdentifyJob {
@@ -352,11 +334,7 @@ impl IdentifyJob {
 struct Plan {
     /// Candidates with no usable stored verdict: identify them.
     identify: VecDeque<IdentifyJob>,
-    /// Rows that are already a verdict but still owe the paid tracklist lookup.
-    /// Topping one up is one provider call over a stored row — no folder walk,
-    /// no OCR, no identify run.
-    top_up: VecDeque<TopUpJob>,
-    /// How many of `total` already hold a verdict, top-up owing or not.
+    /// How many of `total` already hold a verdict.
     identified: u32,
     total: u32,
 }
@@ -411,35 +389,20 @@ async fn run_pass(
 
     let Plan {
         identify: mut pending,
-        top_up: mut pending_top_ups,
         mut identified,
         mut total,
     } = plan(candidates, &stored, total);
     emit_progress(context, identified, total);
 
-    if pending.is_empty() && pending_top_ups.is_empty() {
+    if pending.is_empty() {
         return;
     }
 
     let mut in_flight: HashMap<String, InFlight> = HashMap::new();
     let mut finishing_members: HashMap<CandidateIdentity, Vec<FolderCandidate>> = HashMap::new();
-    let mut finishing = JoinSet::<SweepTaskResult>::new();
-    let mut queued_top_ups: HashSet<CandidateIdentity> =
-        pending_top_ups.iter().map(TopUpJob::identity).collect();
+    let mut finishing = JoinSet::<Finished>::new();
 
     loop {
-        while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
-            let Some(job) = pending_top_ups.pop_front() else {
-                break;
-            };
-            let context = context.clone();
-            let child = token.child_token();
-            let identity = job.identity();
-            finishing.spawn(async move {
-                let stored = top_up_row(&context, job, &child).await;
-                SweepTaskResult::TopUp { identity, stored }
-            });
-        }
         while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
             let Some(mut job) = pending.pop_front() else {
                 break;
@@ -479,11 +442,7 @@ async fn run_pass(
             );
         }
 
-        if in_flight.is_empty()
-            && pending.is_empty()
-            && pending_top_ups.is_empty()
-            && finishing.is_empty()
-        {
+        if in_flight.is_empty() && pending.is_empty() && finishing.is_empty() {
             return;
         }
 
@@ -498,12 +457,7 @@ async fn run_pass(
             }
             Some(result) = finishing.join_next() => {
                 match result {
-                    Ok(SweepTaskResult::TopUp { identity, stored }) => {
-                        if !stored {
-                            queued_top_ups.remove(&identity);
-                        }
-                    }
-                    Ok(SweepTaskResult::Identify(done)) => {
+                    Ok(done) => {
                         context.release(&done.representative_key);
                         let deferred = finishing_members
                             .remove(&done.identity)
@@ -585,12 +539,12 @@ async fn run_pass(
                                     .cloned()
                                     .collect()
                             };
-                            SweepTaskResult::Identify(Finished {
+                            Finished {
                                 representative_key,
                                 identity,
                                 rehome,
                                 stored,
-                            })
+                            }
                         });
                     }
                 }
@@ -704,19 +658,9 @@ async fn run_pass(
                             return;
                         }
                     };
-                    if let Some((row, verdict)) = stored_now {
-                        if owes_source_tracks(&verdict) {
-                            enqueue_top_up(
-                                &mut pending_top_ups,
-                                &mut queued_top_ups,
-                                row,
-                                identity.clone(),
-                            );
-                        }
-                        answered_identities.insert(identity.clone());
-                        answered_keys.insert(candidate_key);
-                        identified = identified.saturating_add(1).min(total);
-                    } else if answered_identities.contains(&identity) {
+                    // Already answered — either on disk, or by a candidate this
+                    // pass settled that hashes the same.
+                    if stored_now || answered_identities.contains(&identity) {
                         answered_identities.insert(identity.clone());
                         answered_keys.insert(candidate_key);
                         identified = identified.saturating_add(1).min(total);
@@ -771,15 +715,7 @@ async fn run_pass(
                                     return;
                                 }
                             };
-                        if let Some((row, verdict)) = stored_now {
-                            if owes_source_tracks(&verdict) {
-                                enqueue_top_up(
-                                    &mut pending_top_ups,
-                                    &mut queued_top_ups,
-                                    row,
-                                    identity.clone(),
-                                );
-                            }
+                        if stored_now {
                             answered_identities.insert(identity);
                             if answered_keys.insert(candidate_key.clone()) {
                                 identified = identified.saturating_add(1).min(total);
@@ -898,17 +834,6 @@ fn enqueue_candidate(pending: &mut VecDeque<IdentifyJob>, candidate: FolderCandi
     }
 }
 
-fn enqueue_top_up(
-    pending: &mut VecDeque<TopUpJob>,
-    queued: &mut HashSet<CandidateIdentity>,
-    row: DbImportCandidateState,
-    identity: CandidateIdentity,
-) {
-    if queued.insert(identity.clone()) {
-        pending.push_back(TopUpJob { row, identity });
-    }
-}
-
 fn detach_candidate(
     context: &SweepContext,
     candidate_key: &str,
@@ -991,7 +916,11 @@ fn usable_stored_row<'a>(
     stored
         .get(&candidate.files.content_hash())
         .filter(|row| row.file_edits.revision == candidate.file_edit_revision)
-        .filter(|row| decoded(row).is_some())
+        .filter(|row| {
+            decode(row)
+                .expect("stored verdicts are validated before sweep planning")
+                .is_some()
+        })
 }
 
 fn usable_current_candidate(
@@ -1003,23 +932,24 @@ fn usable_current_candidate(
         .is_some_and(|candidate| candidate_identity(&candidate) == *identity)
 }
 
+/// Whether this candidate, as it is on disk right now, already holds a stored
+/// verdict for that shape.
 async fn current_stored_verdict(
     context: &SweepContext,
     candidate: &FolderCandidate,
-) -> Result<Option<(DbImportCandidateState, TerminalVerdict)>, String> {
+) -> Result<bool, String> {
     let Some(row) = context
         .library_manager
         .load_import_candidate_state(&candidate.files.content_hash())
         .await
         .map_err(|error| error.to_string())?
     else {
-        return Ok(None);
+        return Ok(false);
     };
     if row.file_edits.revision != candidate.file_edit_revision {
-        return Ok(None);
+        return Ok(false);
     }
-    let verdict = decode(&row).map_err(|error| error.to_string())?;
-    Ok(verdict.map(|verdict| (row, verdict)))
+    Ok(decode(&row).map_err(|error| error.to_string())?.is_some())
 }
 
 /// Split the queue against what is already stored.
@@ -1029,7 +959,6 @@ fn plan(
     total: u32,
 ) -> Plan {
     let mut identify = VecDeque::new();
-    let mut top_up = VecDeque::new();
     let mut identified = 0;
     let mut grouped = Vec::<IdentifyJob>::new();
     for candidate in candidates {
@@ -1043,7 +972,6 @@ fn plan(
             });
         }
     }
-    let mut topped_up = HashSet::new();
     for job in grouped {
         let candidate = job.representative();
         // A row with no identify result is a candidate nobody has answered —
@@ -1052,87 +980,17 @@ fn plan(
         //
         // Stored rows are decoded and validated before planning. A malformed
         // row fails the pass rather than being treated as no answer.
-        let row = usable_stored_row(stored, candidate);
-        let Some(row) = row else {
+        if usable_stored_row(stored, candidate).is_none() {
             identify.push_back(job);
             continue;
-        };
-        identified += job.candidates.len() as u32;
-        // A verdict a person's own run wrote never paid for the tracklist, so
-        // without this it would sit at "cannot verify" forever — skipped as
-        // answered, and never promoted to Ready by the one lookup that would do
-        // it.
-        if topped_up.insert(row.content_hash.clone())
-            && decoded(row).is_some_and(|verdict| owes_source_tracks(&verdict))
-        {
-            top_up.push_back(TopUpJob {
-                row: row.clone(),
-                identity: job.identity.clone(),
-            });
         }
+        identified += job.candidates.len() as u32;
     }
     Plan {
         identify,
-        top_up,
         identified,
         total,
     }
-}
-
-/// Whether a stored verdict is still waiting on the paid tracklist lookup: a
-/// single match nobody has asked the source about. `Some(SourceTracks::Nothing)`
-/// is an answer — the source has no tracklist — so it does not qualify, which is
-/// what stops the top-up re-buying the same empty answer every launch.
-fn owes_source_tracks(verdict: &TerminalVerdict) -> bool {
-    single_match(verdict).is_some_and(|only| only.source_tracks.is_none())
-}
-
-/// The one match of a single-match `Found`, or `None`. Several matches or a
-/// conflict go to Needs you whatever a tracklist would say, so paying for one
-/// buys a classification that cannot change.
-fn single_match(verdict: &TerminalVerdict) -> Option<&MetadataResult> {
-    let TerminalVerdict::Found { matches, .. } = verdict else {
-        return None;
-    };
-    match matches.as_slice() {
-        [only] => Some(only),
-        _ => None,
-    }
-}
-
-/// Buy the tracklist for one stored row and write it back. Everything else about
-/// the row — the verdict's identity, the probed total, the folder path — is
-/// unchanged, so a failure leaves the row exactly as it was and the next pass
-/// tries again.
-async fn top_up_row(context: &SweepContext, job: TopUpJob, token: &CancellationToken) -> bool {
-    let row = job.row;
-    let (Some(mut verdict), Some(identify)) = (decoded(&row), row.identify.as_ref()) else {
-        return false;
-    };
-    if !fill_source_tracks(context, &mut verdict, token).await {
-        return false;
-    }
-    let Some(candidate) = context
-        .import
-        .sweepable_candidate_for_identity(&job.identity.0, job.identity.1)
-    else {
-        return false;
-    };
-    save(
-        context,
-        token,
-        &candidate.path.to_string_lossy(),
-        &row.content_hash,
-        &candidate.path.to_string_lossy(),
-        &verdict,
-        identify.probed_total_duration_ms,
-        candidate.file_edit_revision,
-    )
-    .await
-}
-
-fn decoded(row: &DbImportCandidateState) -> Option<TerminalVerdict> {
-    decode(row).expect("stored verdicts are validated before sweep planning")
 }
 
 /// Turn one candidate's terminal state into a stored row, or into nothing.
@@ -1152,7 +1010,7 @@ async fn finish_candidate(
         return false;
     };
 
-    if !fill_source_tracks(context, &mut verdict, token).await {
+    if !settle_lead(context, &mut verdict, token).await {
         return false;
     }
 
@@ -1232,56 +1090,68 @@ async fn save(
     true
 }
 
-/// Fill in the source's tracklist for a single match that arrived without one —
-/// the one paid lookup. Returns whether the verdict is still storable.
+/// Settle a candidate's lead: buy the documents that describe the release it
+/// matched, store them, and read the source's own tracklist out of what came
+/// back. Returns whether the verdict may now be stored.
 ///
-/// A disc-ID match already carries its tracklist and costs nothing here.
+/// **The documents land before the verdict does.** A stored verdict whose lead
+/// carries a tracklist is the queue's promise that opening that candidate needs
+/// no network, so the two are written in this order and a failure here writes
+/// neither — the next pass asks again, exactly as a failed lookup does.
 ///
-/// This is background-only by construction: its two callers are the sweep's own
-/// pass and its top-up, both of which run after the candidate's identification
-/// has already settled, so nothing a person opened ever waits on it.
-async fn fill_source_tracks(
+/// Only a single-match `Found` has a lead. Several matches and a conflict are
+/// questions for a person, answered from the result rows the verdict already
+/// carries, and a full fetch of every pressing on the list would buy a
+/// classification that cannot change.
+///
+/// A release some other candidate already settled costs nothing: its documents
+/// are read back and the tracklist re-derived from them.
+async fn settle_lead(
     context: &SweepContext,
     verdict: &mut TerminalVerdict,
     token: &CancellationToken,
 ) -> bool {
-    if !owes_source_tracks(verdict) {
-        return true;
-    }
     let TerminalVerdict::Found { matches, .. } = verdict else {
         return true;
     };
     let [only_match] = matches.as_mut_slice() else {
         return true;
     };
+    let release = MetadataRef::new(&only_match.release_id, only_match.source);
 
-    let discogs = match context.library_manager.discogs_client() {
-        Ok(client) => client,
-        Err(e) => {
-            debug!("sweep: no Discogs client for the paid lookup: {e}");
-            None
-        }
-    };
-    let lookup = fetch_source_tracks(only_match, discogs.as_ref(), CallPriority::Background);
-    let fetched = tokio::select! {
+    let settle = crate::import::service::prepare_release(
+        &context.library_manager,
+        &release,
+        CallPriority::Background,
+    );
+    let payloads = tokio::select! {
         biased;
         // Shutdown mid-lookup is a transport failure by another name: nothing
         // was learned, so nothing is written and the next launch asks again.
         _ = token.cancelled() => return false,
-        fetched = lookup => fetched,
+        payloads = settle => payloads,
     };
-    match fetched {
+    let payloads = match payloads {
+        Ok(payloads) => payloads,
+        Err(error) => {
+            debug!(
+                "sweep: could not settle {} ({error}); writing no row",
+                only_match.release_id
+            );
+            return false;
+        }
+    };
+    match payloads.source_tracks() {
         Ok(source_tracks) => {
             // `SourceTracks::Nothing` is an answer — this release states no
             // tracklist — so the verdict stores with the match unverifiable, and
             // the Ready rule lands it in Needs you rather than admitting it.
-            // Storing the answer is what stops the top-up asking again.
             only_match.source_tracks = Some(source_tracks);
             true
         }
-        Err(failure) => {
+        Err(error) => {
             debug!(
-                "sweep: the paid lookup for {} never answered ({failure:?}); writing no row",
+                "sweep: {} states no readable tracklist ({error}); writing no row",
                 only_match.release_id
             );
             false
@@ -1343,14 +1213,17 @@ async fn record_selection_verdict(
                 if !state.is_terminal() {
                     continue;
                 }
-                let Ok(verdict) = TerminalVerdict::try_from(state) else {
+                let Ok(mut verdict) = TerminalVerdict::try_from(state) else {
                     // Terminal but shaped by a failed lookup. Keep watching: a
                     // re-run from the toolbar may still answer it.
                     continue;
                 };
-                // No paid lookup on this path, deliberately. The row lands with
-                // `source_tracks` unset when the match came from a search, and
-                // the next sweep tops it up in the background.
+                // Settles here too: a row a person's own run wrote is a row the
+                // queue treats as answered, and the promise that an answered
+                // lead opens offline holds however the answer was reached.
+                if !settle_lead(context, &mut verdict, token).await {
+                    continue;
+                }
                 if save(
                     context,
                     token,

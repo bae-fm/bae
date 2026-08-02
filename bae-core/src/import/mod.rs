@@ -7,7 +7,6 @@ mod assemble;
 // Reads the identify state and the picked release's detail, both desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod claim;
-pub mod commit;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discid;
@@ -29,6 +28,10 @@ mod handle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod loudness;
 pub mod musicbrainz_mapper;
+// The payload store's projections build the picker detail and the commit's
+// `ParsedAlbum` from archived documents — both desktop-only import shapes.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod payloads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod release_group;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -114,7 +117,7 @@ pub use triage::{
 };
 pub use types::{
     AudioFile, CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
-    ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PrepareStep,
-    PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit,
-    StorageMode, TrackFile, TrackUserEdit,
+    ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PayloadSource,
+    PrepareStep, PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity,
+    ReleaseUserEdit, SourcePayload, StorageMode, TrackFile, TrackUserEdit,
 };

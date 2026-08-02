@@ -75,6 +75,7 @@ async fn test_local_import() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
 
@@ -225,6 +226,7 @@ async fn test_local_delete_preserves_files() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
 
@@ -325,6 +327,7 @@ async fn run_import_with_cover_test() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
 

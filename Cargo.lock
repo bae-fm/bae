@@ -1137,6 +1137,7 @@ dependencies = [
  "hex",
  "image",
  "lofty",
+ "serde_json",
  "tempfile",
  "tokio",
  "tracing-subscriber",

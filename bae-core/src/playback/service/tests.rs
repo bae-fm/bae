@@ -147,6 +147,7 @@ async fn seeded_library_manager_with_diagnostics(
         Arc::new(coven::UuidProvider),
         diagnostics,
         tokio::runtime::Handle::current(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     (home, manager)
 }

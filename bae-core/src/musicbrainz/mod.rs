@@ -11,6 +11,7 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use crate::import::{PayloadSource, SourcePayload};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::SessionCache;
 use thiserror::Error;
@@ -163,9 +164,9 @@ pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<S
     DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, mb_release_id);
 }
 
-/// Pre-populate the MB release cache, so a test can drive `fetch_mb_xref` without
-/// an HTTP call. The raw JSON is what gets archived in `release_metadata`; pass an
-/// empty string when the test doesn't assert on it.
+/// Pre-populate the MB release cache, so a test can drive `fetch_mb_xref`
+/// without an HTTP call. The raw JSON is what gets archived, and what a later
+/// projection replays from, so it has to be the release handed over with it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, Option<String>, String)) {
     RELEASE_CACHE.put(release_id, value);
@@ -278,9 +279,9 @@ async fn lookup_by_discid_once(
 /// Look up a release by MusicBrainz release ID.
 ///
 /// Returns the parsed response, the Discogs release URL (if any), and the raw
-/// JSON (archived in `release_metadata`). On a cache miss this does the network
-/// round-trip, plus a release-group fetch when the release's own relations carry
-/// no Discogs URL.
+/// JSON that gets archived. On a cache miss this does the network round-trip,
+/// plus a release-group fetch when the release's own relations carry no Discogs
+/// URL.
 pub async fn lookup_release_by_id(
     release_id: &str,
     priority: CallPriority,
@@ -422,42 +423,52 @@ pub async fn fetch_release_group_json(
     Ok(raw_json)
 }
 
-/// A release plus everything the import pipeline archives with it: the parsed
-/// response, the Discogs release URL from its url-rels (if any), and the raw JSON
-/// pairs for the `release_metadata` table — the release itself, and its
-/// release-group.
+/// A release and everything the import pipeline archives with it.
 ///
-/// The release-group fetch is best-effort: a release that archives without its
-/// group is still a complete import, and failing the whole fetch over the group
-/// would turn a metadata nicety into an import failure. Both MB entry points (a
-/// direct import and a Discogs cross-reference) archive through here, so the rows
-/// they write cannot differ by which path ran.
+/// `raw_json` is the release's own document — the anchor of its archived set —
+/// and `release_group` is the group's, keyed by the group. The group fetch is
+/// best-effort: a release that archives without its group is still a complete
+/// import, and failing the whole fetch over the group would turn a metadata
+/// nicety into an import failure.
+pub struct FetchedRelease {
+    pub response: MbReleaseResponse,
+    /// The Discogs release URL from the release's url-rels, if an editor linked
+    /// one.
+    pub discogs_url: Option<String>,
+    pub raw_json: String,
+    pub release_group: Option<SourcePayload>,
+}
+
+/// Fetch a release and its release-group. Both MB entry points (a direct import
+/// and a Discogs cross-reference) archive through here, so the rows they write
+/// cannot differ by which path ran.
 pub async fn fetch_release_with_metadata(
     release_id: &str,
     priority: CallPriority,
-) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), MusicBrainzError> {
+) -> Result<FetchedRelease, MusicBrainzError> {
     let (response, discogs_url, raw_json) = lookup_release_by_id(release_id, priority).await?;
 
-    let mut pairs = vec![(
-        crate::import::MetadataSource::MusicBrainz
-            .as_str()
-            .to_string(),
-        raw_json,
-    )];
-
+    let mut release_group = None;
     if let Some(rg_id) = response.release_group.as_ref().map(|rg| rg.id.as_str()) {
         match fetch_release_group_json(rg_id, priority).await {
-            Ok(rg_json) => pairs.push((RELEASE_GROUP_METADATA_SOURCE.to_string(), rg_json)),
+            Ok(rg_json) => {
+                release_group = Some(SourcePayload::new(
+                    PayloadSource::MusicBrainzReleaseGroup,
+                    rg_id,
+                    rg_json,
+                ))
+            }
             Err(e) => warn!("Failed to fetch MB release-group: {e}"),
         }
     }
 
-    Ok((response, discogs_url, pairs))
+    Ok(FetchedRelease {
+        response,
+        discogs_url,
+        raw_json,
+        release_group,
+    })
 }
-
-/// The `release_metadata.source` value the release-group JSON is archived under.
-/// The release itself uses `MetadataSource::MusicBrainz`.
-const RELEASE_GROUP_METADATA_SOURCE: &str = "musicbrainz_release_group";
 
 /// The MB release ID linked to a Discogs release, via MB's URL lookup endpoint;
 /// `None` when no MB editor has linked one.
@@ -510,18 +521,23 @@ pub async fn lookup_release_id_by_discogs_url(
 /// Asks MB's URL endpoint for a release linking back to this Discogs release and,
 /// when there is one, fetches its release and release-group JSON. Returns the
 /// parsed `MbReleaseResponse` (the caller pulls the release and group IDs out for
-/// `release_identities`) plus the raw JSON pairs for its `release_metadata`.
+/// `release_identities`) plus the documents to store with it.
+///
+/// The release document is keyed by the *Discogs* release id it was found from:
+/// MusicBrainz's URL endpoint is what turned one into the other, and nothing in
+/// the Discogs document names the MusicBrainz release back, so the Discogs id is
+/// the only key a reader can start from.
 ///
 /// `None` when MB has no linked release, or either lookup fails. A successful
 /// release fetch with a failing release-group fetch still returns `Some` with just
-/// the release pair — the release-group is best-effort.
+/// the release payload — the release-group is best-effort.
 ///
 /// Depends on an MB editor having linked the Discogs URL, as the forward
 /// direction does.
 pub async fn fetch_mb_xref(
     discogs_release_id: &str,
     priority: CallPriority,
-) -> Option<(MbReleaseResponse, Vec<(String, String)>)> {
+) -> Option<(MbReleaseResponse, Vec<SourcePayload>)> {
     let mb_release_id = match lookup_release_id_by_discogs_url(discogs_release_id, priority).await {
         Ok(Some(id)) => {
             debug!("Found linked MB release: {}", id);
@@ -544,7 +560,17 @@ pub async fn fetch_mb_xref(
     };
 
     match fetch_release_with_metadata(&mb_release_id, priority).await {
-        Ok((response, _discogs_url, pairs)) => Some((response, pairs)),
+        Ok(fetched) => {
+            // The release document is keyed by the Discogs id the lookup started
+            // from; the release-group document keeps its own key.
+            let mut payloads = vec![SourcePayload::new(
+                PayloadSource::MusicBrainzDiscogsXref,
+                discogs_release_id,
+                fetched.raw_json,
+            )];
+            payloads.extend(fetched.release_group);
+            Some((fetched.response, payloads))
+        }
         Err(e) => {
             warn!("Failed to fetch linked MB release {}: {e}", mb_release_id);
             None

@@ -213,6 +213,11 @@ impl Database {
     /// deliberately untouched. Caller decides whether to reseed the
     /// metadata.
     ///
+    /// Nothing is done to the archived provider documents: they are keyed by
+    /// the *source* release, so re-pointing `metadata_source_release_id` at a
+    /// different one already reads a different row. There is no stale payload
+    /// to wipe, and the rows this release used may be another candidate's.
+    ///
     /// Returns `SetIdentityOutcome::source_album_deleted` so the caller
     /// knows whether to emit `AlbumRemoved` or `AlbumUpdated` for the
     /// source.
@@ -226,7 +231,6 @@ impl Database {
         current_album_id: &str,
         target_album_id: &str,
         new_album: Option<&DbAlbum>,
-        new_metadata: &[DbReleaseMetadata],
     ) -> Result<SetIdentityOutcome, DbError> {
         let release_id = release_id.to_string();
         let new_identities = new_identities.to_vec();
@@ -235,7 +239,6 @@ impl Database {
         let current_album_id = current_album_id.to_string();
         let target_album_id = target_album_id.to_string();
         let new_album = new_album.cloned();
-        let new_metadata = new_metadata.to_vec();
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
         let ids = Arc::clone(&self.inner.ids);
@@ -305,22 +308,7 @@ impl Database {
                 ],
             )?;
 
-            // 4. Replace cached source payload. Always wipe first — Unknown
-            //    drops to file_tags (`new_metadata` empty) and the prior
-            //    MB/Discogs JSON has no business sticking around. For
-            //    Exact/Approximate, the caller hands us the freshly-fetched
-            //    payload (matching the new `metadata_source_release_id`) so
-            //    a later re-projection can replay the seed without
-            //    divergence.
-            tx.execute(
-                "DELETE FROM release_metadata WHERE release_id = ?",
-                params![release_id],
-            )?;
-            for meta in &new_metadata {
-                insert_release_metadata_row(tx, meta)?;
-            }
-
-            // 5. Source-album cleanup. Only runs when the release actually
+            // 4. Source-album cleanup. Only runs when the release actually
             //    moved; same-album updates don't vacate anything. Recheck
             //    inside the transaction (TOCTOU: a writer may have added a
             //    release to the source since the manager's pre-flight read).

@@ -1,15 +1,14 @@
 use crate::diagnostics::TelemetryEvent;
 use crate::import::handle::{ImportCandidateState, ImportServiceHandle};
 use crate::import::handle::{ScanEvent, WatcherCommand};
-use crate::import::types::{
-    ImportCommand, ImportProgress, MetadataRef, MetadataSource, StorageMode,
-};
+use crate::import::types::{ImportCommand, ImportProgress, MetadataRef, StorageMode};
 use crate::library::LibraryManager;
+use crate::util::rate_limiter::CallPriority;
 
 use {
     crate::db::{
-        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbReleaseMetadata, DbTrack,
-        DbTrackArtist, DbTrackArtistRole,
+        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
+        DbTrackArtistRole,
     },
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{ScanItem, ScannedFile},
@@ -43,9 +42,6 @@ struct PreparedMetadata {
     db_release: DbRelease,
     db_tracks: Vec<DbTrack>,
     remote_cover_image: Option<cover_image::CoverCandidate>,
-    /// Raw (source, json) pairs from the metadata resolver, wrapped into
-    /// DbReleaseMetadata at commit.
-    resolved_metadata: Vec<(String, String)>,
     existing_album_id: Option<String>,
     remapped_track_artists: Vec<DbTrackArtist>,
     remapped_album_artists: Vec<DbAlbumArtist>,
@@ -1503,8 +1499,8 @@ impl ImportService {
     pub async fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
-        cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
+        let cover_art_archive = library_manager.cover_art_archive().clone();
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
         let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
@@ -1714,11 +1710,19 @@ impl ImportService {
             },
         );
 
-        let (parsed, metadata_pairs) = match &identity_choice {
+        let parsed = match &identity_choice {
             crate::import::IdentityChoice::Exact { release_ref }
             | crate::import::IdentityChoice::Approximate { release_ref } => {
-                let release = prepare_release(library_manager, release_ref).await?;
-                (release.parsed, release.metadata_pairs)
+                // The documents are archived by `prepare_release`, keyed by the
+                // picked source release — so nothing about this release's rows
+                // needs to carry them, and the pointer written below is what
+                // finds them again.
+                prepare_release(library_manager, release_ref, CallPriority::Interactive)
+                    .await?
+                    .parsed(
+                        library_manager.clock().as_ref(),
+                        library_manager.ids().as_ref(),
+                    )?
             }
             crate::import::IdentityChoice::Unknown => {
                 let folder_name = folder
@@ -1740,7 +1744,7 @@ impl ImportService {
                 .map_err(|e| crate::import::ImportError::Internal {
                     detail: format!("unknown-seed mapping task failed: {e}"),
                 })??;
-                (parsed, Vec::new())
+                parsed
             }
         };
 
@@ -1760,7 +1764,6 @@ impl ImportService {
         let mut prepared = self
             .reconcile_prepared_release(
                 parsed,
-                metadata_pairs,
                 &identity_choice,
                 user_edit,
                 &replacement_release_ids,
@@ -1883,20 +1886,6 @@ impl ImportService {
 
         emit_preparing(PrepareStep::SavingToDatabase);
 
-        let metadata_now = library_manager.clock().now();
-        let db_metadata: Vec<DbReleaseMetadata> = std::mem::take(&mut prepared.resolved_metadata)
-            .into_iter()
-            .map(|(src, json)| {
-                DbReleaseMetadata::new(
-                    &prepared.db_release.id,
-                    &src,
-                    json,
-                    library_manager.ids().new_id(),
-                    metadata_now,
-                )
-            })
-            .collect();
-
         // No storage yet: the winning cover's bytes go to coven's local store below
         // and its row is written by finalize.
         prepared.remote_cover_image = remote_cover_data;
@@ -1921,7 +1910,6 @@ impl ImportService {
             &import_id,
             &candidate_key,
             embedded_cover,
-            &db_metadata,
             &replacement_plans,
         )
         .await?;
@@ -2003,7 +1991,6 @@ impl ImportService {
         import_id: &str,
         candidate_key: &str,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
-        db_metadata: &[DbReleaseMetadata],
         replacement_plans: &[crate::library::manager::ImportReplacementPlan],
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
@@ -2234,7 +2221,6 @@ impl ImportService {
                 new_album,
                 db_release,
                 tracks_to_files,
-                db_metadata,
                 remapped_track_artists,
                 remapped_album_artists,
                 &work_graph.works,
@@ -2664,38 +2650,50 @@ pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
     }
 }
 
-/// Fetch a release and map it to DB shape, reading through the session-wide
-/// MB/Discogs LRU caches (normally a hit, post-prefetch). Takes the bare
-/// `LibraryManager` because the worker holds no `ImportServiceHandle`. Used by
-/// the import worker and by re-identify, to source the cross-linked identity vec
-/// for an existing release.
+/// The archived documents for a release, fetching and storing them when nothing
+/// has yet. Takes the bare `LibraryManager` because neither the import worker
+/// nor the sweep holds an `ImportServiceHandle`.
+///
+/// Every path that needs a release it may not have archived comes here: the
+/// sweep settling a lead in the background, the confirmation pane opening a
+/// pressing identification never fetched, re-identify pointing a library
+/// release at a new one, the commit worker mapping what the user confirmed. So
+/// what the commit maps and what a pane showed always come out of the same
+/// rows, and a release two of them want is fetched once.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
-) -> Result<crate::import::search::PreparedRelease, crate::import::ImportError> {
-    match release_ref.source {
-        MetadataSource::MusicBrainz => {
-            let discogs_client = library_manager.discogs_client()?;
-            crate::import::search::commit_mb_release(
-                library_manager,
-                &release_ref.id,
-                discogs_client.as_ref(),
-            )
-            .await
-        }
-        MetadataSource::Discogs => {
-            let client = library_manager
-                .discogs_client()?
-                .ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
-            crate::import::search::commit_discogs_release(
-                &client,
-                &release_ref.id,
-                library_manager.clock().as_ref(),
-                library_manager.ids().as_ref(),
-            )
-            .await
-        }
+    priority: CallPriority,
+) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+    if let Some(stored) =
+        crate::import::payloads::load(library_manager.database(), release_ref).await?
+    {
+        return Ok(stored);
     }
+    // A Discogs client that will not build costs a MusicBrainz release only its
+    // cross-reference, which is best-effort either way; a Discogs release has
+    // nothing to fetch without one, and `fetch` refuses it by name.
+    let discogs = match library_manager.discogs_client() {
+        Ok(client) => client,
+        Err(error) => {
+            warn!("no Discogs client for {}: {error}", release_ref.id);
+            None
+        }
+    };
+    let payloads = crate::import::payloads::fetch(
+        library_manager.cover_art_archive(),
+        discogs.as_ref(),
+        release_ref,
+        priority,
+    )
+    .await?;
+    crate::import::payloads::store(
+        library_manager.database(),
+        &payloads,
+        library_manager.clock().now(),
+    )
+    .await?;
+    Ok(payloads)
 }
 
 #[cfg(test)]

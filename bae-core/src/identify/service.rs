@@ -70,8 +70,8 @@ impl IdentifyServiceHandle {
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         event_tx: broadcast::Sender<ImportEvent>,
-        cover_art_archive: CoverArtArchiveClient,
     ) -> IdentifyServiceHandle {
+        let cover_art_archive = library_manager.cover_art_archive().clone();
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
             runtime_handle,
@@ -436,6 +436,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
         let (event_tx, _) = broadcast::channel(64);
         let inner = Arc::new(IdentifyServiceInner {

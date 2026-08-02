@@ -35,8 +35,8 @@ struct ImportFixture {
     library_manager: LibraryManager,
     config_handle: Arc<bae_core::config::ConfigHandle>,
     ids: Arc<dyn coven::IdProvider>,
-    /// The service's cover-art client, kept so a test that drives the prefetch
-    /// path can seed its lookups (the hermetic client panics on a live request).
+    /// The library manager's cover-art client, kept so a test that drives a
+    /// lookup can seed it (the hermetic client panics on a live request).
     cover_art: bae_core::import::cover_art::CoverArtArchiveClient,
     _temp: TempDir,
 }
@@ -65,16 +65,17 @@ impl ImportFixture {
             ids.clone(),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
-        let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::hermetic();
-        let handle = ImportService::start(
-            tokio::runtime::Handle::current(),
-            library_manager.clone(),
-            cover_art.clone(),
-        )
-        .await
-        .expect("import service starts");
+        // The manager's own client, not a second one: the import reads cover
+        // answers through the manager, so a test seeding this handle has to be
+        // seeding the instance the import will ask.
+        let cover_art = library_manager.cover_art_archive_for_test();
+        let handle =
+            ImportService::start(tokio::runtime::Handle::current(), library_manager.clone())
+                .await
+                .expect("import service starts");
 
         Self {
             db,
@@ -1748,8 +1749,12 @@ fn seed_mb_release_with_works(
         }],
         relations: vec![],
     };
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, "{}".to_string()));
-    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
+    );
     mb_release_id.to_string()
 }
 
@@ -1778,6 +1783,10 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             work_with_composer(MB_WORK_SHARED, "Shared Work", "composer-shared", None),
         )],
     );
+    f.cover_art
+        .seed_lookup(Some(&prior_mb), Some("mb-group-prior"), None);
+    f.cover_art
+        .seed_lookup(Some("mb-rel-remote"), Some("mb-group-remote"), None);
     let prior_dir = f.temp_path().join("prior");
     fs::create_dir_all(&prior_dir).unwrap();
     generate_album_files(&prior_dir, &["01 Prior Movement.flac"]);
@@ -2238,7 +2247,10 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
     let identities = f.db.get_release_identities(&release.id).await.unwrap();
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].source, MetadataSource::Discogs);
-    assert_eq!(identities[0].source_group_id, "master-exact");
+    assert_eq!(
+        identities[0].source_group_id,
+        support::discogs_fixture_id("master-exact")
+    );
     assert_eq!(
         identities[0].source_release_id.as_deref(),
         Some(release_id_key.as_str())
@@ -2329,36 +2341,42 @@ async fn approximate_import_with_user_edit_overlay() {
 // identity choice applies to BOTH rows: Exact keeps the per-source
 // release IDs on each, Approximate clears both.
 
-/// Seed a Discogs release the MB-rooted import path will resolve via
-/// MB url-rels. Returns the Discogs release id.
+/// Seed a Discogs release the MB-rooted import path will resolve via MB
+/// url-rels. Returns the Discogs release id.
+///
+/// The document is rendered as the release endpoint's own JSON and read back
+/// through the production parser: it is what the import archives, and every
+/// later projection replays from the archived bytes rather than from anything
+/// handed over beside them. `master_id` is the fixture's own spelling, rendered
+/// numerically as the endpoint numbers its ids.
 fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> String {
-    let discogs_release = DiscogsRelease {
-        id: release_id.to_string(),
-        title: title.to_string(),
-        year: Some(1996),
-        format: vec!["CD".to_string()],
-        country: Some("US".to_string()),
-        label: vec!["Label Name".to_string()],
-        cover_image: None,
-        thumb: None,
-        catno: Some("CAT-001".to_string()),
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
+    let rendered_master = support::discogs_fixture_id(master_id);
+    bae_core::discogs::client::seed_master_cache(
+        &rendered_master,
+        Some(1996),
+        serde_json::json!({ "id": rendered_master, "year": 1996 }).to_string(),
+    );
+    let raw_json = serde_json::json!({
+        "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
+        "title": title,
+        "year": 1996,
+        "country": "US",
+        "master_id": rendered_master.parse::<u64>().expect("a rendered master id is numeric"),
+        "labels": [{ "name": "Label Name", "catno": "CAT-001" }],
+        "formats": [{ "name": "CD" }],
+        "artists": [{ "id": 1, "name": "Artist Name" }],
+        "tracklist": [{
+            "position": "1",
+            "title": "Track One",
+            "duration": "3:00",
+            "type_": "track",
+            "artists": [],
         }],
-        extraartists: Some(vec![]),
-        tracklist: vec![DiscogsTrack {
-            type_: "track".to_string(),
-            position: "1".to_string(),
-            title: "Track One".to_string(),
-            duration: Some("3:00".to_string()),
-            artists: vec![],
-            extraartists: None,
-        }],
-        master_id: Some(master_id.to_string()),
-    };
-    bae_core::discogs::client::seed_master_cache(master_id, Some(1996), "{}".to_string());
-    bae_core::discogs::client::seed_release_cache(release_id, (discogs_release, "{}".to_string()));
+    })
+    .to_string();
+    let parsed = bae_core::discogs::client::parse_discogs_release_json(&raw_json)
+        .expect("the rendered Discogs release parses");
+    bae_core::discogs::client::seed_release_cache(release_id, (parsed, raw_json));
     release_id.to_string()
 }
 
@@ -2412,11 +2430,12 @@ fn seed_mb_with_discogs_xref(
         "https://www.discogs.com/release/{}",
         discogs_release_id
     ));
-    bae_core::musicbrainz::seed_release_cache(
-        mb_release_id,
-        (response, discogs_url, "{}".to_string()),
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, discogs_url, raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
     );
-    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
     mb_release_id.to_string()
 }
 
@@ -2440,6 +2459,8 @@ async fn cross_source_exact_writes_both_release_ids() {
     );
 
     let f = ImportFixture::new().await;
+    f.cover_art
+        .seed_lookup(Some(&mb_id), Some("xref-mb-group-exact"), None);
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -2479,7 +2500,10 @@ async fn cross_source_exact_writes_both_release_ids() {
         .iter()
         .find(|i| i.source == MetadataSource::Discogs)
         .expect("Discogs identity row missing");
-    assert_eq!(discogs.source_group_id, "xref-d-master-exact");
+    assert_eq!(
+        discogs.source_group_id,
+        support::discogs_fixture_id("xref-d-master-exact")
+    );
     assert_eq!(
         discogs.source_release_id.as_deref(),
         Some(discogs_id.as_str())
@@ -2503,6 +2527,8 @@ async fn cross_source_approximate_nulls_both_release_ids() {
     );
 
     let f = ImportFixture::new().await;
+    f.cover_art
+        .seed_lookup(Some(&mb_id), Some("xref-mb-group-approx"), None);
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -2547,7 +2573,10 @@ async fn cross_source_approximate_nulls_both_release_ids() {
         .iter()
         .find(|i| i.source == MetadataSource::Discogs)
         .expect("Discogs identity row missing");
-    assert_eq!(discogs.source_group_id, "xref-d-master-approx");
+    assert_eq!(
+        discogs.source_group_id,
+        support::discogs_fixture_id("xref-d-master-approx")
+    );
     assert!(
         discogs.source_release_id.is_none(),
         "Discogs row release_id should be NULL for Approximate, got {:?}",
@@ -2569,30 +2598,28 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
     let mb_release_id = "xref-drooted-mb-rel".to_string();
     let mb_group_id = "xref-drooted-mb-group".to_string();
     bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, Some(mb_release_id.clone()));
-    bae_core::musicbrainz::seed_release_cache(
-        &mb_release_id,
-        (
-            MbReleaseResponse {
-                id: mb_release_id.clone(),
-                title: "Album Title".to_string(),
-                date: None,
-                country: None,
-                barcode: None,
-                artist_credit: vec![],
-                release_group: Some(MbReleaseGroupRef {
-                    id: mb_group_id.clone(),
-                    first_release_date: None,
-                    relations: None,
-                }),
-                label_info: vec![],
-                media: vec![],
-                relations: vec![],
-            },
-            None,
-            "{}".to_string(),
-        ),
+    let mb_response = MbReleaseResponse {
+        id: mb_release_id.clone(),
+        title: "Album Title".to_string(),
+        date: None,
+        country: None,
+        barcode: None,
+        artist_credit: vec![],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.clone(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![],
+        relations: vec![],
+    };
+    let mb_raw_json = serde_json::to_string(&mb_response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(&mb_release_id, (mb_response, None, mb_raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        &mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
     );
-    bae_core::musicbrainz::seed_release_group_json_cache(&mb_group_id, "{}".to_string());
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -2627,7 +2654,10 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
         .iter()
         .find(|i| i.source == MetadataSource::Discogs)
         .expect("Discogs identity row missing");
-    assert_eq!(discogs.source_group_id, "xref-drooted-d-master");
+    assert_eq!(
+        discogs.source_group_id,
+        support::discogs_fixture_id("xref-drooted-d-master")
+    );
     assert!(discogs.source_release_id.is_none());
 
     let mb = identities
@@ -3239,14 +3269,11 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-    );
-    let handle = ImportService::start(
-        tokio::runtime::Handle::current(),
-        library_manager,
         bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-    .await
-    .expect("import service starts");
+    );
+    let handle = ImportService::start(tokio::runtime::Handle::current(), library_manager)
+        .await
+        .expect("import service starts");
 
     let album_dir = temp.path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -3356,8 +3383,12 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
         }],
         relations: vec![],
     };
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, "{}".to_string()));
-    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
+    );
     mb_release_id.to_string()
 }
 
@@ -3487,8 +3518,12 @@ fn seed_mb_release_with_track_count(
         }],
         relations: vec![],
     };
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, "{}".to_string()));
-    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
+    );
     mb_release_id.to_string()
 }
 

@@ -89,6 +89,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     (manager, temp_dir)
 }
@@ -324,6 +325,7 @@ async fn setup_forget_library_manager_at(
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
     )
 }
 
@@ -4580,7 +4582,6 @@ async fn set_identity_to_unknown_moves_release_to_fresh_album() {
             &release.id,
             vec![],
             crate::import::MetadataPointer::FileTags,
-            &[],
         )
         .await
         .unwrap();
@@ -4661,7 +4662,6 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-99".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -4766,7 +4766,6 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -4834,7 +4833,6 @@ async fn set_identity_moves_release_to_matching_album() {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-pressing".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -4902,7 +4900,6 @@ async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -4967,7 +4964,6 @@ async fn set_identity_does_not_touch_metadata_columns() {
                 source: crate::import::MetadataSource::Discogs,
                 release_id: "dg-rel-1".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -5095,7 +5091,6 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -5187,7 +5182,6 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
-            &[],
         )
         .await
         .unwrap();
@@ -5276,7 +5270,6 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
             &album_a.id,
             &fresh_album.id,
             Some(&fresh_album),
-            &[],
         )
         .await
         .unwrap();
@@ -5308,8 +5301,23 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
 // ── re_identify_release ────────────────────────────────────────────
 //
 // Exact / Approximate fetch through MB / Discogs, so these tests seed the release
-// cache first and `prepare_release` reads locally instead of hitting the network.
-// The Unknown path makes no source claim, so it needs no seeding.
+// cache and the cover-art lookups first and `prepare_release` reads locally
+// instead of hitting the network. The Unknown path makes no source claim, so it
+// needs no seeding.
+
+/// The archived documents under one source release's own key.
+async fn archived_for(
+    manager: &LibraryManager,
+    source: crate::import::PayloadSource,
+    source_release_id: &str,
+) -> Option<String> {
+    manager
+        .database
+        .load_source_release_payloads(&[(source, source_release_id.to_string())])
+        .await
+        .unwrap()
+        .remove(&(source, source_release_id.to_string()))
+}
 
 #[tokio::test]
 async fn re_identify_to_unknown_clears_identities_and_moves_album() {
@@ -5376,16 +5384,15 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
         .await
         .unwrap();
 
-    // Seed a stale cache row to verify Unknown clears it.
+    // The source release this one was seeded from has an archived document.
     manager
         .database
-        .insert_release_metadata(&crate::db::DbReleaseMetadata::new(
-            &release.id,
-            "musicbrainz",
-            r#"{"id":"mb-rel-1"}"#.to_string(),
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-        ))
+        .save_source_release_payloads(&[crate::db::DbSourceReleasePayload {
+            source: crate::import::PayloadSource::MusicBrainz,
+            source_release_id: "mb-rel-1".to_string(),
+            json: r#"{"id":"mb-rel-1"}"#.to_string(),
+            fetched_at: Utc::now(),
+        }])
         .await
         .unwrap();
 
@@ -5410,8 +5417,7 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
         .unwrap();
     assert_ne!(new_album_id, album.id);
 
-    // Identity rows wiped, metadata pointer flipped to file_tags,
-    // cache rows cleared (file_tags has no source payload).
+    // Identity rows wiped, metadata pointer flipped to file_tags.
     let identities = manager
         .database
         .get_release_identities(&release.id)
@@ -5429,23 +5435,28 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
         crate::db::ReleaseMetadataSource::FileTags
     );
     assert_eq!(updated.metadata_source_release_id, None);
-    let cache_after = manager
-        .database
-        .get_release_metadata_by_source(&release.id)
-        .await
-        .unwrap();
+    // The archived document describes `mb-rel-1`, not this release, and is
+    // shared with every candidate that matched it. Dropping the pointer is what
+    // stops it being read here; nothing deletes it.
     assert!(
-        cache_after.is_empty(),
-        "Unknown commit must clear stale cached payloads"
+        archived_for(
+            &manager,
+            crate::import::PayloadSource::MusicBrainz,
+            "mb-rel-1"
+        )
+        .await
+        .is_some(),
+        "documents are keyed by the source release, so re-pointing must not delete them"
     );
 }
 
 // ── re_identify_release Exact / Approximate (MB cache-seeded) ────
 //
 // Drive the network-side `prepare_release` through the MB LRU cache
-// (`seed_release_cache` + `seed_release_group_json_cache`) so these tests don't hit
-// the network. The caches are process-global LRUs, so each test uses a unique MB
-// release ID and no other test's seed bleeds in.
+// (`seed_release_cache` + `seed_release_group_json_cache`) and the cover-art
+// client's own so these tests don't hit the network. The caches are
+// process-global LRUs, so each test uses a unique MB release ID and no other
+// test's seed bleeds in.
 
 /// Build a synthetic MB release response with `n` track rows on a
 /// single CD medium, plus a release group reference. Suitable for
@@ -5515,7 +5526,7 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
 }
 
 #[tokio::test]
-async fn re_identify_release_exact_writes_cache() {
+async fn re_identify_release_exact_archives_the_picked_release() {
     use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
@@ -5535,31 +5546,23 @@ async fn re_identify_release_exact_writes_cache() {
         .unwrap();
     insert_n_tracks(&manager.database, &release.id, 3).await;
 
-    // Seed an old cached payload so the test can assert it was
-    // replaced (not just augmented).
-    manager
-        .database
-        .insert_release_metadata(&crate::db::DbReleaseMetadata::new(
-            &release.id,
-            "musicbrainz",
-            r#"{"id":"mb-rel-old"}"#.to_string(),
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-        ))
-        .await
-        .unwrap();
-
-    // Cache the picked release so `prepare_release` skips the
-    // network. The raw JSON payload is what the cache replacement
-    // step writes into `release_metadata`.
+    // Cache the picked release so `prepare_release` skips the network. The raw
+    // JSON is what gets archived under the picked release's own key.
     let new_release_id = "exact-re-identify-mb-rel-new";
     let new_group_id = "exact-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 3);
-    let new_raw_json = r#"{"id":"exact-re-identify-mb-rel-new"}"#.to_string();
+    // What the archive holds is what the client returned, so the projection that
+    // replays it later reads the same release the cache handed over now.
+    let new_raw_json = serde_json::to_string(&new_response).unwrap();
     seed_release_cache(new_release_id, (new_response, None, new_raw_json.clone()));
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"exact-re-identify-mb-group-new"}"#.to_string(),
+    );
+    manager.cover_art_archive_for_test().seed_lookup(
+        Some(new_release_id),
+        Some(new_group_id),
+        None,
     );
 
     manager
@@ -5605,26 +5608,32 @@ async fn re_identify_release_exact_writes_cache() {
         Some(new_release_id)
     );
 
-    // Cache rows aligned with the new pointer: stale "mb-rel-old"
-    // payload gone, fresh payload + release-group JSON in.
-    let cache_after = manager
-        .database
-        .get_release_metadata_by_source(&release.id)
-        .await
-        .unwrap();
+    // The picked release's documents are archived under its own key, which is
+    // what the new pointer names.
     assert_eq!(
-        cache_after.get("musicbrainz").map(String::as_str),
-        Some(new_raw_json.as_str()),
-        "cache must hold the freshly-fetched MB JSON, not the stale row"
+        archived_for(
+            &manager,
+            crate::import::PayloadSource::MusicBrainz,
+            new_release_id
+        )
+        .await
+        .as_deref(),
+        Some(new_raw_json.as_str())
     );
     assert!(
-        cache_after.contains_key("musicbrainz_release_group"),
-        "release-group JSON must be cached alongside the release JSON"
+        archived_for(
+            &manager,
+            crate::import::PayloadSource::MusicBrainzReleaseGroup,
+            new_group_id
+        )
+        .await
+        .is_some(),
+        "the release group is archived alongside the release"
     );
 }
 
 #[tokio::test]
-async fn re_identify_release_approximate_writes_cache() {
+async fn re_identify_release_approximate_archives_the_picked_release() {
     use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
@@ -5642,11 +5651,16 @@ async fn re_identify_release_approximate_writes_cache() {
     let new_release_id = "approx-re-identify-mb-rel-new";
     let new_group_id = "approx-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 4);
-    let new_raw_json = r#"{"id":"approx-re-identify-mb-rel-new"}"#.to_string();
+    let new_raw_json = serde_json::to_string(&new_response).unwrap();
     seed_release_cache(new_release_id, (new_response, None, new_raw_json.clone()));
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"approx-re-identify-mb-group-new"}"#.to_string(),
+    );
+    manager.cover_art_archive_for_test().seed_lookup(
+        Some(new_release_id),
+        Some(new_group_id),
+        None,
     );
 
     manager
@@ -5690,16 +5704,25 @@ async fn re_identify_release_approximate_writes_cache() {
         Some(new_release_id)
     );
 
-    let cache_after = manager
-        .database
-        .get_release_metadata_by_source(&release.id)
-        .await
-        .unwrap();
+    // An Approximate claim leaves the pointer on the picked pressing, so the
+    // documents archived under that pressing are what a reset reads back.
     assert_eq!(
-        cache_after.get("musicbrainz").map(String::as_str),
+        archived_for(
+            &manager,
+            crate::import::PayloadSource::MusicBrainz,
+            new_release_id
+        )
+        .await
+        .as_deref(),
         Some(new_raw_json.as_str())
     );
-    assert!(cache_after.contains_key("musicbrainz_release_group"));
+    assert!(archived_for(
+        &manager,
+        crate::import::PayloadSource::MusicBrainzReleaseGroup,
+        new_group_id
+    )
+    .await
+    .is_some());
 }
 
 #[tokio::test]
@@ -5725,17 +5748,16 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     let new_release_id = "mismatch-re-identify-mb-rel-new";
     let new_group_id = "mismatch-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 12);
-    seed_release_cache(
-        new_release_id,
-        (
-            new_response,
-            None,
-            r#"{"id":"mismatch-re-identify-mb-rel-new"}"#.to_string(),
-        ),
-    );
+    let new_raw_json = serde_json::to_string(&new_response).unwrap();
+    seed_release_cache(new_release_id, (new_response, None, new_raw_json));
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"mismatch-re-identify-mb-group-new"}"#.to_string(),
+    );
+    manager.cover_art_archive_for_test().seed_lookup(
+        Some(new_release_id),
+        Some(new_group_id),
+        None,
     );
 
     let err = manager
@@ -5770,10 +5792,10 @@ async fn re_identify_release_rejects_track_count_mismatch() {
 
 #[tokio::test]
 async fn re_identify_release_followed_by_reset_succeeds() {
-    // The cache-alignment invariant end to end: after a re-identify commit,
-    // `reset_metadata_to_source` projects through the new pointer and new cached
-    // payload without tripping the cache-divergence guard. A regression here means
-    // re-identify left the cache stale against `metadata_source_release_id`.
+    // End to end: after a re-identify commit, `reset_metadata_to_source`
+    // projects through the new pointer and reaches the documents that commit
+    // archived. A regression here means re-identify pointed the release at a
+    // source release whose documents it never wrote.
     use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
@@ -5791,17 +5813,16 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     let new_release_id = "reset-re-identify-mb-rel-new";
     let new_group_id = "reset-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 2);
-    seed_release_cache(
-            new_release_id,
-            (
-                new_response,
-                None,
-                r#"{"id":"reset-re-identify-mb-rel-new","title":"Album Title","date":"2024-01-01","artist-credit":[{"name":"Artist Name","artist":{"id":"mb-artist-1","name":"Artist Name","sort-name":"Artist Name"}}],"release-group":{"id":"reset-re-identify-mb-group-new"},"media":[{"format":"CD","tracks":[{"position":1,"number":"1","title":"Track 1"},{"position":2,"number":"2","title":"Track 2"}]}]}"#.to_string(),
-            ),
-        );
+    let new_raw_json = serde_json::to_string(&new_response).unwrap();
+    seed_release_cache(new_release_id, (new_response, None, new_raw_json));
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"reset-re-identify-mb-group-new"}"#.to_string(),
+    );
+    manager.cover_art_archive_for_test().seed_lookup(
+        Some(new_release_id),
+        Some(new_group_id),
+        None,
     );
 
     manager
@@ -6058,13 +6079,10 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
         .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
         .unwrap();
 
-    let handle = crate::import::ImportService::start(
-        tokio::runtime::Handle::current(),
-        manager.clone(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-    .await
-    .unwrap();
+    let handle =
+        crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
+            .await
+            .unwrap();
 
     assert!(
         handle.revalidate_discogs_token().await.is_err(),

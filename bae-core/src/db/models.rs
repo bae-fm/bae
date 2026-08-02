@@ -941,30 +941,24 @@ impl DbAudioFormat {
     }
 }
 
-/// The full raw API response JSON, archived per source per release, so fields we
-/// don't map today can be extracted later without re-fetching.
-#[derive(Debug, Clone)]
-pub struct DbReleaseMetadata {
-    pub id: String,
-    pub release_id: String,
-    pub source: String,
+/// One archived provider document, keyed by the source entity it describes.
+/// Written before the verdict that names the release and read back after it
+/// commits, so fields we don't map today can be extracted later without
+/// re-fetching.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbSourceReleasePayload {
+    pub source: crate::import::PayloadSource,
+    pub source_release_id: String,
     pub json: String,
     pub fetched_at: DateTime<Utc>,
 }
 
-impl DbReleaseMetadata {
-    pub fn new(
-        release_id: &str,
-        source: &str,
-        json: String,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
-        DbReleaseMetadata {
-            id,
-            release_id: release_id.to_string(),
-            source: source.to_string(),
-            json,
+impl DbSourceReleasePayload {
+    pub fn new(payload: &crate::import::SourcePayload, now: DateTime<Utc>) -> Self {
+        DbSourceReleasePayload {
+            source: payload.source,
+            source_release_id: payload.source_release_id.clone(),
+            json: payload.json.clone(),
             fetched_at: now,
         }
     }

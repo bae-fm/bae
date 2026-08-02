@@ -54,6 +54,7 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     )
     .unwrap();
     (mgr.database_for_test(), mgr)
@@ -120,7 +121,7 @@ async fn create_local_release(
         created_at: now,
     };
     let (album_id, release_id) = (album.id.clone(), release.id.clone());
-    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[])
         .await
         .unwrap();
 

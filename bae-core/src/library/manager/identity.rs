@@ -25,17 +25,17 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Replace a release's identity rows, metadata-source pointer, and cached source
-    /// payload in one shot, moving the release between albums when the new identity
-    /// doesn't fit its current one.
+    /// Replace a release's identity rows and metadata-source pointer in one shot,
+    /// moving the release between albums when the new identity doesn't fit its
+    /// current one.
     ///
     /// `new_identities` is empty (Unknown), or carries the already-cross-linked
     /// `(source, source_group_id, source_release_id)` rows. `metadata_pointer` sets
     /// the `metadata_source` / `metadata_source_release_id` columns a later
-    /// re-projection reads to replay the seed, and `metadata_pairs` is the
-    /// freshly-fetched payload that pairs with it — empty for Unknown. The cache
-    /// replacement is atomic with the identity/pointer write, so a re-projection can
-    /// never see a stale payload pointing at the prior source.
+    /// re-projection reads to replay the seed. Nothing about the archived
+    /// provider documents changes: they are keyed by the source release, so
+    /// re-pointing at another one already reads other rows, and the rows this
+    /// release used may be another candidate's.
     ///
     /// **Album side effects.** Empty `new_identities` always moves the release to a
     /// fresh album holding only it. Otherwise a cross-source merge wins: if any
@@ -47,8 +47,8 @@ impl LibraryManager {
     /// is deleted.
     ///
     /// **Album/release/track row data is not touched** — pressing fields, album
-    /// fields, and tracks stay as they are, and only `release_metadata` cache rows
-    /// are replaced. The caller decides whether to reseed the metadata.
+    /// fields, and tracks stay as they are. The caller decides whether to reseed
+    /// the metadata.
     ///
     /// Emits `AlbumAdded` or `AlbumUpdated` for the destination album, plus
     /// `AlbumRemoved` or `AlbumUpdated` for the vacated source album if the release
@@ -58,10 +58,7 @@ impl LibraryManager {
         release_id: &str,
         new_identities: Vec<crate::import::ReleaseIdentity>,
         metadata_pointer: crate::import::MetadataPointer,
-        metadata_pairs: &[(String, String)],
     ) -> Result<(), LibraryError> {
-        use crate::db::DbReleaseMetadata;
-
         let current_album_id = self
             .database
             .find_album_id_for_release(release_id)
@@ -75,18 +72,9 @@ impl LibraryManager {
         let (new_metadata_source, new_metadata_source_release_id) =
             metadata_pointer_to_columns(metadata_pointer);
 
-        let now = self.clock.now();
-        let new_metadata: Vec<DbReleaseMetadata> = metadata_pairs
-            .iter()
-            .map(|(source, json)| {
-                DbReleaseMetadata::new(release_id, source, json.clone(), self.ids.new_id(), now)
-            })
-            .collect();
-
         // The atomic call does all source-album bookkeeping inside its transaction
-        // (empty-check, primary_release_id repair, album_artists copy) plus the
-        // `release_metadata` cache replacement — those decisions live there so a
-        // separate read and write can't race.
+        // (empty-check, primary_release_id repair, album_artists copy) — those
+        // decisions live there so a separate read and write can't race.
         let outcome = self
             .database
             .set_identity_atomic(
@@ -97,7 +85,6 @@ impl LibraryManager {
                 &current_album_id,
                 &target.album_id,
                 target.new_album.as_ref(),
-                &new_metadata,
             )
             .await?;
 

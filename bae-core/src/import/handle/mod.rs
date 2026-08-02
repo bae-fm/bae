@@ -880,32 +880,6 @@ impl ImportCandidateState {
             }
         })
     }
-
-    fn sweepable_candidate_for_identity(
-        &self,
-        content_hash: &str,
-        edit_revision: u64,
-    ) -> Option<FolderCandidate> {
-        self.candidates
-            .iter()
-            .find_map(|(key, scanned)| match scanned {
-                ScannedCandidate::Folder {
-                    candidate,
-                    actionable: true,
-                    skipped: false,
-                    is_added: false,
-                } if candidate.files.content_hash() == content_hash
-                    && candidate.file_edit_revision == edit_revision
-                    && self
-                        .runtime
-                        .get(key)
-                        .is_none_or(|runtime| runtime.import_status.is_none()) =>
-                {
-                    Some(candidate.clone())
-                }
-                _ => None,
-            })
-    }
 }
 
 /// All events emitted by the import service. One channel, one subscriber (the bus).
@@ -1229,17 +1203,6 @@ impl ImportServiceHandle {
 
     pub fn get_candidate(&self, key: &str) -> Option<ImportCandidateSnapshot> {
         self.candidate_state.lock().unwrap().get(key)
-    }
-
-    pub(crate) fn sweepable_candidate_for_identity(
-        &self,
-        content_hash: &str,
-        edit_revision: u64,
-    ) -> Option<FolderCandidate> {
-        self.candidate_state
-            .lock()
-            .unwrap()
-            .sweepable_candidate_for_identity(content_hash, edit_revision)
     }
 
     /// Claim `candidate_key` for an import that is about to be queued.

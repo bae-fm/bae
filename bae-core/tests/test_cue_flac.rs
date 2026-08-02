@@ -384,6 +384,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     let release_id_key = seed_discogs_test_release(create_test_discogs_release());
     let import_handle =
@@ -459,6 +460,7 @@ impl CueFlacCaptureFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
 

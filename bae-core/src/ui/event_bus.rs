@@ -590,6 +590,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             runtime.handle().clone(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
         (manager, tmp)
     }
@@ -748,7 +749,6 @@ mod tests {
             .block_on(crate::import::ImportService::start(
                 runtime.handle().clone(),
                 library_manager,
-                crate::import::cover_art::CoverArtArchiveClient::hermetic(),
             ))
             .unwrap();
         let (import_tx, import_rx) = broadcast::channel(1);

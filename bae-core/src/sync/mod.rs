@@ -109,9 +109,10 @@ pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 /// (upload/download, the make-Remote/make-Local transitions, the locality-aware
 /// read), so bae hand-maintains no blob source.
 ///
-/// Excluded: the device-local tables (`release_metadata`, `playback_state`,
-/// `import_candidate_state`) have no `_updated_at`, and coven's own bookkeeping
-/// tables live outside bae's migration entirely — bae never names them.
+/// Excluded: the device-local tables (`source_release_payloads`,
+/// `playback_state`, `import_candidate_state`) have no `_updated_at`, and
+/// coven's own bookkeeping tables live outside bae's migration entirely — bae
+/// never names them.
 ///
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to
 /// exactly these tables when the library is opened.
@@ -366,6 +367,21 @@ mod tests {
         assert!(
             !registered.contains("import_candidate_state"),
             "import_candidate_state is device-local and must never sync"
+        );
+    }
+
+    /// `source_release_payloads` holds re-fetchable provider documents, not the
+    /// user's library: syncing them would push megabytes of MusicBrainz and
+    /// Discogs JSON to every device to save each of them a lookup it can make
+    /// itself. Named for the same reason `import_candidate_state` is — so the
+    /// exclusion survives the table growing a clock column.
+    #[test]
+    fn source_release_payloads_are_not_synced() {
+        let synced = synced_tables();
+        let registered: BTreeSet<&str> = synced.iter().map(|t| t.name()).collect();
+        assert!(
+            !registered.contains("source_release_payloads"),
+            "source_release_payloads is device-local and must never sync"
         );
     }
 

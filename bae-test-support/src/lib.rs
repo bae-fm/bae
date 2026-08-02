@@ -173,17 +173,102 @@ pub async fn collect_library_events(
     events
 }
 
-/// Pre-populate the Discogs release cache, master cache (if the
-/// release carries a `master_id`), and the MB URL-lookup cache for a
-/// synthetic test release. The worker's `prepare_release` →
-/// `client.get_release` chain hits the cache; the cross-reference call
-/// resolves to "no MB link" without touching the network.
+/// The id [`seed_discogs_test_release`] renders for a fixture's own spelling of
+/// a release or master id.
+///
+/// Discogs' release endpoint numbers its ids, so a fixture that writes
+/// `"master-exact"` is archived — and read back — under a number. A test that
+/// asserts on the id it seeded asks for it here rather than hard-coding the
+/// rendering.
+pub fn discogs_fixture_id(fixture_id: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    fixture_id.hash(&mut hasher);
+    // Kept inside 2^53 so the id survives any JSON reader that stores numbers
+    // as doubles.
+    (hasher.finish() % (1 << 53)).to_string()
+}
+
+/// Pre-populate the Discogs release cache, master cache (if the release carries
+/// a `master_id`), and the MB URL-lookup cache for a synthetic test release, and
+/// return the release id the import should pick. The worker's
+/// `prepare_release` → `client.get_release` chain hits the cache; the
+/// cross-reference call resolves to "no MB link" without touching the network.
+///
+/// `release` describes what the test wants; this renders it as the release
+/// endpoint's own JSON and reads it back through the production parser, so the
+/// two halves of the cache entry cannot disagree. That matters because the raw
+/// JSON is what the import archives, and every later projection of the release
+/// — a reset, a re-open — replays from the archived bytes rather than from
+/// whatever a test handed over alongside them.
+///
+/// The rendered ids are numeric, as the endpoint's are, so the returned id is
+/// not the (arbitrary) one the caller wrote on the fixture.
 pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> String {
-    let id = release.id.clone();
-    if let Some(ref master_id) = release.master_id {
-        bae_core::discogs::client::seed_master_cache(master_id, release.year, "{}".to_string());
+    let numeric = |value: &str| -> u64 {
+        discogs_fixture_id(value)
+            .parse()
+            .expect("a rendered Discogs id is numeric")
+    };
+    let credit = |artist: &bae_core::discogs::DiscogsArtist| serde_json::json!({ "id": numeric(&artist.id), "name": artist.name });
+    let role_credit = |artist: &bae_core::discogs::DiscogsRoleArtist| {
+        serde_json::json!({
+            "id": artist.id.as_deref().map(numeric),
+            "name": artist.name,
+            "role": artist.role,
+            "anv": artist.credited_name,
+        })
+    };
+    let master_id = release.master_id.as_deref().map(numeric);
+
+    if let Some(master_id) = master_id {
+        // Keyed by the rendered id, which is the one the parsed release names
+        // and therefore the one the master fetch asks for.
+        let master_json = serde_json::json!({ "id": master_id, "year": release.year });
+        bae_core::discogs::client::seed_master_cache(
+            &master_id.to_string(),
+            release.year,
+            master_json.to_string(),
+        );
     }
-    bae_core::discogs::client::seed_release_cache(&id, (release, "{}".to_string()));
+
+    let raw_json = serde_json::json!({
+        "id": numeric(&release.id),
+        "title": release.title,
+        "year": release.year,
+        "country": release.country,
+        "master_id": master_id,
+        "formats": release.format.iter().map(|name| serde_json::json!({ "name": name })).collect::<Vec<_>>(),
+        "labels": release.label.iter().enumerate().map(|(index, name)| serde_json::json!({
+            "name": name,
+            "catno": if index == 0 { release.catno.clone() } else { None },
+        })).collect::<Vec<_>>(),
+        "images": release.cover_image.iter().map(|uri| serde_json::json!({
+            "type": "primary",
+            "uri": uri,
+            "uri150": release.thumb,
+        })).collect::<Vec<_>>(),
+        "artists": release.artists.iter().map(credit).collect::<Vec<_>>(),
+        "extraartists": release.extraartists.as_ref().map(|artists| {
+            artists.iter().map(role_credit).collect::<Vec<_>>()
+        }),
+        "tracklist": release.tracklist.iter().map(|track| serde_json::json!({
+            "position": track.position,
+            "title": track.title,
+            "duration": track.duration,
+            "type_": track.type_,
+            "artists": track.artists.iter().map(credit).collect::<Vec<_>>(),
+            "extraartists": track.extraartists.as_ref().map(|artists| {
+                artists.iter().map(role_credit).collect::<Vec<_>>()
+            }),
+        })).collect::<Vec<_>>(),
+    })
+    .to_string();
+
+    let parsed = bae_core::discogs::client::parse_discogs_release_json(&raw_json)
+        .expect("the rendered test release parses as the endpoint's own JSON");
+    let id = parsed.id.clone();
+    bae_core::discogs::client::seed_release_cache(&id, (parsed, raw_json));
     bae_core::musicbrainz::seed_discogs_url_lookup(&id, None);
     id
 }
@@ -202,22 +287,19 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
 ///
 /// Local imports emit `Complete`. Remote imports emit `RemoteUploadQueued`: the
 /// import worker is finished, while remote completion waits for coven upload
-/// Start an [`ImportService`] wired to a hermetic cover-art client — the shared
-/// setup every import/playback test binary needs, so none of them keep a private
-/// copy that can drift from the others.
+/// Start an [`ImportService`] over a test library manager — the shared setup
+/// every import/playback test binary needs, so none of them keep a private copy
+/// that can drift from the others. The cover-art client comes off the manager,
+/// which builds a hermetic one.
 ///
 /// [`ImportService`]: bae_core::import::ImportService
 pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: bae_core::library::LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
-    bae_core::import::ImportService::start(
-        runtime_handle.clone(),
-        library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-    .await
-    .expect("test import service starts")
+    bae_core::import::ImportService::start(runtime_handle.clone(), library_manager)
+        .await
+        .expect("test import service starts")
 }
 
 /// confirmation.
@@ -299,6 +381,13 @@ pub fn test_config_and_keys(
 ) {
     use bae_core::keys::BaeStoreKeysExt;
     bae_core::config::install_test_keyring();
+    // No test has any business reaching api.discogs.com. Point every client
+    // built from here at a port nothing listens on: the seeded session caches
+    // answer what the tests actually assert on, and anything else fails fast
+    // and locally instead of spending a fixture's fake key on a real auth
+    // check — which comes back 401 and marks the stored key rejected for every
+    // later call in the process.
+    bae_core::discogs::client::set_base_url_for_test(Some("http://127.0.0.1:9".to_string()));
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
@@ -370,6 +459,7 @@ pub fn setup_fresh_library(
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
 
     (lm, tmp)

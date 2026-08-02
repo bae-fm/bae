@@ -240,6 +240,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
         let album = DbAlbum {
@@ -383,6 +384,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
         let album = DbAlbum {

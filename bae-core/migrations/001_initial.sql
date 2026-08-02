@@ -342,14 +342,45 @@ CREATE TABLE IF NOT EXISTS artist_images (
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS release_metadata (
-    id TEXT PRIMARY KEY,
-    release_id TEXT NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+-- The documents a metadata lookup returned, keyed by the *source* entity each
+-- one describes rather than by any local release. One store serves both halves
+-- of a release's life: identification writes the rows before it stores the
+-- verdict that names the release, so opening a candidate replays what
+-- identification fetched with no network at all; a committed release reads the
+-- same rows back through its `metadata_source` / `metadata_source_release_id`
+-- pointer, which is how a metadata reset re-projects the seed.
+--
+-- Two candidates that match one release share its row, and a re-fetch upserts
+-- it. NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
+-- device-local convention as `playback_state` and `import_candidate_state` —
+-- these are re-fetchable provider documents, not the user's library.
+--
+-- No foreign key and no cascade: a row outlives whichever candidate or release
+-- caused it to be fetched, and is shared between them. Pruning, if the volume
+-- ever justifies it, attaches to candidate deletion.
+CREATE TABLE IF NOT EXISTS source_release_payloads (
+    -- Which lookup produced this document, and therefore what
+    -- `source_release_id` names:
+    --   'musicbrainz'                     the release itself
+    --   'musicbrainz_release_group'       its release group, by group id
+    --   'discogs'                         a Discogs release
+    --   'discogs_master'                  a Discogs master, by master id
+    --   'musicbrainz_discogs_xref'        the MusicBrainz release cross-linked
+    --                                     to a Discogs one, by the *Discogs*
+    --                                     release id — MusicBrainz's URL lookup
+    --                                     found it, so nothing in the Discogs
+    --                                     document names it back
+    --   'cover_art_archive_release'       the archive's answer for a release
+    --   'cover_art_archive_release_group' the archive's answer for a group
     source TEXT NOT NULL,
-    json TEXT NOT NULL,
+    source_release_id TEXT NOT NULL,
+    -- The document as the provider returned it, except for the two cover-art
+    -- sources: the archive's ordinary "no cover" is a 404 with no body to keep,
+    -- so those rows hold the selected cover, or JSON `null` when it has none.
+    json TEXT NOT NULL CHECK (json_valid(json)),
     fetched_at TEXT NOT NULL,
-    UNIQUE(release_id, source)
-);
+    PRIMARY KEY (source, source_release_id)
+) STRICT;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id);
@@ -444,6 +475,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- `verdict` is `identify::TerminalVerdict`, JSON-encoded by the identify
     -- module that owns the type. Not normalized into columns: the whole set is
     -- a few hundred rows, read in full and classified in Rust.
+    --
+    -- A verdict naming a single match whose `source_tracks` is set is one whose
+    -- lead was settled: the writer buys that release's documents into
+    -- `source_release_payloads` and reads the tracklist out of them before it
+    -- writes this row, so the two land in that order or neither lands. That is
+    -- what lets the confirmation pane open such a candidate with no network.
     verdict                  TEXT CHECK (verdict IS NULL OR json_valid(verdict)),
     -- Sum of the probed durations of the candidate's audio files, in
     -- milliseconds. Per-file durations are not kept here — the Ready gate

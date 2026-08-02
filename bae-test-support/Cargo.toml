@@ -26,6 +26,9 @@ hex = "0.4"
 # For synthesizing a folder-cover image in tests that need a release with art.
 image = { version = "0.25", default-features = false, features = ["png"] }
 lofty = "0.24"
+# The Discogs release fixtures are rendered as the endpoint's own JSON so the
+# production parser is what turns them into a release.
+serde_json = "1.0"
 tempfile = "3.8"
 tokio = { version = "1.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

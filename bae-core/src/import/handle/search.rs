@@ -247,37 +247,28 @@ impl ImportServiceHandle {
     /// whose pipeline never ran — yields the album-level claim, which is the
     /// honest reading of "the user found this themselves".
     ///
-    /// Both fetches go through the network LRU caches, so the worker's later
-    /// commit-time fetch of the same release is a cache hit.
+    /// Both shapes are projected from one set of stored documents, so the
+    /// picker and the commit describe the same release from the same bytes.
     pub async fn prefetch_release(
         &self,
         candidate_key: &str,
         release_id: &str,
         source: MetadataSource,
     ) -> Result<crate::import::search::ImportReleasePrefetch, crate::import::ImportError> {
-        let detail = match source {
-            MetadataSource::MusicBrainz => {
-                crate::import::search::prefetch_mb_release(&self.cover_art_archive, release_id)
-                    .await?
-            }
-            MetadataSource::Discogs => {
-                let client = self.discogs_client()?;
-                crate::import::search::prefetch_discogs_release(&client, release_id).await?
-            }
-        };
-
-        let prepared = crate::import::service::prepare_release(
-            &self.library_manager,
-            &crate::import::MetadataRef::new(release_id, source),
-        )
-        .await?;
+        let release = crate::import::MetadataRef::new(release_id, source);
+        let payloads = self.payloads_for_pick(candidate_key, &release).await?;
+        let detail = payloads.detail()?;
+        let parsed = payloads.parsed(
+            self.library_manager.clock().as_ref(),
+            self.library_manager.ids().as_ref(),
+        )?;
 
         let claim = self.claim_for_pick(
             candidate_key,
             &crate::import::ClaimRelease::from_detail(&detail),
         );
 
-        let seed = crate::import::parsed_album_to_user_edit(&prepared.parsed);
+        let seed = crate::import::parsed_album_to_user_edit(&parsed);
 
         // The seed is what the commit compares against; the detail is what the
         // source said. The two describe the same release and come out the same
@@ -322,6 +313,79 @@ impl ImportServiceHandle {
             claim,
             slots,
         })
+    }
+
+    /// The documents behind a pick, and where they come from.
+    ///
+    /// A pick that is the candidate's settled lead **reads** them: identification
+    /// stored them before it stored the verdict that named this release, so they
+    /// are there, and a miss is a broken invariant rather than a cold cache.
+    /// Re-fetching on a miss would serve the pane and hide the break, so it
+    /// fails instead.
+    ///
+    /// Every other pick — another pressing in a list, a manual search result, a
+    /// release being re-identified — is one identification never fetched. It
+    /// goes through [`crate::import::service::prepare_release`], which reads
+    /// whatever is archived and pays for the rest, so opening it a second time
+    /// is local too.
+    async fn payloads_for_pick(
+        &self,
+        candidate_key: &str,
+        release: &crate::import::MetadataRef,
+    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+        if self.is_settled_lead(candidate_key, release).await? {
+            return crate::import::payloads::load(self.library_manager.database(), release)
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!(
+                        "{candidate_key} settled on {} release {} but nothing stored its lookups",
+                        release.source.as_str(),
+                        release.id
+                    ),
+                });
+        }
+        crate::import::service::prepare_release(
+            &self.library_manager,
+            release,
+            CallPriority::Interactive,
+        )
+        .await
+    }
+
+    /// Whether `release` is the one this candidate's stored verdict settled on:
+    /// its single match, with the source's tracklist already read.
+    ///
+    /// That pairing is what the writers commit together — the tracklist and the
+    /// documents land in the same step, before the verdict — so it is also the
+    /// exact condition under which the documents are guaranteed to be readable.
+    async fn is_settled_lead(
+        &self,
+        candidate_key: &str,
+        release: &crate::import::MetadataRef,
+    ) -> Result<bool, crate::import::ImportError> {
+        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.get_candidate(candidate_key)
+        else {
+            return Ok(false);
+        };
+        let Some(row) = self
+            .library_manager
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await?
+        else {
+            return Ok(false);
+        };
+        let verdict = crate::identify::verdict::decode_stored(&row)
+            .map_err(|detail| crate::import::ImportError::Internal { detail })?;
+        let Some(crate::identify::TerminalVerdict::Found { matches, .. }) = verdict else {
+            return Ok(false);
+        };
+        let [only] = matches.as_slice() else {
+            return Ok(false);
+        };
+        Ok(only.source == release.source
+            && only.release_id == release.id
+            && only.source_tracks.is_some())
     }
 
     /// What picking `release` under `candidate_key` claims, and where its

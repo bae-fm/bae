@@ -1,15 +1,15 @@
 #![cfg(feature = "test-utils")]
 //! Reset metadata to source. Verifies `LibraryManager::reset_metadata_to_source`
-//! re-runs the seeding projection from the cached source data and returns the
-//! projected `ReleaseUserEdit` shape — without writing the DB or touching
-//! identity / metadata-source columns.
+//! re-runs the seeding projection from the archived provider documents and
+//! returns the projected `ReleaseUserEdit` shape — without writing the DB or
+//! touching identity / metadata-source columns.
 use bae_test_support as support;
 
 use bae_core::db::{
-    Database, DbAlbum, DbArtist, DbFile, DbRelease, DbReleaseMetadata, DbTrack, Pressing,
+    Database, DbAlbum, DbArtist, DbFile, DbRelease, DbSourceReleasePayload, DbTrack, Pressing,
     ReleaseMetadataSource,
 };
-use bae_core::import::{MetadataSource, ReleaseIdentity};
+use bae_core::import::{MetadataSource, PayloadSource, ReleaseIdentity};
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
@@ -18,6 +18,19 @@ use std::path::PathBuf;
 use support::{test_config_and_keys, tracing_init};
 use tempfile::TempDir;
 use uuid::Uuid;
+
+/// Archive one provider document under the source entity it describes, as a
+/// fetch would.
+async fn seed_payload(db: &Database, source: PayloadSource, source_release_id: &str, json: String) {
+    db.save_source_release_payloads(&[DbSourceReleasePayload {
+        source,
+        source_release_id: source_release_id.to_string(),
+        json,
+        fetched_at: Utc::now(),
+    }])
+    .await
+    .unwrap();
+}
 
 async fn setup() -> (LibraryManager, Database, TempDir) {
     tracing_init();
@@ -40,6 +53,7 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     (library_manager, database, temp_dir)
 }
@@ -196,9 +210,10 @@ async fn reset_mb_exact_returns_full_pressing_data_from_cache() {
     .await
     .unwrap();
 
-    db.insert_release_metadata(&DbReleaseMetadata::new(
-        &release.id,
-        "musicbrainz",
+    seed_payload(
+        &db,
+        PayloadSource::MusicBrainz,
+        "mb-release-1",
         mb_release_json(
             "mb-release-1",
             "mb-rg-1",
@@ -206,11 +221,8 @@ async fn reset_mb_exact_returns_full_pressing_data_from_cache() {
             "Cached Artist",
             &["Cached Track 1", "Cached Track 2"],
         ),
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    ))
-    .await
-    .unwrap();
+    )
+    .await;
 
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 
@@ -281,9 +293,10 @@ async fn reset_mb_approximate_clears_pressing_fields() {
     .await
     .unwrap();
 
-    db.insert_release_metadata(&DbReleaseMetadata::new(
-        &release.id,
-        "musicbrainz",
+    seed_payload(
+        &db,
+        PayloadSource::MusicBrainz,
+        "mb-release-2",
         mb_release_json(
             "mb-release-2",
             "mb-rg-2",
@@ -291,11 +304,8 @@ async fn reset_mb_approximate_clears_pressing_fields() {
             "Cached Artist",
             &["Cached Track"],
         ),
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    ))
-    .await
-    .unwrap();
+    )
+    .await;
 
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 
@@ -386,9 +396,10 @@ async fn reset_discogs_exact_returns_full_pressing_data_from_cache() {
     .await
     .unwrap();
 
-    db.insert_release_metadata(&DbReleaseMetadata::new(
-        &release.id,
-        "discogs",
+    seed_payload(
+        &db,
+        PayloadSource::Discogs,
+        "12345",
         discogs_release_json(
             12345,
             "Cached Discogs Album",
@@ -400,11 +411,8 @@ async fn reset_discogs_exact_returns_full_pressing_data_from_cache() {
             "JP",
             &["Cached Discogs Track"],
         ),
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    ))
-    .await
-    .unwrap();
+    )
+    .await;
 
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 
@@ -449,9 +457,10 @@ async fn reset_discogs_approximate_clears_pressing_fields() {
     .await
     .unwrap();
 
-    db.insert_release_metadata(&DbReleaseMetadata::new(
-        &release.id,
-        "discogs",
+    seed_payload(
+        &db,
+        PayloadSource::Discogs,
+        "22345",
         discogs_release_json(
             22345,
             "Cached Discogs Album",
@@ -463,11 +472,8 @@ async fn reset_discogs_approximate_clears_pressing_fields() {
             "JP",
             &["Cached Discogs Track"],
         ),
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    ))
-    .await
-    .unwrap();
+    )
+    .await;
 
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 
@@ -592,7 +598,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
 }
 
 #[tokio::test]
-async fn reset_mb_missing_cached_payload_errors() {
+async fn reset_mb_missing_archived_payload_errors() {
     let (lm, db, _tmp) = setup().await;
 
     let artist = make_artist("Artist");
@@ -608,21 +614,25 @@ async fn reset_mb_missing_cached_payload_errors() {
     let err = lm
         .reset_metadata_to_source(&release.id)
         .await
-        .expect_err("missing cached payload should error");
+        .expect_err("a pointer with nothing archived under it should error");
     let msg = err.to_string();
     assert!(
-        msg.contains("no cached MusicBrainz payload"),
+        msg.contains("no archived musicbrainz payload"),
         "unexpected error: {msg}"
+    );
+    assert!(
+        msg.contains("mb-release-missing"),
+        "the error names the source release nothing was archived for: {msg}"
     );
 }
 
 /// `set_identity` can redirect `metadata_source_release_id` to a different
-/// pressing without re-fetching, leaving the `release_metadata` cache
-/// pointing at the *previous* pressing. Reset must refuse to project the
-/// stale payload — silently using it would surface the wrong pressing's
-/// fields without telling the user.
+/// pressing without fetching it. The documents are keyed by the source
+/// release, so the previous pressing's cannot be read in the new one's place:
+/// reset finds nothing under the new pointer and says so, rather than
+/// surfacing the wrong pressing's fields without telling the user.
 #[tokio::test]
-async fn reset_mb_cache_pointer_divergence_errors() {
+async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     let (lm, db, _tmp) = setup().await;
 
     let artist = make_artist("Artist");
@@ -647,33 +657,31 @@ async fn reset_mb_cache_pointer_divergence_errors() {
     .await
     .unwrap();
 
-    // …but the cache still holds pressing X (a previous pressing in the same
-    // group, redirected via `set_identity` without a fresh fetch).
-    db.insert_release_metadata(&DbReleaseMetadata::new(
-        &release.id,
-        "musicbrainz",
+    // …and the only archived document is pressing X's, the one it was pointed
+    // away from. Documents are keyed by the source release, so nothing under Y
+    // was ever written and X's cannot be read in its place.
+    seed_payload(
+        &db,
+        PayloadSource::MusicBrainz,
+        "mb-release-X",
         mb_release_json(
             "mb-release-X",
             "mb-rg-1",
-            "Stale Pressing",
+            "Other Pressing",
             "Artist",
-            &["Stale Track"],
+            &["Other Track"],
         ),
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    ))
-    .await
-    .unwrap();
+    )
+    .await;
 
     let err = lm
         .reset_metadata_to_source(&release.id)
         .await
-        .expect_err("stale cached payload should error");
+        .expect_err("a pointer with no archived payload should error");
     let msg = err.to_string();
     assert!(
-        msg.contains("doesn't match current pointer"),
+        msg.contains("no archived musicbrainz payload"),
         "unexpected error: {msg}"
     );
-    assert!(msg.contains("mb-release-X"), "missing cached id in: {msg}");
     assert!(msg.contains("mb-release-Y"), "missing pointer id in: {msg}");
 }

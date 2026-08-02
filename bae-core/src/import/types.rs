@@ -76,6 +76,105 @@ impl std::str::FromStr for MetadataSource {
     }
 }
 
+/// Which lookup produced a stored document, and therefore which entity's id the
+/// `source_release_payloads` row is keyed by.
+///
+/// Wider than [`MetadataSource`]: identifying one release fetches supporting
+/// documents that belong to other entities — its release group, a Discogs
+/// master, the cover archive's answers — and each is keyed by the entity it
+/// describes so two releases that share one never store it twice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PayloadSource {
+    /// A MusicBrainz release, by release id.
+    MusicBrainz,
+    /// A MusicBrainz release group, by group id.
+    MusicBrainzReleaseGroup,
+    /// A Discogs release, by release id. Also where a MusicBrainz-seeded
+    /// release's cross-reference lands: the id comes out of the stored
+    /// MusicBrainz document's url-rels, which is where it was found in the
+    /// first place.
+    Discogs,
+    /// A Discogs master, by master id — read out of the Discogs release
+    /// document that names it.
+    DiscogsMaster,
+    /// The MusicBrainz release cross-linked to a *Discogs* release, keyed by the
+    /// Discogs release id. Its own key is not derivable the way the reverse
+    /// direction's is: MusicBrainz's URL lookup endpoint found it, and nothing
+    /// in the Discogs document names it back.
+    MusicBrainzDiscogsXref,
+    /// The Cover Art Archive's answer for a MusicBrainz release, by release id.
+    CoverArtRelease,
+    /// The Cover Art Archive's answer for a MusicBrainz release group, by group
+    /// id — the album-level cover, which can differ from any one pressing's.
+    CoverArtReleaseGroup,
+}
+
+impl PayloadSource {
+    /// The stored `source` column value.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::MusicBrainz => "musicbrainz",
+            Self::MusicBrainzReleaseGroup => "musicbrainz_release_group",
+            Self::Discogs => "discogs",
+            Self::DiscogsMaster => "discogs_master",
+            Self::MusicBrainzDiscogsXref => "musicbrainz_discogs_xref",
+            Self::CoverArtRelease => "cover_art_archive_release",
+            Self::CoverArtReleaseGroup => "cover_art_archive_release_group",
+        }
+    }
+
+    /// The payload holding a release's own editorial metadata on `source` — the
+    /// anchor of everything else identification fetched alongside it.
+    pub fn release_of(source: MetadataSource) -> Self {
+        match source {
+            MetadataSource::MusicBrainz => Self::MusicBrainz,
+            MetadataSource::Discogs => Self::Discogs,
+        }
+    }
+}
+
+impl std::str::FromStr for PayloadSource {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "musicbrainz" => Ok(Self::MusicBrainz),
+            "musicbrainz_release_group" => Ok(Self::MusicBrainzReleaseGroup),
+            "discogs" => Ok(Self::Discogs),
+            "discogs_master" => Ok(Self::DiscogsMaster),
+            "musicbrainz_discogs_xref" => Ok(Self::MusicBrainzDiscogsXref),
+            "cover_art_archive_release" => Ok(Self::CoverArtRelease),
+            "cover_art_archive_release_group" => Ok(Self::CoverArtReleaseGroup),
+            _ => Err(format!("unknown payload source: {s}")),
+        }
+    }
+}
+
+impl std::fmt::Display for PayloadSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// One document a metadata lookup returned, carrying the entity it describes so
+/// the store can key it without re-reading it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourcePayload {
+    pub source: PayloadSource,
+    pub source_release_id: String,
+    pub json: String,
+}
+
+impl SourcePayload {
+    pub fn new(source: PayloadSource, source_release_id: impl Into<String>, json: String) -> Self {
+        Self {
+            source,
+            source_release_id: source_release_id.into(),
+            json,
+        }
+    }
+}
+
 impl std::fmt::Display for MetadataSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
@@ -161,8 +260,9 @@ pub enum IdentityChoice {
 /// track edits to existing track IDs in order.
 ///
 /// Identity is out of scope: `release_identities`, `metadata_source`, and
-/// `metadata_source_release_id` are untouched. So are `release_metadata` rows,
-/// so a later re-projection can still re-seed from the original source payload.
+/// `metadata_source_release_id` are untouched. So are the archived provider
+/// documents, so a later re-projection can still re-seed from what the source
+/// said.
 ///
 /// For a release already in the library, `tracks` MUST have the same length as
 /// the release's existing tracks; that editor cannot add or remove tracks

@@ -902,6 +902,12 @@ pub struct LibraryManager {
     /// `change_cover` — reach it through a manager clone, so picking a remote
     /// cover and then importing it downloads once.
     remote_images: crate::import::cover_art::RemoteImageCache,
+    /// The Cover Art Archive lookup client. One instance for the session, held
+    /// here for the same reason `remote_images` is: identification, the sweep's
+    /// settle step, the picker, and the payload store all reach it through a
+    /// manager clone, so one release's cover is looked up once however many of
+    /// them ask.
+    cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
 }
 
 pub fn generate_mcp_token() -> String {
@@ -932,6 +938,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
     ) -> Result<Self, coven::DbError> {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
@@ -1000,6 +1007,7 @@ impl LibraryManager {
             config_handle,
             key_service,
             remote_images: crate::import::cover_art::RemoteImageCache::new(clock.clone()),
+            cover_art_archive,
             clock,
             ids,
             diagnostics,
@@ -1031,6 +1039,7 @@ impl LibraryManager {
         ids: IdRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
+        cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
 
@@ -1054,6 +1063,7 @@ impl LibraryManager {
             config_handle,
             key_service,
             remote_images: crate::import::cover_art::RemoteImageCache::new(clock.clone()),
+            cover_art_archive,
             clock,
             ids,
             diagnostics,
@@ -1166,6 +1176,19 @@ impl LibraryManager {
     /// the app reads through this one instance.
     pub(crate) fn remote_images(&self) -> &crate::import::cover_art::RemoteImageCache {
         &self.remote_images
+    }
+
+    /// The session's Cover Art Archive client. Every cover lookup in the app
+    /// reads through this one instance.
+    pub(crate) fn cover_art_archive(&self) -> &crate::import::cover_art::CoverArtArchiveClient {
+        &self.cover_art_archive
+    }
+
+    /// The session's Cover Art Archive client, for a test that seeds its lookup
+    /// cache so the code under test reads answers instead of the network.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn cover_art_archive_for_test(&self) -> crate::import::cover_art::CoverArtArchiveClient {
+        self.cover_art_archive.clone()
     }
 
     /// The injected telemetry sink. The playback and import services read it

@@ -29,6 +29,7 @@ mod identity;
 // playback clients with no import pipeline.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
+mod payloads;
 mod playback;
 mod release;
 mod track;
@@ -1843,30 +1844,6 @@ fn insert_audio_segment_row(
             segment.end_byte,
             reg,
             segment.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// `INSERT OR REPLACE` a cached `release_metadata` row. Not a synced table —
-/// no `_updated_at` stamp.
-fn insert_release_metadata_row(
-    conn: &SqlContext<'_, '_>,
-    meta: &DbReleaseMetadata,
-) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT OR REPLACE INTO release_metadata (
-            id, release_id, source, json, fetched_at
-        ) VALUES (?, ?, ?, ?, ?)
-        "#,
-        params![
-            meta.id,
-            meta.release_id,
-            meta.source,
-            meta.json,
-            meta.fetched_at.to_rfc3339()
         ],
     )
     .map(|_| ())

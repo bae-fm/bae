@@ -129,6 +129,7 @@ async fn new_manager() -> (LibraryManager, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     (manager, temp)
 }
@@ -982,7 +983,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         created_at: now,
     };
     manager
-        .insert_album_with_release_and_tracks(&album, &release, &[track], &[], &[])
+        .insert_album_with_release_and_tracks(&album, &release, &[track], &[])
         .await
         .unwrap();
 

@@ -39,7 +39,6 @@ impl ImportService {
     pub(super) async fn reconcile_prepared_release(
         &self,
         parsed: crate::import::ParsedAlbum,
-        resolved_metadata: Vec<(String, String)>,
         identity_choice: &crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
@@ -177,7 +176,6 @@ impl ImportService {
             db_release,
             db_tracks,
             remote_cover_image: None,
-            resolved_metadata,
             existing_album_id,
             remapped_track_artists,
             remapped_album_artists,

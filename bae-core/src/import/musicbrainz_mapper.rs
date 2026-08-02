@@ -19,7 +19,6 @@ use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
     label_and_catno, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
 };
-use crate::util::rate_limiter::CallPriority;
 use coven::Clock;
 use coven::IdProvider;
 use std::collections::HashSet;
@@ -141,23 +140,6 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
         work_type: work.work_type.clone(),
         events,
     })
-}
-
-/// Fetch a MusicBrainz release and the raw JSON the import archives with it.
-/// Pure MB: no Discogs client, no cross-ref. The fetch and the archival shape
-/// live in `crate::musicbrainz`, shared with the Discogs → MB cross-reference,
-/// so both entry points write the same `release_metadata` rows.
-///
-/// Cross-referencing into Discogs is a separate step —
-/// `crate::discogs::client::fetch_discogs_xref`. The split keeps prefetch's API
-/// Discogs-free; only commit composes both.
-pub async fn fetch_mb_response(
-    release_id: &str,
-) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), ImportError> {
-    Ok(
-        crate::musicbrainz::fetch_release_with_metadata(release_id, CallPriority::Interactive)
-            .await?,
-    )
 }
 
 /// The pressing a MusicBrainz release describes: its own release date's year, its

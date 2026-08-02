@@ -210,7 +210,8 @@ fn discid_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> Strin
 }
 
 /// A search hit as `ws/2/release?query=…` returns it: no `media`, hence no
-/// lengths and no count — the shape that forces the paid lookup.
+/// lengths and no count, so the Ready rule has nothing to check until the lead
+/// is settled.
 fn search_json(release_id: &str, group_id: &str) -> String {
     format!(
         r#"{{"releases":[{{"id":"{release_id}","title":"Album",
@@ -314,21 +315,18 @@ impl Fixture {
             ids,
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
-        let cover_art = CoverArtArchiveClient::hermetic();
-        let import = crate::import::ImportService::start(
-            tokio::runtime::Handle::current(),
-            manager.clone(),
-            cover_art.clone(),
-        )
-        .await
-        .unwrap();
+        let cover_art = manager.cover_art_archive_for_test();
+        let import =
+            crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
+                .await
+                .unwrap();
         let identify = IdentifyServiceHandle::new(
             manager.clone(),
             tokio::runtime::Handle::current(),
             import.event_sender_for_test(),
-            cover_art.clone(),
         );
         let extraction = ExtractionService::start(
             tokio::runtime::Handle::current(),
@@ -514,6 +512,110 @@ impl Fixture {
         self.stored().await.remove(&hash)
     }
 
+    /// The archived MusicBrainz document for a release, if one was written.
+    async fn archived(&self, release_id: &str) -> Option<String> {
+        self.manager
+            .database_for_test()
+            .load_source_release_payloads(&[(
+                crate::import::PayloadSource::MusicBrainz,
+                release_id.to_string(),
+            )])
+            .await
+            .unwrap()
+            .remove(&(
+                crate::import::PayloadSource::MusicBrainz,
+                release_id.to_string(),
+            ))
+    }
+
+    /// Archive a release's documents directly, as a settle step would have — for
+    /// a test that needs them present without anything having fetched them.
+    async fn archive(&self, release_id: &str, group_id: &str, track_lengths: &[u64]) {
+        let now = crate::db::DbSourceReleasePayload {
+            source: crate::import::PayloadSource::MusicBrainz,
+            source_release_id: release_id.to_string(),
+            json: release_json(release_id, group_id, track_lengths),
+            fetched_at: fixed_now(),
+        };
+        let cover = crate::db::DbSourceReleasePayload {
+            source: crate::import::PayloadSource::CoverArtRelease,
+            source_release_id: release_id.to_string(),
+            json: serde_json::to_string(&Some(crate::import::cover_art::RemoteCover {
+                url: "https://caa.example/front.jpg".to_string(),
+                thumbnail_url: "https://caa.example/front-250.jpg".to_string(),
+                label: "Cover Art Archive".to_string(),
+                source: crate::import::MetadataSource::MusicBrainz,
+            }))
+            .unwrap(),
+            fetched_at: fixed_now(),
+        };
+        let group_cover = crate::db::DbSourceReleasePayload {
+            source: crate::import::PayloadSource::CoverArtReleaseGroup,
+            source_release_id: group_id.to_string(),
+            json: "null".to_string(),
+            fetched_at: fixed_now(),
+        };
+        self.manager
+            .database_for_test()
+            .save_source_release_payloads(&[now, cover, group_cover])
+            .await
+            .unwrap();
+    }
+
+    /// Store the verdict a settled lead produces, without running the pipeline.
+    async fn store_settled_verdict(
+        &self,
+        dir: &Path,
+        release_id: &str,
+        group_id: &str,
+        probed_total_ms: u64,
+    ) {
+        let verdict = TerminalVerdict::Found {
+            matches: vec![MetadataResult {
+                source: crate::import::MetadataSource::MusicBrainz,
+                release_id: release_id.to_string(),
+                title: "Album".to_string(),
+                artist: Some("Artist".to_string()),
+                year: None,
+                format: None,
+                label: None,
+                catalog_number: None,
+                country: None,
+                cover_art: None,
+                source_group_id: Some(group_id.to_string()),
+                source_tracks: Some(SourceTracks::Listed {
+                    count: 2,
+                    total_duration_ms: Some(probed_total_ms),
+                }),
+            }],
+            track_count: 2,
+            group: crate::identify::combine::GroupKey {
+                source: crate::import::MetadataSource::MusicBrainz,
+                source_group_id: group_id.to_string(),
+            },
+            provenance: vec![crate::identify::combine::ResultProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                matches_catalog: false,
+            }],
+        };
+        let wrote = self
+            .import
+            .save_candidate_verdict_if_current(
+                &dir.to_string_lossy(),
+                &NewImportCandidateVerdict {
+                    content_hash: self.content_hash(dir),
+                    folder_path: dir.to_string_lossy().into_owned(),
+                    verdict: serde_json::to_string(&verdict).unwrap(),
+                    probed_total_duration_ms: probed_total_ms as i64,
+                    expected_edit_revision: 0,
+                },
+            )
+            .await
+            .unwrap();
+        assert!(wrote, "the seeded verdict lands");
+    }
+
     /// The classification a sidebar would derive from a stored row — the stored
     /// verdict plus a live library check, never a stored classification.
     async fn classification_for(&self, dir: &Path) -> QueueClassification {
@@ -576,11 +678,20 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-ready-1"), None, None);
+        .seed_lookup(Some("mb-ready-1"), Some("rg-ready-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json(
+            "mb-ready-1",
+            "rg-ready-1",
+            &[probed / 2, probed - probed / 2],
+        ),
+    );
+    fixture.provider.route(
+        "/release/mb-ready-1?",
+        200,
+        release_json(
             "mb-ready-1",
             "rg-ready-1",
             &[probed / 2, probed - probed / 2],
@@ -627,11 +738,16 @@ async fn a_stored_verdict_is_not_re_fetched() {
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-cached-1"), None, None);
+        .seed_lookup(Some("mb-cached-1"), Some("rg-cached-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-cached-1", "rg-cached-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-cached-1?",
+        200,
+        release_json("mb-cached-1", "rg-cached-1", &[probed, 0]),
     );
     fixture.scan(1).await;
 
@@ -670,7 +786,7 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-retry-1"), None, None);
+        .seed_lookup(Some("mb-retry-1"), Some("rg-retry-1"), None);
     fixture
         .provider
         .set_routes(vec![("/discid/", 400, "{}".to_string())]);
@@ -682,11 +798,18 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
         "a failed lookup must leave no row — a stored failure is a stored answer"
     );
 
-    fixture.provider.set_routes(vec![(
-        "/discid/",
-        200,
-        discid_json("mb-retry-1", "rg-retry-1", &[probed, 0]),
-    )]);
+    fixture.provider.set_routes(vec![
+        (
+            "/discid/",
+            200,
+            discid_json("mb-retry-1", "rg-retry-1", &[probed, 0]),
+        ),
+        (
+            "/release/mb-retry-1?",
+            200,
+            release_json("mb-retry-1", "rg-retry-1", &[probed, 0]),
+        ),
+    ]);
     fixture.sweep_once().await;
 
     assert!(
@@ -737,10 +860,17 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         200,
         discid_json("mb-flood-0", "rg-flood-0", &[probed, 0]),
     );
+    fixture.provider.route(
+        "/release/mb-flood-0?",
+        200,
+        release_json("mb-flood-0", "rg-flood-0", &[probed, 0]),
+    );
     fixture
         .provider
         .route("/release?", 200, search_json("mb-typed", "rg-typed"));
-    fixture.cover_art.seed_lookup(Some("mb-typed"), None, None);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-typed"), Some("rg-typed"), None);
     fixture.scan(8).await;
 
     let context = fixture.context();
@@ -908,17 +1038,18 @@ fn a_count_disagreement_is_named_as_one() {
     );
 }
 
-// ── 6. The paid lookup, and who never pays it ───────────────────────────────
+// ── 6. Settling a lead ──────────────────────────────────────────────────────
 
-/// One `lookup_release_by_id` for a single match that arrived without a
-/// tracklist, and none at all for one that arrived with it.
+/// One release lookup per settled lead, whichever signal found it.
 ///
-/// Both candidates are swept in the same pass, so the assertion is about which
-/// of them cost a release lookup, not about whether release lookups happen.
+/// The disc-ID response already carries a tracklist, but not the rest of what
+/// opening the candidate needs — the release-level relations the commit maps,
+/// the release group, the cover options. A lead is settled by fetching the
+/// release itself, once, and both candidates in this pass cost exactly that.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn the_paid_lookup_is_spent_only_on_a_non_disc_id_single_result() {
-    let fixture = Fixture::new("paid-lookup").await;
+async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
+    let fixture = Fixture::new("settle-lead").await;
     fixture
         .extraction
         .register_analyzer(Arc::new(BarcodeAnalyzer {
@@ -928,8 +1059,13 @@ async fn the_paid_lookup_is_spent_only_on_a_non_disc_id_single_result() {
     let barcode_dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&disc_dir);
 
-    for id in ["mb-disc-1", "mb-barcode-1"] {
-        fixture.cover_art.seed_lookup(Some(id), None, None);
+    for (id, group) in [("mb-disc-1", "rg-disc-1"), ("mb-barcode-1", "rg-barcode-1")] {
+        fixture.cover_art.seed_lookup(Some(id), Some(group), None);
+        fixture.provider.route(
+            &format!("/release/{id}?"),
+            200,
+            release_json(id, group, &[probed, 0]),
+        );
     }
     fixture.provider.route(
         "/discid/",
@@ -941,26 +1077,20 @@ async fn the_paid_lookup_is_spent_only_on_a_non_disc_id_single_result() {
         200,
         search_json("mb-barcode-1", "rg-barcode-1"),
     );
-    fixture.provider.route(
-        "/release/mb-barcode-1?",
-        200,
-        release_json("mb-barcode-1", "rg-barcode-1", &[probed, 0]),
-    );
     fixture.scan(2).await;
 
     fixture.sweep_once().await;
 
     assert_eq!(
         fixture.count_release_lookups("mb-disc-1"),
-        0,
-        "a disc-ID match already carries its tracklist; buying it again is the \
-         cost the free path exists to avoid: {:?}",
+        1,
+        "the disc-ID lead is settled once: {:?}",
         fixture.provider.requests()
     );
     assert_eq!(
         fixture.count_release_lookups("mb-barcode-1"),
         1,
-        "a search result carries no lengths, so it costs exactly one lookup: {:?}",
+        "and so is the search lead: {:?}",
         fixture.provider.requests()
     );
     assert_eq!(
@@ -969,28 +1099,82 @@ async fn the_paid_lookup_is_spent_only_on_a_non_disc_id_single_result() {
     );
     assert_eq!(
         fixture.classification_for(&barcode_dir).await,
-        QueueClassification::Ready,
-        "the paid lookup is what admits the barcode match"
+        QueueClassification::Ready
     );
 }
 
-/// Opening a candidate never buys anything. The interactive path drives the
-/// same pipeline to the same `Found`, and the release lookup the sweep would
-/// have spent is not spent here — a person waits for their candidate's identity,
-/// never for a background classification.
+/// The write ordering, from the outside: a stored verdict's lead always has its
+/// documents alongside it, because the settle step writes them first and the
+/// verdict is not written at all when it fails.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn an_interactively_opened_candidate_never_pays_for_the_lookup() {
-    let fixture = Fixture::new("interactive-no-paid").await;
+async fn a_settled_verdict_never_stores_without_its_documents() {
+    let fixture = Fixture::new("settle-ordering").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-order-1"), Some("rg-order-1"), None);
+    // The disc-ID lookup answers; the release lookup that settles the lead does
+    // not. The verdict is reachable, and must still not be stored.
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-order-1", "rg-order-1", &[probed, 0]),
+    );
+    fixture.provider.route("/release/mb-order-1?", 400, "{}");
+    fixture.scan(1).await;
+
+    fixture.sweep_once().await;
+
+    assert!(
+        fixture.stored_for(&dir).await.is_none(),
+        "a lead whose documents could not be fetched stores no verdict"
+    );
+    assert!(
+        fixture.archived("mb-order-1").await.is_none(),
+        "and nothing half-written is left behind"
+    );
+
+    // The provider comes back, and now both land together.
+    fixture.provider.set_routes(vec![
+        (
+            "/discid/",
+            200,
+            discid_json("mb-order-1", "rg-order-1", &[probed, 0]),
+        ),
+        (
+            "/release/mb-order-1?",
+            200,
+            release_json("mb-order-1", "rg-order-1", &[probed, 0]),
+        ),
+    ]);
+    fixture.sweep_once().await;
+
+    assert!(fixture.stored_for(&dir).await.is_some(), "the retry stores");
+    assert!(
+        fixture.archived("mb-order-1").await.is_some(),
+        "with the documents the verdict rests on"
+    );
+}
+
+/// Opening a candidate settles it too. A person's own run answers the candidate
+/// for good, and "answered" means the next launch opens it with no network —
+/// so the same step runs here, before the verdict is written.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
+    let fixture = Fixture::new("interactive-settles").await;
     fixture
         .extraction
         .register_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: "0123456789012".to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
+    let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-interactive-1"), None, None);
+        .seed_lookup(Some("mb-interactive-1"), Some("rg-interactive-1"), None);
     fixture.provider.route(
         "/release?",
         200,
@@ -999,239 +1183,178 @@ async fn an_interactively_opened_candidate_never_pays_for_the_lookup() {
     fixture.provider.route(
         "/release/mb-interactive-1?",
         200,
-        release_json("mb-interactive-1", "rg-interactive-1", &[1, 1]),
+        release_json("mb-interactive-1", "rg-interactive-1", &[probed, 0]),
     );
     fixture.scan(1).await;
 
     // Exactly what `selectCandidate` does.
-    let key = dir.to_string_lossy().into_owned();
-    let mut events = fixture.import.subscribe_events();
     fixture.select(&dir);
-
-    let found = tokio::time::timeout(Duration::from_secs(20), async {
-        loop {
-            match events.recv().await.expect("bus stays open") {
-                ImportEvent::IdentifyStateChanged {
-                    candidate_key,
-                    state,
-                    ..
-                } if candidate_key == key && state.is_terminal() => return state,
-                _ => continue,
-            }
-        }
-    })
-    .await
-    .expect("the interactive run settles");
-
-    assert!(
-        matches!(found, IdentifyState::Found { .. }),
-        "the interactive path reaches the same single match, got {found:?}"
-    );
-    assert_eq!(
-        fixture.count_release_lookups("mb-interactive-1"),
-        0,
-        "nothing on an opened candidate's path buys the source's tracklist: {:?}",
-        fixture.provider.requests()
-    );
-    // The verdict itself does persist — opening a candidate answers it for
-    // good, not only for this session — with the tracklist still unbought.
-    let row = tokio::time::timeout(Duration::from_secs(5), fixture.await_row(&dir))
+    let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
         .await
         .expect("the selection recorder stores the verdict");
+
     let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
     let TerminalVerdict::Found { matches, .. } = &verdict else {
         panic!("expected a single-match Found, got {verdict:?}");
     };
-    assert_eq!(matches[0].source_tracks, None, "nobody paid for it here");
-    assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(NeedsYou::SourceLengthsUnknown),
-        "so it is not admitted to Ready on evidence nobody checked"
-    );
-}
-
-/// The row a person's own run wrote still owes the paid lookup, and the sweep
-/// pays it without re-identifying anything: one release lookup, no disc-ID or
-/// search request, and the candidate is promoted to Ready.
-///
-/// Without the top-up this row would be "answered" forever and stay at
-/// `SourceLengthsUnknown` — skipped by every later pass, never reaching the one
-/// lookup that would settle it.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn the_sweep_tops_up_a_verdict_an_interactive_run_left_unverified() {
-    let fixture = Fixture::new("top-up").await;
-    fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
-    let dir = fixture.barcode_candidate("From Barcode");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-topup-1"), None, None);
-    fixture
-        .provider
-        .route("/release?", 200, search_json("mb-topup-1", "rg-topup-1"));
-    fixture.provider.route(
-        "/release/mb-topup-1?",
-        200,
-        release_json("mb-topup-1", "rg-topup-1", &[probed, 0]),
-    );
-    fixture.scan(1).await;
-
-    fixture.select(&dir);
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
-        .await
-        .expect("the interactive run stores an unverified verdict");
-    assert_eq!(
-        fixture.count_release_lookups("mb-topup-1"),
-        0,
-        "the person's own path bought nothing"
-    );
-    let after_selection = fixture.provider.requests().len();
-
-    fixture.sweep_once().await;
-
-    assert_eq!(
-        fixture.count_release_lookups("mb-topup-1"),
-        1,
-        "the sweep pays for the tracklist exactly once"
-    );
-    let bought: Vec<String> = fixture.provider.requests().split_off(after_selection);
     assert!(
-        bought
-            .iter()
-            .all(|target| target.starts_with("/release/") || target.starts_with("/release-group/")),
-        "the sweep identifies nothing again — no disc-ID lookup, no search: {bought:?}"
+        matches[0].source_tracks.is_some(),
+        "the lead was settled before the verdict was written"
     );
-    assert_eq!(
-        bought.len(),
-        2,
-        "one `lookup_release_by_id`, which is the release plus the release-group \
-         hop it makes when the release carries no Discogs url-rel: {bought:?}"
+    assert!(
+        fixture.archived("mb-interactive-1").await.is_some(),
+        "and its documents are archived under the release they describe"
     );
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::Ready,
-        "the top-up is what promotes it"
+        "so the row is admitted on evidence that was actually checked"
     );
 
+    // A later sweep pass finds nothing left to buy.
+    let after_selection = fixture.provider.requests().len();
     fixture.sweep_once().await;
     assert_eq!(
-        fixture.count_release_lookups("mb-topup-1"),
-        1,
-        "and a finished row is never topped up again"
+        fixture.provider.requests().len(),
+        after_selection,
+        "a settled row is finished: {:?}",
+        fixture.provider.requests()
     );
 }
 
+/// The receipt for "so ready it is offline": a candidate whose lead is settled
+/// opens with nothing routed and no cover-art answer seeded — the hermetic
+/// client would panic on a live lookup, and the provider would answer 404. The
+/// release id is this test's own, so no session cache holds it either.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn skipping_during_a_paid_top_up_cannot_replace_the_stored_verdict() {
-    let fixture = Fixture::new("skip-paid-top-up").await;
-    fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
-    let dir = fixture.barcode_candidate("Candidate");
+async fn a_settled_candidate_opens_with_the_provider_gone() {
+    let fixture = Fixture::new("offline-open").await;
+    let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-skip-topup"), None, None);
-    fixture.provider.route(
-        "/release?",
-        200,
-        search_json("mb-skip-topup", "rg-skip-topup"),
-    );
-    fixture.provider.route(
-        "/release/mb-skip-topup?",
-        200,
-        release_json("mb-skip-topup", "rg-skip-topup", &[probed, 0]),
-    );
     fixture.scan(1).await;
-    fixture.select(&dir);
-    let before = fixture.await_row(&dir).await;
-    let before_verdict = identify_result(&before).verdict.clone();
 
-    fixture.provider.hold("/release/mb-skip-topup?");
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
-    wait_for_request(&fixture.provider, "/release/mb-skip-topup?", 1).await;
+    // Nothing is routed and nothing is seeded: the archived documents are the
+    // only place this release exists.
     fixture
-        .import
-        .set_candidate_skipped(dir.to_string_lossy().into_owned(), true)
-        .await
-        .unwrap();
-    fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(10), pass)
-        .await
-        .expect("pass finishes after the skipped top-up")
-        .unwrap();
+        .archive("mb-offline-1", "rg-offline-1", &[probed, 0])
+        .await;
+    fixture
+        .store_settled_verdict(&dir, "mb-offline-1", "rg-offline-1", probed)
+        .await;
+    let before = fixture.provider.requests().len();
 
-    let after = fixture
-        .stored_for(&dir)
+    let prefetch = fixture
+        .import
+        .prefetch_release(
+            &dir.to_string_lossy(),
+            "mb-offline-1",
+            crate::import::MetadataSource::MusicBrainz,
+        )
         .await
-        .expect("prior verdict remains");
-    assert_eq!(identify_result(&after).verdict, before_verdict);
+        .expect("a settled candidate opens from what identification archived");
+
+    assert_eq!(prefetch.detail.release_id, "mb-offline-1");
+    assert_eq!(prefetch.detail.tracks.len(), 2);
+    assert_eq!(prefetch.seed.tracks.len(), 2);
+    assert_eq!(
+        prefetch.detail.cover_art.len(),
+        1,
+        "the archive's answer for the pressing rides along"
+    );
+    assert_eq!(
+        fixture.provider.requests().len(),
+        before,
+        "opening it reached the wire for nothing: {:?}",
+        fixture.provider.requests()
+    );
 }
 
+/// A settled lead whose documents are missing is a broken invariant, not a cold
+/// cache. Opening it fails loudly rather than re-fetching and hiding the break.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_paid_top_up_uses_an_eligible_duplicate_if_its_first_path_is_skipped() {
-    let fixture = Fixture::new("top-up-duplicate-rehome").await;
+async fn a_settled_lead_with_no_documents_fails_loud() {
+    let fixture = Fixture::new("offline-miss").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
-    let first = fixture.barcode_candidate("First");
-    let second = fixture.barcode_candidate("Second");
-    assert_eq!(fixture.content_hash(&first), fixture.content_hash(&second));
-    let probed = fixture.probed_total_ms(&first);
+        .store_settled_verdict(&dir, "mb-missing-1", "rg-missing-1", probed)
+        .await;
+
+    let error = fixture
+        .import
+        .prefetch_release(
+            &dir.to_string_lossy(),
+            "mb-missing-1",
+            crate::import::MetadataSource::MusicBrainz,
+        )
+        .await
+        .expect_err("a settled lead with nothing archived must not silently re-fetch");
+
+    assert!(
+        matches!(&error, crate::import::ImportError::Internal { detail }
+            if detail.contains("mb-missing-1")),
+        "unexpected error: {error}"
+    );
+}
+
+/// A pick identification never made — another pressing on the list, a manual
+/// search hit — fetches, and archives what it fetched, so opening it again is
+/// local too.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
+    let fixture = Fixture::new("manual-pick").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
     fixture
         .cover_art
-        .seed_lookup(Some("mb-duplicate-topup"), None, None);
+        .seed_lookup(Some("mb-manual-1"), Some("rg-manual-1"), None);
     fixture.provider.route(
-        "/release?",
+        "/release/mb-manual-1?",
         200,
-        search_json("mb-duplicate-topup", "rg-duplicate-topup"),
+        release_json("mb-manual-1", "rg-manual-1", &[probed, 0]),
     );
-    fixture.provider.route(
-        "/release/mb-duplicate-topup?",
-        200,
-        release_json("mb-duplicate-topup", "rg-duplicate-topup", &[probed, 0]),
-    );
-    fixture.scan(2).await;
-    fixture.select(&first);
-    fixture.await_row(&first).await;
 
-    fixture.provider.hold("/release/mb-duplicate-topup?");
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
-    wait_for_request(&fixture.provider, "/release/mb-duplicate-topup?", 1).await;
+    assert!(
+        fixture.archived("mb-manual-1").await.is_none(),
+        "nothing has fetched this release yet"
+    );
+
     fixture
         .import
-        .set_candidate_skipped(first.to_string_lossy().into_owned(), true)
+        .prefetch_release(
+            &dir.to_string_lossy(),
+            "mb-manual-1",
+            crate::import::MetadataSource::MusicBrainz,
+        )
         .await
-        .unwrap();
-    fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(10), pass)
-        .await
-        .expect("duplicate top-up pass finishes")
-        .unwrap();
+        .expect("a manual pick fetches");
 
-    let row = fixture
-        .stored_for(&second)
-        .await
-        .expect("shared row remains");
-    let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
     assert!(
-        !owes_source_tracks(&verdict),
-        "the eligible duplicate commits the paid answer"
+        fixture.archived("mb-manual-1").await.is_some(),
+        "and archives the release it fetched"
+    );
+
+    // Re-opening it costs nothing.
+    let before = fixture.provider.requests().len();
+    fixture
+        .import
+        .prefetch_release(
+            &dir.to_string_lossy(),
+            "mb-manual-1",
+            crate::import::MetadataSource::MusicBrainz,
+        )
+        .await
+        .expect("re-opening reads what the first open archived");
+    assert_eq!(
+        fixture.provider.requests().len(),
+        before,
+        "the second open reached the wire: {:?}",
+        fixture.provider.requests()
     );
 }
 
@@ -1245,11 +1368,16 @@ async fn a_skipped_candidate_is_not_swept() {
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-skipped-1"), None, None);
+        .seed_lookup(Some("mb-skipped-1"), Some("rg-skipped-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-skipped-1", "rg-skipped-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-skipped-1?",
+        200,
+        release_json("mb-skipped-1", "rg-skipped-1", &[probed, 0]),
     );
     fixture.scan(1).await;
     fixture
@@ -1273,7 +1401,7 @@ async fn a_skipped_candidate_is_not_swept() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up() {
+async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
     let fixture = Fixture::new("unskip-mid-pass").await;
     fixture
         .extraction
@@ -1286,10 +1414,10 @@ async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up(
     let probed = fixture.probed_total_ms(&running);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-unskip-stored"), None, None);
+        .seed_lookup(Some("mb-unskip-stored"), Some("rg-unskip-stored"), None);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-unskip-running"), None, None);
+        .seed_lookup(Some("mb-unskip-running"), Some("rg-unskip-running"), None);
     fixture.provider.route(
         "/release?",
         200,
@@ -1304,6 +1432,11 @@ async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up(
         "/discid/",
         200,
         discid_json("mb-unskip-running", "rg-unskip-running", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-unskip-running?",
+        200,
+        release_json("mb-unskip-running", "rg-unskip-running", &[probed, 0]),
     );
     fixture.scan(2).await;
     fixture.select(&stored);
@@ -1336,7 +1469,8 @@ async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up(
         .await
         .expect("stored row remains");
     let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
-    assert!(!owes_source_tracks(&verdict));
+    assert!(matches!(&verdict, TerminalVerdict::Found { matches, .. }
+        if matches[0].source_tracks.is_some()));
     let progress: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -1388,11 +1522,16 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
     let probed = fixture.probed_total_ms(&remaining);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-import-progress"), None, None);
+        .seed_lookup(Some("mb-import-progress"), Some("rg-import-progress"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-import-progress", "rg-import-progress", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-import-progress?",
+        200,
+        release_json("mb-import-progress", "rg-import-progress", &[probed, 0]),
     );
     fixture.scan(2).await;
     fixture.provider.hold("/discid/");
@@ -1446,7 +1585,7 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     let hash = fixture.content_hash(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-mid-write"), None, None);
+        .seed_lookup(Some("mb-mid-write"), Some("rg-mid-write"), None);
     fixture.provider.route(
         "/release?",
         200,
@@ -1495,11 +1634,18 @@ async fn progress_carries_both_counts() {
     let second = fixture.disc_id_candidate("Album Two");
     std::fs::write(second.join("notes.txt"), "different bytes").unwrap();
     let probed = fixture.probed_total_ms(&first);
-    fixture.cover_art.seed_lookup(Some("mb-prog-1"), None, None);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-prog-1"), Some("rg-prog-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-prog-1", "rg-prog-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-prog-1?",
+        200,
+        release_json("mb-prog-1", "rg-prog-1", &[probed, 0]),
     );
     fixture.scan(2).await;
 
@@ -1548,11 +1694,16 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-progress-commit"), None, None);
+        .seed_lookup(Some("mb-progress-commit"), Some("rg-progress-commit"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-progress-commit", "rg-progress-commit", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-progress-commit?",
+        200,
+        release_json("mb-progress-commit", "rg-progress-commit", &[probed, 0]),
     );
     fixture.scan(1).await;
 
@@ -1593,11 +1744,18 @@ async fn only_a_watched_run_invalidates_the_ui() {
     let fixture = Fixture::new("ui-invalidation").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.cover_art.seed_lookup(Some("mb-ui-1"), None, None);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-ui-1"), Some("rg-ui-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-ui-1", "rg-ui-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-ui-1?",
+        200,
+        release_json("mb-ui-1", "rg-ui-1", &[probed, 0]),
     );
     fixture.scan(1).await;
 
@@ -1711,11 +1869,18 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     let fixture = Fixture::new("no-driver-left").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.cover_art.seed_lookup(Some("mb-drv-1"), None, None);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-drv-1"), Some("rg-drv-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-drv-1", "rg-drv-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-drv-1?",
+        200,
+        release_json("mb-drv-1", "rg-drv-1", &[probed, 0]),
     );
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
@@ -1837,7 +2002,7 @@ async fn the_sweep_leaves_a_candidate_the_user_has_open_alone() {
 }
 
 /// Teardown writes nothing. The token is re-checked immediately before the
-/// write, so a cancellation landing during the paid lookup that precedes it
+/// write, so a cancellation landing during the settle lookup that precedes it
 /// cannot leave a row behind.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
@@ -1847,11 +2012,16 @@ async fn a_cancelled_candidate_writes_no_row() {
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .cover_art
-        .seed_lookup(Some("mb-cancel-1"), None, None);
+        .seed_lookup(Some("mb-cancel-1"), Some("rg-cancel-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-cancel-1", "rg-cancel-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-cancel-1?",
+        200,
+        release_json("mb-cancel-1", "rg-cancel-1", &[probed, 0]),
     );
     fixture.scan(1).await;
     // Hold the disc-ID response, so the cancel lands while the candidate is
@@ -1914,13 +2084,20 @@ async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
     let fixture = Fixture::new("malformed-late-row").await;
     let running = fixture.disc_id_candidate("Running");
     let probed = fixture.probed_total_ms(&running);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-malformed-running"), None, None);
+    fixture.cover_art.seed_lookup(
+        Some("mb-malformed-running"),
+        Some("rg-malformed-running"),
+        None,
+    );
     fixture.provider.route(
         "/discid/",
         200,
         discid_json("mb-malformed-running", "rg-malformed-running", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-malformed-running?",
+        200,
+        release_json("mb-malformed-running", "rg-malformed-running", &[probed, 0]),
     );
     fixture.scan(1).await;
 
@@ -1979,50 +2156,6 @@ fn duplicate_content_hashes_share_one_identify_job() {
     let planned = plan(vec![first, second], &stored, 2);
     assert!(planned.identify.is_empty());
     assert_eq!(planned.identified, 2);
-}
-
-#[test]
-fn equivalent_late_candidates_share_one_top_up_job() {
-    let first = synthetic_candidate("/first", 321);
-    let second = synthetic_candidate("/second", 321);
-    let row = row_with_verdict(
-        &first,
-        serde_json::to_string(&found_verdict(2, None)).unwrap(),
-    );
-    let mut pending = VecDeque::new();
-    let mut queued = HashSet::new();
-
-    enqueue_top_up(
-        &mut pending,
-        &mut queued,
-        row.clone(),
-        candidate_identity(&first),
-    );
-    enqueue_top_up(&mut pending, &mut queued, row, candidate_identity(&second));
-
-    assert_eq!(pending.len(), 1);
-}
-
-/// The top-up predicate, at the level where it is decided. "Nobody asked"
-/// (`None`) owes a lookup; "asked, and the source lists nothing" does not — that
-/// distinction is what stops the sweep re-buying the same empty answer on every
-/// launch.
-#[test]
-fn only_an_unasked_single_match_owes_the_paid_lookup() {
-    let asked = SourceTracks::Listed {
-        count: 2,
-        total_duration_ms: Some(10_000),
-    };
-    assert!(owes_source_tracks(&found_verdict(2, None)));
-    assert!(!owes_source_tracks(&found_verdict(2, Some(asked))));
-    assert!(
-        !owes_source_tracks(&found_verdict(2, Some(SourceTracks::Nothing))),
-        "the source answered; there is nothing left to ask"
-    );
-    assert!(
-        !owes_source_tracks(&TerminalVerdict::NotFoundAnywhere),
-        "only a single match is worth paying for"
-    );
 }
 
 // ── Synthetic candidates, for the pure planning tests ───────────────────────

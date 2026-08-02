@@ -97,6 +97,7 @@ async fn import_single_m4a_fixture(
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
@@ -329,6 +330,7 @@ async fn import_cue_alac_pair() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
 
     let discogs_release = make_discogs_release(
