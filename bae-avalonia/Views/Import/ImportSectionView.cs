@@ -299,8 +299,8 @@ internal sealed class ImportSectionView : UserControl
         _tabBarHost.Children.Clear();
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
         var counts = _import.TriageQueue.Counts;
-        AddTabSegment(row, 0, BridgeTriageTab.Ready, Loc.Chrome("import.tab.ready"), counts.Ready);
-        AddTabSegment(row, 1, BridgeTriageTab.NeedsYou, Loc.Chrome("import.tab.needs_you"), counts.NeedsYou);
+        AddTabSegment(row, 0, BridgeTriageTab.NeedsYou, Loc.Chrome("import.tab.needs_you"), counts.NeedsYou);
+        AddTabSegment(row, 1, BridgeTriageTab.Ready, Loc.Chrome("import.tab.ready"), counts.Ready);
         AddTabSegment(row, 2, BridgeTriageTab.Done, Loc.Chrome("import.tab.done"), counts.Done);
         AddTabSegment(row, 3, BridgeTriageTab.Skipped, Loc.Chrome("import.tab.skipped"), counts.Skipped);
         _tabBarHost.Children.Add(row);

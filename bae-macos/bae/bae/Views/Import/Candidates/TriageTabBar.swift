@@ -12,8 +12,8 @@ struct TriageTabBar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            segment(.ready, "Ready", Int(counts.ready))
             segment(.needsYou, "Needs You", Int(counts.needsYou))
+            segment(.ready, "Ready", Int(counts.ready))
             segment(.done, "Done", Int(counts.done))
             segment(.skipped, "Skipped", Int(counts.skipped))
         }
@@ -31,6 +31,8 @@ struct TriageTabBar: View {
             HStack(spacing: 4) {
                 Text(label)
                     .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Text(verbatim: count.formatted())
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
