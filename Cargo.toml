@@ -58,27 +58,24 @@ debug = "line-tables-only"
 [profile.dev.package.ebur128]
 opt-level = 3
 
-# Fork carrying two Swift template fixes we plan to upstream:
-# - `nonisolated(unsafe)` on callback `vtablePtr` for Swift 6 strict
-#   concurrency
-# - Swift `Task.cancel()` propagation through `withTaskCancellationHandler`
-#   into Rust drop
-# Branch is based on the v0.31.1 tag (not mozilla/main HEAD) so its
-# manifest version matches what bae's resolver picks. Drop these `[patch]`
-# entries once both upstream PRs land and a uniffi release ships with
-# them.
+# Fork carrying the Swift `Task.cancel()` propagation work we're upstreaming
+# (mozilla/uniffi-rs PR branch): cancellation flows through
+# `withTaskCancellationHandler` into Rust drop, opted into per function with
+# `#[uniffi::export(cancellable)]`. The branch is mozilla/main plus those
+# commits, so bae dogfoods exactly what upstream is reviewing. Drop these
+# `[patch]` entries once the PR lands and a uniffi release ships with it.
 #
 # On uniffi bump: regenerate bindings, then confirm
 # `bae-macos/bae/bae/bae_bridge.swift` still contains
-# `withTaskCancellationHandler` and `cancelFunc:`. If the upstream Swift
-# template changed shape, the bae-fm fork needs rebasing.
+# `uniffiRustCallAsyncCancellable` and `cancelFunc:`. If the upstream Swift
+# template changed shape, the branch needs rebasing.
 [patch.crates-io]
-uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-uniffi_internal_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-uniffi_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
+uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
+uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
+uniffi_internal_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
+uniffi_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 
-uniffi_meta = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-uniffi_pipeline = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-uniffi_udl = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_meta = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
+uniffi_pipeline = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
+uniffi_udl = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }

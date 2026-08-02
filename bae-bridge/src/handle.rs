@@ -61,7 +61,7 @@ impl Deref for AppHandle {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     // =========================================================================
     // Library
@@ -430,26 +430,6 @@ impl AppHandle {
 
     pub fn set_shuffle(&self, on: bool) {
         self.services.playback().set_shuffle(on);
-    }
-
-    /// Graceful shutdown: saves playback state to disk, then stops the playback service.
-    pub async fn shutdown(&self) {
-        #[cfg(feature = "desktop")]
-        {
-            self.app.shutdown_mcp();
-            self.app.shutdown_subsonic();
-            self.services.playback().shutdown().await;
-        }
-        #[cfg(not(feature = "desktop"))]
-        self.services.playback().shutdown().await;
-    }
-
-    /// Persist the current playback state without stopping playback. Mobile
-    /// calls this when the app is backgrounded so the queue, current track, and
-    /// position survive a later cold launch — it can't call `shutdown`, which
-    /// would stop the background audio.
-    pub async fn save_playback_state(&self) {
-        self.services.playback().save_state().await;
     }
 
     // =========================================================================
@@ -979,6 +959,35 @@ impl AppHandle {
     }
 }
 
+/// Playback-state persistence, deliberately **not** `cancellable`.
+///
+/// Both of these write playback state to disk and must run to completion: dropping the
+/// future partway leaves the queue, current track, and position unwritten, so the next cold
+/// launch silently restores stale state. `BaeApp`'s `ShutdownRace` relies on this — it lets
+/// the losing task keep running rather than cancelling it.
+#[uniffi::export(async_runtime = "tokio")]
+impl AppHandle {
+    /// Graceful shutdown: saves playback state to disk, then stops the playback service.
+    pub async fn shutdown(&self) {
+        #[cfg(feature = "desktop")]
+        {
+            self.app.shutdown_mcp();
+            self.app.shutdown_subsonic();
+            self.services.playback().shutdown().await;
+        }
+        #[cfg(not(feature = "desktop"))]
+        self.services.playback().shutdown().await;
+    }
+
+    /// Persist the current playback state without stopping playback. Mobile
+    /// calls this when the app is backgrounded so the queue, current track, and
+    /// position survive a later cold launch — it can't call `shutdown`, which
+    /// would stop the background audio.
+    pub async fn save_playback_state(&self) {
+        self.services.playback().save_state().await;
+    }
+}
+
 #[cfg(feature = "desktop")]
 impl BridgeMcpServerStatus {
     fn from_core(status: bae_desktop::McpServerStatus) -> Self {
@@ -1069,7 +1078,7 @@ impl crate::types::BridgeSubsonicServerError {
 // Release gallery (all platforms)
 // =========================================================================
 
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     /// Bytes of a curated library image (a release cover or an artist portrait),
     /// read through coven's locality-aware read (local store while Local,
@@ -1110,7 +1119,7 @@ impl AppHandle {
 // =========================================================================
 
 #[cfg(feature = "cloudkit")]
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     pub async fn use_cloudkit(&self, storage: BridgeHomeStorage) -> Result<(), BridgeError> {
         let storage = crate::types::BridgeHomeStorage::into_core(storage);
@@ -1127,7 +1136,7 @@ impl AppHandle {
 // =========================================================================
 
 #[cfg(feature = "oauth-providers")]
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     pub async fn sign_in_cloud_provider(
         &self,
@@ -1152,7 +1161,7 @@ impl AppHandle {
 // =========================================================================
 
 #[cfg(feature = "desktop")]
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     pub fn set_mcp_server_config(&self, enabled: bool, port: u16) -> Result<(), BridgeError> {
         self.app
@@ -1867,7 +1876,7 @@ impl AppHandle {
 // target, so the export queue and the track exporter exist on every non-mobile
 // build whether or not this crate's `desktop` feature is on.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     // ── Export queue ─────────────────────────────────────────────────
 

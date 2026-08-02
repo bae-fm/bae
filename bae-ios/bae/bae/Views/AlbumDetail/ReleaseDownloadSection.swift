@@ -47,7 +47,7 @@ struct ReleaseDownloadSection: View {
             // snapshot. Re-enqueuing is idempotent — core skips ids already
             // queued or pinned.
             actionButton("Download", systemImage: "arrow.down.circle") {
-                Task { await downloads.queuePins([releaseId]) }
+                Task { try await downloads.queuePins([releaseId]) }
             }
         case .queued:
             HStack(spacing: 8) {

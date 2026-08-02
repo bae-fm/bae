@@ -75,7 +75,7 @@ impl BridgeDiagnostics {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl BridgeDiagnostics {
     /// Ship a host-originated telemetry event. Infallible — telemetry must never
     /// break the host UI; a stopped worker drops the event.

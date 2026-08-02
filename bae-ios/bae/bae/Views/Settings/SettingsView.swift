@@ -291,7 +291,7 @@ private struct SyncConnectedControls: View {
                 isOn: Binding(
                     get: { outboxStore.snapshot.paused },
                     set: { paused in
-                        Task { await sync.setSyncPaused(paused) }
+                        Task { try await sync.setSyncPaused(paused) }
                     }
                 )
             )

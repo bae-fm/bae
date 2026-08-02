@@ -236,7 +236,7 @@ extension LibraryView {
                         },
                         onPin: { albumIds in
                             let releaseIds = primaryReleaseIds(for: albumIds)
-                            Task { await downloads.queuePins(releaseIds) }
+                            Task { try await downloads.queuePins(releaseIds) }
                         },
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)

@@ -54,7 +54,7 @@ struct OutboxSection: View {
                     summaryText: snapshot.summaryText,
                     retryDisabled: snapshot.total.failed == 0,
                     onSetPaused: { paused in
-                        Task { await sync.setSyncPaused(paused) }
+                        Task { try await sync.setSyncPaused(paused) }
                     },
                     onRetry: {
                         Task {

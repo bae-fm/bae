@@ -110,7 +110,7 @@ final class StorageActionRunner {
             // Pinning routes through the in-memory download queue, which
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
-            Task { await downloads.queuePins(releaseIds) }
+            Task { try await downloads.queuePins(releaseIds) }
         case .unpin:
             runEach(
                 releaseIds,

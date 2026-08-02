@@ -562,7 +562,7 @@ extension AlbumDetailView {
         // bar still tracks progress (driven by `ReleaseTransferProgress`); the
         // storage state flips when the worker invalidates the release on
         // completion, so there's no reload to await here.
-        Task { await downloads.queuePins([releaseId]) }
+        Task { try await downloads.queuePins([releaseId]) }
     }
 
     private func unpinRelease(releaseId: String) {

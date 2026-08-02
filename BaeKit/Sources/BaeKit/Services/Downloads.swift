@@ -10,7 +10,8 @@ public final class Downloads: Sendable, Observable {
     /// Enqueue releases to pin for offline. They join the serial download
     /// queue; the worker drains them one at a time. Fire-and-forget — progress
     /// and queue state arrive via `downloadQueueChanged` events.
-    public let queuePins: @Sendable (_ releaseIds: [String]) async -> Void
+    public let queuePins:
+        @Sendable (_ releaseIds: [String]) async throws -> Void
     /// Unpin a release: coven moves its blobs from storage/pinned/ to the
     /// evictable cache; the release stays Remote and playable.
     public let unpinRelease:
@@ -30,7 +31,8 @@ public final class Downloads: Sendable, Observable {
     public let setMaxConcurrentDownloads: @Sendable (_ n: UInt32) throws -> Void
 
     public init(
-        queuePins: @escaping @Sendable ([String]) async -> Void = { _ in },
+        queuePins: @escaping @Sendable ([String]) async throws -> Void = { _ in
+        },
         unpinRelease: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
@@ -52,7 +54,7 @@ public final class Downloads: Sendable, Observable {
 
     public convenience init(handle: any AppHandleProtocol) {
         self.init(
-            queuePins: { await handle.queuePinReleases(releaseIds: $0) },
+            queuePins: { try await handle.queuePinReleases(releaseIds: $0) },
             unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
             cancelDownload: { handle.cancelDownload(releaseId: $0) },

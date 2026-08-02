@@ -51,7 +51,7 @@ public final class Sync: Sendable, Observable {
             -> Void
     /// Pause or resume the cloud-upload pipeline. In-flight uploads finish; the
     /// queue stops draining until resumed.
-    public let setSyncPaused: @Sendable (_ paused: Bool) async -> Void
+    public let setSyncPaused: @Sendable (_ paused: Bool) async throws -> Void
     // periphery:ignore - called from the iOS pull-to-refresh / sync-retry; the
     // macOS target periphery analyzes doesn't use it (sync is automatic there).
     /// Re-kick the sync loop now (manual pull-to-refresh / retry). Non-throwing.
@@ -108,7 +108,8 @@ public final class Sync: Sendable, Observable {
         },
         cancelReleaseTransition:
             @escaping @Sendable (String) async throws -> Void = { _ in },
-        setSyncPaused: @escaping @Sendable (Bool) async -> Void = { _ in },
+        setSyncPaused: @escaping @Sendable (Bool) async throws -> Void = { _ in
+        },
         triggerSync: @escaping @Sendable () -> Void = {},
         lockActiveLibrary: @escaping @Sendable () throws -> Void = {
             throw StubError.notImplemented
@@ -182,7 +183,7 @@ public final class Sync: Sendable, Observable {
             cancelReleaseTransition: {
                 try await handle.cancelReleaseTransition(releaseId: $0)
             },
-            setSyncPaused: { await handle.setSyncPaused(paused: $0) },
+            setSyncPaused: { try await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
             lockActiveLibrary: { try handle.lockActiveLibrary() },
             setMaxConcurrentUploads: {
