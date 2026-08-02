@@ -26038,197 +26038,6 @@
         }
       }
     },
-    "Describes nothing yet" : {
-      "comment" : "Import file pane: a track sheet whose FILE directive names audio that is not in the folder",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "لا يصف أي ملف بعد"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Още не описва нищо"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "এখনও কিছু বর্ণনা করে না"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zatím nic nepopisuje"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beschreibt noch nichts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Describes nothing yet"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todavía no describe nada"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ne décrit encore rien"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "હજી કંઈ વર્ણવતું નથી"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "עדיין לא מתאר דבר"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "अभी तक कुछ भी वर्णित नहीं"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Još ništa ne opisuje"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Non descrive ancora nulla"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "対象のファイルは未設定"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಇನ್ನೂ ಏನನ್ನೂ ವಿವರಿಸುತ್ತಿಲ್ಲ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "아직 아무것도 설명하지 않음"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഇതുവരെ ഒന്നും വിവരിക്കുന്നില്ല"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "अद्याप काहीही वर्णन करत नाही"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beschrijft nog niets"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਹਾਲੇ ਕੁਝ ਵੀ ਬਿਆਨ ਨਹੀਂ ਕਰਦਾ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nic jeszcze nie opisuje"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ainda não descreve nada"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "இன்னும் எதையும் விவரிக்கவில்லை"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఇంకా దేన్నీ వివరించడం లేదు"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ยังไม่ได้ระบุไฟล์ใด"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Henüz hiçbir şeyi tanımlamıyor"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ще нічого не описує"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ابھی کچھ بیان نہیں کرتا"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chưa mô tả tệp nào"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尚未描述任何文件"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尚未描述任何檔案"
-          }
-        }
-      }
-    },
     "Details" : {
       "comment" : "Error disclosure: label for the collapsible diagnostic detail",
       "localizations" : {
@@ -43504,198 +43313,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "載入中"
-          }
-        }
-      }
-    },
-    "Loading release details..." : {
-      "comment" : "Import: progress text while the picked release's detail loads",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "جارٍ تحميل تفاصيل الإصدار..."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зареждане на детайлите за изданието..."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "রিলিজের বিবরণ লোড হচ্ছে..."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Načítání podrobností vydání…"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Veröffentlichungsdetails werden geladen …"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading release details..."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cargando los detalles de la edición..."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chargement des détails de l'édition…"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "પ્રકાશનની વિગતો લોડ થઈ રહી છે..."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "טוען פרטי מהדורה…"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "रिलीज विवरण लोड हो रहे हैं..."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Učitavanje pojedinosti izdanja..."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caricamento dettagli pubblicazione..."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "リリースの詳細を読み込み中…"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಬಿಡುಗಡೆ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ..."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "릴리스 세부 정보 불러오는 중..."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "പതിപ്പ് വിശദാംശങ്ങൾ ലോഡ് ചെയ്യുന്നു..."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "प्रकाशन तपशील लोड करत आहे..."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Releasedetails laden..."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਰਿਲੀਜ਼ ਵੇਰਵੇ ਲੋਡ ਹੋ ਰਹੇ ਹਨ..."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wczytywanie szczegółów wydania..."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Carregando detalhes do lançamento..."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "வெளியீட்டு விவரங்கள் ஏற்றப்படுகின்றன..."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "విడుదల వివరాలు లోడ్ అవుతున్నాయి..."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "กำลังโหลดรายละเอียดรีลีส..."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yayın ayrıntıları yükleniyor..."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Завантаження деталей релізу…"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اشاعت کی تفصیلات لوڈ ہو رہی ہیں..."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang tải chi tiết bản phát hành..."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加载版本详情中…"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在載入發行詳細資料..."
           }
         }
       }
@@ -99856,197 +99473,6 @@
         }
       }
     },
-    "File" : {
-      "comment" : "Import roles table: the column naming each file in the release folder",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الملف"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файл"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ফাইল"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Soubor"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datei"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "File"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archivo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fichier"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ફાઇલ"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "קובץ"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "फ़ाइल"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datoteka"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "File"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ファイル"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಫೈಲ್"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "파일"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഫയൽ"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "फाइल"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bestand"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਫਾਈਲ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plik"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arquivo"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "கோப்பு"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఫైల్"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ไฟล์"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dosya"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файл"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "فائل"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tệp"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "文件"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "檔案"
-          }
-        }
-      }
-    },
     "Release details" : {
       "comment" : "Import mapping pane: disclosure revealing the album and pressing fields of the picked release",
       "localizations" : {
@@ -100425,197 +99851,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "時長不一致"
-          }
-        }
-      }
-    },
-    "Pick a release to map these files onto its tracks" : {
-      "comment" : "Import mapping pane: the slot zone before any release is picked",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اختر إصدارًا لمطابقة هذه الملفات مع مقطوعاته"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изберете издание, за да съпоставите тези файлове с песните му"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "এই ফাইলগুলো ট্র্যাকের সঙ্গে মেলাতে একটি রিলিজ বেছে নিন"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyberte vydání, na jehož stopy se tyto soubory namapují"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle eine Veröffentlichung, um diese Dateien ihren Titeln zuzuordnen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pick a release to map these files onto its tracks"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige una edición para asignar estos archivos a sus pistas"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisissez une édition pour associer ces fichiers à ses pistes"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આ ફાઇલોને ટ્રૅક સાથે જોડવા માટે એક રિલીઝ પસંદ કરો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בחרו הוצאה כדי לשייך את הקבצים האלה לרצועות שלה"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "इन फ़ाइलों को ट्रैक से जोड़ने के लिए एक रिलीज़ चुनें"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odaberite izdanje da biste ove datoteke povezali s njegovim snimkama"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scegli un’edizione per associare questi file alle sue tracce"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "これらのファイルを曲に対応づけるリリースを選んでください"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಈ ಫೈಲ್‌ಗಳನ್ನು ಟ್ರ್ಯಾಕ್‌ಗಳಿಗೆ ಹೊಂದಿಸಲು ಒಂದು ಬಿಡುಗಡೆಯನ್ನು ಆರಿಸಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 파일들을 트랙에 연결할 릴리스를 선택하세요"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഈ ഫയലുകൾ ട്രാക്കുകളുമായി ചേർക്കാൻ ഒരു റിലീസ് തിരഞ്ഞെടുക്കുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "या फाइली ट्रॅक्सशी जोडण्यासाठी एक प्रकाशन निवडा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kies een uitgave om deze bestanden aan de tracks te koppelen"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਇਹਨਾਂ ਫਾਈਲਾਂ ਨੂੰ ਟਰੈਕਾਂ ਨਾਲ ਜੋੜਨ ਲਈ ਇੱਕ ਰਿਲੀਜ਼ ਚੁਣੋ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz wydanie, aby przypisać te pliki do jego ścieżek"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha uma edição para associar estes arquivos às faixas dela"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "இந்தக் கோப்புகளைத் தடங்களுடன் இணைக்க ஒரு வெளியீட்டைத் தேர்ந்தெடுக்கவும்"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఈ ఫైల్‌లను ట్రాక్‌లతో జతచేయడానికి ఒక విడుదలను ఎంచుకోండి"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เลือกรุ่นเพื่อจับคู่ไฟล์เหล่านี้กับแทร็กของรุ่นนั้น"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu dosyaları parçalarla eşleştirmek için bir sürüm seçin"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виберіть видання, щоб зіставити ці файли з його доріжками"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ان فائلوں کو ٹریکس سے جوڑنے کے لیے ایک ریلیز منتخب کریں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn một bản phát hành để ghép các tệp này với bản nhạc của nó"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择一个发行版，把这些文件对应到它的音轨"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇一個發行版，把這些檔案對應到它的音軌"
           }
         }
       }
@@ -101002,6 +100237,197 @@
         }
       }
     },
+    "Couldn't change which disc %@ is: %@" : {
+      "comment" : "Import mapping table: assigning a track sheet to one of the release's discs failed; args are the sheet's file name and the system error description",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر تغيير القرص الذي يمثله %1$@: %2$@"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не можа да се промени кой диск е %1$@: %2$@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ কোন ডিস্ক, তা বদলানো যায়নি: %2$@"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se změnit, který disk je %1$@: %2$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht ändern, welche Disc %1$@ ist: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't change which disc %1$@ is: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cambiar qué disco es %1$@: %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de changer de quel disque %1$@ fait partie : %2$@"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ કઈ ડિસ્ક છે તે બદલી શકાયું નહીં: %2$@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לשנות איזה דיסק הוא %1$@: %2$@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ कौन-सी डिस्क है, यह बदला नहीं जा सका: %2$@"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće promijeniti koji je disk %1$@: %2$@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile cambiare quale disco è %1$@: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@のディスク番号を変更できませんでした: %2$@"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ಯಾವ ಡಿಸ್ಕ್ ಎಂಬುದನ್ನು ಬದಲಾಯಿಸಲಾಗಲಿಲ್ಲ: %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@의 디스크를 바꿀 수 없음: %2$@"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ഏത് ഡിസ്കാണെന്ന് മാറ്റാനായില്ല: %2$@"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ कोणती डिस्क आहे ते बदलता आले नाही: %2$@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan niet wijzigen welke schijf %1$@ is: %2$@"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ਕਿਹੜੀ ਡਿਸਕ ਹੈ, ਇਹ ਬਦਲਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się zmienić, którą płytą jest %1$@: %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível mudar qual disco %1$@ é: %2$@"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ எந்த வட்டு என்பதை மாற்ற முடியவில்லை: %2$@"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ఏ డిస్క్ అనేది మార్చలేకపోయాము: %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปลี่ยนแผ่นของ %1$@ ไม่ได้: %2$@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ öğesinin hangi disk olduğu değiştirilemedi: %2$@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося змінити, яким диском є %1$@: %2$@"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ کون سی ڈسک ہے، یہ تبدیل نہیں ہو سکا: %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể thay đổi %1$@ là đĩa nào: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法更改 %1$@ 是第几张碟：%2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法變更 %1$@ 是第幾張碟：%2$@"
+          }
+        }
+      }
+    },
     "Couldn't read what %@ can describe: %@" : {
       "comment" : "Import roles table: reading a track sheet's binding offers failed; args are the sheet's file name and the system error description",
       "localizations" : {
@@ -101189,6 +100615,197 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法讀取 %1$@ 可以描述的內容：%2$@"
+          }
+        }
+      }
+    },
+    "Couldn't read what this folder holds: %@" : {
+      "comment" : "Import mapping pane: reading the folder's mapping table failed; arg is the system error description",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّرت قراءة محتويات هذا المجلد: %@"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Съдържанието на тази папка не можа да се прочете: %@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এই ফোল্ডারে কী আছে তা পড়া যায়নি: %@"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se přečíst, co tato složka obsahuje: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht lesen, was dieser Ordner enthält: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read what this folder holds: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer lo que contiene esta carpeta: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire ce que contient ce dossier : %@"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "આ ફોલ્ડરમાં શું છે તે વાંચી શકાયું નહીં: %@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לקרוא מה יש בתיקייה הזו: %@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इस फ़ोल्डर में क्या है, यह पढ़ा नहीं जा सका: %@"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće pročitati što ova mapa sadrži: %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile leggere cosa contiene questa cartella: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このフォルダの内容を読み取れませんでした: %@"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಈ ಫೋಲ್ಡರ್‌ನಲ್ಲಿ ಏನಿದೆ ಎಂದು ಓದಲಾಗಲಿಲ್ಲ: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 폴더에 무엇이 있는지 읽을 수 없음: %@"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഈ ഫോൾഡറിൽ എന്താണുള്ളതെന്ന് വായിക്കാനായില്ല: %@"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "या फोल्डरमध्ये काय आहे ते वाचता आले नाही: %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan niet lezen wat deze map bevat: %@"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਇਸ ਫੋਲਡਰ ਵਿੱਚ ਕੀ ਹੈ, ਇਹ ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się odczytać, co zawiera ten folder: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler o que esta pasta contém: %@"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இந்தக் கோப்புறையில் என்ன உள்ளது என்பதைப் படிக்க முடியவில்லை: %@"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఈ ఫోల్డర్‌లో ఏముందో చదవలేకపోయాము: %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อ่านสิ่งที่อยู่ในโฟลเดอร์นี้ไม่ได้: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu klasörün içeriği okunamadı: %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося прочитати вміст цієї теки: %@"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اس فولڈر میں کیا ہے، یہ پڑھا نہیں جا سکا: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể đọc nội dung thư mục này: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取此文件夹的内容：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法讀取此資料夾的內容：%@"
           }
         }
       }

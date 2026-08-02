@@ -10,7 +10,8 @@ import SwiftUI
 /// Used by `EditMetadataSheet` — the post-commit "Edit metadata..." sheet,
 /// which wraps it with a header (Cancel) and footer (Reset, Save). The import's
 /// mapping pane edits the release fields alone (`ReleaseFieldsForm`): its
-/// tracks are the slot table, where each row also carries the audio behind it.
+/// tracks are the mapping table, where each row also carries the audio behind
+/// it.
 ///
 /// Layout: the release fields are label-left / value-right rows inside grouped
 /// inset cards; tracks are one table with a single header row and compact

@@ -1,18 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// Zone 1 of the mapping pane: the cover, what the release is, and the claim
+/// The identity section's card: the cover, what the release is, and the claim
 /// this import records.
 ///
-/// Search is this header's editor rather than a pane mounted beside it — the
-/// change control opens it, and picking a release replaces the slot table's
-/// source-side column live. Before anything is picked the same control reads
+/// Search is this card's editor rather than a pane mounted beside it — the
+/// change control opens it, and picking a release fills the mapping table's
+/// BECOMES column in place. Before anything is picked the same control reads
 /// "Find this release".
 struct ImportReleaseHeader: View {
     let title: String
     let artist: String
-    /// "CD · 1996 · 9 tracks", from the live editor, so it tracks what is being
-    /// edited rather than what was fetched.
+    /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
+    /// fetched.
     let metaLine: String
     /// What this import claims to hold and where its metadata came from, as
     /// core derived it. `nil` before a pick, and for an Unknown import, which
@@ -20,6 +20,9 @@ struct ImportReleaseHeader: View {
     let claim: BridgeClaimLine?
     /// Whether a release has been picked.
     let hasPick: Bool
+    /// Whether a read is in flight — the change control says so and stays put
+    /// rather than the card being replaced by a placeholder.
+    let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
     let onEditCover: () -> Void
@@ -40,22 +43,29 @@ struct ImportReleaseHeader: View {
         .formGroupCard()
     }
 
-    /// The header's editor, opened. Prominent while nothing is picked — it is
-    /// the one thing left to do — and quiet once a release is in.
-    @ViewBuilder
+    /// The card's editor, opened. Prominent while nothing is picked — it is the
+    /// one thing left to do — and quiet once a release is in. While a read is
+    /// in flight it goes quiet with a spinner beside it: the pane keeps showing
+    /// what it already has.
     private var changeControl: some View {
-        if hasPick {
-            Button(coreString("ui.import.header.change_release")) {
-                onFindRelease()
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+                .opacity(isReading ? 1 : 0)
+            if hasPick {
+                Button(coreString("ui.import.header.change_release")) {
+                    onFindRelease()
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
-        }
-        else {
-            Button(coreString("ui.import.header.find_release")) {
-                onFindRelease()
+            else {
+                Button(coreString("ui.import.header.find_release")) {
+                    onFindRelease()
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
         }
+        .disabled(isReading)
     }
 
     private var summary: some View {

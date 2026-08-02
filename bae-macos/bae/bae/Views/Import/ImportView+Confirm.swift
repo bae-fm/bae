@@ -49,24 +49,22 @@ extension ImportView {
             managed: storageManaged
         )
 
-        // The identity choice was picked at row-time (or set to
-        // `.unknown` by the "Add as Unknown" link) and stashed on the
-        // candidate; the editor overlay is the candidate's current
-        // `editValues` (seeded from the prefetch or the file-tag projection,
-        // possibly mutated by the user on the mapping pane). Both fields are
-        // written before the commit bar appears, which is the only surface
-        // carrying this button — absence here is a structural bug.
+        // The edit is the album fields over the mapping table's rows, and it
+        // exists exactly when an identity has been settled — a pick's claim, or
+        // `.unknown`. The commit bar is the only surface carrying this button
+        // and it renders on the same condition, so absence here is a structural
+        // bug.
         guard let identityChoice = candidate.identityChoice,
-            let editValues = candidate.editValues
+            let commitEdit = candidate.commitEdit
         else {
-            fatalError("commit reached without identity choice or edit values")
+            fatalError("commit reached with nothing settled to commit")
         }
 
         Task {
             await commitImport(
                 store: importStore,
                 key: candidate.key,
-                rawEdit: editValues
+                rawEdit: commitEdit
             ) {
                 try await importer.startImport(
                     candidate.key,

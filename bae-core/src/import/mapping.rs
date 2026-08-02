@@ -6,9 +6,10 @@
 //! no index addresses anything — which is what keeps the joining out of the
 //! surfaces that render it.
 
+use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, CollapsedDirectory, FileRole, FileRoleChoice,
-    ScannedFile, SheetDisc,
+    ScannedFile, SheetBinding, SheetDisc,
 };
 use crate::import::track_slots::{
     audio_layout, units_of, SlotFile, SlotReconciliation, SlotTable, TrackSlot, UnitContribution,
@@ -52,6 +53,27 @@ pub enum MappingRow {
     },
     /// A directory whose files all do the same job, shown as one row.
     Directory(CollapsedDirectory),
+}
+
+impl MappingRow {
+    /// The units this row carries: itself, or the entries a sheet carves. A
+    /// collapsed directory carries none — it is one row standing in for files
+    /// that are not the release's tracks.
+    pub fn units(&self) -> &[MappingUnit] {
+        match self {
+            Self::Unit(unit) => std::slice::from_ref(unit),
+            Self::Sheet { entries, .. } => entries.as_slice(),
+            Self::Directory(_) => &[],
+        }
+    }
+
+    fn units_mut(&mut self) -> &mut [MappingUnit] {
+        match self {
+            Self::Unit(unit) => std::slice::from_mut(unit),
+            Self::Sheet { entries, .. } => entries.as_mut_slice(),
+            Self::Directory(_) => &mut [],
+        }
+    }
 }
 
 /// One source unit, and the track committing makes of it.
@@ -153,15 +175,53 @@ pub enum MappingBecomes {
 pub struct SheetGroup {
     pub sheet_id: String,
     pub name: String,
-    /// The audio the sheet describes; `None` when it describes nothing.
-    pub container: Option<MappingContainer>,
+    /// Absolute path — what opening the sheet to read it reaches.
+    pub path: PathBuf,
+    pub bound: SheetBound,
     pub assignment: SheetDisc,
     /// The discs this sheet may be assigned to, counting from one.
     pub disc_options: Vec<u32>,
 }
 
+/// What a track sheet describes, with the facts its header shows about it.
+///
+/// [`SheetBinding`] enriched by the
+/// container's name and size: a header states both which audio a sheet is on and
+/// why it is on none, and carrying the binding separately would be a second way
+/// to say the first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SheetBound {
+    /// The sheet describes this audio.
+    Describes(MappingContainer),
+    /// It describes nothing: the directive named audio that is not in the
+    /// folder, named several and only some are here, or the user cleared the
+    /// binding. `requested` is what the directive asked for, so the header can
+    /// say what the sheet was looking for while it offers the folder's own
+    /// audio instead.
+    Unresolved { requested: Vec<String> },
+    /// The directive resolved, but bae cannot carve tracks out of that codec.
+    /// The audio imports as one track.
+    RefusedCodec {
+        container: MappingContainer,
+        codec: String,
+    },
+}
+
+impl SheetBound {
+    /// The audio the sheet is on, where it is on any — the file whose rows this
+    /// sheet's group stands for.
+    pub fn container_id(&self) -> Option<&str> {
+        match self {
+            Self::Describes(container) | Self::RefusedCodec { container, .. } => {
+                Some(container.file_id.as_str())
+            }
+            Self::Unresolved { .. } => None,
+        }
+    }
+}
+
 /// The audio a track sheet describes.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MappingContainer {
     pub file_id: String,
     pub name: String,
@@ -248,13 +308,16 @@ pub fn mapping_table(
             // A carving sheet is named at the position its run occupies, which
             // the assignment decides and the sheet's own place on disk does not.
             FileRole::TrackSheet { .. } if carving.contains(entry.file.relative_path.as_str()) => {}
-            FileRole::TrackSheet { binding, disc, .. } => rows.push(MappingRow::Sheet {
+            FileRole::TrackSheet {
+                sheet,
+                binding,
+                disc,
+            } => rows.push(MappingRow::Sheet {
                 sheet: SheetGroup {
                     sheet_id: entry.file.relative_path.clone(),
                     name: entry.file.file_name.clone(),
-                    container: binding
-                        .describes()
-                        .and_then(|file_id| container_of(files, file_id)),
+                    path: entry.file.path.clone(),
+                    bound: bound_of(files, sheet, binding),
                     assignment: *disc,
                     disc_options: disc_options.clone(),
                 },
@@ -267,7 +330,8 @@ pub fn mapping_table(
                             sheet: SheetGroup {
                                 sheet_id: sheet.file.relative_path.clone(),
                                 name: sheet.file.file_name.clone(),
-                                container: Some(container(sheet.audio)),
+                                path: sheet.file.path.clone(),
+                                bound: SheetBound::Describes(container(sheet.audio)),
                                 assignment: sheet.disc,
                                 disc_options: disc_options.clone(),
                             },
@@ -307,11 +371,12 @@ pub fn mapping_table(
         }
     }
 
+    let reconciliation = picked
+        .filter(|picked| picked.source == TracklistSource::Release)
+        .map(|_| tally(&rows));
     MappingTable {
         rows,
-        reconciliation: picked
-            .filter(|picked| picked.source == TracklistSource::Release)
-            .map(|picked| picked.slots.reconciliation),
+        reconciliation,
     }
 }
 
@@ -321,11 +386,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
     table
         .rows
         .iter()
-        .flat_map(|row| match row {
-            MappingRow::Unit(unit) => std::slice::from_ref(unit),
-            MappingRow::Sheet { entries, .. } => entries.as_slice(),
-            MappingRow::Directory(_) => &[],
-        })
+        .flat_map(MappingRow::units)
         .filter_map(|unit| match &unit.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
             MappingBecomes::Cover | MappingBecomes::NotImported | MappingBecomes::AwaitingPick => {
@@ -492,6 +553,141 @@ fn container_of(files: &CategorizedFiles, file_id: &str) -> Option<MappingContai
         .audio()
         .find(|audio| audio.relative_path == file_id)
         .map(container)
+}
+
+/// What a sheet describes, as its header states it.
+///
+/// A binding naming audio the folder no longer holds as audio — a container
+/// somebody took out of the tracklist — describes nothing, and says so with what
+/// the directive asked for, which is the same answer an unresolved directive
+/// gives.
+fn bound_of(files: &CategorizedFiles, sheet: &CueSheet, binding: &SheetBinding) -> SheetBound {
+    let unresolved = || SheetBound::Unresolved {
+        requested: sheet
+            .audio_file_references()
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+    };
+    match binding {
+        SheetBinding::Unresolved => unresolved(),
+        SheetBinding::Describes { file_id } => match container_of(files, file_id) {
+            Some(container) => SheetBound::Describes(container),
+            None => unresolved(),
+        },
+        SheetBinding::RefusedCodec { file_id, codec } => match container_of(files, file_id) {
+            Some(container) => SheetBound::RefusedCodec {
+                container,
+                codec: codec.clone(),
+            },
+            None => unresolved(),
+        },
+    }
+}
+
+/// The tally over a table's rows: how many will write a track against how many
+/// the picked release names.
+///
+/// The same rule [`slot_table`](crate::import::track_slots::slot_table) states
+/// over its own two sides, asked of the rows that are left — so a table nobody
+/// has edited restates the number it was built with, and one a row has left
+/// restates it without re-opening the folder.
+fn tally(rows: &[MappingRow]) -> SlotReconciliation {
+    let units: Vec<&MappingUnit> = rows.iter().flat_map(MappingRow::units).collect();
+    let files = units
+        .iter()
+        .filter(|unit| matches!(&unit.becomes, MappingBecomes::Track { track, .. } if track.file.is_some()))
+        .count() as u32;
+    let tracks = units
+        .iter()
+        .filter(|unit| {
+            matches!(
+                &unit.becomes,
+                MappingBecomes::Track {
+                    source_position: Some(_),
+                    ..
+                }
+            )
+        })
+        .count() as u32;
+    match files.cmp(&tracks) {
+        std::cmp::Ordering::Equal => SlotReconciliation::Agrees { count: files },
+        std::cmp::Ordering::Greater => SlotReconciliation::MoreFiles { files, tracks },
+        std::cmp::Ordering::Less => SlotReconciliation::MoreTracks { files, tracks },
+    }
+}
+
+/// Write an edited track row back onto the row that commits it, found by the
+/// track's own identity — which the projection makes unique across the table.
+///
+/// A row nothing matches leaves the table alone: an editor holding a row the
+/// table no longer has is editing something that has already left it.
+pub fn mapping_with_track(mut table: MappingTable, track: RawTrackEdit) -> MappingTable {
+    let mut wrote = false;
+    for unit in table.rows.iter_mut().flat_map(MappingRow::units_mut) {
+        let MappingBecomes::Track {
+            track: existing, ..
+        } = &mut unit.becomes
+        else {
+            continue;
+        };
+        if existing.id == track.id {
+            *existing = track.clone();
+            wrote = true;
+        }
+    }
+    if !wrote {
+        warn!("{} is not a row of this mapping table", track.id);
+    }
+    table
+}
+
+/// Drop the row that commits the track with `track_id` — a track the release
+/// names that this folder has nothing for, taken out of the import.
+///
+/// Nothing is persisted: the folder is unchanged, the release is simply
+/// committed without that track.
+pub fn mapping_without_track(table: MappingTable, track_id: &str) -> MappingTable {
+    remove(
+        table,
+        &|unit| matches!(&unit.becomes, MappingBecomes::Track { track, .. } if track.id == track_id),
+    )
+}
+
+/// Drop every row the file `file_id` backs.
+///
+/// One container backs every entry of the sheet bound to it, so that sheet's
+/// whole group leaves with it — the group *is* the container's rows. Excluding a
+/// file the tracklist does not draw on leaves the table as it was.
+pub fn mapping_without_file(table: MappingTable, file_id: &str) -> MappingTable {
+    let mut table = table;
+    table.rows.retain(|row| match row {
+        MappingRow::Sheet { sheet, .. } => sheet.bound.container_id() != Some(file_id),
+        MappingRow::Unit(_) | MappingRow::Directory(_) => true,
+    });
+    remove(table, &|unit| match &unit.source {
+        MappingSource::File(file) => file.file_id == file_id,
+        MappingSource::SheetEntry(entry) => entry.container_id == file_id,
+        MappingSource::Missing => false,
+    })
+}
+
+/// Drop every unit the predicate names, wherever it sits, and restate the tally
+/// over what is left. A table with no tally keeps none — the folder's own tags
+/// cannot disagree with the folder.
+fn remove(mut table: MappingTable, should_remove: &dyn Fn(&MappingUnit) -> bool) -> MappingTable {
+    table.rows.retain_mut(|row| match row {
+        MappingRow::Unit(unit) => !should_remove(unit),
+        MappingRow::Sheet { entries, .. } => {
+            entries.retain(|entry| !should_remove(entry));
+            true
+        }
+        MappingRow::Directory(_) => true,
+    });
+    if table.reconciliation.is_some() {
+        table.reconciliation = Some(tally(&table.rows));
+    }
+    table
 }
 
 /// The left half of a file's row: what the folder holds, and the roles it may
@@ -696,10 +892,11 @@ mod tests {
         };
         assert_eq!(sheet.sheet_id, "CDImage.cue");
         assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
-        assert_eq!(
-            sheet.container.as_ref().map(|c| c.name.as_str()),
-            Some("CDImage.flac"),
-        );
+        assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
+        let SheetBound::Describes(container) = &sheet.bound else {
+            panic!("expected a bound sheet, got {:?}", sheet.bound);
+        };
+        assert_eq!(container.name, "CDImage.flac");
         assert_eq!(entries.len(), 3);
 
         for (index, entry) in entries.iter().enumerate() {
@@ -847,6 +1044,208 @@ mod tests {
                 None,
             ],
         );
+    }
+
+    /// A sheet whose `FILE` directive names audio that is not in the folder
+    /// describes nothing — and says what it was looking for, so the header can
+    /// state it while it offers the folder's own audio instead. It also carries
+    /// its own path, which is what opens it in the document viewer.
+    #[test]
+    fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("01.flac"));
+        fs::write(
+            tmp.path().join("CDImage.cue"),
+            cue_sheet_text("CDImage.wav", 3),
+        )
+        .expect("write cue");
+
+        let table = mapping_table(&scan(tmp.path()), None);
+        // The sheet is named where it sits on disk, after the loose audio that
+        // sorts before it — a sheet that carves nothing occupies no run.
+        let Some(MappingRow::Sheet { sheet, entries }) = table
+            .rows
+            .iter()
+            .find(|row| matches!(row, MappingRow::Sheet { .. }))
+        else {
+            panic!("expected a sheet row among {:?}", table.rows);
+        };
+        assert_eq!(
+            sheet.bound,
+            SheetBound::Unresolved {
+                requested: vec!["CDImage.wav".to_string()],
+            },
+        );
+        assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
+        assert!(entries.is_empty(), "it carves nothing");
+    }
+
+    /// Editing a row writes the track back onto the row that commits it, found
+    /// by the track's own id, and leaves every other row alone.
+    #[test]
+    fn with_track_writes_the_edited_row_back_by_its_id() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("01.flac"));
+        write_flac(&tmp.path().join("02.flac"));
+
+        let files = scan(tmp.path());
+        let slots = slot_table(&source_tracks(2), &files);
+        let table = mapping_table(
+            &files,
+            Some(PickedTracklist {
+                slots: &slots,
+                track_id_prefix: "import-track",
+                source: TracklistSource::Release,
+            }),
+        );
+
+        let mut edited = mapping_tracks(&table)[1].clone();
+        edited.title = "Renamed".to_string();
+        let table = mapping_with_track(table, edited);
+
+        let titles: Vec<String> = mapping_tracks(&table)
+            .into_iter()
+            .map(|track| track.title)
+            .collect();
+        assert_eq!(titles, vec!["Track Title 1", "Renamed"]);
+        assert_eq!(
+            table.reconciliation,
+            Some(SlotReconciliation::Agrees { count: 2 }),
+            "naming a row changes nothing about the tally",
+        );
+    }
+
+    /// Dropping a track the folder has nothing for takes its row out and
+    /// restates the tally over what is left.
+    #[test]
+    fn without_track_drops_the_row_and_restates_the_tally() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("01.flac"));
+        write_flac(&tmp.path().join("02.flac"));
+
+        let files = scan(tmp.path());
+        let slots = slot_table(&source_tracks(3), &files);
+        let table = mapping_table(
+            &files,
+            Some(PickedTracklist {
+                slots: &slots,
+                track_id_prefix: "import-track",
+                source: TracklistSource::Release,
+            }),
+        );
+        assert_eq!(
+            table.reconciliation,
+            Some(SlotReconciliation::MoreTracks {
+                files: 2,
+                tracks: 3,
+            }),
+        );
+
+        let table = mapping_without_track(table, "import-track-2");
+
+        assert_eq!(table.rows.len(), 2);
+        assert_eq!(mapping_tracks(&table).len(), 2);
+        assert_eq!(
+            table.reconciliation,
+            Some(SlotReconciliation::Agrees { count: 2 }),
+        );
+    }
+
+    /// Excluding the audio a sheet describes takes the whole group with it:
+    /// twelve entries are one file's rows, and the file is leaving.
+    #[test]
+    fn without_file_takes_a_sheet_s_whole_group_with_its_container() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("CDImage.flac"));
+        fs::write(
+            tmp.path().join("CDImage.cue"),
+            cue_sheet_text("CDImage.flac", 3),
+        )
+        .expect("write cue");
+        write_flac(&tmp.path().join("bonus.flac"));
+
+        let files = scan(tmp.path());
+        let slots = slot_table(&source_tracks(3), &files);
+        let table = mapping_table(
+            &files,
+            Some(PickedTracklist {
+                slots: &slots,
+                track_id_prefix: "import-track",
+                source: TracklistSource::Release,
+            }),
+        );
+        assert_eq!(
+            table.reconciliation,
+            Some(SlotReconciliation::MoreFiles {
+                files: 4,
+                tracks: 3,
+            }),
+        );
+
+        let table = mapping_without_file(table, "CDImage.flac");
+
+        assert_eq!(table.rows.len(), 1, "only the bonus file is left");
+        assert_eq!(mapping_tracks(&table).len(), 1);
+        assert_eq!(
+            table.reconciliation,
+            Some(SlotReconciliation::MoreFiles {
+                files: 1,
+                tracks: 0,
+            }),
+            "the three tracks the release names left with the audio backing them",
+        );
+    }
+
+    /// Excluding a file the table holds no rows for changes nothing — the same
+    /// table, the same tally.
+    #[test]
+    fn without_file_for_something_the_table_does_not_hold_changes_nothing() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("01.flac"));
+        write_flac(&tmp.path().join("02.flac"));
+
+        let files = scan(tmp.path());
+        let slots = slot_table(&source_tracks(2), &files);
+        let table = mapping_table(
+            &files,
+            Some(PickedTracklist {
+                slots: &slots,
+                track_id_prefix: "import-track",
+                source: TracklistSource::Release,
+            }),
+        );
+
+        let after = mapping_without_file(table.clone(), "nothing-here.flac");
+
+        assert_eq!(after.rows.len(), table.rows.len());
+        assert_eq!(mapping_tracks(&after), mapping_tracks(&table));
+        assert_eq!(after.reconciliation, table.reconciliation);
+    }
+
+    /// A table with no tally keeps none through an edit: the folder's own tags
+    /// cannot disagree with the folder, however many rows are left.
+    #[test]
+    fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("01.flac"));
+        write_flac(&tmp.path().join("02.flac"));
+
+        let files = scan(tmp.path());
+        let slots = slot_table(&source_tracks(2), &files);
+        let table = mapping_table(
+            &files,
+            Some(PickedTracklist {
+                slots: &slots,
+                track_id_prefix: "unknown-track",
+                source: TracklistSource::FileTags,
+            }),
+        );
+        assert!(table.reconciliation.is_none());
+
+        let table = mapping_without_file(table, "01.flac");
+
+        assert_eq!(table.rows.len(), 1);
+        assert!(table.reconciliation.is_none());
     }
 
     /// JPEG magic bytes — what the scan's image validation reads.

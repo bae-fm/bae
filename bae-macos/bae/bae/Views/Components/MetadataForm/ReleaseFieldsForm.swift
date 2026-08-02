@@ -5,7 +5,7 @@ import SwiftUI
 /// fields — as two grouped cards of label-left / value-right rows.
 ///
 /// Split out of `EditMetadataForm` because the import's mapping pane edits
-/// exactly these: its tracks are the slot table, so the track half of the
+/// exactly these: its tracks are the mapping table, so the track half of the
 /// metadata form has no place there.
 struct ReleaseFieldsForm: View {
     @Binding

@@ -107,8 +107,9 @@ pub use handle::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use mapping::{
-    mapping_table, mapping_tracks, MappingBecomes, MappingContainer, MappingEntry, MappingFile,
-    MappingRole, MappingRow, MappingSource, MappingTable, MappingUnit, PickedTracklist, SheetGroup,
+    mapping_table, mapping_tracks, mapping_with_track, mapping_without_file, mapping_without_track,
+    MappingBecomes, MappingContainer, MappingEntry, MappingFile, MappingRole, MappingRow,
+    MappingSource, MappingTable, MappingUnit, PickedTracklist, SheetBound, SheetGroup,
     TracklistSource,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

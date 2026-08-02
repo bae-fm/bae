@@ -31,11 +31,6 @@
         ) -> some View {
             ImportMappingPane(
                 candidate: candidate,
-                model: ImportMappingModel(
-                    files: candidate.files,
-                    slots: candidate.slots,
-                    edit: editor?.wrappedValue
-                ),
                 bindingOptions: PreviewData.sheetBindingOptions,
                 previewingPath: previewingPath,
                 libraryStatus: nil,
@@ -44,27 +39,34 @@
                 editor: editor,
                 storageManaged: storageManaged,
                 storagePinned: storagePinned,
-                roleActions: ImportRoleActions(
-                    setRole: { _, _ in },
-                    bindSheet: { _, _ in },
-                    openDocument: { _ in },
-                    openImage: { _ in },
-                ),
-                slotActions: ImportSlotActions(
-                    preview: { _ in },
-                    stopPreview: {},
-                    chooseFile: { _, _ in },
-                    drop: { _ in },
-                    exclude: { _ in },
-                ),
+                mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
                     confirmImport: {},
                     viewInLibrary: { _ in },
                 ),
+                onSetIdentity: { _ in },
                 onFindRelease: {},
                 onEditCover: {},
             )
         }
+    }
+
+    /// Every control wired to nothing, so a preview renders the real rows
+    /// without a store behind them.
+    func inertMappingActions() -> ImportMappingActions {
+        ImportMappingActions(
+            setRole: { _, _ in },
+            bindSheet: { _, _ in },
+            setSheetDisc: { _, _ in },
+            openDocument: { _, _ in },
+            openImage: { _ in },
+            preview: { _ in },
+            stopPreview: {},
+            editTrack: { _ in },
+            chooseFile: { _, _ in },
+            drop: { _ in },
+            exclude: { _ in },
+        )
     }
 
     #Preview("Mapping pane — a release picked") {
@@ -105,10 +107,10 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — a file the release doesn't name") {
+    #Preview("Mapping pane — a cue carving one container") {
         @Previewable
         @State
-        var values = PreviewData.unmatchedEditValues
+        var values = PreviewData.confirmEditValues
         @Previewable
         @State
         var storageManaged = true
@@ -116,7 +118,27 @@
         @State
         var storagePinned = true
         ImportMappingPreview.make(
-            candidate: PreviewData.unmatchedMappingCandidate,
+            candidate: PreviewData.sheetMappingCandidate,
+            editor: $values,
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 900)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — read as Unknown") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.unknownMappingCandidate,
             editor: $values,
             storageManaged: $storageManaged,
             storagePinned: $storagePinned

@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The roles-table control for a file whose job is a decision: a menu over the
-/// roles it can be put in, showing the one in force.
+/// The mapping table's control for a file whose job is a decision: a menu over
+/// the roles it can be put in, showing the one in force.
 ///
 /// A file already out of the tracklist gets the shorthand instead — one "Put
 /// back" button, because the only thing left to say about it is that it was a

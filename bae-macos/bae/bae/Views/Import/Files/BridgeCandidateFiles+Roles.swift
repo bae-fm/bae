@@ -40,51 +40,10 @@ extension BridgeCandidateFile {
         }
     }
 
-    /// What this track sheet's `FILE` directive resolved to; nil when the file
-    /// isn't a sheet.
-    var sheetBinding: BridgeSheetBinding? {
-        if case .trackSheet(let binding, _) = role { return binding }
-        return nil
-    }
-
-    /// The audio this track sheet describes, named by that file's
-    /// release-relative path. Nil unless the sheet is bound to playable audio.
-    var describes: String? {
-        guard case .describes(let fileId)? = sheetBinding else { return nil }
-        return fileId
-    }
-
-    /// Why this sheet describes nothing, in the user's language; nil when it is
-    /// bound, or when the file isn't a sheet. Core owns both the reason and its
-    /// wording — the pane only places the line.
-    var unboundSheetLine: String? {
-        switch sheetBinding {
-        case .none, .describes:
-            return nil
-        case .unresolved:
-            return String(localized: "Describes nothing yet")
-        case .refusedCodec(_, let codec):
-            return coreString(bridgeSheetRefusedCodecKey(), codec)
-        }
-    }
-
-    /// What this sheet's `FILE` directive named, when what it named is not
-    /// here. Shown beside `unboundSheetLine` so someone choosing the audio can
-    /// see what the sheet was looking for; nil once it describes something.
-    var sheetRequestedLine: String? {
-        guard case .unresolved(let requested)? = sheetBinding,
-            !requested.isEmpty
-        else { return nil }
-        return coreString(
-            "ui.import.sheet.asked_for",
-            ListFormatter.localizedString(byJoining: requested)
-        )
-    }
-
 }
 
 extension BridgeCandidateFiles {
-    /// The sheets whose bindings the roles table offers a control for — one
+    /// The sheets whose bindings the mapping table offers a control for — one
     /// read of core's offers per sheet.
     var trackSheets: [BridgeCandidateFile] {
         files.filter { $0.role.isTrackSheet }

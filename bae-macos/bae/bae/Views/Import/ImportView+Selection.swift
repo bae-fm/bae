@@ -57,8 +57,10 @@ extension ImportView {
             library: library,
             importStore: importStore,
             key: key,
-            releaseId: matched.releaseId,
-            source: matched.evidence.source
+            pick: CandidatePick(
+                releaseId: matched.releaseId,
+                source: matched.evidence.source
+            )
         )
     }
 }

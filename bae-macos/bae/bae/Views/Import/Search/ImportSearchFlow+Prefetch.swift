@@ -4,13 +4,14 @@ import os.log
 private let logger = Logger.bae("ImportSearchFlow")
 
 extension ImportSearchFlow {
-    // MARK: - Add as Unknown
+    // MARK: - Reading the folder as Unknown
 
-    /// Project the candidate's audio files into a `ReleaseUserEdit`
-    /// shape via the bridge's file-tag preview, seed the editor with
-    /// the result, mark the choice as Unknown, and transition to the
-    /// confirming mode. Errors fall back to the identifying state with
-    /// a banner so the user can retry or pick a search match instead.
+    /// Read the folder as its own files describe it: the album fields from
+    /// their embedded tags, and a mapping table landing each of the folder's
+    /// audio units on one of the tracks those tags name.
+    ///
+    /// Errors return the folder to the release side with a banner, so the user
+    /// can retry or pick a release instead.
     @MainActor
     static func addAsUnknown(
         importer: Importer,
@@ -18,21 +19,16 @@ extension ImportSearchFlow {
         key: String
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.mode = .loadingDetail
+            candidate.identity = .unknown
             candidate.error = nil
             candidate.identityChoice = .unknown
-            // Unknown imports never carry a source release — clear any prior
-            // detail and claim so the confirmation page falls back to its
-            // detail-less rendering (no remote cover picker, no library-status
-            // banner, no track-count mismatch, no claim line: there is no
-            // release to claim and none the metadata came from).
+            // Unknown imports never carry a source release — clear the detail
+            // and the claim so the pane falls back to its detail-less
+            // rendering (no remote cover picker, no library-status banner, no
+            // claim line: there is no release to claim and none the metadata
+            // came from). `pick` stays: it is what switching back re-picks.
             candidate.releaseDetailBridge = nil
             candidate.claim = nil
-            candidate.pickedReleaseId = nil
-            // No picked release, so no mapping: the tracklist comes from the
-            // files' own tags and the commit reads the folder rather than a
-            // binding left on the rows.
-            candidate.slots = nil
             // No source cover exists for Unknown; leave the local
             // artwork picker as the only cover affordance.
             candidate.selectedCover = nil
@@ -40,29 +36,24 @@ extension ImportSearchFlow {
 
         let task = Task { @MainActor in
             do {
-                let preview = try await importer.previewFileTagsForFolder(
-                    key
-                )
+                let unknown = try await importer.unknownMapping(key)
                 importStore.mutateCandidate(forKey: key) { candidate in
-                    candidate.editValues = rawReleaseEditFromUserEdit(
-                        edit: preview,
-                        trackIdPrefix: "unknown-track"
-                    )
-                    candidate.mode = .confirming
+                    candidate.editValues = albumEdit(from: unknown.seed)
+                    candidate.mapping = unknown.mapping
                     candidate.prefetchTask = nil
                 }
             }
             catch is CancellationError {
                 logger.debug(
-                    "Add as Unknown cancelled for key: \(key)"
+                    "Reading the folder's own tags cancelled for key: \(key)"
                 )
             }
             catch {
                 logger.error(
-                    "Add as Unknown failed: \(error.localizedDescription)"
+                    "Reading the folder's own tags failed: \(error.localizedDescription)"
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
-                    candidate.mode = .identifying
+                    candidate.identity = .release
                     candidate.identityChoice = nil
                     candidate.error =
                         "Couldn't read file tags: \(error.displayLine)"
@@ -80,21 +71,21 @@ extension ImportSearchFlow {
 
     /// The release a Ready row's selection opens on without a click: the
     /// settled match the row leads with. `nil` when there is nothing to seed —
-    /// the pane has left the identify phase, a pick is already in (or in
-    /// flight), or the row isn't Ready.
+    /// something has already been settled for this folder, a pick is in flight,
+    /// or the row isn't Ready.
     ///
-    /// The placement gate carries weight the mode alone can't: Done and
+    /// The placement gate carries weight the settled check can't: Done and
     /// Skipped rows also hold `matched`, and a candidate rebuilt at launch
-    /// starts back in `.identifying`, so without it an already-imported row
+    /// starts back with nothing settled, so without it an already-imported row
     /// would re-open its confirm pane. The error gate keeps a failed prefetch
-    /// from re-firing itself: failure returns the mode to `.identifying`, and
-    /// with nothing else in the guard that round-trip would retry forever.
+    /// from re-firing itself: failure clears what it had settled, and with
+    /// nothing else in the guard that round-trip would retry forever.
     static func readyAutoPick(
         candidate: Candidate,
         row: BridgeTriageRow?
     ) -> BridgeMatchedRelease? {
-        guard candidate.mode == .identifying,
-            candidate.pickedReleaseId == nil,
+        guard candidate.identityChoice == nil,
+            candidate.pick == nil,
             candidate.error == nil,
             let row,
             case .ready = row.placement
@@ -107,35 +98,34 @@ extension ImportSearchFlow {
     // MARK: - Prefetch and confirm
 
     /// Pick a release for a candidate: bae-core comes back with what the pick
-    /// claims, the editor seed masked for that claim, and the file↔release
-    /// mapping the pick produces.
+    /// claims, the album fields masked for that claim, and the mapping table
+    /// the pick produces.
     ///
     /// Re-run when the folder's audio changes shape under a pick that is
     /// already in — binding a track sheet turns one container into a dozen
-    /// slots, and the mapping the pane shows has to be the mapping the commit
+    /// rows, and the mapping the pane shows has to be the mapping the commit
     /// will use.
     @MainActor
     static func prefetchAndConfirm(
         library: Library,
         importStore: ImportStore,
         key: String,
-        releaseId: String,
-        source bridgeSource: BridgeMetadataSource
+        pick: CandidatePick
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.mode = .loadingDetail
+            candidate.identity = .release
             candidate.error = nil
             // Hold the clicked release so its row stays selected while the
             // prefetch runs; the claim it implies arrives with the prefetch.
-            candidate.pickedReleaseId = releaseId
+            candidate.pick = pick
         }
 
         let task = Task { @MainActor in
             do {
                 let prefetch = try await library.prefetchRelease(
                     key,
-                    releaseId,
-                    bridgeSource
+                    pick.releaseId,
+                    pick.source
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
                     // The display detail: cover options, library status.
@@ -152,17 +142,11 @@ extension ImportSearchFlow {
                     // The seed arrives from bae-core projected the way the
                     // commit worker maps the release, and already masked for
                     // the claim (an album-level claim blanks the pressing
-                    // block). `rawReleaseEditFromUserEdit` projects that wire
-                    // edit into the raw form the editor binds.
-                    candidate.editValues = rawReleaseEditFromUserEdit(
-                        edit: prefetch.seed,
-                        trackIdPrefix: "import-track"
-                    )
-                    // The mapping this pick produces, positionally aligned with
-                    // the seed's tracks — the slot table renders it and the
-                    // commit bar counts it.
-                    candidate.slots = prefetch.slots
-                    candidate.mode = .confirming
+                    // block).
+                    candidate.editValues = albumEdit(from: prefetch.seed)
+                    // The mapping this pick produces: every source unit the
+                    // folder offers with the track committing makes of it.
+                    candidate.mapping = prefetch.mapping
                     candidate.prefetchTask = nil
                 }
             }
@@ -176,17 +160,15 @@ extension ImportSearchFlow {
                     "Prefetch failed: \(error.localizedDescription)"
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
-                    candidate.mode = .identifying
                     candidate.error =
                         "Failed to load release details: \(error.displayLine)"
                     // The pick never resolved, so nothing is claimed and no row
                     // is selected. All three drop together: leaving the
                     // previous pick's claim behind would state a claim for a
                     // release the pane is no longer showing.
-                    candidate.pickedReleaseId = nil
+                    candidate.pick = nil
                     candidate.claim = nil
                     candidate.identityChoice = nil
-                    candidate.slots = nil
                     candidate.prefetchTask = nil
                 }
             }
@@ -195,6 +177,22 @@ extension ImportSearchFlow {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.prefetchTask = CancelOnDeinit(task)
         }
+    }
+
+    /// The album fields the editor holds, projected from a seed. The tracklist
+    /// is the mapping table's — the row that produces a track is the row that
+    /// edits it — so the editor carries none of its own, and the commit reads
+    /// the table's rows alongside these fields.
+    @MainActor
+    private static func albumEdit(
+        from seed: BridgeReleaseUserEdit
+    ) -> BridgeRawReleaseEdit {
+        var edit = rawReleaseEditFromUserEdit(
+            edit: seed,
+            trackIdPrefix: "import-track"
+        )
+        edit.tracks = []
+        return edit
     }
 
     // MARK: - Import status helpers

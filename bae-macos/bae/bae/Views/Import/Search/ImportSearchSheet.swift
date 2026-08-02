@@ -73,37 +73,24 @@ struct ImportSearchSheet: View {
             input: ImportSearchFlow.SearchPaneInput(
                 candidate: candidate,
                 key: candidateKey,
-                selectedReleaseId: candidate.pickedReleaseId
+                selectedReleaseId: candidate.pick?.releaseId
             ),
             openSettings: { openSettings() },
-            onAddAsUnknown: addAsUnknown(candidate),
+            // Reading the folder as Unknown is the mapping pane's own identity
+            // control, always visible there — not a link inside the search.
+            onAddAsUnknown: nil,
             onSelect: { result in
                 ImportSearchFlow.prefetchAndConfirm(
                     library: library,
                     importStore: importStore,
                     key: candidateKey,
-                    releaseId: result.releaseId,
-                    source: result.source
+                    pick: CandidatePick(
+                        releaseId: result.releaseId,
+                        source: result.source
+                    )
                 )
                 uiStore.dismissModal()
             },
         )
-    }
-
-    /// Seeding the tracklist from the files' own tags is a way of answering the
-    /// header's question, so it closes the editor the same way a pick does. A
-    /// re-identify candidate has no folder to read, so it is not offered.
-    private func addAsUnknown(_ candidate: Candidate) -> (() -> Void)? {
-        guard case .folder = candidate.source else {
-            return nil
-        }
-        return {
-            ImportSearchFlow.addAsUnknown(
-                importer: importer,
-                importStore: importStore,
-                key: candidateKey
-            )
-            uiStore.dismissModal()
-        }
     }
 }

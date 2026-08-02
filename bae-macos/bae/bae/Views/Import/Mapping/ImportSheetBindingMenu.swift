@@ -1,16 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// The roles-table control for a track sheet: what audio it describes, or that
-/// it describes nothing and what its `FILE` directive asked for.
+/// The sheet header's binding control: what audio this track sheet describes,
+/// or that it describes nothing.
 ///
-/// The scan proposes a pairing from the directive; when the directive names a
-/// file that was later re-encoded under another name, the user is the only one
-/// who knows the answer, and this is where they give it. Core decides what may
-/// be offered — it probes each file — so this places the answer rather than
-/// working one out.
+/// The scan proposes a pairing from the sheet's `FILE` directive; when the
+/// directive names a file that was later re-encoded under another name, the
+/// user is the only one who knows the answer, and this is where they give it.
+/// Core decides what may be offered — it probes each file — so this places the
+/// answer rather than working one out.
 struct ImportSheetBindingMenu: View {
-    let sheet: BridgeCandidateFile
+    let sheet: BridgeSheetGroup
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core. `nil` until it has been asked for; empty means there is nothing to
     /// offer, so no menu appears.
@@ -20,25 +20,6 @@ struct ImportSheetBindingMenu: View {
     let onBind: (String?) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            menu
-            if let unbound = sheet.unboundSheetLine {
-                Text(unbound)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            if let requested = sheet.sheetRequestedLine {
-                Text(requested)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var menu: some View {
         if let options, !options.isEmpty {
             Menu {
                 ForEach(options, id: \.fileId) { option in
@@ -50,12 +31,12 @@ struct ImportSheetBindingMenu: View {
                 } label: {
                     checkable(
                         coreString("ui.import.sheet.describes_nothing"),
-                        selected: sheet.describes == nil
+                        selected: sheet.bound.containerId == nil
                     )
                 }
             } label: {
                 Label(
-                    sheet.describes
+                    sheet.bound.containerName
                         ?? coreString("ui.import.sheet.choose_audio"),
                     systemImage: "link"
                 )
@@ -87,7 +68,7 @@ struct ImportSheetBindingMenu: View {
             } label: {
                 checkable(
                     option.fileId,
-                    selected: sheet.describes == option.fileId
+                    selected: sheet.bound.containerId == option.fileId
                 )
             }
         }

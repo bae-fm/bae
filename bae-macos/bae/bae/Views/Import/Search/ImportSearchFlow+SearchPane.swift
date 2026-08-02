@@ -181,8 +181,10 @@ extension ImportSearchFlow {
                 library: services.library,
                 importStore: services.importStore,
                 key: input.key,
-                releaseId: result.releaseId,
-                source: result.source
+                pick: CandidatePick(
+                    releaseId: result.releaseId,
+                    source: result.source
+                )
             )
         }
     }

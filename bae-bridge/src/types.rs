@@ -3205,11 +3205,36 @@ pub struct BridgeSheetGroup {
     /// `AppHandle::set_sheet_disc` take.
     pub sheet_id: String,
     pub name: String,
-    /// The audio the sheet describes; `None` when it describes nothing.
-    pub container: Option<BridgeMappingContainer>,
+    /// Absolute path — what opening the sheet to read it reaches.
+    pub local_path: String,
+    pub bound: BridgeSheetBound,
     pub assignment: BridgeSheetDisc,
     /// The discs this sheet may be assigned to, counting from one.
     pub disc_options: Vec<u32>,
+}
+
+/// What a track sheet describes, with the facts its header shows about it.
+/// Mirror of bae-core's `SheetBound`.
+///
+/// `BridgeSheetBinding` enriched by the container's name and size: a header
+/// states both which audio a sheet is on and why it is on none, and carrying
+/// the binding separately would be a second way to say the first.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSheetBound {
+    /// The sheet describes this audio.
+    Describes { container: BridgeMappingContainer },
+    /// It describes nothing: the directive named audio that is not in the
+    /// folder, named several and only some are here, or the user cleared the
+    /// binding. `requested` is what the directive asked for, so the header can
+    /// say what the sheet was looking for while it offers the folder's own
+    /// audio instead.
+    Unresolved { requested: Vec<String> },
+    /// The directive resolved, but bae cannot carve tracks out of that codec.
+    /// The UI localizes `codec` through `bridge_sheet_refused_codec_key`.
+    RefusedCodec {
+        container: BridgeMappingContainer,
+        codec: String,
+    },
 }
 
 /// One row of the mapping table. Mirror of bae-core's `MappingRow`.
@@ -3260,6 +3285,50 @@ pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdi
         .into_iter()
         .map(BridgeRawTrackEdit::from_core)
         .collect()
+}
+
+/// Write an edited track row back onto the row that commits it, found by the
+/// track's own id. A row nothing matches leaves the table alone.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_mapping_with_track(
+    table: BridgeMappingTable,
+    track: BridgeRawTrackEdit,
+) -> BridgeMappingTable {
+    BridgeMappingTable::from_core(bae_core::import::mapping_with_track(
+        table.into_core(),
+        track.into_core(),
+    ))
+}
+
+/// Drop the row committing the track with `track_id` — the Drop action on a
+/// track the release names that this folder has nothing for. Nothing is
+/// persisted: the folder is unchanged, the release is committed without it.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_mapping_without_track(
+    table: BridgeMappingTable,
+    track_id: String,
+) -> BridgeMappingTable {
+    BridgeMappingTable::from_core(bae_core::import::mapping_without_track(
+        table.into_core(),
+        &track_id,
+    ))
+}
+
+/// Drop every row the file `file_id` backs — the Exclude action, once the role
+/// change that persists it has landed. One container backs every entry of the
+/// sheet bound to it, so that sheet's whole group leaves with it.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_mapping_without_file(
+    table: BridgeMappingTable,
+    file_id: String,
+) -> BridgeMappingTable {
+    BridgeMappingTable::from_core(bae_core::import::mapping_without_file(
+        table.into_core(),
+        &file_id,
+    ))
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
@@ -5658,14 +5727,16 @@ impl BridgeSheetGroup {
         let bae_core::import::SheetGroup {
             sheet_id,
             name,
-            container,
+            path,
+            bound,
             assignment,
             disc_options,
         } = sheet;
         BridgeSheetGroup {
             sheet_id,
             name,
-            container: container.map(BridgeMappingContainer::from_core),
+            local_path: path.to_string_lossy().into_owned(),
+            bound: BridgeSheetBound::from_core(bound),
             assignment: BridgeSheetDisc::from_core(assignment),
             disc_options,
         }
@@ -5675,16 +5746,47 @@ impl BridgeSheetGroup {
         let BridgeSheetGroup {
             sheet_id,
             name,
-            container,
+            local_path,
+            bound,
             assignment,
             disc_options,
         } = self;
         bae_core::import::SheetGroup {
             sheet_id,
             name,
-            container: container.map(BridgeMappingContainer::into_core),
+            path: std::path::PathBuf::from(local_path),
+            bound: bound.into_core(),
             assignment: assignment.into_core(),
             disc_options,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSheetBound {
+    fn from_core(bound: bae_core::import::SheetBound) -> Self {
+        use bae_core::import::SheetBound;
+        match bound {
+            SheetBound::Describes(container) => Self::Describes {
+                container: BridgeMappingContainer::from_core(container),
+            },
+            SheetBound::Unresolved { requested } => Self::Unresolved { requested },
+            SheetBound::RefusedCodec { container, codec } => Self::RefusedCodec {
+                container: BridgeMappingContainer::from_core(container),
+                codec,
+            },
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::SheetBound {
+        use bae_core::import::SheetBound;
+        match self {
+            Self::Describes { container } => SheetBound::Describes(container.into_core()),
+            Self::Unresolved { requested } => SheetBound::Unresolved { requested },
+            Self::RefusedCodec { container, codec } => SheetBound::RefusedCodec {
+                container: container.into_core(),
+                codec,
+            },
         }
     }
 }

@@ -21,16 +21,11 @@ extension ImportView {
 
     // MARK: - Main pane
 
-    /// The mapping pane for the selected candidate: release header, file roles,
-    /// track slots, commit bar.
+    /// The mapping pane for the selected candidate: identity, the mapping
+    /// table, commit bar.
     func mainPane(for candidate: Candidate) -> some View {
         ImportMappingPane(
             candidate: candidate,
-            model: ImportMappingModel(
-                files: candidate.files,
-                slots: candidate.slots,
-                edit: candidate.editValues
-            ),
             bindingOptions: sheetBindingOptions,
             previewingPath: importStore.previewState.active?.path,
             libraryStatus: libraryStatus(for: candidate),
@@ -41,30 +36,35 @@ extension ImportView {
             editor: editorBinding(for: candidate),
             storageManaged: $storageManaged,
             storagePinned: $storagePinned,
-            roleActions: roleActions(for: candidate),
-            slotActions: slotActions(for: candidate),
+            mappingActions: mappingActions(for: candidate),
             commitActions: ImportCommitActions(
                 confirmImport: { commitConfirmedImport(candidate: candidate) },
                 viewInLibrary: { uiStore.navigateToAlbum($0) },
             ),
-            onFindRelease: {
-                uiStore.presentModal {
-                    ImportSearchSheet(candidateKey: candidate.key)
-                }
-            },
+            onSetIdentity: { setIdentity($0, for: candidate) },
+            onFindRelease: { presentSearch(for: candidate) },
             onEditCover: { presentCoverPicker(for: candidate) },
         )
         .animation(nil, value: uiStore.selectedFolderCandidate)
         // Keyed on the folder's files, not on the candidate: what a sheet may
-        // be bound to changes when the folder's audio does, and not when a
-        // binding does.
+        // be bound to changes when the folder's audio does, and the identify
+        // phase's table changes with it for the same reason. Neither changes
+        // when a binding or a role does — those re-read what they invalidate
+        // themselves, which is also what keeps this from overwriting a table
+        // the user has been editing.
         .task(id: candidate.key + fileNames(candidate)) {
+            if candidate.identityChoice == nil {
+                ImportMappingFlow.readCandidateMapping(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            }
             await loadSheetBindingOptions(for: candidate)
         }
     }
 
-    /// The live editor, or `nil` while nothing has seeded one — the pane leaves
-    /// the slot table and the commit bar off until then.
+    /// The album-level editor, or `nil` while nothing has seeded one — the pane
+    /// leaves the release fields and the commit bar off until then.
     private func editorBinding(
         for candidate: Candidate
     ) -> Binding<BridgeRawReleaseEdit>? {
@@ -94,6 +94,14 @@ extension ImportView {
     /// binding-offer read is refreshed on.
     private func fileNames(_ candidate: Candidate) -> String {
         candidate.files.files.map(\.file.name).joined(separator: "\u{0}")
+    }
+
+    /// Open the release editor: the search pane, reached the way an editor is
+    /// reached.
+    func presentSearch(for candidate: Candidate) {
+        uiStore.presentModal {
+            ImportSearchSheet(candidateKey: candidate.key)
+        }
     }
 
     private func presentCoverPicker(for candidate: Candidate) {

@@ -3,21 +3,57 @@ import Testing
 
 @testable import bae
 
-/// Recording stubs for the two services the pane's actions reach.
+/// Recording stubs for the services the mapping table's controls reach.
 @MainActor
 private final class Recorder {
-    var roleCalls: [(key: String, fileId: String, choice: BridgeFileRoleChoice)] =
-        []
+    var roleCalls:
+        [(key: String, fileId: String, choice: BridgeFileRoleChoice)] =
+            []
+    var bindCalls: [(sheetFileId: String, audioFileId: String?)] = []
+    var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var played: [String] = []
     var stops = 0
+    /// What a re-read of the folder's mapping comes back with — the table core
+    /// projects once the decision under test has landed.
+    var remapped: BridgeMappingTable = MappingFixtures.thirteenFileTable
+    /// What reading the folder as Unknown comes back with.
+    var unknown: BridgeUnknownMapping = BridgeUnknownMapping(
+        seed: MappingFixtures.albumSeed,
+        mapping: MappingFixtures.unknownTable
+    )
 
     var importer: Importer {
         Importer(
+            setSheetBinding: { [self] _, sheetFileId, audioFileId in
+                await MainActor.run {
+                    bindCalls.append(
+                        (sheetFileId: sheetFileId, audioFileId: audioFileId)
+                    )
+                }
+            },
+            setSheetDisc: { [self] _, sheetFileId, disc in
+                await MainActor.run {
+                    discCalls.append((sheetFileId: sheetFileId, disc: disc))
+                }
+            },
             setFileRole: { [self] key, fileId, choice in
                 await MainActor.run {
                     roleCalls.append(
                         (key: key, fileId: fileId, choice: choice)
                     )
+                }
+            },
+            unknownMapping: { [self] _ in
+                await MainActor.run { unknown }
+            }
+        )
+    }
+
+    var library: Library {
+        Library(
+            prefetchRelease: { [self] _, _, _ in
+                await MainActor.run {
+                    MappingFixtures.prefetch(mapping: remapped)
                 }
             }
         )
@@ -37,8 +73,11 @@ private final class Recorder {
     func services(_ store: ImportStore) -> ImportMappingServices {
         ImportMappingServices(
             importer: importer,
+            library: library,
             importStore: store,
             previewAudio: previewAudio,
+            openDocument: { _, _ in },
+            openImage: { _ in },
             onError: { _ in },
         )
     }
@@ -47,89 +86,87 @@ private final class Recorder {
 @Suite("Import mapping pane")
 struct ImportMappingPaneTests {
     // 1. Binding a track sheet turns one container into the release's twelve
-    //    slots. The pane re-reads the mapping the pick produces, so the folder
-    //    goes from one slot to twelve without leaving the pane — and the twelve
-    //    rows read as one run down the link column, because they are one file.
+    //    entries. The pane re-reads the mapping the pick produces, so the
+    //    folder goes from one row carrying audio to twelve without leaving the
+    //    pane — and the twelve are the sheet's own group.
     @MainActor
-    @Test("binding a sheet rebuilds the slot table")
-    func bindingASheetRebuildsTheSlotTable() {
-        let titles = (1...12).map { "Track \($0)" }
-        let before = ImportMappingModel(
-            files: MappingFixtures.emptyFiles,
-            slots: MappingFixtures.oneSlotTable,
-            edit: MappingFixtures.edit(
-                titles: ["Track 1"],
-                files: [.standalone(fileId: MappingFixtures.containerId)]
-            )
+    @Test("binding a sheet rebuilds the mapping table")
+    func bindingASheetRebuildsTheTable() async {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.unboundSheetTable
         )
-        #expect(before.slotRows.count == 1)
-        #expect(before.willWriteCount == 1)
-        #expect(before.reconciliation == .moreTracks(files: 1, tracks: 12))
+        #expect(MappingFixtures.mapping(of: store).willWriteCount == 1)
+        #expect(
+            MappingFixtures.mapping(of: store).reconciliation
+                == .moreTracks(files: 1, tracks: 12)
+        )
 
-        let after = ImportMappingModel(
-            files: MappingFixtures.emptyFiles,
-            slots: MappingFixtures.twelveSlotTable,
-            edit: MappingFixtures.edit(
-                titles: titles,
-                files: (0..<12).map { MappingFixtures.slice($0).audio }
-            )
+        let recorder = Recorder()
+        recorder.remapped = MappingFixtures.boundSheetTable()
+        await ImportMappingFlow.bindSheet(
+            key: MappingFixtures.candidateKey,
+            sheetFileId: MappingFixtures.sheetId,
+            audioFileId: MappingFixtures.containerId,
+            services: recorder.services(store)
         )
-        #expect(after.slotRows.count == 12)
+
+        #expect(recorder.bindCalls.count == 1)
+        #expect(
+            recorder.bindCalls.first?.sheetFileId == MappingFixtures.sheetId
+        )
+        #expect(
+            recorder.bindCalls.first?.audioFileId
+                == MappingFixtures.containerId
+        )
+        let after = MappingFixtures.mapping(of: store)
+        #expect(after.rows.count == 1)
+        guard case .sheet(let sheet, let entries) = after.rows[0] else {
+            Issue.record("expected a sheet row, got \(after.rows[0])")
+            return
+        }
+        #expect(sheet.bound.containerId == MappingFixtures.containerId)
+        #expect(entries.count == 12)
         #expect(after.willWriteCount == 12)
         #expect(after.reconciliation == .agrees(count: 12))
-        // One file behind every row, drawn as one run.
-        #expect(
-            after.slotRows.allSatisfy {
-                $0.file?.audio.fileId == MappingFixtures.containerId
-            }
-        )
-        #expect(after.slotRows.first?.file?.span == .containerStart)
-        #expect(after.slotRows.last?.file?.span == .containerEnd)
-        #expect(
-            after.slotRows.dropFirst().dropLast().allSatisfy {
-                $0.file?.span == .containerMiddle
-            }
-        )
     }
 
-    // 2. Thirteen files against a twelve-track source: the bar starts at
+    // 2. Thirteen files against a twelve-track release: the bar starts at
     //    thirteen tracks with one row unnamed, and typing a title leaves
     //    thirteen tracks with none unnamed. Naming a row never changes what
     //    will be written — only whether anyone has said what it is.
     @MainActor
-    @Test("naming an unmatched file updates the commit bar")
-    func namingAnUnmatchedFileUpdatesTheCommitBar() throws {
+    @Test("naming an unmatched row updates the commit bar")
+    func namingAnUnmatchedRowUpdatesTheCommitBar() throws {
         let store = MappingFixtures.store(
-            slots: MappingFixtures.thirteenFileSlots,
-            edit: MappingFixtures.thirteenFileEdit
+            mapping: MappingFixtures.thirteenFileTable
         )
-        #expect(MappingFixtures.model(of: store).willWriteCount == 13)
-        #expect(MappingFixtures.model(of: store).unansweredCount == 1)
+        #expect(MappingFixtures.mapping(of: store).willWriteCount == 13)
+        #expect(MappingFixtures.mapping(of: store).unansweredCount == 1)
 
-        // Through the same binding the slot row's title field writes with.
-        let candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+        // Through the same call the row's title field writes with.
+        let unnamed = try #require(
+            MappingFixtures.mapping(of: store).units.last?.track
         )
-        let editor = ImportSearchFlow.makeEditValuesBinding(
-            importStore: store,
+        var named = unnamed
+        named.title = "Hidden Track"
+        ImportMappingFlow.editTrack(
             key: MappingFixtures.candidateKey,
-            candidate: candidate
+            track: named,
+            importStore: store
         )
-        editor.wrappedValue.tracks[12].title = "Hidden Track"
 
-        #expect(MappingFixtures.model(of: store).willWriteCount == 13)
-        #expect(MappingFixtures.model(of: store).unansweredCount == 0)
+        #expect(MappingFixtures.mapping(of: store).willWriteCount == 13)
+        #expect(MappingFixtures.mapping(of: store).unansweredCount == 0)
     }
 
-    // 3. Excluding a file takes its slot with it — thirteen rows back to
-    //    twelve, and the tally back to agreement — and the decision is
-    //    persisted rather than kept in the pane.
+    // 3. Excluding a file takes its row with it — thirteen rows back to twelve,
+    //    and the tally back to agreement — and the decision is persisted rather
+    //    than kept in the pane.
     @MainActor
-    @Test("excluding a file removes its slot and restores the count")
-    func excludingAFileRemovesItsSlot() async {
+    @Test("excluding a file removes its row and restores the count")
+    func excludingAFileRemovesItsRow() async {
         let store = MappingFixtures.store(
-            slots: MappingFixtures.thirteenFileSlots,
-            edit: MappingFixtures.thirteenFileEdit
+            mapping: MappingFixtures.thirteenFileTable
         )
         let recorder = Recorder()
         await ImportMappingFlow.exclude(
@@ -138,16 +175,37 @@ struct ImportMappingPaneTests {
             services: recorder.services(store)
         )
 
-        let model = MappingFixtures.model(of: store)
-        #expect(model.slotRows.count == 12)
-        #expect(model.willWriteCount == 12)
-        #expect(model.unansweredCount == 0)
-        #expect(model.reconciliation == .agrees(count: 12))
-        #expect(model.audioChoices.count == 12)
+        let mapping = MappingFixtures.mapping(of: store)
+        #expect(mapping.rows.count == 12)
+        #expect(mapping.willWriteCount == 12)
+        #expect(mapping.unansweredCount == 0)
+        #expect(mapping.reconciliation == .agrees(count: 12))
+        #expect(mapping.audioChoices.count == 12)
         // Persisted, not a list edit: core is told, with the role that takes
         // the file out of the tracklist.
         #expect(recorder.roleCalls.count == 1)
         #expect(recorder.roleCalls.first?.fileId == "13.flac")
+        #expect(recorder.roleCalls.first?.choice == .notATrack)
+    }
+
+    // 3b. Excluding the audio a sheet describes takes the whole group with it:
+    //     twelve entries are one file's rows, and the file is leaving.
+    @MainActor
+    @Test("excluding a sheet's container removes the whole group")
+    func excludingASheetsContainerRemovesTheGroup() async {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.boundSheetTable()
+        )
+        let recorder = Recorder()
+        await ImportMappingFlow.exclude(
+            key: MappingFixtures.candidateKey,
+            fileId: MappingFixtures.containerId,
+            services: recorder.services(store)
+        )
+
+        let mapping = MappingFixtures.mapping(of: store)
+        #expect(mapping.rows.isEmpty)
+        #expect(mapping.willWriteCount == 0)
         #expect(recorder.roleCalls.first?.choice == .notATrack)
     }
 
@@ -158,50 +216,182 @@ struct ImportMappingPaneTests {
     @MainActor
     @Test("nothing disables the commit")
     func nothingDisablesTheCommit() {
-        let unanswered = MappingFixtures.thirteenFileEdit
-        #expect(MappingFixtures.isCommittable(unanswered))
-
-        // A track the source names with nothing on disk behind it.
-        var trackOnly = MappingFixtures.thirteenFileEdit
-        trackOnly.tracks[5].file = nil
-        #expect(MappingFixtures.isCommittable(trackOnly))
-
-        let paneWithTrackOnly = ImportMappingModel(
-            files: MappingFixtures.emptyFiles,
-            slots: MappingFixtures.thirteenFileSlots,
-            edit: trackOnly
+        let unanswered = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
         )
-        // The row states its disagreement by writing nothing, and the rest of
-        // the release still commits.
-        #expect(paneWithTrackOnly.slotRows[5].file == nil)
-        #expect(paneWithTrackOnly.willWriteCount == 12)
+        #expect(MappingFixtures.isCommittable(unanswered))
+        #expect(
+            MappingFixtures.mapping(of: unanswered).commitTracks.count == 13
+        )
+
+        // A release that names more tracks than the folder has anything for.
+        let unbacked = MappingFixtures.store(
+            mapping: MappingFixtures.unboundSheetTable
+        )
+        #expect(MappingFixtures.isCommittable(unbacked))
+        #expect(MappingFixtures.mapping(of: unbacked).willWriteCount == 1)
+        #expect(MappingFixtures.mapping(of: unbacked).commitTracks.count == 12)
     }
 
-    // 5. The slot row's play control auditions that row's own audio. For a
-    //    sheet slice that is the container the slice is carved from, which is
-    //    the only file on disk there is to play.
+    // 4b. A re-pick that fails unsettles the identity: the table and the album
+    //     fields stay put, but there is nothing to commit them under, so the
+    //     commit bar has nothing to render and the commit has nothing to read.
     @MainActor
-    @Test("playing a slot's file works from the slot row")
-    func playingASlotsFileWorksFromTheSlotRow() throws {
+    @Test("a failed re-pick leaves nothing to commit")
+    func aFailedRepickLeavesNothingToCommit() async throws {
         let store = MappingFixtures.store(
-            slots: MappingFixtures.twelveSlotTable,
-            edit: MappingFixtures.edit(
-                titles: (1...12).map { "Track \($0)" },
-                files: (0..<12).map { MappingFixtures.slice($0).audio }
-            )
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        #expect(MappingFixtures.isCommittable(store))
+
+        ImportSearchFlow.prefetchAndConfirm(
+            library: Library(prefetchRelease: { _, _, _ in
+                throw StubError.notImplemented
+            }),
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            pick: MappingFixtures.pick
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        let candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(candidate.identityChoice == nil)
+        #expect(candidate.mapping != nil)
+        #expect(candidate.editValues != nil)
+        #expect(candidate.commitEdit == nil)
+    }
+
+    // 5. The row's play control auditions that row's own audio. For a sheet
+    //    entry that is the container the entry is carved from, which is the
+    //    only file on disk there is to play.
+    @MainActor
+    @Test("auditioning a row plays its own audio")
+    func auditioningARowPlaysItsAudio() throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.boundSheetTable()
         )
         let recorder = Recorder()
-        let actions = ImportMappingFlow.slotActions(
+        let actions = ImportMappingFlow.actions(
             key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
-        let row = MappingFixtures.model(of: store).slotRows[4]
-        let path = try #require(row.file?.localPath)
+        let entry = try #require(
+            MappingFixtures.mapping(of: store).units[4].source.audioPath
+        )
 
-        actions.preview(path)
+        actions.preview(entry)
         #expect(recorder.played == [MappingFixtures.containerPath])
 
         actions.stopPreview()
         #expect(recorder.stops == 1)
+    }
+
+    // 6. Cue filenames are arbitrary, so which disc a sheet is is the user's to
+    //    say. Saying it persists the decision and comes back as the tracklist
+    //    it re-shapes.
+    @MainActor
+    @Test("assigning a cue to a disc persists it and re-reads the table")
+    func assigningACueToADisc() async {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.boundSheetTable()
+        )
+        let recorder = Recorder()
+        recorder.remapped = MappingFixtures.boundSheetTable(
+            assignment: .disc(number: 2)
+        )
+        await ImportMappingFlow.setSheetDisc(
+            key: MappingFixtures.candidateKey,
+            sheetFileId: MappingFixtures.sheetId,
+            disc: .disc(number: 2),
+            services: recorder.services(store)
+        )
+
+        #expect(recorder.discCalls.count == 1)
+        #expect(recorder.discCalls.first?.disc == .disc(number: 2))
+        guard
+            case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
+                .rows[0]
+        else {
+            Issue.record("expected a sheet row")
+            return
+        }
+        #expect(sheet.assignment == .disc(number: 2))
+    }
+
+    // 7. An ignored cue contributes nothing to the tracklist, and its container
+    //    is loose audio again.
+    @MainActor
+    @Test("ignoring a cue takes its entries out of the tracklist")
+    func ignoringACue() async {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.boundSheetTable()
+        )
+        let recorder = Recorder()
+        recorder.remapped = MappingFixtures.ignoredSheetTable
+        await ImportMappingFlow.setSheetDisc(
+            key: MappingFixtures.candidateKey,
+            sheetFileId: MappingFixtures.sheetId,
+            disc: .ignored,
+            services: recorder.services(store)
+        )
+
+        #expect(recorder.discCalls.first?.disc == .ignored)
+        let mapping = MappingFixtures.mapping(of: store)
+        guard case .sheet(let sheet, let entries) = mapping.rows[0] else {
+            Issue.record("expected a sheet row")
+            return
+        }
+        #expect(sheet.assignment == .ignored)
+        #expect(entries.isEmpty)
+        #expect(mapping.willWriteCount == 1)
+    }
+
+    // 8. The identity toggle is the one control, and both directions leave a
+    //    table to work in: Unknown reads the folder's own tags, and switching
+    //    back re-picks the release the candidate already held.
+    @MainActor
+    @Test("switching release to Unknown and back keeps the table populated")
+    func switchingIdentityKeepsTheTablePopulated() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let recorder = Recorder()
+
+        ImportSearchFlow.addAsUnknown(
+            importer: recorder.importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        var candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(candidate.identity == .unknown)
+        #expect(candidate.identityChoice == .unknown)
+        #expect(candidate.mapping?.rows.count == 2)
+        #expect(candidate.mapping?.reconciliation == nil)
+        // The release it came from is still held, which is what switching back
+        // re-picks rather than sending the user back to the search.
+        #expect(candidate.pick == MappingFixtures.pick)
+
+        let pick = try #require(candidate.pick)
+        recorder.remapped = MappingFixtures.thirteenFileTable
+        ImportSearchFlow.prefetchAndConfirm(
+            library: recorder.library,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            pick: pick
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(candidate.identity == .release)
+        #expect(candidate.mapping?.rows.count == 13)
+        #expect(candidate.mapping?.willWriteCount == 13)
     }
 }

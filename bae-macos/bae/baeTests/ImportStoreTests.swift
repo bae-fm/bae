@@ -405,7 +405,7 @@ struct ImportStoreBatchSnapshotTests {
             watchedFolderPath: "/w1",
             name: "A"
         )
-        existing.mode = .confirming
+        existing.identity = .unknown
         existing.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.folderCandidates["/w1/a"] = existing
@@ -435,7 +435,7 @@ struct ImportStoreBatchSnapshotTests {
         let merged = try #require(store.folderCandidates["/w1/a"])
         // Session state carried from the existing candidate — the batch path
         // discards the snapshot's idle runtime in favor of it.
-        #expect(merged.mode == .confirming)
+        #expect(merged.identity == .unknown)
         #expect(
             merged.importStatus
                 == .complete(releaseId: "rel-1", albumId: "al-1")
@@ -511,7 +511,7 @@ struct ImportStoreSingleSnapshotTests {
             watchedFolderPath: "/w1",
             name: "A"
         )
-        existing.mode = .confirming
+        existing.identity = .unknown
         existing.importStatus = .complete(
             releaseId: "rel-old",
             albumId: "al-old"
@@ -538,7 +538,7 @@ struct ImportStoreSingleSnapshotTests {
 
         let merged = try #require(store.folderCandidates["/w1/a"])
         // Session field carried from the existing candidate...
-        #expect(merged.mode == .confirming)
+        #expect(merged.identity == .unknown)
         // ...while the single-candidate path applies the fresh runtime on top,
         // so the runtime's import status wins over the carried one.
         #expect(

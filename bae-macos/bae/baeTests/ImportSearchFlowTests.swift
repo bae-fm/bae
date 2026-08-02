@@ -5,8 +5,8 @@ import Testing
 
 /// `readyAutoPick` decides when a selected candidate's pane opens on its
 /// row's settled match without a click. Its guards are what keep the seed
-/// from firing where a pick would be wrong: rows outside Ready, panes past
-/// the identify phase, and prefetches that already failed once.
+/// from firing where a pick would be wrong: rows outside Ready, folders whose
+/// identity is already settled, and prefetches that already failed once.
 @MainActor
 struct ImportSearchFlowReadyAutoPickTests {
     private var candidate: Candidate {
@@ -35,7 +35,7 @@ struct ImportSearchFlowReadyAutoPickTests {
 
     @Test func ignoresRowsOutsideReady() {
         // Done and Skipped rows carry `matched` too, and a candidate rebuilt
-        // at launch is back in `.identifying` — placement is the only thing
+        // at launch has nothing settled again — placement is the only thing
         // standing between an imported row and a re-opened confirm pane.
         for placement: BridgeTriagePlacement in [.done, .skipped] {
             let row = PreviewData.triageRow(
@@ -79,7 +79,10 @@ struct ImportSearchFlowReadyAutoPickTests {
 
     @Test func yieldsToAPickAlreadyIn() {
         var picked = candidate
-        picked.pickedReleaseId = "rel-user-chose"
+        picked.pick = CandidatePick(
+            releaseId: "rel-user-chose",
+            source: .musicBrainz
+        )
         #expect(
             ImportSearchFlow.readyAutoPick(
                 candidate: picked,
@@ -88,10 +91,16 @@ struct ImportSearchFlowReadyAutoPickTests {
         )
     }
 
-    @Test func yieldsToAPaneOutsideTheIdentifyPhase() {
-        for mode: CandidateMode in [.loadingDetail, .confirming] {
+    @Test func yieldsToAnIdentityAlreadySettled() {
+        // A pick that resolved and a folder read as its own tags both settle
+        // the identity choice; neither wants a Ready row seeded over it.
+        let settled: [BridgeIdentityChoice] = [
+            .exact(releaseId: "rel-picked", source: .musicBrainz),
+            .unknown,
+        ]
+        for choice in settled {
             var advanced = candidate
-            advanced.mode = mode
+            advanced.identityChoice = choice
             #expect(
                 ImportSearchFlow.readyAutoPick(
                     candidate: advanced,
@@ -102,7 +111,7 @@ struct ImportSearchFlowReadyAutoPickTests {
     }
 
     @Test func staysDownAfterAFailedPrefetch() {
-        // Failure returns the mode to `.identifying` with `error` set; without
+        // Failure clears what the pick had settled and sets `error`; without
         // this guard the seed would immediately retry the same prefetch, and
         // on a persistent failure, retry it forever.
         var failed = candidate

@@ -13,12 +13,22 @@ enum CandidateSource: Equatable {
     case releaseReIdentify(releaseId: String)
 }
 
-// MARK: - CandidateMode
+// MARK: - CandidatePick
 
-enum CandidateMode: Equatable {
-    case identifying
-    case loadingDetail
-    case confirming
+/// The release picked for a candidate: which one, and which metadata source it
+/// came from — the two facts re-reading its mapping needs.
+struct CandidatePick: Equatable {
+    let releaseId: String
+    let source: BridgeMetadataSource
+}
+
+// MARK: - ImportIdentity
+
+/// What a folder is being read as. `release` covers the identify phase too:
+/// there the open question is *which* release, not whether there is one.
+enum ImportIdentity: Equatable {
+    case release
+    case unknown
 }
 
 // MARK: - SearchTab
@@ -100,9 +110,14 @@ struct Candidate: Equatable, Identifiable {
     /// The release the user clicked, held from the click itself so the results
     /// row stays selected while the prefetch is in flight. The claim arrives
     /// with the prefetch and names the same release.
-    var pickedReleaseId: String?
+    ///
+    /// It outlives a switch to Unknown, which is what makes switching back a
+    /// re-pick of this release rather than a trip through the search.
+    var pick: CandidatePick?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
-    var mode: CandidateMode = .identifying
+    /// What the folder is being read as, set the moment the user says so —
+    /// before the pick or the tag read it starts has come back.
+    var identity: ImportIdentity = .release
     var error: String?
     var selectedCover: BridgeCoverChoice?
     var search: CandidateSearchState = .init()
@@ -120,17 +135,16 @@ struct Candidate: Equatable, Identifiable {
     /// preserves `source_release_id`, Approximate NULLs it). `nil` while the
     /// user is still in the identify phase.
     var identityChoice: BridgeIdentityChoice?
-    /// Raw editable metadata form shown on the confirmation page. Seeded from
-    /// the prefetch's editor seed, which bae-core has already masked for the
-    /// claim; bae-core shapes the raw form back into the wire edit committed as
-    /// the metadata overlay alongside the import command.
+    /// The album-level half of the editable metadata, seeded from the prefetch's
+    /// editor seed (already masked for the claim by bae-core) or from the
+    /// folder's own tags. Its `tracks` stay empty: the tracklist lives in
+    /// `mapping`, where the row that produces a track is the row that edits it.
     var editValues: BridgeRawReleaseEdit?
-    /// The file↔release mapping the pick produced: one row per track the import
-    /// will write, positionally aligned with `editValues.tracks`. `nil` while
-    /// identifying and for an Unknown import, which has no picked release to
-    /// map the folder's audio onto. Excluding a file trims it in place —
-    /// re-prefetching to get a fresh one would throw away the user's edits.
-    var slots: BridgeSlotTable?
+    /// Every source unit the folder offers with the track committing makes of
+    /// it. `nil` until the folder's mapping has been read. Excluding a file or
+    /// dropping a row trims it in place — re-reading it from core would throw
+    /// away the user's edits.
+    var mapping: BridgeMappingTable?
 
     // periphery:ignore
     /// In-flight search task. Replacing it cancels the old one via the
@@ -161,9 +175,9 @@ struct Candidate: Equatable, Identifiable {
         copy.importStatus = existing.importStatus
         copy.releaseDetailBridge = existing.releaseDetailBridge
         copy.claim = existing.claim
-        copy.pickedReleaseId = existing.pickedReleaseId
+        copy.pick = existing.pick
         copy.libraryStatuses = existing.libraryStatuses
-        copy.mode = existing.mode
+        copy.identity = existing.identity
         copy.error = existing.error
         copy.selectedCover = existing.selectedCover
         copy.search = existing.search
@@ -171,7 +185,7 @@ struct Candidate: Equatable, Identifiable {
         copy.signalsToolbar = existing.signalsToolbar
         copy.identityChoice = existing.identityChoice
         copy.editValues = existing.editValues
-        copy.slots = existing.slots
+        copy.mapping = existing.mapping
         copy.searchTask = existing.searchTask
         copy.prefetchTask = existing.prefetchTask
         return copy
@@ -195,6 +209,23 @@ struct Candidate: Equatable, Identifiable {
             files: [],
             formatLabel: "",
             collapsedDirectories: []
+        )
+    }
+
+    /// What committing this candidate writes: the album fields the editor
+    /// holds, over the tracklist the mapping table's rows are. `nil` until
+    /// something has been settled for this folder — a release, or its own tags
+    /// — and again after a re-pick fails, which unsettles it: there is no
+    /// identity to commit under then, so there is nothing to commit.
+    var commitEdit: BridgeRawReleaseEdit? {
+        guard identityChoice != nil, let editValues, let mapping else {
+            return nil
+        }
+        return BridgeRawReleaseEdit(
+            albumTitle: editValues.albumTitle,
+            albumArtistText: editValues.albumArtistText,
+            pressing: editValues.pressing,
+            tracks: mapping.commitTracks
         )
     }
 

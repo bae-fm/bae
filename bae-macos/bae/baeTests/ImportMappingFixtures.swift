@@ -4,71 +4,279 @@ import Foundation
 @testable import bae
 
 /// The walkthrough folder the mapping-pane tests read: thirteen audio files
-/// against a source that names twelve tracks, plus the CUE+FLAC shape of the
-/// same release — one container a track sheet carves twelve tracks out of.
+/// against a release that names twelve tracks, plus the CUE+FLAC shape of the
+/// same release — one container a track sheet carves twelve entries out of.
 ///
 /// Everything here is a bridge value, built the way core builds it, so the
-/// tests exercise the pane's own reading of the mapping rather than a
+/// tests exercise the pane's own reading of the mapping table rather than a
 /// convenience shape invented for them.
 enum MappingFixtures {
     static let candidateKey = "/Music/Downloads/Walkthrough"
+    static let pick = CandidatePick(
+        releaseId: "rel-walkthrough",
+        source: .musicBrainz
+    )
 
     // MARK: - Thirteen files, twelve tracks
 
-    static func standalone(_ index: Int) -> BridgeSlotFile {
-        BridgeSlotFile(
-            audio: .standalone(fileId: "\(index).flac"),
+    static func audioFile(_ index: Int) -> BridgeMappingFile {
+        BridgeMappingFile(
+            fileId: "\(index).flac",
             name: "\(index).flac",
             size: UInt64(30_000_000 + index * 1_000_000),
             localPath: "/tmp/walkthrough/\(index).flac",
             probedDurationMs: UInt64(200_000 + index * 1000),
-            span: .whole
+            role: .audio,
+            alternatives: [.audio, .notATrack],
+            roleChoice: .audio
         )
     }
 
-    static func track(
-        _ title: String,
+    static func trackEdit(
+        _ index: Int,
+        title: String,
         file: BridgeAudioFile?
-    ) -> BridgeTrackUserEdit {
-        BridgeTrackUserEdit(
+    ) -> BridgeRawTrackEdit {
+        BridgeRawTrackEdit(
+            id: "import-track-\(index)",
             title: title,
+            artistText: "",
             side: 1,
             trackNumber: nil,
-            artistNames: [],
             file: file
         )
     }
 
-    /// Twelve paired rows and one file the source's tracklist does not name.
-    static let thirteenFileSlots: BridgeSlotTable = {
-        var rows: [BridgeTrackSlot] = (1...12)
-            .map { index in
-                .paired(
-                    track: track(
-                        "Track \(index)",
-                        file: standalone(index).audio
+    /// One loose audio file and the track the release puts on it.
+    static func pairedRow(_ index: Int) -> BridgeMappingRow {
+        .unit(
+            unit: BridgeMappingUnit(
+                source: .file(file: audioFile(index)),
+                becomes: .track(
+                    track: trackEdit(
+                        index - 1,
+                        title: "Track \(index)",
+                        file: .standalone(fileId: "\(index).flac")
                     ),
-                    position: "\(index)",
-                    sourceDurationMs: UInt64(200_000 + index * 1000),
-                    file: standalone(index)
+                    sourcePosition: "\(index)",
+                    sourceDurationMs: UInt64(200_000 + index * 1000)
                 )
-            }
-        rows.append(
-            .fileOnly(
-                track: track("", file: standalone(13).audio),
-                file: standalone(13)
             )
         )
-        return BridgeSlotTable(
-            rows: rows,
-            reconciliation: .moreFiles(files: 13, tracks: 12),
-            audio: (1...13).map(standalone)
-        )
-    }()
+    }
 
-    /// The editor the same pick seeds: thirteen rows, the last one unnamed.
-    static let thirteenFileEdit = BridgeRawReleaseEdit(
-        albumTitle: "Walkthrough",
+    /// A thirteenth file the release's tracklist does not name: it carries
+    /// audio, so it writes a track, and nobody has said what that track is.
+    static let unnamedRow: BridgeMappingRow = .unit(
+        unit: BridgeMappingUnit(
+            source: .file(file: audioFile(13)),
+            becomes: .track(
+                track: trackEdit(
+                    12,
+                    title: "",
+                    file: .standalone(fileId: "13.flac")
+                ),
+                sourcePosition: nil,
+                sourceDurationMs: nil
+            )
+        )
+    )
+
+    static let thirteenFileTable = BridgeMappingTable(
+        rows: (1...12).map(pairedRow) + [unnamedRow],
+        reconciliation: .moreFiles(files: 13, tracks: 12)
+    )
+
+    // MARK: - One container, before and after its sheet is bound
+
+    static let containerId = "Album Title.flac"
+    static let sheetId = "Album Title.cue"
+    static let containerPath = "/tmp/walkthrough/Album Title.flac"
+
+    static let containerFile = BridgeMappingFile(
+        fileId: containerId,
+        name: containerId,
+        size: 380_000_000,
+        localPath: containerPath,
+        probedDurationMs: 2_400_000,
+        role: .audio,
+        alternatives: [.audio, .notATrack],
+        roleChoice: .audio
+    )
+
+    static let container = BridgeMappingContainer(
+        fileId: containerId,
+        name: containerId,
+        size: 380_000_000
+    )
+
+    static func sheetGroup(
+        container: BridgeMappingContainer?,
+        assignment: BridgeSheetDisc
+    ) -> BridgeSheetGroup {
+        BridgeSheetGroup(
+            sheetId: sheetId,
+            name: sheetId,
+            localPath: "/tmp/walkthrough/\(sheetId)",
+            bound: container.map { .describes(container: $0) }
+                ?? .unresolved(requested: [containerId]),
+            assignment: assignment,
+            discOptions: [1, 2]
+        )
+    }
+
+    /// A track the release names that the folder has nothing for.
+    static func missingRow(_ index: Int) -> BridgeMappingRow {
+        .unit(
+            unit: BridgeMappingUnit(
+                source: .missing,
+                becomes: .track(
+                    track: trackEdit(
+                        index,
+                        title: "Track \(index + 1)",
+                        file: nil
+                    ),
+                    sourcePosition: "\(index + 1)",
+                    sourceDurationMs: UInt64(200_000 + index * 1000)
+                )
+            )
+        )
+    }
+
+    /// The container as one loose audio file taking the release's first track,
+    /// with the other eleven left with nothing behind them.
+    private static func looseContainerRows(
+        sheet: BridgeSheetGroup
+    ) -> [BridgeMappingRow] {
+        [
+            .sheet(sheet: sheet, entries: []),
+            .unit(
+                unit: BridgeMappingUnit(
+                    source: .file(file: containerFile),
+                    becomes: .track(
+                        track: trackEdit(
+                            0,
+                            title: "Track 1",
+                            file: .standalone(fileId: containerId)
+                        ),
+                        sourcePosition: "1",
+                        sourceDurationMs: 201_000
+                    )
+                )
+            ),
+        ] + (1..<12).map(missingRow)
+    }
+
+    /// The sheet describes nothing, so it carves nothing.
+    static let unboundSheetTable = BridgeMappingTable(
+        rows: looseContainerRows(
+            sheet: sheetGroup(container: nil, assignment: .disc(number: 1))
+        ),
+        reconciliation: .moreTracks(files: 1, tracks: 12)
+    )
+
+    /// An ignored sheet speaks for nothing either, so its container is loose
+    /// audio again.
+    static let ignoredSheetTable = BridgeMappingTable(
+        rows: looseContainerRows(
+            sheet: sheetGroup(container: container, assignment: .ignored)
+        ),
+        reconciliation: .moreTracks(files: 1, tracks: 12)
+    )
+
+    /// One entry of the bound sheet, carved out of the container.
+    static func entry(_ index: Int) -> BridgeMappingUnit {
+        BridgeMappingUnit(
+            source: .sheetEntry(
+                entry: BridgeMappingEntry(
+                    sheetId: sheetId,
+                    index: UInt32(index),
+                    number: UInt32(index + 1),
+                    title: "Sheet Track \(index + 1)",
+                    durationMs: UInt64(200_000 + index * 1000),
+                    containerId: containerId,
+                    containerName: containerId,
+                    containerLocalPath: containerPath
+                )
+            ),
+            becomes: .track(
+                track: trackEdit(
+                    index,
+                    title: "Track \(index + 1)",
+                    file: .sheetSlice(
+                        fileId: containerId,
+                        sheetId: sheetId,
+                        index: UInt32(index)
+                    )
+                ),
+                sourcePosition: "\(index + 1)",
+                sourceDurationMs: UInt64(200_000 + index * 1000)
+            )
+        )
+    }
+
+    /// The same folder once the sheet is bound: twelve entries out of one file.
+    static func boundSheetTable(
+        assignment: BridgeSheetDisc = .disc(number: 1)
+    ) -> BridgeMappingTable {
+        BridgeMappingTable(
+            rows: [
+                .sheet(
+                    sheet: sheetGroup(
+                        container: container,
+                        assignment: assignment
+                    ),
+                    entries: (0..<12).map(entry)
+                )
+            ],
+            reconciliation: .agrees(count: 12)
+        )
+    }
+
+    /// What the folder's own tags say it is: two tracks, no release behind
+    /// them, so the table carries no tally.
+    static let unknownTable = BridgeMappingTable(
+        rows: (1...2)
+            .map { index in
+                BridgeMappingRow.unit(
+                    unit: BridgeMappingUnit(
+                        source: .file(file: audioFile(index)),
+                        becomes: .track(
+                            track: BridgeRawTrackEdit(
+                                id: "unknown-track-\(index - 1)",
+                                title: "Track \(index)",
+                                artistText: "",
+                                side: 1,
+                                trackNumber: Int32(index),
+                                file: .standalone(fileId: "\(index).flac")
+                            ),
+                            sourcePosition: "\(index)",
+                            sourceDurationMs: nil
+                        )
+                    )
+                )
+            },
+        reconciliation: nil
+    )
+
+    // MARK: - The album fields alongside the table
+
+    static let albumSeed = BridgeReleaseUserEdit(
+        albumTitle: "Album Title",
+        albumArtistNames: ["Artist Name"],
+        pressing: BridgePressingEdit(
+            year: 1996,
+            format: "CD",
+            label: nil,
+            catalogNumber: nil,
+            country: nil,
+            barcode: nil
+        ),
+        tracks: []
+    )
+
+    static let albumEdit = BridgeRawReleaseEdit(
+        albumTitle: "Album Title",
         albumArtistText: "Artist Name",
         pressing: BridgeRawPressingEdit(
             year: "1996",
@@ -78,100 +286,49 @@ enum MappingFixtures {
             country: "",
             barcode: ""
         ),
-        tracks: (1...13)
-            .map { index in
-                BridgeRawTrackEdit(
-                    id: "import-track-\(index)",
-                    title: index <= 12 ? "Track \(index)" : "",
-                    artistText: "",
-                    side: 1,
-                    trackNumber: nil,
-                    file: standalone(index).audio
-                )
-            }
+        tracks: []
     )
 
-    // MARK: - One container, before and after its sheet is bound
-
-    static let containerId = "Walkthrough.flac"
-    static let sheetId = "Walkthrough.cue"
-    static let containerPath = "/tmp/walkthrough/Walkthrough.flac"
-
-    /// The sheet describes nothing, so the folder offers the container as one
-    /// track and the release gets one slot.
-    static let oneSlotTable = BridgeSlotTable(
-        rows: [
-            .paired(
-                track: track("Track 1", file: .standalone(fileId: containerId)),
-                position: "1",
-                sourceDurationMs: 201_000,
-                file: containerFile
-            )
-        ],
-        reconciliation: .moreTracks(files: 1, tracks: 12),
-        audio: [containerFile]
-    )
-
-    static let containerFile = BridgeSlotFile(
-        audio: .standalone(fileId: containerId),
-        name: containerId,
-        size: 380_000_000,
-        localPath: containerPath,
-        probedDurationMs: 2_400_000,
-        span: .whole
-    )
-
-    /// One slice per track the bound sheet carves, spanning the container.
-    static func slice(_ index: Int) -> BridgeSlotFile {
-        BridgeSlotFile(
-            audio: .sheetSlice(
-                fileId: containerId,
-                sheetId: sheetId,
-                index: UInt32(index)
+    /// A prefetch carrying `mapping`. The pane reads the claim, the seed and
+    /// the mapping; `slots` stays in the bridge for the other desktop surface,
+    /// and is empty here because nothing under test reads it.
+    static func prefetch(mapping: BridgeMappingTable) -> BridgeReleasePrefetch {
+        BridgeReleasePrefetch(
+            detail: BridgeReleaseDetail(
+                releaseId: pick.releaseId,
+                source: pick.source,
+                sourceGroupId: nil,
+                title: "Album Title",
+                artist: "Artist Name",
+                year: 1996,
+                format: "CD",
+                label: nil,
+                catalogNumber: nil,
+                country: nil,
+                barcode: nil,
+                trackCount: 12,
+                tracks: [],
+                coverArt: [],
+                defaultCover: nil
             ),
-            name: containerId,
-            size: 380_000_000,
-            localPath: containerPath,
-            probedDurationMs: UInt64(200_000 + index * 1000),
-            span: index == 0
-                ? .containerStart : (index == 11 ? .containerEnd : .containerMiddle)
+            seed: albumSeed,
+            claim: BridgeClaimLine(
+                choice: .exact(
+                    releaseId: pick.releaseId,
+                    source: pick.source
+                ),
+                evidence: .discIdAlone,
+                release: "CD \u{00b7} 1996",
+                trackCount: 12,
+                showsMetadataSource: false
+            ),
+            slots: BridgeSlotTable(
+                rows: [],
+                reconciliation: .agrees(count: 0),
+                audio: []
+            ),
+            mapping: mapping
         )
-    }
-
-    /// The same folder once the sheet is bound: twelve slots out of one file.
-    static let twelveSlotTable = BridgeSlotTable(
-        rows: (0..<12)
-            .map { index in
-                .paired(
-                    track: track(
-                        "Track \(index + 1)",
-                        file: slice(index).audio
-                    ),
-                    position: "\(index + 1)",
-                    sourceDurationMs: UInt64(200_000 + index * 1000),
-                    file: slice(index)
-                )
-            },
-        reconciliation: .agrees(count: 12),
-        audio: (0..<12).map(slice)
-    )
-
-    static func edit(
-        titles: [String],
-        files: [BridgeAudioFile?]
-    ) -> BridgeRawReleaseEdit {
-        var values = thirteenFileEdit
-        values.tracks = titles.indices.map { index in
-            BridgeRawTrackEdit(
-                id: "import-track-\(index)",
-                title: titles[index],
-                artistText: "",
-                side: 1,
-                trackNumber: nil,
-                file: files[index]
-            )
-        }
-        return values
     }
 
     static let emptyFiles = BridgeCandidateFiles(
@@ -180,13 +337,10 @@ enum MappingFixtures {
         collapsedDirectories: []
     )
 
-    /// A store holding one folder candidate with `slots` and `edit` on it —
-    /// the state a picked release leaves behind.
+    /// A store holding one folder candidate read as the release picked for it,
+    /// with `mapping` on it — the state a pick leaves behind.
     @MainActor
-    static func store(
-        slots: BridgeSlotTable?,
-        edit: BridgeRawReleaseEdit?
-    ) -> ImportStore {
+    static func store(mapping: BridgeMappingTable?) -> ImportStore {
         let store = ImportStore()
         var candidate = Candidate(
             bridge: BridgeFolderCandidate(
@@ -199,28 +353,32 @@ enum MappingFixtures {
                 isAdded: false
             )
         )
-        candidate.mode = .confirming
-        candidate.slots = slots
-        candidate.editValues = edit
+        candidate.pick = pick
+        candidate.identityChoice = .exact(
+            releaseId: pick.releaseId,
+            source: pick.source
+        )
+        candidate.editValues = albumEdit
+        candidate.mapping = mapping
         store.folderCandidates[candidate.key] = candidate
         return store
     }
 
-    /// Whether bae-core can shape this editor state into a savable release —
-    /// the only thing standing between the commit bar's button and an import.
-    static func isCommittable(_ edit: BridgeRawReleaseEdit) -> Bool {
-        if case .valid = shapeReleaseEdit(raw: edit) { return true }
-        return false
+    /// The mapping table the store's one candidate holds.
+    @MainActor
+    static func mapping(of store: ImportStore) -> BridgeMappingTable {
+        store.folderCandidates[candidateKey]?.mapping
+            ?? BridgeMappingTable(rows: [], reconciliation: nil)
     }
 
-    /// The model as the pane builds it for the store's one candidate.
+    /// Whether bae-core can shape what the pane would commit into a savable
+    /// release — the only thing standing between the commit bar's button and an
+    /// import.
     @MainActor
-    static func model(of store: ImportStore) -> ImportMappingModel {
-        let candidate = store.folderCandidates[candidateKey]
-        return ImportMappingModel(
-            files: candidate?.files ?? emptyFiles,
-            slots: candidate?.slots,
-            edit: candidate?.editValues
-        )
+    static func isCommittable(_ store: ImportStore) -> Bool {
+        guard let edit = store.folderCandidates[candidateKey]?.commitEdit
+        else { return false }
+        if case .valid = shapeReleaseEdit(raw: edit) { return true }
+        return false
     }
 }

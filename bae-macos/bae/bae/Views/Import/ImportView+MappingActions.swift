@@ -5,64 +5,68 @@ import SwiftUI
 
 extension ImportView {
     /// The services the pane's controls drive, with errors landing on the
-    /// app's alert.
+    /// app's alert and documents and images landing on this view's overlays.
     var mappingServices: ImportMappingServices {
         ImportMappingServices(
             importer: importer,
+            library: library,
             importStore: importStore,
             previewAudio: previewAudio,
+            openDocument: { name, path in openDocument(name: name, at: path) },
+            openImage: { path in openGallery(at: path) },
             onError: { uiStore.showError($0) },
         )
     }
 
-    func roleActions(for candidate: Candidate) -> ImportRoleActions {
-        let key = candidate.key
-        let services = mappingServices
-        return ImportRoleActions(
-            setRole: { fileId, choice in
-                Task { @MainActor in
-                    await ImportMappingFlow.setRole(
-                        key: key,
-                        fileId: fileId,
-                        choice: choice,
-                        services: services
-                    )
-                }
-            },
-            bindSheet: { sheetFileId, audioFileId in
-                Task { @MainActor in
-                    await bindSheet(key, sheetFileId, to: audioFileId)
-                }
-            },
-            openDocument: { file in openDocument(file) },
-            openImage: { path in openGallery(candidate, at: path) },
-        )
-    }
-
-    func slotActions(for candidate: Candidate) -> ImportSlotActions {
-        ImportMappingFlow.slotActions(
+    func mappingActions(for candidate: Candidate) -> ImportMappingActions {
+        ImportMappingFlow.actions(
             key: candidate.key,
             services: mappingServices
         )
     }
 
-    private func openDocument(_ file: BridgeFileInfo) {
+    /// Switch what the folder is read as. Unknown reads its own file tags;
+    /// Release re-picks the release the candidate already holds, and opens the
+    /// search when it holds none — there is nothing to go back to then.
+    func setIdentity(_ identity: ImportIdentity, for candidate: Candidate) {
+        switch (identity, candidate.pick) {
+        case (.unknown, _):
+            ImportSearchFlow.addAsUnknown(
+                importer: importer,
+                importStore: importStore,
+                key: candidate.key
+            )
+        case (.release, .some(let pick)):
+            ImportSearchFlow.prefetchAndConfirm(
+                library: library,
+                importStore: importStore,
+                key: candidate.key,
+                pick: pick
+            )
+        case (.release, .none):
+            presentSearch(for: candidate)
+        }
+    }
+
+    private func openDocument(name: String, at path: String) {
         do {
-            let text = try readTextFile(path: file.localPath)
-            documentContent = (name: file.name, text: text)
+            let text = try readTextFile(path: path)
+            documentContent = (name: name, text: text)
         }
         catch {
             uiStore.showError(
                 String(
                     localized:
-                        "Could not read \(file.name): \(error.displayLine)"
+                        "Could not read \(name): \(error.displayLine)"
                 )
             )
         }
     }
 
-    /// Open the folder's images in the lightbox, starting at `path`.
-    private func openGallery(_ candidate: Candidate, at path: String) {
+    /// Open the selected candidate's images in the lightbox, starting at
+    /// `path`.
+    private func openGallery(at path: String) {
+        guard let candidate = selectedCandidate else { return }
         let items = candidate.files.images.map { file in
             LightboxItem(
                 id: file.file.localPath,

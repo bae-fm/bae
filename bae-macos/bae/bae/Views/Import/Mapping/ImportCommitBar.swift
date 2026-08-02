@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// Zone 4 of the mapping pane: where the files go, what will be written, what
+/// The mapping pane's foot: where the files go, what will be written, what
 /// is still unanswered, and the button.
 ///
 /// Nothing here disables the commit. The counts are statements — a folder with
