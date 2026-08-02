@@ -1563,6 +1563,77 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
     assert_eq!(progress.last(), Some(&(1, 1)), "{progress:?}");
 }
 
+/// A re-scan lands while an import owns a candidate. The scan announces every
+/// candidate it walks, import or no import, and the pass must not count one
+/// back in that an import has taken away — the queue's total would climb back
+/// past what the sweep is responsible for and never come down, because nothing
+/// announces the candidate again once the import finishes with it.
+///
+/// This is the same sequence CI hits on every non-macOS runner: the OS watcher
+/// delivers the folder's own change events late enough that the re-scan they
+/// trigger arrives inside the pass rather than after it. Driven here from the
+/// bus instead of the filesystem, so the ordering is the test's and not the
+/// watcher backend's.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
+    let fixture = Fixture::new("import-rescan").await;
+    let remaining = fixture.disc_id_candidate("Remaining");
+    let importing = fixture.disc_id_candidate("Importing");
+    std::fs::write(importing.join("notes.txt"), "distinct candidate").unwrap();
+    let probed = fixture.probed_total_ms(&remaining);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-import-rescan"), Some("rg-import-rescan"), None);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-import-rescan", "rg-import-rescan", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-import-rescan?",
+        200,
+        release_json("mb-import-rescan", "rg-import-rescan", &[probed, 0]),
+    );
+    fixture.scan(2).await;
+    fixture.provider.hold("/discid/");
+
+    let mut events = fixture.import.subscribe_events();
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    start_import_for(&fixture, &importing).await;
+    // …and then the scan re-announces it, exactly as a watcher-triggered pass
+    // over the same folder does.
+    let claimed = match fixture.import.get_candidate(&importing.to_string_lossy()) {
+        Some(ImportCandidateSnapshot::Folder { candidate, .. }) => candidate,
+        other => panic!("the claimed candidate is still a folder candidate: {other:?}"),
+    };
+    crate::import::handle::send_event(
+        &fixture.import.event_tx,
+        ImportEvent::Scan(ScanEvent::FolderCandidate {
+            candidate: claimed,
+            skipped: false,
+            is_added: false,
+        }),
+    );
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(15), pass)
+        .await
+        .expect("pass finishes after the re-scan")
+        .unwrap();
+
+    let progress: Vec<_> = drain_events(&mut events)
+        .into_iter()
+        .filter_map(|event| match event {
+            ImportEvent::QueueIdentifyProgress { identified, total } => Some((identified, total)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(progress.last(), Some(&(1, 1)), "{progress:?}");
+}
+
 /// The same import start, one step later in the candidate's life — and the
 /// step where the pass's own bookkeeping can no longer help.
 ///

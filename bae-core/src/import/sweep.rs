@@ -598,13 +598,19 @@ async fn run_pass(
                         emit_progress(context, identified.min(total), total);
                     }
                 }
-                Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate {
-                    candidate,
-                    skipped,
-                    is_added,
-                }))) => {
+                Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }))) => {
                     let candidate_key = candidate.path.to_string_lossy().into_owned();
-                    if skipped || is_added {
+                    // A scan announces every candidate it walks, including ones
+                    // the sweep is not responsible for — skipped, already in the
+                    // library, or claimed by an import that started since the
+                    // pass began. Whether this is one of ours is
+                    // `sweepable_candidate`'s question and nobody else's: the
+                    // event's own flags answer a narrower one, and re-deriving
+                    // the answer here is what let a re-scan count an importing
+                    // candidate back into a total the import had just taken it
+                    // out of. Asked against live state rather than the event,
+                    // because the claim that supersedes it carries no event.
+                    let Some(candidate) = sweepable_candidate(context, &candidate_key) else {
                         detach_candidate(
                             context,
                             &candidate_key,
@@ -623,7 +629,7 @@ async fn run_pass(
                             emit_progress(context, identified.min(total), total);
                         }
                         continue;
-                    }
+                    };
                     let identity = candidate_identity(&candidate);
                     if known_identities.get(&candidate_key) == Some(&identity) {
                         continue;
