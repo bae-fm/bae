@@ -10,6 +10,12 @@ import SwiftUI
 /// show/dismiss reads like a menu instead — menus feel crisp precisely
 /// because they don't animate.
 ///
+/// `animates = false` also covers content-size updates. That is load-bearing:
+/// AppKit animates a presented popover's resize by spinning a nested run loop
+/// (`NSMoveHelper _doAnimation`), which can call out to a torn-down run-loop
+/// observer and segfault. Every popover whose content can change size while
+/// shown must carry this.
+///
 struct PopoverBehavior: NSViewRepresentable {
     func makeNSView(context _: Context) -> NSView {
         let view = NSView()

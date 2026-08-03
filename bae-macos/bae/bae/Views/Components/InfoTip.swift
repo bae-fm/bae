@@ -40,7 +40,20 @@ struct InfoTip: View {
                         hoverTask?.cancel()
                     }
                 }
+                .popoverEntrance(anchor: entranceAnchor)
+                .background { PopoverBehavior() }
             }
+    }
+
+    /// The popover's visual anchor: the edge its arrow sits on, which is the
+    /// side facing the "?" icon — opposite the `arrowEdge` the icon anchors.
+    private var entranceAnchor: UnitPoint {
+        switch arrowEdge {
+        case .top: .bottom
+        case .bottom: .top
+        case .leading: .trailing
+        case .trailing: .leading
+        }
     }
 
     private func scheduleHover(show: Bool) {

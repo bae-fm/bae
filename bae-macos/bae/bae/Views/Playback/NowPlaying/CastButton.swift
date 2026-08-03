@@ -38,6 +38,12 @@ struct CastButton: View {
                     showPicker = false
                 }
             )
+            // The device list grows while the popover is open (discovery runs
+            // only then), and NSPopover's animated resize spins a nested run
+            // loop that can fire a torn-down observer and crash. The popover
+            // sits above the bar, so its visual anchor is its bottom edge.
+            .popoverEntrance(anchor: .bottom)
+            .background { PopoverBehavior() }
         }
         // Discovery is not always-on: browse only while the picker is open.
         .onChange(of: showPicker) { _, isOpen in

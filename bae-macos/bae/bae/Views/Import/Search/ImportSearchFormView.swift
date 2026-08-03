@@ -146,6 +146,8 @@ struct ImportSearchFormView: View {
                         hoverTask: $discogsKeyHoverTask,
                         onOpenSettings: { onOpenSettings() },
                     )
+                    .popoverEntrance(anchor: .top)
+                    .background { PopoverBehavior() }
                 }
                 .allowsHitTesting(false)
         }

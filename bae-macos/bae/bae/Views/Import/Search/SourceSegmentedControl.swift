@@ -159,6 +159,8 @@ struct SourceSegmentedControl: NSViewRepresentable {
                             hoverTask: $hoverTask,
                             onOpenSettings: {},
                         )
+                        .popoverEntrance(anchor: .top)
+                        .background { PopoverBehavior() }
                     }
                     .allowsHitTesting(false)
             }
