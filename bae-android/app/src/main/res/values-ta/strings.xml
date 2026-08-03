@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">எதுவும் இயங்கவில்லை</string>
     <string name="shortcut_resume_long">இயக்கத்தை மீண்டும் தொடங்கு</string>
     <string name="shortcut_search_long">நூலகத்தில் தேடு</string>
+    <string name="cast">காஸ்ட்</string>
+    <string name="cast_casting_to">%1$s இல் காஸ்ட் செய்யப்படுகிறது</string>
+    <string name="cast_disconnect">துண்டி</string>
+    <string name="cast_no_devices">காஸ்ட் சாதனங்கள் எதுவும் இல்லை</string>
+    <string name="cast_turn_off_title">காஸ்ட் அணைக்கவா?</string>
+    <string name="cast_turn_off_message">இது %1$s இல் காஸ்ட் செய்வதை நிறுத்தும்.</string>
+    <string name="cast_turn_off_confirm">அணை</string>
+    <string name="settings_casting">காஸ்ட்</string>
+    <string name="settings_enable_casting">காஸ்ட் இயக்கு</string>
+    <string name="settings_casting_help">உங்கள் நெட்வொர்க்கில் உள்ள Cast, AirPlay மற்றும் UPnP ரிசீவர்களில் இயக்கும். அணைத்திருக்கும்போது bae சாதனங்களைத் தேடாது.</string>
 </resources>

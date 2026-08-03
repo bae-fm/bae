@@ -211,4 +211,14 @@
     <string name="widget_nothing_playing">לא מתנגן כלום</string>
     <string name="shortcut_resume_long">המשך השמעה</string>
     <string name="shortcut_search_long">חיפוש בספרייה</string>
+    <string name="cast">שידור</string>
+    <string name="cast_casting_to">משדר אל %1$s</string>
+    <string name="cast_disconnect">התנתק</string>
+    <string name="cast_no_devices">לא נמצאו מכשירי שידור</string>
+    <string name="cast_turn_off_title">לכבות את השידור?</string>
+    <string name="cast_turn_off_message">פעולה זו תפסיק את השידור אל %1$s.</string>
+    <string name="cast_turn_off_confirm">כבה</string>
+    <string name="settings_casting">שידור</string>
+    <string name="settings_enable_casting">הפעלת שידור</string>
+    <string name="settings_casting_help">מנגן במקלטי Cast‏, AirPlay ו‑UPnP ברשת שלך. כשהאפשרות כבויה, bae אינו מחפש מכשירים.</string>
 </resources>

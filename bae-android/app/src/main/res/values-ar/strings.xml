@@ -217,4 +217,14 @@
     <string name="widget_nothing_playing">لا شيء قيد التشغيل</string>
     <string name="shortcut_resume_long">استئناف التشغيل</string>
     <string name="shortcut_search_long">البحث في المكتبة</string>
+    <string name="cast">إرسال</string>
+    <string name="cast_casting_to">يتم الإرسال إلى ‏%1$s</string>
+    <string name="cast_disconnect">قطع الاتصال</string>
+    <string name="cast_no_devices">لم يتم العثور على أجهزة إرسال</string>
+    <string name="cast_turn_off_title">إيقاف الإرسال؟</string>
+    <string name="cast_turn_off_message">سيؤدي هذا إلى إيقاف الإرسال إلى ‏%1$s.</string>
+    <string name="cast_turn_off_confirm">إيقاف</string>
+    <string name="settings_casting">الإرسال</string>
+    <string name="settings_enable_casting">تفعيل الإرسال</string>
+    <string name="settings_casting_help">يشغّل الصوت على أجهزة استقبال Cast وAirPlay وUPnP على شبكتك. عند إيقافه، لا يبحث bae عن أي أجهزة.</string>
 </resources>

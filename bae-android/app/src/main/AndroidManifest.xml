@@ -8,12 +8,18 @@
     <!-- Android 13+ gates the media playback notification (and thus lock-screen /
          Bluetooth / Android Auto controls) on this runtime permission. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Wi-Fi power-save drops multicast and broadcast packets not addressed to
+         the device, which is every packet mDNS and SSDP answer with. Holding a
+         multicast lock while the device picker browses is what lets bae see the
+         answers; the permission is what lets it hold the lock. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".BaeApp"
         android:label="${appLabel}"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.Bae">
 

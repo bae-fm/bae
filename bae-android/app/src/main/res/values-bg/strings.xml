@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">Нищо не се възпроизвежда</string>
     <string name="shortcut_resume_long">Възобновяване на възпроизвеждането</string>
     <string name="shortcut_search_long">Търсене в библиотеката</string>
+    <string name="cast">Предаване</string>
+    <string name="cast_casting_to">Предаване към %1$s</string>
+    <string name="cast_disconnect">Прекъсване на връзката</string>
+    <string name="cast_no_devices">Няма намерени устройства</string>
+    <string name="cast_turn_off_title">Да се изключи ли предаването?</string>
+    <string name="cast_turn_off_message">Това ще спре предаването към %1$s.</string>
+    <string name="cast_turn_off_confirm">Изключване</string>
+    <string name="settings_casting">Предаване</string>
+    <string name="settings_enable_casting">Включване на предаването</string>
+    <string name="settings_casting_help">Възпроизвежда на приемници Cast, AirPlay и UPnP в мрежата ви. Когато е изключено, bae не търси устройства.</string>
 </resources>

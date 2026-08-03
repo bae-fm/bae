@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">ਕੁਝ ਨਹੀਂ ਚੱਲ ਰਿਹਾ</string>
     <string name="shortcut_resume_long">ਪਲੇਬੈਕ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ</string>
     <string name="shortcut_search_long">ਲਾਇਬ੍ਰੇਰੀ ਖੋਜੋ</string>
+    <string name="cast">ਕਾਸਟ</string>
+    <string name="cast_casting_to">%1$s ਤੇ ਕਾਸਟ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</string>
+    <string name="cast_disconnect">ਡਿਸਕਨੈਕਟ ਕਰੋ</string>
+    <string name="cast_no_devices">ਕੋਈ ਕਾਸਟ ਡੀਵਾਈਸ ਨਹੀਂ ਮਿਲਿਆ</string>
+    <string name="cast_turn_off_title">ਕਾਸਟਿੰਗ ਬੰਦ ਕਰਨੀ ਹੈ?</string>
+    <string name="cast_turn_off_message">ਇਸ ਨਾਲ %1$s ਤੇ ਕਾਸਟ ਕਰਨਾ ਬੰਦ ਹੋ ਜਾਵੇਗਾ।</string>
+    <string name="cast_turn_off_confirm">ਬੰਦ ਕਰੋ</string>
+    <string name="settings_casting">ਕਾਸਟਿੰਗ</string>
+    <string name="settings_enable_casting">ਕਾਸਟਿੰਗ ਚਾਲੂ ਕਰੋ</string>
+    <string name="settings_casting_help">ਤੁਹਾਡੇ ਨੈੱਟਵਰਕ ਦੇ Cast, AirPlay ਅਤੇ UPnP ਰਿਸੀਵਰਾਂ \'ਤੇ ਚਲਾਉਂਦਾ ਹੈ। ਬੰਦ ਹੋਣ \'ਤੇ bae ਕੋਈ ਡੀਵਾਈਸ ਨਹੀਂ ਲੱਭਦਾ।</string>
 </resources>

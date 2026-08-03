@@ -213,4 +213,14 @@
     <string name="widget_nothing_playing">Nic se nepřehrává</string>
     <string name="shortcut_resume_long">Pokračovat v přehrávání</string>
     <string name="shortcut_search_long">Hledat v knihovně</string>
+    <string name="cast">Odesílat</string>
+    <string name="cast_casting_to">Odesílání do %1$s</string>
+    <string name="cast_disconnect">Odpojit</string>
+    <string name="cast_no_devices">Nenalezena žádná zařízení</string>
+    <string name="cast_turn_off_title">Vypnout odesílání?</string>
+    <string name="cast_turn_off_message">Tím se ukončí odesílání do %1$s.</string>
+    <string name="cast_turn_off_confirm">Vypnout</string>
+    <string name="settings_casting">Odesílání</string>
+    <string name="settings_enable_casting">Povolit odesílání</string>
+    <string name="settings_casting_help">Přehrává na přijímače Cast, AirPlay a UPnP ve vaší síti. Když je vypnuto, bae žádná zařízení nehledá.</string>
 </resources>

@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">ഒന്നും പ്ലേ ചെയ്യുന്നില്ല</string>
     <string name="shortcut_resume_long">പ്ലേബാക്ക് തുടരുക</string>
     <string name="shortcut_search_long">ലൈബ്രറിയിൽ തിരയുക</string>
+    <string name="cast">കാസ്റ്റ്</string>
+    <string name="cast_casting_to">%1$s ലേക്ക് കാസ്റ്റ് ചെയ്യുന്നു</string>
+    <string name="cast_disconnect">ബന്ധം വിച്ഛേദിക്കുക</string>
+    <string name="cast_no_devices">കാസ്റ്റ് ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</string>
+    <string name="cast_turn_off_title">കാസ്റ്റിംഗ് ഓഫ് ചെയ്യണോ?</string>
+    <string name="cast_turn_off_message">ഇത് %1$s ലേക്കുള്ള കാസ്റ്റിംഗ് നിർത്തും.</string>
+    <string name="cast_turn_off_confirm">ഓഫ് ചെയ്യുക</string>
+    <string name="settings_casting">കാസ്റ്റിംഗ്</string>
+    <string name="settings_enable_casting">കാസ്റ്റിംഗ് പ്രവർത്തനക്ഷമമാക്കുക</string>
+    <string name="settings_casting_help">നിങ്ങളുടെ നെറ്റ്‌വർക്കിലെ Cast, AirPlay, UPnP റിസീവറുകളിൽ പ്ലേ ചെയ്യുന്നു. ഓഫ് ആയിരിക്കുമ്പോൾ bae ഉപകരണങ്ങൾ തിരയില്ല.</string>
 </resources>

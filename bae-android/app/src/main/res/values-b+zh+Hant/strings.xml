@@ -207,4 +207,14 @@
     <string name="widget_nothing_playing">未在播放</string>
     <string name="shortcut_resume_long">繼續播放</string>
     <string name="shortcut_search_long">搜尋資料庫</string>
+    <string name="cast">投放</string>
+    <string name="cast_casting_to">正在投放到 %1$s</string>
+    <string name="cast_disconnect">中斷連線</string>
+    <string name="cast_no_devices">找不到投放裝置</string>
+    <string name="cast_turn_off_title">要關閉投放嗎？</string>
+    <string name="cast_turn_off_message">這會停止投放到 %1$s。</string>
+    <string name="cast_turn_off_confirm">關閉</string>
+    <string name="settings_casting">投放</string>
+    <string name="settings_enable_casting">啟用投放</string>
+    <string name="settings_casting_help">在你網路中的 Cast、AirPlay 和 UPnP 接收裝置上播放。關閉時，bae 不會搜尋裝置。</string>
 </resources>

@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.OpenLibrary
+import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryStore
@@ -120,6 +121,7 @@ class PlaybackServiceTest {
                     config = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
                     downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
                     outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
+                    cast = CastStore(),
                 ),
             playback =
                 BaeCorePlayer(

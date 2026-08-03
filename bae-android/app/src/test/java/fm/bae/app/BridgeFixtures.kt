@@ -4,6 +4,7 @@ import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
+import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
@@ -17,6 +18,7 @@ import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
+import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
 import uniffi.bae_bridge.BridgeSaveFilenameToken
@@ -224,6 +226,12 @@ object BridgeFixtures {
             throughputBps = 0uL,
             etaSeconds = null,
         )
+
+    fun castDevice(
+        id: String = "cast-1",
+        name: String = "Kitchen",
+        kind: BridgeRendererKind = BridgeRendererKind.CAST,
+    ): BridgeCastDevice = BridgeCastDevice(id = id, name = name, kind = kind)
 
     fun library(
         id: String,

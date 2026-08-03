@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">Nichts wird wiedergegeben</string>
     <string name="shortcut_resume_long">Wiedergabe fortsetzen</string>
     <string name="shortcut_search_long">Mediathek durchsuchen</string>
+    <string name="cast">Übertragen</string>
+    <string name="cast_casting_to">Übertragung an %1$s</string>
+    <string name="cast_disconnect">Trennen</string>
+    <string name="cast_no_devices">Keine Cast-Geräte gefunden</string>
+    <string name="cast_turn_off_title">Übertragung ausschalten?</string>
+    <string name="cast_turn_off_message">Damit wird die Übertragung an %1$s beendet.</string>
+    <string name="cast_turn_off_confirm">Ausschalten</string>
+    <string name="settings_casting">Übertragung</string>
+    <string name="settings_enable_casting">Übertragung aktivieren</string>
+    <string name="settings_casting_help">Gibt auf Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk wieder. Ist es aus, sucht bae nicht nach Geräten.</string>
 </resources>

@@ -95,11 +95,57 @@ fun SettingsScreen(
 
     ReportScreenOpened(session, BridgeScreen.SETTINGS)
 
+    SettingsSections(
+        session = session,
+        config = config,
+        libraries = allLibraries,
+        syncIndicator = syncIndicator,
+        syncError = syncError,
+        syncReady = syncReady,
+        ioDispatcher = ioDispatcher,
+        onBack = onBack,
+        onSwitchLibrary = onSwitchLibrary,
+        onManageDevices = onManageDevices,
+        onRevealRecoveryCode = { showRecoveryCode = true },
+        onRequestLeave = { confirmLeave = true },
+    )
+
+    if (confirmLeave) {
+        LeaveLibraryConfirmDialog(
+            onConfirm = {
+                confirmLeave = false
+                onLeaveLibrary()
+            },
+            onDismiss = { confirmLeave = false },
+        )
+    }
+
+    if (showRecoveryCode) {
+        RecoveryCodeDialog(session = session, onDismiss = { showRecoveryCode = false })
+    }
+}
+
+/** The settings screen's sections, top to bottom, in one scrolling column. */
+@Composable
+private fun SettingsSections(
+    session: OpenLibrary,
+    config: BridgeConfig,
+    libraries: List<BridgeLibrary>,
+    syncIndicator: BridgeSyncIndicator,
+    syncError: String?,
+    syncReady: Boolean,
+    ioDispatcher: CoroutineDispatcher,
+    onBack: () -> Unit,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
+    onManageDevices: () -> Unit,
+    onRevealRecoveryCode: () -> Unit,
+    onRequestLeave: () -> Unit,
+) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
-        if (allLibraries.size > 1) {
+        if (libraries.size > 1) {
             SettingsLibrarySection(
-                libraries = allLibraries,
+                libraries = libraries,
                 activeLibraryId = session.libraryId,
                 onSwitchLibrary = onSwitchLibrary,
             )
@@ -118,6 +164,12 @@ fun SettingsScreen(
             config = config,
             ioDispatcher = ioDispatcher,
         )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        SettingsCastSection(
+            session = session,
+            config = config,
+            ioDispatcher = ioDispatcher,
+        )
         // Managing devices and revealing the recovery code both read the
         // membership chain from the library's cloud storage, so they need a live
         // sync session this run — gate on runtime sync readiness, not merely a
@@ -126,27 +178,13 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsDevicesSection(
                 onManageDevices = onManageDevices,
-                onRevealRecoveryCode = { showRecoveryCode = true },
+                onRevealRecoveryCode = onRevealRecoveryCode,
             )
         }
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        SettingsLeaveSection(onRequestLeave = { confirmLeave = true })
+        SettingsLeaveSection(onRequestLeave = onRequestLeave)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         SettingsAboutSection()
-    }
-
-    if (confirmLeave) {
-        LeaveLibraryConfirmDialog(
-            onConfirm = {
-                confirmLeave = false
-                onLeaveLibrary()
-            },
-            onDismiss = { confirmLeave = false },
-        )
-    }
-
-    if (showRecoveryCode) {
-        RecoveryCodeDialog(session = session, onDismiss = { showRecoveryCode = false })
     }
 }
 

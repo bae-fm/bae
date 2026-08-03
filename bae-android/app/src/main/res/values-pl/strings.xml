@@ -213,4 +213,14 @@
     <string name="widget_nothing_playing">Nic nie jest odtwarzane</string>
     <string name="shortcut_resume_long">Wznów odtwarzanie</string>
     <string name="shortcut_search_long">Przeszukaj bibliotekę</string>
+    <string name="cast">Przesyłaj</string>
+    <string name="cast_casting_to">Przesyłanie do %1$s</string>
+    <string name="cast_disconnect">Rozłącz</string>
+    <string name="cast_no_devices">Nie znaleziono urządzeń</string>
+    <string name="cast_turn_off_title">Wyłączyć przesyłanie?</string>
+    <string name="cast_turn_off_message">Spowoduje to zatrzymanie przesyłania do %1$s.</string>
+    <string name="cast_turn_off_confirm">Wyłącz</string>
+    <string name="settings_casting">Przesyłanie</string>
+    <string name="settings_enable_casting">Włącz przesyłanie</string>
+    <string name="settings_casting_help">Odtwarza na odbiornikach Cast, AirPlay i UPnP w Twojej sieci. Gdy jest wyłączone, bae nie szuka urządzeń.</string>
 </resources>

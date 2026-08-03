@@ -207,4 +207,14 @@
     <string name="widget_nothing_playing">Không có gì đang phát</string>
     <string name="shortcut_resume_long">Tiếp tục phát</string>
     <string name="shortcut_search_long">Tìm trong thư viện</string>
+    <string name="cast">Truyền</string>
+    <string name="cast_casting_to">Đang truyền tới %1$s</string>
+    <string name="cast_disconnect">Ngắt kết nối</string>
+    <string name="cast_no_devices">Không tìm thấy thiết bị</string>
+    <string name="cast_turn_off_title">Tắt truyền?</string>
+    <string name="cast_turn_off_message">Thao tác này sẽ dừng truyền tới %1$s.</string>
+    <string name="cast_turn_off_confirm">Tắt</string>
+    <string name="settings_casting">Truyền</string>
+    <string name="settings_enable_casting">Bật truyền</string>
+    <string name="settings_casting_help">Phát tới các thiết bị nhận Cast, AirPlay và UPnP trong mạng của bạn. Khi tắt, bae không tìm thiết bị nào.</string>
 </resources>

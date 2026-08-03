@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cast and UPnP receivers are plain-HTTP LAN devices: a UPnP renderer is driven
+  by SOAP over http://, its device description is fetched over http://, and both
+  it and a Cast receiver fetch audio from the http:// server bae binds for the
+  session. None of that can be TLS — the receiver has no certificate and no name
+  to verify one against.
+
+  Cleartext is therefore allowed, and only there: the base config keeps
+  cleartext off for everything else (cloud storage, metadata lookups), so this
+  widens nothing beyond addresses that are on the local network by definition.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- The private IPv4 ranges (RFC 1918) and the link-local range a device
+             falls back to without DHCP. A LAN receiver answers on one of these;
+             a public host never does. -->
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+        <domain includeSubdomains="true">172.16.0.0/12</domain>
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+        <domain includeSubdomains="true">169.254.0.0/16</domain>
+        <!-- The ephemeral server bae binds for the session, reached through the
+             loopback address when the sender and receiver are the same device. -->
+        <domain includeSubdomains="true">127.0.0.0/8</domain>
+    </domain-config>
+</network-security-config>

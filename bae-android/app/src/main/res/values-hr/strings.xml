@@ -211,4 +211,14 @@
     <string name="widget_nothing_playing">Ništa se ne reproducira</string>
     <string name="shortcut_resume_long">Nastavi reprodukciju</string>
     <string name="shortcut_search_long">Pretraži biblioteku</string>
+    <string name="cast">Emitiraj</string>
+    <string name="cast_casting_to">Emitiranje na %1$s</string>
+    <string name="cast_disconnect">Prekini vezu</string>
+    <string name="cast_no_devices">Nema pronađenih uređaja</string>
+    <string name="cast_turn_off_title">Isključiti emitiranje?</string>
+    <string name="cast_turn_off_message">Time će se prekinuti emitiranje na %1$s.</string>
+    <string name="cast_turn_off_confirm">Isključi</string>
+    <string name="settings_casting">Emitiranje</string>
+    <string name="settings_enable_casting">Omogući emitiranje</string>
+    <string name="settings_casting_help">Reproducira na Cast, AirPlay i UPnP prijamnicima na vašoj mreži. Dok je isključeno, bae ne traži uređaje.</string>
 </resources>

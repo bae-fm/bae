@@ -258,4 +258,16 @@
     <string name="unlock_key_label">Encryption key (64 hex characters)</string>
     <string name="unlock_failed">Failed to unlock</string>
     <string name="unlock_action">Unlock</string>
+
+    <!-- Casting -->
+    <string name="cast">Cast</string>
+    <string name="cast_casting_to">Casting to %1$s</string>
+    <string name="cast_disconnect">Disconnect</string>
+    <string name="cast_no_devices">No Cast devices found</string>
+    <string name="cast_turn_off_title">Turn off casting?</string>
+    <string name="cast_turn_off_message">This will stop casting to %1$s.</string>
+    <string name="cast_turn_off_confirm">Turn Off</string>
+    <string name="settings_casting">Casting</string>
+    <string name="settings_enable_casting">Enable casting</string>
+    <string name="settings_casting_help">Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</string>
 </resources>

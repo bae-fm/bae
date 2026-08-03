@@ -207,4 +207,14 @@
     <string name="widget_nothing_playing">再生していません</string>
     <string name="shortcut_resume_long">再生を再開</string>
     <string name="shortcut_search_long">ライブラリを検索</string>
+    <string name="cast">キャスト</string>
+    <string name="cast_casting_to">%1$s にキャスト中</string>
+    <string name="cast_disconnect">切断</string>
+    <string name="cast_no_devices">キャストデバイスが見つかりません</string>
+    <string name="cast_turn_off_title">キャストをオフにしますか？</string>
+    <string name="cast_turn_off_message">%1$s へのキャストを停止します。</string>
+    <string name="cast_turn_off_confirm">オフにする</string>
+    <string name="settings_casting">キャスト</string>
+    <string name="settings_enable_casting">キャストを有効にする</string>
+    <string name="settings_casting_help">ネットワーク上の Cast、AirPlay、UPnP レシーバーで再生します。オフの間、bae はデバイスを探しません。</string>
 </resources>

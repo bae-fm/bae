@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">ఏదీ ప్లే కావడం లేదు</string>
     <string name="shortcut_resume_long">ప్లేబ్యాక్ పునఃప్రారంభించండి</string>
     <string name="shortcut_search_long">లైబ్రరీలో వెతుకు</string>
+    <string name="cast">కాస్ట్</string>
+    <string name="cast_casting_to">%1$s కు కాస్ట్ చేస్తోంది</string>
+    <string name="cast_disconnect">డిస్‌కనెక్ట్ చేయి</string>
+    <string name="cast_no_devices">కాస్ట్ పరికరాలు కనుగొనబడలేదు</string>
+    <string name="cast_turn_off_title">కాస్టింగ్ ఆఫ్ చేయాలా?</string>
+    <string name="cast_turn_off_message">ఇది %1$s కు కాస్ట్ చేయడాన్ని ఆపుతుంది.</string>
+    <string name="cast_turn_off_confirm">ఆఫ్ చేయి</string>
+    <string name="settings_casting">కాస్టింగ్</string>
+    <string name="settings_enable_casting">కాస్టింగ్ ప్రారంభించు</string>
+    <string name="settings_casting_help">మీ నెట్‌వర్క్‌లోని Cast, AirPlay, UPnP రిసీవర్‌లలో ప్లే చేస్తుంది. ఆఫ్‌లో ఉన్నప్పుడు bae పరికరాల కోసం వెతకదు.</string>
 </resources>

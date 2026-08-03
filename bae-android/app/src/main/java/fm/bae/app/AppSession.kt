@@ -6,6 +6,8 @@ import android.os.Looper
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import fm.bae.app.data.Cast
+import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.ImageStore
@@ -75,10 +77,15 @@ class OpenLibrary(
     // are keyed on this library's image ids — so it lives and dies with the
     // session, not the process.
     val imageStore = ImageStore(appHandle)
+
+    // Holds the multicast lock discovery needs, so it is built with the session
+    // rather than per picker.
+    val cast = Cast(appHandle, appContext)
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val downloadStore: DownloadStore get() = stores.downloads
     val outboxStore: OutboxStore get() = stores.outbox
+    val castStore: CastStore get() = stores.cast
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
@@ -384,6 +391,7 @@ object AppSessionHolder {
                         config = ConfigStore(config, handle.isSyncReady()),
                         downloads = DownloadStore(handle.getDownloadSnapshot()),
                         outbox = OutboxStore(initialOutbox),
+                        cast = CastStore(),
                     ),
                     context.applicationContext,
                 )

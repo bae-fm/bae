@@ -210,4 +210,14 @@
     <string name="widget_nothing_playing">Nada em reprodução</string>
     <string name="shortcut_resume_long">Retomar reprodução</string>
     <string name="shortcut_search_long">Buscar na biblioteca</string>
+    <string name="cast">Transmitir</string>
+    <string name="cast_casting_to">Transmitindo para %1$s</string>
+    <string name="cast_disconnect">Desconectar</string>
+    <string name="cast_no_devices">Nenhum dispositivo encontrado</string>
+    <string name="cast_turn_off_title">Desativar a transmissão?</string>
+    <string name="cast_turn_off_message">Isso interromperá a transmissão para %1$s.</string>
+    <string name="cast_turn_off_confirm">Desativar</string>
+    <string name="settings_casting">Transmissão</string>
+    <string name="settings_enable_casting">Ativar a transmissão</string>
+    <string name="settings_casting_help">Reproduz em receptores Cast, AirPlay e UPnP da sua rede. Quando está desativado, o bae não procura dispositivos.</string>
 </resources>

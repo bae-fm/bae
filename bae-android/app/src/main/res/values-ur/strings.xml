@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">کچھ نہیں چل رہا</string>
     <string name="shortcut_resume_long">پلے بیک دوبارہ شروع کریں</string>
     <string name="shortcut_search_long">لائبریری میں تلاش کریں</string>
+    <string name="cast">کاسٹ</string>
+    <string name="cast_casting_to">%1$s پر کاسٹ ہو رہا ہے</string>
+    <string name="cast_disconnect">منقطع کریں</string>
+    <string name="cast_no_devices">کوئی کاسٹ ڈیوائس نہیں ملا</string>
+    <string name="cast_turn_off_title">کاسٹنگ بند کریں؟</string>
+    <string name="cast_turn_off_message">اس سے %1$s پر کاسٹ کرنا بند ہو جائے گا۔</string>
+    <string name="cast_turn_off_confirm">بند کریں</string>
+    <string name="settings_casting">کاسٹنگ</string>
+    <string name="settings_enable_casting">کاسٹنگ فعال کریں</string>
+    <string name="settings_casting_help">آپ کے نیٹ ورک پر Cast، AirPlay اور UPnP ریسیورز پر چلاتا ہے۔ بند ہونے پر bae کوئی ڈیوائس تلاش نہیں کرتا۔</string>
 </resources>

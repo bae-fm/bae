@@ -173,6 +173,12 @@ object UiEventAdapter {
                 stores.config.showError(errors.line(event.error))
             }
 
+            // Which device playback is on, including a receiver-side end core
+            // noticed on its own.
+            is BridgeUiEvent.CastStatusChanged -> {
+                stores.cast.applyStatus(event.deviceName)
+            }
+
             else -> {
                 return false
             }
@@ -192,9 +198,6 @@ object UiEventAdapter {
             is BridgeUiEvent.ImportQueueIdentifyProgress,
             is BridgeUiEvent.ReleaseTransferProgress,
             is BridgeUiEvent.ReleaseTransferEnded,
-            // Casting to a remote renderer is a desktop feature; Android has no
-            // cast UI, so the status change drives nothing here.
-            is BridgeUiEvent.CastStatusChanged,
             -> {
                 logger.debug("ignoring ${event::class.simpleName}")
             }
@@ -213,6 +216,7 @@ object UiEventAdapter {
             is BridgeUiEvent.MuteChanged,
             is BridgeUiEvent.QueueItemsAdded,
             is BridgeUiEvent.Error,
+            is BridgeUiEvent.CastStatusChanged,
             -> {
                 error("handled event reached obsolete-event path: ${event::class.simpleName}")
             }
@@ -274,14 +278,17 @@ object UiEventAdapter {
                 stores.outbox.setSnapshot(snapshot)
             }
 
+            BridgeInvalidation.CastDevices -> {
+                val devices = withContext(Dispatchers.IO) { appHandle.getCastDevices() }
+                stores.cast.setDevices(devices)
+            }
+
             BridgeInvalidation.Queue,
             BridgeInvalidation.OutputQueue,
             BridgeInvalidation.ImportCandidateList,
             is BridgeInvalidation.ImportCandidate,
             BridgeInvalidation.WatchedFolders,
             is BridgeInvalidation.Composer,
-            // No cast device list on Android; nothing to refresh.
-            BridgeInvalidation.CastDevices,
             -> {
                 logger.debug("ignoring ${invalidation::class.simpleName}")
             }

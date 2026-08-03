@@ -5,4 +5,5 @@ class OpenLibraryStores(
     val config: ConfigStore,
     val downloads: DownloadStore,
     val outbox: OutboxStore,
+    val cast: CastStore,
 )

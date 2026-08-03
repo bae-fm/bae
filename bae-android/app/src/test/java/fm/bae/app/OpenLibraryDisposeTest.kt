@@ -1,6 +1,7 @@
 package fm.bae.app
 
 import android.os.Looper
+import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryStore
@@ -66,6 +67,7 @@ class OpenLibraryDisposeTest {
                         config = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
                         downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
                         outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
+                        cast = CastStore(),
                     ),
                 playback =
                     BaeCorePlayer(

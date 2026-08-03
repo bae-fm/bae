@@ -202,6 +202,7 @@ private fun NowPlayingTransportButtons(
     IconButton(onClick = { player.seekToNextMediaItem() }) {
         Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.next_track))
     }
+    CastButton(session)
     IconButton(onClick = onOpenQueue) {
         Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
     }

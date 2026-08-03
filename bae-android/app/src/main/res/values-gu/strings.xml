@@ -209,4 +209,14 @@
     <string name="widget_nothing_playing">કંઈ ચાલી રહ્યું નથી</string>
     <string name="shortcut_resume_long">પ્લેબૅક ફરી શરૂ કરો</string>
     <string name="shortcut_search_long">લાઇબ્રેરીમાં શોધો</string>
+    <string name="cast">કાસ્ટ</string>
+    <string name="cast_casting_to">%1$s પર કાસ્ટ કરી રહ્યાં છીએ</string>
+    <string name="cast_disconnect">જોડાણ તોડો</string>
+    <string name="cast_no_devices">કોઈ કાસ્ટ ઉપકરણ મળ્યું નથી</string>
+    <string name="cast_turn_off_title">કાસ્ટિંગ બંધ કરવું છે?</string>
+    <string name="cast_turn_off_message">આથી %1$s પર કાસ્ટ કરવાનું બંધ થશે.</string>
+    <string name="cast_turn_off_confirm">બંધ કરો</string>
+    <string name="settings_casting">કાસ્ટિંગ</string>
+    <string name="settings_enable_casting">કાસ્ટિંગ સક્ષમ કરો</string>
+    <string name="settings_casting_help">તમારા નેટવર્ક પરના Cast, AirPlay અને UPnP રિસીવર પર વગાડે છે. બંધ હોય ત્યારે bae કોઈ ઉપકરણ શોધતું નથી.</string>
 </resources>
