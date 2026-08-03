@@ -127,4 +127,55 @@ async fn pure_reads_run_off_the_sync_journal() {
          changed no rows; captured warnings:\n{}",
         String::from_utf8(buf.lock().unwrap().clone()).unwrap(),
     );
+
+    // Writers asked to write what is already there. Each one decides there is
+    // nothing to do, and must reach that decision before it opens a journaled
+    // transaction — a write that writes nothing is the same misrouted read as a
+    // `SELECT` on `sql`.
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+
+    db.clear_playback_state().await.unwrap();
+    db.clear_playback_state().await.unwrap(); // the row is already gone
+    db.add_watched_import_folder(root).await.unwrap();
+    assert!(!db.add_watched_import_folder(root).await.unwrap());
+    db.set_import_candidate_skipped(root, "Album", true)
+        .await
+        .unwrap();
+    assert!(!db
+        .set_import_candidate_skipped(root, "Album", true)
+        .await
+        .unwrap());
+    db.set_import_candidate_skipped(root, "Never Skipped", false)
+        .await
+        .unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    assert!(!db
+        .finish_folder_scan(root, generation - 1, None)
+        .await
+        .unwrap());
+    assert!(!db
+        .save_import_candidate_verdict(&bae_core::db::NewImportCandidateVerdict {
+            content_hash: "hash-with-no-row".to_string(),
+            folder_path: format!("{root}/Album"),
+            verdict: "{}".to_string(),
+            probed_total_duration_ms: 0,
+            expected_edit_revision: 7,
+            identity_pick: None,
+        })
+        .await
+        .unwrap());
+    assert!(!db
+        .remove_watched_import_folder("/nothing/watches/this")
+        .await
+        .unwrap());
+
+    assert_eq!(
+        tripwire_hits(),
+        0,
+        "a writer with nothing to write opened a journaled transaction anyway; \
+         captured warnings:\n{}",
+        String::from_utf8(buf.lock().unwrap().clone()).unwrap(),
+    );
 }

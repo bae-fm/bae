@@ -178,7 +178,23 @@ impl Database {
     }
 
     /// Delete the device-local `playback_state` row (playback stopped).
+    ///
+    /// Stopping is persisted on every queue change and every stop, so most
+    /// calls arrive with the row already gone. That case is read, not written:
+    /// a delete over an empty table is a transaction that changes nothing, and
+    /// those belong off the sync journal.
     pub async fn clear_playback_state(&self) -> Result<(), DbError> {
+        let stored = self
+            .read(move |sql| {
+                Ok(sql
+                    .query_row("SELECT 1 FROM playback_state", [], |_| Ok(()))
+                    .optional()?
+                    .is_some())
+            })
+            .await?;
+        if !stored {
+            return Ok(());
+        }
         self.call(move |conn| {
             conn.execute("DELETE FROM playback_state", [])
                 .map(|_| ())

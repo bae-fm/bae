@@ -53,39 +53,48 @@ impl Database {
         .await
     }
 
+    /// Every watched root, in the order they were added. Read by both entry
+    /// points below to answer "is this folder already watched?" before either
+    /// opens a write.
+    async fn watched_import_roots(&self) -> Result<Vec<String>, DbError> {
+        self.read(move |sql| {
+            Ok(sql.query(
+                "SELECT path FROM watched_import_folders ORDER BY position",
+                [],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+    }
+
     /// Watch the folder `path` names, keyed by its canonical spelling. `false`
     /// when that folder is already watched, however it was spelled this time.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
         let path = Self::canonical_watched_root(path)?;
+        let roots = self.watched_import_roots().await?;
+        if roots.iter().any(|root| root == &path) {
+            return Ok(false);
+        }
+        if let Some(conflict) = roots.iter().find(|root| {
+            crate::import::folder_registry::paths_overlap(
+                std::path::Path::new(&path),
+                std::path::Path::new(root),
+            )
+        }) {
+            return Err(DbError::Message(format!(
+                "watched folders cannot overlap: {path} conflicts with {conflict}"
+            )));
+        }
         self.call(move |sql| {
-            let roots = sql.query(
-                "SELECT path FROM watched_import_folders ORDER BY position",
-                [],
-                |row| row.get::<_, String>(0),
-            )?;
-            if roots.iter().any(|root| root == &path) {
-                return Ok(false);
-            }
-            if let Some(conflict) = roots.iter().find(|root| {
-                crate::import::folder_registry::paths_overlap(
-                    std::path::Path::new(&path),
-                    std::path::Path::new(root),
-                )
-            }) {
-                return Err(DbError::Message(format!(
-                    "watched folders cannot overlap: {path} conflicts with {conflict}"
-                )));
-            }
             let position: i64 = sql.query_row(
                 "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
                 [],
                 |row| row.get(0),
             )?;
-            sql.execute(
+            Ok(sql.execute(
                 "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
                 params![path, position],
-            )?;
-            Ok(true)
+            )? == 1)
         })
         .await
     }
@@ -94,19 +103,11 @@ impl Database {
     /// so whichever spelling reaches here names the row the add created.
     pub async fn remove_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
         let path = Self::canonical_watched_root(path)?;
+        if !self.watched_import_roots().await?.contains(&path) {
+            return Ok(false);
+        }
         self.call(move |sql| {
-            let position: Option<i64> = sql
-                .query_row(
-                    "SELECT position FROM watched_import_folders WHERE path = ?",
-                    [&path],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            if position.is_none() {
-                return Ok(false);
-            }
-            sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;
-            Ok(true)
+            Ok(sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])? == 1)
         })
         .await
     }
@@ -121,6 +122,27 @@ impl Database {
             .map_err(|error| DbError::Message(error.to_string()))?;
         let watched_folder_path = watched_folder_path.to_string();
         let relative_candidate_path = relative_candidate_path.to_string();
+        // Restating what the row already says writes nothing, so it must not
+        // open a write to discover that: read the standing answer first.
+        let stored = {
+            let watched_folder_path = watched_folder_path.clone();
+            let relative_candidate_path = relative_candidate_path.clone();
+            self.read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT 1 FROM skipped_import_candidates \
+                         WHERE watched_folder_path = ? AND relative_candidate_path = ?",
+                        params![watched_folder_path, relative_candidate_path],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some())
+            })
+            .await?
+        };
+        if stored == skipped {
+            return Ok(false);
+        }
         self.call(move |sql| {
             let changed = if skipped {
                 sql.execute(
@@ -224,17 +246,28 @@ impl Database {
             DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
         })?;
         let error = error.map(str::to_string);
+        // A generation that is no longer the root's finishes nothing, and
+        // finding that out is a read — the write below opens only once this
+        // generation is the one in force. Its statements still carry the
+        // generation, so a later one taking over between the two writes
+        // nothing rather than finishing the wrong scan.
+        let current: Option<i64> = {
+            let watched_folder_path = watched_folder_path.clone();
+            self.read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
+                        [&watched_folder_path],
+                        |row| row.get(0),
+                    )
+                    .optional()?)
+            })
+            .await?
+        };
+        if current != Some(generation) {
+            return Ok(false);
+        }
         self.call(move |sql| {
-            let current: Option<i64> = sql
-                .query_row(
-                    "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                    [&watched_folder_path],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            if current != Some(generation) {
-                return Ok(false);
-            }
             if let Some(error) = error {
                 sql.execute(
                     "UPDATE folder_scan_roots SET status = 'failed', error = ? \
@@ -505,48 +538,65 @@ impl Database {
             ))
         })?;
         let now = self.inner.clock.now().to_rfc3339();
+        // Which of the two writes applies — and whether either does — is a
+        // question about the stored revision, so it is asked on the read
+        // connection. A verdict derived from file decisions the row has since
+        // moved past writes nothing, and must not open a write to say so.
+        let current: Option<i64> = {
+            let content_hash = verdict.content_hash.clone();
+            self.read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
+                        [&content_hash],
+                        |row| row.get(0),
+                    )
+                    .optional()?)
+            })
+            .await?
+        };
+        // Both statements below carry the revision they were chosen for, so a
+        // decision landing between the read and the write leaves them writing
+        // nothing rather than writing over it.
+        let update_existing = match current {
+            Some(current) if current == expected => true,
+            None if expected == 0 => false,
+            // The row has moved past the file decisions this verdict was
+            // derived from, or it names a revision no row ever had. Either way
+            // there is nothing to write.
+            Some(_) | None => return Ok(false),
+        };
         self.call(move |sql| {
-            let current: Option<i64> = sql
-                .query_row(
-                    "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
-                    [&verdict.content_hash],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            let wrote = match current {
-                Some(current) if current == expected => {
-                    sql.execute(
-                        "UPDATE import_candidate_state SET \
-                             folder_path = ?, verdict = ?, probed_total_duration_ms = ?, identified_at = ?, \
-                             identity_pick = COALESCE(identity_pick, ?) \
-                         WHERE content_hash = ? AND edit_revision = ?",
-                        params![
-                            verdict.folder_path,
-                            verdict.verdict,
-                            verdict.probed_total_duration_ms,
-                            now,
-                            verdict.identity_pick,
-                            verdict.content_hash,
-                            expected,
-                        ],
-                    )? == 1
-                }
-                None if expected == 0 => {
-                    sql.execute(
-                        "INSERT INTO import_candidate_state \
-                             (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, identity_pick, sheet_bindings, file_roles, sheet_discs, edit_revision) \
-                         VALUES (?, ?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
-                        params![
-                            verdict.content_hash,
-                            verdict.folder_path,
-                            verdict.verdict,
-                            verdict.probed_total_duration_ms,
-                            now,
-                            verdict.identity_pick,
-                        ],
-                    )? == 1
-                }
-                Some(_) | None => false,
+            let wrote = if update_existing {
+                sql.execute(
+                    "UPDATE import_candidate_state SET \
+                         folder_path = ?, verdict = ?, probed_total_duration_ms = ?, identified_at = ?, \
+                         identity_pick = COALESCE(identity_pick, ?) \
+                     WHERE content_hash = ? AND edit_revision = ?",
+                    params![
+                        verdict.folder_path,
+                        verdict.verdict,
+                        verdict.probed_total_duration_ms,
+                        now,
+                        verdict.identity_pick,
+                        verdict.content_hash,
+                        expected,
+                    ],
+                )? == 1
+            } else {
+                sql.execute(
+                    "INSERT INTO import_candidate_state \
+                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, identity_pick, sheet_bindings, file_roles, sheet_discs, edit_revision) \
+                     VALUES (?, ?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
+                    params![
+                        verdict.content_hash,
+                        verdict.folder_path,
+                        verdict.verdict,
+                        verdict.probed_total_duration_ms,
+                        now,
+                        verdict.identity_pick,
+                    ],
+                )? == 1
             };
             Ok(wrote)
         })
