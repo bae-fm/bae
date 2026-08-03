@@ -1,0 +1,388 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "comment": "System prompt shown before scanning a library QR code with the camera.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae uses the camera to scan a QR code from your music library."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae usa la cámara para escanear un código QR de tu biblioteca de música."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae utilise l'appareil photo pour scanner un code QR de votre bibliothèque musicale."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae verwendet die Kamera, um einen QR-Code aus deiner Musikbibliothek zu scannen."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O bae usa a câmera para escanear um código QR da sua biblioteca de música."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae は音楽ライブラリの QR コードを読み取るためにカメラを使用します。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae 使用相机扫描你的音乐库二维码。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم bae الكاميرا لمسح رمز QR من مكتبة الموسيقى الخاصة بك."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏bae משתמש במצלמה כדי לסרוק קוד QR מספריית המוזיקה שלך."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae використовує камеру, щоб відсканувати QR-код із вашої музичної бібліотеки."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae използва камерата, за да сканира QR код от вашата музикална библиотека."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae używa aparatu, aby zeskanować kod QR z Twojej biblioteki muzycznej."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae používá fotoaparát ke skenování QR kódu z vaší hudební knihovny."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae koristi kameru za skeniranje QR koda iz vaše glazbene biblioteke."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae는 음악 라이브러리의 QR 코드를 스캔하기 위해 카메라를 사용합니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae 使用相機掃描你的音樂庫 QR 碼。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae usa la fotocamera per scansionare un codice QR dalla tua libreria musicale."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae, müzik kitaplığınızdaki bir QR kodunu taramak için kamerayı kullanır."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae dùng camera để quét mã QR từ thư viện nhạc của bạn."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae gebruikt de camera om een QR-code uit je muziekbibliotheek te scannen."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae आपकी म्यूज़िक लाइब्रेरी का QR कोड स्कैन करने के लिए कैमरे का उपयोग करता है।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae আপনার মিউজিক লাইব্রেরির QR কোড স্ক্যান করতে ক্যামেরা ব্যবহার করে।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உங்கள் இசை நூலகத்தின் QR குறியீட்டை ஸ்கேன் செய்ய bae கேமராவைப் பயன்படுத்துகிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీ మ్యూజిక్ లైబ్రరీ QR కోడ్‌ను స్కాన్ చేయడానికి bae కెమెరాను ఉపయోగిస్తుంది."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae तुमच्या संगीत लायब्ररीचा QR कोड स्कॅन करण्यासाठी कॅमेरा वापरते."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae آپ کی میوزک لائبریری کا QR کوڈ اسکین کرنے کے لیے کیمرہ استعمال کرتا ہے۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae તમારી સંગીત લાઇબ્રેરીનો QR કોડ સ્કેન કરવા માટે કૅમેરાનો ઉપયોગ કરે છે."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae ನಿಮ್ಮ ಸಂಗೀತ ಲೈಬ್ರರಿಯ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಲು ಕ್ಯಾಮೆರಾ ಬಳಸುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങളുടെ സംഗീത ലൈബ്രറിയുടെ QR കോഡ് സ്കാൻ ചെയ്യാൻ bae ക്യാമറ ഉപയോഗിക്കുന്നു."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae ਤੁਹਾਡੀ ਸੰਗੀਤ ਲਾਇਬ੍ਰੇਰੀ ਦਾ QR ਕੋਡ ਸਕੈਨ ਕਰਨ ਲਈ ਕੈਮਰਾ ਵਰਤਦਾ ਹੈ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae ใช้กล้องเพื่อสแกนรหัส QR จากคลังเพลงของคุณ"
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "comment": "System prompt shown the first time the device picker browses for cast receivers.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae finds speakers and TVs on your network to play to them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae busca altavoces y televisores en tu red para reproducir en ellos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae recherche les enceintes et téléviseurs de votre réseau pour y lire votre musique."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae findet Lautsprecher und Fernseher in deinem Netzwerk, um darauf abzuspielen."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O bae encontra alto-falantes e TVs na sua rede para reproduzir neles."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae はネットワーク上のスピーカーやテレビを探して、そこで再生します。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae 会查找你网络中的扬声器和电视，以便在上面播放。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يبحث bae عن مكبرات الصوت وأجهزة التلفزيون على شبكتك للتشغيل عليها."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏bae מאתר רמקולים וטלוויזיות ברשת שלך כדי לנגן דרכם."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae знаходить у вашій мережі колонки й телевізори, щоб відтворювати на них."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae открива високоговорители и телевизори в мрежата ви, за да възпроизвежда на тях."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae wyszukuje głośniki i telewizory w Twojej sieci, aby na nich odtwarzać."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae najde ve vaší síti reproduktory a televizory, aby na nich přehrával."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae pronalazi zvučnike i televizore na vašoj mreži kako bi na njima reproducirao."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae는 네트워크의 스피커와 TV를 찾아 그 기기로 재생합니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae 會尋找你網路中的喇叭和電視，以便在上面播放。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae trova altoparlanti e TV sulla tua rete per riprodurre su di essi."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae, ağınızdaki hoparlörleri ve televizyonları bulup onlarda çalar."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae tìm loa và TV trong mạng của bạn để phát tới chúng."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae zoekt speakers en tv's in je netwerk om erop af te spelen."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae आपके नेटवर्क पर स्पीकर और टीवी ढूँढता है ताकि उन पर चला सके।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae আপনার নেটওয়ার্কে স্পিকার ও টিভি খুঁজে নিয়ে সেগুলিতে বাজায়।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உங்கள் நெட்வொர்க்கில் உள்ள ஸ்பீக்கர்கள் மற்றும் தொலைக்காட்சிகளைக் கண்டறிந்து அவற்றில் இயக்க bae பயன்படுத்துகிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీ నెట్‌వర్క్‌లోని స్పీకర్లు, టీవీలను కనుగొని వాటిలో ప్లే చేయడానికి bae వీటిని ఉపయోగిస్తుంది."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae तुमच्या नेटवर्कवरील स्पीकर आणि टीव्ही शोधून त्यांवर वाजवते."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae آپ کے نیٹ ورک پر اسپیکر اور ٹی وی تلاش کرکے ان پر چلاتا ہے۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae તમારા નેટવર્ક પરના સ્પીકર અને ટીવી શોધે છે જેથી તેમના પર વગાડી શકાય."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae ನಿಮ್ಮ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿನ ಸ್ಪೀಕರ್ ಮತ್ತು ಟಿವಿಗಳನ್ನು ಹುಡುಕಿ ಅವುಗಳಲ್ಲಿ ಪ್ಲೇ ಮಾಡುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങളുടെ നെറ്റ്‌വർക്കിലെ സ്പീക്കറുകളും ടിവികളും കണ്ടെത്തി അവയിൽ പ്ലേ ചെയ്യാൻ bae ഉപയോഗിക്കുന്നു."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae ਤੁਹਾਡੇ ਨੈੱਟਵਰਕ ਦੇ ਸਪੀਕਰ ਅਤੇ ਟੀਵੀ ਲੱਭ ਕੇ ਉਨ੍ਹਾਂ 'ਤੇ ਚਲਾਉਂਦਾ ਹੈ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae ค้นหาลำโพงและทีวีในเครือข่ายของคุณเพื่อเล่นเสียงผ่านอุปกรณ์เหล่านั้น"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -2,20 +2,26 @@ import BaeKit
 import Foundation
 
 /// iOS `AppService`: the shared `BaeKit.AppService` base with the iOS wiring.
-/// It adds no stored state of its own — the desktop import/export/preview layer
-/// the macOS subclass carries has no iOS counterpart — so this is just the
-/// platform's `init` (no `mediaControlService`/`uiStore` to inject) and
-/// `wireUp` (audio-session remote commands instead of the preview session).
+/// The desktop import/export/preview layer the macOS subclass carries has no
+/// iOS counterpart; what it does add is the system service browser that stands
+/// in for the network browsing bae is not allowed to do here. The rest is the
+/// platform's `init` (no `mediaControlService`/`uiStore` to inject) and `wireUp`
+/// (audio-session remote commands instead of the preview session).
 /// Named to shadow the base so `@Environment(AppService.self)` reads resolve to
 /// it.
 @MainActor
 final class AppService: BaeKit.AppService {
+    /// The system Bonjour browser that feeds core's device list on iOS, where
+    /// bae may not browse the network itself.
+    let renderers: RendererBrowser
+
     init(
         appHandle: AppHandle,
         diagnostics: BridgeDiagnostics,
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
     ) {
+        renderers = RendererBrowser(handle: appHandle)
         super
             .init(
                 appHandle: appHandle,

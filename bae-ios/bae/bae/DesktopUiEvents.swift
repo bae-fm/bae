@@ -1,9 +1,8 @@
 import BaeKit
 
-/// The events the shared `UiEventDispatcher` declines: import preview playback,
-/// per-track loudness-measurement and identify progress during an import, and
-/// cast-device status — none of which iOS has a surface for (no import flow,
-/// no cast control). Exhaustive, no
+/// The events the shared `UiEventDispatcher` declines: import preview playback
+/// and the per-track loudness-measurement and identify progress of an import —
+/// none of which iOS has a surface for (no import flow). Exhaustive, no
 /// `default`: a `BridgeUiEvent` variant the dispatcher declines to handle in
 /// the future forces an explicit decision here. Every event a shared arm
 /// should already have consumed reaching this tail is a bug, so those cases
@@ -13,11 +12,11 @@ enum DesktopUiEvents {
     static func ignore(_ event: BridgeUiEvent, _: AppService) {
         switch event {
         case .previewIdle, .previewPlaying, .previewPaused, .previewProgress,
-            .candidateImportLoudnessProgress, .importQueueIdentifyProgress,
-            .castStatusChanged:
+            .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
             break
 
-        case .invalidated, .playbackStopped, .playbackError, .playbackLoading,
+        case .castStatusChanged, .invalidated, .playbackStopped, .playbackError,
+            .playbackLoading,
             .playbackPlaying, .playbackPaused, .playbackProgress,
             .playbackSeeked, .volumeChanged, .muteChanged, .repeatModeChanged,
             .queueUpdated, .queueItemsAdded, .releaseTransferProgress,

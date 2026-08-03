@@ -13,6 +13,10 @@ struct SettingsView: View {
     private var holder
     @Environment(Sync.self)
     private var sync
+    @Environment(Cast.self)
+    private var cast
+    @Environment(CastStore.self)
+    private var castStore
     @Environment(\.dismiss)
     private var dismiss
 
@@ -25,6 +29,9 @@ struct SettingsView: View {
     private var confirmLeave = false
     @State
     private var showRecoveryCode = false
+    /// The device an unconfirmed "turn casting off" would disconnect from.
+    @State
+    private var pendingCastDisconnect: String?
 
     var body: some View {
         NavigationStack {
@@ -108,6 +115,16 @@ struct SettingsView: View {
                     )
                 }
 
+                Section {
+                    Toggle("Enable casting", isOn: castEnabledBinding)
+                } header: {
+                    Text("Casting")
+                } footer: {
+                    Text(
+                        "Plays to Cast and AirPlay receivers on your network. While off, bae does not look for devices."
+                    )
+                }
+
                 // Managing members and revealing the recovery code both need a
                 // live sync session this run (the membership chain lives in the
                 // library's cloud storage), so gate on syncReady — runtime status
@@ -173,6 +190,21 @@ struct SettingsView: View {
             } message: {
                 Text("Your library in the cloud is untouched.")
             }
+            .alert(
+                "Turn off casting?",
+                isPresented: Binding(
+                    get: { pendingCastDisconnect != nil },
+                    set: { presented in
+                        if !presented { pendingCastDisconnect = nil }
+                    }
+                ),
+                presenting: pendingCastDisconnect
+            ) { _ in
+                Button("Turn Off", role: .destructive) { setCastEnabled(false) }
+                Button("Cancel", role: .cancel) {}
+            } message: { device in
+                Text("This will stop casting to \(device).")
+            }
             .sheet(isPresented: $showRecoveryCode) {
                 RecoveryCodeView(
                     generate: sync.generateRestoreCode,
@@ -193,6 +225,34 @@ struct SettingsView: View {
                 }
             }
             .onAppear { appService.reportScreen(.settings) }
+        }
+    }
+
+    /// Reads the persisted setting and writes through the bridge — the config
+    /// invalidation is what moves the switch, so a refused or cancelled flip
+    /// leaves it where it was with nothing to undo.
+    private var castEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { configStore.config.castEnabled },
+            set: { enabled in
+                switch Cast.toggleAction(
+                    enabled: enabled,
+                    castingDeviceName: castStore.castingDeviceName
+                ) {
+                case .apply(let enabled): setCastEnabled(enabled)
+                case .confirmDisconnect(let device):
+                    pendingCastDisconnect = device
+                }
+            }
+        )
+    }
+
+    private func setCastEnabled(_ enabled: Bool) {
+        do {
+            try cast.setEnabled(enabled)
+        }
+        catch {
+            configStore.showError(error)
         }
     }
 }

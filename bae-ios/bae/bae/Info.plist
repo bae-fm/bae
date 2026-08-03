@@ -30,8 +30,16 @@
 	<string>$(BAE_GIT_COMMIT)</string>
 	<key>BaeSentryDsn</key>
 	<string>$(BAE_SENTRY_DSN)</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_googlecast._tcp</string>
+		<string>_airplay._tcp</string>
+		<string>_raop._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>bae uses the camera to scan a QR code from your music library.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>bae finds speakers and TVs on your network to play to them.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

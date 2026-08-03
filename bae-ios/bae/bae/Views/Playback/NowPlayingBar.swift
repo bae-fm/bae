@@ -121,6 +121,7 @@ struct NowPlayingBar: View {
             Image(systemName: "forward.fill")
         }
         .accessibilityLabel("Next track")
+        CastButton()
         Button {
             showQueue = true
         } label: {

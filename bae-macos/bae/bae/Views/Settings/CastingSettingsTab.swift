@@ -1,14 +1,6 @@
 import BaeKit
 import SwiftUI
 
-/// What flipping the casting toggle should do.
-enum CastToggleAction: Equatable {
-    /// Write the setting straight through.
-    case apply(Bool)
-    /// Turning casting off would end the session on this device — ask first.
-    case confirmDisconnect(device: String)
-}
-
 /// The "Casting" settings tab: one toggle for the whole feature. Core is what
 /// the toggle actually gates — while off it browses no network and starts no
 /// session — so this tab only writes the setting and warns before a write that
@@ -26,18 +18,6 @@ struct CastingSettingsTab: View {
     /// The device an unconfirmed "turn casting off" would disconnect from.
     @State
     private var pendingDisconnect: String?
-
-    /// Turning casting off mid-session ends it, so that one case asks first;
-    /// every other flip writes straight through.
-    static func toggleAction(
-        enabled: Bool,
-        castingDeviceName: String?
-    ) -> CastToggleAction {
-        guard !enabled, let device = castingDeviceName else {
-            return .apply(enabled)
-        }
-        return .confirmDisconnect(device: device)
-    }
 
     var body: some View {
         Form {
@@ -72,7 +52,7 @@ struct CastingSettingsTab: View {
         Binding(
             get: { configStore.config.castEnabled },
             set: { enabled in
-                switch Self.toggleAction(
+                switch Cast.toggleAction(
                     enabled: enabled,
                     castingDeviceName: castStore.castingDeviceName
                 ) {

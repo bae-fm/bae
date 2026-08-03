@@ -89,6 +89,9 @@ struct ContentView: View {
                         .environment(service.playback)
                         .environment(service.queue)
                         .environment(service.sync)
+                        .environment(service.cast)
+                        .environment(service.castStore)
+                        .environment(service.renderers)
 
                 case .failed(let message):
                     errorView(message)

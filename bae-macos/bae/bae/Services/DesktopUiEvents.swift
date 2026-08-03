@@ -71,9 +71,6 @@ enum DesktopUiEvents {
             // running the full triage read once per candidate.
             appService.projectionRegistry.invalidate(.importCandidateList)
 
-        case .castStatusChanged(let deviceName):
-            appService.castStore.applyStatus(deviceName: deviceName)
-
         default:
             break
         }

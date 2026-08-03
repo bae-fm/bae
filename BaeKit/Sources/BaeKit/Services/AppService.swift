@@ -39,6 +39,8 @@ open class AppService: @unchecked Sendable, Observable {
     public let libraryStore: LibraryStore
     /// In-memory download (pin) queue mirror — per-release state and summary.
     public let downloadStore: DownloadStore
+    /// Which device playback is on, and what the picker found while it was open.
+    public let castStore: CastStore
     /// Cloud outbox processing mirror — queue depth, per-item state, summary
     /// (carries the sync-pause flag).
     public let outboxStore: OutboxStore
@@ -60,6 +62,8 @@ open class AppService: @unchecked Sendable, Observable {
     public nonisolated let imageStore: ImageStore
     public nonisolated let sync: Sync
     public nonisolated let downloads: Downloads
+    /// Cast transport: browse for devices, and move playback to or from one.
+    public nonisolated let cast: Cast
 
     /// Build the shared half of an `AppService` around an already-open,
     /// already-unlocked `AppHandle` and a config snapshot the caller read off
@@ -85,6 +89,7 @@ open class AppService: @unchecked Sendable, Observable {
         // the outbox snapshot is read (and its failure handled) by the caller.
         downloadStore = DownloadStore(snapshot: appHandle.getDownloadSnapshot())
         outboxStore = OutboxStore(snapshot: initialOutbox)
+        castStore = CastStore()
         // Uniform across platforms: each `init(handle:)` wires exactly the
         // bridge methods its platform exports (the iOS flavors omit the
         // desktop-only reads).
@@ -95,6 +100,7 @@ open class AppService: @unchecked Sendable, Observable {
         imageStore = ImageStore(handle: appHandle)
         sync = Sync(handle: appHandle)
         downloads = Downloads(handle: appHandle)
+        cast = Cast(handle: appHandle)
     }
 
     /// Report that a host UI screen was opened, as a typed telemetry event,
@@ -154,6 +160,7 @@ open class AppService: @unchecked Sendable, Observable {
             projectionRegistry.register(makeOutboxProjection()),
             projectionRegistry.register(makeDownloadProjection()),
             projectionRegistry.register(makeReleaseDetailProjection()),
+            projectionRegistry.register(makeCastDevicesProjection()),
             // The bridge's lag-recovery path is `.queue`'s only invalidation
             // producer (normal queue changes land through the `queueUpdated`
             // direct apply), so this projection exists purely for that recovery
@@ -292,6 +299,19 @@ extension AppService {
                     bridge: value.release
                 )
             },
+            onError: { [weak self] error in self?.showError(error) }
+        )
+    }
+
+    /// The picker's device list. Only ever invalidated while a picker is open —
+    /// discovery is what produces the invalidation, and it runs with the picker.
+    private func makeCastDevicesProjection() -> Projection<[BridgeCastDevice]> {
+        Projection(
+            domain: .castDevices,
+            query: { [appHandle] _ in
+                try await DetachedWork.run { appHandle.getCastDevices() }
+            },
+            apply: { [castStore] devices in castStore.devices = devices },
             onError: { [weak self] error in self?.showError(error) }
         )
     }

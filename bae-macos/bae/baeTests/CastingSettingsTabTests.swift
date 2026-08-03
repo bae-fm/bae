@@ -1,22 +1,23 @@
+import BaeKit
 import Foundation
 import Testing
 
 @testable import bae
 
 @MainActor
-@Suite("CastingSettingsTab")
+@Suite("Casting settings")
 struct CastingSettingsTabTests {
 
     @Test("turning casting on never asks")
     func enablingAppliesDirectly() {
         #expect(
-            CastingSettingsTab.toggleAction(
+            Cast.toggleAction(
                 enabled: true,
                 castingDeviceName: nil
             ) == .apply(true)
         )
         #expect(
-            CastingSettingsTab.toggleAction(
+            Cast.toggleAction(
                 enabled: true,
                 castingDeviceName: "Living Room Speaker"
             ) == .apply(true)
@@ -26,7 +27,7 @@ struct CastingSettingsTabTests {
     @Test("turning casting off with nothing casting applies directly")
     func disablingIdleAppliesDirectly() {
         #expect(
-            CastingSettingsTab.toggleAction(
+            Cast.toggleAction(
                 enabled: false,
                 castingDeviceName: nil
             ) == .apply(false)
@@ -36,7 +37,7 @@ struct CastingSettingsTabTests {
     @Test("turning casting off mid-session asks, naming the device")
     func disablingWhileCastingConfirms() {
         #expect(
-            CastingSettingsTab.toggleAction(
+            Cast.toggleAction(
                 enabled: false,
                 castingDeviceName: "Living Room Speaker"
             ) == .confirmDisconnect(device: "Living Room Speaker")

@@ -327,6 +327,9 @@ extension View {
             .environment(Downloads.stub)
             .environment(Sync.stub)
             .environment(ImageStore.stub)
+            .environment(Cast.stub)
+            .environment(CastStore())
+            .environment(RendererBrowser.stub)
     }
 }
 #endif

@@ -54,11 +54,6 @@ final class AppService: BaeKit.AppService {
     let subsonic: SubsonicServer
     let export: TrackSave
 
-    /// Cast transport (discovery + switch) and the observable cast state the
-    /// playback bar reads.
-    let cast: Cast
-    let castStore: CastStore
-
     init(
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
@@ -83,8 +78,6 @@ final class AppService: BaeKit.AppService {
         automation = Automation(handle: appHandle)
         subsonic = SubsonicServer(handle: appHandle)
         export = TrackSave(handle: appHandle)
-        cast = Cast(handle: appHandle)
-        castStore = CastStore()
         super
             .init(
                 appHandle: appHandle,
@@ -111,7 +104,6 @@ final class AppService: BaeKit.AppService {
         registerProjection(makeImportCandidateProjection())
         registerProjection(makeImportTriageQueueProjection())
         registerProjection(makeImportLibraryStatusProjection())
-        registerProjection(makeCastDevicesProjection())
         appHandle.subscribeUiEvents(
             callback: UiEventPump(
                 sink: UiEventDispatcher.makeSink(
@@ -241,21 +233,6 @@ extension AppService {
                 uiStore.retainFolderCandidateSelection(
                     in: Set(importStore.folderCandidates.keys)
                 )
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
-    }
-
-    private func makeCastDevicesProjection() -> Projection<[BridgeCastDevice]> {
-        Projection(
-            domain: .castDevices,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getCastDevices()
-                }
-            },
-            apply: { [castStore] devices in
-                castStore.devices = devices
             },
             onError: { [uiStore] error in uiStore.showError(error) }
         )

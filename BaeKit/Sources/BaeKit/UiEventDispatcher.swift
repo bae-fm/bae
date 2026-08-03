@@ -52,12 +52,15 @@ public enum UiEventDispatcher {
             // the event here rather than leaving it for the platform tail.
             break
 
+        case .castStatusChanged(let deviceName):
+            // Which device playback is on, including a receiver-side end core
+            // noticed on its own. Every Apple platform casts, so this is shared.
+            appService.castStore.applyStatus(deviceName: deviceName)
+
         case .previewPlaying, .previewPaused, .previewIdle, .previewProgress,
-            .candidateImportLoudnessProgress, .castStatusChanged,
-            .importQueueIdentifyProgress:
-            // Cast is desktop-only, as are preview, import-loudness, and the
-            // import queue's identify progress: the platform sink owns them.
-            // iOS ignores them; macOS updates its cast store.
+            .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
+            // Preview, import-loudness, and the import queue's identify progress
+            // are desktop-only: the platform sink owns them. iOS ignores them.
             return .unhandled
         }
         return .handled
