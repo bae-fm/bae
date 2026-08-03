@@ -209,10 +209,7 @@ public sealed class ImportSectionViewTests
                                 CoverThumbnailUrl: null,
                                 Evidence: new BridgeMatchEvidence(
                                     BridgeMetadataSource.MusicBrainz,
-                                    BridgeMatchedSignal.DiscId),
-                                Claim: new BridgeIdentityChoice.Exact(
-                                    "rel-matched",
-                                    BridgeMetadataSource.MusicBrainz)),
+                                    BridgeMatchedSignal.DiscId)),
                             Selectable: placement is BridgeTriagePlacement.Ready,
                             ImportStatus: null,
                             Picked: placement
@@ -220,7 +217,15 @@ public sealed class ImportSectionViewTests
                                     or BridgeTriagePlacement.Done
                                 ? new BridgeIdentityPick.Release(
                                     BridgeMetadataSource.MusicBrainz,
-                                    "rel-matched")
+                                    "rel-matched",
+                                    BridgeClaimLevel.Exact)
+                                : null,
+                            Claim: placement
+                                is BridgeTriagePlacement.Ready
+                                    or BridgeTriagePlacement.Done
+                                ? new BridgeIdentityChoice.Exact(
+                                    "rel-matched",
+                                    BridgeMetadataSource.MusicBrainz)
                                 : null)),
                 }),
         },

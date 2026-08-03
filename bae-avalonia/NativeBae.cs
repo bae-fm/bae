@@ -880,7 +880,7 @@ internal static class NativeBae
         {
             BridgeDecidedIdentity.Release release => new DecidedEdit
             {
-                Release = (release.Source, release.ReleaseId),
+                Release = (release.Source, release.ReleaseId, release.Prefetch.Claim.Level),
                 Edit = new PrefetchedEdit
                 {
                     Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(release.Prefetch.Seed, "prefetch-track"),
@@ -906,8 +906,9 @@ internal static class NativeBae
     /// <summary>What picking a release under a candidate claims, and where its
     /// metadata comes from. The re-identify dialog's path: it commits straight
     /// from the picked row, so it never prefetches.</summary>
-    internal static BridgeClaimLine ClaimForPick(AppHandle handle, string candidateKey, BridgeMetadataResult result) =>
-        handle.ClaimForPick(candidateKey, result);
+    internal static BridgeClaimLine ClaimForPick(
+        AppHandle handle, string candidateKey, BridgeMetadataResult result, BridgeClaimLevel level) =>
+        handle.ClaimForPick(candidateKey, result, level);
 
     /// <summary>The mapping table for a candidate nobody has picked a release
     /// for: every source unit the folder offers, with what it becomes left

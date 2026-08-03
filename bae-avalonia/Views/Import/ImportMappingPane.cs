@@ -66,6 +66,10 @@ internal sealed class ImportMappingPane : UserControl
     // It outlives a switch to Unknown, which is what switching back re-picks.
     private string? _releaseId;
     private BridgeMetadataSource _releaseSource;
+    // How far the claim on that release reaches. Held with the release for the
+    // same reason: every re-pick sends it back, so a claim the user lowered is
+    // not reset by switching to the folder's own tags and back.
+    private BridgeClaimLevel _releaseClaim = BridgeClaimLevel.Exact;
 
     // Whether a read is in flight, and whether the last one for this candidate
     // failed. Both exist for the Ready seed: it fires off store ticks as well as
@@ -224,6 +228,7 @@ internal sealed class ImportMappingPane : UserControl
         _mapping = null;
         _prefetch = null;
         _releaseId = null;
+        _releaseClaim = BridgeClaimLevel.Exact;
         _prefetching = false;
         _prefetchFailed = false;
         _libraryStatus = null;
@@ -327,6 +332,7 @@ internal sealed class ImportMappingPane : UserControl
                 _identity = ImportIdentity.Release;
                 _releaseId = release.ReleaseId;
                 _releaseSource = release.Source;
+                _releaseClaim = release.Claim;
                 _searchOpen = false;
                 Render();
 
@@ -392,12 +398,27 @@ internal sealed class ImportMappingPane : UserControl
         }
         if (_releaseId is { } releaseId)
         {
-            await DecideIdentity(new BridgeIdentityPick.Release(_releaseSource, releaseId));
+            await DecideIdentity(new BridgeIdentityPick.Release(_releaseSource, releaseId, _releaseClaim));
             return;
         }
         _identity = ImportIdentity.Release;
         _searchOpen = true;
         Render();
+    }
+
+    /// <summary>Claim the picked release at <paramref name="level"/>. It
+    /// re-picks the same release, which is what stores the level: the claim is
+    /// part of the decision, not a second thing to persist.</summary>
+    private async Task SetClaimLevel(BridgeClaimLevel level)
+    {
+        if (_releaseId is not { } releaseId)
+        {
+            // The claim line the control lives in is only drawn for a picked
+            // release, so there is nothing to claim without one.
+            BaeDiagnostics.Logger.Warning("no release picked; nothing to claim");
+            return;
+        }
+        await DecideIdentity(new BridgeIdentityPick.Release(_releaseSource, releaseId, level));
     }
 
     private void OnPreviewChanged() => _table?.ApplyPreviewAccent();
@@ -478,6 +499,7 @@ internal sealed class ImportMappingPane : UserControl
         HasCoverOptions = _prefetch is not null,
         Pressing = _prefetch is null ? null : _pressing,
         OnSetIdentity = identity => _ = SetIdentity(identity),
+        OnSetClaimLevel = level => _ = SetClaimLevel(level),
         OnFindRelease = () => { _searchOpen = true; Render(); },
         OnEditCover = () => _ = ChooseCover(),
         OnAlbumTitle = value => _albumTitle = value,
@@ -572,7 +594,8 @@ internal sealed class ImportMappingPane : UserControl
                 return;
             }
             var chosen = choices[results.SelectedIndex];
-            await DecideIdentity(new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId));
+            await DecideIdentity(
+                new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId, BridgeClaimLevel.Exact));
         };
         column.Children.Add(results);
 

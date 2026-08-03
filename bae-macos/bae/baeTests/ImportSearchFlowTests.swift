@@ -17,7 +17,8 @@ struct ImportSearchFlowPickedResumeTests {
 
     private let releasePick = BridgeIdentityPick.release(
         source: .musicBrainz,
-        releaseId: "rel-picked"
+        releaseId: "rel-picked",
+        claim: .exact
     )
 
     private func pickedRow(
@@ -128,7 +129,8 @@ struct ImportSearchFlowPickedResumeTests {
         var picked = candidate
         picked.pick = CandidatePick(
             releaseId: "rel-user-chose",
-            source: .musicBrainz
+            source: .musicBrainz,
+            claim: .exact
         )
         let row = pickedRow(
             for: picked,

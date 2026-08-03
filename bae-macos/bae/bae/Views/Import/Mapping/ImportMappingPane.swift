@@ -34,6 +34,9 @@ struct ImportMappingPane: View {
     /// — the same pick a search-sheet row click runs.
     let onPickRelease: (BridgeMetadataResult) -> Void
     let onEditCover: () -> Void
+    /// Set how far the claim on the picked release reaches — the claim line's
+    /// own control.
+    let onSetClaimLevel: (BridgeClaimLevel) -> Void
 
     /// The folder's mapping, or an empty table while the first read is still in
     /// flight — the pane's own shape does not change for it.
@@ -98,6 +101,7 @@ struct ImportMappingPane: View {
             onSetIdentity: onSetIdentity,
             onFindRelease: onFindRelease,
             onEditCover: onEditCover,
+            onSetClaimLevel: onSetClaimLevel,
         )
     }
 

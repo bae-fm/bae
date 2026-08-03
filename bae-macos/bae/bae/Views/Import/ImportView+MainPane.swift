@@ -1,5 +1,8 @@
 import BaeKit
 import SwiftUI
+import os.log
+
+private let mainPaneLogger = Logger.bae("ImportMainPane")
 
 // MARK: - Candidate list and main pane
 
@@ -50,11 +53,15 @@ extension ImportView {
                     key: candidate.key,
                     pick: .release(
                         source: result.source,
-                        releaseId: result.releaseId
+                        releaseId: result.releaseId,
+                        claim: .exact
                     )
                 )
             },
             onEditCover: { presentCoverPicker(for: candidate) },
+            onSetClaimLevel: { level in
+                setClaimLevel(level, for: candidate)
+            },
         )
         .animation(nil, value: uiStore.selectedFolderCandidate)
         // Keyed on the folder's files, not on the candidate: what a sheet may
@@ -72,6 +79,32 @@ extension ImportView {
             }
             await loadSheetBindingOptions(for: candidate)
         }
+    }
+
+    /// Claim the candidate's picked release at `level`. It re-picks the same
+    /// release, which is what stores the level: the claim is part of the
+    /// decision, not a second thing to persist. Nothing picked is nothing to
+    /// claim, and the claim line the control lives in is not drawn then.
+    private func setClaimLevel(
+        _ level: BridgeClaimLevel,
+        for candidate: Candidate
+    ) {
+        guard let pick = candidate.pick else {
+            mainPaneLogger.debug(
+                "no release picked for \(candidate.key); nothing to claim"
+            )
+            return
+        }
+        ImportSearchFlow.decideIdentity(
+            importer: importer,
+            importStore: importStore,
+            key: candidate.key,
+            pick: .release(
+                source: pick.source,
+                releaseId: pick.releaseId,
+                claim: level
+            )
+        )
     }
 
     /// The album-level editor, or `nil` while nothing has seeded one — the pane

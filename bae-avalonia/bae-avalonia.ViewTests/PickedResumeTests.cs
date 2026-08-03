@@ -14,7 +14,8 @@ public sealed class PickedResumeTests
     private const string CandidateKey = "/Music/Incoming/Collection/Release 01";
 
     private static readonly BridgeIdentityPick ReleasePick =
-        new BridgeIdentityPick.Release(BridgeMetadataSource.MusicBrainz, "rel-picked");
+        new BridgeIdentityPick.Release(
+            BridgeMetadataSource.MusicBrainz, "rel-picked", BridgeClaimLevel.Exact);
 
     private static readonly MappingPaneSeedState Untouched =
         new(Seeded: false, Prefetching: false, PrefetchFailed: false);
@@ -121,5 +122,8 @@ public sealed class PickedResumeTests
         Matched: null,
         Selectable: placement is BridgeTriagePlacement.Ready,
         ImportStatus: null,
-        Picked: picked);
+        Picked: picked,
+        Claim: picked is BridgeIdentityPick.Release release
+            ? new BridgeIdentityChoice.Exact(release.ReleaseId, release.Source)
+            : null);
 }

@@ -25,7 +25,7 @@ extension ImportView {
             for key in keys {
                 guard
                     let row = importStore.triageRow(forKey: key),
-                    let matched = row.matched
+                    let claim = row.claim
                 else {
                     // Selection can outlive the row that earned it (imported by
                     // a faster sibling call, or reclassified) — the list content
@@ -39,12 +39,11 @@ extension ImportView {
                         nil,
                         storageMode,
                         storagePinned,
-                        // Core derives this from the evidence that matched: a
-                        // disc ID that named one release claims the pressing, a
-                        // barcode or a text hit claims only the album. A bulk
-                        // import has no claim line to read, so it commits what
-                        // the row carries.
-                        matched.claim,
+                        // The row's stored decision, in the shape commit takes
+                        // — identification settled this candidate on one match
+                        // and recorded the pick, so a bulk import commits the
+                        // same claim opening the pane would state.
+                        claim,
                         nil
                     )
                 }

@@ -81,7 +81,8 @@
                     ),
                     selectable: false,
                     importStatus: importStatuses[folderCandidates[2].key],
-                    picked: nil
+                    picked: nil,
+                    claim: nil
                 ),
                 triageRow(
                     for: folderCandidates[3],
@@ -93,7 +94,8 @@
                     ),
                     selectable: false,
                     importStatus: importStatuses[folderCandidates[3].key],
-                    picked: nil
+                    picked: nil,
+                    claim: nil
                 ),
                 triageRow(
                     for: folderCandidates[4],
@@ -392,7 +394,8 @@
                 matched: nil,
                 selectable: true,
                 importStatus: nil,
-                picked: nil
+                picked: nil,
+                claim: nil
             )
         }
 
@@ -541,12 +544,7 @@
                     trackCount: trackCount
                 ),
                 coverThumbnailUrl: nil,
-                evidence: BridgeMatchEvidence(source: source, signal: signal),
-                // What core derives for this evidence: a lone disc-ID match
-                // claims the pressing, anything else claims the album.
-                claim: signal == .discId
-                    ? .exact(releaseId: releaseId, source: source)
-                    : .approximate(releaseId: releaseId, source: source)
+                evidence: BridgeMatchEvidence(source: source, signal: signal)
             )
         }
 
@@ -559,7 +557,8 @@
             matched: BridgeMatchedRelease?,
             selectable: Bool,
             importStatus: BridgeCandidateImportStatus? = nil,
-            picked: BridgeIdentityPick? = nil
+            picked: BridgeIdentityPick? = nil,
+            claim: BridgeIdentityChoice? = nil
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -573,7 +572,8 @@
                 matched: matched,
                 selectable: selectable,
                 importStatus: importStatus,
-                picked: picked
+                picked: picked,
+                claim: claim
             )
         }
 
@@ -589,7 +589,14 @@
             matched: triageMatch(releaseId: "rel-ready", title: "Album Title"),
             selectable: true,
             importStatus: nil,
-            picked: nil
+            // Ready means identification settled on one match, which is a
+            // pick — the record a bulk import of this row commits from.
+            picked: .release(
+                source: .musicBrainz,
+                releaseId: "rel-ready",
+                claim: .exact
+            ),
+            claim: .exact(releaseId: "rel-ready", source: .musicBrainz)
         )
 
         static let triageRowPickAPressing = BridgeTriageRow(
@@ -618,14 +625,12 @@
                 evidence: BridgeMatchEvidence(
                     source: .musicBrainz,
                     signal: nil
-                ),
-                // Several matches, so the pressing is open: the album, not
-                // this lead pressing, is what an import of it would claim.
-                claim: .approximate(releaseId: "rel-lead", source: .musicBrainz)
+                )
             ),
             selectable: false,
             importStatus: nil,
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowSignalsConflict = BridgeTriageRow(
@@ -643,7 +648,8 @@
             matched: nil,
             selectable: false,
             importStatus: nil,
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowAlreadyInLibrary = BridgeTriageRow(
@@ -670,7 +676,8 @@
             ),
             selectable: false,
             importStatus: nil,
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowNoMatch = BridgeTriageRow(
@@ -688,7 +695,8 @@
             matched: nil,
             selectable: false,
             importStatus: nil,
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowStillIdentifying = BridgeTriageRow(
@@ -706,7 +714,8 @@
             matched: nil,
             selectable: false,
             importStatus: nil,
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowSkipped = BridgeTriageRow(
@@ -721,7 +730,8 @@
             matched: nil,
             selectable: false,
             importStatus: nil,
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowDoneImported = BridgeTriageRow(
@@ -744,7 +754,8 @@
                 releaseId: "rel-ten",
                 albumId: "album-ten"
             ),
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         static let triageRowDoneFailed = BridgeTriageRow(
@@ -771,7 +782,8 @@
                     detail: "track 7 is truncated"
                 )
             ),
-            picked: nil
+            picked: nil,
+            claim: nil
         )
 
         /// Seeded ImportStore for the standalone sidebar preview
@@ -1023,17 +1035,17 @@
                 trackIdPrefix: "import-track"
             )
 
-        /// The claim a disc-ID match on `releaseDetailBridge` produces: the
-        /// pressing itself, so the header states no separate metadata source.
+        /// What picking `releaseDetailBridge` claims: the pressing itself, so
+        /// the header states no separate metadata source.
         static let claimBridge = BridgeClaimLine(
             choice: .exact(
                 releaseId: releaseDetailBridge.releaseId,
                 source: releaseDetailBridge.source
             ),
+            level: .exact,
             evidence: .discIdAlone,
             release: "CD \u{00b7} 1996 \u{00b7} US \u{00b7} 6006-2",
-            trackCount: releaseDetailBridge.trackCount,
-            showsMetadataSource: false
+            trackCount: releaseDetailBridge.trackCount
         )
 
         /// Per-track audio candidate (nine FLAC files) plus one cover image, two
@@ -1316,7 +1328,8 @@
             candidate.identityChoice = claimBridge.choice
             candidate.pick = CandidatePick(
                 releaseId: releaseDetailBridge.releaseId,
-                source: releaseDetailBridge.source
+                source: releaseDetailBridge.source,
+                claim: claimBridge.level
             )
             candidate.releaseDetailBridge = releaseDetailBridge
             candidate.editValues = confirmEditValues

@@ -407,9 +407,9 @@ pub(crate) fn build_mb_detail(
 /// position strings, the track count to reconcile against the folder. Nothing is
 /// seeded from it.
 ///
-/// `claim` is derived from the evidence that identified the candidate, so the
-/// pick alone settles what the import claims to hold — there is no separate
-/// question to answer. `seed` here is the *unshaped* projection; a surface
+/// `claim` states what the import claims to hold at the level the pick carried,
+/// with the evidence that identified the candidate as its explanation. `seed`
+/// here is the *unshaped* projection; a surface
 /// showing the editor masks it for `claim.choice` with
 /// [`crate::import::shape_user_edit_for_choice`], which is what the bridge does
 /// before the record crosses.

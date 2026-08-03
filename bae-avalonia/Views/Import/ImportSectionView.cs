@@ -579,7 +579,7 @@ internal sealed class ImportSectionView : UserControl
             // intersects the selection against the tab's current Ready keys,
             // so a miss here is defensive, not expected.
             var row = TriageListModel.Row(_import.TriageQueue, key);
-            if (row?.Matched is not { } matched)
+            if (row?.Claim is not { } claim)
             {
                 continue;
             }
@@ -599,7 +599,7 @@ internal sealed class ImportSectionView : UserControl
             }
 
             var (importCurrent, error) = await _app.Import.CommitImport(
-                key, key, matched.Claim, storageMode, pinned, decided.Edit.Edit, null);
+                key, key, claim, storageMode, pinned, decided.Edit.Edit, null);
             if (!importCurrent)
             {
                 return;

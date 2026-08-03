@@ -17,7 +17,6 @@
 //! answers what the queue needs from the user; this module decides where that
 //! answer puts the row and what the row shows.
 
-use super::claim::ClaimEvidence;
 use super::folder_scanner::{
     FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey, InvalidCandidate,
     ResolvedFolderReleaseBoundary,
@@ -27,7 +26,7 @@ use super::handle::{
     ImportServiceHandle,
 };
 use super::search::{MetadataResult, SourceTracks};
-use super::types::{IdentityChoice, MetadataRef, MetadataSource};
+use super::types::{IdentityChoice, MetadataSource};
 use crate::db::{DbImportCandidateState, LibraryCheck, LibraryStatus};
 use crate::identify::verdict::decode_stored;
 use crate::identify::{
@@ -283,14 +282,6 @@ pub struct MatchedRelease {
     /// pressing's sleeve, not the group's.
     pub cover_thumbnail_url: Option<String>,
     pub evidence: MatchEvidence,
-    /// What a bulk import of this row commits as its identity claim, derived
-    /// here from the same evidence rule the confirm pane's claim line uses.
-    ///
-    /// It crosses rather than being worked out per surface: a bulk import has
-    /// no claim line to read, and a disc ID that matched one release claims the
-    /// pressing while a barcode claims only the album — which is a rule about
-    /// what evidence proves, not something a list should be deciding.
-    pub claim: IdentityChoice,
 }
 
 impl MatchedRelease {
@@ -319,20 +310,7 @@ impl MatchedRelease {
         let lead = matches.first()?;
         let settled = matches.len() == 1;
         let signal = provenance.first().and_then(MatchedSignal::of);
-        // The same reading the claim line makes: only a disc ID that matched
-        // one release names the pressing. A shared disc ID, a barcode, or a
-        // text hit names the album and leaves the pressing open.
-        let claim_evidence = match (signal, settled) {
-            (Some(MatchedSignal::DiscId), true) => ClaimEvidence::DiscIdAlone,
-            (Some(MatchedSignal::DiscId), false) => ClaimEvidence::DiscIdShared {
-                match_count: matches.len() as u32,
-            },
-            (Some(MatchedSignal::Barcode), _) => ClaimEvidence::Barcode,
-            (None, _) => ClaimEvidence::Search,
-        };
         Some(Self {
-            claim: claim_evidence
-                .default_choice(MetadataRef::new(lead.release_id.clone(), lead.source)),
             release_id: lead.release_id.clone(),
             title: lead.title.clone(),
             artist: lead.artist.clone(),
@@ -386,6 +364,11 @@ pub struct TriageRow {
     /// the stored row — what lets selection reopen the pane answered instead
     /// of asking again. `None` while they have chosen nothing.
     pub picked: Option<crate::import::IdentityPick>,
+    /// The same decision in the shape commit takes, for a bulk import: it has
+    /// no pane to read a claim line off, and turning a pick into an identity
+    /// claim is not something a list should be working out. `None` alongside
+    /// `picked` — nothing decided is nothing to commit.
+    pub claim: Option<IdentityChoice>,
 }
 
 #[derive(Debug, Clone)]
@@ -578,6 +561,7 @@ fn row(
         import_status.as_ref(),
         &known,
     );
+    let picked = picked.filter(|_| snapshot.actionable);
     TriageRow {
         candidate_key: path.to_string_lossy().into_owned(),
         folder_name: name.clone(),
@@ -590,7 +574,8 @@ fn row(
         matched: actionable_answer.and_then(|answer| MatchedRelease::of(&answer.verdict)),
         placement,
         import_status,
-        picked: picked.filter(|_| snapshot.actionable).cloned(),
+        claim: picked.map(crate::import::IdentityPick::choice),
+        picked: picked.cloned(),
     }
 }
 

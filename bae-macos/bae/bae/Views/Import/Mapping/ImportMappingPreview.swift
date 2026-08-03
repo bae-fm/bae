@@ -48,6 +48,7 @@
                 onFindRelease: {},
                 onPickRelease: { _ in },
                 onEditCover: {},
+                onSetClaimLevel: { _ in },
             )
         }
     }

@@ -14,7 +14,8 @@ enum MappingFixtures {
     static let candidateKey = "/Music/Downloads/Walkthrough"
     static let pick = CandidatePick(
         releaseId: "rel-walkthrough",
-        source: .musicBrainz
+        source: .musicBrainz,
+        claim: .exact
     )
 
     // MARK: - Thirteen files, twelve tracks
@@ -289,10 +290,14 @@ enum MappingFixtures {
         tracks: []
     )
 
-    /// A prefetch carrying `mapping`. The pane reads the claim, the seed and
-    /// the mapping; `slots` stays in the bridge for the other desktop surface,
-    /// and is empty here because nothing under test reads it.
-    static func prefetch(mapping: BridgeMappingTable) -> BridgeReleasePrefetch {
+    /// A prefetch carrying `mapping`, claiming the release at `level` the way
+    /// core answers a pick that carries it. The pane reads the claim, the seed
+    /// and the mapping; `slots` stays in the bridge for the other desktop
+    /// surface, and is empty here because nothing under test reads it.
+    static func prefetch(
+        mapping: BridgeMappingTable,
+        level: BridgeClaimLevel = .exact
+    ) -> BridgeReleasePrefetch {
         BridgeReleasePrefetch(
             detail: BridgeReleaseDetail(
                 releaseId: pick.releaseId,
@@ -313,14 +318,19 @@ enum MappingFixtures {
             ),
             seed: albumSeed,
             claim: BridgeClaimLine(
-                choice: .exact(
-                    releaseId: pick.releaseId,
-                    source: pick.source
-                ),
+                choice: level == .exact
+                    ? .exact(
+                        releaseId: pick.releaseId,
+                        source: pick.source
+                    )
+                    : .approximate(
+                        releaseId: pick.releaseId,
+                        source: pick.source
+                    ),
+                level: level,
                 evidence: .discIdAlone,
                 release: "CD \u{00b7} 1996",
-                trackCount: 12,
-                showsMetadataSource: false
+                trackCount: 12
             ),
             mapping: mapping
         )

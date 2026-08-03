@@ -50,8 +50,8 @@ struct ReIdentifySheet: View {
     /// footer. `nil` until a row is picked.
     @State
     private var selectedResult: BridgeMetadataResult?
-    /// What that pick claims, as bae-core derives it from the evidence that
-    /// identified this release. `nil` until a row is picked.
+    /// What that pick claims: the pressing, unless the footer's control lowers
+    /// it to the album. `nil` until a row is picked.
     @State
     private var claim: BridgeClaimLine?
 
@@ -139,12 +139,12 @@ struct ReIdentifySheet: View {
                         onAddAsUnknown: { commit(.unknown) },
                         // Re-identify has no editable confirm page (the release
                         // already has metadata; "Edit metadata..." covers
-                        // post-commit edits). Picking a pressing selects it and
-                        // settles what it claims; the footer states that and
-                        // commits directly via `re_identify_release`.
+                        // post-commit edits). Picking a pressing claims it; the
+                        // footer states that, offers the album-level claim
+                        // instead, and commits via `re_identify_release`.
                         onSelect: { result in
                             selectedResult = result
-                            claim = importer.claimForPick(key, result)
+                            claim = importer.claimForPick(key, result, .exact)
                         },
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -174,11 +174,14 @@ struct ReIdentifySheet: View {
 
     /// Footer shown once a pressing is picked: what that pick claims, and the
     /// commit. Re-identify takes the same `IdentityChoice` an import does, so
-    /// it states the claim the same way — picking a different row is what
-    /// moves it.
+    /// it states the claim the same way and offers the same control over it.
     private func selectionFooter(for claim: BridgeClaimLine) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            ImportClaimLine(claim: claim)
+            ImportClaimLine(
+                claim: claim,
+                isReading: false,
+                onSetLevel: setClaimLevel,
+            )
             Button("Set identity") { commit(claim.choice) }
                 .buttonStyle(.borderedProminent)
         }
@@ -282,6 +285,17 @@ extension ReIdentifySheet {
         // are logged in core, not surfaced — identify lands in ManualOnly when
         // nothing resolves, the same as a folder with no signals.
         importer.autoIdentifyRelease(key, releaseId)
+    }
+
+    /// Claim the picked row at `level`. The whole line is re-derived rather
+    /// than edited, so re-identify and the import pane read the same claim out
+    /// of the same core call.
+    fileprivate func setClaimLevel(_ level: BridgeClaimLevel) {
+        guard let result = selectedResult else {
+            logger.debug("no row picked for \(key); nothing to claim")
+            return
+        }
+        claim = importer.claimForPick(key, result, level)
     }
 
     fileprivate func commit(_ choice: BridgeIdentityChoice) {

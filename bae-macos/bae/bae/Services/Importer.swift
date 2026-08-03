@@ -82,13 +82,16 @@ final class Importer: Sendable, Observable {
     /// source unit it offers, with what each becomes left open.
     let candidateMapping:
         @Sendable (_ candidateKey: String) throws -> BridgeMappingTable
-    /// What picking `result` under a candidate claims, and where its metadata
-    /// comes from. The re-identify sheet's path: it commits straight from the
-    /// picked row, so it never prefetches. The import confirm pane gets the
-    /// same claim back inside the decided-identity answer instead.
+    /// What holding `result` at `level` under a candidate claims, and where
+    /// its metadata comes from. The re-identify sheet's path: it commits
+    /// straight from the picked row, so it never prefetches. The import
+    /// confirm pane gets the same claim back inside the decided-identity
+    /// answer instead.
     let claimForPick:
-        @Sendable (_ candidateKey: String, _ result: BridgeMetadataResult) ->
-            BridgeClaimLine?
+        @Sendable (
+            _ candidateKey: String, _ result: BridgeMetadataResult,
+            _ level: BridgeClaimLevel
+        ) -> BridgeClaimLine?
     /// Async because core claims the candidate for the import before the
     /// command is queued, and that claim is taken under the same lock a
     /// background verdict write holds — which is what keeps the queue sweep
@@ -162,8 +165,9 @@ final class Importer: Sendable, Observable {
                 throw StubError.notImplemented
             },
         claimForPick:
-            @escaping @Sendable (String, BridgeMetadataResult) ->
-            BridgeClaimLine? = { _, _ in nil },
+            @escaping @Sendable (
+                String, BridgeMetadataResult, BridgeClaimLevel
+            ) -> BridgeClaimLine? = { _, _, _ in nil },
         startImport:
             @escaping @Sendable (
                 String, BridgeCoverSelection?, BridgeStorageMode, Bool,
@@ -272,7 +276,7 @@ final class Importer: Sendable, Observable {
                 try handle.candidateMapping(candidateKey: $0)
             },
             claimForPick: {
-                handle.claimForPick(candidateKey: $0, result: $1)
+                handle.claimForPick(candidateKey: $0, result: $1, level: $2)
             },
             startImport: {
                 try await handle.startImport(

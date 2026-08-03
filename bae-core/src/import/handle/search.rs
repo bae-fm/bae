@@ -245,11 +245,11 @@ impl ImportServiceHandle {
     /// compares equal at commit instead of reading as a user edit that clears the
     /// junction rows.
     ///
-    /// The claim comes from `candidate_key`'s identify state: which signal
-    /// turned this release up decides whether the import claims the pressing or
-    /// the album. A key with no identify state — a manual search, a candidate
-    /// whose pipeline never ran — yields the album-level claim, which is the
-    /// honest reading of "the user found this themselves".
+    /// The claim is `level` — the user's assertion, carried in from the pick.
+    /// `candidate_key`'s identify state supplies only the evidence clause the
+    /// line reads: which signal turned this release up. A key with no identify
+    /// state — a manual search, a candidate whose pipeline never ran — reads as
+    /// "found by searching", which is the honest account of it.
     ///
     /// Both shapes are projected from one set of stored documents, so the
     /// picker and the commit describe the same release from the same bytes.
@@ -258,6 +258,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         release_id: &str,
         source: MetadataSource,
+        level: crate::import::ClaimLevel,
     ) -> Result<crate::import::search::ImportReleasePrefetch, crate::import::ImportError> {
         let release = crate::import::MetadataRef::new(release_id, source);
         let payloads = self.payloads_for_pick(candidate_key, &release).await?;
@@ -274,6 +275,7 @@ impl ImportServiceHandle {
         let claim = crate::import::claim_line(
             &self.identify_state_or_resumed(candidate_key).await?,
             &crate::import::ClaimRelease::from_detail(&detail),
+            level,
         );
 
         let seed = crate::import::parsed_album_to_user_edit(&parsed);
@@ -405,8 +407,8 @@ impl ImportServiceHandle {
             && only.source_tracks.is_some())
     }
 
-    /// What picking `release` under `candidate_key` claims, and where its
-    /// metadata comes from.
+    /// What holding `release` at `level` under `candidate_key` claims, and
+    /// where its metadata comes from.
     ///
     /// Both surfaces that pick a release land here — the import confirm pane
     /// through [`Self::prefetch_release`], and re-identify directly, since it
@@ -416,8 +418,9 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
         release: &crate::import::ClaimRelease,
+        level: crate::import::ClaimLevel,
     ) -> crate::import::ClaimLine {
-        crate::import::claim_line(&self.identify_state(candidate_key), release)
+        crate::import::claim_line(&self.identify_state(candidate_key), release, level)
     }
 
     /// Decide a candidate's identity: persist the choice, then build the same
@@ -488,9 +491,13 @@ impl ImportServiceHandle {
         pick: crate::import::IdentityPick,
     ) -> Result<crate::import::DecidedIdentity, crate::import::ImportError> {
         match pick {
-            crate::import::IdentityPick::Release { source, release_id } => {
+            crate::import::IdentityPick::Release {
+                source,
+                release_id,
+                claim,
+            } => {
                 let prefetch = self
-                    .prefetch_release(candidate_key, &release_id, source)
+                    .prefetch_release(candidate_key, &release_id, source, claim)
                     .await?;
                 Ok(crate::import::DecidedIdentity::Release {
                     source,

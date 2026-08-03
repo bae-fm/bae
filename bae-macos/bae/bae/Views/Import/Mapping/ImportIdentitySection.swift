@@ -35,8 +35,8 @@ struct ImportIdentitySection: View {
     /// fetched.
     let metaLine: String
     /// What this import claims to hold and where its metadata came from, as
-    /// core derived it. `nil` before a pick, and for Unknown, which claims
-    /// nothing.
+    /// core reads it back off the stored pick. `nil` before a pick, and for
+    /// Unknown, which claims nothing.
     let claim: BridgeClaimLine?
     /// Whether a release has been picked — what the change control reads as.
     let hasPick: Bool
@@ -61,6 +61,8 @@ struct ImportIdentitySection: View {
     let onSetIdentity: (ImportIdentity) -> Void
     let onFindRelease: () -> Void
     let onEditCover: () -> Void
+    /// Set how far the claim on the picked release reaches.
+    let onSetClaimLevel: (BridgeClaimLevel) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -100,6 +102,7 @@ struct ImportIdentitySection: View {
                         commit: commit,
                         onEditCover: onEditCover,
                         onFindRelease: onFindRelease,
+                        onSetClaimLevel: onSetClaimLevel,
                     )
                 }
                 else {

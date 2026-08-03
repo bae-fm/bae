@@ -1682,15 +1682,17 @@ impl AppHandle {
         ))
     }
 
-    /// The claim line for picking `result` under `candidate_key`, without a
-    /// prefetch. Re-identify's path: it commits straight from the picked row,
-    /// so the header states the claim from that row plus the candidate's own
-    /// identify evidence. The import confirm pane gets the same line back from
-    /// `prefetch_release` instead, since it is fetching the release anyway.
+    /// The claim line for holding `result` at `level` under `candidate_key`,
+    /// without a prefetch. Re-identify's path: it commits straight from the
+    /// picked row, so the header states the claim from that row plus the
+    /// candidate's own identify evidence. The import confirm pane gets the same
+    /// line back from `prefetch_release` instead, since it is fetching the
+    /// release anyway.
     pub fn claim_for_pick(
         &self,
         candidate_key: String,
         result: crate::types::BridgeMetadataResult,
+        level: crate::types::BridgeClaimLevel,
     ) -> crate::types::BridgeClaimLine {
         let release = bae_core::import::ClaimRelease {
             release_ref: bae_core::import::MetadataRef::new(
@@ -1707,11 +1709,11 @@ impl AppHandle {
             // metadata-from line could tell the user by repeating it.
             track_count: None,
         };
-        crate::types::BridgeClaimLine::from_core(
-            self.services
-                .import()
-                .claim_for_pick(&candidate_key, &release),
-        )
+        crate::types::BridgeClaimLine::from_core(self.services.import().claim_for_pick(
+            &candidate_key,
+            &release,
+            level.into_core(),
+        ))
     }
 
     // The bridge boundary surface is wide on purpose — uniffi flattens
@@ -2845,6 +2847,7 @@ impl crate::types::BridgeTriageRow {
             selectable,
             import_status,
             picked,
+            claim,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -2863,6 +2866,7 @@ impl crate::types::BridgeTriageRow {
             selectable,
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
             picked: picked.map(crate::types::BridgeIdentityPick::from_core),
+            claim: claim.map(crate::types::BridgeIdentityChoice::from_core),
         }
     }
 }
@@ -3018,7 +3022,6 @@ impl crate::types::BridgeMatchedRelease {
             pressing,
             cover_thumbnail_url,
             evidence,
-            claim,
         } = matched;
         let bae_core::import::MatchEvidence { source, signal } = evidence;
         crate::types::BridgeMatchedRelease {
@@ -3038,7 +3041,6 @@ impl crate::types::BridgeMatchedRelease {
                 }
             }),
             cover_thumbnail_url,
-            claim: crate::types::BridgeIdentityChoice::from_core(claim),
             evidence: crate::types::BridgeMatchEvidence {
                 source: crate::types::BridgeMetadataSource::from_core(source),
                 signal: signal.map(crate::types::BridgeMatchedSignal::from_core),

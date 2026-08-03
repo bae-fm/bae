@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -7,19 +8,22 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The two facts an import records, stated as a sentence: what you claim to
-/// physically hold, and — when that is not the same release — where the
-/// metadata was read from. Both come from <c>BridgeClaimLine</c>, which
-/// bae-core derives from the evidence that identified the candidate; nothing
-/// here decides anything, and there is no mode to switch. Picking a different
-/// pressing is what moves the claim.
+/// The two facts an import records, stated as a sentence with the claim on a
+/// control: what you claim to physically hold, and — when that is not the same
+/// release — where the metadata was read from. Picking a release claims that
+/// pressing; the control is how you say you hold the album but can't vouch for
+/// which pressing, and setting it re-picks the same release at the level
+/// chosen, so the claim is stored rather than kept in the view.
 ///
 /// Shared by the import confirm dialog and the re-identify dialog, which take
 /// the same identity claim.
 /// </summary>
 internal static class ClaimLineView
 {
-    internal static Control Build(BridgeClaimLine claim)
+    internal static Control Build(
+        BridgeClaimLine claim,
+        bool isReading,
+        Action<BridgeClaimLevel> onSetLevel)
     {
         var sentence = new TextBlock { Text = ClaimSentence(claim), VerticalAlignment = VerticalAlignment.Center };
         var evidence = new TextBlock { Text = EvidenceNote(claim), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
@@ -31,7 +35,8 @@ internal static class ClaimLineView
 
         var column = new StackPanel { Spacing = 2 };
         column.Children.Add(top);
-        if (claim.ShowsMetadataSource)
+        column.Children.Add(LevelPicker(claim, isReading, onSetLevel));
+        if (claim.Level is BridgeClaimLevel.Approximate)
         {
             var source = new TextBlock { Text = MetadataSourceLine(claim), FontSize = 12.5 };
             source[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
@@ -40,16 +45,50 @@ internal static class ClaimLineView
         return column;
     }
 
+    /// <summary>The claim itself, as the one control that moves it. Both sides
+    /// name the same picked release — lowering the claim says the pressing is
+    /// not being vouched for, not that the release is wrong.</summary>
+    private static Control LevelPicker(
+        BridgeClaimLine claim,
+        bool isReading,
+        Action<BridgeClaimLevel> onSetLevel)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        row.Children.Add(Segment(
+            Loc.Core("ui.import.claim.level.exact"), BridgeClaimLevel.Exact, claim.Level, isReading, onSetLevel));
+        row.Children.Add(Segment(
+            Loc.Core("ui.import.claim.level.album"), BridgeClaimLevel.Approximate, claim.Level, isReading, onSetLevel));
+        ToolTip.SetTip(row, Loc.Core("ui.import.claim.level.title"));
+        return row;
+    }
+
+    private static Control Segment(
+        string label,
+        BridgeClaimLevel level,
+        BridgeClaimLevel current,
+        bool isReading,
+        Action<BridgeClaimLevel> onSetLevel)
+    {
+        var button = ImportPaneUi.RowButton(label);
+        button.IsEnabled = !isReading;
+        if (current == level)
+        {
+            button[!Button.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
+            button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
+        }
+        button.Click += (_, _) => onSetLevel(level);
+        return button;
+    }
+
     /// <summary>"You have this pressing — CD · 2004 · UK · CAT-1234", or the
     /// album-level claim, which names no pressing because none is claimed.
     ///
-    /// One fact drives both lines: a pressing claim names the picked release
+    /// The level drives both lines: a pressing claim names the picked release
     /// inside its own sentence, so there is no second line to draw, and an
-    /// album claim needs one. bae-core decides it — the choice variant is
-    /// carried for the commit, not for the view to re-read.</summary>
+    /// album claim needs one.</summary>
     private static string ClaimSentence(BridgeClaimLine claim)
     {
-        if (claim.ShowsMetadataSource)
+        if (claim.Level is BridgeClaimLevel.Approximate)
         {
             return Loc.Core("ui.import.claim.album");
         }

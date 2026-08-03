@@ -353,9 +353,9 @@ impl BridgeIdentityChoice {
         }
     }
 
-    /// The claim core derived from the evidence that identified a candidate —
-    /// the direction `into_core` doesn't cover, since the default is decided in
-    /// core and travels outward.
+    /// The claim core recorded for a candidate — the direction `into_core`
+    /// doesn't cover, since a pick's claim is settled in core and travels
+    /// outward.
     pub fn from_core(choice: bae_core::import::IdentityChoice) -> Self {
         match choice {
             bae_core::import::IdentityChoice::Exact { release_ref } => Self::Exact {
@@ -1251,11 +1251,33 @@ pub struct BridgeMatchedRelease {
     /// sleeve, since cover art is fetched per release id.
     pub cover_thumbnail_url: Option<String>,
     pub evidence: BridgeMatchEvidence,
-    /// The identity claim a bulk import of this row commits. Derived in core
-    /// from the same evidence rule the confirm pane's claim line uses, because
-    /// a bulk import has no claim line to read and what a disc ID proves is not
-    /// a decision a list should be making.
-    pub claim: BridgeIdentityChoice,
+}
+
+/// How far a claim on a picked release reaches. Mirror of
+/// `bae_core::import::ClaimLevel`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeClaimLevel {
+    /// This pressing is the one in the room.
+    Exact,
+    /// The album, with which pressing left open.
+    Approximate,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeClaimLevel {
+    pub(crate) fn from_core(level: bae_core::import::ClaimLevel) -> Self {
+        match level {
+            bae_core::import::ClaimLevel::Exact => Self::Exact,
+            bae_core::import::ClaimLevel::Approximate => Self::Approximate,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::ClaimLevel {
+        match self {
+            Self::Exact => bae_core::import::ClaimLevel::Exact,
+            Self::Approximate => bae_core::import::ClaimLevel::Approximate,
+        }
+    }
 }
 
 /// The identity decided for a candidate, as the row carries it back and the
@@ -1265,6 +1287,10 @@ pub enum BridgeIdentityPick {
     Release {
         source: BridgeMetadataSource,
         release_id: String,
+        /// How far the claim on this release reaches. Picking a release sends
+        /// `Exact`; the header's claim control sends the same pick back at the
+        /// level the user set.
+        claim: BridgeClaimLevel,
     },
     Unknown,
 }
@@ -1273,9 +1299,14 @@ pub enum BridgeIdentityPick {
 impl BridgeIdentityPick {
     pub(crate) fn from_core(pick: bae_core::import::IdentityPick) -> Self {
         match pick {
-            bae_core::import::IdentityPick::Release { source, release_id } => Self::Release {
+            bae_core::import::IdentityPick::Release {
+                source,
+                release_id,
+                claim,
+            } => Self::Release {
                 source: BridgeMetadataSource::from_core(source),
                 release_id,
+                claim: BridgeClaimLevel::from_core(claim),
             },
             bae_core::import::IdentityPick::Unknown => Self::Unknown,
         }
@@ -1283,9 +1314,14 @@ impl BridgeIdentityPick {
 
     pub(crate) fn into_core(self) -> bae_core::import::IdentityPick {
         match self {
-            Self::Release { source, release_id } => bae_core::import::IdentityPick::Release {
+            Self::Release {
+                source,
+                release_id,
+                claim,
+            } => bae_core::import::IdentityPick::Release {
                 source: source.into_core(),
                 release_id,
+                claim: claim.into_core(),
             },
             Self::Unknown => bae_core::import::IdentityPick::Unknown,
         }
@@ -1353,6 +1389,9 @@ pub struct BridgeTriageRow {
     /// match, the pressing the user picked, or their decision to read the
     /// folder's own tags. Selection re-applies it, so the pane opens answered.
     pub picked: Option<BridgeIdentityPick>,
+    /// The same decision in the shape commit takes, for a bulk import — which
+    /// has no pane to read a claim line off. `None` alongside `picked`.
+    pub claim: Option<BridgeIdentityChoice>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -2902,8 +2941,8 @@ pub struct BridgeReleaseTrack {
 ///
 /// `seed` arrives already masked for `claim.choice` (an album-level claim blanks
 /// the pressing block), so the UI binds it straight to the editor. The claim
-/// itself is settled by the pick — there is no second question to ask and no
-/// re-shaping to do.
+/// itself came in on the pick, and lowering it is another pick — so there is no
+/// re-shaping for the UI to do either way.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
@@ -2917,9 +2956,9 @@ pub struct BridgeReleasePrefetch {
 }
 
 /// What identified the picked release. Mirrors
-/// `bae_core::import::ClaimEvidence`. Only `DiscIdAlone` is sharp enough to
-/// claim a pressing — the rest name the album — and the UI renders this as the
-/// claim sentence's trailing clause rather than re-deciding anything from it.
+/// `bae_core::import::ClaimEvidence`. It explains the pick and decides nothing:
+/// the UI renders it as the claim sentence's trailing clause, and the claim
+/// itself is the user's, carried on the pick.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeClaimEvidence {
     /// The disc's table of contents matched this release and no other.
@@ -2937,12 +2976,16 @@ pub enum BridgeClaimEvidence {
 ///
 /// Two facts: `choice` is what the import claims you physically hold, and
 /// `release` is the release the metadata was read from. They coincide only for
-/// a pressing claim; `shows_metadata_source` says when the header must render
-/// the second line naming it, so neither desktop UI re-derives the rule.
+/// a pressing claim; `level` says which of the two sentences the line reads as,
+/// which side of the header's claim control is in force, and — since only an
+/// album claim leaves the metadata's release unsaid — whether the second line
+/// naming it is drawn.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeClaimLine {
     /// The claim this import will record, and what commit writes.
     pub choice: BridgeIdentityChoice,
+    /// How far the claim reaches, as the user set it.
+    pub level: BridgeClaimLevel,
     pub evidence: BridgeClaimEvidence,
     /// The picked release by its pressing facts — format, year, country and
     /// catalog number, `·`-joined. `None` when the source states none of them,
@@ -2951,8 +2994,6 @@ pub struct BridgeClaimLine {
     /// The picked release's track count, where the source stated one. Rendered
     /// on the metadata-from line.
     pub track_count: Option<u32>,
-    /// Whether to render the second line naming where the metadata came from.
-    pub shows_metadata_source: bool,
 }
 
 /// Mirror of `bae_core::import::ReleaseUserEdit` — a normalized, validated
@@ -4737,19 +4778,19 @@ impl BridgeReleasePrefetch {
 #[cfg(feature = "desktop")]
 impl BridgeClaimLine {
     pub(crate) fn from_core(claim: bae_core::import::ClaimLine) -> Self {
-        let shows_metadata_source = claim.shows_metadata_source();
         let bae_core::import::ClaimLine {
             choice,
+            level,
             evidence,
             release,
             track_count,
         } = claim;
         BridgeClaimLine {
             choice: BridgeIdentityChoice::from_core(choice),
+            level: BridgeClaimLevel::from_core(level),
             evidence: BridgeClaimEvidence::from_core(evidence),
             release,
             track_count,
-            shows_metadata_source,
         }
     }
 }

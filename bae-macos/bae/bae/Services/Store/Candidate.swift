@@ -15,11 +15,16 @@ enum CandidateSource: Equatable {
 
 // MARK: - CandidatePick
 
-/// The release picked for a candidate: which one, and which metadata source it
-/// came from — the two facts re-reading its mapping needs.
+/// The decision made for a candidate: which release, which metadata source it
+/// came from, and how far the claim on it reaches. Every re-pick — switching
+/// back from the folder's own tags, re-reading the mapping under a changed
+/// shape — sends these three back, so none of them is lost on the way.
 struct CandidatePick: Equatable {
     let releaseId: String
     let source: BridgeMetadataSource
+    /// The claim the user holds this release at. `exact` unless they lowered
+    /// it; carried so a re-pick keeps it rather than resetting it.
+    let claim: BridgeClaimLevel
 }
 
 // MARK: - ImportIdentity

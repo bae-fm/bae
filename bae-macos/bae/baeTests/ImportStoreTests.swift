@@ -126,9 +126,7 @@ private func matchedRelease(
             BridgeMatchedPressing(year: 2000, format: "CD", trackCount: $0)
         },
         coverThumbnailUrl: nil,
-        evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId),
-        // A lone disc-ID match, so core's rule claims the pressing.
-        claim: .exact(releaseId: releaseId, source: .musicBrainz)
+        evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId)
     )
 }
 
@@ -146,7 +144,8 @@ private func readyRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: true,
         importStatus: nil,
-        picked: nil
+        picked: nil,
+        claim: nil
     )
 }
 
@@ -169,7 +168,8 @@ private func needsYouRow(
         matched: nil,
         selectable: false,
         importStatus: nil,
-        picked: nil
+        picked: nil,
+        claim: nil
     )
 }
 
@@ -186,7 +186,8 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
-        picked: nil
+        picked: nil,
+        claim: nil
     )
 }
 
@@ -203,7 +204,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: nil,
         selectable: false,
         importStatus: nil,
-        picked: nil
+        picked: nil,
+        claim: nil
     )
 }
 

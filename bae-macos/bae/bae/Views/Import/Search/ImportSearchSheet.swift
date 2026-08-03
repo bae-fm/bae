@@ -83,7 +83,8 @@ struct ImportSearchSheet: View {
                     key: candidateKey,
                     pick: .release(
                         source: result.source,
-                        releaseId: result.releaseId
+                        releaseId: result.releaseId,
+                        claim: .exact
                     )
                 )
                 uiStore.dismissModal()

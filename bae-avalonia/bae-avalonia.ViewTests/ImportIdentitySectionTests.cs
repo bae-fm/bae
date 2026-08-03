@@ -75,11 +75,73 @@ public sealed class ImportIdentitySectionTests
         Assert.Single(settled.GetLogicalDescendants().OfType<Expander>());
     }
 
+    // The claim the card states is the user's to set: picking a release claims
+    // that pressing, and the control beside the sentence is how they say they
+    // hold the album but not necessarily this pressing.
+    [AvaloniaFact]
+    public void TheClaimLineOffersBothLevelsAndReportsTheOneClicked()
+    {
+        var set = new List<BridgeClaimLevel>();
+        var section = Build(
+            ImportIdentity.Release,
+            pressing: new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
+            claim: Claim(BridgeClaimLevel.Exact),
+            onSetClaimLevel: set.Add);
+
+        var levels = Buttons(section)
+            .Where(button => Equals(button.Content, Loc.Core("ui.import.claim.level.exact"))
+                || Equals(button.Content, Loc.Core("ui.import.claim.level.album")))
+            .ToList();
+        Assert.Equal(2, levels.Count);
+        foreach (var button in levels)
+        {
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        }
+
+        Assert.Equal(new[] { BridgeClaimLevel.Exact, BridgeClaimLevel.Approximate }, set);
+    }
+
+    // A pressing claim names the release inside its own sentence; only the
+    // album claim leaves it unsaid, so only that one draws the second line.
+    [AvaloniaFact]
+    public void OnlyTheAlbumClaimNamesWhereTheMetadataCameFrom()
+    {
+        var pressing = new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012");
+        var exact = Build(ImportIdentity.Release, pressing: pressing, claim: Claim(BridgeClaimLevel.Exact));
+        var album = Build(ImportIdentity.Release, pressing: pressing, claim: Claim(BridgeClaimLevel.Approximate));
+
+        Assert.Contains(Texts(exact), text => text == Loc.Core("ui.import.claim.pressing", "release", "CD · 1996"));
+        Assert.DoesNotContain(Texts(exact), text => text.StartsWith(MetadataFromPrefix()));
+
+        Assert.Contains(Texts(album), text => text == Loc.Core("ui.import.claim.album"));
+        Assert.Contains(Texts(album), text => text.StartsWith(MetadataFromPrefix()));
+    }
+
+    /// <summary>The metadata-from sentence with its release slot emptied, so the
+    /// assertion matches the sentence rather than restating a translation.</summary>
+    private static string MetadataFromPrefix() =>
+        Loc.Core("ui.import.claim.metadata_from", "release", string.Empty).TrimEnd();
+
+    private static BridgeClaimLine Claim(BridgeClaimLevel level) => new(
+        Choice: level is BridgeClaimLevel.Exact
+            ? new BridgeIdentityChoice.Exact("rel-1", BridgeMetadataSource.MusicBrainz)
+            : new BridgeIdentityChoice.Approximate("rel-1", BridgeMetadataSource.MusicBrainz),
+        Level: level,
+        Evidence: new BridgeClaimEvidence.DiscIdAlone(),
+        Release: "CD · 1996",
+        TrackCount: 12);
+
+    private static IReadOnlyList<string> Texts(Control section) =>
+        section.GetLogicalDescendants().OfType<TextBlock>()
+            .Select(text => text.Text ?? string.Empty).ToList();
+
     private static Control Build(
         ImportIdentity identity,
         bool isReading = false,
         BridgeRawPressingEdit? pressing = null,
-        System.Action<ImportIdentity>? onSetIdentity = null) =>
+        BridgeClaimLine? claim = null,
+        System.Action<ImportIdentity>? onSetIdentity = null,
+        System.Action<BridgeClaimLevel>? onSetClaimLevel = null) =>
         new ImportIdentitySection
         {
             Identity = identity,
@@ -91,13 +153,14 @@ public sealed class ImportIdentitySectionTests
             AlbumTitle = pressing is null ? string.Empty : "Album Title",
             AlbumArtistText = pressing is null ? string.Empty : "Artist Name",
             MetaLine = "CD · 1996",
-            Claim = null,
-            HasPick = false,
+            Claim = claim,
+            HasPick = claim is not null,
             IsReading = isReading,
             LoadCover = null,
             HasCoverOptions = false,
             Pressing = pressing,
             OnSetIdentity = onSetIdentity ?? (_ => { }),
+            OnSetClaimLevel = onSetClaimLevel ?? (_ => { }),
             OnFindRelease = () => { },
             OnEditCover = () => { },
             OnAlbumTitle = _ => { },

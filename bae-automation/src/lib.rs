@@ -455,7 +455,7 @@ pub struct AutomationRemoteCover {
 }
 
 /// What picking a release gives the confirmation step: the display `detail`,
-/// the metadata editor's seed, and the identity `claim` the pick implies. The
+/// the metadata editor's seed, and the identity `claim` a pick records. The
 /// seed is projected from the release exactly as the commit worker maps it, so
 /// it — never the detail — is what an import's `user_edit` overlay is built
 /// from.
@@ -475,8 +475,8 @@ pub struct AutomationReleasePrefetch {
     pub claim: AutomationClaimLine,
 }
 
-/// What identified the picked release. Only `disc_id_alone` is sharp enough to
-/// claim a pressing; the rest name the album.
+/// What identified the picked release. It explains the pick and decides
+/// nothing: a pick claims the pressing whatever turned it up.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationClaimEvidence {
@@ -486,9 +486,10 @@ pub enum AutomationClaimEvidence {
     Search,
 }
 
-/// The claim the pick implies, and the release the metadata came from. `choice`
-/// is what `import_start` should carry to commit the default claim; a caller
-/// wanting a different one passes a different `identity_choice`.
+/// What a pick claims, and the release the metadata came from. `choice` is the
+/// pressing claim a pick records and what `import_start` carries to commit it;
+/// a caller claiming only the album passes an `approximate` `identity_choice`
+/// instead.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationClaimLine {
     pub choice: AutomationIdentityChoice,
@@ -497,9 +498,6 @@ pub struct AutomationClaimLine {
     /// states none.
     pub release: Option<String>,
     pub track_count: Option<u32>,
-    /// Whether the two facts differ, so a surface names the metadata source
-    /// separately.
-    pub shows_metadata_source: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -845,8 +843,9 @@ pub struct CandidateSkipSetInput {
 }
 
 /// Picking a release for a candidate. The candidate is part of the input
-/// because the claim the pick implies is derived from that candidate's identify
-/// evidence — a key with no evidence yields the album-level claim.
+/// because the claim line reads that candidate's identify evidence for the
+/// clause explaining what turned the release up — a key with no evidence reads
+/// as "found by searching".
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReleasePrefetchInput {
     pub candidate_key: String,
@@ -1468,14 +1467,22 @@ impl Automation {
         // Core reads a key it has recorded nothing against as "the pipeline
         // hasn't run": the right answer for a scanned candidate awaiting
         // identification, and indistinguishable from a typo. Answered rather
-        // than refused, a typo comes back as a confident album-level claim over
-        // a seed whose pressing block was blanked to match it.
+        // than refused, a typo comes back reading "found by searching", which
+        // is what a key with no evidence behind it honestly is.
         let candidate = self.state.get_candidate(&candidate_key)?;
 
         let prefetch = self
             .services
             .import()
-            .prefetch_release(candidate.key(), &release_id, source.into())
+            .prefetch_release(
+                candidate.key(),
+                &release_id,
+                source.into(),
+                // The claim a pick records. A caller committing only the album
+                // passes its own `identity_choice` to `import_start` and shapes
+                // the seed for it with `import_release_edit_shape`.
+                bae_core::import::ClaimLevel::Exact,
+            )
             .await?;
         Ok(AutomationReleasePrefetch {
             detail: automation_release_detail(prefetch.detail),
@@ -2149,7 +2156,6 @@ fn identity_choice(choice: AutomationIdentityChoice) -> IdentityChoice {
 }
 
 fn automation_claim_line(claim: bae_core::import::ClaimLine) -> AutomationClaimLine {
-    let shows_metadata_source = claim.shows_metadata_source();
     AutomationClaimLine {
         choice: automation_identity_choice(claim.choice),
         evidence: match claim.evidence {
@@ -2162,7 +2168,6 @@ fn automation_claim_line(claim: bae_core::import::ClaimLine) -> AutomationClaimL
         },
         release: claim.release,
         track_count: claim.track_count,
-        shows_metadata_source,
     }
 }
 
@@ -2918,13 +2923,13 @@ mod tests {
     /// A candidate key is resolved before anything is fetched for it, so a key
     /// that names nothing fails as `not_found` instead of being answered.
     ///
-    /// This matters most on `import_release_prefetch`, which reads the identity
-    /// claim off the named candidate's identify evidence. Core reads a key it
-    /// has recorded nothing against as "the pipeline hasn't run" — correct for
-    /// a scanned candidate awaiting identification, and indistinguishable from
-    /// a typo. Answered rather than refused, a typo returns a confident
-    /// album-level claim over a seed whose pressing block was blanked to match
-    /// it: a wrong answer that looks like a right one.
+    /// This matters most on `import_release_prefetch`, which reads the claim
+    /// line's evidence off the named candidate. Core reads a key it has
+    /// recorded nothing against as "the pipeline hasn't run" — correct for a
+    /// scanned candidate awaiting identification, and indistinguishable from a
+    /// typo. Answered rather than refused, a typo returns a claim line that
+    /// reads as if the release had been found by searching: a wrong answer
+    /// that looks like a right one.
     mod candidate_lookup {
         use super::*;
 

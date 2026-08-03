@@ -63,8 +63,8 @@ internal sealed class ImportIdentitySection
     internal required string MetaLine { get; init; }
 
     /// <summary>What this import claims to hold and where its metadata came
-    /// from, as core derived it. Null before a pick, and for Unknown, which
-    /// claims nothing.</summary>
+    /// from, as core reads it back off the stored pick. Null before a pick, and
+    /// for Unknown, which claims nothing.</summary>
     internal required BridgeClaimLine? Claim { get; init; }
 
     /// <summary>Whether a release has been picked — what the change control
@@ -91,6 +91,10 @@ internal sealed class ImportIdentitySection
     internal required Control? CommitRow { get; init; }
 
     internal required Action<ImportIdentity> OnSetIdentity { get; init; }
+
+    /// <summary>Set how far the claim on the picked release reaches. Re-picks
+    /// the same release at that level, which is what stores it.</summary>
+    internal required Action<BridgeClaimLevel> OnSetClaimLevel { get; init; }
 
     internal required Action OnFindRelease { get; init; }
 
@@ -199,12 +203,11 @@ internal sealed class ImportIdentitySection
         summary.Children.Add(title);
         summary.Children.Add(ImportPaneUi.Cell(AlbumArtistText, secondary: true));
         summary.Children.Add(ImportPaneUi.Cell(MetaLine, secondary: true));
-        // Stated, never asked: bae-core derived the claim from the evidence that
-        // identified the candidate, and picking a different release is what
-        // moves it. An import that claims nothing has no source release to name.
+        // What this import claims, with the control that lowers it to the album.
+        // An import that claims nothing has no source release to name.
         if (Claim is { } claim)
         {
-            summary.Children.Add(ClaimLineView.Build(claim));
+            summary.Children.Add(ClaimLineView.Build(claim, IsReading, OnSetClaimLevel));
         }
         Grid.SetColumn(summary, 1);
         grid.Children.Add(summary);

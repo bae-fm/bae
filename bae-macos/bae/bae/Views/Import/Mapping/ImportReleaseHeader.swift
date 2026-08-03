@@ -30,8 +30,8 @@ struct ImportReleaseHeader: View {
     /// fetched.
     let metaLine: String
     /// What this import claims to hold and where its metadata came from, as
-    /// core derived it. `nil` before a pick, and for an Unknown import, which
-    /// claims nothing.
+    /// core reads it back off the stored pick. `nil` before a pick, and for an
+    /// Unknown import, which claims nothing.
     let claim: BridgeClaimLine?
     /// Whether a release has been picked.
     let hasPick: Bool
@@ -46,6 +46,9 @@ struct ImportReleaseHeader: View {
     let commit: ImportCommitControls?
     let onEditCover: () -> Void
     let onFindRelease: () -> Void
+    /// Set how far the claim reaches. Re-picks the same release at the level
+    /// given, which is what stores it.
+    let onSetClaimLevel: (BridgeClaimLevel) -> Void
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -58,7 +61,11 @@ struct ImportReleaseHeader: View {
                 changeControl
             }
             if let claim {
-                ImportClaimLine(claim: claim)
+                ImportClaimLine(
+                    claim: claim,
+                    isReading: isReading,
+                    onSetLevel: onSetClaimLevel,
+                )
             }
             if let commit {
                 commitRow(commit)

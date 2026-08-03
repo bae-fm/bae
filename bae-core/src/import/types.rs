@@ -191,17 +191,36 @@ pub struct MetadataRef {
 }
 
 /// The identity the user chose for a folder candidate — the pressing they
-/// picked, or the decision to read the folder's own tags. Persisted on
-/// `import_candidate_state` (JSON, `identity_pick`) so an answered pane
-/// reopens answered after a restart; the claim, the seed, and the mapping are
-/// all re-derived from it against the archived documents, never stored.
+/// picked and how far they claim it reaches, or the decision to read the
+/// folder's own tags. Persisted on `import_candidate_state` (JSON,
+/// `identity_pick`) so an answered pane reopens answered after a restart; the
+/// claim line, the seed, and the mapping are all re-derived from it against the
+/// archived documents, never stored.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IdentityPick {
     Release {
         source: MetadataSource,
         release_id: String,
+        /// The pressing claim, at [`ClaimLevel::Exact`] unless the user lowered
+        /// it. Stored here because it is an assertion about the record they
+        /// hold, which no later derivation could recover.
+        claim: ClaimLevel,
     },
     Unknown,
+}
+
+impl IdentityPick {
+    /// What committing this pick records as the release's identity.
+    pub fn choice(&self) -> IdentityChoice {
+        match self {
+            Self::Release {
+                source,
+                release_id,
+                claim,
+            } => claim.choice(MetadataRef::new(release_id.clone(), *source)),
+            Self::Unknown => IdentityChoice::Unknown,
+        }
+    }
 }
 
 /// A candidate's decided identity with everything the pane seeds from it —
@@ -286,6 +305,33 @@ pub enum IdentityChoice {
     Exact { release_ref: MetadataRef },
     Approximate { release_ref: MetadataRef },
     Unknown,
+}
+
+/// How far a claim on a picked release reaches — the two of [`IdentityChoice`]
+/// that name a release, with the release left out.
+///
+/// A pick arrives at [`Self::Exact`]: clicking a release says "this is the one
+/// I have", whatever turned it up. Only the user moves it, when they hold the
+/// album but can't vouch for the pressing. It is stored with the pick rather
+/// than derived from the evidence, because it is an assertion about the record
+/// in the room that no metadata can settle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClaimLevel {
+    /// This pressing is the one in the room.
+    Exact,
+    /// The album, with which pressing left open.
+    Approximate,
+}
+
+impl ClaimLevel {
+    /// What claiming `release_ref` at this level records — what commit writes
+    /// identity rows from.
+    pub fn choice(self, release_ref: MetadataRef) -> IdentityChoice {
+        match self {
+            Self::Exact => IdentityChoice::Exact { release_ref },
+            Self::Approximate => IdentityChoice::Approximate { release_ref },
+        }
+    }
 }
 
 /// Every field the edit-metadata sheet may change. Plain values, not row IDs —

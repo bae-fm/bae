@@ -33,7 +33,8 @@ extension ImportMappingFlow {
                 key: key,
                 pick: .release(
                     source: pick.source,
-                    releaseId: pick.releaseId
+                    releaseId: pick.releaseId,
+                    claim: pick.claim
                 )
             )
         case (.release, .none):

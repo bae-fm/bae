@@ -1,17 +1,22 @@
 import BaeKit
 import SwiftUI
 
-/// The two facts an import records, stated as a sentence.
+/// The two facts an import records, stated as a sentence with the claim on a
+/// control.
 ///
 /// The first line is what you claim to physically hold — this pressing, or the
 /// album with the pressing left open — with a muted note saying what identified
 /// it. The second line names the release the metadata was read from, and shows
-/// exactly when that is not the release being claimed. Both come from
-/// `BridgeClaimLine`, which bae-core derives from the evidence: nothing here
-/// decides anything, and there is no mode to switch. Picking a different
-/// pressing in the results above is what moves the claim.
+/// exactly when that is not the release being claimed. Picking a release claims
+/// that pressing; the control is how you say you hold the album but can't vouch
+/// for which pressing, and setting it re-picks the same release at the level
+/// you chose, so the claim is stored rather than kept in the view.
 struct ImportClaimLine: View {
     let claim: BridgeClaimLine
+    /// Whether the control takes input. Off while a read is in flight, since
+    /// the level it would set is what the read is settling.
+    let isReading: Bool
+    let onSetLevel: (BridgeClaimLevel) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -23,7 +28,8 @@ struct ImportClaimLine: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
-            if claim.showsMetadataSource {
+            levelPicker
+            if claim.level == .approximate {
                 Text(metadataSourceLine)
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
@@ -35,17 +41,32 @@ struct ImportClaimLine: View {
         .background(Theme.field, in: RoundedRectangle(cornerRadius: 6))
     }
 
-    /// Whether the claim is at the pressing level. One fact drives both lines:
-    /// a pressing claim names the picked release inside its own sentence, so
-    /// there is no second line to draw, and an album claim needs one. bae-core
-    /// decides it — the choice variant is carried for the commit, not for the
-    /// view to re-read.
-    private var claimsPressing: Bool { !claim.showsMetadataSource }
+    /// The claim itself, as the one control that moves it. Both sides name the
+    /// same picked release — lowering the claim says the pressing is not being
+    /// vouched for, not that the release is wrong.
+    private var levelPicker: some View {
+        Picker(
+            coreString("ui.import.claim.level.title"),
+            selection: Binding(
+                get: { claim.level },
+                set: { onSetLevel($0) },
+            )
+        ) {
+            Text(coreString("ui.import.claim.level.exact"))
+                .tag(BridgeClaimLevel.exact)
+            Text(coreString("ui.import.claim.level.album"))
+                .tag(BridgeClaimLevel.approximate)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .disabled(isReading)
+        .fixedSize()
+    }
 
     /// "You have this pressing — CD · 2004 · UK · CAT-1234", or the album-level
     /// claim, which names no pressing because none is being claimed.
     private var claimSentence: String {
-        guard claimsPressing else {
+        guard claim.level == .exact else {
             return coreString("ui.import.claim.album")
         }
         guard let release = claim.release else {
@@ -109,11 +130,13 @@ struct ImportClaimLine: View {
                         releaseId: "rel-1",
                         source: .musicBrainz
                     ),
+                    level: .exact,
                     evidence: .discIdAlone,
                     release: "CD · 2004 · UK · CAT-1234",
-                    trackCount: 11,
-                    showsMetadataSource: false
-                )
+                    trackCount: 11
+                ),
+                isReading: false,
+                onSetLevel: { _ in },
             )
             ImportClaimLine(
                 claim: BridgeClaimLine(
@@ -121,11 +144,13 @@ struct ImportClaimLine: View {
                         releaseId: "rel-1",
                         source: .musicBrainz
                     ),
+                    level: .approximate,
                     evidence: .discIdShared(matchCount: 2),
                     release: "CD · 2004 · UK",
-                    trackCount: 11,
-                    showsMetadataSource: true
-                )
+                    trackCount: 11
+                ),
+                isReading: false,
+                onSetLevel: { _ in },
             )
             ImportClaimLine(
                 claim: BridgeClaimLine(
@@ -133,11 +158,13 @@ struct ImportClaimLine: View {
                         releaseId: "rel-2",
                         source: .musicBrainz
                     ),
+                    level: .approximate,
                     evidence: .search,
                     release: "CD · 2015 · US",
-                    trackCount: 14,
-                    showsMetadataSource: true
-                )
+                    trackCount: 14
+                ),
+                isReading: false,
+                onSetLevel: { _ in },
             )
         }
         .padding()

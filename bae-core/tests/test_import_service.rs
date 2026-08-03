@@ -3546,7 +3546,12 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     // command's overlay when the user touches nothing.
     let prefetch = f
         .handle
-        .prefetch_release(&candidate_key, &mb_id, MetadataSource::MusicBrainz)
+        .prefetch_release(
+            &candidate_key,
+            &mb_id,
+            MetadataSource::MusicBrainz,
+            bae_core::import::ClaimLevel::Exact,
+        )
         .await
         .unwrap();
     let user_edit = bae_core::import::shape_user_edit_for_choice(&prefetch.seed, &choice);
@@ -3681,7 +3686,12 @@ async fn pick_release_for_folder(
 
     let prefetch = f
         .handle
-        .prefetch_release(&candidate_key, mb_id, MetadataSource::MusicBrainz)
+        .prefetch_release(
+            &candidate_key,
+            mb_id,
+            MetadataSource::MusicBrainz,
+            bae_core::import::ClaimLevel::Exact,
+        )
         .await
         .unwrap();
     (candidate_key, prefetch)

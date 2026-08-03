@@ -613,6 +613,7 @@ impl Fixture {
                         serde_json::to_string(&crate::import::IdentityPick::Release {
                             source: crate::import::MetadataSource::MusicBrainz,
                             release_id: release_id.to_string(),
+                            claim: crate::import::ClaimLevel::Exact,
                         })
                         .unwrap(),
                     ),
@@ -1257,6 +1258,7 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
             &dir.to_string_lossy(),
             "mb-offline-1",
             crate::import::MetadataSource::MusicBrainz,
+            crate::import::ClaimLevel::Exact,
         )
         .await
         .expect("a settled candidate opens from what identification archived");
@@ -1296,6 +1298,7 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
             &dir.to_string_lossy(),
             "mb-missing-1",
             crate::import::MetadataSource::MusicBrainz,
+            crate::import::ClaimLevel::Exact,
         )
         .await
         .expect_err("a settled lead with nothing archived must not silently re-fetch");
@@ -1337,6 +1340,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
             &dir.to_string_lossy(),
             "mb-manual-1",
             crate::import::MetadataSource::MusicBrainz,
+            crate::import::ClaimLevel::Exact,
         )
         .await
         .expect("a manual pick fetches");
@@ -1354,6 +1358,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
             &dir.to_string_lossy(),
             "mb-manual-1",
             crate::import::MetadataSource::MusicBrainz,
+            crate::import::ClaimLevel::Exact,
         )
         .await
         .expect("re-opening reads what the first open archived");
@@ -2633,6 +2638,9 @@ async fn a_pick_reads_back_as_the_same_answer() {
     };
     assert_eq!(release_id, "mb-answer-1");
     assert_eq!(prefetch.detail.tracks.len(), 2);
+    // Identification settling on one match is a pick, so it claims the
+    // pressing exactly as a click on that release would.
+    assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Exact);
 
     // The row carries the same decision for the sidebar's resume trigger.
     let queue = crate::import::triage::load(&fixture.import, &fixture.manager)
@@ -2654,6 +2662,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         crate::import::IdentityPick::Release {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-answer-1".to_string(),
+            claim: crate::import::ClaimLevel::Exact,
         }
     );
 
@@ -2682,5 +2691,87 @@ async fn a_pick_reads_back_as_the_same_answer() {
         fixture.provider.requests().is_empty(),
         "every answer came from the archive: {:?}",
         fixture.provider.requests()
+    );
+}
+
+/// Lowering the claim is a decision like any other: it is written with the
+/// pick, so the answer, the row's resume record and the identity a bulk import
+/// would commit all come back at the album level after a restart. The evidence
+/// here is a disc ID that matched one release — the sharpest there is — and it
+/// still does not move the claim back.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_lowered_claim_reads_back_lowered() {
+    let fixture = Fixture::new("pick-lowered").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
+    let key = dir.to_string_lossy().into_owned();
+
+    fixture
+        .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
+        .await;
+    fixture
+        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
+        .await;
+
+    let lowered = crate::import::IdentityPick::Release {
+        source: crate::import::MetadataSource::MusicBrainz,
+        release_id: "mb-answer-1".to_string(),
+        claim: crate::import::ClaimLevel::Approximate,
+    };
+    let decided = fixture
+        .import
+        .pick_candidate_identity(key.clone(), lowered.clone())
+        .await
+        .expect("lowering the claim succeeds");
+    let crate::import::DecidedIdentity::Release { prefetch, .. } = &decided else {
+        panic!("expected the picked release back, got Unknown");
+    };
+    assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Approximate);
+    // The evidence is untouched: it says what identified the release, not what
+    // the user claims about it.
+    assert_eq!(
+        prefetch.claim.evidence,
+        crate::import::ClaimEvidence::DiscIdAlone
+    );
+
+    // The query serves what the command did, which is what a restart reads.
+    let resumed = fixture
+        .import
+        .candidate_answer(key.clone())
+        .await
+        .expect("the lowered decision reads back")
+        .expect("a lowered claim is still a decision");
+    let crate::import::DecidedIdentity::Release { prefetch, .. } = &resumed else {
+        panic!("expected the picked release back, got Unknown");
+    };
+    assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Approximate);
+
+    // And the row carries it both ways: the pick the pane reopens on, and the
+    // identity a bulk import of this row would commit.
+    let queue = crate::import::triage::load(&fixture.import, &fixture.manager)
+        .await
+        .expect("the triage queue loads");
+    let row = queue
+        .sections
+        .iter()
+        .flat_map(|section| &section.entries)
+        .find_map(|entry| match entry {
+            crate::import::triage::TriageEntry::Candidate(row) if row.candidate_key == key => {
+                Some(row.clone())
+            }
+            _ => None,
+        })
+        .expect("the row is in the queue");
+    assert_eq!(row.picked, Some(lowered));
+    assert_eq!(
+        row.claim,
+        Some(crate::import::IdentityChoice::Approximate {
+            release_ref: crate::import::MetadataRef::new(
+                "mb-answer-1",
+                crate::import::MetadataSource::MusicBrainz
+            ),
+        })
     );
 }

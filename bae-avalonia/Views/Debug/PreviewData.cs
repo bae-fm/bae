@@ -158,7 +158,8 @@ internal static class PreviewData
                             Matched: null,
                             Selectable: true,
                             ImportStatus: null,
-                            Picked: null))
+                            Picked: null,
+                            Claim: null))
                 }),
         },
         Counts: new BridgeTriageTabCounts(
@@ -181,6 +182,7 @@ internal static class PreviewData
             Matched: null,
             Selectable: true,
             ImportStatus: null,
-            Picked: null);
+            Picked: null,
+            Claim: null);
 }
 #endif

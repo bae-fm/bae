@@ -59,19 +59,24 @@ private final class Recorder {
     /// with `MappingFixtures.pick` in force has stored.
     var stored: BridgeIdentityPick? = .release(
         source: MappingFixtures.pick.source,
-        releaseId: MappingFixtures.pick.releaseId
+        releaseId: MappingFixtures.pick.releaseId,
+        claim: MappingFixtures.pick.claim
     )
 
     /// The answer either identity stands for, from the same fixtures the old
-    /// per-call stubs served.
+    /// per-call stubs served. A release pick comes back claimed at the level it
+    /// carried, which is what core does with it.
     private func decided(for pick: BridgeIdentityPick) -> BridgeDecidedIdentity
     {
         switch pick {
-        case .release(let source, let releaseId):
+        case .release(let source, let releaseId, let claim):
             .release(
                 source: source,
                 releaseId: releaseId,
-                prefetch: MappingFixtures.prefetch(mapping: remapped)
+                prefetch: MappingFixtures.prefetch(
+                    mapping: remapped,
+                    level: claim
+                )
             )
         case .unknown:
             .unknown(seed: unknown.seed, mapping: unknown.mapping)
@@ -270,7 +275,8 @@ struct ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             pick: .release(
                 source: MappingFixtures.pick.source,
-                releaseId: MappingFixtures.pick.releaseId
+                releaseId: MappingFixtures.pick.releaseId,
+                claim: .exact
             )
         )
         try await Task.sleep(for: .milliseconds(50))
@@ -405,7 +411,11 @@ struct ImportMappingPaneTests {
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: .release(source: pick.source, releaseId: pick.releaseId)
+            pick: .release(
+                source: pick.source,
+                releaseId: pick.releaseId,
+                claim: pick.claim
+            )
         )
         try await Task.sleep(for: .milliseconds(50))
 
@@ -415,5 +425,101 @@ struct ImportMappingPaneTests {
         #expect(candidate.identity == .release)
         #expect(candidate.mapping?.rows.count == 13)
         #expect(candidate.mapping?.willWriteCount == 13)
+    }
+
+    // 9. Lowering the claim is a re-pick of the same release at the album
+    //    level: the claim is part of the decision core stores, so it lands the
+    //    same way a pick does and the commit carries it.
+    @MainActor
+    @Test("lowering the claim re-picks the release at the album level")
+    func loweringTheClaimRePicksTheRelease() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let recorder = Recorder()
+
+        ImportSearchFlow.decideIdentity(
+            importer: recorder.importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            pick: .release(
+                source: MappingFixtures.pick.source,
+                releaseId: MappingFixtures.pick.releaseId,
+                claim: .approximate
+            )
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        let candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(candidate.claim?.level == .approximate)
+        #expect(
+            candidate.identityChoice
+                == .approximate(
+                    releaseId: MappingFixtures.pick.releaseId,
+                    source: MappingFixtures.pick.source
+                )
+        )
+        // The same release, still picked — lowering the claim says the
+        // pressing is not vouched for, not that the release is wrong.
+        #expect(candidate.pick?.releaseId == MappingFixtures.pick.releaseId)
+        #expect(candidate.pick?.claim == .approximate)
+    }
+
+    // 9b. And it survives the round trip through the folder's own tags:
+    //     switching back re-picks at the level the user set, because the
+    //     candidate's held pick carries it rather than defaulting again.
+    @MainActor
+    @Test("a lowered claim survives switching to Unknown and back")
+    func aLoweredClaimSurvivesTheUnknownRoundTrip() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let recorder = Recorder()
+
+        ImportSearchFlow.decideIdentity(
+            importer: recorder.importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            pick: .release(
+                source: MappingFixtures.pick.source,
+                releaseId: MappingFixtures.pick.releaseId,
+                claim: .approximate
+            )
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        ImportSearchFlow.decideIdentity(
+            importer: recorder.importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            pick: .unknown
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        var candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        let held = try #require(candidate.pick)
+        #expect(held.claim == .approximate)
+
+        // Exactly what the identity control sends to switch back.
+        ImportSearchFlow.decideIdentity(
+            importer: recorder.importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            pick: .release(
+                source: held.source,
+                releaseId: held.releaseId,
+                claim: held.claim
+            )
+        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(candidate.claim?.level == .approximate)
     }
 }

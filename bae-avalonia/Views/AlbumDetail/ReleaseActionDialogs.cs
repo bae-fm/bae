@@ -147,16 +147,31 @@ internal sealed class ReleaseActionDialogs
 
             // What the picked pressing claims, stated the way the import
             // confirm pane states it — re-identify writes the same
-            // IdentityChoice. Hidden until a result is picked; re-derived on
-            // each pick, which is the only thing that moves it.
+            // IdentityChoice, and offers the same control over how far the
+            // claim reaches. Hidden until a result is picked.
             BridgeClaimLine? claim = null;
             var claimRow = new StackPanel { IsVisible = false };
+            var pickedIndex = -1;
 
             var candidates = new List<ReleaseCandidateChoice>();
             var results = new ReidentifyResultsModel();
 
             var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
             confirm.IsEnabled = false;
+
+            void ShowClaim(BridgeClaimLevel level)
+            {
+                claim = pickedIndex >= 0 && pickedIndex < candidates.Count
+                    ? _app.Import.ClaimForPick(key, candidates[pickedIndex].Pressing, level).Claim
+                    : null;
+                confirm.IsEnabled = claim is not null;
+                claimRow.Children.Clear();
+                if (claim is { } picked)
+                {
+                    claimRow.Children.Add(ClaimLineView.Build(picked, isReading: false, ShowClaim));
+                }
+                claimRow.IsVisible = claim is not null;
+            }
 
             void ToggleSignal(string kind, string value)
             {
@@ -215,19 +230,12 @@ internal sealed class ReleaseActionDialogs
                 confirm.IsEnabled = false;
             };
 
+            // Picking a row claims that pressing; the control inside the claim
+            // line is what lowers it to the album.
             resultsList.SelectionChanged += (_, _) =>
             {
-                var index = resultsList.SelectedIndex;
-                claim = index >= 0 && index < candidates.Count
-                    ? _app.Import.ClaimForPick(key, candidates[index].Pressing).Claim
-                    : null;
-                confirm.IsEnabled = claim is not null;
-                claimRow.Children.Clear();
-                if (claim is { } picked)
-                {
-                    claimRow.Children.Add(ClaimLineView.Build(picked));
-                }
-                claimRow.IsVisible = claim is not null;
+                pickedIndex = resultsList.SelectedIndex;
+                ShowClaim(BridgeClaimLevel.Exact);
             };
 
             confirm.Click += async (_, _) =>

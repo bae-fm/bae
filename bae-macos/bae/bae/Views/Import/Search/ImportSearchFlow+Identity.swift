@@ -52,13 +52,14 @@ extension ImportSearchFlow {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.error = nil
             switch pick {
-            case .release(let source, let releaseId):
+            case .release(let source, let releaseId, let claim):
                 candidate.identity = .release
-                // Hold the release so its row carries the spinner while the
-                // read runs; the claim it implies arrives with the answer.
+                // Hold the decision so its row carries the spinner while the
+                // read runs; the line it reads as arrives with the answer.
                 candidate.pick = CandidatePick(
                     releaseId: releaseId,
-                    source: source
+                    source: source,
+                    claim: claim
                 )
             case .unknown:
                 candidate.identity = .unknown
@@ -139,13 +140,13 @@ extension ImportSearchFlow {
                 candidate.identity = .release
                 candidate.pick = CandidatePick(
                     releaseId: releaseId,
-                    source: source
+                    source: source,
+                    claim: prefetch.claim.level
                 )
                 // The display detail: cover options, library status.
                 candidate.releaseDetailBridge = prefetch.detail
-                // What the decision claims, derived in bae-core from the
-                // evidence that identified this candidate. The header states
-                // it; the commit carries it.
+                // What the decision claims, as bae-core reads it back off the
+                // stored pick. The header states it; the commit carries it.
                 candidate.claim = prefetch.claim
                 candidate.identityChoice = prefetch.claim.choice
                 candidate.selectedCover = prefetch.detail.defaultCover

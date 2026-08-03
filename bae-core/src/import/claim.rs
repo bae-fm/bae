@@ -7,25 +7,26 @@
 //! claimed. They coincide in exactly one case; in every other the second fact
 //! has to be stated, or the release the user just picked disappears from view.
 //!
-//! The claim is never asked as a question. It defaults from the evidence that
-//! identified the candidate ([`ClaimEvidence`]) and moves only when the user
-//! picks a different release, which re-derives the whole line. That derivation
-//! happens here so neither desktop UI has to make it — they render
-//! [`ClaimLine`] and decide nothing.
+//! Picking a release claims that release. The claim starts at the pressing —
+//! [`ClaimLevel::Exact`] — whatever turned the release up, and the user lowers
+//! it to the album when they hold the record but can't vouch for which
+//! pressing. The evidence ([`ClaimEvidence`]) explains the pick; it does not
+//! decide it. The level rides the stored pick, so a resumed pane states the
+//! claim the user set, and this module turns the level and the picked release
+//! into the one [`ClaimLine`] both desktop UIs render.
 
 use crate::identify::IdentifyState;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
-use crate::import::{IdentityChoice, MetadataRef};
+use crate::import::{ClaimLevel, IdentityChoice, MetadataRef};
 
 /// What identified the release a claim points at.
 ///
-/// Only a disc ID can pin a pressing: it is a fingerprint of the physical
-/// disc's table of contents, so a lookup that returns one release has named the
-/// disc in the room. A barcode is printed on the product and reissues reuse it;
-/// a catalog number or a typed search names an edition at best. So exactly one
-/// variant here claims the pressing — that is the rule the whole claim line
-/// rests on, and [`ClaimEvidence::claims_pressing`] is the single place it is
-/// written down.
+/// A disc ID is a fingerprint of the physical disc's table of contents, so a
+/// lookup that returns one release has named the disc in the room. A barcode is
+/// printed on the product and reissues reuse it; a catalog number or a typed
+/// search names an edition at best. The claim line states which of these turned
+/// the release up so the user can weigh their own claim against it — that is
+/// the whole of what this decides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClaimEvidence {
     /// The disc's table of contents matched this release and no other.
@@ -37,22 +38,6 @@ pub enum ClaimEvidence {
     Barcode,
     /// A catalog number, or a search the user typed, found it.
     Search,
-}
-
-impl ClaimEvidence {
-    /// Whether this evidence is sharp enough to claim the pressing itself.
-    pub fn claims_pressing(self) -> bool {
-        matches!(self, Self::DiscIdAlone)
-    }
-
-    /// The claim this evidence defaults to for the release it identified.
-    pub fn default_choice(self, release_ref: MetadataRef) -> IdentityChoice {
-        if self.claims_pressing() {
-            IdentityChoice::Exact { release_ref }
-        } else {
-            IdentityChoice::Approximate { release_ref }
-        }
-    }
 }
 
 /// A picked release reduced to the facts a claim line names.
@@ -104,6 +89,12 @@ impl ClaimRelease {
 pub struct ClaimLine {
     /// The claim this import will record, and what commit writes.
     pub choice: IdentityChoice,
+    /// How far the claim reaches: which sentence the line reads as, which side
+    /// of the header's control is in force, and whether the second line naming
+    /// the metadata's release is drawn at all. That last one follows from the
+    /// first two — a pressing claim already names that release inside its own
+    /// sentence, and only an album claim leaves it unsaid.
+    pub level: ClaimLevel,
     /// What identified the release, for the sentence's trailing clause.
     pub evidence: ClaimEvidence,
     /// The picked release by its pressing facts — format, year, country and
@@ -118,27 +109,17 @@ pub struct ClaimLine {
     pub track_count: Option<u32>,
 }
 
-impl ClaimLine {
-    /// Whether the header renders the second line naming the release the
-    /// metadata came from. It appears exactly when the two facts differ — that
-    /// is, whenever the claim is at the album level, since a pressing claim
-    /// already names that release in its own sentence.
-    pub fn shows_metadata_source(&self) -> bool {
-        matches!(self.choice, IdentityChoice::Approximate { .. })
-    }
-}
-
-/// The claim line for picking `release` while the candidate sits in `state`.
+/// The claim line for holding `release` at `level`, under a candidate whose
+/// identification left `state`.
 ///
-/// The identify state is the evidence: a release the disc-ID lookup returned
-/// alone is claimed as a pressing, and everything else — including a release
-/// the user found by searching, which no identify state mentions — is claimed
-/// as the album.
-pub fn claim_line(state: &IdentifyState, release: &ClaimRelease) -> ClaimLine {
-    let evidence = evidence_for(state, &release.release_ref);
+/// The level is the user's assertion, carried in from the stored pick. The
+/// identify state supplies only the evidence clause: which signal turned this
+/// release up, and how many releases it turned up with.
+pub fn claim_line(state: &IdentifyState, release: &ClaimRelease, level: ClaimLevel) -> ClaimLine {
     ClaimLine {
-        choice: evidence.default_choice(release.release_ref.clone()),
-        evidence,
+        choice: level.choice(release.release_ref.clone()),
+        level,
+        evidence: evidence_for(state, &release.release_ref),
         release: describe_release(release),
         track_count: release.track_count,
     }

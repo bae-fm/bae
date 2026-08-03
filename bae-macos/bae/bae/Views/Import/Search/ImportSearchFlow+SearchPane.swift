@@ -182,7 +182,8 @@ extension ImportSearchFlow {
                 key: input.key,
                 pick: .release(
                     source: result.source,
-                    releaseId: result.releaseId
+                    releaseId: result.releaseId,
+                    claim: .exact
                 )
             )
         }
