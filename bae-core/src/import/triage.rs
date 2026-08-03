@@ -382,6 +382,10 @@ pub struct TriageRow {
     /// each UI so the rule is stated once.
     pub selectable: bool,
     pub import_status: Option<CandidateImportStatusSnapshot>,
+    /// The identity the user already chose for this candidate, read back from
+    /// the stored row — what lets selection reopen the pane answered instead
+    /// of asking again. `None` while they have chosen nothing.
+    pub picked: Option<crate::import::IdentityPick>,
 }
 
 #[derive(Debug, Clone)]
@@ -546,7 +550,11 @@ pub fn place(
 }
 
 /// Shape one candidate's row.
-fn row(snapshot: &FolderImportCandidateSnapshot, answer: Option<&Answered>) -> TriageRow {
+fn row(
+    snapshot: &FolderImportCandidateSnapshot,
+    answer: Option<&Answered>,
+    picked: Option<&crate::import::IdentityPick>,
+) -> TriageRow {
     let FolderCandidate {
         path,
         name,
@@ -582,6 +590,7 @@ fn row(snapshot: &FolderImportCandidateSnapshot, answer: Option<&Answered>) -> T
         matched: actionable_answer.and_then(|answer| MatchedRelease::of(&answer.verdict)),
         placement,
         import_status,
+        picked: picked.filter(|_| snapshot.actionable).cloned(),
     }
 }
 
@@ -592,6 +601,7 @@ fn row(snapshot: &FolderImportCandidateSnapshot, answer: Option<&Answered>) -> T
 pub fn project(
     snapshot: ImportCandidatesSnapshot,
     answers: &HashMap<(String, u64), Answered>,
+    picks: &HashMap<(String, u64), crate::import::IdentityPick>,
 ) -> TriageQueue {
     let ImportCandidatesSnapshot {
         folder_candidates,
@@ -611,12 +621,14 @@ pub fn project(
         ..TriageTabCounts::default()
     };
     for candidate in actionable_candidates {
+        let candidate_identity = (
+            candidate.candidate.files.content_hash(),
+            candidate.candidate.file_edit_revision,
+        );
         let row = row(
             candidate,
-            answers.get(&(
-                candidate.candidate.files.content_hash(),
-                candidate.candidate.file_edit_revision,
-            )),
+            answers.get(&candidate_identity),
+            picks.get(&candidate_identity),
         );
         counts.bump(row.placement.tab());
         rows.push(row);
@@ -849,7 +861,8 @@ pub async fn load(
         );
     }
 
-    Ok(project(snapshot, &answers))
+    let picks = stored_picks(&snapshot, &stored)?;
+    Ok(project(snapshot, &answers, &picks))
 }
 
 /// The matches a verdict names as *the* answer — the ones the Ready rule checks
@@ -917,6 +930,41 @@ fn stored_verdicts(
                 probed_total_duration_ms,
             },
         );
+    }
+    Ok(out)
+}
+
+/// The identity pick every scanned candidate's stored row holds, keyed like
+/// the verdicts: by content hash and edit revision, so a read racing an edit
+/// write serves nothing rather than mixed state. A pick this build cannot
+/// decode fails the read; persisted state is never silently omitted.
+fn stored_picks(
+    snapshot: &ImportCandidatesSnapshot,
+    stored: &HashMap<String, DbImportCandidateState>,
+) -> Result<HashMap<(String, u64), crate::import::IdentityPick>, LibraryError> {
+    let mut out = HashMap::new();
+    for candidate in &snapshot.folder_candidates {
+        let content_hash = candidate.candidate.files.content_hash();
+        let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
+        if out.contains_key(&candidate_identity) {
+            continue;
+        }
+        let Some(row) = stored.get(&content_hash) else {
+            continue;
+        };
+        if row.file_edits.revision != candidate.candidate.file_edit_revision {
+            continue;
+        }
+        let Some(pick_json) = row.identity_pick.as_ref() else {
+            continue;
+        };
+        let pick: crate::import::IdentityPick =
+            serde_json::from_str(pick_json).map_err(|error| {
+                LibraryError::Internal(format!(
+                    "stored identity pick for {content_hash} does not decode: {error}"
+                ))
+            })?;
+        out.insert(candidate_identity, pick);
     }
     Ok(out)
 }

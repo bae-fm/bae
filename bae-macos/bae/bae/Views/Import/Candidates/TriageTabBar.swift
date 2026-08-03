@@ -36,6 +36,8 @@ struct TriageTabBar: View {
                 Text(verbatim: count.formatted())
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
+                    // A squeezed badge must overflow, never stack its digits.
+                    .fixedSize()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
                     .background(

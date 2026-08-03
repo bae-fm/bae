@@ -33,6 +33,21 @@ internal sealed class ImportIdentitySection
     /// <summary>Which side of the control is in force.</summary>
     internal required ImportIdentity Identity { get; init; }
 
+    /// <summary>The folder on disk — its own line, not the release title: what
+    /// the folder is called and what the release is are different facts, and
+    /// the card leads with the release.</summary>
+    internal required string FolderName { get; init; }
+
+    /// <summary>The folder's audio shape ("FLAC", "CUE+FLAC"), shown beside its
+    /// name.</summary>
+    internal required string FormatLabel { get; init; }
+
+    /// <summary>Whether anything has been settled for this folder — a release
+    /// picked or its own tags read. Until then there is no release card to
+    /// show: the search editor below offers the matches, and the folder line
+    /// already says what this is.</summary>
+    internal required bool HasSettled { get; init; }
+
     /// <summary>The album line the card leads with: what is being edited once
     /// there is something, and the folder's own name before that.</summary>
     internal required string Title { get; init; }
@@ -71,6 +86,10 @@ internal sealed class ImportIdentitySection
     /// this folder and there is a release to edit at all.</summary>
     internal required BridgeRawPressingEdit? Pressing { get; init; }
 
+    /// <summary>The card's commit row — what is unanswered, storage, and the
+    /// Import action. Null while there is nothing to commit.</summary>
+    internal required Control? CommitRow { get; init; }
+
     internal required Action<ImportIdentity> OnSetIdentity { get; init; }
 
     internal required Action OnFindRelease { get; init; }
@@ -86,8 +105,12 @@ internal sealed class ImportIdentitySection
     internal Control Build()
     {
         var column = new StackPanel { Spacing = 10 };
+        column.Children.Add(FolderLine());
         column.Children.Add(IdentityPicker());
-        column.Children.Add(Card());
+        if (HasSettled)
+        {
+            column.Children.Add(Card());
+        }
         if (Pressing is not null)
         {
             column.Children.Add(new Expander
@@ -99,6 +122,35 @@ internal sealed class ImportIdentitySection
             });
         }
         return column;
+    }
+
+    /// <summary>The folder itself: name in mono, its audio shape beside it.
+    /// Always present, whatever the release side is showing.</summary>
+    private Control FolderLine()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var name = new TextBlock
+        {
+            Text = FolderName,
+            FontSize = 11.5,
+            FontFamily = new FontFamily("monospace"),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        row.Children.Add(name);
+        if (FormatLabel.Length > 0)
+        {
+            var format = new TextBlock
+            {
+                Text = FormatLabel,
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            format[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            row.Children.Add(format);
+        }
+        return row;
     }
 
     /// <summary>The one control that switches sides. Picking Unknown reads the
@@ -165,12 +217,18 @@ internal sealed class ImportIdentitySection
         Grid.SetColumn(change, 2);
         grid.Children.Add(change);
 
+        var body = new StackPanel { Spacing = 12 };
+        body.Children.Add(grid);
+        if (CommitRow is not null)
+        {
+            body.Children.Add(CommitRow);
+        }
         var card = new Border
         {
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(12),
             BorderThickness = new Thickness(1),
-            Child = grid,
+            Child = body,
         };
         card[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
         return card;

@@ -145,7 +145,8 @@ private func readyRow(_ key: String, title: String) -> BridgeTriageRow {
         placement: .ready,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: true,
-        importStatus: nil
+        importStatus: nil,
+        picked: nil
     )
 }
 
@@ -167,7 +168,8 @@ private func needsYouRow(
         placement: .needsYou(group: group, reason: reason),
         matched: nil,
         selectable: false,
-        importStatus: nil
+        importStatus: nil,
+        picked: nil
     )
 }
 
@@ -183,7 +185,8 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         placement: .done,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: false,
-        importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)")
+        importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
+        picked: nil
     )
 }
 
@@ -199,7 +202,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         placement: .skipped,
         matched: nil,
         selectable: false,
-        importStatus: nil
+        importStatus: nil,
+        picked: nil
     )
 }
 
@@ -734,7 +738,8 @@ struct ImportStoreTriageRenderingTests {
                 tab: .ready,
                 filterText: "",
                 sortOrder: .nameAZ
-            ).first
+            )
+            .first
         )
         #expect(
             ready.entries.compactMap { entry in
@@ -758,7 +763,8 @@ struct ImportStoreTriageRenderingTests {
                 tab: .needsYou,
                 filterText: "",
                 sortOrder: .nameAZ
-            ).first
+            )
+            .first
         )
         #expect(grouped.group?.name == "Collection")
         #expect(
@@ -770,7 +776,8 @@ struct ImportStoreTriageRenderingTests {
                 tab: .ready,
                 filterText: "",
                 sortOrder: .nameZA
-            ).first
+            )
+            .first
         )
         #expect(
             descending.entries.map(\.id)
@@ -782,11 +789,13 @@ struct ImportStoreTriageRenderingTests {
     @Test("filter keeps matching entries inside their section")
     func filterKeepsMatchingSectionEntries() throws {
         let section = try #require(
-            seededStore().releaseSections(
-                tab: .skipped,
-                filterText: "bad",
-                sortOrder: .nameAZ
-            ).first
+            seededStore()
+                .releaseSections(
+                    tab: .skipped,
+                    filterText: "bad",
+                    sortOrder: .nameAZ
+                )
+                .first
         )
         #expect(section.entries.count == 1)
         guard
@@ -836,7 +845,8 @@ struct ImportStoreTriageRenderingTests {
                 tab: .needsYou,
                 filterText: "",
                 sortOrder: .nameAZ
-            ).count == 1
+            )
+            .count == 1
         )
 
         store.triageQueue = BridgeTriageQueue(
@@ -866,7 +876,8 @@ struct ImportStoreTriageRenderingTests {
                 tab: .needsYou,
                 filterText: "",
                 sortOrder: .nameAZ
-            ).isEmpty
+            )
+            .isEmpty
         )
         #expect(
             store.selectableReadyRows(filterText: "", sortOrder: .nameAZ)

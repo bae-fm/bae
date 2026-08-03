@@ -20,17 +20,21 @@ extension ImportMappingFlow {
         }
         switch (candidate.identity, candidate.pick) {
         case (.unknown, _):
-            ImportSearchFlow.addAsUnknown(
+            ImportSearchFlow.refreshDecidedIdentity(
                 importer: services.importer,
                 importStore: services.importStore,
-                key: key
+                key: key,
+                pick: .unknown
             )
         case (.release, .some(let pick)):
-            ImportSearchFlow.prefetchAndConfirm(
-                library: services.library,
+            ImportSearchFlow.refreshDecidedIdentity(
+                importer: services.importer,
                 importStore: services.importStore,
                 key: key,
-                pick: pick
+                pick: .release(
+                    source: pick.source,
+                    releaseId: pick.releaseId
+                )
             )
         case (.release, .none):
             readCandidateMapping(key: key, services: services)

@@ -164,8 +164,9 @@ pub enum MappingBecomes {
     },
     /// The image that leads the release.
     Cover,
-    /// Carried with the release, not one of its tracks.
-    NotImported,
+    /// Written with the release like every other folder file, just not one
+    /// of its tracks.
+    Kept,
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,
 }
@@ -389,9 +390,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
         .flat_map(MappingRow::units)
         .filter_map(|unit| match &unit.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
-            MappingBecomes::Cover | MappingBecomes::NotImported | MappingBecomes::AwaitingPick => {
-                None
-            }
+            MappingBecomes::Cover | MappingBecomes::Kept | MappingBecomes::AwaitingPick => None,
         })
         .collect()
 }
@@ -520,7 +519,7 @@ fn carried(entry: &CandidateFile, role: MappingRole) -> MappingRow {
             MappingRole::Audio
             | MappingRole::Artwork
             | MappingRole::Document
-            | MappingRole::Other => MappingBecomes::NotImported,
+            | MappingRole::Other => MappingBecomes::Kept,
         },
         source: MappingSource::File(mapping_file(entry, role, None)),
     })
@@ -855,7 +854,7 @@ mod tests {
             ("02.flac", MappingBecomes::AwaitingPick)
         ));
         assert!(matches!(kinds[2], ("cover.jpg", MappingBecomes::Cover)));
-        assert!(matches!(kinds[3], ("rip.log", MappingBecomes::NotImported)));
+        assert!(matches!(kinds[3], ("rip.log", MappingBecomes::Kept)));
         // A row nothing has opened has no probed length to show.
         assert_eq!(file_row(&table.rows[0]).probed_duration_ms, None);
         assert_eq!(file_row(&table.rows[0]).role, MappingRole::Audio);

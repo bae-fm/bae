@@ -1360,12 +1360,49 @@ impl AppHandle {
             .toggle_signal(&candidate_key, signal.into_core());
     }
 
-    /// Re-run a candidate's lookups from the toolbar. The identify driver
-    /// resets to triangulating and re-dispatches the disc-ID / barcode
-    /// lookups from the retained signals, preserving exclusions. A no-op when
-    /// the candidate isn't running.
+    /// Re-run a candidate's lookups from the toolbar. A live driver resets to
+    /// triangulating and re-dispatches from its retained signals, preserving
+    /// exclusions; a candidate showing a resumed stored verdict has no driver,
+    /// and a fresh interactive run replaces the stored answer.
     pub fn rerun_identify_for_candidate(&self, candidate_key: String) {
-        self.services.identify().rerun(&candidate_key);
+        self.services.rerun_identify(candidate_key);
+    }
+
+    /// Decide a candidate's identity — the pressing the user picked, or the
+    /// decision to read the folder's own tags. Persists the choice and comes
+    /// back with everything the pane seeds from it, the same payload
+    /// [`Self::candidate_decided_identity`] serves, so a fresh launch renders
+    /// exactly what this click rendered. Identification writes the same
+    /// record itself when a verdict settles on exactly one match; this is the
+    /// path for the choices only a person can make.
+    pub async fn pick_candidate_identity(
+        &self,
+        candidate_key: String,
+        pick: crate::types::BridgeIdentityPick,
+    ) -> Result<crate::types::BridgeDecidedIdentity, BridgeError> {
+        let answer = self
+            .services
+            .import()
+            .pick_candidate_identity(candidate_key, pick.into_core())
+            .await
+            .map_err(BridgeError::import)?;
+        Ok(crate::types::BridgeDecidedIdentity::from_core(answer))
+    }
+
+    /// The candidate's decided identity read back, or `None` while nothing is
+    /// decided — what selecting a row asks, and the whole of "resume": a
+    /// stored decision answers exactly like the click that made it did.
+    pub async fn candidate_decided_identity(
+        &self,
+        candidate_key: String,
+    ) -> Result<Option<crate::types::BridgeDecidedIdentity>, BridgeError> {
+        let answer = self
+            .services
+            .import()
+            .candidate_answer(candidate_key)
+            .await
+            .map_err(BridgeError::import)?;
+        Ok(answer.map(crate::types::BridgeDecidedIdentity::from_core))
     }
 
     /// Re-identify commit. Translates the user's `IdentityChoice` into a fully
@@ -1726,28 +1763,6 @@ impl AppHandle {
         Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
     }
 
-    /// The Unknown seed and the mapping table it produces: what the folder's
-    /// own files say the release is, and how each of the folder's audio units
-    /// lands on one of those tracks.
-    ///
-    /// The table carries no tally — the tracklist was read off this very
-    /// folder, so there is no second account of it to reconcile against.
-    pub async fn unknown_mapping(
-        &self,
-        candidate_key: String,
-    ) -> Result<crate::types::BridgeUnknownMapping, BridgeError> {
-        let (seed, mapping) = self
-            .services
-            .import()
-            .unknown_mapping(candidate_key)
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeUnknownMapping {
-            seed: crate::types::BridgeReleaseUserEdit::from_core(seed),
-            mapping: crate::types::BridgeMappingTable::from_core(mapping),
-        })
-    }
-
     /// The mapping table for a candidate nobody has picked a release for:
     /// every source unit the folder offers, with what it becomes left open.
     pub fn candidate_mapping(
@@ -1811,26 +1826,6 @@ impl AppHandle {
             .await
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
-    }
-
-    /// Pick a release for a candidate: the confirmation pane's display detail,
-    /// the editor seed masked for the resulting claim, the claim line itself,
-    /// and the track slots this pick produces. `candidate_key` is what lets core
-    /// read the evidence that identified the candidate — which is what the claim
-    /// defaults from — and find the folder whose audio the slots map.
-    pub async fn prefetch_release(
-        &self,
-        candidate_key: String,
-        release_id: String,
-        source: BridgeMetadataSource,
-    ) -> Result<crate::types::BridgeReleasePrefetch, BridgeError> {
-        let prefetch = self
-            .services
-            .import()
-            .prefetch_release(&candidate_key, &release_id, source.into_core())
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeReleasePrefetch::from_core(prefetch))
     }
 
     pub async fn fetch_remote_covers(
@@ -2849,6 +2844,7 @@ impl crate::types::BridgeTriageRow {
             matched,
             selectable,
             import_status,
+            picked,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -2866,6 +2862,7 @@ impl crate::types::BridgeTriageRow {
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+            picked: picked.map(crate::types::BridgeIdentityPick::from_core),
         }
     }
 }
@@ -3654,6 +3651,8 @@ impl BridgeWorkSummary {
             title,
             disambiguation,
             work_type,
+            // The source id the row was deduped on isn't surfaced.
+            musicbrainz_work_id: _,
             // Row timestamp isn't surfaced.
             created_at: _,
         } = work;
@@ -4382,6 +4381,7 @@ mod tests {
                             title: "Parent Work A".to_string(),
                             disambiguation: None,
                             work_type: Some("work".to_string()),
+                            musicbrainz_work_id: "mb-work-parent-a".to_string(),
                             created_at,
                         },
                         parent_work_id: None,
@@ -4398,6 +4398,7 @@ mod tests {
                             title: "Child Work A".to_string(),
                             disambiguation: None,
                             work_type: Some("part".to_string()),
+                            musicbrainz_work_id: "mb-work-child-a".to_string(),
                             created_at,
                         },
                         parent_work_id: Some("work-parent-a".to_string()),
@@ -4445,6 +4446,7 @@ mod tests {
                     title: "Work Title A".to_string(),
                     disambiguation: None,
                     work_type: Some("work".to_string()),
+                    musicbrainz_work_id: "mb-work-a".to_string(),
                     created_at,
                 },
                 parent_work_id: None,

@@ -517,13 +517,15 @@ impl Database {
                 Some(current) if current == expected => {
                     sql.execute(
                         "UPDATE import_candidate_state SET \
-                             folder_path = ?, verdict = ?, probed_total_duration_ms = ?, identified_at = ? \
+                             folder_path = ?, verdict = ?, probed_total_duration_ms = ?, identified_at = ?, \
+                             identity_pick = COALESCE(identity_pick, ?) \
                          WHERE content_hash = ? AND edit_revision = ?",
                         params![
                             verdict.folder_path,
                             verdict.verdict,
                             verdict.probed_total_duration_ms,
                             now,
+                            verdict.identity_pick,
                             verdict.content_hash,
                             expected,
                         ],
@@ -532,14 +534,15 @@ impl Database {
                 None if expected == 0 => {
                     sql.execute(
                         "INSERT INTO import_candidate_state \
-                             (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision) \
-                         VALUES (?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
+                             (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, identity_pick, sheet_bindings, file_roles, sheet_discs, edit_revision) \
+                         VALUES (?, ?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
                         params![
                             verdict.content_hash,
                             verdict.folder_path,
                             verdict.verdict,
                             verdict.probed_total_duration_ms,
                             now,
+                            verdict.identity_pick,
                         ],
                     )? == 1
                 }
@@ -749,6 +752,40 @@ impl Database {
         ))
     }
 
+    /// Record the identity the user chose for one candidate, keyed by
+    /// `content_hash` — the pressing they picked, or the decision to read the
+    /// folder's own tags. An upsert that leaves the row's other halves alone:
+    /// a choice can precede identification (a manual pick on a folder nothing
+    /// matched) and must not erase a verdict or a file decision.
+    pub async fn save_candidate_identity_pick(
+        &self,
+        content_hash: &str,
+        folder_path: &str,
+        pick_json: &str,
+    ) -> Result<(), DbError> {
+        let content_hash = content_hash.to_string();
+        let folder_path = folder_path.to_string();
+        let pick_json = pick_json.to_string();
+        self.call(move |sql| {
+            let changed = sql.execute(
+                "INSERT INTO import_candidate_state \
+                     (content_hash, folder_path, identity_pick) \
+                 VALUES (?, ?, ?) \
+                 ON CONFLICT (content_hash) DO UPDATE SET \
+                     folder_path = excluded.folder_path, \
+                     identity_pick = excluded.identity_pick",
+                params![content_hash, folder_path, pick_json],
+            )?;
+            if changed != 1 {
+                return Err(DbError::Message(format!(
+                    "identity pick write changed {changed} rows; expected exactly one"
+                )));
+            }
+            Ok(())
+        })
+        .await
+    }
+
     /// One candidate's file decisions. Progressive scans call this after they
     /// compute a candidate content hash so each emitted row performs one indexed
     /// lookup instead of rereading the whole candidate-state table.
@@ -782,7 +819,7 @@ impl Database {
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
         self.read(move |sql| {
             let states = sql.query(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision \
+                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, identity_pick, edit_revision \
                      FROM import_candidate_state",
                 [],
                 |row| Ok(decode_import_candidate_state_row(row)),
@@ -804,7 +841,7 @@ impl Database {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision \
+                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, identity_pick, edit_revision \
                  FROM import_candidate_state WHERE content_hash = ?",
                 [content_hash],
                 |row| Ok(decode_import_candidate_state_row(row)),
@@ -844,6 +881,7 @@ fn decode_import_candidate_state_row(
         folder_path: row.get("folder_path")?,
         identify,
         file_edits,
+        identity_pick: row.get("identity_pick")?,
     })
 }
 

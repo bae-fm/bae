@@ -394,6 +394,25 @@ impl Database {
         .await
     }
 
+    /// The `works` row id minted for a MusicBrainz work, if this library already
+    /// imported it. Works are deduped on their MBID, never on their row id.
+    pub async fn find_work_id_by_musicbrainz_id(
+        &self,
+        musicbrainz_work_id: &str,
+    ) -> Result<Option<String>, DbError> {
+        let musicbrainz_work_id = musicbrainz_work_id.to_string();
+        self.read(move |sql| {
+            sql.query_row(
+                "SELECT id FROM works WHERE musicbrainz_work_id = ?",
+                params![musicbrainz_work_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     pub async fn find_work_detail(&self, work_id: &str) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
         self.read(move |sql| {

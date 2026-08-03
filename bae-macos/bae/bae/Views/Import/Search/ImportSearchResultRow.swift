@@ -19,6 +19,9 @@ struct ImportSearchResultRow: View {
     /// for manual-search results (no auto-identify signals).
     var provenance: BridgeResultProvenance?
     let isSelected: Bool
+    /// Whether this row's pick is being read right now — the row itself
+    /// carries the spinner, so the list stays put while the release loads.
+    var isLoading: Bool = false
     let onSelect: () -> Void
 
     private var isInLibrary: Bool {
@@ -190,12 +193,21 @@ struct ImportSearchResultRow: View {
         .accessibilityHidden(!isInLibrary)
     }
 
+    /// Both trailing states stay in the tree (opacity-swapped): rows render
+    /// in a repeated list, and conditional inclusion would re-measure every
+    /// sibling when a pick starts loading.
     private var chevron: some View {
-        Image(systemName: "chevron.right")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(
-                isSelected ? Theme.accent : Color.white.opacity(0.3)
-            )
+        ZStack {
+            ProgressView()
+                .controlSize(.small)
+                .opacity(isLoading ? 1 : 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(
+                    isSelected ? Theme.accent : Color.white.opacity(0.3)
+                )
+                .opacity(isLoading ? 0 : 1)
+        }
     }
 }
 

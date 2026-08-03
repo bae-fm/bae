@@ -334,8 +334,8 @@ mod aggregate_ordering_tests {
                     ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z'),
                     ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z');
 
-                INSERT INTO works (id, title, work_type, _updated_at, created_at)
-                VALUES ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', 'stamp', '2026-01-01T00:00:00Z');
+                INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
+                VALUES ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', 'mb-work-a', 'stamp', '2026-01-01T00:00:00Z');
 
                 INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
                 VALUES
@@ -951,10 +951,10 @@ mod composer_mode_tests {
                 INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
                 VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
-                INSERT INTO works (id, title, disambiguation, work_type, _updated_at, created_at)
+                INSERT INTO works (id, title, disambiguation, work_type, musicbrainz_work_id, _updated_at, created_at)
                 VALUES
-                    ('6b05af7a-ee0c-4f12-8938-1d5536697271', 'Parent Work A', NULL, 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('f63d8e66-6a81-4a67-8005-1fbe870f27eb', 'Displayed Work A', NULL, 'part', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                    ('6b05af7a-ee0c-4f12-8938-1d5536697271', 'Parent Work A', NULL, 'work', 'mb-work-parent-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('f63d8e66-6a81-4a67-8005-1fbe870f27eb', 'Displayed Work A', NULL, 'part', 'mb-work-child-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
                 INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
                 VALUES ('ec41a8cd-a9a4-473e-8b70-d78168aefd8e', 'f63d8e66-6a81-4a67-8005-1fbe870f27eb', '5412b7ad-bdc1-4561-8985-b6d6ef8a2880', 0, 'musicbrainz', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
@@ -1053,13 +1053,14 @@ mod composer_mode_tests {
             db_track: track,
             file_path: tmp.path().join("Track.flac"),
         }];
-        let works = vec![DbWork::new(
-            WORK_A,
-            "Work Title A",
-            None,
-            Some("work".to_string()),
-            now,
-        )];
+        let works = vec![DbWork {
+            id: WORK_A.to_string(),
+            title: "Work Title A".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            musicbrainz_work_id: "mb-work-a".to_string(),
+            created_at: now,
+        }];
         let work_artists = vec![DbWorkArtist::new(
             WORK_A,
             &composer.id,
@@ -1862,11 +1863,11 @@ mod composer_mode_tests {
                     ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
                     ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
-                INSERT INTO works (id, title, work_type, _updated_at, created_at)
+                INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
                 VALUES
-                    ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('d866f97d-e57f-45e8-8c4e-f81ad8717882', 'Work Title B', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('00e1ff99-c327-477d-846d-28d2f27fa004', 'Work Title C', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                    ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', 'mb-work-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('d866f97d-e57f-45e8-8c4e-f81ad8717882', 'Work Title B', 'work', 'mb-work-b', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('00e1ff99-c327-477d-846d-28d2f27fa004', 'Work Title C', 'work', 'mb-work-c', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
                 INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
                 VALUES
@@ -1923,13 +1924,13 @@ mod composer_mode_tests {
                     ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
                     ('4d93d615-4549-45d9-81d9-644f079d59bf', 'Composer Name Solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
-                INSERT INTO works (id, title, work_type, _updated_at, created_at)
+                INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
                 VALUES
-                    ('1d446150-576e-479f-87a7-40ac7a511fa1', 'Work Title A1', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('6a32dca0-bf5b-4baa-829d-dc2ef531e763', 'Work Title A2', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('735e697c-f2ce-4512-806c-4f872446f6e6', 'Work Title B1', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('d5f30cc0-a35a-4294-851b-ce2d9c172d1c', 'Work Title B2', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                    ('5dc2446b-5241-46e0-8be4-4325e06f1417', 'Work Title Solo', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                    ('1d446150-576e-479f-87a7-40ac7a511fa1', 'Work Title A1', 'work', 'mb-work-a1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('6a32dca0-bf5b-4baa-829d-dc2ef531e763', 'Work Title A2', 'work', 'mb-work-a2', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('735e697c-f2ce-4512-806c-4f872446f6e6', 'Work Title B1', 'work', 'mb-work-b1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('d5f30cc0-a35a-4294-851b-ce2d9c172d1c', 'Work Title B2', 'work', 'mb-work-b2', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('5dc2446b-5241-46e0-8be4-4325e06f1417', 'Work Title Solo', 'work', 'mb-work-solo', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
                 INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
                 VALUES
@@ -2015,8 +2016,8 @@ mod artist_mode_tests {
                     ('04ebd233-5eef-4f8c-8ca1-6612601fd136', 'a0231b0b-549b-4e4d-806f-a4b66373e087', '7fa00099-f5d8-4ec2-88bd-e19d8edd7bb8', 1, 'stamp', '2026-01-01T00:00:00Z'),
                     ('34392f8d-93a5-47ad-8fe1-f8f5ce013123', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 1, 'stamp', '2026-01-01T00:00:00Z');
 
-                INSERT INTO works (id, title, disambiguation, work_type, _updated_at, created_at)
-                VALUES ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', NULL, 'work', 'stamp', '2026-01-01T00:00:00Z');
+                INSERT INTO works (id, title, disambiguation, work_type, musicbrainz_work_id, _updated_at, created_at)
+                VALUES ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', NULL, 'work', 'mb-work-a', 'stamp', '2026-01-01T00:00:00Z');
 
                 INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
                 VALUES ('ec41a8cd-a9a4-473e-8b70-d78168aefd8e', '432c8996-8af0-43dc-868a-822a256f65c4', 'b96d8066-777d-408d-8ae4-ed58c767e40c', 0, 'musicbrainz', 'stamp', '2026-01-01T00:00:00Z');
@@ -2417,6 +2418,7 @@ mod import_candidate_state_tests {
             verdict: serde_json::to_string(verdict).unwrap(),
             probed_total_duration_ms,
             expected_edit_revision: 0,
+            identity_pick: None,
         }
     }
 

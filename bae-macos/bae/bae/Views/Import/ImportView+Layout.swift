@@ -8,10 +8,20 @@ extension ImportView {
     var splitContent: some View {
         HSplitView {
             candidateList
-                .frame(minWidth: 280, idealWidth: 392, maxWidth: 460)
+                // The floor is what the four tab labels and their count
+                // badges need on one line in English; wider locales get the
+                // labels' scale-down allowance on top.
+                .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
             if let candidate = selectedCandidate {
                 mainPane(for: candidate)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // The floor keeps the mapping table's columns readable —
+                    // below it the split pane scrolls the window, not the
+                    // table into per-character wrapping.
+                    .frame(
+                        minWidth: 620,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity
+                    )
             }
             else {
                 ContentUnavailableView(

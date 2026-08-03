@@ -29,8 +29,6 @@ struct ReIdentifySheet: View {
 
     @Environment(Importer.self)
     private var importer
-    @Environment(Library.self)
-    private var library
     @Environment(ReleaseEditor.self)
     private var releaseEditor
     @Environment(ConfigStore.self)
@@ -121,7 +119,6 @@ struct ReIdentifySheet: View {
                     ImportSearchFlow.buildSearchPane(
                         services: ImportSearchFlow.ImportServices(
                             importer: importer,
-                            library: library,
                             importStore: importStore,
                             configStore: configStore
                         ),

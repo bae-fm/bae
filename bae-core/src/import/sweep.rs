@@ -90,27 +90,10 @@ impl QueueSweepHandle {
         }
     }
 
-    /// Persist the verdict of a run a person started, so opening a candidate
-    /// answers it for good rather than only for this session.
-    ///
-    /// Call this from the import selection path, not from the identify service:
-    /// the same pipeline also re-identifies existing library releases
-    /// (`ExtractionSource::Release`), which have no candidate folder, no content
-    /// hash to key a row by, and no probed duration. The recorder resolves its
-    /// candidate through the import service's scanned set, so a re-identify key
-    /// finds nothing there and writes nothing — a second guard on the same
-    /// fact.
-    ///
-    /// The verdict settles before it stores, here as in the sweep's own pass:
-    /// the lead's documents are bought and written first, so a candidate a
-    /// person answered opens with no network on every launch after.
-    /// Identify a folder candidate for a person who is looking at it.
-    ///
-    /// The three steps have to happen together and in this order: the recorder
-    /// has to be watching before a candidate with no signals settles on its
-    /// first step, and identify takes its bus subscription synchronously so
-    /// extraction cannot start ahead of it. Composed here rather than at each
-    /// surface so there is one ordering to get right.
+    /// Answer a folder candidate for a person who is looking at it: resume the
+    /// stored verdict when one exists, run identification when none does. The
+    /// run's verdict settles and persists like the sweep's own, so a candidate
+    /// a person answered opens with no network on every launch after.
     pub fn identify_for_selection(&self, candidate_key: String) {
         let Some(ImportCandidateSnapshot::Folder {
             candidate,
@@ -121,6 +104,49 @@ impl QueueSweepHandle {
             warn!("cannot identify selection {candidate_key}: it is not a folder candidate");
             return;
         };
+        if self.token.is_cancelled() {
+            return;
+        }
+        // A candidate already answered resumes its stored verdict — the whole
+        // point of persisting one is that opening the candidate again runs
+        // nothing and waits on nothing. Only a candidate with no stored answer
+        // pays for a run.
+        let this = self.clone();
+        self.tasks.spawn_on(
+            async move {
+                match resumed_state(&this.context, &candidate_key).await {
+                    Some(state) => this
+                        .context
+                        .import
+                        .broadcast_resumed_identify_state(candidate_key, state),
+                    None => this.start_selection_run(candidate_key, candidate),
+                }
+            },
+            &self.runtime_handle,
+        );
+    }
+
+    /// Re-run identification for a candidate whose driver is gone — the
+    /// Re-run control on a resumed verdict. The stored answer is deliberately
+    /// not consulted: a re-run exists to replace it.
+    pub fn rerun_for_selection(&self, candidate_key: String) {
+        let Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        }) = self.context.import.get_candidate(&candidate_key)
+        else {
+            warn!("cannot re-run selection {candidate_key}: it is not a folder candidate");
+            return;
+        };
+        self.start_selection_run(candidate_key, candidate);
+    }
+
+    /// The three steps of a selection's identify run, together and in this
+    /// order: the recorder has to be watching before a candidate with no
+    /// signals settles on its first step, and identify takes its bus
+    /// subscription synchronously so extraction cannot start ahead of it.
+    fn start_selection_run(&self, candidate_key: String, candidate: FolderCandidate) {
         self.record_selection(candidate_key.clone());
         self.context
             .identify
@@ -135,6 +161,19 @@ impl QueueSweepHandle {
         );
     }
 
+    /// Persist the verdict of a run a person started, so opening a candidate
+    /// answers it for good rather than only for this session.
+    ///
+    /// Call this from the import selection path, not from the identify service:
+    /// the same pipeline also re-identifies existing library releases
+    /// (`ExtractionSource::Release`), which have no candidate folder, no content
+    /// hash to key a row by, and no probed duration. The recorder resolves its
+    /// candidate through the import service's scanned set, so a re-identify key
+    /// finds nothing there and writes nothing — a second guard on the same
+    /// fact.
+    ///
+    /// The verdict settles before it stores, here as in the sweep's own pass:
+    /// the lead's documents are bought and written first.
     pub fn record_selection(&self, candidate_key: String) {
         let context = self.context.clone();
         let token = self.token.child_token();
@@ -1052,6 +1091,26 @@ async fn save(
     if token.is_cancelled() {
         return false;
     }
+    // A single settled match IS the identity pick: identification made the
+    // decision a click makes on a several-match row, so it lands the same way
+    // and the pane reopens on it after a restart. Anything else leaves the
+    // question open — and clears whatever pick a superseded verdict had made.
+    let identity_pick = match verdict {
+        TerminalVerdict::Found { matches, .. } if matches.len() == 1 => {
+            let only = &matches[0];
+            match serde_json::to_string(&crate::import::IdentityPick::Release {
+                source: only.source,
+                release_id: only.release_id.clone(),
+            }) {
+                Ok(json) => Some(json),
+                Err(e) => {
+                    warn!("sweep: could not encode an identity pick ({e}); writing no row");
+                    return false;
+                }
+            }
+        }
+        _ => None,
+    };
     let verdict = match serde_json::to_string(verdict) {
         Ok(json) => json,
         Err(e) => {
@@ -1065,6 +1124,7 @@ async fn save(
         verdict,
         probed_total_duration_ms,
         expected_edit_revision,
+        identity_pick,
     };
     let wrote = match context
         .import
@@ -1161,6 +1221,23 @@ async fn settle_lead(
                 only_match.release_id
             );
             false
+        }
+    }
+}
+
+/// The identify state a candidate's stored verdict stands back up as — see
+/// [`ImportServiceHandle::resumed_identify_state`], which owns the read. A
+/// failure resolves to `None` after a `warn!`: the caller's fallback is a full
+/// identification run, which re-answers the candidate and re-stores the row,
+/// so nothing is served from — or left depending on — the unreadable one.
+async fn resumed_state(context: &SweepContext, candidate_key: &str) -> Option<IdentifyState> {
+    match context.import.resumed_identify_state(candidate_key).await {
+        Ok(state) => state,
+        Err(error) => {
+            warn!(
+                "reading the stored verdict for {candidate_key} failed ({error});                  re-running identification"
+            );
+            None
         }
     }
 }

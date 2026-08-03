@@ -33,7 +33,8 @@ namespace Bae.Desktop;
 // that long); entering the section resets to Ready and refreshes.
 internal sealed class ImportSectionView : UserControl
 {
-    private const double PaneWidth = 392;
+    // Wide enough for the four tab labels and their count badges on one line.
+    private const double PaneWidth = 420;
 
     private readonly AppService _app;
     private readonly ImportStore _import;
@@ -101,14 +102,15 @@ internal sealed class ImportSectionView : UserControl
     }
 
     // Entering the import section (a switcher click or a folder-drop flow):
-    // land on Ready with a fresh read, as each macOS visit does.
+    // land on Needs You — the tab whose rows are waiting on the user — with a
+    // fresh read.
     public void OnEntered()
     {
         if (_app.Session.CurrentHandleOrNull() is null)
         {
             return;
         }
-        _import.SetActiveTab(BridgeTriageTab.Ready);
+        _import.SetActiveTab(BridgeTriageTab.NeedsYou);
         _import.RefreshTriageQueue();
     }
 
@@ -582,20 +584,22 @@ internal sealed class ImportSectionView : UserControl
                 continue;
             }
 
-            var (prefetchCurrent, prefetchResult) = await _app.Import.PrefetchCandidateEdit(
-                key, matched.ReleaseId, matched.Evidence.Source, key);
-            if (!prefetchCurrent)
+            // A Ready row's decision is already stored — its settled single
+            // match — so the commit reads the same answer opening the pane
+            // would, from the archive.
+            var (decidedCurrent, decidedResult) = await _app.Import.CandidateDecidedIdentity(key);
+            if (!decidedCurrent)
             {
                 return;
             }
-            if (prefetchResult.Prefetched is not { } prefetched)
+            if (decidedResult.Decided is not { Release: not null } decided)
             {
                 failureCount++;
                 continue;
             }
 
             var (importCurrent, error) = await _app.Import.CommitImport(
-                key, key, matched.Claim, storageMode, pinned, prefetched.Edit, null);
+                key, key, matched.Claim, storageMode, pinned, decided.Edit.Edit, null);
             if (!importCurrent)
             {
                 return;

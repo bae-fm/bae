@@ -9,7 +9,6 @@ extension ImportView {
     var mappingServices: ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            library: library,
             importStore: importStore,
             previewAudio: previewAudio,
             openDocument: { name, path in openDocument(name: name, at: path) },
@@ -31,17 +30,21 @@ extension ImportView {
     func setIdentity(_ identity: ImportIdentity, for candidate: Candidate) {
         switch (identity, candidate.pick) {
         case (.unknown, _):
-            ImportSearchFlow.addAsUnknown(
+            ImportSearchFlow.decideIdentity(
                 importer: importer,
                 importStore: importStore,
-                key: candidate.key
+                key: candidate.key,
+                pick: .unknown
             )
         case (.release, .some(let pick)):
-            ImportSearchFlow.prefetchAndConfirm(
-                library: library,
+            ImportSearchFlow.decideIdentity(
+                importer: importer,
                 importStore: importStore,
                 key: candidate.key,
-                pick: pick
+                pick: .release(
+                    source: pick.source,
+                    releaseId: pick.releaseId
+                )
             )
         case (.release, .none):
             presentSearch(for: candidate)

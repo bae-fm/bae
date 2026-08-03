@@ -40,8 +40,8 @@ internal sealed class ImportStore
     // rather than opening on a bar frozen at zero.
     public (uint Identified, uint Total)? QueueIdentifyProgress { get; private set; }
 
-    // The active tab; resets to Ready on each dialog open and on teardown.
-    public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.Ready;
+    // The active tab; resets to Needs You on each section entry and on teardown.
+    public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.NeedsYou;
 
     // The live filter query over the candidate list.
     public string FilterText { get; private set; } = string.Empty;
@@ -471,7 +471,7 @@ internal sealed class ImportStore
             FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
         WatchedFolders = new List<BridgeWatchedFolder>();
         QueueIdentifyProgress = null;
-        ActiveTab = BridgeTriageTab.Ready;
+        ActiveTab = BridgeTriageTab.NeedsYou;
         FilterText = string.Empty;
         SelectedReady.Clear();
         Interaction.RetainGroupDisclosureKeys(

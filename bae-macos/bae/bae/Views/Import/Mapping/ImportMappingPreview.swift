@@ -46,6 +46,7 @@
                 ),
                 onSetIdentity: { _ in },
                 onFindRelease: {},
+                onPickRelease: { _ in },
                 onEditCover: {},
             )
         }
@@ -104,6 +105,23 @@
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 700)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — several matches to pick") {
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.severalMatchesMappingCandidate,
+            editor: nil,
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
     }
 

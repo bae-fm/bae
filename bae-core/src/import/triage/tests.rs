@@ -266,7 +266,7 @@ fn a_tentative_candidate_hidden_by_a_boundary_is_not_a_row_or_count() {
     let mut snapshot = snapshot_of(vec![candidate("Release 01", false, false)]);
     snapshot.folder_candidates[0].actionable = false;
 
-    let queue = project(snapshot, &HashMap::new());
+    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
 
     assert_eq!(queue.counts, TriageTabCounts::default());
     assert!(queue.sections.is_empty());
@@ -504,7 +504,7 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         ],
     );
 
-    let queue = project(snapshot, &answers);
+    let queue = project(snapshot, &answers, &HashMap::new());
 
     let tally = |tab: TriageTab| {
         candidate_rows(&queue)
@@ -578,7 +578,7 @@ fn a_row_with_no_match_carries_no_release_fields() {
         ],
     );
 
-    let queue = project(snapshot.clone(), &answers);
+    let queue = project(snapshot.clone(), &answers, &HashMap::new());
 
     let row_named = |name: &str| {
         candidate_rows(&queue)
@@ -592,7 +592,7 @@ fn a_row_with_no_match_carries_no_release_fields() {
     assert!(row_named("signals-disagreed").matched.is_none());
 
     // A candidate with no verdict at all is the third shape of "no match".
-    let unanswered = project(snapshot, &HashMap::new());
+    let unanswered = project(snapshot, &HashMap::new(), &HashMap::new());
     assert!(candidate_rows(&unanswered)
         .into_iter()
         .all(|row| row.matched.is_none()));
@@ -642,7 +642,7 @@ fn several_matches_state_the_lead_but_not_the_pressing() {
         ))],
     );
 
-    let queue = project(snapshot, &answers);
+    let queue = project(snapshot, &answers, &HashMap::new());
     let matched = candidate_rows(&queue)[0]
         .matched
         .as_ref()
@@ -674,7 +674,7 @@ fn done_and_skipped_rows_still_lead_with_their_release() {
         ],
     );
 
-    let queue = project(snapshot, &answers);
+    let queue = project(snapshot, &answers, &HashMap::new());
     assert_eq!(candidate_rows(&queue)[0].placement, TriagePlacement::Done);
     assert_eq!(
         candidate_rows(&queue)[1].placement,
@@ -725,7 +725,7 @@ fn group_three_shares_a_header_and_keeps_its_variants() {
         ],
     );
 
-    let queue = project(snapshot, &answers);
+    let queue = project(snapshot, &answers, &HashMap::new());
 
     assert_eq!(
         candidate_rows(&queue)[0].placement,
@@ -804,7 +804,7 @@ fn nested_candidates_form_a_collapsible_group_with_a_combine_target() {
         candidate("Group/Release One", false, false),
         candidate("Group/Wrapper/Release Two", false, false),
     ]);
-    let queue = project(snapshot, &HashMap::new());
+    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
 
     assert_eq!(queue.sections.len(), 1);
     let group = queue.sections[0].group.as_ref().expect("grouped section");
@@ -825,7 +825,7 @@ fn direct_release_joins_its_top_level_descendant_group() {
         candidate("Artist", false, false),
         candidate("Artist/Album", false, false),
     ]);
-    let queue = project(snapshot, &HashMap::new());
+    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
 
     assert_eq!(queue.sections.len(), 1);
     let section = &queue.sections[0];
@@ -851,7 +851,7 @@ fn candidate_and_boundary_entries_share_natural_path_order() {
         candidate_keys: Vec::new(),
     });
 
-    let queue = project(snapshot, &HashMap::new());
+    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
     assert_eq!(queue.sections.len(), 1);
     assert!(matches!(
         &queue.sections[0].entries[..],
@@ -876,8 +876,8 @@ fn projected_entry_keys_are_stable_and_variant_distinct() {
         candidate_keys: Vec::new(),
     });
 
-    let first = project(snapshot.clone(), &HashMap::new());
-    let second = project(snapshot, &HashMap::new());
+    let first = project(snapshot.clone(), &HashMap::new(), &HashMap::new());
+    let second = project(snapshot, &HashMap::new(), &HashMap::new());
     let first_keys: Vec<_> = first.sections[0]
         .entries
         .iter()
@@ -1025,6 +1025,7 @@ mod load {
                     verdict: verdict.to_string(),
                     probed_total_duration_ms,
                     expected_edit_revision: 0,
+                    identity_pick: None,
                 })
                 .await
                 .unwrap();
@@ -1239,6 +1240,7 @@ mod load {
                 verdict: serde_json::to_string(&verdict).unwrap(),
                 probed_total_duration_ms: -1,
                 expected_edit_revision: 0,
+                identity_pick: None,
             })
             .await
             .expect_err("a negative probed total cannot enter durable state");

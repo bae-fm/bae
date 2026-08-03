@@ -302,7 +302,8 @@ impl UiEventBus {
                                 }
                                 ScanEvent::CandidateRemoved { candidate_key }
                                 | ScanEvent::CandidateSkipChanged { candidate_key, .. }
-                                | ScanEvent::CandidateVerdictStored { candidate_key } => {
+                                | ScanEvent::CandidateVerdictStored { candidate_key }
+                                | ScanEvent::CandidateIdentityPicked { candidate_key } => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: candidate_key.clone(),
                                     });

@@ -115,7 +115,7 @@ internal sealed class ImportMappingTable
     // editable fields, the release's length, and the row's own actions.
     private static Grid Grid() => new()
     {
-        ColumnDefinitions = new ColumnDefinitions("*,150,44,*,*,76,Auto"),
+        ColumnDefinitions = new ColumnDefinitions("*,118,34,*,*,64,Auto"),
         ColumnSpacing = 8,
     };
 
@@ -172,8 +172,8 @@ internal sealed class ImportMappingTable
             case BridgeMappingBecomes.Cover:
                 AddBecomesText(grid, Loc.Core("ui.import.becomes.cover"));
                 break;
-            case BridgeMappingBecomes.NotImported:
-                AddBecomesText(grid, Loc.Core("ui.import.becomes.not_imported"));
+            case BridgeMappingBecomes.Kept:
+                AddBecomesText(grid, Loc.Core("ui.import.becomes.kept"));
                 break;
             case BridgeMappingBecomes.AwaitingPick:
                 AddBecomesText(grid, Loc.Core("ui.import.becomes.awaiting_pick"));
@@ -662,7 +662,7 @@ internal sealed class ImportMappingTable
             directory.DirPrefix, $"— {kindLine}", checked((long)directory.TotalSize));
         Avalonia.Controls.Grid.SetColumn(name, 0);
         grid.Children.Add(name);
-        AddBecomesText(grid, Loc.Core("ui.import.becomes.not_imported"));
+        AddBecomesText(grid, Loc.Core("ui.import.becomes.kept"));
         return Host(grid, audioPath: null);
     }
 }

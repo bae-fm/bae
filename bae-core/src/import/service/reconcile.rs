@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use super::{apply_identity_choice, apply_user_edit_to_seed, ImportService, PreparedMetadata};
-use crate::import::handle::{fetch_artist_images, remap_artist_links};
+use crate::import::handle::{fetch_artist_images, remap_links};
 use crate::import::ParsedWorkGraph;
 
 impl ImportService {
@@ -121,7 +121,7 @@ impl ImportService {
             .clone();
         db_album.artist_id = remapped_primary_artist_id;
 
-        let remapped_track_artists = remap_artist_links(
+        let remapped_track_artists = remap_links(
             &track_artists,
             &artist_id_map,
             "track artist",
@@ -129,7 +129,7 @@ impl ImportService {
             |ta, artist_id| ta.artist_id = artist_id,
         )?;
         let remapped_album_artists = if existing_album_id.is_none() {
-            remap_artist_links(
+            remap_links(
                 &album_artists,
                 &artist_id_map,
                 "album artist",
@@ -139,26 +139,70 @@ impl ImportService {
         } else {
             vec![]
         };
-        let remapped_work_artists = remap_artist_links(
-            &work_graph.work_artists,
-            &artist_id_map,
-            "work artist",
-            |link| &link.artist_id,
-            |link, artist_id| link.artist_id = artist_id,
-        )?;
-        let remapped_release_artist_roles = remap_artist_links(
+        let remapped_release_artist_roles = remap_links(
             &release_artist_roles,
             &artist_id_map,
             "release artist role",
             |role| &role.artist_id,
             |role, artist_id| role.artist_id = artist_id,
         )?;
-        let remapped_track_artist_roles = remap_artist_links(
+        let remapped_track_artist_roles = remap_links(
             &track_artist_roles,
             &artist_id_map,
             "track artist role",
             |role| &role.artist_id,
             |role, artist_id| role.artist_id = artist_id,
+        )?;
+
+        // A work performed by an already-imported release keeps that release's
+        // `works` row, so every link this import writes points at the resolved id
+        // and only the works new to the library are inserted.
+        let resolved_works = library_manager
+            .resolve_works_for_import(&work_graph.works)
+            .await?;
+        let work_id_map: HashMap<String, String> = work_graph
+            .works
+            .iter()
+            .zip(resolved_works.ids.iter())
+            .map(|(work, id)| (work.id.clone(), id.clone()))
+            .collect();
+
+        // A work_artists row points at both an artist and a work, and a
+        // work_parts row at two works, so each is remapped once per endpoint.
+        let work_artists_by_artist = remap_links(
+            &work_graph.work_artists,
+            &artist_id_map,
+            "work artist",
+            |link| &link.artist_id,
+            |link, artist_id| link.artist_id = artist_id,
+        )?;
+        let remapped_work_artists = remap_links(
+            &work_artists_by_artist,
+            &work_id_map,
+            "work artist work",
+            |link| &link.work_id,
+            |link, work_id| link.work_id = work_id,
+        )?;
+        let work_parts_by_parent = remap_links(
+            &work_graph.work_parts,
+            &work_id_map,
+            "work part parent",
+            |part| &part.parent_work_id,
+            |part, work_id| part.parent_work_id = work_id,
+        )?;
+        let remapped_work_parts = remap_links(
+            &work_parts_by_parent,
+            &work_id_map,
+            "work part child",
+            |part| &part.child_work_id,
+            |part, work_id| part.child_work_id = work_id,
+        )?;
+        let remapped_track_works = remap_links(
+            &work_graph.track_works,
+            &work_id_map,
+            "track work",
+            |link| &link.work_id,
+            |link, work_id| link.work_id = work_id,
         )?;
 
         let discogs_client = library_manager.discogs_client()?;
@@ -180,10 +224,10 @@ impl ImportService {
             remapped_track_artists,
             remapped_album_artists,
             work_graph: ParsedWorkGraph {
-                works: work_graph.works,
+                works: resolved_works.inserts,
                 work_artists: remapped_work_artists,
-                work_parts: work_graph.work_parts,
-                track_works: work_graph.track_works,
+                work_parts: remapped_work_parts,
+                track_works: remapped_track_works,
             },
             remapped_release_artist_roles,
             remapped_track_artist_roles,

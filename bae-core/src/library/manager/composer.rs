@@ -2,6 +2,14 @@
 
 use super::*;
 
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedImportWorks {
+    /// One id per input work, in input order.
+    pub ids: Vec<String>,
+    /// The works this library has not seen before, for finalize to insert.
+    pub inserts: Vec<crate::db::DbWork>,
+}
+
 impl LibraryManager {
     pub async fn get_composer_count(&self) -> Result<u64, LibraryError> {
         Ok(self.database.get_composer_count().await?)
@@ -79,6 +87,34 @@ impl LibraryManager {
             unlinked_track_roles: raw.unlinked_track_roles,
             default_work_id,
         }))
+    }
+
+    /// Resolve each parsed work to the `works` row already holding its
+    /// MusicBrainz id, or to a row for finalize to insert. `ids` comes back in
+    /// input order, so a caller can zip it with `works` to remap the parsed ids
+    /// its work links carry.
+    pub(crate) async fn resolve_works_for_import(
+        &self,
+        works: &[crate::db::DbWork],
+    ) -> Result<ResolvedImportWorks, LibraryError> {
+        let mut ids = Vec::with_capacity(works.len());
+        let mut inserts = Vec::new();
+
+        for work in works {
+            match self
+                .database
+                .find_work_id_by_musicbrainz_id(&work.musicbrainz_work_id)
+                .await?
+            {
+                Some(existing_id) => ids.push(existing_id),
+                None => {
+                    ids.push(work.id.clone());
+                    inserts.push(work.clone());
+                }
+            }
+        }
+
+        Ok(ResolvedImportWorks { ids, inserts })
     }
 
     pub async fn get_work_detail(&self, work_id: &str) -> Result<Option<WorkDetail>, LibraryError> {

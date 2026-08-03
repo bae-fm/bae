@@ -25,11 +25,15 @@ public sealed class ImportIdentitySectionTests
         Assert.Equal(
             new[] { Loc.Core("ui.import.identity.release"), Loc.Core("ui.import.identity.unknown") },
             Buttons(section).Take(2).Select(button => button.Content as string).ToArray());
-        // Nothing is picked, so the card's control reads as the first pick
-        // rather than as a change of one.
-        Assert.Contains(
+        // Nothing settled means no release card — the folder line above
+        // already says what this is, and the search editor below the section
+        // is where a release gets found. The folder stays named throughout.
+        Assert.DoesNotContain(
             Buttons(section),
-            button => Equals(button.Content, Loc.Core("ui.import.header.find_release")));
+            button => Equals(button.Content, Loc.Core("ui.import.header.change_release")));
+        Assert.Contains(
+            section.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "Folder Name");
     }
 
     [AvaloniaFact]
@@ -79,6 +83,10 @@ public sealed class ImportIdentitySectionTests
         new ImportIdentitySection
         {
             Identity = identity,
+            FolderName = "Folder Name",
+            FormatLabel = "FLAC",
+            HasSettled = pressing is not null,
+            CommitRow = null,
             Title = "Album Title",
             AlbumTitle = pressing is null ? string.Empty : "Album Title",
             AlbumArtistText = pressing is null ? string.Empty : "Artist Name",

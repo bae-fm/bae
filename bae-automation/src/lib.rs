@@ -1170,7 +1170,9 @@ impl AutomationState {
                     self.fail_event_indexing(error);
                 }
             }
-            ScanEvent::CandidateVerdictStored { .. } | ScanEvent::Finished => {}
+            ScanEvent::CandidateVerdictStored { .. }
+            | ScanEvent::CandidateIdentityPicked { .. }
+            | ScanEvent::Finished => {}
         }
     }
 

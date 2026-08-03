@@ -1655,12 +1655,11 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     );
 }
 
-/// The MusicBrainz work MBIDs the rollback test seeds. A real MBID is a UUID,
-/// and coven takes nothing else on a synced row, so these are the shape they
-/// would have in production.
-const MB_WORK_SHARED: &str = "8f0a1c2d-3e4b-4a5c-9d6e-7f8091a2b3c4";
-const MB_WORK_EXCLUSIVE: &str = "1b2c3d4e-5f60-4718-8293-a4b5c6d7e8f9";
-const MB_WORK_PART: &str = "2c3d4e5f-6071-4829-93a4-b5c6d7e8f901";
+/// The MusicBrainz work MBIDs the rollback test seeds. MusicBrainz mints work
+/// MBIDs as name-based (version 3) UUIDs, so that is the shape here.
+const MB_WORK_SHARED: &str = "8f0a1c2d-3e4b-3a5c-9d6e-7f8091a2b3c4";
+const MB_WORK_EXCLUSIVE: &str = "1b2c3d4e-5f60-3718-8293-a4b5c6d7e8f9";
+const MB_WORK_PART: &str = "2c3d4e5f-6071-3829-93a4-b5c6d7e8f901";
 
 /// An MbWork with a composer relation and, optionally, one child part.
 fn work_with_composer(id: &str, title: &str, composer_mb: &str, part: Option<MbWork>) -> MbWork {
@@ -1878,11 +1877,15 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
                     Ok(conn.query_row(q, [], |r| r.get::<_, i64>(0))? > 0)
                 };
                 Ok::<_, coven::CovenError>((
-                exists(&format!("SELECT COUNT(*) FROM works WHERE id = '{MB_WORK_SHARED}'"))?,
                 exists(&format!(
-                    "SELECT COUNT(*) FROM works WHERE id = '{MB_WORK_EXCLUSIVE}'"
+                    "SELECT COUNT(*) FROM works WHERE musicbrainz_work_id = '{MB_WORK_SHARED}'"
                 ))?,
-                exists(&format!("SELECT COUNT(*) FROM works WHERE id = '{MB_WORK_PART}'"))?,
+                exists(&format!(
+                    "SELECT COUNT(*) FROM works WHERE musicbrainz_work_id = '{MB_WORK_EXCLUSIVE}'"
+                ))?,
+                exists(&format!(
+                    "SELECT COUNT(*) FROM works WHERE musicbrainz_work_id = '{MB_WORK_PART}'"
+                ))?,
                 conn.query_row("SELECT COUNT(*) FROM work_parts", [], |r| r.get(0))?,
                 exists(
                     "SELECT COUNT(*) FROM artists WHERE musicbrainz_artist_id = 'composer-shared'",
@@ -1931,6 +1934,110 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             .unwrap()
             .is_some(),
         "the prior release is untouched by the failed remote import",
+    );
+}
+
+/// A MusicBrainz work MBID is frequently a name-based (version 3) UUID, which
+/// coven's synced-row id policy refuses. A `works` row therefore carries a
+/// minted id and keeps the MBID in `musicbrainz_work_id`.
+const V3_WORK: &str = "e0dc7948-f188-3346-adee-db5cfb6361a9";
+
+/// Two releases performing the same work land one `works` row, keyed on the
+/// MBID, with an id the sync layer accepts.
+#[tokio::test]
+async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let first_mb = seed_mb_release_with_works(
+        "mb-rel-first",
+        "mb-group-first",
+        "First Release",
+        vec![mb_track_performing(
+            1,
+            "First Movement",
+            work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
+        )],
+    );
+    f.cover_art
+        .seed_lookup(Some(&first_mb), Some("mb-group-first"), None);
+    let first_dir = f.temp_path().join("first");
+    fs::create_dir_all(&first_dir).unwrap();
+    generate_album_files(&first_dir, &["01 First Movement.flac"]);
+    let (first_release_id, _) = import_folder(
+        &f,
+        &first_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Exact {
+            release_ref: MetadataRef::new(first_mb, MetadataSource::MusicBrainz),
+        },
+    )
+    .await
+    .expect("first local MB import succeeds");
+
+    let second_mb = seed_mb_release_with_works(
+        "mb-rel-second",
+        "mb-group-second",
+        "Second Release",
+        vec![mb_track_performing(
+            1,
+            "Second Movement",
+            work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
+        )],
+    );
+    f.cover_art
+        .seed_lookup(Some(&second_mb), Some("mb-group-second"), None);
+    let second_dir = f.temp_path().join("second");
+    fs::create_dir_all(&second_dir).unwrap();
+    generate_album_files(&second_dir, &["01 Second Movement.flac"]);
+    let (second_release_id, _) = import_folder(
+        &f,
+        &second_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Exact {
+            release_ref: MetadataRef::new(second_mb, MetadataSource::MusicBrainz),
+        },
+    )
+    .await
+    .expect("second local MB import succeeds");
+
+    let (work_ids, linked_release_ids): (Vec<String>, Vec<String>) =
+        f.db.handle()
+            .sql_read(move |conn| {
+                let work_ids = conn.query(
+                    "SELECT id FROM works WHERE musicbrainz_work_id = ?",
+                    [V3_WORK],
+                    |r| r.get::<_, String>(0),
+                )?;
+                let linked_release_ids = conn.query(
+                    "SELECT DISTINCT t.release_id FROM track_works tw \
+                     JOIN tracks t ON t.id = tw.track_id \
+                     JOIN works w ON w.id = tw.work_id \
+                     WHERE w.musicbrainz_work_id = ? ORDER BY t.release_id",
+                    [V3_WORK],
+                    |r| r.get::<_, String>(0),
+                )?;
+                Ok::<_, coven::CovenError>((work_ids, linked_release_ids))
+            })
+            .await
+            .unwrap();
+
+    assert_eq!(
+        work_ids.len(),
+        1,
+        "the work the two releases share is one row",
+    );
+    assert_ne!(
+        work_ids[0], V3_WORK,
+        "the row id is minted, not the MusicBrainz MBID",
+    );
+    let mut expected = vec![first_release_id, second_release_id];
+    expected.sort();
+    assert_eq!(
+        linked_release_ids, expected,
+        "both releases' track_works point at the one work row",
     );
 }
 

@@ -14,8 +14,6 @@ struct ImportSearchSheet: View {
 
     @Environment(Importer.self)
     private var importer
-    @Environment(Library.self)
-    private var library
     @Environment(ImportStore.self)
     private var importStore
     @Environment(ConfigStore.self)
@@ -66,7 +64,6 @@ struct ImportSearchSheet: View {
         ImportSearchFlow.buildSearchPane(
             services: ImportSearchFlow.ImportServices(
                 importer: importer,
-                library: library,
                 importStore: importStore,
                 configStore: configStore
             ),
@@ -80,13 +77,13 @@ struct ImportSearchSheet: View {
             // control, always visible there — not a link inside the search.
             onAddAsUnknown: nil,
             onSelect: { result in
-                ImportSearchFlow.prefetchAndConfirm(
-                    library: library,
+                ImportSearchFlow.decideIdentity(
+                    importer: importer,
                     importStore: importStore,
                     key: candidateKey,
-                    pick: CandidatePick(
-                        releaseId: result.releaseId,
-                        source: result.source
+                    pick: .release(
+                        source: result.source,
+                        releaseId: result.releaseId
                     )
                 )
                 uiStore.dismissModal()

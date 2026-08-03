@@ -94,8 +94,8 @@ struct ImportMappingRowView: View {
                 )
         case .cover:
             becomesText(coreString("ui.import.becomes.cover"))
-        case .notImported:
-            becomesText(coreString("ui.import.becomes.not_imported"))
+        case .kept:
+            becomesText(coreString("ui.import.becomes.kept"))
         case .awaitingPick:
             becomesText(coreString("ui.import.becomes.awaiting_pick"))
         }

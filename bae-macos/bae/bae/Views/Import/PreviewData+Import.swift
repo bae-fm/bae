@@ -80,7 +80,8 @@
                         trackCount: 15
                     ),
                     selectable: false,
-                    importStatus: importStatuses[folderCandidates[2].key]
+                    importStatus: importStatuses[folderCandidates[2].key],
+                    picked: nil
                 ),
                 triageRow(
                     for: folderCandidates[3],
@@ -91,7 +92,8 @@
                         trackCount: 5
                     ),
                     selectable: false,
-                    importStatus: importStatuses[folderCandidates[3].key]
+                    importStatus: importStatuses[folderCandidates[3].key],
+                    picked: nil
                 ),
                 triageRow(
                     for: folderCandidates[4],
@@ -389,7 +391,8 @@
                 placement: .ready,
                 matched: nil,
                 selectable: true,
-                importStatus: nil
+                importStatus: nil,
+                picked: nil
             )
         }
 
@@ -555,7 +558,8 @@
             placement: BridgeTriagePlacement,
             matched: BridgeMatchedRelease?,
             selectable: Bool,
-            importStatus: BridgeCandidateImportStatus? = nil
+            importStatus: BridgeCandidateImportStatus? = nil,
+            picked: BridgeIdentityPick? = nil
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -568,7 +572,8 @@
                 placement: placement,
                 matched: matched,
                 selectable: selectable,
-                importStatus: importStatus
+                importStatus: importStatus,
+                picked: picked
             )
         }
 
@@ -583,7 +588,8 @@
             placement: .ready,
             matched: triageMatch(releaseId: "rel-ready", title: "Album Title"),
             selectable: true,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowPickAPressing = BridgeTriageRow(
@@ -618,7 +624,8 @@
                 claim: .approximate(releaseId: "rel-lead", source: .musicBrainz)
             ),
             selectable: false,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowSignalsConflict = BridgeTriageRow(
@@ -635,7 +642,8 @@
             ),
             matched: nil,
             selectable: false,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowAlreadyInLibrary = BridgeTriageRow(
@@ -661,7 +669,8 @@
                 signal: .barcode
             ),
             selectable: false,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowNoMatch = BridgeTriageRow(
@@ -678,7 +687,8 @@
             ),
             matched: nil,
             selectable: false,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowStillIdentifying = BridgeTriageRow(
@@ -695,7 +705,8 @@
             ),
             matched: nil,
             selectable: false,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowSkipped = BridgeTriageRow(
@@ -709,7 +720,8 @@
             placement: .skipped,
             matched: nil,
             selectable: false,
-            importStatus: nil
+            importStatus: nil,
+            picked: nil
         )
 
         static let triageRowDoneImported = BridgeTriageRow(
@@ -731,7 +743,8 @@
             importStatus: .complete(
                 releaseId: "rel-ten",
                 albumId: "album-ten"
-            )
+            ),
+            picked: nil
         )
 
         static let triageRowDoneFailed = BridgeTriageRow(
@@ -757,7 +770,8 @@
                     category: .import,
                     detail: "track 7 is truncated"
                 )
-            )
+            ),
+            picked: nil
         )
 
         /// Seeded ImportStore for the standalone sidebar preview
@@ -972,7 +986,7 @@
             )
         }()
 
-        /// The picked release's editor seed, as `prefetchRelease` returns it:
+        /// The picked release’s editor seed, as the decided-identity answer carries it:
         /// projected from the release the way the commit worker maps it, so every
         /// credited album artist is present.
         static let releaseSeedBridge: BridgeReleaseUserEdit = {
@@ -1150,7 +1164,7 @@
                 carriedRow(
                     infoLog,
                     role: .document,
-                    becomes: .notImported
+                    becomes: .kept
                 ),
             ],
             reconciliation: .agrees(count: 9)
@@ -1177,7 +1191,7 @@
                     carriedRow(
                         infoLog,
                         role: .document,
-                        becomes: .notImported
+                        becomes: .kept
                     ),
                 ],
             reconciliation: nil
@@ -1319,6 +1333,19 @@
                 files: bridgeCandidateFiles
             )
             candidate.mapping = awaitingPickTable
+            return candidate
+        }()
+
+        /// The same unpicked folder with identification settled on several
+        /// pressings — the identity section offers them inline.
+        static let severalMatchesMappingCandidate: Candidate = {
+            var candidate = unidentifiedMappingCandidate
+            candidate.identifyState = .found(
+                group: searchGroupExact,
+                libraryStatuses: [:],
+                trackCount: 12,
+                provenance: searchProvenanceExact
+            )
             return candidate
         }()
 

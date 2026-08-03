@@ -232,6 +232,19 @@ impl LibraryManager {
             .await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_candidate_identity_pick(
+        &self,
+        content_hash: &str,
+        folder_path: &str,
+        pick_json: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_candidate_identity_pick(content_hash, folder_path, pick_json)
+            .await?)
+    }
+
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.

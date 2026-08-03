@@ -71,11 +71,27 @@ struct ImportSearchPane: View {
         return false
     }
 
+    /// Whether the toolbar row renders: live badges when the signals are
+    /// known, or just its escapes (Re-run / Search manually) on a resumed
+    /// verdict — a terminal state stood back up from the store, whose raw
+    /// signals were never persisted and so has no badges to show.
+    private var showsToolbar: Bool {
+        if !state.signalsToolbar.signals.isEmpty {
+            return true
+        }
+        switch state.identifyState {
+        case .found, .conflict, .notFoundAnywhere, .manualOnly:
+            return true
+        case .idle, .triangulating:
+            return false
+        }
+    }
+
     /// The signals toolbar, shown across every state once core has emitted a
     /// transition. Hidden until then (empty badge list) and in idle.
     @ViewBuilder
     private var toolbar: some View {
-        if !state.signalsToolbar.signals.isEmpty {
+        if showsToolbar {
             SignalsToolbarView(
                 toolbar: state.signalsToolbar,
                 onToggle: onToggleSignal,

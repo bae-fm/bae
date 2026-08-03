@@ -135,11 +135,18 @@ CREATE TABLE IF NOT EXISTS track_artists (
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
 
+-- `id` is minted, never the source's own work id: a MusicBrainz work MBID is
+-- often a name-based (version 3) UUID, which the sync layer refuses on a synced
+-- row. `musicbrainz_work_id` carries the source identity and is what an import
+-- dedups a work on. MusicBrainz is the only source of works, so every row has
+-- one. It is indexed, not UNIQUE: two devices can mint separate rows for the
+-- same work, and a synced row must never fail to land.
 CREATE TABLE IF NOT EXISTS works (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     disambiguation TEXT,
     work_type TEXT,
+    musicbrainz_work_id TEXT NOT NULL,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 ) STRICT;
@@ -414,6 +421,7 @@ CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_s
 -- and `current_track_id` the resume point. Session edits (removals, reorders,
 -- the shuffled order) are not stored — restore rebuilds a pristine lane.
 
+CREATE INDEX IF NOT EXISTS idx_works_mb_id ON works (musicbrainz_work_id);
 CREATE INDEX IF NOT EXISTS idx_work_artists_artist ON work_artists(artist_id);
 CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
 CREATE INDEX IF NOT EXISTS idx_work_parts_parent ON work_parts(parent_work_id);
@@ -505,6 +513,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- Cue filenames are arbitrary, so this is the only thing that says which
     -- cue is which disc.
     sheet_discs              TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(sheet_discs)),
+    -- `import::IdentityPick`, JSON-encoded: the identity decided for this
+    -- candidate — the pressing picked, the decision to read the folder's own
+    -- tags, or the single match identification settled (which fills a blank
+    -- and never overwrites a person's choice). What lets an answered pane
+    -- reopen answered after a restart. Survives file decisions: the choice
+    -- names a release, not a shape, and the mapping re-derives against the
+    -- reshaped folder.
+    identity_pick            TEXT CHECK (identity_pick IS NULL OR json_valid(identity_pick)),
     -- Monotonic compare-and-set revision for file decisions. Identification
     -- writes carry the revision they observed and cannot overwrite a verdict
     -- cleared by a later edit.

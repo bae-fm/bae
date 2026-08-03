@@ -4,12 +4,11 @@ import SwiftUI
 extension ImportSearchFlow {
     // MARK: - Shared search pane builder
 
-    /// The import-flow services a search pane drives: search/identify on
-    /// `importer`, prefetch on `library`, candidate state on `importStore`, and
+    /// The import-flow services a search pane drives: search/identify and the
+    /// pick command on `importer`, candidate state on `importStore`, and
     /// Discogs availability on `configStore`.
     struct ImportServices {
         let importer: Importer
-        let library: Library
         let importStore: ImportStore
         let configStore: ConfigStore
     }
@@ -168,22 +167,22 @@ extension ImportSearchFlow {
         )
     }
 
-    /// The default row-pick handler: run `prefetchAndConfirm`, which comes back
-    /// with what the pick claims. Re-identify overrides this with its own
-    /// `onSelect`.
+    /// The default row-pick handler: decide the identity, which persists the
+    /// choice and comes back with what it claims. Re-identify overrides this
+    /// with its own `onSelect`.
     @MainActor
     private static func defaultOnSelect(
         services: ImportServices,
         input: SearchPaneInput
     ) -> (BridgeMetadataResult) -> Void {
         { result in
-            prefetchAndConfirm(
-                library: services.library,
+            decideIdentity(
+                importer: services.importer,
                 importStore: services.importStore,
                 key: input.key,
-                pick: CandidatePick(
-                    releaseId: result.releaseId,
-                    source: result.source
+                pick: .release(
+                    source: result.source,
+                    releaseId: result.releaseId
                 )
             )
         }

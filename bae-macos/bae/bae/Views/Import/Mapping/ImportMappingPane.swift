@@ -30,6 +30,9 @@ struct ImportMappingPane: View {
     let commitActions: ImportCommitActions
     let onSetIdentity: (ImportIdentity) -> Void
     let onFindRelease: () -> Void
+    /// Pick one of identification's matched pressings from the inline options
+    /// — the same pick a search-sheet row click runs.
+    let onPickRelease: (BridgeMetadataResult) -> Void
     let onEditCover: () -> Void
 
     /// The folder's mapping, or an empty table while the first read is still in
@@ -39,41 +42,44 @@ struct ImportMappingPane: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    identitySection
-                    banners
-                    ImportMappingTable(
-                        table: mapping,
-                        bindingOptions: bindingOptions,
-                        previewingPath: previewingPath,
-                        actions: mappingActions,
-                    )
-                }
-                .padding(20)
-            }
-            // Shown exactly when there is something to commit, which is the
-            // precondition the commit itself reads — a failed re-pick leaves
-            // the table and the album fields in place but nothing settled to
-            // commit them under.
-            if candidate.commitEdit != nil {
-                ImportCommitBar(
-                    willWriteCount: mapping.willWriteCount,
-                    unansweredCount: mapping.unansweredCount,
-                    candidateKey: candidate.key,
-                    importStatus: candidate.importStatus,
-                    storageManaged: $storageManaged,
-                    storagePinned: $storagePinned,
-                    actions: commitActions,
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                identitySection
+                banners
+                ImportMappingTable(
+                    table: mapping,
+                    bindingOptions: bindingOptions,
+                    previewingPath: previewingPath,
+                    actions: mappingActions,
                 )
             }
+            .padding(20)
         }
+    }
+
+    /// The card's commit row — present exactly when there is something to
+    /// commit, which is the precondition the commit itself reads: a failed
+    /// re-pick leaves the table and the album fields in place but nothing
+    /// settled to commit them under.
+    private var commitControls: ImportCommitControls? {
+        guard candidate.commitEdit != nil else {
+            return nil
+        }
+        return ImportCommitControls(
+            unansweredCount: mapping.unansweredCount,
+            candidateKey: candidate.key,
+            importStatus: candidate.importStatus,
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned,
+            actions: commitActions,
+        )
     }
 
     private var identitySection: some View {
         ImportIdentitySection(
             identity: candidate.identity,
+            folderName: candidate.displayName,
+            formatLabel: candidate.files.formatLabel,
             title: headerTitle,
             artist: editor?.wrappedValue.albumArtistText ?? "",
             metaLine: headerMetaLine,
@@ -83,9 +89,39 @@ struct ImportMappingPane: View {
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editor: editor,
+            matchOptions: matchOptions,
+            // The card waits for a settled identity, not for the pick: while
+            // the pick's read is in flight the options above carry the
+            // spinner, and a card would only restate the folder name.
+            hasSettled: candidate.identityChoice != nil,
+            commit: commitControls,
             onSetIdentity: onSetIdentity,
             onFindRelease: onFindRelease,
             onEditCover: onEditCover,
+        )
+    }
+
+    /// Identification's matches, offered inline while the pick is still open:
+    /// the folder reading as a release, a `Found` state to offer, and no
+    /// settled identity. They stay up through the pick's own read — the
+    /// clicked row carries the spinner and the list stays put — and hand over
+    /// to the release card only when the read lands and settles the identity.
+    private var matchOptions: ImportMatchOptions? {
+        guard candidate.identity == .release,
+            candidate.identityChoice == nil,
+            case .found(let group, let libraryStatuses, _, let provenance) =
+                candidate.identifyState
+        else {
+            return nil
+        }
+        return ImportMatchOptions(
+            group: group,
+            libraryStatuses: libraryStatuses,
+            provenance: provenance,
+            isImporting: ImportSearchFlow.isImporting(candidate),
+            loadingReleaseId: candidate.prefetchTask != nil
+                ? candidate.pick?.releaseId : nil,
+            onSelect: onPickRelease,
         )
     }
 

@@ -31,6 +31,14 @@ private final class Recorder {
                     )
                 }
             },
+            pickCandidateIdentity: { [self] _, pick in
+                await MainActor.run { decided(for: pick) }
+            },
+            candidateDecidedIdentity: { [self] _ in
+                await MainActor.run {
+                    stored.map { decided(for: $0) }
+                }
+            },
             setSheetDisc: { [self] _, sheetFileId, disc in
                 await MainActor.run {
                     discCalls.append((sheetFileId: sheetFileId, disc: disc))
@@ -42,21 +50,32 @@ private final class Recorder {
                         (key: key, fileId: fileId, choice: choice)
                     )
                 }
-            },
-            unknownMapping: { [self] _ in
-                await MainActor.run { unknown }
             }
         )
     }
 
-    var library: Library {
-        Library(
-            prefetchRelease: { [self] _, _, _ in
-                await MainActor.run {
-                    MappingFixtures.prefetch(mapping: remapped)
-                }
-            }
-        )
+    /// The pick a stored decision would resume — `nil` reads as "nothing
+    /// decided". Defaults to the fixture release, which is what a candidate
+    /// with `MappingFixtures.pick` in force has stored.
+    var stored: BridgeIdentityPick? = .release(
+        source: MappingFixtures.pick.source,
+        releaseId: MappingFixtures.pick.releaseId
+    )
+
+    /// The answer either identity stands for, from the same fixtures the old
+    /// per-call stubs served.
+    private func decided(for pick: BridgeIdentityPick) -> BridgeDecidedIdentity
+    {
+        switch pick {
+        case .release(let source, let releaseId):
+            .release(
+                source: source,
+                releaseId: releaseId,
+                prefetch: MappingFixtures.prefetch(mapping: remapped)
+            )
+        case .unknown:
+            .unknown(seed: unknown.seed, mapping: unknown.mapping)
+        }
     }
 
     var previewAudio: PreviewAudio {
@@ -73,7 +92,6 @@ private final class Recorder {
     func services(_ store: ImportStore) -> ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            library: library,
             importStore: store,
             previewAudio: previewAudio,
             openDocument: { _, _ in },
@@ -244,13 +262,16 @@ struct ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(store))
 
-        ImportSearchFlow.prefetchAndConfirm(
-            library: Library(prefetchRelease: { _, _, _ in
+        ImportSearchFlow.decideIdentity(
+            importer: Importer(pickCandidateIdentity: { _, _ in
                 throw StubError.notImplemented
             }),
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: MappingFixtures.pick
+            pick: .release(
+                source: MappingFixtures.pick.source,
+                releaseId: MappingFixtures.pick.releaseId
+            )
         )
         try await Task.sleep(for: .milliseconds(50))
 
@@ -359,10 +380,11 @@ struct ImportMappingPaneTests {
         )
         let recorder = Recorder()
 
-        ImportSearchFlow.addAsUnknown(
+        ImportSearchFlow.decideIdentity(
             importer: recorder.importer,
             importStore: store,
-            key: MappingFixtures.candidateKey
+            key: MappingFixtures.candidateKey,
+            pick: .unknown
         )
         try await Task.sleep(for: .milliseconds(50))
 
@@ -379,11 +401,11 @@ struct ImportMappingPaneTests {
 
         let pick = try #require(candidate.pick)
         recorder.remapped = MappingFixtures.thirteenFileTable
-        ImportSearchFlow.prefetchAndConfirm(
-            library: recorder.library,
+        ImportSearchFlow.decideIdentity(
+            importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: pick
+            pick: .release(source: pick.source, releaseId: pick.releaseId)
         )
         try await Task.sleep(for: .milliseconds(50))
 

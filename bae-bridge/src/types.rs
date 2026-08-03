@@ -1258,6 +1258,78 @@ pub struct BridgeMatchedRelease {
     pub claim: BridgeIdentityChoice,
 }
 
+/// The identity decided for a candidate, as the row carries it back and the
+/// pick command sends it down. Mirror of `bae_core::import::IdentityPick`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeIdentityPick {
+    Release {
+        source: BridgeMetadataSource,
+        release_id: String,
+    },
+    Unknown,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeIdentityPick {
+    pub(crate) fn from_core(pick: bae_core::import::IdentityPick) -> Self {
+        match pick {
+            bae_core::import::IdentityPick::Release { source, release_id } => Self::Release {
+                source: BridgeMetadataSource::from_core(source),
+                release_id,
+            },
+            bae_core::import::IdentityPick::Unknown => Self::Unknown,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::IdentityPick {
+        match self {
+            Self::Release { source, release_id } => bae_core::import::IdentityPick::Release {
+                source: source.into_core(),
+                release_id,
+            },
+            Self::Unknown => bae_core::import::IdentityPick::Unknown,
+        }
+    }
+}
+
+/// A candidate's decided identity with everything the pane seeds from it —
+/// what the pick command and the selection query both return, so a fresh
+/// launch renders exactly what the click rendered. Mirror of
+/// `bae_core::import::DecidedIdentity`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeDecidedIdentity {
+    Release {
+        source: BridgeMetadataSource,
+        release_id: String,
+        prefetch: BridgeReleasePrefetch,
+    },
+    Unknown {
+        seed: BridgeReleaseUserEdit,
+        mapping: BridgeMappingTable,
+    },
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeDecidedIdentity {
+    pub(crate) fn from_core(answer: bae_core::import::DecidedIdentity) -> Self {
+        match answer {
+            bae_core::import::DecidedIdentity::Release {
+                source,
+                release_id,
+                prefetch,
+            } => Self::Release {
+                source: BridgeMetadataSource::from_core(source),
+                release_id,
+                prefetch: BridgeReleasePrefetch::from_core(prefetch),
+            },
+            bae_core::import::DecidedIdentity::Unknown { seed, mapping } => Self::Unknown {
+                seed: BridgeReleaseUserEdit::from_core(seed),
+                mapping: BridgeMappingTable::from_core(mapping),
+            },
+        }
+    }
+}
+
 /// One candidate's sidebar row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageRow {
@@ -1277,6 +1349,10 @@ pub struct BridgeTriageRow {
     /// Whether this row takes a bulk-import checkbox.
     pub selectable: bool,
     pub import_status: Option<BridgeCandidateImportStatus>,
+    /// The identity already decided for this candidate — the settled single
+    /// match, the pressing the user picked, or their decision to read the
+    /// folder's own tags. Selection re-applies it, so the pane opens answered.
+    pub picked: Option<BridgeIdentityPick>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -3089,7 +3165,7 @@ pub enum BridgeMappingBecomes {
     /// The image that leads the release.
     Cover,
     /// Carried with the release, not one of its tracks.
-    NotImported,
+    Kept,
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,
 }
@@ -5482,7 +5558,7 @@ impl BridgeMappingBecomes {
                 source_duration_ms,
             },
             MappingBecomes::Cover => Self::Cover,
-            MappingBecomes::NotImported => Self::NotImported,
+            MappingBecomes::Kept => Self::Kept,
             MappingBecomes::AwaitingPick => Self::AwaitingPick,
         }
     }
@@ -5500,7 +5576,7 @@ impl BridgeMappingBecomes {
                 source_duration_ms,
             },
             Self::Cover => MappingBecomes::Cover,
-            Self::NotImported => MappingBecomes::NotImported,
+            Self::Kept => MappingBecomes::Kept,
             Self::AwaitingPick => MappingBecomes::AwaitingPick,
         }
     }

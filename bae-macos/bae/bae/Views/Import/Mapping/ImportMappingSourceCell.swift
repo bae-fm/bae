@@ -48,6 +48,9 @@ struct ImportMappingSourceCell: View {
             Text(file.sizeText)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                // A squeezed column must truncate the name, never wrap the
+                // size mid-digit.
+                .fixedSize()
         }
     }
 
@@ -102,6 +105,7 @@ struct ImportMappingSourceCell: View {
             Text(importDurationText(entry.durationMs))
                 .font(.caption2)
                 .monospacedDigit()
+                .fixedSize()
                 .foregroundStyle(
                     lengthsDiverge
                         ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary)

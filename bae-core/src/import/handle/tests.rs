@@ -763,11 +763,11 @@ fn track_artist(artist_id: &str) -> crate::db::DbTrackArtist {
 }
 
 #[test]
-fn remap_artist_links_rewrites_id_and_preserves_the_rest() {
+fn remap_links_rewrites_id_and_preserves_the_rest() {
     let ta = track_artist("parsed-1");
     let map = std::collections::HashMap::from([("parsed-1".to_string(), "db-1".to_string())]);
 
-    let remapped = remap_artist_links(
+    let remapped = remap_links(
         std::slice::from_ref(&ta),
         &map,
         "track artist",
@@ -784,9 +784,9 @@ fn remap_artist_links_rewrites_id_and_preserves_the_rest() {
 }
 
 #[test]
-fn remap_artist_links_errors_on_unmapped_id() {
+fn remap_links_errors_on_unmapped_id() {
     let ta = track_artist("orphan-track-artist");
-    let err = remap_artist_links(
+    let err = remap_links(
         std::slice::from_ref(&ta),
         &std::collections::HashMap::new(),
         "track artist",

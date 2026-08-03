@@ -194,6 +194,113 @@ fn drop_library_status(
     pairs.into_iter().map(|(result, _)| result).collect()
 }
 
+impl TerminalVerdict {
+    /// Every release this verdict names — what a resumer checks live library
+    /// status for before standing the state back up.
+    pub fn named_releases(&self) -> Vec<&MetadataResult> {
+        match self {
+            Self::Found { matches, .. } => matches.iter().collect(),
+            Self::Conflict {
+                discid_results,
+                barcode_results,
+                ..
+            } => discid_results
+                .iter()
+                .chain(barcode_results.iter())
+                .collect(),
+            Self::NotFoundAnywhere | Self::ManualOnly { .. } => Vec::new(),
+        }
+    }
+
+    /// The identify state this stored verdict stands back up as — what opening
+    /// an answered candidate shows without running anything.
+    ///
+    /// The matches, provenance, and per-signal result sections are the stored
+    /// ones. The raw signal inputs (the disc ID value, barcode codes, catalog
+    /// candidates) are deliberately not: they are local, recomputable facts a
+    /// re-run re-extracts, and the verdict never stored them — so the context
+    /// carries none, and a resumed state has no signals toolbar. `status_of`
+    /// is the live library check for a release id the verdict names, never a
+    /// stored copy (see the module doc).
+    pub fn resume_state(
+        self,
+        status_of: &impl Fn(&MetadataResult) -> crate::db::LibraryStatus,
+    ) -> IdentifyState {
+        // `disc_id: Absent` here means "not retained by the stored verdict",
+        // not "the folder had no disc artifact" — the distinction never
+        // leaves core: the bridge crosses matches and result sections, and
+        // the resumed state's toolbar is empty rather than derived from this.
+        let empty_context = |track_count: u32| SignalsContext {
+            disc_id: crate::signals::DiscIdSignal::Absent { track_count },
+            barcode_codes: Vec::new(),
+            had_barcode_source: false,
+            catalogs: Vec::new(),
+            excluded: std::collections::HashSet::new(),
+            discid_results: Vec::new(),
+            barcode_results: Vec::new(),
+            discid_failure: None,
+            barcode_failure: None,
+            matched_barcode: None,
+            track_count,
+        };
+        match self {
+            Self::Found {
+                matches,
+                track_count,
+                group,
+                provenance,
+            } => {
+                let library_statuses = matches.iter().map(status_of).collect();
+                IdentifyState::Found {
+                    matches,
+                    library_statuses,
+                    track_count,
+                    group,
+                    provenance,
+                    context: empty_context(track_count),
+                }
+            }
+            Self::Conflict {
+                discid_results,
+                barcode_results,
+                matched_barcode,
+                track_count,
+            } => {
+                let with_status = |results: Vec<MetadataResult>| {
+                    results
+                        .into_iter()
+                        .map(|result| {
+                            let status = status_of(&result);
+                            (result, status)
+                        })
+                        .collect::<Vec<_>>()
+                };
+                let barcode_results = with_status(barcode_results);
+                IdentifyState::Conflict {
+                    context: SignalsContext {
+                        // The stored disagreement is the two result sections;
+                        // `had_barcode_source` is re-derived from them because
+                        // barcode results can only have come from a barcode.
+                        had_barcode_source: !barcode_results.is_empty()
+                            || matched_barcode.is_some(),
+                        discid_results: with_status(discid_results),
+                        barcode_results,
+                        matched_barcode,
+                        ..empty_context(track_count)
+                    },
+                }
+            }
+            Self::NotFoundAnywhere => IdentifyState::NotFoundAnywhere {
+                context: empty_context(0),
+            },
+            Self::ManualOnly { track_count } => IdentifyState::ManualOnly {
+                track_count,
+                context: empty_context(track_count),
+            },
+        }
+    }
+}
+
 /// Whether the state's carried context recorded a lookup failure on either
 /// signal, checked uniformly across every terminal variant (`Idle` and
 /// `Triangulating` carry no verdict either way, so they read as `false` here

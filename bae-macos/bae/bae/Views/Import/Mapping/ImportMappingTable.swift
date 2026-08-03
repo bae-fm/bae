@@ -146,10 +146,10 @@ struct ImportMappingTable: View {
 /// Column widths shared by the mapping table's header and its rows, so the two
 /// never disagree.
 enum ImportMappingColumns {
-    static let role: CGFloat = 150
-    static let position: CGFloat = 44
-    static let length: CGFloat = 76
-    static let actions: CGFloat = 150
+    static let role: CGFloat = 118
+    static let position: CGFloat = 34
+    static let length: CGFloat = 64
+    static let actions: CGFloat = 118
     /// How far a track sheet's entries sit inside their group header.
     static let entryIndent: CGFloat = 18
     /// The length and actions columns with the gap between them — what a row
@@ -192,7 +192,7 @@ struct ImportMappingDirectoryRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Spacer().frame(width: ImportMappingColumns.role)
             Spacer().frame(width: ImportMappingColumns.position)
-            Text(coreString("ui.import.becomes.not_imported"))
+            Text(coreString("ui.import.becomes.kept"))
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)

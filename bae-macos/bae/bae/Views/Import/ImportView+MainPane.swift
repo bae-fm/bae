@@ -43,6 +43,17 @@ extension ImportView {
             ),
             onSetIdentity: { setIdentity($0, for: candidate) },
             onFindRelease: { presentSearch(for: candidate) },
+            onPickRelease: { result in
+                ImportSearchFlow.decideIdentity(
+                    importer: importer,
+                    importStore: importStore,
+                    key: candidate.key,
+                    pick: .release(
+                        source: result.source,
+                        releaseId: result.releaseId
+                    )
+                )
+            },
             onEditCover: { presentCoverPicker(for: candidate) },
         )
         .animation(nil, value: uiStore.selectedFolderCandidate)

@@ -18,20 +18,20 @@ internal readonly record struct MappingPaneSeedState(
     bool Prefetching,
     bool PrefetchFailed);
 
-/// <summary>The release a selected row opens the mapping pane on without a
-/// click.</summary>
-internal static class ReadyAutoPick
+/// <summary>The identity a selected row opens the mapping pane on without a
+/// click — the settled single match, or the choice made earlier, both read
+/// back off the stored row.</summary>
+internal static class PickedResume
 {
-    /// <summary>The settled match the row leads with, or null when there is
-    /// nothing to seed — the pane has already made something of this candidate,
-    /// or the row isn't Ready.
+    /// <summary>The row's decided identity, or null when there is nothing to
+    /// apply — the pane has already made something of this candidate, nothing
+    /// was ever decided, or the row is past deciding.
     ///
-    /// The placement gate carries weight the match alone can't. Done and Skipped
-    /// rows hold `Matched` too, so without it re-showing an imported folder would
-    /// re-open a commit-able pane; and a Needs-you row with several matches leads
-    /// with one of them while core deliberately withholds the pressing, so
-    /// seeding it would answer the question the row is asking.</summary>
-    internal static BridgeMatchedRelease? From(
+    /// The placement gate carries weight the decided check can't. Done and
+    /// Skipped rows keep their pick too, and after a restart their import
+    /// status is not in the session, so without it re-showing an imported
+    /// folder would re-open a commit-able pane.</summary>
+    internal static BridgeIdentityPick? From(
         BridgeTriageRow? row,
         MappingPaneSeedState pane)
     {
@@ -39,6 +39,9 @@ internal static class ReadyAutoPick
         {
             return null;
         }
-        return row is { Placement: BridgeTriagePlacement.Ready } ? row.Matched : null;
+        return row?.Placement
+            is BridgeTriagePlacement.Ready or BridgeTriagePlacement.NeedsYou
+            ? row.Picked
+            : null;
     }
 }

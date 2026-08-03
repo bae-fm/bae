@@ -20,19 +20,45 @@ struct ReleaseGroupListView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
                 ForEach(groups) { group in
-                    VStack(alignment: .leading, spacing: 0) {
-                        ReleaseGroupCard(group: group)
-                        pressings(of: group)
-                    }
+                    ReleaseGroupSection(
+                        group: group,
+                        isImporting: isImporting,
+                        libraryStatuses: libraryStatuses,
+                        provenance: provenance,
+                        selectedReleaseId: selectedReleaseId,
+                        onSelect: onSelect,
+                    )
                 }
             }
             .padding(14)
         }
     }
+}
+
+/// One release group: its card with the pressing rows hanging beneath on a
+/// connecting rule. The search list stacks one per group; the mapping pane's
+/// identity section mounts a single one inline while a pick is still open.
+struct ReleaseGroupSection: View {
+    let group: ReleaseGroup
+    let isImporting: Bool
+    let libraryStatuses: [String: BridgeLibraryStatus]
+    var provenance: [String: BridgeResultProvenance] = [:]
+    let selectedReleaseId: String?
+    /// The pressing whose pick is being read right now — its row carries a
+    /// spinner while the list stays put.
+    var loadingReleaseId: String?
+    let onSelect: (BridgeMetadataResult) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ReleaseGroupCard(group: group)
+            pressings
+        }
+    }
 
     /// The group's pressing rows, indented under a hairline rule that ties them
     /// to the card above.
-    private func pressings(of group: ReleaseGroup) -> some View {
+    private var pressings: some View {
         HStack(spacing: 0) {
             Rectangle()
                 .fill(.white.opacity(0.07))
@@ -44,7 +70,9 @@ struct ReleaseGroupListView: View {
                         isImporting: isImporting,
                         libraryStatus: libraryStatuses[pressing.releaseId],
                         provenance: provenance[pressing.releaseId],
-                        isSelected: pressing.releaseId == selectedReleaseId,
+                        isSelected: pressing.releaseId == selectedReleaseId
+                            || pressing.releaseId == loadingReleaseId,
+                        isLoading: pressing.releaseId == loadingReleaseId,
                         onSelect: { onSelect(pressing) },
                     )
                 }

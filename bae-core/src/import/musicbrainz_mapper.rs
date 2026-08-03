@@ -78,7 +78,7 @@ fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistRef {
 fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
     if !converted.insert(work.id.clone()) {
         return WorkGraphRef::AlreadyExpanded {
-            id: work.id.clone(),
+            musicbrainz_work_id: work.id.clone(),
         };
     }
 
@@ -134,7 +134,7 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
     }
 
     WorkGraphRef::Expanded(WorkNode {
-        id: work.id.clone(),
+        musicbrainz_work_id: work.id.clone(),
         title: work.title.clone(),
         disambiguation: work.disambiguation.clone(),
         work_type: work.work_type.clone(),
@@ -518,6 +518,20 @@ mod tests {
         );
         let ids = SequentialIdProvider::new("mb");
         map_mb_response_to_db(response, master_year, discogs_release, &clock, &ids)
+    }
+
+    /// The id of the `works` row the parsed release minted for a MusicBrainz
+    /// work. Row ids are minted, so a link is checked against this, never
+    /// against the MBID.
+    fn work_row_id(parsed: &ParsedAlbum, musicbrainz_work_id: &str) -> String {
+        parsed
+            .work_graph
+            .works
+            .iter()
+            .find(|work| work.musicbrainz_work_id == musicbrainz_work_id)
+            .unwrap_or_else(|| panic!("no works row for {musicbrainz_work_id}"))
+            .id
+            .clone()
     }
 
     fn make_mb_track(number: &str, title: &str) -> MbTrack {
@@ -1152,20 +1166,16 @@ mod tests {
 
         let work_graph = &parsed.work_graph;
         assert_eq!(work_graph.works.len(), 2);
+        let parent_id = work_row_id(&parsed, "mb-work-parent-a");
+        let child_id = work_row_id(&parsed, "mb-work-child-a");
         assert!(work_graph
-            .works
+            .track_works
             .iter()
-            .any(|work| work.id == "mb-work-parent-a"));
+            .any(|link| { link.track_id == parsed.tracks[0].id && link.work_id == parent_id }));
         assert!(work_graph
-            .works
+            .work_parts
             .iter()
-            .any(|work| work.id == "mb-work-child-a"));
-        assert!(work_graph.track_works.iter().any(|link| {
-            link.track_id == parsed.tracks[0].id && link.work_id == "mb-work-parent-a"
-        }));
-        assert!(work_graph.work_parts.iter().any(|part| {
-            part.parent_work_id == "mb-work-parent-a" && part.child_work_id == "mb-work-child-a"
-        }));
+            .any(|part| { part.parent_work_id == parent_id && part.child_work_id == child_id }));
 
         let composer = parsed
             .artists
@@ -1235,11 +1245,12 @@ mod tests {
         let parsed = map(&response, Some(2024), None).unwrap();
 
         let track_id = &parsed.tracks[0].id;
+        let work_id = work_row_id(&parsed, "mb-work-a");
         let links: Vec<_> = parsed
             .work_graph
             .track_works
             .iter()
-            .filter(|link| &link.track_id == track_id && link.work_id == "mb-work-a")
+            .filter(|link| &link.track_id == track_id && link.work_id == work_id)
             .collect();
         assert_eq!(
             links.len(),
@@ -1497,14 +1508,14 @@ mod tests {
         }]);
 
         let parsed = map(&response, Some(2024), None).unwrap();
-        let wg = &parsed.work_graph;
-
-        assert!(wg.works.iter().any(|w| w.id == "mb-work-parent-a"));
-        assert!(wg.works.iter().any(|w| w.id == "mb-work-child-a"));
+        let parent_id = work_row_id(&parsed, "mb-work-parent-a");
+        let child_id = work_row_id(&parsed, "mb-work-child-a");
         assert!(
-            wg.work_parts.iter().any(|p| {
-                p.parent_work_id == "mb-work-parent-a" && p.child_work_id == "mb-work-child-a"
-            }),
+            parsed
+                .work_graph
+                .work_parts
+                .iter()
+                .any(|p| { p.parent_work_id == parent_id && p.child_work_id == child_id }),
             "backward relation should make the related work the parent"
         );
     }
@@ -1593,7 +1604,10 @@ mod tests {
         });
         let parsed = parsed.unwrap();
 
-        assert!(parsed.work_graph.works.iter().any(|w| w.id == "mb-work-a"));
+        assert_eq!(
+            parsed.work_graph.works[0].musicbrainz_work_id, "mb-work-a",
+            "the work row lands; only its malformed composer relation is dropped",
+        );
         assert!(parsed.work_graph.work_artists.is_empty());
         assert!(
             logs.contains("work artist relation without artist payload"),
@@ -1641,13 +1655,13 @@ mod tests {
         let parsed = parsed.unwrap();
 
         // The work row lands once and both tracks link it.
-        assert!(parsed.work_graph.works.iter().any(|w| w.id == "mb-work-a"));
+        let work_id = work_row_id(&parsed, "mb-work-a");
         assert_eq!(
             parsed
                 .work_graph
                 .track_works
                 .iter()
-                .filter(|l| l.work_id == "mb-work-a")
+                .filter(|l| l.work_id == work_id)
                 .count(),
             2
         );

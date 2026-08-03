@@ -112,6 +112,21 @@ impl AppServices {
         self.inner.sweep.identify_for_selection(candidate_key);
     }
 
+    /// Re-run a candidate's identification from the toolbar. Dispatches on
+    /// where the run lives: a live driver re-combines from its retained
+    /// signals; a candidate showing a resumed verdict has no driver, so a
+    /// fresh interactive run replaces the stored answer. Re-identify keys
+    /// always have a live driver while their sheet is open, so they take the
+    /// first arm.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn rerun_identify(&self, candidate_key: String) {
+        if self.inner.identify.is_running(&candidate_key) {
+            self.inner.identify.rerun(&candidate_key);
+        } else {
+            self.inner.sweep.rerun_for_selection(candidate_key);
+        }
+    }
+
     pub async fn get_queue_snapshot(
         &self,
     ) -> Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError> {

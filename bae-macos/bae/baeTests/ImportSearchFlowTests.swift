@@ -3,61 +3,58 @@ import Testing
 
 @testable import bae
 
-/// `readyAutoPick` decides when a selected candidate's pane opens on its
-/// row's settled match without a click. Its guards are what keep the seed
-/// from firing where a pick would be wrong: rows outside Ready, folders whose
-/// identity is already settled, and prefetches that already failed once.
+/// `pickedResume` decides when a selected candidate's pane opens on the
+/// identity its row already carries — the settled single match, or the choice
+/// the user made before a restart — without a click. Its guards are what keep
+/// the resume from firing where it would be wrong: rows past deciding,
+/// folders whose identity is already settled, and prefetches that already
+/// failed once.
 @MainActor
-struct ImportSearchFlowReadyAutoPickTests {
+struct ImportSearchFlowPickedResumeTests {
     private var candidate: Candidate {
         PreviewData.folderCandidates[0]
     }
 
-    private func readyRow(for candidate: Candidate) -> BridgeTriageRow {
+    private let releasePick = BridgeIdentityPick.release(
+        source: .musicBrainz,
+        releaseId: "rel-picked"
+    )
+
+    private func pickedRow(
+        for candidate: Candidate,
+        placement: BridgeTriagePlacement,
+        picked: BridgeIdentityPick?
+    ) -> BridgeTriageRow {
         PreviewData.triageRow(
             for: candidate,
-            placement: .ready,
+            placement: placement,
             matched: PreviewData.triageMatch(
-                releaseId: "rel-ready",
+                releaseId: "rel-picked",
                 title: "Album Title"
             ),
-            selectable: true
+            selectable: false,
+            picked: picked
         )
     }
 
-    @Test func seedsFromAReadyRow() {
-        let pick = ImportSearchFlow.readyAutoPick(
-            candidate: candidate,
-            row: readyRow(for: candidate)
+    @Test
+    func appliesAReadyRowsSettledPick() {
+        // A settled single match is a pick identification made — the same
+        // record a click writes, resumed the same way.
+        let row = pickedRow(
+            for: candidate,
+            placement: .ready,
+            picked: releasePick
         )
-        #expect(pick?.releaseId == "rel-ready")
+        #expect(
+            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
+                == releasePick
+        )
     }
 
-    @Test func ignoresRowsOutsideReady() {
-        // Done and Skipped rows carry `matched` too, and a candidate rebuilt
-        // at launch has nothing settled again — placement is the only thing
-        // standing between an imported row and a re-opened confirm pane.
-        for placement: BridgeTriagePlacement in [.done, .skipped] {
-            let row = PreviewData.triageRow(
-                for: candidate,
-                placement: placement,
-                matched: PreviewData.triageMatch(
-                    releaseId: "rel-done",
-                    title: "Album Title"
-                ),
-                selectable: false
-            )
-            #expect(
-                ImportSearchFlow.readyAutoPick(candidate: candidate, row: row)
-                    == nil
-            )
-        }
-    }
-
-    @Test func ignoresAnUnsettledLead() {
-        // Several matches: the row leads with one of them, but which pressing
-        // is exactly the open question — nothing to seed.
-        let row = PreviewData.triageRow(
+    @Test
+    func appliesAChoiceMadeOnANeedsYouRow() {
+        let row = pickedRow(
             for: candidate,
             placement: .needsYou(
                 group: .pickAPressing,
@@ -65,35 +62,89 @@ struct ImportSearchFlowReadyAutoPickTests {
                     disagreement: .severalMatches(count: 4)
                 )
             ),
-            matched: PreviewData.triageMatch(
-                releaseId: "rel-lead",
-                title: "Album Title"
-            ),
-            selectable: false
+            picked: releasePick
         )
         #expect(
-            ImportSearchFlow.readyAutoPick(candidate: candidate, row: row)
+            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
+                == releasePick
+        )
+    }
+
+    @Test
+    func appliesAStoredUnknownChoice() {
+        let row = pickedRow(
+            for: candidate,
+            placement: .needsYou(
+                group: .noMatch,
+                reason: .disagreement(disagreement: .noMatch)
+            ),
+            picked: .unknown
+        )
+        #expect(
+            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
+                == .unknown
+        )
+    }
+
+    @Test
+    func aRowWithNothingDecidedResumesNothing() {
+        let row = pickedRow(
+            for: candidate,
+            placement: .needsYou(
+                group: .pickAPressing,
+                reason: .disagreement(
+                    disagreement: .severalMatches(count: 4)
+                )
+            ),
+            picked: nil
+        )
+        #expect(
+            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
                 == nil
         )
     }
 
-    @Test func yieldsToAPickAlreadyIn() {
+    @Test
+    func ignoresRowsPastDeciding() {
+        // Done and Skipped rows keep their pick too, and a candidate rebuilt
+        // at launch starts back with nothing settled — placement is the only
+        // thing standing between an imported row and a re-opened commit-able
+        // pane.
+        for placement: BridgeTriagePlacement in [.done, .skipped] {
+            let row = pickedRow(
+                for: candidate,
+                placement: placement,
+                picked: releasePick
+            )
+            #expect(
+                ImportSearchFlow.pickedResume(candidate: candidate, row: row)
+                    == nil
+            )
+        }
+    }
+
+    @Test
+    func yieldsToAPickAlreadyIn() {
         var picked = candidate
         picked.pick = CandidatePick(
             releaseId: "rel-user-chose",
             source: .musicBrainz
         )
+        let row = pickedRow(
+            for: picked,
+            placement: .ready,
+            picked: releasePick
+        )
         #expect(
-            ImportSearchFlow.readyAutoPick(
-                candidate: picked,
-                row: readyRow(for: picked)
-            ) == nil
+            ImportSearchFlow.pickedResume(candidate: picked, row: row) == nil
         )
     }
 
-    @Test func yieldsToAnIdentityAlreadySettled() {
+    @Test
+    func yieldsToAnIdentityAlreadySettled() {
         // A pick that resolved and a folder read as its own tags both settle
-        // the identity choice; neither wants a Ready row seeded over it.
+        // the identity choice; neither wants the stored pick re-applied over
+        // it.
         let settled: [BridgeIdentityChoice] = [
             .exact(releaseId: "rel-picked", source: .musicBrainz),
             .unknown,
@@ -101,32 +152,39 @@ struct ImportSearchFlowReadyAutoPickTests {
         for choice in settled {
             var advanced = candidate
             advanced.identityChoice = choice
+            let row = pickedRow(
+                for: advanced,
+                placement: .ready,
+                picked: releasePick
+            )
             #expect(
-                ImportSearchFlow.readyAutoPick(
-                    candidate: advanced,
-                    row: readyRow(for: advanced)
-                ) == nil
+                ImportSearchFlow.pickedResume(candidate: advanced, row: row)
+                    == nil
             )
         }
     }
 
-    @Test func staysDownAfterAFailedPrefetch() {
+    @Test
+    func staysDownAfterAFailedPrefetch() {
         // Failure clears what the pick had settled and sets `error`; without
-        // this guard the seed would immediately retry the same prefetch, and
-        // on a persistent failure, retry it forever.
+        // this guard the resume would immediately retry the same prefetch,
+        // and on a persistent failure, retry it forever.
         var failed = candidate
         failed.error = "Failed to load release details"
+        let row = pickedRow(
+            for: failed,
+            placement: .ready,
+            picked: releasePick
+        )
         #expect(
-            ImportSearchFlow.readyAutoPick(
-                candidate: failed,
-                row: readyRow(for: failed)
-            ) == nil
+            ImportSearchFlow.pickedResume(candidate: failed, row: row) == nil
         )
     }
 
-    @Test func absentRowSeedsNothing() {
+    @Test
+    func absentRowResumesNothing() {
         #expect(
-            ImportSearchFlow.readyAutoPick(candidate: candidate, row: nil)
+            ImportSearchFlow.pickedResume(candidate: candidate, row: nil)
                 == nil
         )
     }

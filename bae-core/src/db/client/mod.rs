@@ -321,6 +321,7 @@ fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
                 w.title AS work_title,
                 w.disambiguation AS work_disambiguation,
                 w.work_type AS work_type,
+                w.musicbrainz_work_id AS work_musicbrainz_id,
                 w.created_at AS work_created_at,
                 (
                     SELECT wp.parent_work_id
@@ -354,7 +355,8 @@ fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     }
     query.push_str(
         "
-         GROUP BY w.id, w.title, w.disambiguation, w.work_type, w.created_at",
+         GROUP BY w.id, w.title, w.disambiguation, w.work_type, w.musicbrainz_work_id, \
+                  w.created_at",
     );
     if let Some(tail) = tail {
         query.push('\n');
@@ -370,6 +372,7 @@ fn row_to_work_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWorkSummary> 
             title: row.get("work_title")?,
             disambiguation: row.get("work_disambiguation")?,
             work_type: row.get("work_type")?,
+            musicbrainz_work_id: row.get("work_musicbrainz_id")?,
             created_at: rfc3339_column(row, "work_created_at")?,
         },
         parent_work_id: row.get("parent_work_id")?,
@@ -1604,14 +1607,15 @@ fn insert_work_row(conn: &SqlContext<'_, '_>, work: &DbWork, reg: &str) -> Resul
     conn.execute(
         r#"
         INSERT OR IGNORE INTO works (
-            id, title, disambiguation, work_type, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            id, title, disambiguation, work_type, musicbrainz_work_id, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             work.id,
             work.title,
             work.disambiguation,
             work.work_type,
+            work.musicbrainz_work_id,
             reg,
             work.created_at.to_rfc3339()
         ],

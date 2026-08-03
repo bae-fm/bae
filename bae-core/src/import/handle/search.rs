@@ -267,8 +267,12 @@ impl ImportServiceHandle {
             self.library_manager.ids().as_ref(),
         )?;
 
-        let claim = self.claim_for_pick(
-            candidate_key,
+        // The evidence behind the claim survives a restart through the stored
+        // verdict: with no live run the resumed state carries the same
+        // matches, so a disc-ID-proven pick never demotes to "metadata only"
+        // just because the app was reopened.
+        let claim = crate::import::claim_line(
+            &self.identify_state_or_resumed(candidate_key).await?,
             &crate::import::ClaimRelease::from_detail(&detail),
         );
 
@@ -416,6 +420,91 @@ impl ImportServiceHandle {
         crate::import::claim_line(&self.identify_state(candidate_key), release)
     }
 
+    /// Decide a candidate's identity: persist the choice, then build the same
+    /// answer [`Self::candidate_answer`] serves — so a fresh launch renders
+    /// exactly what the click rendered. Persisting comes first: the decision
+    /// is the durable part, and a bundle that fails to build (a manual pick
+    /// whose fetch drops) is re-derived by the next open rather than lost
+    /// with the choice.
+    pub async fn pick_candidate_identity(
+        &self,
+        candidate_key: String,
+        pick: crate::import::IdentityPick,
+    ) -> Result<crate::import::DecidedIdentity, crate::import::ImportError> {
+        self.set_candidate_identity_pick(candidate_key.clone(), pick.clone())
+            .await?;
+        self.answer_for_pick(&candidate_key, pick).await
+    }
+
+    /// The candidate's decided identity read back with everything the pane
+    /// seeds from it, or `None` while nothing is decided — the selection
+    /// query, and the whole of "resume": a stored decision answers exactly
+    /// like the click that made it did.
+    pub async fn candidate_answer(
+        &self,
+        candidate_key: String,
+    ) -> Result<Option<crate::import::DecidedIdentity>, crate::import::ImportError> {
+        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.get_candidate(&candidate_key)
+        else {
+            return Ok(None);
+        };
+        let Some(row) = self
+            .library_manager
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await?
+        else {
+            return Ok(None);
+        };
+        if row.file_edits.revision != candidate.file_edit_revision {
+            // A read racing an edit write: serve nothing rather than mixed
+            // state — the next tick re-asks against the settled row.
+            tracing::debug!(
+                "{candidate_key} pick is at revision {}, candidate at {}; not resuming it",
+                row.file_edits.revision,
+                candidate.file_edit_revision
+            );
+            return Ok(None);
+        }
+        let Some(pick_json) = row.identity_pick.as_ref() else {
+            return Ok(None);
+        };
+        let pick: crate::import::IdentityPick =
+            serde_json::from_str(pick_json).map_err(|error| {
+                crate::import::ImportError::Internal {
+                    detail: format!(
+                        "stored identity pick for {candidate_key} does not decode: {error}"
+                    ),
+                }
+            })?;
+        self.answer_for_pick(&candidate_key, pick).await.map(Some)
+    }
+
+    /// Build the answer a pick stands for — the shared half of the command
+    /// and the query above.
+    async fn answer_for_pick(
+        &self,
+        candidate_key: &str,
+        pick: crate::import::IdentityPick,
+    ) -> Result<crate::import::DecidedIdentity, crate::import::ImportError> {
+        match pick {
+            crate::import::IdentityPick::Release { source, release_id } => {
+                let prefetch = self
+                    .prefetch_release(candidate_key, &release_id, source)
+                    .await?;
+                Ok(crate::import::DecidedIdentity::Release {
+                    source,
+                    release_id,
+                    prefetch,
+                })
+            }
+            crate::import::IdentityPick::Unknown => {
+                let (seed, mapping) = self.unknown_mapping(candidate_key.to_string()).await?;
+                Ok(crate::import::DecidedIdentity::Unknown { seed, mapping })
+            }
+        }
+    }
+
     /// A candidate's identify state, or `Idle` for a key the service has
     /// recorded nothing against. Absence is the designed initial state, not an
     /// error: a folder whose pipeline hasn't run and a re-identify key opened
@@ -430,5 +519,66 @@ impl ImportServiceHandle {
                 crate::identify::IdentifyState::Idle
             }
         }
+    }
+
+    /// A candidate's identify state with the stored verdict standing in when
+    /// no run is live — the restart case, where the runtime map is empty but
+    /// the answer is on disk. `Idle` only when there is genuinely nothing.
+    pub(crate) async fn identify_state_or_resumed(
+        &self,
+        candidate_key: &str,
+    ) -> Result<crate::identify::IdentifyState, crate::import::ImportError> {
+        let live = self.identify_state(candidate_key);
+        if !matches!(live, crate::identify::IdentifyState::Idle) {
+            return Ok(live);
+        }
+        Ok(self
+            .resumed_identify_state(candidate_key)
+            .await?
+            .unwrap_or(crate::identify::IdentifyState::Idle))
+    }
+
+    /// The identify state a candidate's stored verdict stands back up as,
+    /// with a live library check of every release it names — or `None` when
+    /// nothing is stored (or the key is not a scanned folder candidate) and a
+    /// run is the only way to answer it.
+    pub(crate) async fn resumed_identify_state(
+        &self,
+        candidate_key: &str,
+    ) -> Result<Option<crate::identify::IdentifyState>, crate::import::ImportError> {
+        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.get_candidate(candidate_key)
+        else {
+            return Ok(None);
+        };
+        let Some(row) = self
+            .library_manager
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await?
+        else {
+            return Ok(None);
+        };
+        let Some(verdict) = crate::identify::verdict::decode_stored(&row)
+            .map_err(|detail| crate::import::ImportError::Internal { detail })?
+        else {
+            return Ok(None);
+        };
+        let checks: Vec<crate::db::LibraryCheck> = verdict
+            .named_releases()
+            .into_iter()
+            .map(crate::db::LibraryCheck::from)
+            .collect();
+        let statuses = self
+            .library_manager
+            .check_releases_in_library(&checks)
+            .await?;
+        let status_of = |result: &crate::import::search::MetadataResult| {
+            statuses
+                .iter()
+                .find(|status| status.release_id == result.release_id)
+                .cloned()
+                .expect("every release the verdict names was just checked")
+        };
+        Ok(Some(verdict.resume_state(&status_of)))
     }
 }

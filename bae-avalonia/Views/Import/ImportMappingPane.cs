@@ -127,9 +127,9 @@ internal sealed class ImportMappingPane : UserControl
         ReadCandidateMapping();
         Render();
 
-        if (ReadyAutoPick.From(row, SeedState) is { } matched)
+        if (PickedResume.From(row, SeedState) is not null)
         {
-            await Prefetch(matched.ReleaseId, matched.Evidence.Source);
+            await RefreshDecidedIdentity();
             return;
         }
         // Every other row lands on the search editor, seeded with the matches
@@ -137,6 +137,16 @@ internal sealed class ImportMappingPane : UserControl
         // Done or Skipped row is not asking anything.
         _searchOpen = true;
         Render();
+
+        // An idle identify state under an answered row means the session's
+        // runtime hasn't seen this candidate yet — its answer lives in the
+        // stored verdict. Asking core to identify resumes that verdict
+        // instantly with no network (an unanswered folder starts a real run),
+        // and the matches arrive on the queue tick the broadcast causes.
+        if (_candidate is { RowStatus.Kind: "" })
+        {
+            _ = _import.AutoIdentify(row.CandidateKey);
+        }
     }
 
     private MappingPaneSeedState SeedState =>
@@ -153,12 +163,36 @@ internal sealed class ImportMappingPane : UserControl
         {
             return;
         }
-        if (ReadyAutoPick.From(TriageListModel.Row(_import.TriageQueue, key), SeedState)
-            is { } matched)
+        if (PickedResume.From(TriageListModel.Row(_import.TriageQueue, key), SeedState)
+            is not null)
         {
-            _ = Prefetch(matched.ReleaseId, matched.Evidence.Source);
+            _ = RefreshDecidedIdentity();
+            return;
         }
+        // The identify answer for the folder under the pane can land after it
+        // — resumed from a stored verdict, or settled by a live run — and it
+        // arrives as a queue tick, not as a click. Re-read the candidate so
+        // the search editor offers the current matches. Re-rendered only when
+        // the answer actually changed: a re-render rebuilds the editor's
+        // controls, and doing that on every tick would drop focus mid-typing.
+        if (_prefetch is not null || _prefetching)
+        {
+            return;
+        }
+        var refreshed = _import.Candidate(key);
+        if (IdentifyFingerprint(refreshed) == IdentifyFingerprint(_candidate))
+        {
+            return;
+        }
+        _candidate = refreshed;
+        Render();
     }
+
+    private static string IdentifyFingerprint(ImportCandidate? candidate) =>
+        candidate is null
+            ? string.Empty
+            : candidate.RowStatus.Kind + "|"
+                + string.Join(",", candidate.Matches.Select(choice => choice.ReleaseId));
 
     /// <summary>Raised when the pane empties itself — a committed folder is no
     /// longer a candidate to map, so the row that put it here stops reading as
@@ -225,12 +259,36 @@ internal sealed class ImportMappingPane : UserControl
         }
     }
 
-    // Picking a release recomputes the whole mapping against the new tracklist
-    // and fills the table's BECOMES column live: the pane stays open, the
-    // candidate stays selected, and nothing is replaced by a placeholder.
-    private async Task Prefetch(string releaseId, BridgeMetadataSource source)
+    // Picking a release — or the folder's own tags — recomputes the whole
+    // mapping against the decided tracklist and fills the table's BECOMES
+    // column live: the pane stays open, the candidate stays selected, and
+    // nothing is replaced by a placeholder.
+
+    /// <summary>Decide the candidate's identity: core persists the choice and
+    /// returns the same seeded edit a later selection's query serves, so a
+    /// fresh launch renders exactly what this click rendered.</summary>
+    private Task DecideIdentity(BridgeIdentityPick pick) =>
+        ApplyIdentity(async key =>
+        {
+            var (current, result) = await _app.Import.PickCandidateIdentity(key, pick);
+            return (current, result.Decided, false, result.Error);
+        });
+
+    /// <summary>Re-apply the identity already decided for the candidate — a
+    /// selection finding a stored decision, or a shape change re-deriving
+    /// under one. Nothing here re-persists: the decision is already stored,
+    /// which is where it came from.</summary>
+    private Task RefreshDecidedIdentity() =>
+        ApplyIdentity(async key =>
+        {
+            var (current, result) = await _app.Import.CandidateDecidedIdentity(key);
+            return (current, result.Decided, result.Undecided, result.Error);
+        });
+
+    private async Task ApplyIdentity(
+        Func<string, Task<(bool Current, DecidedEdit? Decided, bool Undecided, string? Error)>> operation)
     {
-        if (_key is not { } key || _candidate is not { } candidate)
+        if (_key is not { } key || _candidate is null)
         {
             return;
         }
@@ -239,78 +297,55 @@ internal sealed class ImportMappingPane : UserControl
         Render();
         try
         {
-            var (current, result) = await _app.Import.PrefetchCandidateEdit(
-                key, releaseId, source, candidate.FolderPath);
+            var (current, decided, undecided, error) = await operation(key);
             if (!current)
             {
                 return;
             }
-            if (result.Prefetched is not { } prefetched)
+            if (undecided)
+            {
+                // The stored decision vanished between the row and the read —
+                // an edit raced it. Stay undecided; the next tick re-asks.
+                return;
+            }
+            if (decided is null)
             {
                 _prefetchFailed = true;
-                _app.ShowError(Loc.Chrome("import.error.load_release"), result.Error ?? Loc.Chrome("import.failed"));
+                _app.ShowError(Loc.Chrome("import.error.load_release"), error ?? Loc.Chrome("import.failed"));
                 return;
             }
 
-            // A cover picked for one release does not carry to another;
-            // recomputing the mapping against the same release keeps it.
-            if (_releaseId != releaseId)
+            if (decided.Release is { } release)
             {
-                _cover = null;
-            }
-            Seed(prefetched);
-            _identity = ImportIdentity.Release;
-            _releaseId = releaseId;
-            _releaseSource = source;
-            _searchOpen = false;
-            Render();
+                // A cover picked for one release does not carry to another;
+                // recomputing the mapping against the same release keeps it.
+                if (_releaseId != release.ReleaseId)
+                {
+                    _cover = null;
+                }
+                Seed(decided.Edit);
+                _identity = ImportIdentity.Release;
+                _releaseId = release.ReleaseId;
+                _releaseSource = release.Source;
+                _searchOpen = false;
+                Render();
 
-            // Advisory, not a gate — a failed check leaves the banner absent.
-            var (statusCurrent, status) = await _app.Import.CheckReleaseInLibrary(releaseId);
-            if (statusCurrent && status.Status is { ReleaseInLibrary: true } inLibrary)
+                // Advisory, not a gate — a failed check leaves the banner absent.
+                var (statusCurrent, status) = await _app.Import.CheckReleaseInLibrary(release.ReleaseId);
+                if (statusCurrent && status.Status is { ReleaseInLibrary: true } inLibrary)
+                {
+                    _libraryStatus = inLibrary;
+                    Render();
+                }
+            }
+            else
             {
-                _libraryStatus = inLibrary;
+                Seed(decided.Edit);
+                _identity = ImportIdentity.Unknown;
+                _libraryStatus = null;
+                _searchOpen = false;
                 Render();
             }
-        }
-        finally
-        {
-            _prefetching = false;
-            Render();
-        }
-    }
-
-    // The import that claims nothing: bae-core reads the folder's own files —
-    // their embedded tags and the track sheets they come with — into a release
-    // and a mapping of the folder's audio onto its tracks. The table carries no
-    // tally, because the tracklist and the folder are the same account.
-    private async Task PrefetchUnidentified()
-    {
-        if (_candidate is not { } candidate)
-        {
-            return;
-        }
-        _prefetching = true;
-        _prefetchFailed = false;
-        Render();
-        try
-        {
-            var (current, result) = await _app.Import.PrefetchUnknownEdit(candidate.Key);
-            if (!current)
-            {
-                return;
-            }
-            if (result.Prefetched is not { } prefetched)
-            {
-                _prefetchFailed = true;
-                _app.ShowError(Loc.Chrome("import.error.load_release"), result.Error ?? Loc.Chrome("import.failed"));
-                return;
-            }
-            Seed(prefetched);
-            _identity = ImportIdentity.Unknown;
-            _libraryStatus = null;
-            _searchOpen = false;
-            Render();
         }
         finally
         {
@@ -335,13 +370,9 @@ internal sealed class ImportMappingPane : UserControl
     // editing — which is exactly why it replaces them.
     private Task Reprefetch()
     {
-        if (_identity == ImportIdentity.Unknown)
+        if (_identity == ImportIdentity.Unknown || _releaseId is not null)
         {
-            return PrefetchUnidentified();
-        }
-        if (_releaseId is { } releaseId)
-        {
-            return Prefetch(releaseId, _releaseSource);
+            return RefreshDecidedIdentity();
         }
         ReadCandidateMapping();
         Render();
@@ -356,12 +387,12 @@ internal sealed class ImportMappingPane : UserControl
     {
         if (identity == ImportIdentity.Unknown)
         {
-            await PrefetchUnidentified();
+            await DecideIdentity(new BridgeIdentityPick.Unknown());
             return;
         }
         if (_releaseId is { } releaseId)
         {
-            await Prefetch(releaseId, _releaseSource);
+            await DecideIdentity(new BridgeIdentityPick.Release(_releaseSource, releaseId));
             return;
         }
         _identity = ImportIdentity.Release;
@@ -405,21 +436,7 @@ internal sealed class ImportMappingPane : UserControl
             sections.Children.Add(table);
         }
 
-        var scroller = new ScrollViewer { Content = sections };
-        var column = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
-        Grid.SetRow(scroller, 0);
-        column.Children.Add(scroller);
-        // Shown exactly when there is something to commit, which is the
-        // precondition the commit itself reads — a failed re-pick leaves the
-        // table and the album fields in place but nothing settled to commit
-        // them under.
-        if (_prefetch is not null)
-        {
-            var bar = BuildCommitBar();
-            Grid.SetRow(bar, 1);
-            column.Children.Add(bar);
-        }
-        _content.Content = column;
+        _content.Content = new ScrollViewer { Content = sections };
     }
 
     private static Control EmptyState()
@@ -443,6 +460,10 @@ internal sealed class ImportMappingPane : UserControl
     private ImportIdentitySection BuildIdentity() => new()
     {
         Identity = _identity,
+        FolderName = _candidate?.Name ?? string.Empty,
+        FormatLabel = _candidate?.Files?.FormatLabel ?? string.Empty,
+        HasSettled = _prefetch is not null || _identity == ImportIdentity.Unknown,
+        CommitRow = _prefetch is null ? null : BuildCommitRow(),
         Title = _albumTitle.Length > 0 ? _albumTitle : _candidate?.Name ?? string.Empty,
         AlbumTitle = _albumTitle,
         AlbumArtistText = _albumArtistText,
@@ -551,7 +572,7 @@ internal sealed class ImportMappingPane : UserControl
                 return;
             }
             var chosen = choices[results.SelectedIndex];
-            await Prefetch(chosen.ReleaseId, chosen.Source);
+            await DecideIdentity(new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId));
         };
         column.Children.Add(results);
 
@@ -759,20 +780,20 @@ internal sealed class ImportMappingPane : UserControl
         _dialogs.ShowFolderImages(images, path);
     }
 
-    // ── The commit bar ───────────────────────────────────────────────────────
+    // ── The commit row ───────────────────────────────────────────────────────
 
-    private TextBlock? _willWriteText;
     private TextBlock? _unansweredText;
 
-    private Control BuildCommitBar()
+    /// <summary>The identity card's foot: what is still unanswered, storage,
+    /// and the Import action — the commit lives on the card that states what
+    /// will be committed.</summary>
+    private Control BuildCommitRow()
     {
         var (settingsCurrent, settings) = _app.Settings.GetSettings();
         var hasCloudHome = settingsCurrent && settings.HasCloudHome;
 
         var counts = new StackPanel { Spacing = 1, VerticalAlignment = VerticalAlignment.Center };
-        _willWriteText = ImportPaneUi.Cell(string.Empty);
         _unansweredText = ImportPaneUi.Cell(string.Empty, secondary: true);
-        counts.Children.Add(_willWriteText);
         counts.Children.Add(_unansweredText);
         RefreshCommitCounts();
 
@@ -818,23 +839,17 @@ internal sealed class ImportMappingPane : UserControl
         var column = new StackPanel { Spacing = 6 };
         column.Children.Add(row);
         column.Children.Add(_commitError);
-
-        var bar = new Border { Padding = new Thickness(20, 12), Child = column, BorderThickness = new Thickness(0, 1, 0, 0) };
-        bar[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
-        bar[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
-        return bar;
+        return column;
     }
 
-    // What committing now would write, and what is unanswered — both restated on
-    // every keystroke, because a title typed into an unmatched row is what moves
-    // the second number.
+    // What is still unanswered, restated on every keystroke, because a title
+    // typed into an unmatched row is what moves the number.
     private void RefreshCommitCounts()
     {
-        if (_mapping is not { } mapping || _willWriteText is null || _unansweredText is null)
+        if (_mapping is not { } mapping || _unansweredText is null)
         {
             return;
         }
-        _willWriteText.Text = Loc.Core("ui.import.commit.will_write", "count", (long)mapping.WillWriteCount());
         var unanswered = mapping.UnansweredCount();
         _unansweredText.Text = unanswered == 0
             ? string.Empty

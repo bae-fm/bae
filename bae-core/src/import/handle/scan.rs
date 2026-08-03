@@ -100,13 +100,20 @@ impl ImportServiceHandle {
         use crate::import::folder_scanner::{SheetBindingOffer, UserSheetBinding};
 
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key)?;
-        if files
+        let Some(bound) = files
             .track_sheets()
-            .all(|sheet| sheet.file.relative_path != sheet_file_id)
-        {
+            .find(|sheet| sheet.file.relative_path == sheet_file_id)
+            .map(|sheet| sheet.binding.describes().map(str::to_string))
+        else {
             return Err(crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
             });
+        };
+        // Same rule as `set_sheet_disc`: re-stating the binding in force
+        // decides nothing, and must not clear the verdict.
+        if bound == audio_file_id {
+            debug!("{sheet_file_id} already binds {audio_file_id:?}; nothing to write");
+            return Ok(());
         }
 
         let decision = match audio_file_id {
@@ -182,19 +189,58 @@ impl ImportServiceHandle {
             });
         }
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key)?;
-        if files
+        let Some(in_force) = files
             .track_sheets()
-            .all(|sheet| sheet.file.relative_path != sheet_file_id)
-        {
+            .find(|sheet| sheet.file.relative_path == sheet_file_id)
+            .map(|sheet| sheet.disc)
+        else {
             return Err(crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
             });
+        };
+        // Re-stating the disc the sheet already holds decides nothing — the
+        // menu fires on every selection, including of the current item — and
+        // a write here would clear the stored verdict and re-identify a
+        // folder whose shape did not change.
+        if in_force == disc {
+            debug!("{sheet_file_id} is already disc {disc:?}; nothing to write");
+            return Ok(());
         }
 
         self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
             edits.sheet_discs.set(sheet_file_id, disc);
         })
         .await
+    }
+
+    /// Record the identity the user chose for a candidate — the pressing they
+    /// picked, or the decision to read the folder's own tags — keyed by the
+    /// folder's current content hash, so selection reopens the pane answered
+    /// after a restart. Only explicit choices land here: a Ready row's
+    /// auto-pick is derived from its stored verdict and re-derives on every
+    /// open, so it never writes one.
+    pub(crate) async fn set_candidate_identity_pick(
+        &self,
+        candidate_key: String,
+        pick: crate::import::IdentityPick,
+    ) -> Result<(), crate::import::ImportError> {
+        let Some((files, _)) = self.actionable_candidate_files(&candidate_key) else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let pick_json =
+            serde_json::to_string(&pick).map_err(|e| crate::import::ImportError::Internal {
+                detail: format!("encoding identity pick: {e}"),
+            })?;
+        self.library_manager
+            .save_candidate_identity_pick(&files.content_hash(), &candidate_key, &pick_json)
+            .await?;
+        send_event(
+            &self.event_tx,
+            ImportEvent::Scan(ScanEvent::CandidateIdentityPicked { candidate_key }),
+        );
+        Ok(())
     }
 
     /// Put one of a candidate's files in a role, or put it back in the one the
@@ -239,6 +285,12 @@ impl ImportServiceHandle {
             return Err(crate::import::ImportError::FileRole {
                 detail: format!("{file_id} is not the folder's audio"),
             });
+        }
+        // Same rule as `set_sheet_disc`: re-stating the role in force decides
+        // nothing, and must not clear the verdict.
+        if entry.role_choice() == Some(choice) {
+            debug!("{file_id} is already {choice:?}; nothing to write");
+            return Ok(());
         }
 
         self.write_file_edits(&candidate_key, files, offered_revision, |edits| {

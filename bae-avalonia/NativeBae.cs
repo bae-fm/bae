@@ -847,43 +847,67 @@ internal static class NativeBae
 
     internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
 
-    internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchCandidateEdit(
+    /// <summary>Decide the candidate's identity: persist the choice and come
+    /// back with the seeded edit — the same payload the selection query
+    /// serves, so a fresh launch renders exactly what the click rendered.</summary>
+    internal static (DecidedEdit? Decided, string? Error) PickCandidateIdentity(
         AppHandle handle,
         string candidateKey,
-        string releaseId,
-        BridgeMetadataSource source,
-        string folderPath) =>
-        CaptureBridgeValue(() => PrefetchedEdit(handle, candidateKey, releaseId, source, folderPath));
+        BridgeIdentityPick pick) =>
+        CaptureBridgeValue(() =>
+            DecidedEdit(handle, candidateKey, Await(() => handle.PickCandidateIdentity(candidateKey, pick))));
+
+    /// <summary>The candidate's decided identity read back, or null while
+    /// nothing is decided — what selecting a row asks.</summary>
+    internal static (DecidedEdit? Decided, bool Undecided, string? Error) CandidateDecidedIdentity(
+        AppHandle handle,
+        string candidateKey)
+    {
+        var (value, error) = CaptureBridgeValue(() =>
+        {
+            var answer = Await(() => handle.CandidateDecidedIdentity(candidateKey));
+            return answer is null ? null : DecidedEdit(handle, candidateKey, answer);
+        });
+        return (value, value is null && error is null, error);
+    }
+
+    /// <summary>Map either identity's answer onto the pane's edit shape; the
+    /// discriminator rides along so the pane knows which side it seeds.</summary>
+    private static DecidedEdit DecidedEdit(
+        AppHandle handle,
+        string candidateKey,
+        BridgeDecidedIdentity answer) => answer switch
+        {
+            BridgeDecidedIdentity.Release release => new DecidedEdit
+            {
+                Release = (release.Source, release.ReleaseId),
+                Edit = new PrefetchedEdit
+                {
+                    Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(release.Prefetch.Seed, "prefetch-track"),
+                    RemoteCovers = release.Prefetch.Detail.CoverArt.ToList(),
+                    LocalArtwork = LocalArtwork(handle.GetCandidate(candidateKey)),
+                    Claim = release.Prefetch.Claim,
+                    Mapping = release.Prefetch.Mapping,
+                },
+            },
+            BridgeDecidedIdentity.Unknown unknown => new DecidedEdit
+            {
+                Release = null,
+                Edit = new PrefetchedEdit
+                {
+                    Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(unknown.Seed, "unknown-track"),
+                    Mapping = unknown.Mapping,
+                    LocalArtwork = LocalArtwork(handle.GetCandidate(candidateKey)),
+                },
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(answer), answer, "Unknown decided identity"),
+        };
 
     /// <summary>What picking a release under a candidate claims, and where its
     /// metadata comes from. The re-identify dialog's path: it commits straight
     /// from the picked row, so it never prefetches.</summary>
     internal static BridgeClaimLine ClaimForPick(AppHandle handle, string candidateKey, BridgeMetadataResult result) =>
         handle.ClaimForPick(candidateKey, result);
-
-    /// <summary>
-    /// The Unknown seed: the release the folder's own files describe, and the
-    /// mapping that lands each of its audio units on one of those tracks. No
-    /// source release, so no remote covers and no claim — only the folder's
-    /// local artwork is offered.
-    /// </summary>
-    internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchUnknownEdit(
-        AppHandle handle, string candidateKey) =>
-        CaptureBridgeValue(() =>
-        {
-            var snapshot = handle.GetCandidate(candidateKey);
-            if (snapshot is not BridgeImportCandidateSnapshot.Folder)
-            {
-                throw new InvalidOperationException($"Folder candidate '{candidateKey}' is unavailable");
-            }
-            var unknown = Await(() => handle.UnknownMapping(candidateKey));
-            return new PrefetchedEdit
-            {
-                Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(unknown.Seed, "unknown-track"),
-                Mapping = unknown.Mapping,
-                LocalArtwork = LocalArtwork(snapshot),
-            };
-        });
 
     /// <summary>The mapping table for a candidate nobody has picked a release
     /// for: every source unit the folder offers, with what it becomes left
@@ -1177,27 +1201,6 @@ internal static class NativeBae
         results.Groups
             .SelectMany(group => group.Pressings.Select(pressing => new ReleaseCandidateChoice(group, pressing)))
             .ToList();
-
-    private static PrefetchedEdit PrefetchedEdit(
-        AppHandle handle,
-        string candidateKey,
-        string releaseId,
-        BridgeMetadataSource source,
-        string folderPath)
-    {
-        var prefetch = Await(() => handle.PrefetchRelease(candidateKey, releaseId, source));
-        return new PrefetchedEdit
-        {
-            // The seed arrives masked for the claim the pick settled, so the
-            // form binds it directly.
-            Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(prefetch.Seed, "prefetch-track"),
-            RemoteCovers = prefetch.Detail.CoverArt.ToList(),
-            LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
-            Claim = prefetch.Claim,
-            Mapping = prefetch.Mapping,
-        };
-    }
-
 
     private static List<LocalArtwork> LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
         snapshot is BridgeImportCandidateSnapshot.Folder folder

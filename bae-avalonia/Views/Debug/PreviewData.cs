@@ -157,7 +157,8 @@ internal static class PreviewData
                             Placement: new BridgeTriagePlacement.Ready(),
                             Matched: null,
                             Selectable: true,
-                            ImportStatus: null))
+                            ImportStatus: null,
+                            Picked: null))
                 }),
         },
         Counts: new BridgeTriageTabCounts(
@@ -179,6 +180,7 @@ internal static class PreviewData
             Placement: new BridgeTriagePlacement.Ready(),
             Matched: null,
             Selectable: true,
-            ImportStatus: null);
+            ImportStatus: null,
+            Picked: null);
 }
 #endif

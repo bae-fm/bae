@@ -190,6 +190,39 @@ pub struct MetadataRef {
     pub source: MetadataSource,
 }
 
+/// The identity the user chose for a folder candidate — the pressing they
+/// picked, or the decision to read the folder's own tags. Persisted on
+/// `import_candidate_state` (JSON, `identity_pick`) so an answered pane
+/// reopens answered after a restart; the claim, the seed, and the mapping are
+/// all re-derived from it against the archived documents, never stored.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IdentityPick {
+    Release {
+        source: MetadataSource,
+        release_id: String,
+    },
+    Unknown,
+}
+
+/// A candidate's decided identity with everything the pane seeds from it —
+/// the one payload the pick command and the selection query both return, so
+/// a fresh launch renders exactly what the click rendered. Not persisted:
+/// derived from the stored [`IdentityPick`] and the archived documents on
+/// every read.
+#[derive(Debug, Clone)]
+pub enum DecidedIdentity {
+    Release {
+        source: MetadataSource,
+        release_id: String,
+        prefetch: crate::import::search::ImportReleasePrefetch,
+    },
+    /// The folder read as its own files describe it.
+    Unknown {
+        seed: ReleaseUserEdit,
+        mapping: crate::import::mapping::MappingTable,
+    },
+}
+
 impl MetadataRef {
     pub fn new(id: impl Into<String>, source: MetadataSource) -> Self {
         Self {

@@ -84,10 +84,15 @@ pub struct DbTrackArtist {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbWork {
+    /// Minted, never a source id — a MusicBrainz work MBID is often a name-based
+    /// (version 3) UUID, which the sync layer refuses on a synced row.
     pub id: String,
     pub title: String,
     pub disambiguation: Option<String>,
     pub work_type: Option<String>,
+    /// The MusicBrainz work this row came from — the only source of works — and
+    /// what an import dedups on.
+    pub musicbrainz_work_id: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -375,6 +380,12 @@ pub struct NewImportCandidateVerdict {
     pub probed_total_duration_ms: i64,
     /// File-decision revision used to derive this verdict.
     pub expected_edit_revision: u64,
+    /// `import::IdentityPick` JSON, written with the verdict when the verdict
+    /// itself decides the identity — a single settled match IS the pick, made
+    /// by identification instead of by a click. It fills a blank only: a pick
+    /// a person already made outranks it and stays. `None` decides nothing
+    /// (several matches, a conflict, nothing found).
+    pub identity_pick: Option<String>,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
@@ -406,6 +417,10 @@ pub struct DbImportCandidateState {
     /// The user's decisions about this candidate's files: which audio each
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
+    /// The identity decided for this candidate, `import::IdentityPick`
+    /// JSON-encoded, or `None` while nothing is decided. Survives file
+    /// decisions — the choice names a release, not a shape.
+    pub identity_pick: Option<String>,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -661,24 +676,6 @@ impl DbTrackArtist {
             track_id: track_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
-            created_at: now,
-        }
-    }
-}
-
-impl DbWork {
-    pub fn new(
-        work_id: &str,
-        title: &str,
-        disambiguation: Option<String>,
-        work_type: Option<String>,
-        now: DateTime<Utc>,
-    ) -> Self {
-        DbWork {
-            id: work_id.to_string(),
-            title: title.to_string(),
-            disambiguation,
-            work_type,
             created_at: now,
         }
     }

@@ -61,15 +61,15 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void ActivatingAReadyRowPrefetchesItsSettledMatch()
     {
-        var prefetched = new List<string>();
+        var resumed = new List<string>();
         var view = BuildView(
             MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Ready),
             BridgeTriageTab.Ready,
-            prefetched);
+            resumed);
 
         RaiseTap(CandidateRow(view));
 
-        Assert.Equal(new[] { "rel-matched" }, prefetched);
+        Assert.Equal(new[] { CandidateKey }, resumed);
     }
 
     // A Done row holds a match as well, and re-showing an imported folder must
@@ -77,15 +77,15 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void ActivatingADoneRowPrefetchesNothing()
     {
-        var prefetched = new List<string>();
+        var resumed = new List<string>();
         var view = BuildView(
             MatchedQueue(new BridgeTriagePlacement.Done(), BridgeTriageTab.Done),
             BridgeTriageTab.Done,
-            prefetched);
+            resumed);
 
         RaiseTap(CandidateRow(view));
 
-        Assert.Empty(prefetched);
+        Assert.Empty(resumed);
     }
 
     // Identify can settle while the folder is already under the pane. The row
@@ -94,7 +94,7 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void AVerdictSettlingToReadyPrefetchesUnderTheOpenPane()
     {
-        var prefetched = new List<string>();
+        var resumed = new List<string>();
         var (view, app) = BuildSection(
             MatchedQueue(
                 new BridgeTriagePlacement.NeedsYou(
@@ -102,28 +102,28 @@ public sealed class ImportSectionViewTests
                     new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running)),
                 BridgeTriageTab.NeedsYou),
             BridgeTriageTab.NeedsYou,
-            prefetched);
+            resumed);
         RaiseTap(CandidateRow(view));
-        Assert.Empty(prefetched);
+        Assert.Empty(resumed);
 
         app.ImportStore.SeedPreview(
             MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Ready),
             PreviewData.ImportWatchedFolders,
             BridgeTriageTab.NeedsYou);
 
-        Assert.Equal(new[] { "rel-matched" }, prefetched);
+        Assert.Equal(new[] { CandidateKey }, resumed);
     }
 
     private static ImportSectionView BuildView(
         BridgeTriageQueue queue,
         BridgeTriageTab activeTab = BridgeTriageTab.Ready,
-        List<string>? prefetched = null) =>
-        BuildSection(queue, activeTab, prefetched).View;
+        List<string>? resumed = null) =>
+        BuildSection(queue, activeTab, resumed).View;
 
     private static (ImportSectionView View, AppService App) BuildSection(
         BridgeTriageQueue queue,
         BridgeTriageTab activeTab = BridgeTriageTab.Ready,
-        List<string>? prefetched = null)
+        List<string>? resumed = null)
     {
         // Everything below constructs controls, which is only legal on the
         // headless session's dispatcher thread — [AvaloniaFact] is what puts a
@@ -146,10 +146,11 @@ public sealed class ImportSectionViewTests
                 true,
                 ((BridgeMappingTable?)new BridgeMappingTable(
                     Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null)),
-            PrefetchCandidateEdit = (_, releaseId, _, _) =>
+            CandidateDecidedIdentity = key =>
             {
-                prefetched?.Add(releaseId);
-                return Task.FromResult((true, ((PrefetchedEdit?)null, (string?)"stub")));
+                resumed?.Add(key);
+                return Task.FromResult(
+                    (true, ((DecidedEdit?)null, Undecided: false, (string?)"stub")));
             },
         };
         var playback = new PlaybackService
@@ -213,7 +214,14 @@ public sealed class ImportSectionViewTests
                                     "rel-matched",
                                     BridgeMetadataSource.MusicBrainz)),
                             Selectable: placement is BridgeTriagePlacement.Ready,
-                            ImportStatus: null)),
+                            ImportStatus: null,
+                            Picked: placement
+                                is BridgeTriagePlacement.Ready
+                                    or BridgeTriagePlacement.Done
+                                ? new BridgeIdentityPick.Release(
+                                    BridgeMetadataSource.MusicBrainz,
+                                    "rel-matched")
+                                : null)),
                 }),
         },
         Counts: new BridgeTriageTabCounts(

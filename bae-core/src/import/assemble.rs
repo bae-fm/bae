@@ -21,7 +21,7 @@ use crate::import::types::{MetadataSource, ReleaseIdentity};
 use crate::import::{ParsedAlbum, ParsedWorkGraph};
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdProvider};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tracing::debug;
 
 /// A reference to an artist as a source credits it, before any DB id exists.
@@ -52,8 +52,11 @@ pub(crate) enum PartDirection {
 /// source→IR mapper drops malformed relations (and logs them), so the assembler
 /// never has to.
 pub(crate) struct WorkNode {
-    /// Source work id; used verbatim as `DbWork.id`.
-    pub id: String,
+    /// The MusicBrainz work this node describes. Identifies the work within the
+    /// graph and across imports; the assembler mints the `works` row id
+    /// separately, because an MBID is often a version-3 UUID the sync layer
+    /// refuses on a synced row.
+    pub musicbrainz_work_id: String,
     pub title: String,
     pub disambiguation: Option<String>,
     pub work_type: Option<String>,
@@ -79,7 +82,7 @@ pub(crate) enum WorkEvent {
 /// a repeat reference.
 pub(crate) enum WorkGraphRef {
     Expanded(WorkNode),
-    AlreadyExpanded { id: String },
+    AlreadyExpanded { musicbrainz_work_id: String },
 }
 
 /// One track-scoped event, in source order. Order determines artist-pool
@@ -250,14 +253,44 @@ struct WorkPools<'a> {
     works: &'a mut Vec<DbWork>,
     work_artists: &'a mut Vec<DbWorkArtist>,
     work_parts: &'a mut Vec<DbWorkPart>,
-    seen_works: &'a mut HashSet<String>,
+    /// MusicBrainz work id → the `works` row id minted for it. Also the
+    /// "already emitted its row" set: a work is in here exactly once its row is
+    /// in `works`.
+    work_row_ids: &'a mut HashMap<String, String>,
     expanded_works: &'a mut HashSet<String>,
 }
 
+/// Link `child_work_id` under `parent_work_id`, unless the pair is already
+/// linked. Both are minted row ids.
+fn push_work_part(
+    pools: &mut WorkPools,
+    parent_work_id: &str,
+    child_work_id: &str,
+    source: MetadataSource,
+    ids: &dyn IdProvider,
+    now: DateTime<Utc>,
+) {
+    if pools
+        .work_parts
+        .iter()
+        .any(|part| part.parent_work_id == parent_work_id && part.child_work_id == child_work_id)
+    {
+        return;
+    }
+    pools.work_parts.push(DbWorkPart::new(
+        parent_work_id,
+        child_work_id,
+        pools.work_parts.len() as i32,
+        source,
+        ids.new_id(),
+        now,
+    ));
+}
+
 /// Fold a validated [`WorkNode`] into the work graph: mint the work row once,
-/// link it to `parent` if given, then expand its events once. `seen_works` /
-/// `expanded_works` are release-global; `work_artists` / `work_parts` positions
-/// are the running pool lengths.
+/// link it to `parent` if given, then expand its events once. Returns the work's
+/// minted row id. `work_row_ids` / `expanded_works` are release-global;
+/// `work_artists` / `work_parts` positions are the running pool lengths.
 fn push_work_graph(
     node: &WorkNode,
     parent: Option<&str>,
@@ -265,36 +298,36 @@ fn push_work_graph(
     pools: &mut WorkPools,
     ids: &dyn IdProvider,
     now: DateTime<Utc>,
-) {
-    if pools.seen_works.insert(node.id.clone()) {
-        pools.works.push(DbWork::new(
-            &node.id,
-            &node.title,
-            node.disambiguation.clone(),
-            node.work_type.clone(),
-            now,
-        ));
-    }
+) -> String {
+    let work_id = match pools.work_row_ids.get(&node.musicbrainz_work_id) {
+        Some(work_id) => work_id.clone(),
+        None => {
+            let work_id = ids.new_id();
+            pools
+                .work_row_ids
+                .insert(node.musicbrainz_work_id.clone(), work_id.clone());
+            pools.works.push(DbWork {
+                id: work_id.clone(),
+                title: node.title.clone(),
+                disambiguation: node.disambiguation.clone(),
+                work_type: node.work_type.clone(),
+                musicbrainz_work_id: node.musicbrainz_work_id.clone(),
+                created_at: now,
+            });
+            work_id
+        }
+    };
 
     if let Some(parent_work_id) = parent {
-        if !pools
-            .work_parts
-            .iter()
-            .any(|part| part.parent_work_id == parent_work_id && part.child_work_id == node.id)
-        {
-            pools.work_parts.push(DbWorkPart::new(
-                parent_work_id,
-                &node.id,
-                pools.work_parts.len() as i32,
-                source,
-                ids.new_id(),
-                now,
-            ));
-        }
+        push_work_part(pools, parent_work_id, &work_id, source, ids, now);
     }
 
-    if node.events.is_empty() || !pools.expanded_works.insert(node.id.clone()) {
-        return;
+    if node.events.is_empty()
+        || !pools
+            .expanded_works
+            .insert(node.musicbrainz_work_id.clone())
+    {
+        return work_id;
     }
 
     for event in &node.events {
@@ -308,10 +341,10 @@ fn push_work_graph(
                     now,
                 );
                 if !pools.work_artists.iter().any(|link| {
-                    link.work_id == node.id && link.artist_id == artist_id && link.source == source
+                    link.work_id == work_id && link.artist_id == artist_id && link.source == source
                 }) {
                     pools.work_artists.push(DbWorkArtist::new(
-                        &node.id,
+                        &work_id,
                         &artist_id,
                         pools.work_artists.len() as i32,
                         source,
@@ -324,30 +357,21 @@ fn push_work_graph(
                 PartDirection::Backward => {
                     // `work` is this node's parent.
                     let parent_id = push_work_ref(work, None, source, pools, ids, now);
-                    if !pools.work_parts.iter().any(|part| {
-                        part.parent_work_id == parent_id && part.child_work_id == node.id
-                    }) {
-                        pools.work_parts.push(DbWorkPart::new(
-                            &parent_id,
-                            &node.id,
-                            pools.work_parts.len() as i32,
-                            source,
-                            ids.new_id(),
-                            now,
-                        ));
-                    }
+                    push_work_part(pools, &parent_id, &work_id, source, ids, now);
                 }
                 PartDirection::Forward => {
                     // `work` is a child of this node; `push_work_ref` creates the
                     // parent link.
-                    push_work_ref(work, Some(&node.id), source, pools, ids, now);
+                    push_work_ref(work, Some(&work_id), source, pools, ids, now);
                 }
             },
         }
     }
+
+    work_id
 }
 
-/// Resolve a [`WorkGraphRef`] into the graph, returning the referenced work id.
+/// Resolve a [`WorkGraphRef`] into the graph, returning the work's minted row id.
 /// `Expanded` walks the sub-graph (minting the work row and, if `parent` is
 /// given, the parent→child link). `AlreadyExpanded` names a work whose row and
 /// sub-graph a prior reference already emitted; only its `parent` link, if any,
@@ -361,28 +385,26 @@ fn push_work_ref(
     now: DateTime<Utc>,
 ) -> String {
     match work {
-        WorkGraphRef::Expanded(node) => {
-            push_work_graph(node, parent, source, pools, ids, now);
-            node.id.clone()
-        }
-        WorkGraphRef::AlreadyExpanded { id } => {
+        WorkGraphRef::Expanded(node) => push_work_graph(node, parent, source, pools, ids, now),
+        WorkGraphRef::AlreadyExpanded {
+            musicbrainz_work_id,
+        } => {
+            // The source→IR mapper only emits `AlreadyExpanded` for a work an
+            // enclosing `Expanded` node already carried, and a node's row is
+            // minted before its events are walked — so the row id is always here.
+            let work_id = pools
+                .work_row_ids
+                .get(musicbrainz_work_id)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "work {musicbrainz_work_id} referenced before the reference that expanded it"
+                    )
+                })
+                .clone();
             if let Some(parent_work_id) = parent {
-                if !pools
-                    .work_parts
-                    .iter()
-                    .any(|part| part.parent_work_id == parent_work_id && part.child_work_id == *id)
-                {
-                    pools.work_parts.push(DbWorkPart::new(
-                        parent_work_id,
-                        id,
-                        pools.work_parts.len() as i32,
-                        source,
-                        ids.new_id(),
-                        now,
-                    ));
-                }
+                push_work_part(pools, parent_work_id, &work_id, source, ids, now);
             }
-            id.clone()
+            work_id
         }
     }
 }
@@ -459,7 +481,7 @@ pub(crate) fn assemble_parsed_album(
     let mut work_artists: Vec<DbWorkArtist> = Vec::new();
     let mut work_parts: Vec<DbWorkPart> = Vec::new();
     let mut track_works: Vec<DbTrackWork> = Vec::new();
-    let mut seen_works: HashSet<String> = HashSet::new();
+    let mut work_row_ids: HashMap<String, String> = HashMap::new();
     let mut expanded_works: HashSet<String> = HashSet::new();
 
     for (index, track_ir) in ir.tracks.iter().enumerate() {
@@ -526,7 +548,7 @@ pub(crate) fn assemble_parsed_album(
                             works: &mut works,
                             work_artists: &mut work_artists,
                             work_parts: &mut work_parts,
-                            seen_works: &mut seen_works,
+                            work_row_ids: &mut work_row_ids,
                             expanded_works: &mut expanded_works,
                         };
                         push_work_ref(work, None, *source, &mut pools, ids, now)

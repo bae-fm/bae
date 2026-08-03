@@ -34,33 +34,30 @@ extension ImportView {
         }
     }
 
-    /// The match the selected candidate's Ready row settles on while the pane
-    /// is still in the identify phase with nothing picked. Non-`nil` exactly
-    /// when the pane should open on that release without a click.
-    var readyAutoPick: BridgeMatchedRelease? {
+    /// The identity the selected candidate's row already carries while the
+    /// pane still shows nothing settled. Non-`nil` exactly when the pane
+    /// should open on that identity without a click.
+    var pickedResume: BridgeIdentityPick? {
         guard let candidate = selectedCandidate else {
             return nil
         }
-        return ImportSearchFlow.readyAutoPick(
+        return ImportSearchFlow.pickedResume(
             candidate: candidate,
             row: importStore.triageRow(forKey: candidate.key)
         )
     }
 
-    /// Open the selected candidate's pane on `matched` — the same pick-and-
-    /// prefetch a search-sheet row click runs.
-    func applyReadyAutoPick(_ matched: BridgeMatchedRelease) {
+    /// Apply the row's decided identity — the query half of the flow, seeding
+    /// the pane from the stored decision without re-persisting it.
+    func applyPickedResume(_ picked: BridgeIdentityPick) {
         guard let key = uiStore.selectedFolderCandidate else {
             return
         }
-        ImportSearchFlow.prefetchAndConfirm(
-            library: library,
+        ImportSearchFlow.refreshDecidedIdentity(
+            importer: importer,
             importStore: importStore,
             key: key,
-            pick: CandidatePick(
-                releaseId: matched.releaseId,
-                source: matched.evidence.source
-            )
+            pick: picked
         )
     }
 }

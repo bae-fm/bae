@@ -51,16 +51,6 @@ public final class Library: Sendable, Observable {
         ) async throws -> BridgeStoragePage
     public let findReleaseDetail:
         @Sendable (_ releaseId: String) async throws -> BridgeRelease?
-    /// Pick a release for an import candidate: the confirm pane's display
-    /// detail, the editor seed masked for the claim, the claim itself, and the
-    /// track slots the pick produces. `candidateKey` is what lets bae-core read
-    /// the evidence that identified the candidate — which is what the claim
-    /// defaults from — and find the folder whose audio the slots map.
-    public let prefetchRelease:
-        @Sendable (
-            _ candidateKey: String, _ releaseId: String,
-            _ source: BridgeMetadataSource
-        ) async throws -> BridgeReleasePrefetch
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
     /// Whether the library page spans the window's full width instead of
@@ -139,11 +129,6 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable (String) async throws -> BridgeRelease? = { _ in
                 throw StubError.notImplemented
             },
-        prefetchRelease:
-            @escaping @Sendable (String, String, BridgeMetadataSource)
-            async throws -> BridgeReleasePrefetch = { _, _, _ in
-                throw StubError.notImplemented
-            },
         resolveToTrackIds:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
@@ -167,16 +152,14 @@ public final class Library: Sendable, Observable {
         self.storageTotalSize = storageTotalSize
         self.storagePage = storagePage
         self.findReleaseDetail = findReleaseDetail
-        self.prefetchRelease = prefetchRelease
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
     }
 
-    // `prefetchRelease` backs the desktop import/metadata-prefetch flow and
-    // isn't exported on iOS (the import service is desktop-only). This
-    // `handle`-wiring convenience initializer references it, so it's
-    // desktop-only; the iOS `AppService` builds `Library` via the designated
-    // initializer with just the iOS-available closures.
+    // The desktop import surfaces reach the import service through `Importer`,
+    // not here; this `handle`-wiring convenience initializer covers the reads
+    // the desktop library page makes. The iOS `AppService` builds `Library`
+    // via the designated initializer with just the iOS-available closures.
     #if !os(iOS)
         // Flat 1:1 argument forwarding from `AppHandleProtocol` to `Library`'s
         // closures; its length tracks the number of Library reads, not
@@ -237,13 +220,6 @@ public final class Library: Sendable, Observable {
                 findReleaseDetail: {
                     try await handle.findReleaseDetail(releaseId: $0)
                 },
-                prefetchRelease: {
-                    try await handle.prefetchRelease(
-                        candidateKey: $0,
-                        releaseId: $1,
-                        source: $2
-                    )
-                },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)
                 },
@@ -253,10 +229,9 @@ public final class Library: Sendable, Observable {
             )
         }
     #else
-        // iOS has no desktop import/metadata-prefetch flow, so `prefetchRelease`
-        // is absent from its bindings; `getAlbumIndex`, `storageCount`,
-        // `storageTotalSize`, and `storagePage` back desktop-only surfaces
-        // (album-index scrolling, the Storage Manager) and go unused here.
+        // `getAlbumIndex`, `storageCount`, `storageTotalSize`, and
+        // `storagePage` back desktop-only surfaces (album-index scrolling,
+        // the Storage Manager) and go unused here.
         // This wires only the reads iOS actually makes; the rest keep their
         // throwing stub defaults.
         public convenience init(handle: any AppHandleProtocol) {

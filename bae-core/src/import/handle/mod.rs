@@ -740,8 +740,19 @@ impl ImportCandidateState {
                 priority: _,
             } => {
                 let runtime = self.runtime_entry(candidate_key);
-                runtime.identify_state = state.clone();
-                runtime.toolbar = toolbar.clone();
+                // A terminal state followed by `Idle` is a driver being torn
+                // down after settling — the sweep cancels its own drivers once
+                // they settle, and cancellation broadcasts `Idle` on its way
+                // out. The candidate's answer doesn't stop being its answer
+                // because the machinery that produced it exited, so the
+                // terminal state stays. A genuine mid-run cancel goes
+                // `Triangulating` → `Idle` and resets as before.
+                if !(matches!(state, crate::identify::IdentifyState::Idle)
+                    && runtime.identify_state.is_terminal())
+                {
+                    runtime.identify_state = state.clone();
+                    runtime.toolbar = toolbar.clone();
+                }
             }
             ImportEvent::SignalsUpdated {
                 candidate_key,
@@ -1091,6 +1102,12 @@ pub enum ScanEvent {
     CandidateVerdictStored {
         candidate_key: String,
     },
+    /// The user chose an identity for the candidate — a pressing, or its own
+    /// tags — and the choice was persisted. The triage projection re-reads so
+    /// the row carries it.
+    CandidateIdentityPicked {
+        candidate_key: String,
+    },
     FolderScanStatusChanged {
         status: WatchedFolderScanStatus,
     },
@@ -1193,6 +1210,29 @@ impl ImportServiceHandle {
         self.event_tx.clone()
     }
 
+    /// Broadcast a resumed identify state — a stored verdict standing back up
+    /// as the state opening its candidate shows, with no run behind it. Rides
+    /// the same event every live driver's transitions do, so the runtime
+    /// recorder and both UIs consume it identically. The toolbar is empty
+    /// because a resumed state has no live signals to badge (see
+    /// [`crate::identify::TerminalVerdict::resume_state`]); `Interactive`
+    /// because only a selection resumes one.
+    pub(crate) fn broadcast_resumed_identify_state(
+        &self,
+        candidate_key: String,
+        state: crate::identify::IdentifyState,
+    ) {
+        send_event(
+            &self.event_tx,
+            ImportEvent::IdentifyStateChanged {
+                candidate_key,
+                state,
+                toolbar: Vec::new(),
+                priority: crate::util::rate_limiter::CallPriority::Interactive,
+            },
+        );
+    }
+
     pub fn get_import_candidates(&self) -> ImportCandidatesSnapshot {
         let watched_folders = self.watched_folders();
         self.candidate_state
@@ -1266,29 +1306,30 @@ impl ImportServiceHandle {
     }
 }
 
-/// Remap parsed (temporary) artist IDs to their actual DB IDs.
+/// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.
 ///
-/// A `ParsedAlbum`'s artist-link rows reference artist IDs generated during
-/// parsing; reconcile may have resolved those to existing DB artists.
-/// `label` names the link kind in the unmapped-ID error.
-pub(crate) fn remap_artist_links<T: Clone>(
+/// A `ParsedAlbum`'s link rows reference artist and work IDs minted during
+/// parsing; reconcile may have resolved those to existing DB rows. `label` names
+/// the endpoint being remapped in the unmapped-ID error.
+pub(crate) fn remap_links<T: Clone>(
     links: &[T],
-    artist_id_map: &HashMap<String, String>,
+    id_map: &HashMap<String, String>,
     label: &str,
-    artist_id: impl Fn(&T) -> &str,
-    assign_artist_id: impl Fn(&mut T, String),
+    target_id: impl Fn(&T) -> &str,
+    assign_target_id: impl Fn(&mut T, String),
 ) -> Result<Vec<T>, crate::import::ImportError> {
     links
         .iter()
         .map(|link| {
-            let parsed_artist_id = artist_id(link);
-            let actual_id = artist_id_map.get(parsed_artist_id).ok_or_else(|| {
-                crate::import::ImportError::Internal {
-                    detail: format!("{label} artist ID {parsed_artist_id} not found in artist map"),
-                }
-            })?;
+            let parsed_id = target_id(link);
+            let actual_id =
+                id_map
+                    .get(parsed_id)
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!("{label} ID {parsed_id} not found in the import's ID map"),
+                    })?;
             let mut remapped = link.clone();
-            assign_artist_id(&mut remapped, actual_id.clone());
+            assign_target_id(&mut remapped, actual_id.clone());
             Ok(remapped)
         })
         .collect()

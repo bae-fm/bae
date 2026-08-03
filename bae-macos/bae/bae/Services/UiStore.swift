@@ -123,7 +123,7 @@ class UiStore: @unchecked Sendable {
     /// session state, alongside `selectedFolderCandidate` — surviving a
     /// remount so the sidebar doesn't reset to its defaults on every
     /// import-tab switch.
-    var importCandidateTab: BridgeTriageTab = .ready
+    var importCandidateTab: BridgeTriageTab = .needsYou
     var importCandidateFilterText: String = ""
 
     /// Checked candidate keys in the Ready tab's bulk-select — UI state, never

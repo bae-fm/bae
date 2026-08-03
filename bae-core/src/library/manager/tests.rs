@@ -611,7 +611,14 @@ async fn work_detail_release_rows_are_display_ready() {
     release.pressing.format = Some("CD".to_string());
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
     let now = Utc::now();
-    let work = DbWork::new(WORK_A, "Work Title", None, Some("work".to_string()), now);
+    let work = DbWork {
+        id: WORK_A.to_string(),
+        title: "Work Title".to_string(),
+        disambiguation: None,
+        work_type: Some("work".to_string()),
+        musicbrainz_work_id: "mb-work-a".to_string(),
+        created_at: now,
+    };
     let track_work = DbTrackWork::new(
         &track.id,
         &work.id,

@@ -43,6 +43,19 @@ final class Importer: Sendable, Observable {
             _ candidateKey: String, _ sheetFileId: String,
             _ disc: BridgeSheetDisc
         ) async throws -> Void
+    /// Decide the candidate's identity: persist the choice and come back with
+    /// everything the pane seeds from it — the same payload
+    /// `candidateDecidedIdentity` serves, so a fresh launch renders exactly
+    /// what the click rendered.
+    let pickCandidateIdentity:
+        @Sendable (
+            _ candidateKey: String, _ pick: BridgeIdentityPick
+        ) async throws -> BridgeDecidedIdentity
+    /// The candidate's decided identity read back, or `nil` while nothing is
+    /// decided — what selecting a row asks.
+    let candidateDecidedIdentity:
+        @Sendable (_ candidateKey: String) async throws
+            -> BridgeDecidedIdentity?
     /// Put one of a candidate's files in a role, or put it back in the one the
     /// scan proposed. `choice` must be one of that file's `alternatives`. Core
     /// persists the decision — taking a file out of the tracklist is a fact
@@ -65,12 +78,6 @@ final class Importer: Sendable, Observable {
         @Sendable (_ candidateKey: String, _ signal: BridgeExcludedSignal) ->
             Void
     let rerunIdentifyForCandidate: @Sendable (_ candidateKey: String) -> Void
-    /// What the folder's own files say it is: the album fields from their
-    /// embedded tags, and the mapping table landing each of its audio units on
-    /// one of the tracks those tags name. The table carries no tally — the
-    /// tracklist was read off this very folder.
-    let unknownMapping:
-        @Sendable (_ candidateKey: String) async throws -> BridgeUnknownMapping
     /// The mapping table for a folder nobody has picked a release for: every
     /// source unit it offers, with what each becomes left open.
     let candidateMapping:
@@ -78,7 +85,7 @@ final class Importer: Sendable, Observable {
     /// What picking `result` under a candidate claims, and where its metadata
     /// comes from. The re-identify sheet's path: it commits straight from the
     /// picked row, so it never prefetches. The import confirm pane gets the
-    /// same claim back from `Library.prefetchRelease` instead.
+    /// same claim back inside the decided-identity answer instead.
     let claimForPick:
         @Sendable (_ candidateKey: String, _ result: BridgeMetadataResult) ->
             BridgeClaimLine?
@@ -119,6 +126,14 @@ final class Importer: Sendable, Observable {
         setSheetBinding:
             @escaping @Sendable (String, String, String?) async throws -> Void =
             { _, _, _ in },
+        pickCandidateIdentity:
+            @escaping @Sendable (String, BridgeIdentityPick) async throws
+            -> BridgeDecidedIdentity = { _, _ in
+                throw StubError.notImplemented
+            },
+        candidateDecidedIdentity:
+            @escaping @Sendable (String) async throws
+            -> BridgeDecidedIdentity? = { _ in nil },
         setSheetDisc:
             @escaping @Sendable (String, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
@@ -142,9 +157,6 @@ final class Importer: Sendable, Observable {
             },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
-        unknownMapping:
-            @escaping @Sendable (String) async throws -> BridgeUnknownMapping =
-            { _ in throw StubError.notImplemented },
         candidateMapping:
             @escaping @Sendable (String) throws -> BridgeMappingTable = { _ in
                 throw StubError.notImplemented
@@ -165,6 +177,8 @@ final class Importer: Sendable, Observable {
         self.setCandidateSkipped = setCandidateSkipped
         self.sheetBindingOptions = sheetBindingOptions
         self.setSheetBinding = setSheetBinding
+        self.pickCandidateIdentity = pickCandidateIdentity
+        self.candidateDecidedIdentity = candidateDecidedIdentity
         self.setSheetDisc = setSheetDisc
         self.setFileRole = setFileRole
         self.autoIdentifyFolder = autoIdentifyFolder
@@ -173,7 +187,6 @@ final class Importer: Sendable, Observable {
         self.searchForCandidate = searchForCandidate
         self.toggleSignalForCandidate = toggleSignalForCandidate
         self.rerunIdentifyForCandidate = rerunIdentifyForCandidate
-        self.unknownMapping = unknownMapping
         self.candidateMapping = candidateMapping
         self.claimForPick = claimForPick
         self.startImport = startImport
@@ -214,6 +227,15 @@ final class Importer: Sendable, Observable {
                     audioFileId: $2
                 )
             },
+            pickCandidateIdentity: {
+                try await handle.pickCandidateIdentity(
+                    candidateKey: $0,
+                    pick: $1
+                )
+            },
+            candidateDecidedIdentity: {
+                try await handle.candidateDecidedIdentity(candidateKey: $0)
+            },
             setSheetDisc: {
                 try await handle.setSheetDisc(
                     candidateKey: $0,
@@ -245,9 +267,6 @@ final class Importer: Sendable, Observable {
             },
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
-            },
-            unknownMapping: {
-                try await handle.unknownMapping(candidateKey: $0)
             },
             candidateMapping: {
                 try handle.candidateMapping(candidateKey: $0)

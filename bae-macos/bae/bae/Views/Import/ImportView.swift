@@ -59,13 +59,14 @@ struct ImportView: View {
             .onChange(of: uiStore.selectedFolderCandidate) { _, _ in
                 uiStore.lightbox = nil
             }
-            // Fires on both paths to a seedable pane: selecting a Ready row,
-            // and the verdict settling to Ready while its row is selected.
-            // `initial` covers a selection that predates this view — the
-            // Import tab re-entered with a Ready row still selected.
-            .onChange(of: readyAutoPick, initial: true) { _, matched in
-                if let matched {
-                    applyReadyAutoPick(matched)
+            // Fires on both paths to a seedable pane: selecting a row whose
+            // identity is already decided — a settled single match, or a
+            // choice made before a restart — and the decision landing while
+            // its row is selected. `initial` covers a selection that predates
+            // this view — the Import tab re-entered with the row selected.
+            .onChange(of: pickedResume, initial: true) { _, picked in
+                if let picked {
+                    applyPickedResume(picked)
                 }
             }
         }

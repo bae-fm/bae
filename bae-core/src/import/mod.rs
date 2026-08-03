@@ -127,8 +127,9 @@ pub use triage::{
     TriageQueue, TriageRow, TriageSection, TriageTab, TriageTabCounts,
 };
 pub use types::{
-    AudioFile, CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
-    ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PayloadSource,
-    PrepareStep, PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity,
-    ReleaseUserEdit, SourcePayload, StorageMode, TrackFile, TrackUserEdit,
+    AudioFile, CoverSelection, DecidedIdentity, EditValidationError, IdentityChoice, IdentityPick,
+    ImportCommand, ImportPhase, ImportProgress, ImportStep, MetadataPointer, MetadataRef,
+    MetadataSource, PayloadSource, PrepareStep, PressingEdit, RawPressingEdit, RawReleaseEdit,
+    RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, SourcePayload, StorageMode, TrackFile,
+    TrackUserEdit,
 };

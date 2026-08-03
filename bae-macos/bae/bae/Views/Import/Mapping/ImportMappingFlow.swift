@@ -6,7 +6,6 @@ struct ImportMappingServices {
     let importer: Importer
     /// Re-reading the folder against the release picked for it runs through
     /// the prefetch, which is what produces the mapping table.
-    let library: Library
     let importStore: ImportStore
     let previewAudio: PreviewAudio
     /// Show a document (a log, a text file, a track sheet) in the viewer: its
