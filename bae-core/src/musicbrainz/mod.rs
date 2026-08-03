@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use crate::import::{PayloadSource, SourcePayload};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
-use crate::util::session_cache::SessionCache;
+use crate::util::session_cache::{SessionCache, PROVIDER_LOOKUP_CAPACITY};
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -142,19 +142,21 @@ type ReleaseCacheValue = (MbReleaseResponse, Option<String>, String);
 /// Discogs release URL from its url-rels (if any), and the raw JSON, so a caller
 /// needing any of the three hits a warm cache.
 static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
-    SessionCache::new("MusicBrainz release cache");
+    SessionCache::new("MusicBrainz release cache", PROVIDER_LOOKUP_CAPACITY);
 
 /// In-memory cache for `release-group/{id}` JSON. Discogs cross-reference
 /// archival keeps the raw JSON; we cache that string directly.
-static RELEASE_GROUP_JSON_CACHE: SessionCache<String> =
-    SessionCache::new("MusicBrainz release-group JSON cache");
+static RELEASE_GROUP_JSON_CACHE: SessionCache<String> = SessionCache::new(
+    "MusicBrainz release-group JSON cache",
+    PROVIDER_LOOKUP_CAPACITY,
+);
 
 /// In-memory cache for `url?resource=https://www.discogs.com/release/{id}`
 /// lookups, keyed by Discogs release ID; the value is the linked MB release ID,
 /// or `None` when no link exists. Caching means a confirmed Discogs import warms
 /// the lookup for the worker's later commit-time call.
 static DISCOGS_URL_LOOKUP_CACHE: SessionCache<Option<String>> =
-    SessionCache::new("Discogs URL lookup cache");
+    SessionCache::new("Discogs URL lookup cache", PROVIDER_LOOKUP_CAPACITY);
 
 /// Pre-populate the Discogs-URL → MB-release-ID lookup cache, so a test can drive
 /// the cross-reference path without the network. `None` means "no MB release

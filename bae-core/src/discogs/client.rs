@@ -3,7 +3,7 @@ use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
-use crate::util::session_cache::SessionCache;
+use crate::util::session_cache::{SessionCache, PROVIDER_LOOKUP_CAPACITY};
 use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
 use std::time::Duration;
@@ -19,10 +19,12 @@ type MasterCacheValue = (Option<u32>, String);
 /// In-memory cache for `releases/{id}` lookups: the parsed release plus its raw JSON
 /// for archival, keyed by release ID. A module-level static, so it survives across
 /// `DiscogsClient::new` calls — release content doesn't vary with the API token.
-static RELEASE_CACHE: SessionCache<ReleaseCacheValue> = SessionCache::new("Discogs release cache");
+static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
+    SessionCache::new("Discogs release cache", PROVIDER_LOOKUP_CAPACITY);
 
 /// The same, for `masters/{id}`.
-static MASTER_CACHE: SessionCache<MasterCacheValue> = SessionCache::new("Discogs master cache");
+static MASTER_CACHE: SessionCache<MasterCacheValue> =
+    SessionCache::new("Discogs master cache", PROVIDER_LOOKUP_CAPACITY);
 
 static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
 

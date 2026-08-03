@@ -1247,6 +1247,48 @@ mod tests {
         assert!(table.reconciliation.is_none());
     }
 
+    /// Seeding the pane a second time for the same folder reads no audio: the
+    /// durations the first seed measured describe bytes that have not moved, so
+    /// they are the answer again. This is the whole cost of re-opening a
+    /// candidate — the table is projected from values, and only the probes
+    /// behind it ever touch the disk.
+    #[test]
+    fn seeding_the_same_folder_twice_opens_its_audio_once() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("CDImage.flac"));
+        fs::write(
+            tmp.path().join("CDImage.cue"),
+            cue_sheet_text("CDImage.flac", 2),
+        )
+        .expect("write cue");
+        write_flac(&tmp.path().join("bonus.flac"));
+
+        let files = scan(tmp.path());
+        let seed = || {
+            let slots = slot_table(&source_tracks(3), &files);
+            mapping_table(
+                &files,
+                Some(PickedTracklist {
+                    slots: &slots,
+                    track_id_prefix: "import-track",
+                    source: TracklistSource::Release,
+                }),
+            )
+        };
+
+        let first = seed();
+        let second = seed();
+
+        for name in ["CDImage.flac", "bonus.flac"] {
+            assert_eq!(
+                crate::audio_codec::probe_opens_for(&tmp.path().join(name)),
+                1,
+                "{name} must be read once however often the pane is seeded",
+            );
+        }
+        assert_eq!(mapping_tracks(&first), mapping_tracks(&second));
+    }
+
     /// JPEG magic bytes — what the scan's image validation reads.
     fn fake_jpeg() -> Vec<u8> {
         vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]

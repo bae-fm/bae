@@ -351,6 +351,39 @@ fn content_type_from_codec_id_unknown_falls_into_other() {
     }
 }
 
+/// A probe describes the bytes at the path, not the path. Writing different
+/// audio over a file changes its size and modification time, and the next probe
+/// reads the new content rather than repeating what the old one said — the
+/// whole reason the remembered answer is stamped with the file's identity.
+#[test]
+fn probing_a_path_whose_file_changed_reads_the_new_file() {
+    init();
+    let fixture = |name: &str| {
+        format!(
+            "{}/test-fixtures/audio-format/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        )
+    };
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let target = tmp.path().join("audio");
+    let target_str = target.to_str().expect("temp path is UTF-8");
+
+    std::fs::copy(fixture("placeholder-opus.opus"), &target).expect("write first audio");
+    let first = probe_audio_from_path(target_str).expect("probe first audio");
+    assert_eq!(first.content_type, ContentType::Opus);
+    assert_eq!(
+        probe_audio_from_path(target_str).map(|probe| probe.content_type),
+        Some(ContentType::Opus),
+        "an unchanged file answers again without being read again",
+    );
+    assert_eq!(super::probe_opens_for(&target), 1);
+
+    std::fs::copy(fixture("placeholder-wavpack.wv"), &target).expect("write second audio");
+    let second = probe_audio_from_path(target_str).expect("probe second audio");
+    assert_eq!(second.content_type, ContentType::WavPack);
+    assert_eq!(super::probe_opens_for(&target), 2);
+}
+
 #[test]
 fn probe_audio_from_path_maps_audio_format_fixtures() {
     init();

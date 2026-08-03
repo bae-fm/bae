@@ -3,9 +3,73 @@
 //! demuxer lands on when seeking to each of a set of samples (`seek_landing_bytes`).
 
 use crate::util::content_type::ContentType;
+use crate::util::session_cache::SessionCache;
 use std::os::raw::c_int;
 use std::ptr;
 use tracing::{debug, warn};
+
+/// How many probed files the cache below holds.
+///
+/// One entry per audio file, and the folders in play are whole watched roots:
+/// identification walks every candidate, and the pane the user opens minutes
+/// later must still find its own files here. Sized for a large library rather
+/// than for one import, because eviction costs an FFmpeg open of a file that is
+/// very often on a slow external volume.
+const PROBE_CACHE_CAPACITY: usize = 20_000;
+
+/// Files already probed this session, keyed by absolute path.
+///
+/// The entry carries the size and modification time the file had when it was
+/// read, and is served only while both still match what the filesystem reports
+/// — so re-encoding, retagging, or replacing a file re-probes it rather than
+/// answering about bytes that are gone. Nothing expires on time, because time
+/// says nothing about whether a file changed.
+static PROBE_CACHE: SessionCache<CachedProbe> =
+    SessionCache::new("audio probe cache", PROBE_CACHE_CAPACITY);
+
+/// A probe, with the file identity it describes.
+#[derive(Clone)]
+struct CachedProbe {
+    stamp: FileStamp,
+    /// What the probe answered — `None` included: "FFmpeg cannot read these
+    /// bytes" is an answer about this exact file, and re-deriving it costs the
+    /// same open as any other.
+    result: Option<ProbeResult>,
+}
+
+/// What the filesystem says a file is right now: its size and modification
+/// time, which is what writing to it moves.
+#[derive(Clone, PartialEq, Eq)]
+struct FileStamp {
+    size: u64,
+    modified: std::time::SystemTime,
+}
+
+impl FileStamp {
+    /// The file's current stamp, or `None` when the filesystem will not state
+    /// one — the path is gone, or the volume keeps no modification times.
+    /// Either way there is nothing to key an entry on, so the caller probes
+    /// without caching rather than trusting an entry it cannot invalidate.
+    fn of(path: &str) -> Option<Self> {
+        let metadata = match std::fs::metadata(path) {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                debug!("probe cache: {path} cannot be stat'd ({error}); probing uncached");
+                return None;
+            }
+        };
+        match metadata.modified() {
+            Ok(modified) => Some(Self {
+                size: metadata.len(),
+                modified,
+            }),
+            Err(error) => {
+                debug!("probe cache: {path} has no modification time ({error}); probing uncached");
+                None
+            }
+        }
+    }
+}
 
 /// Probe-discovered audio properties. Populated from `AVCodecID` and
 /// `AVCodecParameters`, so every field reflects what FFmpeg actually sees
@@ -207,7 +271,67 @@ unsafe fn probed_duration(
     }
 }
 
+/// The file's audio properties, read once per file and reused while the file is
+/// unchanged.
+///
+/// Opening a container is the expensive part of every surface that needs a
+/// playing time — identification's total, the mapping pane's per-row lengths,
+/// the commit's per-track durations — and they all ask about the same files.
+/// So the answer is remembered against the file's identity (path, size,
+/// modification time) and the open happens once, however many of them ask.
 pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
+    let Some(stamp) = FileStamp::of(path) else {
+        return open_and_probe(path);
+    };
+    if let Some(cached) = PROBE_CACHE.get_cloned(path) {
+        if cached.stamp == stamp {
+            return cached.result;
+        }
+    }
+    let result = open_and_probe(path);
+    PROBE_CACHE.put(
+        path,
+        CachedProbe {
+            stamp,
+            result: result.clone(),
+        },
+    );
+    result
+}
+
+/// How many times each path has been opened by [`open_and_probe`], so a test
+/// can assert that re-asking about a folder reads nothing off disk.
+#[cfg(test)]
+fn probe_open_counts() -> &'static std::sync::Mutex<std::collections::HashMap<String, u64>> {
+    static COUNTS: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, u64>>> =
+        std::sync::OnceLock::new();
+    COUNTS.get_or_init(Default::default)
+}
+
+/// How many times FFmpeg has been opened for `path` this test binary.
+#[cfg(test)]
+pub(crate) fn probe_opens_for(path: &std::path::Path) -> u64 {
+    let path = path.to_str().expect("test paths are UTF-8");
+    probe_open_counts()
+        .lock()
+        .expect("probe open counts mutex poisoned")
+        .get(path)
+        .copied()
+        .unwrap_or(0)
+}
+
+/// Open the file with FFmpeg and read its best audio stream. `None` (already
+/// logged) when it cannot be opened, has no audio stream, or states no usable
+/// duration.
+fn open_and_probe(path: &str) -> Option<ProbeResult> {
+    #[cfg(test)]
+    {
+        *probe_open_counts()
+            .lock()
+            .expect("probe open counts mutex poisoned")
+            .entry(path.to_string())
+            .or_default() += 1;
+    }
     unsafe {
         use ffmpeg_sys_next::*;
 

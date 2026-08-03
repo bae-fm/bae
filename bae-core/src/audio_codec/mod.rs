@@ -28,6 +28,8 @@ use avio::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use decode::decode_audio_to_sink_with_seek;
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
+#[cfg(test)]
+pub(crate) use probe::probe_opens_for;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeResult};
