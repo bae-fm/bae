@@ -3,7 +3,7 @@
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-use super::discovery::map_device;
+use super::discovery::{instance_name, map_device};
 use crate::renderer::{RendererConnection, RendererDevice, RendererKind};
 
 fn v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
@@ -21,7 +21,7 @@ fn cast_addr(device: &RendererDevice) -> (IpAddr, u16) {
 #[test]
 fn resolved_service_maps_to_device() {
     let device = map_device(
-        "Living Room._googlecast._tcp.local.",
+        "Living Room",
         8009,
         [v4(192, 168, 1, 40)].into_iter(),
         Some("abcd1234"),
@@ -39,7 +39,7 @@ fn resolved_service_maps_to_device() {
 fn resolved_service_without_id_is_unusable() {
     assert!(
         map_device(
-            "No Id._googlecast._tcp.local.",
+            "No Id",
             8009,
             [v4(192, 168, 1, 41)].into_iter(),
             None,
@@ -51,9 +51,18 @@ fn resolved_service_without_id_is_unusable() {
 }
 
 #[test]
+fn service_fullname_reduces_to_its_instance_label() {
+    assert_eq!(
+        instance_name("Living Room._googlecast._tcp.local."),
+        "Living Room",
+        "the instance label is what a host browser reports and what names a device with no `fn`"
+    );
+}
+
+#[test]
 fn resolved_service_falls_back_to_instance_name_without_fn() {
     let device = map_device(
-        "Kitchen._googlecast._tcp.local.",
+        "Kitchen",
         8009,
         [v4(192, 168, 1, 42)].into_iter(),
         Some("kitchen-id"),
@@ -66,7 +75,7 @@ fn resolved_service_falls_back_to_instance_name_without_fn() {
 #[test]
 fn resolved_service_prefers_ipv4() {
     let device = map_device(
-        "Dual._googlecast._tcp.local.",
+        "Dual",
         8009,
         [IpAddr::V6(Ipv6Addr::LOCALHOST), v4(192, 168, 1, 43)].into_iter(),
         Some("dual-id"),
@@ -84,7 +93,7 @@ fn resolved_service_prefers_ipv4() {
 fn resolved_service_without_address_is_unusable() {
     assert!(
         map_device(
-            "Addrless._googlecast._tcp.local.",
+            "Addrless",
             8009,
             std::iter::empty(),
             Some("addrless-id"),

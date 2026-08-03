@@ -974,6 +974,7 @@ dependencies = [
 name = "bae-bridge"
 version = "0.1.0"
 dependencies = [
+ "bae-cast",
  "bae-core",
  "bae-desktop",
  "bae-loc",
@@ -988,6 +989,25 @@ dependencies = [
  "tracing-oslog",
  "tracing-subscriber",
  "uniffi",
+]
+
+[[package]]
+name = "bae-cast"
+version = "0.1.0"
+dependencies = [
+ "axum 0.8.9",
+ "bae-core",
+ "bae-subsonic",
+ "bae-test-support",
+ "hex",
+ "local-ip-address",
+ "md-5",
+ "rand 0.9.2",
+ "reqwest",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "tracing",
 ]
 
 [[package]]
@@ -1076,20 +1096,11 @@ dependencies = [
 name = "bae-desktop"
 version = "0.1.0"
 dependencies = [
- "axum 0.8.9",
  "bae-core",
  "bae-mcp",
  "bae-subsonic",
  "bae-test-support",
- "coven",
- "hex",
- "local-ip-address",
- "md-5",
- "rand 0.9.2",
- "reqwest",
- "tempfile",
  "tokio",
- "tokio-util",
  "tracing",
 ]
 

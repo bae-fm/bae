@@ -1,22 +1,17 @@
 #![deny(unreachable_pub, dead_code)]
 
-mod cast;
-
 use std::sync::Arc;
 
 use bae_core::app::{bootstrap as bootstrap_core, BootstrapError, RunningApp};
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
 use bae_core::diagnostics::Diagnostics;
 use bae_core::library::{AppServices, LibraryManager};
-use bae_core::renderer::RendererDevice;
 use bae_core::ui::UiEventBus;
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_subsonic::SubsonicServerController;
 pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
 use tokio::runtime::Runtime;
-
-pub use cast::{CastController, CastError, CastStatus};
 
 /// Field order is drop order: the tokio runtime is declared **last** so
 /// everything that runs on it — `AppServices`' background tasks above all — is
@@ -29,8 +24,6 @@ pub struct DesktopApp {
     pub ui_event_bus: UiEventBus,
     mcp_controller: McpServerController,
     subsonic_controller: SubsonicServerController,
-    /// Shared with the config watcher, which applies `cast_enabled` to it.
-    cast_controller: Arc<CastController>,
     pub runtime: Runtime,
 }
 
@@ -118,28 +111,19 @@ impl DesktopApp {
         let initial_subsonic = services.library_manager().get_config().subsonic;
         runtime.block_on(subsonic_controller.apply_config(initial_subsonic));
 
-        let cast_controller = Arc::new(CastController::new(
-            services.library_manager().clone(),
-            services.playback().clone(),
-            ui_event_bus.clone(),
-            runtime.handle().clone(),
-        ));
-
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
-        let config_cast_controller = cast_controller.clone();
         let mut config_rx = services.library_manager().subscribe_config_changes();
         runtime.spawn(async move {
             loop {
                 match config_rx.changed().await {
                     Ok(()) => {
-                        let (mcp, subsonic, cast_enabled) = {
+                        let (mcp, subsonic) = {
                             let config = config_rx.borrow();
-                            (config.mcp, config.subsonic.clone(), config.cast_enabled)
+                            (config.mcp, config.subsonic.clone())
                         };
                         config_controller.apply_config(mcp).await;
                         config_subsonic_controller.apply_config(subsonic).await;
-                        config_cast_controller.apply_enabled(cast_enabled);
                     }
                     Err(error) => {
                         tracing::debug!("config watcher stopped: {error}");
@@ -155,39 +139,7 @@ impl DesktopApp {
             ui_event_bus,
             mcp_controller: controller,
             subsonic_controller,
-            cast_controller,
         }
-    }
-
-    /// The current merged list of discovered remote-renderer devices (Cast and
-    /// UPnP). Requery on a `CastDevices` invalidation.
-    pub fn cast_devices(&self) -> Vec<RendererDevice> {
-        self.cast_controller.devices()
-    }
-
-    /// Start browsing for Cast devices (the device picker opened).
-    pub fn start_cast_discovery(&self) {
-        self.cast_controller.start_discovery();
-    }
-
-    /// Stop browsing for Cast devices (the device picker closed).
-    pub fn stop_cast_discovery(&self) {
-        self.cast_controller.stop_discovery();
-    }
-
-    /// Cast playback to the device with `device_id`.
-    pub fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
-        self.cast_controller.cast_to(device_id)
-    }
-
-    /// Stop casting and return playback to local output.
-    pub fn stop_casting(&self) {
-        self.cast_controller.stop_casting();
-    }
-
-    /// The current cast status (whether casting, and to which device).
-    pub fn cast_status(&self) -> CastStatus {
-        self.cast_controller.status()
     }
 
     pub fn mcp_server_status(&self) -> McpServerStatus {

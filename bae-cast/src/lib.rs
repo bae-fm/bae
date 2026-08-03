@@ -1,28 +1,33 @@
-//! Desktop-side Cast ownership: device discovery, the ephemeral Subsonic server
-//! the receiver fetches audio from, and the URL providers that mint its media
-//! links.
+//! Cast ownership: device discovery, the ephemeral Subsonic server the receiver
+//! fetches audio from, and the URL providers that mint its media links.
 //!
 //! The cast *session* lives in bae-core's playback service (cast is a renderer
-//! behind the one queue). This module owns what the service can't: discovering
+//! behind the one queue). This crate owns what the service can't: discovering
 //! devices, serving audio over HTTP with a per-session credential, and turning a
-//! device id into a connected channel plus the injected URL providers. It
-//! mirrors how bae-desktop owns the mcp/subsonic controllers.
+//! device id into a connected channel plus the injected URL providers.
+//!
+//! It is its own crate because it sits between two that must not depend on each
+//! other: bae-core, which holds the renderer session and the protocols, and
+//! bae-subsonic, which serves the audio. Every host that casts — desktop and
+//! both mobile platforms — builds one [`CastController`].
+
+#![deny(unreachable_pub, dead_code)]
 
 use std::sync::{Arc, Mutex};
 
 use bae_core::airplay::airplay2::TimingProtocol;
 use bae_core::airplay::capabilities::{Dialect, RaopEncryption};
-use bae_core::airplay::{AirPlayCapabilities, AirPlayDiscovery};
-use bae_core::cast::{CastDiscovery, RustCastChannel};
+use bae_core::airplay::AirPlayCapabilities;
+use bae_core::cast::RustCastChannel;
 use bae_core::config::SubsonicCredential;
-use bae_core::dlna::{DlnaChannel, DlnaDiscovery};
+use bae_core::dlna::DlnaChannel;
 use bae_core::library::LibraryManager;
 use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
 use bae_core::renderer::{
     cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
-    RendererConnection, RendererDevice, RendererStreamFormat, StreamFormatFn,
-    TRANSCODE_BITRATE_KBPS,
+    RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType,
+    RendererStreamFormat, ReportedRenderer, StreamFormatFn, TRANSCODE_BITRATE_KBPS,
 };
 use bae_core::ui::{Invalidation, UiBusEvent, UiEventBus};
 use md5::{Digest, Md5};
@@ -196,25 +201,23 @@ impl EphemeralServer {
     }
 }
 
-/// Owns everything the desktop side of casting needs: device discovery, the
-/// ephemeral server (lazily started on the first cast, stopped when casting
-/// ends), and the current status. A background task follows the playback
-/// service's cast-status events to keep the status and the server lifecycle in
-/// step — including a receiver-side end the service detects on its own.
+/// Owns everything casting needs: device discovery, the ephemeral server (lazily
+/// started on the first cast, stopped when casting ends), and the current status.
+/// A background task follows the playback service's cast-status events to keep
+/// the status and the server lifecycle in step — including a receiver-side end
+/// the service detects on its own.
 ///
 /// The whole of it is gated on the library's `cast_enabled` setting, which the
 /// controller reads from config at each entry point rather than mirroring: while
-/// casting is off nothing browses the network and no session can start.
+/// casting is off nothing browses the network and no session can start. A
+/// watcher applies a change to that setting to the running machinery.
 pub struct CastController {
     runtime: Handle,
     manager: LibraryManager,
     playback: PlaybackHandle,
-    /// Google Cast discovery (mDNS) and UPnP discovery (SSDP) run side by side;
-    /// their device lists are merged into one for the picker — a speaker is a
-    /// speaker, whatever its protocol.
-    cast_discovery: Mutex<CastDiscovery>,
-    dlna_discovery: Mutex<DlnaDiscovery>,
-    airplay_discovery: Mutex<AirPlayDiscovery>,
+    /// Where the picker's devices come from: bae's own browsing, or the services
+    /// a host's browser reports in. Chosen once, per host.
+    discovery: Mutex<RendererDiscovery>,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -224,42 +227,34 @@ struct Inner {
 }
 
 impl CastController {
-    pub fn new(
+    /// Build the controller over a host's device source and start the background
+    /// tasks it needs: the device-list forwarders that invalidate an open picker,
+    /// the follower that tracks the playback service's session status, and the
+    /// watcher that applies the `cast_enabled` setting.
+    pub fn start(
         manager: LibraryManager,
         playback: PlaybackHandle,
         ui_event_bus: UiEventBus,
         runtime: Handle,
-    ) -> Self {
-        let inner = Arc::new(Mutex::new(Inner {
-            server: None,
-            status: CastStatus::NotCasting,
-        }));
-        let cast_discovery = CastDiscovery::new();
-        let dlna_discovery = DlnaDiscovery::new();
-        let airplay_discovery = AirPlayDiscovery::new();
-        // Forward each discovery's list changes to the UI as an invalidation, so
-        // an open picker requeries the merged list as devices come and go.
-        Self::spawn_device_list_forwarder(
-            cast_discovery.subscribe(),
-            ui_event_bus.clone(),
-            &runtime,
-        );
-        Self::spawn_device_list_forwarder(
-            dlna_discovery.subscribe(),
-            ui_event_bus.clone(),
-            &runtime,
-        );
-        Self::spawn_device_list_forwarder(airplay_discovery.subscribe(), ui_event_bus, &runtime);
-        let controller = Self {
+        discovery: RendererDiscovery,
+    ) -> Arc<Self> {
+        // Forward each browse's list changes to the UI as an invalidation, so an
+        // open picker requeries the merged list as devices come and go.
+        for devices in discovery.subscribe() {
+            Self::spawn_device_list_forwarder(devices, ui_event_bus.clone(), &runtime);
+        }
+        let controller = Arc::new(Self {
             runtime: runtime.clone(),
             manager,
             playback,
-            cast_discovery: Mutex::new(cast_discovery),
-            dlna_discovery: Mutex::new(dlna_discovery),
-            airplay_discovery: Mutex::new(airplay_discovery),
-            inner: inner.clone(),
-        };
+            discovery: Mutex::new(discovery),
+            inner: Arc::new(Mutex::new(Inner {
+                server: None,
+                status: CastStatus::NotCasting,
+            })),
+        });
         controller.spawn_status_follower();
+        controller.spawn_setting_watcher();
         controller
     }
 
@@ -271,6 +266,32 @@ impl CastController {
         runtime.spawn(async move {
             while devices.changed().await.is_ok() {
                 ui_event_bus.emit(UiBusEvent::Invalidated(Invalidation::CastDevices));
+            }
+        });
+    }
+
+    /// Follow the library's `cast_enabled` setting: turning casting off stops
+    /// browsing and ends any session in flight, so the machinery is idle rather
+    /// than merely hidden; turning it on starts nothing by itself, since browsing
+    /// follows the picker.
+    fn spawn_setting_watcher(self: &Arc<Self>) {
+        let mut config_rx = self.manager.subscribe_config_changes();
+        let controller = self.clone();
+        self.runtime.spawn(async move {
+            loop {
+                match config_rx.changed().await {
+                    Ok(()) => {
+                        let enabled = config_rx.borrow().cast_enabled;
+                        if !enabled {
+                            controller.stop_discovery();
+                            controller.stop_casting();
+                        }
+                    }
+                    Err(error) => {
+                        debug!("cast setting watcher stopped: {error}");
+                        break;
+                    }
+                }
             }
         });
     }
@@ -314,46 +335,45 @@ impl CastController {
         self.manager.get_config().cast_enabled
     }
 
-    /// Start browsing for devices on every protocol (the picker opened).
-    /// Idempotent, and a no-op while casting is off — this is the gate that
-    /// keeps mDNS and SSDP sockets closed, not the picker's visibility.
+    /// Start browsing for devices (the picker opened). Idempotent, and a no-op
+    /// while casting is off — this is the gate that keeps the network quiet, not
+    /// the picker's visibility.
     pub fn start_discovery(&self) {
         if !self.enabled() {
             debug!("cast discovery not started: casting is off");
             return;
         }
-        self.cast_discovery.lock().unwrap().start();
-        self.dlna_discovery.lock().unwrap().start();
-        self.airplay_discovery.lock().unwrap().start();
+        self.discovery.lock().unwrap().start();
     }
 
-    /// Apply the library's `cast_enabled` setting. Turning casting off stops
-    /// browsing and ends any session in flight, so the machinery is idle rather
-    /// than merely hidden; turning it on starts nothing by itself, since
-    /// browsing follows the picker.
-    pub fn apply_enabled(&self, enabled: bool) {
-        if enabled {
+    /// Stop browsing (the picker closed).
+    pub fn stop_discovery(&self) {
+        self.discovery.lock().unwrap().stop();
+    }
+
+    /// Take a renderer service a host's browser resolved, on the hosts that
+    /// browse for bae rather than letting it read the network itself. Refused
+    /// while casting is off, like every other entry point.
+    pub fn renderer_found(&self, service: ReportedRenderer) {
+        if !self.enabled() {
+            debug!("reported renderer ignored: casting is off");
             return;
         }
-        self.stop_discovery();
-        self.stop_casting();
+        self.discovery.lock().unwrap().report(service);
     }
 
-    /// Stop browsing on every protocol (the picker closed).
-    pub fn stop_discovery(&self) {
-        self.cast_discovery.lock().unwrap().stop();
-        self.dlna_discovery.lock().unwrap().stop();
-        self.airplay_discovery.lock().unwrap().stop();
+    /// Drop a renderer service a host's browser no longer sees.
+    pub fn renderer_lost(&self, service_type: RendererServiceType, instance_name: &str) {
+        self.discovery
+            .lock()
+            .unwrap()
+            .forget(service_type, instance_name);
     }
 
     /// The current merged device list — Cast, UPnP, and AirPlay devices in one
     /// list, sorted by name for a stable picker.
     pub fn devices(&self) -> Vec<RendererDevice> {
-        let mut devices = self.cast_discovery.lock().unwrap().devices();
-        devices.extend(self.dlna_discovery.lock().unwrap().devices());
-        devices.extend(self.airplay_discovery.lock().unwrap().devices());
-        devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
-        devices
+        self.discovery.lock().unwrap().devices()
     }
 
     pub fn status(&self) -> CastStatus {
@@ -544,17 +564,29 @@ mod tests {
         }
     }
 
-    /// Whether any protocol is browsing right now — the three discoveries start
-    /// and stop together, so any one of them running means sockets are open.
+    /// Whether a browse is live right now — the gate the `cast_enabled` setting
+    /// exists to hold shut.
     fn browsing(controller: &CastController) -> bool {
-        controller.cast_discovery.lock().unwrap().is_browsing()
-            || controller.dlna_discovery.lock().unwrap().is_browsing()
-            || controller.airplay_discovery.lock().unwrap().is_browsing()
+        controller.discovery.lock().unwrap().is_browsing()
+    }
+
+    /// Wait for `condition` to hold, for assertions that follow a background
+    /// task (the setting watcher). Panics with `what` if it never does.
+    fn wait_until(what: &str, condition: impl Fn() -> bool) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            if condition() {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        panic!("timed out waiting for {what}");
     }
 
     fn test_controller(
         runtime: &tokio::runtime::Runtime,
-    ) -> (CastController, LibraryManager, tempfile::TempDir) {
+        discovery: RendererDiscovery,
+    ) -> (Arc<CastController>, LibraryManager, tempfile::TempDir) {
         use bae_test_support as support;
 
         let (manager, tmp) = support::setup_fresh_library(runtime);
@@ -564,13 +596,27 @@ mod tests {
             1000,
             false,
         );
-        let controller = CastController::new(
+        let controller = CastController::start(
             manager.clone(),
             playback,
             UiEventBus::new(),
             runtime.handle().clone(),
+            discovery,
         );
         (controller, manager, tmp)
+    }
+
+    fn reported_cast_service(instance: &str, id: &str) -> ReportedRenderer {
+        ReportedRenderer {
+            service_type: RendererServiceType::GoogleCast,
+            instance_name: instance.to_string(),
+            addr: "192.168.1.31".to_string(),
+            port: 8009,
+            txt: [("id", id), ("fn", instance)]
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        }
     }
 
     /// The gate the setting exists for: with casting off, asking to browse opens
@@ -583,7 +629,7 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let (controller, manager, _tmp) = test_controller(&runtime);
+        let (controller, manager, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
 
         assert!(!manager.get_config().cast_enabled, "casting is opt-in");
         controller.start_discovery();
@@ -607,22 +653,76 @@ mod tests {
     }
 
     /// Turning the setting off while browsing stops it, rather than leaving the
-    /// sockets open until the picker happens to close.
+    /// sockets open until the picker happens to close. The controller's own
+    /// watcher does this, so writing the setting is all a caller has to do.
     #[test]
     fn turning_casting_off_stops_browsing() {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap();
-        let (controller, manager, _tmp) = test_controller(&runtime);
+        let (controller, manager, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
 
         manager.set_cast_enabled(true).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller));
 
         manager.set_cast_enabled(false).unwrap();
-        controller.apply_enabled(false);
-        assert!(!browsing(&controller), "turning casting off stops browsing");
+        wait_until("browsing to stop after casting is turned off", || {
+            !browsing(&controller)
+        });
+    }
+
+    /// The reported path: a host that browses for bae pushes what its browser
+    /// resolved, and the picker's list follows — appearing on a report, gone on a
+    /// loss. Reports are refused while casting is off, exactly as browsing is, so
+    /// the setting is one gate rather than one per device source.
+    #[test]
+    fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (controller, manager, _tmp) = test_controller(&runtime, RendererDiscovery::reported());
+
+        controller.start_discovery();
+        controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
+        assert!(
+            controller.devices().is_empty(),
+            "casting is off: nothing browses and no report is taken"
+        );
+
+        manager.set_cast_enabled(true).unwrap();
+        controller.start_discovery();
+        controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
+        controller.renderer_found(reported_cast_service("Study", "cast-2"));
+        assert_eq!(
+            controller
+                .devices()
+                .iter()
+                .map(|device| device.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Kitchen", "Study"],
+            "a reported service is a device the picker can cast to"
+        );
+
+        controller.renderer_lost(RendererServiceType::GoogleCast, "Kitchen");
+        assert_eq!(
+            controller
+                .devices()
+                .iter()
+                .map(|device| device.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Study"],
+            "a service the host's browser lost leaves the picker"
+        );
+
+        // Casting to a reported device reaches the real connect (there is no such
+        // device on this test's network) rather than stopping at the gate.
+        assert!(matches!(
+            controller.cast_to("cast-2"),
+            Err(CastError::Connect(_))
+        ));
     }
 
     /// A raw serve carries `format=raw`; a transcode carries

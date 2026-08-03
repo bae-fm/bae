@@ -12,10 +12,8 @@ use std::thread::JoinHandle;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
+use crate::renderer::discovery::RendererServiceType;
 use crate::renderer::{RendererConnection, RendererDevice};
-
-/// The Cast service type browsed for.
-const CAST_SERVICE_TYPE: &str = "_googlecast._tcp.local.";
 
 /// Browses for Cast devices and publishes the current list over a watch channel,
 /// as [`RendererDevice`]s so the picker shows one merged list. Start and stop
@@ -76,10 +74,11 @@ impl CastDiscovery {
                 return;
             }
         };
-        let events = match daemon.browse(CAST_SERVICE_TYPE) {
+        let service_type = RendererServiceType::GoogleCast.mdns_service_type();
+        let events = match daemon.browse(service_type) {
             Ok(events) => events,
             Err(e) => {
-                warn!("cast discovery: failed to browse {CAST_SERVICE_TYPE}: {e}");
+                warn!("cast discovery: failed to browse {service_type}: {e}");
                 if let Err(shutdown_err) = daemon.shutdown() {
                     debug!(
                         "cast discovery: mDNS daemon shutdown after browse failure: {shutdown_err}"
@@ -172,13 +171,22 @@ fn run_browse(
 /// A stable, de-duplicated device list: one entry per device id (a device seen
 /// on several addresses collapses to one), sorted by name for a stable UI.
 fn snapshot(by_fullname: &HashMap<String, RendererDevice>) -> Vec<RendererDevice> {
+    let mut devices = dedupe_by_id(by_fullname.values());
+    crate::renderer::discovery::sort_for_picker(&mut devices);
+    devices
+}
+
+/// One entry per device id: the same Cast device seen on several addresses or
+/// service instances collapses to one. Shared with the reported-discovery path,
+/// which merges services the host's browser found the same way.
+pub(crate) fn dedupe_by_id<'a>(
+    devices: impl Iterator<Item = &'a RendererDevice>,
+) -> Vec<RendererDevice> {
     let mut by_id: HashMap<&str, RendererDevice> = HashMap::new();
-    for device in by_fullname.values() {
+    for device in devices {
         by_id.entry(&device.id).or_insert_with(|| device.clone());
     }
-    let mut devices: Vec<RendererDevice> = by_id.into_values().collect();
-    devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
-    devices
+    by_id.into_values().collect()
 }
 
 /// Map a resolved mDNS service to a Cast [`RendererDevice`]. The `ResolvedService` type
@@ -186,7 +194,7 @@ fn snapshot(by_fullname: &HashMap<String, RendererDevice>) -> Vec<RendererDevice
 /// the pure [`map_device`], which the tests drive directly.
 fn device_from_resolved(resolved: &ResolvedService) -> Option<RendererDevice> {
     map_device(
-        &resolved.fullname,
+        instance_name(&resolved.fullname),
         resolved.port,
         resolved.addresses.iter().map(|scoped| scoped.to_ip_addr()),
         resolved.txt_properties.get_property_val_str("id"),
@@ -199,8 +207,8 @@ fn device_from_resolved(resolved: &ResolvedService) -> Option<RendererDevice> {
 /// address. IPv4 is preferred — Cast receivers advertise it and the media
 /// receiver fetches over IPv4 LAN. The name falls back to the service instance
 /// label when a device advertises no `fn` value.
-pub(super) fn map_device(
-    fullname: &str,
+pub(crate) fn map_device(
+    instance: &str,
     port: u16,
     addresses: impl Iterator<Item = IpAddr>,
     id: Option<&str>,
@@ -210,8 +218,8 @@ pub(super) fn map_device(
     let name = friendly_name
         .map(str::trim)
         .filter(|n| !n.is_empty())
-        .map(str::to_string)
-        .unwrap_or_else(|| instance_name(fullname));
+        .unwrap_or(instance)
+        .to_string();
 
     let mut chosen: Option<IpAddr> = None;
     for addr in addresses {
@@ -233,11 +241,10 @@ pub(super) fn map_device(
 }
 
 /// The instance label of a service fullname (`"Living Room._googlecast._tcp.local."`
-/// → `"Living Room"`), for the rare device that advertises no `fn` TXT value.
-fn instance_name(fullname: &str) -> String {
+/// → `"Living Room"`), which is what a host browser reports directly.
+pub(super) fn instance_name(fullname: &str) -> &str {
     fullname
         .split_once("._googlecast")
         .map(|(instance, _)| instance)
         .unwrap_or(fullname)
-        .to_string()
 }

@@ -20,6 +20,7 @@ path = "uniffi-bindgen.rs"
 
 [dependencies]
 bae-desktop = { path = "../bae-desktop", optional = true }
+bae-cast = { path = "../bae-cast", optional = true }
 bae-core = { path = "../bae-core" }
 # The CloudKit adapter implements coven's CloudKitOps, so it names coven types
 # directly (same pinned instance bae-core uses, via the workspace dep).
@@ -59,7 +60,11 @@ default = []
 # build turns it on.
 oauth-providers = ["bae-core/oauth-providers", "coven/oauth-providers"]
 cloudkit = []
-desktop = ["dep:bae-desktop"]
+# Casting to network receivers: the device picker, the session, and the
+# host-reported discovery seam. Off by default; every shipping platform turns it
+# on, and desktop implies it.
+cast = ["dep:bae-cast"]
+desktop = ["cast", "dep:bae-desktop"]
 
 [lints]
 workspace = true

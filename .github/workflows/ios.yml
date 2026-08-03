@@ -34,14 +34,14 @@ jobs:
 
     - name: Resolve edition (cargo feature set)
       # build-ios.sh and the clippy step below read BAE_BRIDGE_FEATURES to pick the
-      # edition. An explicitly-empty value is baeium (S3-only) — build-ios.sh's
-      # default-when-UNSET is the full set (oauth-providers,cloudkit); iOS has no
-      # `desktop` feature, so baeium is the empty set.
+      # edition. build-ios.sh's default-when-UNSET is the full set; casting ships
+      # in every edition, so `cast` is in both and is what makes the baeium
+      # (S3-only) set non-empty (iOS has no `desktop` feature to anchor it).
       run: |
         if [ "${{ inputs.edition }}" = "baeium" ]; then
-          echo "BAE_BRIDGE_FEATURES=" >> "$GITHUB_ENV"
+          echo "BAE_BRIDGE_FEATURES=cast" >> "$GITHUB_ENV"
         else
-          echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit" >> "$GITHUB_ENV"
+          echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast" >> "$GITHUB_ENV"
         fi
 
     - name: Check Rust formatting

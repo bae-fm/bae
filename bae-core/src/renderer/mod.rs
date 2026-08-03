@@ -11,9 +11,14 @@
 //! This is decoupled from both the audio URL source (the caller injects one) and
 //! the playback service (the session reports through a callback), so bae-core
 //! depends on neither bae-subsonic nor a specific renderer flavor.
+//!
+//! [`discovery`] is where the picker's list comes from — bae's own browsing, or
+//! services a host's browser reports in when bae may not read the network
+//! itself.
 
 pub mod channel;
 pub mod device;
+pub mod discovery;
 pub mod format;
 pub mod session;
 
@@ -23,6 +28,9 @@ pub use channel::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
 pub use device::{RendererConnection, RendererDevice, RendererKind};
+pub use discovery::{
+    RendererDiscovery, RendererServiceType, ReportedRenderer, RENDERER_SERVICE_TYPES,
+};
 pub use format::{
     cast_stream_format, dlna_stream_format, RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
 };

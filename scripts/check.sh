@@ -219,8 +219,8 @@ check "dead_code (bae-core lib only)" \
 # so that false positive is gone rather than tolerated.
 check "no new #[allow(dead_code)]" bash -c '
   offenders=$(grep -rn --include="*.rs" "allow(dead_code)" \
-    bae-core bae-bridge bae-cli bae-mcp bae-automation bae-desktop bae-loc \
-    bae-test-support third-party \
+    bae-core bae-bridge bae-cast bae-cli bae-mcp bae-automation bae-desktop \
+    bae-loc bae-test-support third-party \
     || true)
   if [ -n "$offenders" ]; then
     echo "New #[allow(dead_code)] is banned (delete the code or #[cfg]-restrict it):"
@@ -248,6 +248,7 @@ check "cargo test (bae-automation)"    cargo test -p bae-automation
 check "cargo test (bae-mcp)"           cargo test -p bae-mcp
 check "cargo test (bae-cli)"           cargo test -p bae-cli
 check "cargo test (bae-subsonic)"      cargo test -p bae-subsonic
+check "cargo test (bae-cast)"          cargo test -p bae-cast
 check "cargo test (bae-desktop)"       cargo test -p bae-desktop
 # Chrome-string orphan gate (the `core.*` keys are gated by loc_key_coverage in
 # the bae-bridge test above). Mirrors CI's "localization + bridge tests"; fails
@@ -330,11 +331,11 @@ check "clippy (iOS aarch64)"  _ios_clippy
 
 # The baeium (S3-only) edition. The iOS app carries its own OAuth/CloudKit `#if`
 # surface, distinct from macOS's, so it has to build on its own — build.yml runs a
-# [full, baeium] matrix for exactly this. An explicitly-empty BAE_BRIDGE_FEATURES
-# is baeium here: iOS has no `desktop` feature to anchor a non-empty value.
+# [full, baeium] matrix for exactly this. iOS has no `desktop` feature, so `cast`
+# (which ships in every edition) is what anchors the baeium set.
 # First, so the section ends with the tree back on the full edition.
 check "bridge build (iOS baeium)" \
-  env BAE_BRIDGE_FEATURES= ./bae-bridge/build-ios.sh
+  env BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-ios.sh
 check "xcodegen (iOS baeium)" bash -c 'cd bae-ios/bae && xcodegen'
 check "xcodebuild (iOS baeium, iphonesimulator)" \
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
@@ -377,7 +378,7 @@ rustup target add aarch64-linux-android 2>/dev/null || true
 
 check "clippy (Android aarch64)" _android_clippy
 
-check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers ./bae-bridge/build-android.sh
+check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers,cast ./bae-bridge/build-android.sh
 check "Gradle unit tests (Android full)" bash -c \
   'cd bae-android && ./gradlew testFullDebugUnitTest --no-daemon'
 check "ktlint" ktlint "bae-android/app/src/**/*.kt"
@@ -388,7 +389,7 @@ check "Android lint (full)" bash -c \
 check "assemble debug APK (full)" bash -c \
   'cd bae-android && ./gradlew assembleFullDebug --no-daemon'
 
-check "bridge build (Android baeium)" env BAE_BRIDGE_FEATURES= ./bae-bridge/build-android.sh
+check "bridge build (Android baeium)" env BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-android.sh
 check "Gradle unit tests (Android baeium)" bash -c \
   'cd bae-android && ./gradlew testBaeiumDebugUnitTest --no-daemon'
 check "Android lint (baeium)" bash -c \

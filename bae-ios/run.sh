@@ -34,12 +34,12 @@ cd "$(dirname "$0")/.."
 
 case "$EDITION" in
     bae)
-        BAE_BRIDGE_FEATURES_VALUE="oauth-providers,cloudkit"
+        BAE_BRIDGE_FEATURES_VALUE="oauth-providers,cloudkit,cast"
         BUNDLE_ID="fm.bae.bae"
         PRODUCT_NAME="bae"
         ;;
     baeium)
-        BAE_BRIDGE_FEATURES_VALUE=""
+        BAE_BRIDGE_FEATURES_VALUE="cast"
         BUNDLE_ID="fm.bae.bae.baeium"
         PRODUCT_NAME="baeium"
         ;;

@@ -126,10 +126,12 @@ pub use triage::{
     MatchedSignal, NeedsYouGroup, NeedsYouReason, TriageEntry, TriageGroup, TriagePlacement,
     TriageQueue, TriageRow, TriageSection, TriageTab, TriageTabCounts,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use types::DecidedIdentity;
 pub use types::{
-    AudioFile, ClaimLevel, CoverSelection, DecidedIdentity, EditValidationError, IdentityChoice,
-    IdentityPick, ImportCommand, ImportPhase, ImportProgress, ImportStep, MetadataPointer,
-    MetadataRef, MetadataSource, PayloadSource, PrepareStep, PressingEdit, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, SourcePayload, StorageMode,
-    TrackFile, TrackUserEdit,
+    AudioFile, ClaimLevel, CoverSelection, EditValidationError, IdentityChoice, IdentityPick,
+    ImportCommand, ImportPhase, ImportProgress, ImportStep, MetadataPointer, MetadataRef,
+    MetadataSource, PayloadSource, PrepareStep, PressingEdit, RawPressingEdit, RawReleaseEdit,
+    RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, SourcePayload, StorageMode, TrackFile,
+    TrackUserEdit,
 };

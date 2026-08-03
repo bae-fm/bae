@@ -16,6 +16,8 @@
 
 use std::collections::HashMap;
 
+use crate::renderer::discovery::RendererServiceType;
+
 /// The AirPlay feature bits carried in the 64-bit `features`/`ft` value that a
 /// sender acts on to choose a dialect. Bit indices are from the openairplay
 /// spec's features table and pyatv's `AirPlayFlags` (MIT), which agree on these.
@@ -112,11 +114,10 @@ pub struct AirPlayCapabilities {
 }
 
 impl AirPlayCapabilities {
-    /// Parse a receiver's capabilities from its service type and TXT records.
-    /// `service_type` is `_airplay._tcp` or `_raop._tcp` (the leading underscore
-    /// and any trailing `.local.` are ignored). `txt` maps TXT keys to their
-    /// string values, lowercased keys as mDNS delivers them.
-    pub fn from_txt(service_type: &str, txt: &HashMap<String, String>) -> Self {
+    /// Parse a receiver's capabilities from the service type it was found on and
+    /// its TXT records. `txt` maps TXT keys to their string values, lowercased
+    /// keys as mDNS delivers them.
+    pub fn from_txt(service_type: RendererServiceType, txt: &HashMap<String, String>) -> Self {
         let features = txt
             .get("features")
             .or_else(|| txt.get("ft"))
@@ -128,7 +129,7 @@ impl AirPlayCapabilities {
             .and_then(|s| parse_hex(s))
             .unwrap_or(0);
 
-        let is_airplay2 = service_type.contains("_airplay")
+        let is_airplay2 = service_type == RendererServiceType::AirPlay
             && features
                 & (feature_bits::SUPPORTS_UNIFIED_MEDIA_CONTROL
                     | feature_bits::SUPPORTS_COREUTILS_PAIRING_AND_ENCRYPTION)
@@ -276,7 +277,7 @@ mod tests {
     fn homepod_speaks_airplay2_with_transient_pairing() {
         let features = COREUTILS_BIT | UNIFIED_BIT;
         let caps = AirPlayCapabilities::from_txt(
-            "_airplay._tcp.local.",
+            RendererServiceType::AirPlay,
             &txt(&[
                 ("features", &features_str(features)),
                 ("model", "AudioAccessory5,1"),
@@ -294,7 +295,7 @@ mod tests {
     #[test]
     fn apple_tv_speaks_airplay2() {
         let caps = AirPlayCapabilities::from_txt(
-            "_airplay._tcp",
+            RendererServiceType::AirPlay,
             &txt(&[("ft", &features_str(UNIFIED_BIT))]),
         );
         assert_eq!(caps.dialect, Dialect::AirPlay2);
@@ -305,7 +306,7 @@ mod tests {
     #[test]
     fn airport_express_speaks_raop_with_rsa_aes_alac() {
         let caps = AirPlayCapabilities::from_txt(
-            "_raop._tcp.local.",
+            RendererServiceType::Raop,
             &txt(&[
                 ("cn", "0,1"),
                 ("et", "0,1"),
@@ -334,7 +335,7 @@ mod tests {
     #[test]
     fn third_party_airplay2_speaker() {
         let caps = AirPlayCapabilities::from_txt(
-            "_airplay._tcp.local.",
+            RendererServiceType::AirPlay,
             &txt(&[
                 ("features", &features_str(COREUTILS_BIT)),
                 ("model", "MyAmp,1"),
@@ -348,8 +349,10 @@ mod tests {
     /// features value is present.
     #[test]
     fn raop_without_airplay2_bits_stays_raop() {
-        let caps =
-            AirPlayCapabilities::from_txt("_raop._tcp.local.", &txt(&[("et", "1"), ("cn", "1")]));
+        let caps = AirPlayCapabilities::from_txt(
+            RendererServiceType::Raop,
+            &txt(&[("et", "1"), ("cn", "1")]),
+        );
         assert_eq!(caps.dialect, Dialect::Raop);
     }
 
@@ -357,11 +360,12 @@ mod tests {
     /// refuse rather than attempt persistent pairing.
     #[test]
     fn pin_and_password_gate_the_receiver() {
-        let pw = AirPlayCapabilities::from_txt("_airplay._tcp", &txt(&[("pw", "true")]));
+        let pw =
+            AirPlayCapabilities::from_txt(RendererServiceType::AirPlay, &txt(&[("pw", "true")]));
         assert!(pw.requires_pin);
 
         let pin_flag = AirPlayCapabilities::from_txt(
-            "_raop._tcp",
+            RendererServiceType::Raop,
             &txt(&[("sf", "0x208")]), // PIN_REQUIRED | LEGACY_PAIRING
         );
         assert!(pin_flag.requires_pin);
@@ -371,7 +375,7 @@ mod tests {
     /// stream.
     #[test]
     fn missing_encryption_defaults_to_none() {
-        let caps = AirPlayCapabilities::from_txt("_raop._tcp", &txt(&[("cn", "1")]));
+        let caps = AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("cn", "1")]));
         assert_eq!(caps.raop.unwrap().encryption, vec![RaopEncryption::None]);
     }
 }

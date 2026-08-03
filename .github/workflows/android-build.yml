@@ -96,20 +96,20 @@ jobs:
     - name: Resolve edition (cargo feature set + Gradle flavor)
       # build-android.sh reads BAE_BRIDGE_FEATURES to pick the bindings; the
       # Gradle flavor must match (full → OAuth bindings + src/full; baeium →
-      # S3-only bindings + the always-null OAuthLinker). An explicitly-empty
-      # BAE_BRIDGE_FEATURES is baeium (build-android.sh's default-when-unset is
-      # the full set).
+      # S3-only bindings + the always-null OAuthLinker). Casting ships in every
+      # edition, so `cast` is in both sets and is what makes the baeium set
+      # non-empty.
       run: |
         if [ "${{ inputs.edition }}" = "baeium" ]; then
           {
-            echo "BAE_BRIDGE_FEATURES="
+            echo "BAE_BRIDGE_FEATURES=cast"
             echo "GRADLE_FLAVOR=Baeium"
             echo "APK_FLAVOR=baeium"
             echo "EDITION_APK=baeium-android.apk"
           } >> "$GITHUB_ENV"
         else
           {
-            echo "BAE_BRIDGE_FEATURES=oauth-providers"
+            echo "BAE_BRIDGE_FEATURES=oauth-providers,cast"
             echo "GRADLE_FLAVOR=Full"
             echo "APK_FLAVOR=full"
             echo "EDITION_APK=bae-android.apk"

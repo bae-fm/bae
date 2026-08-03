@@ -17,10 +17,10 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  Builds bae-bridge for iOS (device + simulator). Debug by default."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
-    echo "  'oauth-providers,cloudkit'; iOS has no 'desktop'). The Swift"
+    echo "  'oauth-providers,cloudkit,cast'; iOS has no 'desktop'). The Swift"
     echo "  compilation conditions are derived from the same set so the generated"
     echo "  bindings and the app's #if guards never disagree. For a baeium"
-    echo "  (S3-only) build: BAE_BRIDGE_FEATURES= $0"
+    echo "  (S3-only) build: BAE_BRIDGE_FEATURES=cast $0"
     exit 0
 fi
 
@@ -35,11 +35,12 @@ fi
 # export the bridge functions whose features are on, so the app's #if guards
 # must match exactly. Both the bindings and the guards derive from this one
 # variable — there's no second place to keep in sync. iOS omits the desktop
-# import/cd methods macOS pulls in, so its default is oauth-providers,cloudkit.
-# `-` (not `:-`) substitutes the default only when the variable is UNSET, so an
-# explicitly-empty `BAE_BRIDGE_FEATURES=` is the baeium (S3-only) build — iOS has
-# no `desktop` feature to anchor a non-empty baeium value the way macOS does.
-BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cloudkit}"
+# import/cd methods macOS pulls in, so its default is oauth-providers,cloudkit,cast.
+# `-` (not `:-`) substitutes the default only when the variable is UNSET. The
+# baeium (S3-only) build is `BAE_BRIDGE_FEATURES=cast`: casting ships in every
+# edition, so `cast` is what anchors a non-empty baeium value here, the way
+# `desktop` does on macOS.
+BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cloudkit,cast}"
 
 # Map each Rust feature to its Swift compilation condition. A build compiled
 # with `oauth-providers` defines BAE_OAUTH_PROVIDERS; one without it must not.

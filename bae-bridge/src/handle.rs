@@ -40,6 +40,8 @@ use crate::types::{
 #[cfg(feature = "desktop")]
 pub struct AppHandle {
     pub(crate) app: bae_desktop::DesktopApp,
+    #[cfg(feature = "cast")]
+    pub(crate) cast: std::sync::Arc<bae_cast::CastController>,
 }
 
 #[derive(uniffi::Object)]
@@ -47,6 +49,8 @@ pub struct AppHandle {
 pub struct AppHandle {
     pub(crate) services: AppServices,
     pub(crate) ui_event_bus: bae_core::ui::UiEventBus,
+    #[cfg(feature = "cast")]
+    pub(crate) cast: std::sync::Arc<bae_cast::CastController>,
     /// Last, so it outlives the services that run on it — see
     /// `bae_core::app::RunningApp`.
     pub(crate) runtime: tokio::runtime::Runtime,
@@ -1022,13 +1026,13 @@ impl crate::types::BridgeMcpServerError {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "cast")]
 impl crate::types::BridgeCastStatus {
-    fn from_core(status: bae_desktop::CastStatus) -> Self {
+    fn from_core(status: bae_cast::CastStatus) -> Self {
         use crate::types::BridgeCastStatus;
         match status {
-            bae_desktop::CastStatus::NotCasting => BridgeCastStatus::NotCasting,
-            bae_desktop::CastStatus::Casting { device_name } => {
+            bae_cast::CastStatus::NotCasting => BridgeCastStatus::NotCasting,
+            bae_cast::CastStatus::Casting { device_name } => {
                 BridgeCastStatus::Casting { device_name }
             }
         }
@@ -1157,6 +1161,98 @@ impl AppHandle {
 }
 
 // =========================================================================
+// Casting to a network receiver (Cast, UPnP, AirPlay)
+// =========================================================================
+
+#[cfg(feature = "cast")]
+#[uniffi::export]
+impl AppHandle {
+    /// Whether casting is available at all. Turning it off stops discovery and
+    /// disconnects any session in flight; the write fires a config invalidation,
+    /// which is what hides the Cast control — no app keeps its own copy.
+    pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_cast_enabled(enabled)
+            .map_err(BridgeError::config)
+    }
+
+    /// Start browsing for Cast devices (call when the device picker opens).
+    pub fn start_cast_discovery(&self) {
+        self.cast.start_discovery();
+    }
+
+    /// Stop browsing for Cast devices (call when the device picker closes).
+    pub fn stop_cast_discovery(&self) {
+        self.cast.stop_discovery();
+    }
+
+    /// The service types a host that browses on bae's behalf must browse for,
+    /// paired with the tag to report each result under.
+    pub fn get_renderer_service_types(&self) -> Vec<crate::types::BridgeRendererService> {
+        bae_core::renderer::RENDERER_SERVICE_TYPES
+            .into_iter()
+            .map(crate::types::BridgeRendererService::from_core)
+            .collect()
+    }
+
+    /// Take a renderer service the host's own browser resolved. Only hosts that
+    /// browse on bae's behalf call this; where bae reads the network itself, its
+    /// own discovery fills the list.
+    pub fn renderer_found(&self, service: crate::types::BridgeReportedRenderer) {
+        self.cast.renderer_found(service.into_core());
+    }
+
+    /// Drop a renderer service the host's browser no longer sees.
+    pub fn renderer_lost(
+        &self,
+        service_type: crate::types::BridgeRendererServiceType,
+        instance_name: String,
+    ) {
+        self.cast
+            .renderer_lost(service_type.into_core(), &instance_name);
+    }
+
+    /// The current list of discovered remote-renderer devices (Cast and UPnP).
+    /// Requery on a `CastDevices` invalidation.
+    pub fn get_cast_devices(&self) -> Vec<crate::types::BridgeCastDevice> {
+        self.cast
+            .devices()
+            .into_iter()
+            .map(crate::types::BridgeCastDevice::from_core)
+            .collect()
+    }
+
+    /// Cast playback to the device with `device_id`.
+    pub fn cast_to(&self, device_id: String) -> Result<(), BridgeError> {
+        self.cast.cast_to(&device_id).map_err(|e| {
+            let detail = e.to_string();
+            match e {
+                // AirPlay receivers the sender can't drive get their own localized
+                // picker line, not the generic internal-error one.
+                bae_cast::CastError::AirPlayPinRequired
+                | bae_cast::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
+                    crate::types::BridgeErrorCategory::AirPlayUnsupported,
+                    detail,
+                ),
+                _ => BridgeError::internal(detail),
+            }
+        })
+    }
+
+    /// Stop casting and return playback to local output.
+    pub fn stop_casting(&self) {
+        self.cast.stop_casting();
+    }
+
+    /// Whether playback is currently on a Cast device, and which. Refresh on a
+    /// `CastStatusChanged` event.
+    pub fn get_cast_status(&self) -> crate::types::BridgeCastStatus {
+        crate::types::BridgeCastStatus::from_core(self.cast.status())
+    }
+}
+
+// =========================================================================
 // Desktop-only: Import, Cover fetching
 // =========================================================================
 
@@ -1211,64 +1307,6 @@ impl AppHandle {
         self.app
             .set_subsonic_password(&password)
             .map_err(BridgeError::config)
-    }
-
-    /// Whether casting is available at all. Turning it off stops discovery and
-    /// disconnects any session in flight; the write fires a config invalidation,
-    /// which is what hides the Cast control — no app keeps its own copy.
-    pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .set_cast_enabled(enabled)
-            .map_err(BridgeError::config)
-    }
-
-    /// Start browsing for Cast devices (call when the device picker opens).
-    pub fn start_cast_discovery(&self) {
-        self.app.start_cast_discovery();
-    }
-
-    /// Stop browsing for Cast devices (call when the device picker closes).
-    pub fn stop_cast_discovery(&self) {
-        self.app.stop_cast_discovery();
-    }
-
-    /// The current list of discovered remote-renderer devices (Cast and UPnP).
-    /// Requery on a `CastDevices` invalidation.
-    pub fn get_cast_devices(&self) -> Vec<crate::types::BridgeCastDevice> {
-        self.app
-            .cast_devices()
-            .into_iter()
-            .map(crate::types::BridgeCastDevice::from_core)
-            .collect()
-    }
-
-    /// Cast playback to the device with `device_id`.
-    pub fn cast_to(&self, device_id: String) -> Result<(), BridgeError> {
-        self.app.cast_to(&device_id).map_err(|e| {
-            let detail = e.to_string();
-            match e {
-                // AirPlay receivers the sender can't drive get their own localized
-                // picker line, not the generic internal-error one.
-                bae_desktop::CastError::AirPlayPinRequired
-                | bae_desktop::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
-                    crate::types::BridgeErrorCategory::AirPlayUnsupported,
-                    detail,
-                ),
-                _ => BridgeError::internal(detail),
-            }
-        })
-    }
-
-    /// Stop casting and return playback to local output.
-    pub fn stop_casting(&self) {
-        self.app.stop_casting();
-    }
-
-    /// Whether playback is currently on a Cast device, and which. Refresh on a
-    /// `CastStatusChanged` event.
-    pub fn get_cast_status(&self) -> crate::types::BridgeCastStatus {
-        crate::types::BridgeCastStatus::from_core(self.app.cast_status())
     }
 
     /// Validate then persist a Discogs API token, returning what happened so the

@@ -227,7 +227,9 @@ impl IdentityPick {
 /// the one payload the pick command and the selection query both return, so
 /// a fresh launch renders exactly what the click rendered. Not persisted:
 /// derived from the stored [`IdentityPick`] and the archived documents on
-/// every read.
+/// every read. Desktop-only like the prefetch and mapping it carries: the
+/// import pane is where a decided identity is read.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub enum DecidedIdentity {
     Release {

@@ -2,6 +2,8 @@
 
 use super::*;
 
+/// Desktop-only, with the import reconcile that is its one caller.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub(crate) struct ResolvedImportWorks {
     /// One id per input work, in input order.
@@ -92,7 +94,8 @@ impl LibraryManager {
     /// Resolve each parsed work to the `works` row already holding its
     /// MusicBrainz id, or to a row for finalize to insert. `ids` comes back in
     /// input order, so a caller can zip it with `works` to remap the parsed ids
-    /// its work links carry.
+    /// its work links carry. Desktop-only, with the import that calls it.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn resolve_works_for_import(
         &self,
         works: &[crate::db::DbWork],

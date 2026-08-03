@@ -94,6 +94,7 @@ jobs:
         cargo test -p bae-mcp
         cargo test -p bae-cli
         cargo test -p bae-subsonic
+        cargo test -p bae-cast
         cargo test -p bae-desktop
         # chrome-string orphan gate (core.* keys are covered by the bae-bridge
         # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.

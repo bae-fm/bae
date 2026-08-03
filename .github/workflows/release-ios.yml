@@ -85,11 +85,12 @@ jobs:
     - name: Resolve edition (features, identity, asset names)
       run: |
         # The full edition keeps its identity; baeium gets the .baeium
-        # bundle id, the S3-only feature set (empty BAE_BRIDGE_FEATURES — build-ios.sh
-        # treats unset as full and empty as baeium), and its own asset + rolling link.
+        # bundle id, the S3-only feature set (`cast` alone — build-ios.sh treats
+        # unset as full, and casting ships in every edition), and its own asset +
+        # rolling link.
         if [ "${{ matrix.edition }}" = "baeium" ]; then
           {
-            echo "BAE_BRIDGE_FEATURES="
+            echo "BAE_BRIDGE_FEATURES=cast"
             echo "BUNDLE_ID=fm.bae.bae.baeium"
             echo "PRODUCT_NAME=baeium"
             echo "IPA_NAME=baeium-ios.ipa"
@@ -97,7 +98,7 @@ jobs:
           } >> "$GITHUB_ENV"
         else
           {
-            echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit"
+            echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast"
             echo "BUNDLE_ID=fm.bae.bae"
             echo "PRODUCT_NAME=bae"
             echo "IPA_NAME=bae-ios.ipa"

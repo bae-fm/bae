@@ -18,10 +18,11 @@ usage() {
     echo "  ABI so a local install builds and ships only that one."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
-    echo "  'oauth-providers'), which picks the Gradle edition the bindings feed:"
-    echo "  a set containing oauth-providers writes the 'full' edition's bindings,"
-    echo "  anything else writes the 'baeium' (S3-only) edition's. For baeium:"
-    echo "  BAE_BRIDGE_FEATURES= $0"
+    echo "  'oauth-providers,cast'), which picks the Gradle edition the bindings"
+    echo "  feed: a set containing oauth-providers writes the 'full' edition's"
+    echo "  bindings, anything else writes the 'baeium' (S3-only) edition's."
+    echo "  Casting ships in every edition. For baeium:"
+    echo "  BAE_BRIDGE_FEATURES=cast $0"
 }
 
 CARGO_PROFILE="debug"
@@ -41,8 +42,9 @@ done
 # export the bridge functions whose features are on, so each Gradle edition
 # compiles against the bindings built for it. The feature set picks the edition:
 # oauth-providers → the 'full' edition; no oauth-providers → 'baeium' (S3-only).
-# Both the bindings dir and the edition derive from this one variable.
-BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers}"
+# Both the bindings dir and the edition derive from this one variable. `cast`
+# ships in every edition, so a baeium build is `BAE_BRIDGE_FEATURES=cast`.
+BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cast}"
 
 # Map the feature set to its Gradle edition's bindings dir (the srcDir each
 # flavor's sourceSets points at in bae-android/app/build.gradle.kts).

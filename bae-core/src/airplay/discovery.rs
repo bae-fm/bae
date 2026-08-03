@@ -19,10 +19,12 @@ use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
 use super::capabilities::{AirPlayCapabilities, Dialect};
+use crate::renderer::discovery::RendererServiceType;
 use crate::renderer::{RendererConnection, RendererDevice};
 
 /// The two AirPlay service types browsed for.
-const SERVICE_TYPES: [&str; 2] = ["_airplay._tcp.local.", "_raop._tcp.local."];
+const SERVICE_TYPES: [RendererServiceType; 2] =
+    [RendererServiceType::AirPlay, RendererServiceType::Raop];
 
 /// A discovered AirPlay receiver: enough to display it, reach its RTSP port, and
 /// decide how to connect.
@@ -121,17 +123,18 @@ impl AirPlayDiscovery {
         let table = std::sync::Arc::new(std::sync::Mutex::new(DeviceTable::default()));
         let mut readers = Vec::with_capacity(SERVICE_TYPES.len());
         for service_type in SERVICE_TYPES {
-            let events = match daemon.browse(service_type) {
+            let mdns_type = service_type.mdns_service_type();
+            let events = match daemon.browse(mdns_type) {
                 Ok(events) => events,
                 Err(e) => {
-                    warn!("airplay discovery: failed to browse {service_type}: {e}");
+                    warn!("airplay discovery: failed to browse {mdns_type}: {e}");
                     continue;
                 }
             };
             let devices_tx = self.devices_tx.clone();
             let table = table.clone();
             readers.push(std::thread::spawn(move || {
-                run_browse(events, table, devices_tx);
+                run_browse(service_type, events, table, devices_tx);
             }));
         }
         if readers.is_empty() {
@@ -183,6 +186,7 @@ struct DeviceTable {
 /// Drain one service type's mDNS event channel into the shared table, publishing
 /// a de-duplicated snapshot on every change. Returns when the channel closes.
 fn run_browse(
+    service_type: RendererServiceType,
     events: mdns_sd::Receiver<ServiceEvent>,
     table: std::sync::Arc<std::sync::Mutex<DeviceTable>>,
     devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
@@ -193,7 +197,7 @@ fn run_browse(
             match event {
                 ServiceEvent::ServiceResolved(resolved) => {
                     let fullname = resolved.fullname.clone();
-                    match device_from_resolved(&resolved) {
+                    match device_from_resolved(service_type, &resolved) {
                         Some(device) => {
                             table.by_fullname.insert(fullname, device);
                             true
@@ -226,12 +230,23 @@ fn run_browse(
 /// One entry per device id, preferring the AirPlay 2 advertisement when a
 /// receiver is seen on both service types, sorted by name for a stable UI.
 fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
+    let mut devices = dedupe_by_id(table.by_fullname.values());
+    devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+    devices
+}
+
+/// One entry per receiver id, preferring the AirPlay 2 advertisement when a
+/// receiver is seen on both service types — the same receiver reached the better
+/// way, not two picker rows. Shared with the reported-discovery path, which
+/// merges services the host's browser found the same way.
+pub(crate) fn dedupe_by_id<'a>(
+    devices: impl Iterator<Item = &'a AirPlayDevice>,
+) -> Vec<AirPlayDevice> {
     let mut by_id: HashMap<&str, &AirPlayDevice> = HashMap::new();
-    for device in table.by_fullname.values() {
+    for device in devices {
         by_id
             .entry(&device.id)
             .and_modify(|existing| {
-                // Prefer AirPlay 2 over RAOP for a receiver that advertises both.
                 if device.capabilities.dialect == Dialect::AirPlay2
                     && existing.capabilities.dialect == Dialect::Raop
                 {
@@ -240,23 +255,24 @@ fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
             })
             .or_insert(device);
     }
-    let mut devices: Vec<AirPlayDevice> = by_id.into_values().cloned().collect();
-    devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
-    devices
+    by_id.into_values().cloned().collect()
 }
 
 /// Map a resolved mDNS service to an [`AirPlayDevice`]. The `ResolvedService`
 /// type is opaque, so its pieces are pulled out here and mapped by the pure
 /// [`map_device`], which the tests drive directly.
-fn device_from_resolved(resolved: &ResolvedService) -> Option<AirPlayDevice> {
+fn device_from_resolved(
+    service_type: RendererServiceType,
+    resolved: &ResolvedService,
+) -> Option<AirPlayDevice> {
     let txt = resolved
         .txt_properties
         .iter()
         .map(|p| (p.key().to_ascii_lowercase(), p.val_str().to_string()))
         .collect::<HashMap<String, String>>();
     map_device(
-        &resolved.ty_domain,
-        &resolved.fullname,
+        service_type,
+        instance_label(&resolved.fullname),
         resolved.port,
         resolved.addresses.iter().map(|scoped| scoped.to_ip_addr()),
         &txt,
@@ -268,14 +284,13 @@ fn device_from_resolved(resolved: &ResolvedService) -> Option<AirPlayDevice> {
 /// RTSP control connection is IPv4 LAN). The device id is the advertised
 /// `deviceid`, falling back to the MAC prefix of a RAOP instance name
 /// (`AABBCCDDEEFF@Name`), then to the instance label.
-pub(super) fn map_device(
-    service_type: &str,
-    fullname: &str,
+pub(crate) fn map_device(
+    service_type: RendererServiceType,
+    instance: &str,
     port: u16,
     addresses: impl Iterator<Item = IpAddr>,
     txt: &HashMap<String, String>,
 ) -> Option<AirPlayDevice> {
-    let instance = instance_label(fullname);
     let id = txt
         .get("deviceid")
         .map(String::as_str)
@@ -357,8 +372,8 @@ mod tests {
     #[test]
     fn airplay2_service_maps_to_device() {
         let device = map_device(
-            "_airplay._tcp.local.",
-            "Kitchen._airplay._tcp.local.",
+            RendererServiceType::AirPlay,
+            "Kitchen",
             7000,
             [v4(10, 0, 0, 4)].into_iter(),
             &txt(&[
@@ -379,8 +394,8 @@ mod tests {
     #[test]
     fn raop_instance_name_splits_mac_and_name() {
         let device = map_device(
-            "_raop._tcp.local.",
-            "001122334455@Studio Monitor._raop._tcp.local.",
+            RendererServiceType::Raop,
+            "001122334455@Studio Monitor",
             5000,
             [v4(10, 0, 0, 9)].into_iter(),
             &txt(&[("et", "0,1"), ("cn", "0,1")]),
@@ -395,8 +410,8 @@ mod tests {
     #[test]
     fn service_without_address_is_dropped() {
         assert!(map_device(
-            "_airplay._tcp.local.",
-            "Nowhere._airplay._tcp.local.",
+            RendererServiceType::AirPlay,
+            "Nowhere",
             7000,
             std::iter::empty(),
             &txt(&[("deviceid", "X")]),
@@ -408,8 +423,8 @@ mod tests {
     #[test]
     fn ipv4_is_preferred() {
         let device = map_device(
-            "_airplay._tcp.local.",
-            "Dual._airplay._tcp.local.",
+            RendererServiceType::AirPlay,
+            "Dual",
             7000,
             ["fe80::1".parse().unwrap(), v4(192, 168, 1, 5)].into_iter(),
             &txt(&[("deviceid", "ID")]),
@@ -423,16 +438,16 @@ mod tests {
     #[test]
     fn same_receiver_on_both_services_prefers_airplay2() {
         let raop = map_device(
-            "_raop._tcp.local.",
-            "AABBCCDDEEFF@Den._raop._tcp.local.",
+            RendererServiceType::Raop,
+            "AABBCCDDEEFF@Den",
             5000,
             [v4(10, 0, 0, 7)].into_iter(),
             &txt(&[("et", "1"), ("cn", "1")]),
         )
         .unwrap();
         let airplay = map_device(
-            "_airplay._tcp.local.",
-            "Den._airplay._tcp.local.",
+            RendererServiceType::AirPlay,
+            "Den",
             7000,
             [v4(10, 0, 0, 7)].into_iter(),
             &txt(&[

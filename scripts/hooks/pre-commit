@@ -11,8 +11,9 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 # Dependency graph (update when crate dependencies change):
 #   bae-core: no local deps; dev-depends on bae-test-support (its tests)
 #   bae-test-support: depends on bae-core
-#   bae-bridge: depends on bae-core
+#   bae-bridge: depends on bae-core, bae-cast
 #   bae-subsonic: depends on bae-core
+#   bae-cast: depends on bae-core, bae-subsonic
 #   bae-desktop: depends on bae-core, bae-mcp, bae-subsonic
 #   bae-macos: depends on bae-bridge (Swift native app)
 
@@ -123,7 +124,7 @@ if has_changes_in "bae-core" || has_changes_in "bae-subsonic" \
     || has_changes_in "bae-desktop" || has_changes_in "bae-automation" \
     || has_changes_in "bae-cli" || has_changes_in "bae-mcp" \
     || has_changes_in "bae-loc" || has_changes_in "bae-test-support" \
-    || has_changes_in "bae-bridge"; then
+    || has_changes_in "bae-cast" || has_changes_in "bae-bridge"; then
     run_check "clippy (workspace)" cargo clippy --workspace --all-targets -- -D warnings || {
         echo "Fix the warnings above and try again"
         exit 1
