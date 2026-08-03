@@ -67,4 +67,12 @@ internal sealed class CastStore
 
     // Stop casting and return playback to local output.
     public void StopCasting() => _cast.StopCasting();
+
+    // Turn the whole feature on or off. Returns a localized error string on
+    // failure, or null on success (or when there is no open library).
+    public string? SetEnabled(bool enabled)
+    {
+        var (current, error) = _cast.SetEnabled(enabled);
+        return current ? error : null;
+    }
 }

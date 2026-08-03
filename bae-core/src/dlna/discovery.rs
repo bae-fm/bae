@@ -68,6 +68,13 @@ impl DlnaDiscovery {
         self.devices_rx.borrow().clone()
     }
 
+    /// Whether an SSDP socket and search thread are live right now. For tests
+    /// that assert searching is (or is not) reaching the network.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn is_browsing(&self) -> bool {
+        self.running.is_some()
+    }
+
     /// Begin searching. Idempotent: a second call while already searching is a
     /// no-op. Publishes list updates as renderers answer.
     pub fn start(&mut self) {

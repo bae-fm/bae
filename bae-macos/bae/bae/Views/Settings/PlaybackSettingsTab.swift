@@ -69,6 +69,7 @@ struct PlaybackSettingsTab: View {
                     savePresets: PreviewData.savePresets,
                     defaultTrackSavePreset: "flac",
                     defaultReleaseSavePreset: "flac",
+                    castEnabled: false,
                     mcp: BridgeMcpConfig(enabled: false, port: 47777),
                     subsonic: BridgeSubsonicConfig(
                         enabled: false,

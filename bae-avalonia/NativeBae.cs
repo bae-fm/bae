@@ -993,6 +993,12 @@ internal static class NativeBae
 
     internal static void StopCasting(AppHandle handle) => handle.StopCasting();
 
+    /// <summary>Whether casting is available at all. Turning it off stops discovery
+    /// and disconnects any session in flight; the write fires a config
+    /// invalidation, which is what hides the cast control.</summary>
+    internal static string? SetCastEnabled(AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetCastEnabled(enabled));
+
     internal static void SetRepeatMode(AppHandle handle, BridgeRepeatMode mode) => handle.SetRepeatMode(mode);
 
     /// <summary>The mode the repeat button steps to next. Playback only accepts an
@@ -1188,6 +1194,7 @@ internal static class NativeBae
             SavePresets = config.SavePresets.Select(SavePreset).ToList(),
             DefaultTrackSavePreset = config.DefaultTrackSavePreset,
             DefaultReleaseSavePreset = config.DefaultReleaseSavePreset,
+            CastEnabled = config.CastEnabled,
             McpEnabled = config.Mcp.Enabled,
             McpPort = config.Mcp.Port,
             McpStatus = mcpStatus,

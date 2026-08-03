@@ -3467,6 +3467,10 @@ pub struct BridgeConfig {
     /// Id of the preset a release save defaults to (a valid, release-applicable
     /// preset id; core keeps it non-dangling).
     pub default_release_save_preset: String,
+    /// Whether casting to a network receiver is available. Off unless the user
+    /// turns it on; while off, core runs no discovery and refuses to start a
+    /// session, and the UI hides its Cast control.
+    pub cast_enabled: bool,
     pub mcp: BridgeMcpConfig,
     pub subsonic: BridgeSubsonicConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,

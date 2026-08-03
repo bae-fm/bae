@@ -70,6 +70,7 @@
     <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />
     <Compile Include="../Stores/PersistPlaybackModel.cs" Link="PersistPlaybackModel.cs" />
     <Compile Include="../Stores/ForgetLibraryModel.cs" Link="ForgetLibraryModel.cs" />
+    <Compile Include="../Stores/CastSettingsModel.cs" Link="CastSettingsModel.cs" />
     <Compile Include="../Stores/AlbumGridSelectionModel.cs" Link="AlbumGridSelectionModel.cs" />
     <Compile Include="../Stores/HeaderCollapseModel.cs" Link="HeaderCollapseModel.cs" />
     <Compile Include="../Stores/ReleaseQueueInteractionModel.cs" Link="ReleaseQueueInteractionModel.cs" />

@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API-token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Valideren…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauze tussen kanten</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Casten</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Casten inschakelen</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Speelt af op Cast-, AirPlay- en UPnP-ontvangers in je netwerk. Als dit uit staat, zoekt bae niet naar apparaten.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Casten uitschakelen?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>Hiermee stopt het casten naar {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Uitschakelen</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Bibliotheek: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>updates</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>versie {version}</value></data>

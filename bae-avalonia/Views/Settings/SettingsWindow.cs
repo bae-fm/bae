@@ -100,6 +100,7 @@ internal sealed partial class SettingsWindow
         renderers.Add(fresh => libraryLabel.Text = Loc.Chrome("settings.library_label", "name", fresh.LibraryName));
 
         BuildPlayback(content, renderers);
+        BuildCast(content, renderers);
         BuildFormats(content, renderers);
         BuildAutomation(content, renderers);
         BuildSubsonic(content, renderers);

@@ -377,6 +377,10 @@ pub struct ConfigYaml {
     /// shortfall), failing the import for a broken track rather than importing it
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     pub verify_decode_on_import: bool,
+    /// Whether casting to a network receiver is available at all. Off unless the
+    /// user turns it on: while off, nothing browses the local network and no
+    /// cast session can be started.
+    pub cast_enabled: bool,
     /// Local automation server configuration.
     pub mcp: McpConfig,
     /// Subsonic/OpenSubsonic server settings. The password is keyring-only.
@@ -414,6 +418,7 @@ impl ConfigYaml {
             show_remaining_time: self.show_remaining_time,
             library_full_width: self.library_full_width,
             verify_decode_on_import: self.verify_decode_on_import,
+            cast_enabled: self.cast_enabled,
             mcp: self.mcp,
             subsonic: self.subsonic,
         }
@@ -440,6 +445,7 @@ impl From<&Config> for ConfigYaml {
             show_remaining_time: config.show_remaining_time,
             library_full_width: config.library_full_width,
             verify_decode_on_import: config.verify_decode_on_import,
+            cast_enabled: config.cast_enabled,
             mcp: config.mcp,
             subsonic: config.subsonic.clone(),
             cloud_home: config.cloud_home.clone(),
@@ -509,6 +515,11 @@ pub struct Config {
     /// Whether import verifies each track by fully decoding it, failing the import
     /// for a broken (truncated/corrupt) track. Defaults to `true`.
     pub verify_decode_on_import: bool,
+    /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
+    /// Defaults to `false`: casting browses the local network and serves audio
+    /// off this machine, so it stays off until the user asks for it. While off,
+    /// no discovery runs and no cast session can be started.
+    pub cast_enabled: bool,
     /// Local automation server configuration. The bearer token is keyring-only.
     pub mcp: McpConfig,
     /// Subsonic/OpenSubsonic server settings (`enabled`, `port`, `username`).
@@ -661,6 +672,7 @@ impl Config {
             show_remaining_time: false,
             library_full_width: false,
             verify_decode_on_import: true,
+            cast_enabled: false,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),
         }
@@ -1331,12 +1343,30 @@ mod tests {
             "show_remaining_time",
             "library_full_width",
             "verify_decode_on_import",
+            "cast_enabled",
         ] {
             assert!(
                 parse_yaml_without(key).is_err(),
                 "ConfigYaml should fail without {key}"
             );
         }
+    }
+
+    /// Casting reaches the local network, so it is opt-in: a fresh library has
+    /// it off, and the choice survives a write/read of config.yaml.
+    #[test]
+    fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+        let mut config = make_test_config("lib-cast", tmp.path().to_path_buf());
+        assert!(!config.cast_enabled, "casting is opt-in");
+
+        config.cast_enabled = true;
+        config.save_to_config_yaml().unwrap();
+
+        let yaml: ConfigYaml =
+            serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+                .unwrap();
+        assert!(yaml.cast_enabled);
     }
 
     // ── Config schema migration ──────────────────────────────────────────────
@@ -1405,6 +1435,7 @@ mod tests {
             "show_remaining_time",
             "library_full_width",
             "verify_decode_on_import",
+            "cast_enabled",
             "mcp",
             "subsonic",
         ] {

@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>โทเค็น API ของ Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>กำลังตรวจสอบ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>หยุดพักระหว่างด้าน</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>การแคสต์</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>เปิดใช้การแคสต์</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>เล่นไปยังตัวรับ Cast, AirPlay และ UPnP ในเครือข่ายของคุณ เมื่อปิดอยู่ bae จะไม่ค้นหาอุปกรณ์</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>ปิดการแคสต์ไหม</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>การแคสต์ไปยัง {device} จะหยุดลง</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>ปิด</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ไลบรารี: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>การอัปเดต</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>เวอร์ชัน {version}</value></data>

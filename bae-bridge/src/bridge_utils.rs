@@ -241,6 +241,7 @@ impl BridgeConfig {
             library_full_width,
             // Import-time decode verification; not surfaced on the config screen.
             verify_decode_on_import: _,
+            cast_enabled,
             mcp,
             subsonic,
         } = config;
@@ -270,6 +271,7 @@ impl BridgeConfig {
                 .collect(),
             default_track_save_preset: default_track_save_preset.clone(),
             default_release_save_preset: default_release_save_preset.clone(),
+            cast_enabled: *cast_enabled,
             mcp: BridgeMcpConfig {
                 enabled: *enabled,
                 port: *port,

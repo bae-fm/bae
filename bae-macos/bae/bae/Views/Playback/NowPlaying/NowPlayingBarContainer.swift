@@ -72,7 +72,10 @@ struct NowPlayingBarContainer: View {
             },
             queueAddPublisher: playbackStore.queueItemsAddedSubject
                 .eraseToAnyPublisher(),
-            castControl: AnyView(CastButton()),
+            // Casting is opt-in, and while it is off core browses nothing and
+            // refuses every session — so the bar simply has no Cast control.
+            castControl: configStore.config.castEnabled
+                ? AnyView(CastButton()) : AnyView(EmptyView()),
         )
         .sidePausePromptAlert()
     }

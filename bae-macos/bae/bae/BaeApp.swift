@@ -426,6 +426,8 @@ extension BaeApp {
                 .environment(appService.discogs)
                 .environment(appService.automation)
                 .environment(appService.subsonic)
+                .environment(appService.cast)
+                .environment(appService.castStore)
                 .environment(appService.outboxStore)
                 .environment(\.playbackPositionPublisher, playbackPublisher)
                 .environment(\.previewProgressPublisher, previewPublisher)

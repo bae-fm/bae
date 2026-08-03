@@ -56,6 +56,13 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
+    /// Whether casting to a network receiver is available. Turning it off is
+    /// what ends an active session: the desktop cast controller follows this
+    /// field, stops browsing, and disconnects.
+    pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
+        self.config_handle.update(|c| c.cast_enabled = enabled)
+    }
+
     pub fn save_presets(&self) -> Vec<crate::config::SavePreset> {
         self.config_handle.config().save_presets.clone()
     }

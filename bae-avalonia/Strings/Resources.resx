@@ -183,6 +183,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause between sides</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Casting</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Enable casting</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Turn off casting?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>This will stop casting to {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Turn Off</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Library: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>updates</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>version {version}</value></data>

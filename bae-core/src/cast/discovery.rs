@@ -55,6 +55,13 @@ impl CastDiscovery {
         self.devices_rx.borrow().clone()
     }
 
+    /// Whether an mDNS daemon and browse thread are live right now. For tests
+    /// that assert browsing is (or is not) reaching the network.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn is_browsing(&self) -> bool {
+        self.running.is_some()
+    }
+
     /// Begin browsing. Idempotent: a second call while already browsing is a
     /// no-op. Publishes list updates over the watch channel as devices come and
     /// go.

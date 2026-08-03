@@ -1213,6 +1213,16 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// Whether casting is available at all. Turning it off stops discovery and
+    /// disconnects any session in flight; the write fires a config invalidation,
+    /// which is what hides the Cast control — no app keeps its own copy.
+    pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_cast_enabled(enabled)
+            .map_err(BridgeError::config)
+    }
+
     /// Start browsing for Cast devices (call when the device picker opens).
     pub fn start_cast_discovery(&self) {
         self.app.start_cast_discovery();

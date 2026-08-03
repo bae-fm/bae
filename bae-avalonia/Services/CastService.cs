@@ -37,6 +37,12 @@ internal sealed class CastService
     public Func<bool> StopCasting { get; init; }
         = () => throw new InvalidOperationException("CastService stub: StopCasting not wired");
 
+    /// <summary>Whether casting is available at all. Core stops discovery and ends
+    /// a session in flight off the write, so the settings toggle only has to make
+    /// this call; the error line is the localized failure, or null on success.</summary>
+    public Func<bool, (bool Current, string? Error)> SetEnabled { get; init; }
+        = _ => throw new InvalidOperationException("CastService stub: SetEnabled not wired");
+
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static CastService FromSession(SessionStore session) => new()
     {
@@ -45,5 +51,6 @@ internal sealed class CastService
         StopDiscovery = () => session.WithCurrentHandle(NativeBae.StopCastDiscovery),
         CastTo = deviceId => session.WithCurrentHandle(handle => NativeBae.CastTo(handle, deviceId)),
         StopCasting = () => session.WithCurrentHandle(NativeBae.StopCasting),
+        SetEnabled = enabled => session.WithCurrentHandle(handle => NativeBae.SetCastEnabled(handle, enabled)),
     };
 }

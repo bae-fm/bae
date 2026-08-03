@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Токен API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Перевірка…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Трансляція</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Увімкнути трансляцію</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Відтворює на приймачах Cast, AirPlay і UPnP у вашій мережі. Коли вимкнено, bae не шукає пристроїв.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Вимкнути трансляцію?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>Це припинить трансляцію на {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Вимкнути</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Бібліотека: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>оновлення</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>версія {version}</value></data>

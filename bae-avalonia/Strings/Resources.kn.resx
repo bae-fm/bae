@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ಟೋಕನ್</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>ಮಾನ್ಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>ಕಾಸ್ಟಿಂಗ್</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>ಕಾಸ್ಟಿಂಗ್ ಸಕ್ರಿಯಗೊಳಿಸಿ</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>ನಿಮ್ಮ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿನ Cast, AirPlay ಮತ್ತು UPnP ರಿಸೀವರ್‌ಗಳಲ್ಲಿ ಪ್ಲೇ ಮಾಡುತ್ತದೆ. ಆಫ್ ಇರುವಾಗ bae ಯಾವುದೇ ಸಾಧನವನ್ನು ಹುಡುಕುವುದಿಲ್ಲ.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>ಕಾಸ್ಟಿಂಗ್ ಆಫ್ ಮಾಡಬೇಕೆ?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>ಇದು {device} ಗೆ ಕಾಸ್ಟ್ ಮಾಡುವುದನ್ನು ನಿಲ್ಲಿಸುತ್ತದೆ.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>ಆಫ್ ಮಾಡಿ</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ಲೈಬ್ರರಿ: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>ನವೀಕರಣಗಳು</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>ಆವೃತ್ತಿ {version}</value></data>

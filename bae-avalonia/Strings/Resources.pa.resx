@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ਟੋਕਨ</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>ਪਰਖਿਆ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>ਕਾਸਟਿੰਗ</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>ਕਾਸਟਿੰਗ ਚਾਲੂ ਕਰੋ</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>ਤੁਹਾਡੇ ਨੈੱਟਵਰਕ ਦੇ Cast, AirPlay ਅਤੇ UPnP ਰਿਸੀਵਰਾਂ ਉੱਤੇ ਚਲਾਉਂਦਾ ਹੈ। ਬੰਦ ਹੋਣ ਵੇਲੇ bae ਕੋਈ ਡੀਵਾਈਸ ਨਹੀਂ ਲੱਭਦਾ।</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>ਕਾਸਟਿੰਗ ਬੰਦ ਕਰਨੀ ਹੈ?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>ਇਸ ਨਾਲ {device} ਉੱਤੇ ਕਾਸਟ ਕਰਨਾ ਬੰਦ ਹੋ ਜਾਵੇਗਾ।</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>ਬੰਦ ਕਰੋ</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>ਅੱਪਡੇਟ</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>ਵਰਜ਼ਨ {version}</value></data>

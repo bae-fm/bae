@@ -73,6 +73,13 @@ internal sealed class MainShellView : UserControl
         Grid.SetRow(contentRow, 1);
         root.Children.Add(contentRow);
 
+        // The now-playing bar reads persisted preferences, so the shell — not just
+        // the settings window — keeps the settings mirror current for the window's
+        // life. Seeded before the bar is built so its controls start correct.
+        _app.ProjectionRegistry.Register(
+            typeof(uniffi.bae_bridge.BridgeInvalidation.Config), _app.SettingsStore.Reload);
+        _app.SettingsStore.Reload();
+
         var bar = BuildNowPlayingBar();
         Grid.SetRow(bar, 2);
         root.Children.Add(bar);
@@ -317,7 +324,7 @@ internal sealed class MainShellView : UserControl
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        right.Children.Add(new CastButton(_app.CastStore));
+        right.Children.Add(new CastButton(_app.CastStore, _app.SettingsStore));
         _queueButton = Icons.IconButton(Icons.Queue, 17, "BaeTextSecondaryBrush", 32);
         right.Children.Add(_queueButton);
         right.Children.Add(Icons.IconButton(Icons.VolumeUp, 16, "BaeTextSecondaryBrush", 30));

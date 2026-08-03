@@ -38,6 +38,10 @@ public struct Config: Equatable {
     public let defaultTrackSavePreset: String
     /// Id of the preset a release save defaults to (valid + release-applicable).
     public let defaultReleaseSavePreset: String
+    /// Whether casting to a network receiver is available. Core enforces it —
+    /// while off it runs no discovery and refuses to start a session — so the
+    /// playback bar reads this only to decide whether to show its Cast control.
+    public let castEnabled: Bool
     public let mcp: BridgeMcpConfig
     public let subsonic: BridgeSubsonicConfig
 
@@ -58,6 +62,7 @@ public struct Config: Equatable {
         savePresets = bridge.savePresets
         defaultTrackSavePreset = bridge.defaultTrackSavePreset
         defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
+        castEnabled = bridge.castEnabled
         mcp = bridge.mcp
         subsonic = bridge.subsonic
     }

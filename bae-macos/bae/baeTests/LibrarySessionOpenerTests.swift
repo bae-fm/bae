@@ -146,6 +146,7 @@ struct LibrarySessionOpenerTests {
             savePresets: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
+            castEnabled: false,
             mcp: BridgeMcpConfig(enabled: false, port: 47777),
             subsonic: BridgeSubsonicConfig(
                 enabled: false, port: 4533, username: "", bindAddress: "127.0.0.1"),

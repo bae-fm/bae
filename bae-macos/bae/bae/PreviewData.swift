@@ -1021,11 +1021,23 @@
             libraryFullWidth: false
         )
 
-        /// A preview ConfigStore with the given library-width setting — the
-        /// full-width previews build their own; everything else shares the
-        /// `configStore` static above.
+        /// A preview CastStore mid-session, so the casting settings preview shows
+        /// the state that asks before the feature is turned off.
         @MainActor
-        static func makeConfigStore(libraryFullWidth: Bool) -> ConfigStore {
+        static let castStore: CastStore = {
+            let store = CastStore()
+            store.applyStatus(deviceName: "Living Room Speaker")
+            return store
+        }()
+
+        /// A preview ConfigStore with the given library-width and casting
+        /// settings — the previews that vary them build their own; everything
+        /// else shares the `configStore` static above.
+        @MainActor
+        static func makeConfigStore(
+            libraryFullWidth: Bool,
+            castEnabled: Bool = false
+        ) -> ConfigStore {
             ConfigStore(
                 config: Config(
                     bridge: BridgeConfig(
@@ -1042,6 +1054,7 @@
                         savePresets: savePresets,
                         defaultTrackSavePreset: "flac",
                         defaultReleaseSavePreset: "flac",
+                        castEnabled: castEnabled,
                         mcp: BridgeMcpConfig(enabled: false, port: 47777),
                         subsonic: BridgeSubsonicConfig(
                             enabled: false,

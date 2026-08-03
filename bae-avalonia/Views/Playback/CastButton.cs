@@ -13,16 +13,21 @@ namespace Bae.Desktop;
 // discovered devices follow, or an empty-state line when none are found. The
 // device list refreshes on the castDevices projection and the active device on the
 // castStatusChanged event, both mirrored into CastStore.
+//
+// The control is present only while casting is turned on. That is presentation
+// only: core is what refuses to browse or connect when the setting is off.
 internal sealed class CastButton : Button
 {
     private readonly CastStore _cast;
+    private readonly SettingsStore _settings;
     private readonly PathIcon _glyph;
     private readonly MenuFlyout _flyout;
     private bool _open;
 
-    public CastButton(CastStore cast)
+    public CastButton(CastStore cast, SettingsStore settings)
     {
         _cast = cast;
+        _settings = settings;
 
         Width = 30;
         Height = 30;
@@ -50,7 +55,20 @@ internal sealed class CastButton : Button
 
         _cast.StatusChanged += OnStatusChanged;
         _cast.DevicesChanged += OnDevicesChanged;
+        _settings.Changed += ApplyEnabled;
+        ApplyEnabled();
         Render();
+    }
+
+    // Show the control only while the setting is on. No settings snapshot yet
+    // means no library is open, so there is nothing to cast either way.
+    private void ApplyEnabled()
+    {
+        IsVisible = _settings.Current is { CastEnabled: true };
+        if (!IsVisible && _open)
+        {
+            _flyout.Hide();
+        }
     }
 
     private void OnStatusChanged()

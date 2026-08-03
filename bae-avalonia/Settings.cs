@@ -44,6 +44,11 @@ public sealed class Settings
     /// <summary>Id of the preset a release save defaults to (valid + release-applicable).</summary>
     public string DefaultReleaseSavePreset { get; set; } = "flac";
 
+    /// <summary>Whether casting to a network receiver is available. Core enforces
+    /// it — while off it browses no network and starts no session — so the UI
+    /// reads this only to decide whether to show its cast control.</summary>
+    public bool CastEnabled { get; set; }
+
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
     internal BridgeMcpServerStatus McpStatus { get; set; } = new BridgeMcpServerStatus.Disabled();

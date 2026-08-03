@@ -16,7 +16,7 @@ use bae_core::airplay::{AirPlayCapabilities, AirPlayDiscovery};
 use bae_core::cast::{CastDiscovery, RustCastChannel};
 use bae_core::config::SubsonicCredential;
 use bae_core::dlna::{DlnaChannel, DlnaDiscovery};
-use bae_core::library::{AppServices, LibraryManager};
+use bae_core::library::LibraryManager;
 use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
 use bae_core::renderer::{
@@ -30,7 +30,7 @@ use rand::RngCore;
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use tracing::warn;
+use tracing::{debug, warn};
 
 /// The RAOP audio latency the sender assumes when a receiver doesn't report one
 /// — ~2 s at 44.1 kHz. Used both to pace the stream ahead and to offset the
@@ -92,6 +92,8 @@ pub enum CastStatus {
 /// A failure starting a cast session.
 #[derive(Debug)]
 pub enum CastError {
+    /// Casting is turned off in settings, so no session may be started.
+    Disabled,
     /// No discovered device matches the requested id.
     DeviceNotFound,
     /// The control channel to the device couldn't be opened.
@@ -107,6 +109,7 @@ pub enum CastError {
 impl std::fmt::Display for CastError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            CastError::Disabled => write!(f, "casting is turned off in settings"),
             CastError::DeviceNotFound => write!(f, "no such Cast device"),
             CastError::Connect(detail) => {
                 write!(f, "couldn't connect to the Cast device: {detail}")
@@ -198,6 +201,10 @@ impl EphemeralServer {
 /// ends), and the current status. A background task follows the playback
 /// service's cast-status events to keep the status and the server lifecycle in
 /// step — including a receiver-side end the service detects on its own.
+///
+/// The whole of it is gated on the library's `cast_enabled` setting, which the
+/// controller reads from config at each entry point rather than mirroring: while
+/// casting is off nothing browses the network and no session can start.
 pub struct CastController {
     runtime: Handle,
     manager: LibraryManager,
@@ -217,7 +224,12 @@ struct Inner {
 }
 
 impl CastController {
-    pub fn new(services: &AppServices, ui_event_bus: UiEventBus, runtime: Handle) -> Self {
+    pub fn new(
+        manager: LibraryManager,
+        playback: PlaybackHandle,
+        ui_event_bus: UiEventBus,
+        runtime: Handle,
+    ) -> Self {
         let inner = Arc::new(Mutex::new(Inner {
             server: None,
             status: CastStatus::NotCasting,
@@ -240,8 +252,8 @@ impl CastController {
         Self::spawn_device_list_forwarder(airplay_discovery.subscribe(), ui_event_bus, &runtime);
         let controller = Self {
             runtime: runtime.clone(),
-            manager: services.library_manager().clone(),
-            playback: services.playback().clone(),
+            manager,
+            playback,
             cast_discovery: Mutex::new(cast_discovery),
             dlna_discovery: Mutex::new(dlna_discovery),
             airplay_discovery: Mutex::new(airplay_discovery),
@@ -295,12 +307,36 @@ impl CastController {
         });
     }
 
-    /// Start browsing for devices on both protocols (the picker opened).
-    /// Idempotent.
+    /// Whether the library has casting turned on. Read from config on demand:
+    /// config is the one authority, so there is no copy here to fall out of step
+    /// with a change made on this device or synced from another.
+    fn enabled(&self) -> bool {
+        self.manager.get_config().cast_enabled
+    }
+
+    /// Start browsing for devices on every protocol (the picker opened).
+    /// Idempotent, and a no-op while casting is off — this is the gate that
+    /// keeps mDNS and SSDP sockets closed, not the picker's visibility.
     pub fn start_discovery(&self) {
+        if !self.enabled() {
+            debug!("cast discovery not started: casting is off");
+            return;
+        }
         self.cast_discovery.lock().unwrap().start();
         self.dlna_discovery.lock().unwrap().start();
         self.airplay_discovery.lock().unwrap().start();
+    }
+
+    /// Apply the library's `cast_enabled` setting. Turning casting off stops
+    /// browsing and ends any session in flight, so the machinery is idle rather
+    /// than merely hidden; turning it on starts nothing by itself, since
+    /// browsing follows the picker.
+    pub fn apply_enabled(&self, enabled: bool) {
+        if enabled {
+            return;
+        }
+        self.stop_discovery();
+        self.stop_casting();
     }
 
     /// Stop browsing on every protocol (the picker closed).
@@ -329,6 +365,9 @@ impl CastController {
     /// serving, and hand the playback service the channel plus the URL providers
     /// and the flavor's stream-format gate.
     pub fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
+        if !self.enabled() {
+            return Err(CastError::Disabled);
+        }
         let device = self
             .devices()
             .into_iter()
@@ -503,6 +542,87 @@ mod tests {
             username: "castuser".to_string(),
             password: "castpassword".to_string(),
         }
+    }
+
+    /// Whether any protocol is browsing right now — the three discoveries start
+    /// and stop together, so any one of them running means sockets are open.
+    fn browsing(controller: &CastController) -> bool {
+        controller.cast_discovery.lock().unwrap().is_browsing()
+            || controller.dlna_discovery.lock().unwrap().is_browsing()
+            || controller.airplay_discovery.lock().unwrap().is_browsing()
+    }
+
+    fn test_controller(
+        runtime: &tokio::runtime::Runtime,
+    ) -> (CastController, LibraryManager, tempfile::TempDir) {
+        use bae_test_support as support;
+
+        let (manager, tmp) = support::setup_fresh_library(runtime);
+        let playback = bae_core::playback::PlaybackService::start(
+            manager.clone(),
+            runtime.handle().clone(),
+            1000,
+            false,
+        );
+        let controller = CastController::new(
+            manager.clone(),
+            playback,
+            UiEventBus::new(),
+            runtime.handle().clone(),
+        );
+        (controller, manager, tmp)
+    }
+
+    /// The gate the setting exists for: with casting off, asking to browse opens
+    /// no mDNS/SSDP socket and asking to cast is refused outright — the UI hiding
+    /// its Cast control is a consequence, not the mechanism. Turning the setting
+    /// on makes the same two calls do their work.
+    #[test]
+    fn discovery_and_casting_follow_the_cast_setting() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (controller, manager, _tmp) = test_controller(&runtime);
+
+        assert!(!manager.get_config().cast_enabled, "casting is opt-in");
+        controller.start_discovery();
+        assert!(!browsing(&controller), "casting is off: nothing may browse");
+        assert!(
+            matches!(controller.cast_to("some-device"), Err(CastError::Disabled)),
+            "casting is off: a session must be refused"
+        );
+
+        manager.set_cast_enabled(true).unwrap();
+        controller.start_discovery();
+        assert!(browsing(&controller), "casting is on: browsing may run");
+        // The device is not on this test's network, so the request reaches the
+        // real lookup and fails there rather than at the gate.
+        assert!(matches!(
+            controller.cast_to("some-device"),
+            Err(CastError::DeviceNotFound)
+        ));
+
+        controller.stop_discovery();
+    }
+
+    /// Turning the setting off while browsing stops it, rather than leaving the
+    /// sockets open until the picker happens to close.
+    #[test]
+    fn turning_casting_off_stops_browsing() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (controller, manager, _tmp) = test_controller(&runtime);
+
+        manager.set_cast_enabled(true).unwrap();
+        controller.start_discovery();
+        assert!(browsing(&controller));
+
+        manager.set_cast_enabled(false).unwrap();
+        controller.apply_enabled(false);
+        assert!(!browsing(&controller), "turning casting off stops browsing");
     }
 
     /// A raw serve carries `format=raw`; a transcode carries

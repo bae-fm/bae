@@ -29,7 +29,8 @@ pub struct DesktopApp {
     pub ui_event_bus: UiEventBus,
     mcp_controller: McpServerController,
     subsonic_controller: SubsonicServerController,
-    cast_controller: CastController,
+    /// Shared with the config watcher, which applies `cast_enabled` to it.
+    cast_controller: Arc<CastController>,
     pub runtime: Runtime,
 }
 
@@ -117,22 +118,28 @@ impl DesktopApp {
         let initial_subsonic = services.library_manager().get_config().subsonic;
         runtime.block_on(subsonic_controller.apply_config(initial_subsonic));
 
-        let cast_controller =
-            CastController::new(&services, ui_event_bus.clone(), runtime.handle().clone());
+        let cast_controller = Arc::new(CastController::new(
+            services.library_manager().clone(),
+            services.playback().clone(),
+            ui_event_bus.clone(),
+            runtime.handle().clone(),
+        ));
 
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
+        let config_cast_controller = cast_controller.clone();
         let mut config_rx = services.library_manager().subscribe_config_changes();
         runtime.spawn(async move {
             loop {
                 match config_rx.changed().await {
                     Ok(()) => {
-                        let (mcp, subsonic) = {
+                        let (mcp, subsonic, cast_enabled) = {
                             let config = config_rx.borrow();
-                            (config.mcp, config.subsonic.clone())
+                            (config.mcp, config.subsonic.clone(), config.cast_enabled)
                         };
                         config_controller.apply_config(mcp).await;
                         config_subsonic_controller.apply_config(subsonic).await;
+                        config_cast_controller.apply_enabled(cast_enabled);
                     }
                     Err(error) => {
                         tracing::debug!("config watcher stopped: {error}");

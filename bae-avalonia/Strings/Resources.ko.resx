@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API 토큰</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>검증 중…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>면 사이에 일시정지</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>캐스트</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>캐스트 사용</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>네트워크의 Cast, AirPlay, UPnP 수신기로 재생합니다. 꺼져 있는 동안 bae는 기기를 찾지 않습니다.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>캐스트를 끌까요?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>{device}(으)로의 캐스트가 중지됩니다.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>끄기</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>라이브러리: {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>업데이트</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>버전 {version}</value></data>

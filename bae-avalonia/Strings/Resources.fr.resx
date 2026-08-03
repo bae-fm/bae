@@ -182,6 +182,12 @@
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Jeton d'API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validation…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause entre les faces</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Diffusion</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Activer la diffusion</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Lit sur les récepteurs Cast, AirPlay et UPnP de votre réseau. Désactivé, bae ne recherche aucun appareil.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Désactiver la diffusion ?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>La diffusion vers {device} sera interrompue.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Désactiver</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Bibliothèque : {name}</value></data>
   <data name="settings.updates.title" xml:space="preserve"><value>mises à jour</value></data>
   <data name="settings.updates.version" xml:space="preserve"><value>version {version}</value></data>

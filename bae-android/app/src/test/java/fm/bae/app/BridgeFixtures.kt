@@ -271,6 +271,7 @@ object BridgeFixtures {
                 ),
             defaultTrackSavePreset = "flac",
             defaultReleaseSavePreset = "flac",
+            castEnabled = false,
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
