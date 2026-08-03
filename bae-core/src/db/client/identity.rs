@@ -333,7 +333,10 @@ impl Database {
     ///
     /// - `release_in_library` is true when a `release_identities` row
     ///   matches `(check.source, check.release_id)` — i.e. an Exact
-    ///   identity at this specific pressing.
+    ///   identity at this specific pressing. An album-level claim
+    ///   leaves `source_release_id` NULL, so the comparison is the
+    ///   null-safe `IS`: those rows answer 0, not SQL NULL, and the
+    ///   `ORDER BY` still puts a real pressing match first.
     /// - `album_in_library` is true when a `release_identities` row
     ///   matches `(check.source, check.source_group_id)` — i.e. some
     ///   release in the library shares the candidate's group identity.
@@ -361,7 +364,7 @@ impl Database {
                             SELECT
                                 a.id AS album_id,
                                 a.title AS album_title,
-                                ri.source_release_id = ? AS release_match
+                                ri.source_release_id IS ? AS release_match
                             FROM albums a
                             JOIN releases r ON r.album_id = a.id
                             JOIN release_identities ri ON ri.release_id = r.id

@@ -682,6 +682,79 @@ async fn test_check_album_in_library_group_only() {
 }
 
 #[tokio::test]
+async fn test_check_album_in_library_approximate_identity() {
+    // An album-level claim stores an identity row with no
+    // `source_release_id`. A candidate naming that group is in the
+    // library as an album, and never as a pressing.
+    let (manager, _tmp) = setup_test_db_with_artist().await;
+    let album = make_album("Album Title");
+    let release = make_release(&album.id);
+    insert_with_identities(
+        &manager,
+        &album,
+        &release,
+        &[ReleaseIdentity {
+            source: MetadataSource::MusicBrainz,
+            source_group_id: "mb-rg-1".to_string(),
+            source_release_id: None,
+        }],
+    )
+    .await;
+
+    let checks = vec![crate::db::LibraryCheck {
+        release_id: "mb-rel-1".to_string(),
+        source: MetadataSource::MusicBrainz,
+        source_group_id: Some("mb-rg-1".to_string()),
+    }];
+    let statuses = manager.check_releases_in_library(&checks).await.unwrap();
+    assert_eq!(statuses.len(), 1);
+    assert!(!statuses[0].release_in_library);
+    assert!(statuses[0].album_in_library);
+    assert_eq!(statuses[0].album_id.as_deref(), Some(album.id.as_str()));
+}
+
+#[tokio::test]
+async fn test_check_pressing_match_wins_over_album_only_row() {
+    // Two releases in the group: one claimed at the album level (no
+    // `source_release_id`), one at the pressing the check names. The
+    // pressing match is the row that answers.
+    let (manager, _tmp) = setup_test_db_with_artist().await;
+    let album = make_album("Album Title");
+    let approximate = make_release(&album.id);
+    insert_with_identities(
+        &manager,
+        &album,
+        &approximate,
+        &[ReleaseIdentity {
+            source: MetadataSource::MusicBrainz,
+            source_group_id: "mb-rg-1".to_string(),
+            source_release_id: None,
+        }],
+    )
+    .await;
+    let exact = make_release(&album.id);
+    let track = make_track(&exact.id, 1);
+    manager
+        .insert_release_with_tracks(&exact, &[track], &[])
+        .await
+        .unwrap();
+    manager
+        .insert_release_identities(&exact.id, &[mb_identity("mb-rg-1", "mb-rel-1")])
+        .await
+        .unwrap();
+
+    let checks = vec![crate::db::LibraryCheck {
+        release_id: "mb-rel-1".to_string(),
+        source: MetadataSource::MusicBrainz,
+        source_group_id: Some("mb-rg-1".to_string()),
+    }];
+    let statuses = manager.check_releases_in_library(&checks).await.unwrap();
+    assert_eq!(statuses.len(), 1);
+    assert!(statuses[0].release_in_library);
+    assert!(statuses[0].album_in_library);
+}
+
+#[tokio::test]
 async fn test_check_release_not_in_library() {
     let (manager, _tmp) = setup_test_db_with_artist().await;
 
