@@ -95629,43 +95629,43 @@
         }
       }
     },
-    "Needs You" : {
-      "comment" : "Import sidebar tab: candidates the app needs a decision on.",
+    "Pending" : {
+      "comment" : "Import sidebar tab: candidates still awaiting a decision.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Needs You"
+            "value" : "Pending"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Requiere acción"
+            "value" : "Pendientes"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nécessite une action"
+            "value" : "En attente"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erfordert Eingabe"
+            "value" : "Ausstehend"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Requer ação"
+            "value" : "Pendentes"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要対応"
+            "value" : "保留中"
           }
         },
         "zh-Hans" : {
@@ -95677,43 +95677,43 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يتطلب إجراء"
+            "value" : "قيد الانتظار"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "דורש פעולה"
+            "value" : "ממתינים"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Потребує дії"
+            "value" : "Очікують"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изисква действие"
+            "value" : "Чакащи"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wymaga działania"
+            "value" : "Oczekujące"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vyžaduje akci"
+            "value" : "Čekající"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zahtijeva radnju"
+            "value" : "Na čekanju"
           }
         },
         "zh-Hant" : {
@@ -95725,97 +95725,97 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Richiede azione"
+            "value" : "In sospeso"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İşlem gerekiyor"
+            "value" : "Beklemede"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cần xử lý"
+            "value" : "Đang chờ"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Actie vereist"
+            "value" : "In afwachting"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "कार्रवाई आवश्यक"
+            "value" : "लंबित"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পদক্ষেপ প্রয়োজন"
+            "value" : "অপেক্ষমাণ"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "நடவடிக்கை தேவை"
+            "value" : "நிலுவையில்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "చర్య అవసరం"
+            "value" : "పెండింగ్‌లో"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "कृती आवश्यक"
+            "value" : "प्रलंबित"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "کارروائی درکار"
+            "value" : "زیرِ التوا"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "પગલાંની જરૂર"
+            "value" : "બાકી"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಕ್ರಮದ ಅಗತ್ಯವಿದೆ"
+            "value" : "ಬಾಕಿ"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "നടപടി ആവശ്യമാണ്"
+            "value" : "തീർപ്പാക്കാത്തവ"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਕਾਰਵਾਈ ਲੋੜੀਂਦੀ"
+            "value" : "ਬਕਾਇਆ"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ต้องดำเนินการ"
+            "value" : "รอดำเนินการ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "조치 필요"
+            "value" : "대기 중"
           }
         }
       }

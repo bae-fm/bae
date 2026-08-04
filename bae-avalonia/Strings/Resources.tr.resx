@@ -375,7 +375,7 @@
   <data name="import.sort.name_az" xml:space="preserve"><value>Ad (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Ad (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Hazır</value></data>
-  <data name="import.tab.needs_you" xml:space="preserve"><value>İlgi Bekliyor</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Beklemede</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Tamamlandı</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Baskı Seçin</value></data>
   <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Sinyaller Uyuşmuyor</value></data>

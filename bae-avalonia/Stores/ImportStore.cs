@@ -40,7 +40,7 @@ internal sealed class ImportStore
     // rather than opening on a bar frozen at zero.
     public (uint Identified, uint Total)? QueueIdentifyProgress { get; private set; }
 
-    // The active tab; resets to Needs You on each section entry and on teardown.
+    // The active tab; resets to Pending on each section entry and on teardown.
     public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.NeedsYou;
 
     // The live filter query over the candidate list.

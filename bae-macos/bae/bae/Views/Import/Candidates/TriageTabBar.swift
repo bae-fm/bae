@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The Ready / Needs You / Done / Skipped tab bar above the candidate list.
+/// The Pending / Ready / Done / Skipped tab bar above the candidate list.
 /// Four equal segments, each a label plus a count badge from core's
 /// `BridgeTriageTabCounts` — never an array length, which drifts the moment a
 /// filter is applied.
@@ -12,7 +12,7 @@ struct TriageTabBar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            segment(.needsYou, "Needs You", Int(counts.needsYou))
+            segment(.needsYou, "Pending", Int(counts.needsYou))
             segment(.ready, "Ready", Int(counts.ready))
             segment(.done, "Done", Int(counts.done))
             segment(.skipped, "Skipped", Int(counts.skipped))

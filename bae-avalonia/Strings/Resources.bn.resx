@@ -375,7 +375,7 @@
   <data name="import.sort.name_az" xml:space="preserve"><value>নাম (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>নাম (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>প্রস্তুত</value></data>
-  <data name="import.tab.needs_you" xml:space="preserve"><value>মনোযোগ দরকার</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>অপেক্ষমাণ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>সম্পন্ন</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>একটি প্রেসিং বেছে নিন</value></data>
   <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>সংকেতে অমিল</value></data>

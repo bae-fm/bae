@@ -400,7 +400,7 @@
   <data name="import.sort.name_az" xml:space="preserve"><value>Name (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Name (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Ready</value></data>
-  <data name="import.tab.needs_you" xml:space="preserve"><value>Needs You</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Pending</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Done</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Pick a Pressing</value></data>
   <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signals Disagree</value></data>

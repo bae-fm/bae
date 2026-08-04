@@ -375,7 +375,7 @@
   <data name="import.sort.name_az" xml:space="preserve"><value>Nazwa (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nazwa (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Gotowe</value></data>
-  <data name="import.tab.needs_you" xml:space="preserve"><value>Wymagają uwagi</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Oczekujące</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Zakończone</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Wybierz tłoczenie</value></data>
   <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Sygnały się nie zgadzają</value></data>

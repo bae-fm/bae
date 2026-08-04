@@ -375,7 +375,7 @@
   <data name="import.sort.name_az" xml:space="preserve"><value>ชื่อ (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>ชื่อ (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>พร้อม</value></data>
-  <data name="import.tab.needs_you" xml:space="preserve"><value>ต้องตรวจสอบ</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>รอดำเนินการ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>เสร็จแล้ว</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>เลือกรุ่นการผลิต</value></data>
   <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>สัญญาณไม่ตรงกัน</value></data>
