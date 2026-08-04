@@ -2986,6 +2986,7 @@ impl crate::types::BridgeTriagePlacement {
                 group: crate::types::BridgeNeedsYouGroup::from_core(group),
                 reason: crate::types::BridgeNeedsYouReason::from_core(reason),
             },
+            P::Importing => Self::Importing,
             P::Done => Self::Done,
             P::Skipped => Self::Skipped,
         }

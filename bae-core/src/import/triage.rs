@@ -65,6 +65,12 @@ pub enum TriagePlacement {
         /// disagreement precisely even when its group cannot.
         reason: NeedsYouReason,
     },
+    /// An import claimed this candidate and has not finished. Its own variant
+    /// rather than a Needs-you group: nothing is being asked of the user, and
+    /// rather than Done, because the folder is not in the library until the
+    /// import says it is. The percentage rides on
+    /// [`TriageRow::import_status`].
+    Importing,
     Done,
     Skipped,
 }
@@ -73,7 +79,9 @@ impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
             Self::Ready => TriageTab::Ready,
-            Self::NeedsYou { .. } => TriageTab::NeedsYou,
+            // Pending is where a row waits for something to settle without
+            // anyone answering it, which is what an import in flight is doing.
+            Self::NeedsYou { .. } | Self::Importing => TriageTab::NeedsYou,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
@@ -476,11 +484,15 @@ impl Answered {
 ///
 /// A total function of four facts core already holds, checked in one order:
 ///
-/// 1. **Done outranks everything.** A candidate that has been imported, is
-///    being imported, or failed importing is not awaiting triage, whatever its
-///    verdict says and whether or not it was ever skipped.
-/// 2. **Then Skipped**, which is a decision the user already made.
-/// 3. **Then what is known about it**, which is the only thing that can put a
+/// 1. **An import in flight outranks everything**, including the library
+///    check: the release row lands partway through an import, so `is_added`
+///    flips before the import is finished, and a row that reads Done then says
+///    the folder is in the library while its files are still being copied.
+/// 2. **Then Done**, which is an import that finished — completed or failed —
+///    or a folder a previous session already imported. Not awaiting triage,
+///    whatever its verdict says and whether or not it was ever skipped.
+/// 3. **Then Skipped**, which is a decision the user already made.
+/// 4. **Then what is known about it**, which is the only thing that can put a
 ///    row in Ready.
 ///
 /// **A candidate with no verdict yet is Needs you, not Ready** — the design
@@ -502,18 +514,18 @@ pub fn place(
     import_status: Option<&CandidateImportStatusSnapshot>,
     answer: &CandidateAnswer,
 ) -> TriagePlacement {
-    // Spelled out rather than `is_some()`: every variant of an import status
-    // means the import began, and a new one should have to be placed here on
-    // purpose rather than inherited by an `_`.
-    let import_started = match import_status {
+    // Spelled out rather than `is_some()`: each variant answers "has this
+    // import finished" differently, and a new one should have to be placed
+    // here on purpose rather than inherited by an `_`.
+    let import_finished = match import_status {
+        Some(CandidateImportStatusSnapshot::Importing { .. }) => return TriagePlacement::Importing,
         Some(
-            CandidateImportStatusSnapshot::Importing { .. }
-            | CandidateImportStatusSnapshot::Complete { .. }
+            CandidateImportStatusSnapshot::Complete { .. }
             | CandidateImportStatusSnapshot::Error { .. },
         ) => true,
         None => false,
     };
-    if is_added || import_started {
+    if is_added || import_finished {
         return TriagePlacement::Done;
     }
     if skipped {

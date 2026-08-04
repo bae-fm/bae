@@ -76,7 +76,7 @@ struct TriageRowView: View {
         .opacity(isPending ? 0.6 : 1)
         .contentShape(Rectangle())
         .contextMenu {
-            if row.placement != .done {
+            if canSkip {
                 Button(skipped ? "Unskip" : "Skip") { onSkip(!skipped) }
                 Divider()
             }
@@ -116,6 +116,16 @@ struct TriageRowView: View {
 
     private var skipped: Bool {
         row.placement == .skipped
+    }
+
+    /// Skipping is a decision about a candidate nobody has committed to yet:
+    /// an import already running or already finished is past the point where
+    /// setting it aside means anything.
+    private var canSkip: Bool {
+        switch row.placement {
+        case .importing, .done: false
+        case .ready, .needsYou, .skipped: true
+        }
     }
 
     private var isPending: Bool {
@@ -234,8 +244,8 @@ extension TriageRowView {
                     return needsYou.localizedText
                 }
             }
-        case .done:
-            return doneSubLine
+        case .importing, .done:
+            return importSubLine
         }
     }
 
@@ -261,7 +271,7 @@ extension TriageRowView {
         return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
     }
 
-    private var doneSubLine: String? {
+    private var importSubLine: String? {
         switch row.importStatus {
         case .importing(let percent, let step):
             let phaseText =
@@ -351,6 +361,8 @@ extension TriageRowView {
             }
         case .needsYou(let group, let reason):
             needsYouTrailing(group: group, reason: reason)
+        case .importing:
+            ProgressView().controlSize(.small)
         case .done:
             doneTrailing
         case .skipped:

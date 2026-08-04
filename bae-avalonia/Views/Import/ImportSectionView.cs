@@ -1034,7 +1034,7 @@ internal sealed class ImportSectionView : UserControl
             row.Matched?.Artist,
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
             BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
-        BridgeTriagePlacement.Done => DoneSubLine(row),
+        BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done => ImportSubLine(row),
         _ => null,
     };
 
@@ -1067,7 +1067,7 @@ internal sealed class ImportSectionView : UserControl
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    private static string? DoneSubLine(BridgeTriageRow row) => row.ImportStatus switch
+    private static string? ImportSubLine(BridgeTriageRow row) => row.ImportStatus switch
     {
         BridgeCandidateImportStatus.Importing importing => string.Join(
             " · ",
@@ -1162,6 +1162,8 @@ internal sealed class ImportSectionView : UserControl
                 return row.Matched is { } matched ? ReadyTrailing(matched.Evidence) : new Panel();
             case BridgeTriagePlacement.NeedsYou(var group, var reason):
                 return NeedsYouTrailing(row, group, reason);
+            case BridgeTriagePlacement.Importing:
+                return new Spinner { Width = 14, Height = 14 };
             case BridgeTriagePlacement.Done:
                 return DoneTrailing(row);
             default:
@@ -1263,7 +1265,10 @@ internal sealed class ImportSectionView : UserControl
     private ContextMenu? BuildRowContextMenu(BridgeTriageRow row)
     {
         var items = new List<Control>();
-        if (row.Placement is not BridgeTriagePlacement.Done)
+        // Skipping is a decision about a candidate nobody has committed to
+        // yet: an import already running or already finished is past the point
+        // where setting it aside means anything.
+        if (row.Placement is not (BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done))
         {
             var skipped = row.Placement is BridgeTriagePlacement.Skipped;
             var toggle = new MenuItem { Header = Loc.Chrome(skipped ? "import.candidate.unskip" : "import.candidate.skip") };

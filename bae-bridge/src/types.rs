@@ -1081,6 +1081,10 @@ pub enum BridgeTriagePlacement {
         /// precise where its group header cannot.
         reason: BridgeNeedsYouReason,
     },
+    /// An import claimed this candidate and has not finished. Not Done: the
+    /// folder is not in the library until the import says it is. The
+    /// percentage rides on `BridgeTriageRow::import_status`.
+    Importing,
     Done,
     Skipped,
 }
@@ -1198,7 +1202,9 @@ pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
 pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
     match placement {
         BridgeTriagePlacement::Ready => BridgeTriageTab::Ready,
-        BridgeTriagePlacement::NeedsYou { .. } => BridgeTriageTab::NeedsYou,
+        BridgeTriagePlacement::NeedsYou { .. } | BridgeTriagePlacement::Importing => {
+            BridgeTriageTab::NeedsYou
+        }
         BridgeTriagePlacement::Done => BridgeTriageTab::Done,
         BridgeTriagePlacement::Skipped => BridgeTriageTab::Skipped,
     }
@@ -6650,8 +6656,9 @@ mod triage_tests {
         assert_eq!(bridge_needs_you_groups_in_order(), core);
     }
 
-    /// A placement's tab is the one core's own projection gives it, for all
-    /// four — so `bridge_triage_tab` cannot become a second, divergent rule.
+    /// A placement's tab is the one core's own projection gives it, for every
+    /// variant — so `bridge_triage_tab` cannot become a second, divergent
+    /// rule.
     #[test]
     fn tab_of_placement_mirrors_core() {
         use bae_core::import::{NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageTab};
@@ -6663,6 +6670,7 @@ mod triage_tests {
                     phase: bae_core::import::IdentifyPhase::Queued,
                 },
             },
+            TriagePlacement::Importing,
             TriagePlacement::Done,
             TriagePlacement::Skipped,
         ] {

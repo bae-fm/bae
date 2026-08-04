@@ -308,10 +308,14 @@ fn tab_membership_is_total_and_exclusive() {
                     combinations += 1;
                     let placement = place(skipped, is_added, import_status.as_ref(), &answer);
 
-                    let done = is_added || import_status.is_some();
-                    let is_skipped = !done && skipped;
-                    let is_ready = !done && !skipped && answer == ready;
-                    let needs_you = !done && !skipped && answer != ready;
+                    let importing = matches!(
+                        import_status,
+                        Some(CandidateImportStatusSnapshot::Importing { .. })
+                    );
+                    let done = !importing && (is_added || import_status.is_some());
+                    let is_skipped = !importing && !done && skipped;
+                    let is_ready = !importing && !done && !skipped && answer == ready;
+                    let needs_you = importing || (!done && !skipped && answer != ready);
 
                     let expected: Vec<TriageTab> = [
                         (TriageTab::Ready, is_ready),
@@ -447,6 +451,60 @@ fn done_and_skipped_outrank_classification() {
     );
 }
 
+/// An import that has started is not Done until it finishes. Done is the tab
+/// that says "this folder is in the library"; a folder whose files are still
+/// being copied is not, and a row that claims otherwise while the pane shows a
+/// percentage is the sidebar contradicting the pane about the same import.
+#[test]
+fn an_import_in_flight_is_importing_not_done() {
+    let ready = CandidateAnswer::Classified(QueueClassification::Ready);
+    let importing = CandidateImportStatusSnapshot::Importing {
+        progress_percent: 0,
+        step: None,
+    };
+
+    assert_eq!(
+        place(false, false, Some(&importing), &ready),
+        TriagePlacement::Importing
+    );
+    // The library check flips as soon as the release row lands, which is
+    // before the import reports itself complete. The in-flight status is the
+    // more recent fact about this candidate, so it wins.
+    assert_eq!(
+        place(false, true, Some(&importing), &ready),
+        TriagePlacement::Importing
+    );
+    // A candidate skipped before the import was started is still being
+    // imported now.
+    assert_eq!(
+        place(true, false, Some(&importing), &ready),
+        TriagePlacement::Importing
+    );
+    // And an in-flight import is not asking the user anything, so it does not
+    // land in a Needs-you group either.
+    assert_eq!(
+        place(false, false, Some(&importing), &ready).tab(),
+        TriageTab::NeedsYou
+    );
+
+    // The finished states still are Done.
+    let complete = CandidateImportStatusSnapshot::Complete {
+        release_id: "rel-1".to_string(),
+        album_id: "alb-1".to_string(),
+    };
+    let failed = CandidateImportStatusSnapshot::Error {
+        error: "boom".to_string(),
+    };
+    assert_eq!(
+        place(false, false, Some(&complete), &ready),
+        TriagePlacement::Done
+    );
+    assert_eq!(
+        place(false, false, Some(&failed), &ready),
+        TriagePlacement::Done
+    );
+}
+
 // ── 3. Tab counts equal the rows in each tab ────────────────────────────────
 
 /// The counts and the grouping come out of one pass, so they cannot drift.
@@ -462,8 +520,9 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         candidate("unanswered", false, false),
         candidate("skipped", true, false),
         candidate("added", false, true),
+        candidate("importing", false, false),
     ]);
-    snapshot.folder_candidates[5].runtime.import_status =
+    snapshot.folder_candidates[6].runtime.import_status =
         Some(CandidateImportStatusSnapshot::Importing {
             progress_percent: 10,
             step: None,
@@ -501,6 +560,10 @@ fn tab_counts_equal_the_rows_in_each_tab() {
                 found(vec![result("rel-6")]),
                 QueueClassification::Ready,
             )),
+            Some(answer(
+                found(vec![result("rel-7")]),
+                QueueClassification::Ready,
+            )),
         ],
     );
 
@@ -526,12 +589,12 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         queue.counts,
         TriageTabCounts {
             ready: 2,
-            needs_you: 2,
+            needs_you: 3,
             done: 1,
             skipped: 2,
         }
     );
-    assert_eq!(candidate_rows(&queue).len(), 6);
+    assert_eq!(candidate_rows(&queue).len(), 7);
     assert_eq!(invalid_candidates(&queue).len(), 1);
     // Only the Ready rows take a checkbox.
     assert_eq!(

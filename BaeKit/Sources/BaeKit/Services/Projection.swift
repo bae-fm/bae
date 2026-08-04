@@ -128,9 +128,14 @@ public final class Projection<Value: Sendable> {
     /// is not), and `showError` is the one place that drops it.
     private let onError: @MainActor (any Error) -> Void
 
+    /// How many reads have landed. Monotone, so a caller can tell a store that
+    /// has been filled from one that never has.
     public private(set) var generation = 0
-    private var requestedGeneration = 0
-    private var reloadTask: Task<Void, Never>?
+    private var running = false
+    /// The invalidation that arrived while a read was out, if any. One slot
+    /// rather than a queue: a re-read answers every invalidation that arrived
+    /// before it started, so only the newest is worth keeping.
+    private var pending: BridgeInvalidation?
 
     public convenience init(
         domain: BridgeInvalidationDomain,
@@ -163,24 +168,36 @@ public final class Projection<Value: Sendable> {
         domains.contains(invalidation.domain)
     }
 
+    /// Read again for `invalidation`, or — with a read already out — queue one
+    /// re-read behind it.
+    ///
+    /// Coalescing rather than cancel-and-restart: a bridge query is
+    /// cancellable, so a domain invalidated faster than its query completes
+    /// would be starved, killing every read before it lands and freezing the
+    /// store for as long as the events keep coming (import progress against
+    /// the triage queue is exactly that shape). Waiting costs one extra read
+    /// per burst and guarantees the store moves.
     public func invalidate(for invalidation: BridgeInvalidation) {
         guard matches(invalidation) else {
             return
         }
-        reloadTask?.cancel()
-        requestedGeneration &+= 1
-        let generation = requestedGeneration
-        reloadTask = Task { [weak self] in
+        guard !running else {
+            pending = invalidation
+            return
+        }
+        read(invalidation)
+    }
+
+    private func read(_ invalidation: BridgeInvalidation) {
+        running = true
+        Task { [weak self] in
             guard let self else {
                 return
             }
             do {
                 let value = try await query(invalidation)
-                guard self.requestedGeneration == generation else {
-                    return
-                }
                 apply(value)
-                self.generation = generation
+                generation &+= 1
             }
             catch is CancellationError {
             }
@@ -189,6 +206,11 @@ public final class Projection<Value: Sendable> {
                     "Projection refresh failed: \(error.localizedDescription)"
                 )
                 onError(error)
+            }
+            running = false
+            if let next = pending {
+                pending = nil
+                read(next)
             }
         }
     }

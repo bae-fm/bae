@@ -196,7 +196,7 @@ extension ImportSearchFlow {
         switch row.placement {
         case .ready, .needsYou:
             return row.picked
-        case .done, .skipped:
+        case .importing, .done, .skipped:
             return nil
         }
     }
