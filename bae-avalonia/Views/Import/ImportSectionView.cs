@@ -53,8 +53,7 @@ internal sealed class ImportSectionView : UserControl
     private readonly Panel _tabBarHost = new() { };
     private readonly TextBox _filterBox = new() { BorderThickness = new Thickness(0), Background = Brushes.Transparent };
     private readonly Button _clearFilterButton;
-    private readonly Button _sortButton;
-    private readonly Button _folderMenuButton;
+    private readonly Button _listMenuButton;
     private readonly Panel _progressHost = new();
     private readonly ContentControl _contentSlot = new()
     {
@@ -82,13 +81,9 @@ internal sealed class ImportSectionView : UserControl
             11, "BaeTextSecondaryBrush", 22);
         _clearFilterButton.Click += (_, _) => { _filterBox.Text = string.Empty; _import.SetFilterText(string.Empty); };
 
-        _sortButton = ChromeButton("⋯", 15);
-        _sortButton.Click += (_, _) => { _sortButton.Flyout = BuildSortFlyout(); _sortButton.Flyout.ShowAt(_sortButton); };
-        Avalonia.Automation.AutomationProperties.SetName(_sortButton, Loc.Chrome("import.sort_by"));
-
-        _folderMenuButton = ChromeButton("+", 15);
-        _folderMenuButton.Click += (_, _) => { _folderMenuButton.Flyout = BuildFolderFlyout(); _folderMenuButton.Flyout.ShowAt(_folderMenuButton); };
-        Avalonia.Automation.AutomationProperties.SetName(_folderMenuButton, Loc.Chrome("import.folder.add"));
+        _listMenuButton = ChromeButton("⋯", 15);
+        _listMenuButton.Click += (_, _) => { _listMenuButton.Flyout = BuildListMenuFlyout(); _listMenuButton.Flyout.ShowAt(_listMenuButton); };
+        Avalonia.Automation.AutomationProperties.SetName(_listMenuButton, Loc.Chrome("import.list_menu"));
 
         Content = BuildShell();
 
@@ -168,7 +163,7 @@ internal sealed class ImportSectionView : UserControl
 
     private Control BuildFilterRow()
     {
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"), ColumnSpacing = 6 };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), ColumnSpacing = 6 };
         var searchGlyph = Icons.Glyph(Icons.Search, 13, "BaeTextSecondaryBrush");
         Grid.SetColumn(searchGlyph, 0);
 
@@ -176,14 +171,12 @@ internal sealed class ImportSectionView : UserControl
 
         Grid.SetColumn(_clearFilterButton, 2);
 
-        Grid.SetColumn(_sortButton, 3);
-        Grid.SetColumn(_folderMenuButton, 4);
+        Grid.SetColumn(_listMenuButton, 3);
 
         row.Children.Add(searchGlyph);
         row.Children.Add(_filterBox);
         row.Children.Add(_clearFilterButton);
-        row.Children.Add(_sortButton);
-        row.Children.Add(_folderMenuButton);
+        row.Children.Add(_listMenuButton);
 
         return new Border { Padding = new Thickness(14, 0, 10, 10), Child = row };
     }
@@ -203,7 +196,12 @@ internal sealed class ImportSectionView : UserControl
         return button;
     }
 
-    private MenuFlyout BuildSortFlyout()
+    // The candidate list's one menu: everything that acts on the list rather
+    // than on a row — the sort order, and the watched folders the list is built
+    // from. One control rather than two, since a separate "+" advertised adding
+    // a folder as a peer of sorting when it is one item among the roots already
+    // being watched.
+    private MenuFlyout BuildListMenuFlyout()
     {
         var az = new MenuItem
         {
@@ -215,46 +213,36 @@ internal sealed class ImportSectionView : UserControl
             Header = (_import.SortOrder == CandidateSortOrder.NameZA ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_za"),
         };
         za.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameZA);
-        return new MenuFlyout { ItemsSource = new[] { az, za } };
-    }
 
-    // The "+" menu: add a folder, and — once at least one is watched — reveal or
-    // stop watching one. There is no per-folder section header to hang these
-    // off, now that a row's folder rides its tooltip rather than a grouping.
-    private MenuFlyout BuildFolderFlyout()
-    {
-        var items = new List<Control>();
+        var items = new List<Control> { az, za, new Separator() };
+
         var add = new MenuItem { Header = Loc.Chrome("import.folder.add") };
         add.Click += async (_, _) => await AddFolder();
         items.Add(add);
 
-        if (_import.WatchedFolders.Count > 0)
+        foreach (var folder in _import.WatchedFolders)
         {
-            items.Add(new Separator());
-            foreach (var folder in _import.WatchedFolders)
+            var path = folder.Path;
+            var folderItem = new MenuItem { Header = folder.Name };
+            var refreshing = _import.Interaction.IsRefreshing(path);
+            var refresh = new MenuItem
             {
-                var path = folder.Path;
-                var folderItem = new MenuItem { Header = folder.Name };
-                var refreshing = _import.Interaction.IsRefreshing(path);
-                var refresh = new MenuItem
-                {
-                    Header = Loc.Chrome(
-                        refreshing
-                            ? "import.folder.refreshing"
-                            : "import.folder.refresh"),
-                    IsEnabled = !refreshing,
-                };
-                refresh.Click += (_, _) => _import.RefreshWatchedFolder(path);
-                var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
-                reveal.Click += (_, _) => RevealInFileManager.Reveal(path);
-                var remove = new MenuItem { Header = Loc.Chrome("import.folder.remove") };
-                remove.Click += (_, _) => _import.RemoveWatchedFolder(path);
-                folderItem.Items.Add(refresh);
-                folderItem.Items.Add(reveal);
-                folderItem.Items.Add(new Separator());
-                folderItem.Items.Add(remove);
-                items.Add(folderItem);
-            }
+                Header = Loc.Chrome(
+                    refreshing
+                        ? "import.folder.refreshing"
+                        : "import.folder.refresh"),
+                IsEnabled = !refreshing,
+            };
+            refresh.Click += (_, _) => _import.RefreshWatchedFolder(path);
+            var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
+            reveal.Click += (_, _) => RevealInFileManager.Reveal(path);
+            var remove = new MenuItem { Header = Loc.Chrome("import.folder.remove") };
+            remove.Click += (_, _) => _import.RemoveWatchedFolder(path);
+            folderItem.Items.Add(refresh);
+            folderItem.Items.Add(reveal);
+            folderItem.Items.Add(new Separator());
+            folderItem.Items.Add(remove);
+            items.Add(folderItem);
         }
 
         return new MenuFlyout { ItemsSource = items };

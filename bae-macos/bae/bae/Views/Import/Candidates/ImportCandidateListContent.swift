@@ -118,8 +118,14 @@ struct ImportCandidateListContent: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    CandidateSortMenu(sortOrder: $sortOrder)
-                    watchedFoldersMenu
+                    CandidateListMenu(
+                        sortOrder: $sortOrder,
+                        watchedFolders: importStore.watchedFolders,
+                        refreshingFolders: uiStore.refreshingWatchedFolders,
+                        onAddFolder: onAddFolder,
+                        onRefreshFolder: onRefreshFolder,
+                        onRemoveFolder: onRemoveFolder
+                    )
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 10)
@@ -162,51 +168,6 @@ struct ImportCandidateListContent: View {
                 displayScale: displayScale
             )
         }
-    }
-
-    /// The `+` control manages watched roots. Release grouping belongs to the
-    /// queue below, while removing a root remains an action in this menu.
-    private var watchedFoldersMenu: some View {
-        Menu {
-            Button {
-                onAddFolder()
-            } label: {
-                Label("Add a Folder\u{2026}", systemImage: "plus")
-            }
-            if !importStore.watchedFolders.isEmpty {
-                Divider()
-                ForEach(importStore.watchedFolders, id: \.path) { folder in
-                    Menu(folder.name) {
-                        let refreshing = uiStore.refreshingWatchedFolders
-                            .contains(folder.path)
-                        Button {
-                            onRefreshFolder(folder)
-                        } label: {
-                            Label(
-                                refreshing ? "Refreshing\u{2026}" : "Refresh",
-                                systemImage: "arrow.clockwise"
-                            )
-                        }
-                        .disabled(refreshing)
-                        Button("Reveal in Finder") {
-                            SystemActions.revealInFinder(path: folder.path)
-                        }
-                        Divider()
-                        Button("Remove Folder", role: .destructive) {
-                            onRemoveFolder(folder.path)
-                        }
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 13))
-        }
-        .menuIndicator(.hidden)
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .fixedSize()
-        .help("Add a folder to watch for imports")
     }
 
     /// Per-tab empty state: distinguishes "no matches" while filtering from

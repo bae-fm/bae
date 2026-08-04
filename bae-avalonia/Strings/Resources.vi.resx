@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Bỏ qua</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Hủy bỏ qua</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Xóa thư mục</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>Sắp xếp</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Sắp xếp và thư mục theo dõi</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Tên (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Tên (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Sẵn sàng</value></data>

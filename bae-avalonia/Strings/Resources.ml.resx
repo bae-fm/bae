@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>ഒഴിവാക്കുക</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>ഒഴിവാക്കൽ റദ്ദാക്കുക</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ഫോൾഡർ നീക്കം ചെയ്യുക</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>ക്രമപ്പെടുത്തുക</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>ക്രമീകരണവും നിരീക്ഷിക്കുന്ന ഫോൾഡറുകളും</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>പേര് (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>പേര് (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>തയ്യാർ</value></data>

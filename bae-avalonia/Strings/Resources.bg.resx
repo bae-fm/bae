@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Пропускане</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Отмяна на пропускането</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Премахване на папката</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>Подреждане</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Сортиране и наблюдавани папки</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Име (А–Я)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Име (Я–А)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Готови</value></data>

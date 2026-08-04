@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Atla</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Atlamayı Geri Al</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Klasörü Kaldır</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>Sırala</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Sıralama ve izlenen klasörler</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Ad (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Ad (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Hazır</value></data>

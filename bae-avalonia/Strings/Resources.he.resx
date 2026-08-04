@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>דלג</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>בטל דילוג</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>הסר תיקייה</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>מיון</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>מיון ותיקיות במעקב</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>שם (א׳–ת׳)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>שם (ת׳–א׳)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>מוכנים</value></data>

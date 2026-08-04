@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>跳过</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>取消跳过</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>移除文件夹</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>排序</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>排序和监视的文件夹</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>名称（A–Z）</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>名称（Z–A）</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>就绪</value></data>

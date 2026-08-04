@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>ข้าม</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>เลิกข้าม</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ลบโฟลเดอร์</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>จัดเรียง</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>การเรียงลำดับและโฟลเดอร์ที่เฝ้าดู</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>ชื่อ (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>ชื่อ (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>พร้อม</value></data>

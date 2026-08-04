@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Omitir</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>No omitir</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Quitar carpeta</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>Ordenar</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Ordenación y carpetas vigiladas</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Nombre (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nombre (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>Listos</value></data>

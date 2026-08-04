@@ -371,7 +371,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>छोड़ें</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>छोड़ना रद्द करें</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>फोल्डर हटाएं</value></data>
-  <data name="import.sort_by" xml:space="preserve"><value>क्रमबद्ध करें</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>क्रमबद्धता और निगरानी वाले फ़ोल्डर</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>नाम (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>नाम (Z–A)</value></data>
   <data name="import.tab.ready" xml:space="preserve"><value>तैयार</value></data>
