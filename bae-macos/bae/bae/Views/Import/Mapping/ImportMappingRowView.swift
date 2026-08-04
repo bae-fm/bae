@@ -10,9 +10,6 @@ import SwiftUI
 /// release's is what catches it.
 struct ImportMappingRowView: View {
     let unit: BridgeMappingUnit
-    /// Whether this row is one of a track sheet's entries, which sit inside
-    /// their group header.
-    let indented: Bool
     /// Every audio unit the folder offers — what a row with nothing behind it
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
@@ -31,16 +28,12 @@ struct ImportMappingRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: ImportMappingColumns.spacing) {
             ImportMappingSourceCell(
                 source: unit.source,
                 previewingPath: previewingPath,
                 lengthsDiverge: lengthsDiverge,
                 actions: actions,
-            )
-            .padding(
-                .leading,
-                indented ? ImportMappingColumns.entryIndent : 0
             )
             .frame(maxWidth: .infinity, alignment: .leading)
             ImportMappingRoleCell(source: unit.source, actions: actions)
@@ -68,13 +61,13 @@ struct ImportMappingRowView: View {
                 text: field(of: track, \.title),
                 boxed: false,
             )
-            .frame(maxWidth: .infinity)
+            .frame(width: ImportMappingColumns.title)
             MetadataField(
                 placeholder: String(localized: "Artist"),
                 text: field(of: track, \.artistText),
                 boxed: false,
             )
-            .frame(maxWidth: .infinity)
+            .frame(width: ImportMappingColumns.artist)
             Text(importDurationText(sourceMs))
                 .font(.system(size: 12))
                 .monospacedDigit()
@@ -110,8 +103,8 @@ struct ImportMappingRowView: View {
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
             .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        Spacer().frame(maxWidth: .infinity)
+            .frame(width: ImportMappingColumns.title, alignment: .leading)
+        Spacer().frame(width: ImportMappingColumns.artist)
         Spacer().frame(width: ImportMappingColumns.trailingColumns)
     }
 

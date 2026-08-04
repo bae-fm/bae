@@ -14,7 +14,7 @@ struct ImportMappingImagesRow: View {
     private static let tileSize: CGFloat = 96
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: ImportMappingColumns.spacing) {
             LazyVGrid(
                 columns: [
                     GridItem(.adaptive(minimum: Self.tileSize), spacing: 8)
@@ -31,8 +31,8 @@ struct ImportMappingImagesRow: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Spacer().frame(maxWidth: .infinity)
+                .frame(width: ImportMappingColumns.title, alignment: .leading)
+            Spacer().frame(width: ImportMappingColumns.artist)
             Spacer().frame(width: ImportMappingColumns.trailingColumns)
         }
     }

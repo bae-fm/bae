@@ -44,13 +44,13 @@ struct ImportMappingSourceCell: View {
                 auditionButton(path: file.localPath)
             }
             nameCell(file)
-            Spacer(minLength: 4)
             Text(file.sizeText)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 // A squeezed column must truncate the name, never wrap the
                 // size mid-digit.
                 .fixedSize()
+            Spacer(minLength: 0)
         }
     }
 
@@ -95,7 +95,6 @@ struct ImportMappingSourceCell: View {
                 .font(.system(size: 12))
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Spacer(minLength: 4)
             Text(importDurationText(entry.durationMs))
                 .font(.caption2)
                 .monospacedDigit()
@@ -104,6 +103,7 @@ struct ImportMappingSourceCell: View {
                     lengthsDiverge
                         ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary)
                 )
+            Spacer(minLength: 0)
         }
     }
 

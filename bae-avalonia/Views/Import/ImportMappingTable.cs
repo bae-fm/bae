@@ -23,10 +23,6 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportMappingTable
 {
-    /// <summary>How far a track sheet's entries sit inside their group
-    /// header.</summary>
-    private const double EntryIndent = 18;
-
     private readonly BridgeMappingTable _table;
     private readonly Func<string, Task<List<ImportSheetBindingOption>>> _bindingOptions;
     private readonly Func<string?> _previewingPath;
@@ -64,13 +60,13 @@ internal sealed class ImportMappingTable
             switch (row)
             {
                 case BridgeMappingRow.Unit unit:
-                    column.Children.Add(UnitRow(unit.UnitValue, indent: 0));
+                    column.Children.Add(UnitRow(unit.UnitValue));
                     break;
                 case BridgeMappingRow.Sheet sheet:
                     column.Children.Add(SheetRow(sheet.SheetValue));
                     foreach (var entry in sheet.Entries)
                     {
-                        column.Children.Add(UnitRow(entry, EntryIndent));
+                        column.Children.Add(UnitRow(entry));
                     }
                     break;
                 case BridgeMappingRow.Images images:
@@ -119,10 +115,16 @@ internal sealed class ImportMappingTable
 
     // Source, the role in force, the position the release gives the row, the two
     // editable fields, the release's length, and the row's own actions.
+    //
+    // Every column but the source is a fixed width, so a header sits over its
+    // own column's content on every row: a row negotiating its own widths
+    // against its own content is what puts one row's length under another row's
+    // role. The source column takes whatever is left, because a file name is the
+    // one thing here with no length worth assuming.
     private static Grid Grid() => new()
     {
-        ColumnDefinitions = new ColumnDefinitions("*,118,34,*,*,64,Auto"),
-        ColumnSpacing = 8,
+        ColumnDefinitions = new ColumnDefinitions("*,118,34,220,180,64,118"),
+        ColumnSpacing = 10,
     };
 
     private static Control HeaderRow()
@@ -138,29 +140,32 @@ internal sealed class ImportMappingTable
         return grid;
     }
 
+    // What every row sits in: one leading edge, one height, and a separator over
+    // it. No striping — the columns are what a reader follows across a row, and a
+    // tinted band under half of them is a second, competing grouping.
     private Border Host(Grid grid, string? audioPath)
     {
         var host = new Border
         {
-            Padding = new Thickness(4),
-            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(0, 6),
             Child = grid,
             Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0, _rowHosts.Count == 0 ? 0 : 1, 0, 0),
         };
+        host[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
         _rowHosts.Add((host, audioPath));
         return host;
     }
 
     // ── One source unit and what it becomes ──────────────────────────────────
 
-    private Control UnitRow(BridgeMappingUnit unit, double indent)
+    private Control UnitRow(BridgeMappingUnit unit)
     {
         var grid = Grid();
 
         var lengthsDiverge = LengthsDiverge(unit);
 
         var source = SourceCell(unit.Source, lengthsDiverge);
-        source.Margin = new Thickness(indent, 0, 0, 0);
         Avalonia.Controls.Grid.SetColumn(source, 0);
         grid.Children.Add(source);
 
@@ -681,17 +686,25 @@ internal sealed class ImportMappingTable
 
     // ── A directory whose files all do the same job ──────────────────────────
 
-    // As the one row core decided it should be: the prefix, what it holds, and
-    // the total size.
+    // As the one row core decided it should be, each fact under the header it
+    // belongs to: the directory and its size where a file's name and size go,
+    // what it holds where a role goes, and what becomes of it where every other
+    // row says so.
     private Control DirectoryRow(BridgeCollapsedDirectory directory)
     {
         var grid = Grid();
-        var kindLine = Loc.Core(
-            BaeBridgeMethods.BridgeFileRowKindKey(directory.Kind), "count", (long)directory.Count);
         var name = ImportPaneUi.FileName(
-            directory.DirPrefix, $"— {kindLine}", checked((long)directory.TotalSize));
+            null, directory.DirPrefix, checked((long)directory.TotalSize));
         Avalonia.Controls.Grid.SetColumn(name, 0);
         grid.Children.Add(name);
+        var kind = ImportPaneUi.Cell(
+            Loc.Core(
+                BaeBridgeMethods.BridgeFileRowKindKey(directory.Kind),
+                "count",
+                (long)directory.Count),
+            secondary: true);
+        Avalonia.Controls.Grid.SetColumn(kind, 1);
+        grid.Children.Add(kind);
         AddBecomesText(grid, Loc.Core("ui.import.becomes.kept"));
         return Host(grid, audioPath: null);
     }

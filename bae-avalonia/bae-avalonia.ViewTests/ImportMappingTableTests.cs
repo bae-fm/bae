@@ -46,20 +46,37 @@ public sealed class ImportMappingTableTests
         Assert.Empty(table.GetLogicalDescendants().OfType<TextBox>());
     }
 
-    // A sheet is one group row over its entries: the entries sit inside it, and
-    // the header states why this one is on no audio at all.
+    // A sheet is one group row over its entries, and the header states why this
+    // one is on no audio at all. Every row starts at the same leading edge — a
+    // sheet's entries are its rows, which the group above them already says.
     [AvaloniaFact]
     public void ASheetHeadsTheGroupOfEntriesItCarves()
     {
         var table = Build(SheetTable(Disc(1)));
         var rows = Rows(table);
 
-        Assert.Equal(0, SourceCell(rows[1]).Margin.Left);
-        Assert.True(SourceCell(rows[2]).Margin.Left > 0);
-        Assert.True(SourceCell(rows[3]).Margin.Left > 0);
+        Assert.All(rows.Skip(1), row => Assert.Equal(0, SourceCell(row).Margin.Left));
         Assert.Contains(
             table.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == Loc.Core("ui.import.sheet.asked_for", "names", "disc.wav"));
+    }
+
+    // One column grid, header included: a header that sits over its own column's
+    // content is the whole point of a table, and a row that negotiates its widths
+    // against its own content puts one row's length under another row's role.
+    [AvaloniaFact]
+    public void EveryRowCarriesTheSameColumnsAsTheHeader()
+    {
+        var table = Build(SheetTable(Disc(1)));
+        var columns = Rows(table).Select(ColumnWidths).ToList();
+
+        Assert.All(columns, widths => Assert.Equal(columns[0], widths));
+        // Only the source column stretches; every other width is the table's,
+        // not the row's.
+        Assert.Equal(GridUnitType.Star, columns[0][0].GridUnitType);
+        Assert.All(
+            columns[0].Skip(1),
+            width => Assert.Equal(GridUnitType.Pixel, width.GridUnitType));
     }
 
     // Cue filenames are arbitrary, so the header carries the assignment: every
@@ -304,6 +321,12 @@ public sealed class ImportMappingTableTests
     /// <summary>A row's left half, which is the first cell of its grid.</summary>
     private static Control SourceCell(Control row) =>
         (Control)((Grid)((Border)row).Child!).Children[0];
+
+    /// <summary>The columns a row lays its cells out over — the header's own
+    /// grid included, which is a bare grid rather than a hosted row.</summary>
+    private static IReadOnlyList<GridLength> ColumnWidths(Control row) =>
+        (row is Border border ? (Grid)border.Child! : (Grid)row)
+            .ColumnDefinitions.Select(column => column.Width).ToList();
 
     private static IReadOnlyList<MenuItem> DiscMenu(Control row) =>
         row.GetLogicalDescendants()

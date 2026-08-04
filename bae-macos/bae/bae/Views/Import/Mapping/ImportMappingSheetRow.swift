@@ -18,7 +18,7 @@ struct ImportMappingSheetRow: View {
     let actions: ImportMappingActions
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: ImportMappingColumns.spacing) {
             HStack(spacing: 8) {
                 Image(systemName: "list.bullet.rectangle")
                     .font(.system(size: 11))
@@ -46,12 +46,12 @@ struct ImportMappingSheetRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                Spacer(minLength: 4)
                 if let size = sheet.bound.containerSizeText {
                     Text(size)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             ImportSheetDiscMenu(
@@ -62,8 +62,8 @@ struct ImportMappingSheetRow: View {
             // The becomes half is the entries' to fill; the header only holds
             // its columns open so the group and its rows line up.
             Spacer().frame(width: ImportMappingColumns.position)
-            Spacer().frame(maxWidth: .infinity)
-            Spacer().frame(maxWidth: .infinity)
+            Spacer().frame(width: ImportMappingColumns.title)
+            Spacer().frame(width: ImportMappingColumns.artist)
             Spacer().frame(width: ImportMappingColumns.trailingColumns)
         }
     }
