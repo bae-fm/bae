@@ -18,8 +18,9 @@ struct ImportMappingActions {
     /// Open a document (a log, a text file, a track sheet) in the viewer: the
     /// file's name, then its path on disk.
     let openDocument: (String, String) -> Void
-    /// Open the folder's images in the lightbox, at this file's path.
-    let openImage: (String) -> Void
+    /// Open the folder's images in the lightbox: the gallery's images, then
+    /// the path of the one that was clicked.
+    let openImages: ([BridgeMappingImage], String) -> Void
     /// Audition a row's audio from its own path.
     let preview: (String) -> Void
     /// Stop whatever is auditioning.

@@ -12,7 +12,9 @@ extension ImportView {
             importStore: importStore,
             previewAudio: previewAudio,
             openDocument: { name, path in openDocument(name: name, at: path) },
-            openImage: { path in openGallery(at: path) },
+            openImages: { images, path in
+                openGallery(images: images, at: path)
+            },
             onError: { uiStore.showError($0) },
         )
     }
@@ -67,15 +69,13 @@ extension ImportView {
         }
     }
 
-    /// Open the selected candidate's images in the lightbox, starting at
-    /// `path`.
-    private func openGallery(at path: String) {
-        guard let candidate = selectedCandidate else { return }
-        let items = candidate.files.images.map { file in
+    /// Open the folder's images in the lightbox, starting at `path`.
+    private func openGallery(images: [BridgeMappingImage], at path: String) {
+        let items = images.map { image in
             LightboxItem(
-                id: file.file.localPath,
-                label: file.file.name,
-                source: .local(path: file.file.localPath)
+                id: image.localPath,
+                label: image.name,
+                source: .local(path: image.localPath)
             )
         }
         guard !items.isEmpty else { return }

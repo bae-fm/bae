@@ -66,7 +66,11 @@ internal static class DialogUi
     // A cover-art thumbnail tile: a 120×120 image over a one-line caption, the whole
     // tile a borderless button. The caller sets the image source (sync for a local
     // file, async for a remote candidate) and wires Click.
-    internal static Button CoverTile(Image image, string caption)
+    //
+    // `mark` is a second, accented line under the caption saying what this tile is
+    // — the empty string keeps the line's height without saying anything, so a row
+    // of tiles where only one is marked still lines up.
+    internal static Button CoverTile(Image image, string caption, string? mark = null)
     {
         image.Width = 120;
         image.Height = 120;
@@ -82,12 +86,26 @@ internal static class DialogUi
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var content = new StackPanel { Spacing = 4, Children = { thumb, label } };
+        if (mark is not null)
+        {
+            var marker = new TextBlock
+            {
+                Text = mark,
+                FontSize = 11,
+                MaxWidth = 120,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            marker[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
+            content.Children.Add(marker);
+        }
         return new Button
         {
             Padding = new Thickness(4),
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
-            Content = new StackPanel { Spacing = 4, Children = { thumb, label } },
+            Content = content,
         };
     }
 

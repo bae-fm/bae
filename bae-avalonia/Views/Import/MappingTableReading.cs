@@ -14,12 +14,12 @@ namespace Bae.Desktop;
 internal static class MappingTableReading
 {
     /// <summary>The units a row carries: itself, or the entries a track sheet
-    /// carves. A collapsed directory carries none.</summary>
+    /// carves. The images and a collapsed directory carry none.</summary>
     internal static IReadOnlyList<BridgeMappingUnit> Units(this BridgeMappingRow row) => row switch
     {
         BridgeMappingRow.Unit unit => new[] { unit.UnitValue },
         BridgeMappingRow.Sheet sheet => sheet.Entries,
-        BridgeMappingRow.Directory => Array.Empty<BridgeMappingUnit>(),
+        BridgeMappingRow.Images or BridgeMappingRow.Directory => Array.Empty<BridgeMappingUnit>(),
         _ => throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown mapping row"),
     };
 
@@ -90,8 +90,6 @@ internal static class MappingTableReading
     internal static BridgeFileRole FileRole(this BridgeMappingRole role) => role switch
     {
         BridgeMappingRole.Audio => new BridgeFileRole.Audio(),
-        BridgeMappingRole.Cover cover => new BridgeFileRole.Cover(cover.Choice),
-        BridgeMappingRole.Artwork artwork => new BridgeFileRole.Artwork(artwork.Choice),
         BridgeMappingRole.Document => new BridgeFileRole.Document(),
         BridgeMappingRole.Other => new BridgeFileRole.Other(),
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown mapping role"),

@@ -11,8 +11,9 @@ struct ImportMappingServices {
     /// Show a document (a log, a text file, a track sheet) in the viewer: its
     /// name, then its path on disk.
     let openDocument: (String, String) -> Void
-    /// Show the folder's images in the lightbox, at this file's path.
-    let openImage: (String) -> Void
+    /// Show the folder's images in the lightbox: the gallery's images, then
+    /// the path of the one that was clicked.
+    let openImages: ([BridgeMappingImage], String) -> Void
     /// Surface a failed call to the user. Prose the caller already localized.
     let onError: (String) -> Void
 }
@@ -33,7 +34,7 @@ enum ImportMappingFlow {
             bindSheet: bindingAction(key: key, services: services),
             setSheetDisc: discAction(key: key, services: services),
             openDocument: services.openDocument,
-            openImage: services.openImage,
+            openImages: services.openImages,
             preview: { path in services.previewAudio.previewPlay(path) },
             stopPreview: { services.previewAudio.previewStop() },
             editTrack: { track in

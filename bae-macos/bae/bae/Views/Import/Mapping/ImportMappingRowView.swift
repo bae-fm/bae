@@ -92,8 +92,6 @@ struct ImportMappingRowView: View {
                     width: ImportMappingColumns.actions,
                     alignment: .trailing
                 )
-        case .cover:
-            becomesText(coreString("ui.import.becomes.cover"))
         case .kept:
             becomesText(coreString("ui.import.becomes.kept"))
         case .awaitingPick:

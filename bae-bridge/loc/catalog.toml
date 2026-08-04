@@ -3831,43 +3831,6 @@ ml = "{files} ഫയലുകൾ, {tracks} ട്രാക്കുകൾ — �
 pa = "{files} ਫਾਈਲਾਂ, {tracks} ਟਰੈਕ — ਬਿਨਾਂ ਆਡੀਓ ਵਾਲੇ ਟਰੈਕ"
 th = "{files} ไฟล์, {tracks} แทร็ก — มีแทร็กที่ไม่มีเสียง"
 
-[messages."core.import.files.images"]
-comment = "Import roles table: a directory holding nothing but images, shown as one row instead of one row per file."
-args = { count = "Int" }
-value = "{count, plural, one {# image} other {# images}}"
-
-[messages."core.import.files.images".translations]
-es = "{count, plural, one {# imagen} other {# imágenes}}"
-fr = "{count, plural, one {# image} other {# images}}"
-de = "{count, plural, one {# Bild} other {# Bilder}}"
-"pt-BR" = "{count, plural, one {# imagem} other {# imagens}}"
-ja = "{count, plural, other {#枚の画像}}"
-ko = "{count, plural, other {이미지 #개}}"
-"zh-Hans" = "{count, plural, other {# 张图片}}"
-ar = "{count, plural, zero {لا صور} one {صورة واحدة} two {صورتان} few {# صور} many {# صورة} other {# صورة}}"
-he = "{count, plural, one {תמונה אחת} two {שתי תמונות} many {# תמונות} other {# תמונות}}"
-uk = "{count, plural, one {# зображення} few {# зображення} many {# зображень} other {# зображення}}"
-bg = "{count, plural, one {# изображение} other {# изображения}}"
-pl = "{count, plural, one {# obraz} few {# obrazy} many {# obrazów} other {# obrazu}}"
-cs = "{count, plural, one {# obrázek} few {# obrázky} many {# obrázku} other {# obrázků}}"
-hr = "{count, plural, one {# slika} few {# slike} other {# slika}}"
-"zh-Hant" = "{count, plural, other {# 張圖片}}"
-it = "{count, plural, one {# immagine} other {# immagini}}"
-tr = "{count, plural, one {# görsel} other {# görsel}}"
-vi = "{count, plural, other {# ảnh}}"
-nl = "{count, plural, one {# afbeelding} other {# afbeeldingen}}"
-hi = "{count, plural, one {# चित्र} other {# चित्र}}"
-bn = "{count, plural, one {#টি ছবি} other {#টি ছবি}}"
-ta = "{count, plural, one {# படம்} other {# படங்கள்}}"
-te = "{count, plural, one {# చిత్రం} other {# చిత్రాలు}}"
-mr = "{count, plural, one {# चित्र} other {# चित्रे}}"
-ur = "{count, plural, one {# تصویر} other {# تصاویر}}"
-gu = "{count, plural, one {# ચિત્ર} other {# ચિત્રો}}"
-kn = "{count, plural, one {# ಚಿತ್ರ} other {# ಚಿತ್ರಗಳು}}"
-ml = "{count, plural, one {# ചിത്രം} other {# ചിത്രങ്ങൾ}}"
-pa = "{count, plural, one {# ਤਸਵੀਰ} other {# ਤਸਵੀਰਾਂ}}"
-th = "{count, plural, other {ภาพ # รายการ}}"
-
 [messages."core.import.files.documents"]
 comment = "Import roles table: a directory holding nothing but documents — rip logs, tracklists, playlists — shown as one row instead of one row per file."
 args = { count = "Int" }
@@ -4773,7 +4736,7 @@ pa = "ਇਸ ਸ਼ੀਟ ਦੀਆਂ ਐਂਟਰੀਆਂ ਰਿਲੀਜ਼ 
 th = "รายการในชีตนี้เป็นแผ่นใดของรุ่นที่วางจำหน่าย"
 
 [messages."ui.import.becomes.cover"]
-comment = "Import mapping table, Becomes column: this file becomes the image that leads the release."
+comment = "Import mapping table, image gallery: the caption on the tile whose image leads the release."
 value = "Release cover"
 
 [messages."ui.import.becomes.cover".translations]

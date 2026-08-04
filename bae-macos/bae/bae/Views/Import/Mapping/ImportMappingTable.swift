@@ -7,8 +7,8 @@ import SwiftUI
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
 /// where the pairing is visible. A track sheet heads the group of entries it
-/// carves; a collapsed directory is one row, because the roles of fourteen
-/// scans are one fact.
+/// carves; the folder's images are one gallery row; a collapsed directory is
+/// one row, because the roles of fourteen rip logs are one fact.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// What each track sheet may be bound to, by the sheet's file id. Core
@@ -64,6 +64,12 @@ struct ImportMappingTable: View {
                     striped: (offset + (striped ? 1 : 0)).isMultiple(of: 2)
                 )
             }
+        case .images(let images):
+            ImportMappingImagesRow(images: images, actions: actions)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(minHeight: 40)
+                .background(striped ? Color.clear : .white.opacity(0.02))
         case .directory(let directory):
             ImportMappingDirectoryRow(directory: directory)
                 .padding(.horizontal, 14)
@@ -211,6 +217,7 @@ extension BridgeMappingRow {
         switch self {
         case .unit(let unit): unit.rowId
         case .sheet(let sheet, _): "sheet:\(sheet.sheetId)"
+        case .images: "images"
         case .directory(let directory): "dir:\(directory.dirPrefix)"
         }
     }

@@ -451,6 +451,8 @@ internal sealed class ImportMappingPane : UserControl
                 mapping,
                 sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
                 () => _import.PreviewingPath,
+                (image, path) => _app.Images.Bind(
+                    image, new ImageContent.LocalFile(path), ImageWidths.PickerTile),
                 MappingActions());
             var table = _table.Build();
             sections.Children.Add(_table.Title());
@@ -671,7 +673,7 @@ internal sealed class ImportMappingPane : UserControl
         SetSheetDisc: (sheetFileId, disc) => _ = SetSheetDisc(sheetFileId, disc),
         OpenDocument: (name, path) =>
             _ = _dialogs.ShowDocumentFile(new ImportDocument { Name = name, Path = path }),
-        OpenImage: ShowFolderImages,
+        OpenImages: ShowFolderImages,
         Preview: path => _app.Playback.PreviewPlay(path),
         StopPreview: () => _app.Playback.PreviewStop(),
         EditTrack: EditTrack,
@@ -788,20 +790,13 @@ internal sealed class ImportMappingPane : UserControl
         Render();
     }
 
-    // The folder's images in the lightbox, at the one that was clicked — the
-    // same set the cover picker offers, which is every image the scan found.
-    private void ShowFolderImages(string path)
-    {
-        if (_candidate?.Files is not { } files)
-        {
-            return;
-        }
-        var images = files.Files
-            .Where(file => file.Role is BridgeFileRole.Cover or BridgeFileRole.Artwork)
-            .Select(file => new LocalArtwork { FileId = file.File.Name, Path = file.File.LocalPath })
-            .ToList();
-        _dialogs.ShowFolderImages(images, path);
-    }
+    // The gallery's images in the lightbox, at the one that was clicked.
+    private void ShowFolderImages(IReadOnlyList<BridgeMappingImage> images, string path) =>
+        _dialogs.ShowFolderImages(
+            images
+                .Select(image => new LocalArtwork { FileId = image.FileId, Path = image.LocalPath })
+                .ToList(),
+            path);
 
     // ── The commit row ───────────────────────────────────────────────────────
 

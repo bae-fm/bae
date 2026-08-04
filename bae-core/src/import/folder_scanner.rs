@@ -402,12 +402,12 @@ pub enum FileBecomes {
     NoSlots,
 }
 
-/// The job a collapsed directory's files share. Audio and track sheets are
-/// deliberately absent: a folder of tracks is exactly what the roles table
-/// exists to show one row at a time.
+/// The job a collapsed directory's files share. Audio, track sheets and images
+/// are deliberately absent: a folder of tracks is exactly what the roles table
+/// exists to show one row at a time, and the images are one gallery however
+/// many directories they sit in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileRowKind {
-    Image,
     Document,
     Other,
 }
@@ -746,8 +746,8 @@ impl CategorizedFiles {
     /// Collapsing is decided here rather than by each UI, because two UIs
     /// deciding it separately is two answers to one question about the
     /// release's shape. Audio and track sheets never collapse — one row per
-    /// track is the point of the table — and neither does a directory holding
-    /// the release's cover, which has to stay visible on its own row.
+    /// track is the point of the table — and neither do images, which the
+    /// gallery shows whole wherever in the folder they sit.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn collapsed_directories(&self) -> Vec<CollapsedDirectory> {
         let mut collapsible: BTreeMap<&str, (FileRowKind, u32, u64)> = BTreeMap::new();
@@ -757,10 +757,12 @@ impl CategorizedFiles {
                 continue;
             };
             let kind = match entry.role {
-                FileRole::Artwork => Some(FileRowKind::Image),
                 FileRole::Document => Some(FileRowKind::Document),
                 FileRole::Other => Some(FileRowKind::Other),
-                FileRole::Audio | FileRole::TrackSheet { .. } | FileRole::Cover => None,
+                FileRole::Audio
+                | FileRole::TrackSheet { .. }
+                | FileRole::Cover
+                | FileRole::Artwork => None,
             };
             // A directory holding anything that needs its own row, or holding
             // two different jobs, is not homogeneous — every one of its files

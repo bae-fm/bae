@@ -100,7 +100,7 @@ private final class Recorder {
             importStore: store,
             previewAudio: previewAudio,
             openDocument: { _, _ in },
-            openImage: { _ in },
+            openImages: { _, _ in },
             onError: { _ in },
         )
     }

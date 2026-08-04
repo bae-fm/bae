@@ -955,16 +955,7 @@
                     )
                 },
             formatLabel: "CUE+FLAC",
-            // The scans directory is one fact, not fourteen: core collapses it
-            // and the mapping table shows the group row in its place.
-            collapsedDirectories: [
-                BridgeCollapsedDirectory(
-                    dirPrefix: "scans/",
-                    kind: .image,
-                    count: 14,
-                    totalSize: 14 * 1_400_000
-                )
-            ]
+            collapsedDirectories: []
         )
 
         static let releaseDetailBridge: BridgeReleaseDetail = {
@@ -1062,12 +1053,6 @@
                 )
             }
 
-        static let coverImageChoice = BridgeCoverChoice(
-            selection: .releaseImage(fileId: "Front.png"),
-            previewSource: .local(path: "/tmp/fake/Front.png"),
-            thumbnailSource: .local(path: "/tmp/fake/Front.png")
-        )
-
         static let coverImage = previewImage(
             name: "Front.png",
             size: 2_500_000,
@@ -1163,16 +1148,37 @@
             )
         }
 
+        /// The folder's images, as the gallery row shows them.
+        static let mappingImages: [BridgeMappingImage] = [
+            BridgeMappingImage(
+                fileId: "Front.png",
+                name: "Front.png",
+                size: 2_500_000,
+                localPath: "/tmp/fake/Front.png",
+                isCover: true
+            ),
+            BridgeMappingImage(
+                fileId: "Back.png",
+                name: "Back.png",
+                size: 1_800_000,
+                localPath: "/tmp/fake/Back.png",
+                isCover: false
+            ),
+            BridgeMappingImage(
+                fileId: "scans/scan-1.jpg",
+                name: "scan-1.jpg",
+                size: 1_400_000,
+                localPath: "/tmp/fake/scans/scan-1.jpg",
+                isCover: false
+            ),
+        ]
+
         /// The mapping the picked release produces: nine files against nine
-        /// tracks, every row paired, with the folder's cover and documents
+        /// tracks, every row paired, with the folder's images and documents
         /// carried alongside them.
         static let mappingTable = BridgeMappingTable(
             rows: (1...9).map(mappingTrackRow) + [
-                carriedRow(
-                    coverImage,
-                    role: .cover(choice: coverImageChoice),
-                    becomes: .cover
-                ),
+                .images(images: mappingImages),
                 carriedRow(
                     infoLog,
                     role: .document,
@@ -1195,11 +1201,7 @@
                     )
                 }
                 + [
-                    carriedRow(
-                        coverImage,
-                        role: .cover(choice: coverImageChoice),
-                        becomes: .cover
-                    ),
+                    .images(images: mappingImages),
                     carriedRow(
                         infoLog,
                         role: .document,
@@ -1249,22 +1251,23 @@
             discOptions: [1, 2]
         )
 
-        private static let previewScansDirectory = BridgeCollapsedDirectory(
-            dirPrefix: "scans/",
-            kind: .image,
-            count: 14,
-            totalSize: 14 * 1_400_000
+        private static let previewLogsDirectory = BridgeCollapsedDirectory(
+            dirPrefix: "logs/",
+            kind: .document,
+            count: 4,
+            totalSize: 4 * 6000
         )
 
-        /// One CUE+FLAC container the sheet carves nine entries out of, with a
-        /// collapsed scans directory alongside it.
+        /// One CUE+FLAC container the sheet carves nine entries out of, with
+        /// the folder's images and a collapsed logs directory alongside it.
         static let sheetMappingTable = BridgeMappingTable(
             rows: [
                 .sheet(
                     sheet: previewSheetGroup,
                     entries: (0..<9).map(sheetEntryUnit)
                 ),
-                .directory(directory: previewScansDirectory),
+                .images(images: mappingImages),
+                .directory(directory: previewLogsDirectory),
             ],
             reconciliation: .agrees(count: 9)
         )

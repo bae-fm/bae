@@ -51,19 +51,23 @@ pub enum MappingRow {
         sheet: SheetGroup,
         entries: Vec<MappingUnit>,
     },
+    /// Every image the folder holds, in one row: a surface shows them as a
+    /// gallery, because a picture is read by looking at it and a filename says
+    /// nothing about what is in it.
+    Images(Vec<MappingImage>),
     /// A directory whose files all do the same job, shown as one row.
     Directory(CollapsedDirectory),
 }
 
 impl MappingRow {
-    /// The units this row carries: itself, or the entries a sheet carves. A
-    /// collapsed directory carries none — it is one row standing in for files
-    /// that are not the release's tracks.
+    /// The units this row carries: itself, or the entries a sheet carves. The
+    /// images and a collapsed directory carry none — they stand for files that
+    /// are not the release's tracks.
     pub fn units(&self) -> &[MappingUnit] {
         match self {
             Self::Unit(unit) => std::slice::from_ref(unit),
             Self::Sheet { entries, .. } => entries.as_slice(),
-            Self::Directory(_) => &[],
+            Self::Images(_) | Self::Directory(_) => &[],
         }
     }
 
@@ -71,9 +75,23 @@ impl MappingRow {
         match self {
             Self::Unit(unit) => std::slice::from_mut(unit),
             Self::Sheet { entries, .. } => entries.as_mut_slice(),
-            Self::Directory(_) => &mut [],
+            Self::Images(_) | Self::Directory(_) => &mut [],
         }
     }
+}
+
+/// One of the folder's images, as the gallery shows it.
+#[derive(Debug, Clone)]
+pub struct MappingImage {
+    /// The file's identity within the release (its relative path).
+    pub file_id: String,
+    /// The file's own name, without its directory prefix.
+    pub name: String,
+    pub size: u64,
+    /// Absolute path — what a thumbnail and the lightbox read.
+    pub path: PathBuf,
+    /// Whether this is the image that leads the release.
+    pub is_cover: bool,
 }
 
 /// One source unit, and the track committing makes of it.
@@ -98,15 +116,12 @@ pub enum MappingSource {
 /// What one of the folder's files is, as a row of the mapping table.
 ///
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
-/// it heads a group of rows — so it has no variant.
+/// it heads a group of rows — and an image is not one either, because the
+/// images are one gallery row rather than a row each.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MappingRole {
     /// Playable audio.
     Audio,
-    /// The image that leads the release.
-    Cover,
-    /// Any other image.
-    Artwork,
     /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
     /// could not be parsed as a sheet.
     Document,
@@ -162,8 +177,6 @@ pub enum MappingBecomes {
         source_position: Option<String>,
         source_duration_ms: Option<u64>,
     },
-    /// The image that leads the release.
-    Cover,
     /// Written with the release like every other folder file, just not one
     /// of its tracks.
     Kept,
@@ -297,6 +310,10 @@ pub fn mapping_table(
     };
     let mut rows = Vec::with_capacity(files.files.len());
     let mut opened: BTreeSet<&str> = BTreeSet::new();
+    // The folder's images, and where among the rows their one gallery row
+    // goes: where the first of them would have been.
+    let mut images: Vec<MappingImage> = Vec::new();
+    let mut images_at: Option<usize> = None;
 
     for entry in &files.files {
         if let Some(directory) = collapsed_row(&collapsed, entry) {
@@ -354,11 +371,17 @@ pub fn mapping_table(
             // Nothing else the folder holds is in the tracklist, and no release
             // has to be picked to know it — the role says so on its own. The
             // folder is the release, so all of it is still carried.
-            FileRole::Cover => rows.push(carried(entry, MappingRole::Cover)),
-            FileRole::Artwork => rows.push(carried(entry, MappingRole::Artwork)),
+            FileRole::Cover | FileRole::Artwork => {
+                images_at.get_or_insert(rows.len());
+                images.push(mapping_image(entry, matches!(entry.role, FileRole::Cover)));
+            }
             FileRole::Document => rows.push(carried(entry, MappingRole::Document)),
             FileRole::Other => rows.push(carried(entry, MappingRole::Other)),
         }
+    }
+
+    if let Some(index) = images_at {
+        rows.insert(index, MappingRow::Images(images));
     }
 
     // The tracks the source names and the folder has nothing for. They sit past
@@ -390,7 +413,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
         .flat_map(MappingRow::units)
         .filter_map(|unit| match &unit.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
-            MappingBecomes::Cover | MappingBecomes::Kept | MappingBecomes::AwaitingPick => None,
+            MappingBecomes::Kept | MappingBecomes::AwaitingPick => None,
         })
         .collect()
 }
@@ -509,20 +532,25 @@ impl RowBuilder<'_> {
     }
 }
 
-/// One row for a file that is not one of the release's tracks: the cover, or
-/// something the folder carries alongside them. Nothing has to be opened to
-/// know what it becomes, so it shows no probed length.
+/// One row for a file that is not one of the release's tracks: something the
+/// folder carries alongside them. Nothing has to be opened to know what it
+/// becomes, so it shows no probed length.
 fn carried(entry: &CandidateFile, role: MappingRole) -> MappingRow {
     MappingRow::Unit(MappingUnit {
-        becomes: match role {
-            MappingRole::Cover => MappingBecomes::Cover,
-            MappingRole::Audio
-            | MappingRole::Artwork
-            | MappingRole::Document
-            | MappingRole::Other => MappingBecomes::Kept,
-        },
+        becomes: MappingBecomes::Kept,
         source: MappingSource::File(mapping_file(entry, role, None)),
     })
+}
+
+/// One of the folder's images, as the gallery row carries it.
+fn mapping_image(entry: &CandidateFile, is_cover: bool) -> MappingImage {
+    MappingImage {
+        file_id: entry.file.relative_path.clone(),
+        name: entry.file.file_name.clone(),
+        size: entry.file.size,
+        path: entry.file.path.clone(),
+        is_cover,
+    }
 }
 
 /// The collapsed-directory row a file is stood for by, where it is in one.
@@ -662,7 +690,7 @@ pub fn mapping_without_file(table: MappingTable, file_id: &str) -> MappingTable 
     let mut table = table;
     table.rows.retain(|row| match row {
         MappingRow::Sheet { sheet, .. } => sheet.bound.container_id() != Some(file_id),
-        MappingRow::Unit(_) | MappingRow::Directory(_) => true,
+        MappingRow::Unit(_) | MappingRow::Images(_) | MappingRow::Directory(_) => true,
     });
     remove(table, &|unit| match &unit.source {
         MappingSource::File(file) => file.file_id == file_id,
@@ -681,7 +709,7 @@ fn remove(mut table: MappingTable, should_remove: &dyn Fn(&MappingUnit) -> bool)
             entries.retain(|entry| !should_remove(entry));
             true
         }
-        MappingRow::Directory(_) => true,
+        MappingRow::Images(_) | MappingRow::Directory(_) => true,
     });
     if table.reconciliation.is_some() {
         table.reconciliation = Some(tally(&table.rows));
@@ -812,7 +840,7 @@ mod tests {
         match row {
             MappingRow::Unit(unit) => vec![&unit.becomes],
             MappingRow::Sheet { entries, .. } => entries.iter().map(|e| &e.becomes).collect(),
-            MappingRow::Directory(_) => Vec::new(),
+            MappingRow::Images(_) | MappingRow::Directory(_) => Vec::new(),
         }
     }
 
@@ -827,8 +855,8 @@ mod tests {
     }
 
     /// Nothing is picked yet, so every audio row is an open question — but a
-    /// cover is still the cover and a rip log is still carried, because a role
-    /// is a fact about the folder and needs no release.
+    /// rip log is still carried, because a role is a fact about the folder and
+    /// needs no release.
     #[test]
     fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become() {
         let tmp = tempfile::TempDir::new().expect("tempdir");
@@ -840,25 +868,61 @@ mod tests {
         let table = mapping_table(&scan(tmp.path()), None);
 
         assert!(table.reconciliation.is_none());
-        let kinds: Vec<(&str, &MappingBecomes)> = table
-            .rows
-            .iter()
-            .map(|row| (file_row(row).name.as_str(), becomes(row)[0]))
-            .collect();
         assert!(matches!(
-            kinds[0],
-            ("01.flac", MappingBecomes::AwaitingPick)
+            becomes(&table.rows[0])[0],
+            MappingBecomes::AwaitingPick
         ));
+        assert_eq!(file_row(&table.rows[0]).name, "01.flac");
         assert!(matches!(
-            kinds[1],
-            ("02.flac", MappingBecomes::AwaitingPick)
+            becomes(&table.rows[1])[0],
+            MappingBecomes::AwaitingPick
         ));
-        assert!(matches!(kinds[2], ("cover.jpg", MappingBecomes::Cover)));
-        assert!(matches!(kinds[3], ("rip.log", MappingBecomes::Kept)));
+        assert_eq!(file_row(&table.rows[1]).name, "02.flac");
+        assert!(matches!(becomes(&table.rows[3])[0], MappingBecomes::Kept));
+        assert_eq!(file_row(&table.rows[3]).name, "rip.log");
         // A row nothing has opened has no probed length to show.
         assert_eq!(file_row(&table.rows[0]).probed_duration_ms, None);
         assert_eq!(file_row(&table.rows[0]).role, MappingRole::Audio);
         assert_eq!(file_row(&table.rows[3]).role, MappingRole::Document);
+    }
+
+    /// The folder's images are one row, whatever else the table holds: a
+    /// gallery, not a row per file, with the one that leads the release marked.
+    #[test]
+    fn the_folder_s_images_are_one_gallery_row() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("01.flac"));
+        fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
+        fs::write(tmp.path().join("back.jpg"), fake_jpeg()).expect("write back");
+        fs::create_dir(tmp.path().join("scans")).expect("scans dir");
+        for name in ["scan1.jpg", "scan2.jpg", "scan3.jpg"] {
+            fs::write(tmp.path().join("scans").join(name), fake_jpeg()).expect("write scan");
+        }
+
+        let table = mapping_table(&scan(tmp.path()), None);
+
+        let images: Vec<&MappingImage> = table
+            .rows
+            .iter()
+            .filter_map(|row| match row {
+                MappingRow::Images(images) => Some(images),
+                _ => None,
+            })
+            .flatten()
+            .collect();
+        assert_eq!(images.len(), 5);
+        assert_eq!(
+            images.iter().filter(|image| image.is_cover).count(),
+            1,
+            "exactly one image leads the release"
+        );
+        // A directory of images is not collapsed away from the gallery — its
+        // files are in it, each with the path a thumbnail reads.
+        assert!(images
+            .iter()
+            .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
+        // And no image is a row of its own.
+        assert_eq!(table.rows.len(), 2);
     }
 
     /// A bound sheet is one group row over its entries: the entries carry the

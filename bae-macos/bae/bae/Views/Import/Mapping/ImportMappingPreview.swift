@@ -61,7 +61,7 @@
             bindSheet: { _, _ in },
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },
-            openImage: { _ in },
+            openImages: { _, _ in },
             preview: { _ in },
             stopPreview: {},
             editTrack: { _ in },

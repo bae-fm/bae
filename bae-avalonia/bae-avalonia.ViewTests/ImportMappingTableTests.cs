@@ -115,6 +115,35 @@ public sealed class ImportMappingTableTests
         Assert.Equal(new[] { ContainerPath }, played);
     }
 
+    // The folder's images are one row: a tile per image, the one that leads the
+    // release marked as such, and clicking a tile opens the lightbox over the
+    // whole gallery at the image that was clicked.
+    [AvaloniaFact]
+    public void TheImagesAreOneGalleryRowThatOpensTheLightbox()
+    {
+        var opened = new List<(int Count, string Path)>();
+        var table = Build(
+            new BridgeMappingTable(
+                new BridgeMappingRow[] { new BridgeMappingRow.Images(Images()) },
+                Reconciliation: null),
+            openImages: (images, path) => opened.Add((images.Count, path)));
+
+        var tiles = Rows(table)[1].GetLogicalDescendants().OfType<Button>().ToList();
+        Assert.Equal(2, tiles.Count);
+        Assert.Contains(
+            table.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("ui.import.becomes.cover"));
+        // What becomes of them is stated once for the group, not once per tile.
+        Assert.Equal(
+            1,
+            table.GetLogicalDescendants().OfType<TextBlock>()
+                .Count(text => text.Text == Loc.Core("ui.import.becomes.kept")));
+
+        tiles[1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal(new[] { (2, "/folder/back.jpg") }, opened);
+    }
+
     // ── Reading the table ────────────────────────────────────────────────────
 
     // The commit bar states what committing writes and what is still unnamed;
@@ -203,6 +232,22 @@ public sealed class ImportMappingTableTests
             ContainerLocalPath: ContainerPath)),
         new BridgeMappingBecomes.AwaitingPick());
 
+    private static BridgeMappingImage[] Images() => new[]
+    {
+        new BridgeMappingImage(
+            FileId: "front.jpg",
+            Name: "front.jpg",
+            Size: 2048,
+            LocalPath: "/folder/front.jpg",
+            IsCover: true),
+        new BridgeMappingImage(
+            FileId: "back.jpg",
+            Name: "back.jpg",
+            Size: 1024,
+            LocalPath: "/folder/back.jpg",
+            IsCover: false),
+    };
+
     private static BridgeMappingRow Unit(BridgeMappingSource source, BridgeMappingBecomes becomes) =>
         new BridgeMappingRow.Unit(new BridgeMappingUnit(source, becomes));
 
@@ -213,7 +258,7 @@ public sealed class ImportMappingTableTests
             Size: 1024,
             LocalPath: $"/folder/{fileId}",
             ProbedDurationMs: null,
-            Role: new BridgeMappingRole.Audio(),
+            Role: BridgeMappingRole.Audio,
             Alternatives: System.Array.Empty<BridgeFileRoleChoice>(),
             RoleChoice: null));
 
@@ -231,17 +276,19 @@ public sealed class ImportMappingTableTests
         BridgeMappingTable table,
         System.Action<string, BridgeSheetDisc>? setSheetDisc = null,
         System.Action<string, string>? openDocument = null,
-        System.Action<string>? preview = null) =>
+        System.Action<string>? preview = null,
+        System.Action<IReadOnlyList<BridgeMappingImage>, string>? openImages = null) =>
         new ImportMappingTable(
             table,
             _ => Task.FromResult(new List<ImportSheetBindingOption>()),
             () => null,
+            (_, _) => { },
             new ImportMappingActions(
                 SetRole: (_, _) => { },
                 BindSheet: (_, _) => { },
                 SetSheetDisc: setSheetDisc ?? ((_, _) => { }),
                 OpenDocument: openDocument ?? ((_, _) => { }),
-                OpenImage: _ => { },
+                OpenImages: openImages ?? ((_, _) => { }),
                 Preview: preview ?? (_ => { }),
                 StopPreview: () => { },
                 EditTrack: _ => { },

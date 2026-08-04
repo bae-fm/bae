@@ -66,7 +66,7 @@ extension BridgeMappingRow {
         switch self {
         case .unit(let unit): [unit]
         case .sheet(_, let entries): entries
-        case .directory: []
+        case .images, .directory: []
         }
     }
 }
@@ -193,8 +193,6 @@ extension BridgeMappingRole {
     var fileRole: BridgeFileRole {
         switch self {
         case .audio: .audio
-        case .cover(let choice): .cover(choice: choice)
-        case .artwork(let choice): .artwork(choice: choice)
         case .document: .document
         case .other: .other
         }

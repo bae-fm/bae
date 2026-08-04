@@ -3738,9 +3738,9 @@ fn becomes_names_the_slots_each_file_backs() {
     );
 }
 
-/// A directory of nothing but artwork collapses to one row. A directory that
-/// also holds the release's cover does not — the cover has to stay visible on
-/// a row of its own — and neither does one holding two different jobs.
+/// A directory of nothing but documents collapses to one row. A directory of
+/// images does not — every image belongs to the gallery, which shows it — and
+/// neither does one holding two different jobs.
 #[test]
 fn a_homogeneous_directory_collapses_to_one_row() {
     let tmp = tempfile::tempdir().unwrap();
@@ -3773,10 +3773,7 @@ fn a_homogeneous_directory_collapses_to_one_row() {
 
     assert_eq!(
         collapsed,
-        vec![
-            ("logs/".to_string(), FileRowKind::Document, 2),
-            ("scans/".to_string(), FileRowKind::Image, 4),
-        ],
+        vec![("logs/".to_string(), FileRowKind::Document, 2)],
     );
 }
 

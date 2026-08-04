@@ -1660,7 +1660,6 @@ pub fn bridge_file_becomes_key(becomes: BridgeFileBecomes) -> String {
 /// `FileRowKind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeFileRowKind {
-    Image,
     Document,
     Other,
 }
@@ -1670,7 +1669,6 @@ pub enum BridgeFileRowKind {
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_file_row_kind_key(kind: BridgeFileRowKind) -> String {
     match kind {
-        BridgeFileRowKind::Image => "core.import.files.images",
         BridgeFileRowKind::Document => "core.import.files.documents",
         BridgeFileRowKind::Other => "core.import.files.other",
     }
@@ -3124,17 +3122,11 @@ pub enum BridgeSheetDisc {
 /// bae-core's `MappingRole`.
 ///
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
-/// it heads a group of rows — so it has no variant.
-#[derive(Debug, Clone, uniffi::Enum)]
+/// it heads a group of rows — and an image is not one either, because the
+/// images are one gallery row rather than a row each.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMappingRole {
     Audio,
-    /// The image that leads the release.
-    Cover {
-        choice: BridgeCoverChoice,
-    },
-    Artwork {
-        choice: BridgeCoverChoice,
-    },
     Document,
     Other,
 }
@@ -3209,8 +3201,6 @@ pub enum BridgeMappingBecomes {
         source_position: Option<String>,
         source_duration_ms: Option<u64>,
     },
-    /// The image that leads the release.
-    Cover,
     /// Carried with the release, not one of its tracks.
     Kept,
     /// No release is picked yet, so what this becomes is the open question.
@@ -3273,6 +3263,21 @@ pub enum BridgeSheetBound {
     },
 }
 
+/// One of the folder's images, as the gallery shows it. Mirror of bae-core's
+/// `MappingImage`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingImage {
+    /// The file's identity within the release (its relative path).
+    pub file_id: String,
+    /// The file's own name, without its directory prefix.
+    pub name: String,
+    pub size: u64,
+    /// Absolute path — what a thumbnail and the lightbox read.
+    pub local_path: String,
+    /// Whether this is the image that leads the release.
+    pub is_cover: bool,
+}
+
 /// One row of the mapping table. Mirror of bae-core's `MappingRow`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingRow {
@@ -3283,6 +3288,8 @@ pub enum BridgeMappingRow {
         sheet: BridgeSheetGroup,
         entries: Vec<BridgeMappingUnit>,
     },
+    /// Every image the folder holds, shown as one gallery.
+    Images { images: Vec<BridgeMappingImage> },
     /// A directory whose files all do the same job, shown as one row.
     Directory { directory: BridgeCollapsedDirectory },
 }
@@ -5311,7 +5318,6 @@ impl BridgeCollapsedDirectory {
         BridgeCollapsedDirectory {
             dir_prefix,
             kind: match kind {
-                FileRowKind::Image => BridgeFileRowKind::Image,
                 FileRowKind::Document => BridgeFileRowKind::Document,
                 FileRowKind::Other => BridgeFileRowKind::Other,
             },
@@ -5331,7 +5337,6 @@ impl BridgeCollapsedDirectory {
         CollapsedDirectory {
             dir_prefix,
             kind: match kind {
-                BridgeFileRowKind::Image => FileRowKind::Image,
                 BridgeFileRowKind::Document => FileRowKind::Document,
                 BridgeFileRowKind::Other => FileRowKind::Other,
             },
@@ -5504,38 +5509,19 @@ impl BridgeSheetDisc {
 
 #[cfg(feature = "desktop")]
 impl BridgeMappingRole {
-    /// `local_path` is the file's own, which is what an image role's cover
-    /// choice points the picker at — the role itself carries no path.
-    fn from_core(role: bae_core::import::MappingRole, file_id: &str, local_path: &str) -> Self {
+    fn from_core(role: bae_core::import::MappingRole) -> Self {
         use bae_core::import::MappingRole;
-        let choice = || BridgeCoverChoice {
-            selection: BridgeCoverSelection::ReleaseImage {
-                file_id: file_id.to_string(),
-            },
-            preview_source: BridgeCoverImageSource::Local {
-                path: local_path.to_string(),
-            },
-            thumbnail_source: BridgeCoverImageSource::Local {
-                path: local_path.to_string(),
-            },
-        };
         match role {
             MappingRole::Audio => Self::Audio,
-            MappingRole::Cover => Self::Cover { choice: choice() },
-            MappingRole::Artwork => Self::Artwork { choice: choice() },
             MappingRole::Document => Self::Document,
             MappingRole::Other => Self::Other,
         }
     }
 
-    /// The cover choice is derived from the file rather than carried, so it is
-    /// not read back.
     fn into_core(self) -> bae_core::import::MappingRole {
         use bae_core::import::MappingRole;
         match self {
             Self::Audio => MappingRole::Audio,
-            Self::Cover { .. } => MappingRole::Cover,
-            Self::Artwork { .. } => MappingRole::Artwork,
             Self::Document => MappingRole::Document,
             Self::Other => MappingRole::Other,
         }
@@ -5555,13 +5541,12 @@ impl BridgeMappingFile {
             alternatives,
             role_choice,
         } = file;
-        let local_path = path.to_string_lossy().to_string();
         BridgeMappingFile {
-            role: BridgeMappingRole::from_core(role, &file_id, &local_path),
+            role: BridgeMappingRole::from_core(role),
+            local_path: path.to_string_lossy().to_string(),
             file_id,
             name,
             size,
-            local_path,
             probed_duration_ms,
             alternatives: alternatives
                 .into_iter()
@@ -5686,7 +5671,6 @@ impl BridgeMappingBecomes {
                 source_position,
                 source_duration_ms,
             },
-            MappingBecomes::Cover => Self::Cover,
             MappingBecomes::Kept => Self::Kept,
             MappingBecomes::AwaitingPick => Self::AwaitingPick,
         }
@@ -5704,7 +5688,6 @@ impl BridgeMappingBecomes {
                 source_position,
                 source_duration_ms,
             },
-            Self::Cover => MappingBecomes::Cover,
             Self::Kept => MappingBecomes::Kept,
             Self::AwaitingPick => MappingBecomes::AwaitingPick,
         }
@@ -5830,6 +5813,43 @@ impl BridgeSheetBound {
 }
 
 #[cfg(feature = "desktop")]
+impl BridgeMappingImage {
+    fn from_core(image: bae_core::import::MappingImage) -> Self {
+        let bae_core::import::MappingImage {
+            file_id,
+            name,
+            size,
+            path,
+            is_cover,
+        } = image;
+        BridgeMappingImage {
+            file_id,
+            name,
+            size,
+            local_path: path.to_string_lossy().to_string(),
+            is_cover,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingImage {
+        let BridgeMappingImage {
+            file_id,
+            name,
+            size,
+            local_path,
+            is_cover,
+        } = self;
+        bae_core::import::MappingImage {
+            file_id,
+            name,
+            size,
+            path: std::path::PathBuf::from(local_path),
+            is_cover,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl BridgeMappingRow {
     fn from_core(row: bae_core::import::MappingRow) -> Self {
         use bae_core::import::MappingRow;
@@ -5842,6 +5862,12 @@ impl BridgeMappingRow {
                 entries: entries
                     .into_iter()
                     .map(BridgeMappingUnit::from_core)
+                    .collect(),
+            },
+            MappingRow::Images(images) => Self::Images {
+                images: images
+                    .into_iter()
+                    .map(BridgeMappingImage::from_core)
                     .collect(),
             },
             MappingRow::Directory(directory) => Self::Directory {
@@ -5861,6 +5887,12 @@ impl BridgeMappingRow {
                     .map(BridgeMappingUnit::into_core)
                     .collect(),
             },
+            Self::Images { images } => MappingRow::Images(
+                images
+                    .into_iter()
+                    .map(BridgeMappingImage::into_core)
+                    .collect(),
+            ),
             Self::Directory { directory } => MappingRow::Directory(directory.into_core()),
         }
     }
@@ -6242,13 +6274,8 @@ mod loc_key_coverage {
         }
 
         // bridge_file_row_kind_key — what a collapsed directory holds.
-        for kind in [
-            BridgeFileRowKind::Image,
-            BridgeFileRowKind::Document,
-            BridgeFileRowKind::Other,
-        ] {
+        for kind in [BridgeFileRowKind::Document, BridgeFileRowKind::Other] {
             let expected = match kind {
-                BridgeFileRowKind::Image => "core.import.files.images",
                 BridgeFileRowKind::Document => "core.import.files.documents",
                 BridgeFileRowKind::Other => "core.import.files.other",
             };

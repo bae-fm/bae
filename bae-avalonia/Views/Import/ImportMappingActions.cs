@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
@@ -19,8 +20,8 @@ namespace Bae.Desktop;
 /// assignment.</param>
 /// <param name="OpenDocument">Open a document (a log, a text file, a track
 /// sheet) in the viewer: the file's name, then its path on disk.</param>
-/// <param name="OpenImage">Open the folder's images in the lightbox, at this
-/// file's path.</param>
+/// <param name="OpenImages">Open the folder's images in the lightbox: the
+/// gallery's images, then the path of the one that was clicked.</param>
 /// <param name="Preview">Audition a row's audio from its own path.</param>
 /// <param name="StopPreview">Stop whatever is auditioning.</param>
 /// <param name="EditTrack">Write a row's edited track back onto the row that
@@ -36,7 +37,7 @@ internal sealed record ImportMappingActions(
     Action<string, string?> BindSheet,
     Action<string, BridgeSheetDisc> SetSheetDisc,
     Action<string, string> OpenDocument,
-    Action<string> OpenImage,
+    Action<IReadOnlyList<BridgeMappingImage>, string> OpenImages,
     Action<string> Preview,
     Action StopPreview,
     Action<BridgeRawTrackEdit> EditTrack,

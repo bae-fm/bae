@@ -55,7 +55,7 @@ struct ImportMappingSourceCell: View {
     }
 
     /// The file's own name in mono. Opening it is the affordance where there is
-    /// something to open — a document in the viewer, an image in the lightbox.
+    /// something to open, which is a document in the viewer.
     @ViewBuilder
     private func nameCell(_ file: BridgeMappingFile) -> some View {
         if let open = openAction(file) {
@@ -77,14 +77,8 @@ struct ImportMappingSourceCell: View {
     }
 
     private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
-        let role = file.role.fileRole
-        if role.isImage {
-            return { actions.openImage(file.localPath) }
-        }
-        if role.isDocument {
-            return { actions.openDocument(file.name, file.localPath) }
-        }
-        return nil
+        guard file.role.fileRole.isDocument else { return nil }
+        return { actions.openDocument(file.name, file.localPath) }
     }
 
     /// One entry of a track sheet: the number it prints, the title it gives,
