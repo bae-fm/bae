@@ -37,6 +37,10 @@ struct ImportCandidateListContent: View {
 
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(ImageStore.self)
+    private var imageStore
+    @Environment(\.displayScale)
+    private var displayScale
     @AppStorage("importCandidateSort")
     private var sortOrder: CandidateSortOrder = .nameAZ
 
@@ -146,6 +150,18 @@ struct ImportCandidateListContent: View {
                 releaseGroupDisclosureIDs
             )
         }
+        // Ready rows are covers this app has already downloaded once, for a tab
+        // that is one click away. Decoding them as the queue lands is what
+        // makes the tab's first frame the art rather than a grid of spinners.
+        .task(id: importStore.readyCoverThumbnailUrls) {
+            await imageStore.warm(
+                importStore.readyCoverThumbnailUrls.map {
+                    .remote(url: $0)
+                },
+                pointSize: TriageRowView.coverPointSize,
+                displayScale: displayScale
+            )
+        }
     }
 
     /// The `+` control manages watched roots. Release grouping belongs to the
@@ -191,66 +207,6 @@ struct ImportCandidateListContent: View {
         .foregroundStyle(.secondary)
         .fixedSize()
         .help("Add a folder to watch for imports")
-    }
-
-    private var folderScanStatuses: some View {
-        ForEach(
-            importStore.triageQueue.folderScanStatuses,
-            id: \.watchedFolderPath
-        ) { scan in
-            switch scan.status {
-            case .scanning:
-                folderScanStatus(
-                    scan,
-                    icon: "arrow.clockwise",
-                    text: String(localized: "Scanning\u{2026}"),
-                    tint: .secondary
-                )
-            case .failed(let error):
-                folderScanStatus(
-                    scan,
-                    icon: "exclamationmark.triangle.fill",
-                    text: error,
-                    tint: .red
-                )
-            case .complete:
-                EmptyView()
-            }
-        }
-    }
-
-    private func folderScanStatus(
-        _ scan: BridgeWatchedFolderScanStatus,
-        icon: String,
-        text: String,
-        tint: Color
-    ) -> some View {
-        let refreshing = uiStore.refreshingWatchedFolders
-            .contains(scan.watchedFolderPath)
-        return HStack(alignment: .firstTextBaseline, spacing: 7) {
-            Image(systemName: icon)
-            Text(
-                "\(scan.watchedFolderName) (\(scan.watchedFolderPath)): \(text)"
-            )
-            .lineLimit(2)
-            .truncationMode(.middle)
-            Spacer(minLength: 4)
-            Button(refreshing ? "Refreshing\u{2026}" : "Refresh") {
-                onRefreshFolder(
-                    BridgeWatchedFolder(
-                        path: scan.watchedFolderPath,
-                        name: scan.watchedFolderName
-                    )
-                )
-            }
-            .disabled(refreshing)
-            .controlSize(.small)
-        }
-        .font(.system(size: 11.5))
-        .foregroundStyle(tint)
-        .padding(.horizontal, 14)
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Per-tab empty state: distinguishes "no matches" while filtering from
@@ -379,6 +335,70 @@ struct FolderReleaseBoundaryRow: View {
         Button("Keep as Separate Releases") {
             onDecision(key, .keepAsSeparateReleases)
         }
+    }
+}
+
+/// The watched-folder scan lines under the header: one per root that is
+/// being walked or failed to walk, each with its own retry.
+extension ImportCandidateListContent {
+    private var folderScanStatuses: some View {
+        ForEach(
+            importStore.triageQueue.folderScanStatuses,
+            id: \.watchedFolderPath
+        ) { scan in
+            switch scan.status {
+            case .scanning:
+                folderScanStatus(
+                    scan,
+                    icon: "arrow.clockwise",
+                    text: String(localized: "Scanning\u{2026}"),
+                    tint: .secondary
+                )
+            case .failed(let error):
+                folderScanStatus(
+                    scan,
+                    icon: "exclamationmark.triangle.fill",
+                    text: error,
+                    tint: .red
+                )
+            case .complete:
+                EmptyView()
+            }
+        }
+    }
+
+    private func folderScanStatus(
+        _ scan: BridgeWatchedFolderScanStatus,
+        icon: String,
+        text: String,
+        tint: Color
+    ) -> some View {
+        let refreshing = uiStore.refreshingWatchedFolders
+            .contains(scan.watchedFolderPath)
+        return HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Image(systemName: icon)
+            Text(
+                "\(scan.watchedFolderName) (\(scan.watchedFolderPath)): \(text)"
+            )
+            .lineLimit(2)
+            .truncationMode(.middle)
+            Spacer(minLength: 4)
+            Button(refreshing ? "Refreshing\u{2026}" : "Refresh") {
+                onRefreshFolder(
+                    BridgeWatchedFolder(
+                        path: scan.watchedFolderPath,
+                        name: scan.watchedFolderName
+                    )
+                )
+            }
+            .disabled(refreshing)
+            .controlSize(.small)
+        }
+        .font(.system(size: 11.5))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

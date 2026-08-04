@@ -369,6 +369,23 @@ extension ImportStore {
             .first { $0.candidateKey == key }
     }
 
+    /// The cover art of every Ready row, in queue order.
+    ///
+    /// Identification already fetched these — a row reaches Ready by settling
+    /// on one match, and that match carries the thumbnail URL — so the Ready
+    /// tab has no reason to open on a grid of spinners. Read unfiltered and
+    /// unsorted: what the tab is about to draw does not depend on what the
+    /// filter box currently says.
+    var readyCoverThumbnailUrls: [String] {
+        triageQueue.sections
+            .filter { $0.tab == .ready }
+            .flatMap(\.entries)
+            .compactMap { entry in
+                guard case .candidate(_, let row) = entry else { return nil }
+                return row.matched?.coverThumbnailUrl
+            }
+    }
+
     func selectableReadyRows(
         filterText: String,
         sortOrder: CandidateSortOrder

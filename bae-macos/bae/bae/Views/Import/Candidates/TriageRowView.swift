@@ -10,6 +10,11 @@ import SwiftUI
 /// the selected one: the folder it came from is the main pane's to state, and
 /// a row that grows on selection shifts every row under it.
 struct TriageRowView: View {
+    /// The cover's edge, in points. Named because it is also the size the
+    /// sidebar warms Ready covers at — a decode cached at another size is a
+    /// different entry and would not spare this row its placeholder.
+    static let coverPointSize: CGFloat = 44
+
     let row: BridgeTriageRow
     /// Non-nil exactly when `row.selectable` — the checkbox's checked state
     /// and toggle. Passed in rather than read off `row` again so the list
@@ -173,9 +178,9 @@ struct TriageRowView: View {
     private var cover: some View {
         ImageView(
             content: row.matched?.coverThumbnailUrl.map { .remote(url: $0) },
-            pointSize: 44
+            pointSize: Self.coverPointSize
         )
-        .frame(width: 44, height: 44)
+        .frame(width: Self.coverPointSize, height: Self.coverPointSize)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 

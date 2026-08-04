@@ -105,6 +105,21 @@ internal static class TriageListModel
     // release nobody has matched.
     internal static bool TitleIsFolderName(BridgeTriageRow row) => row.Matched is null;
 
+    // The cover art of every Ready row, in queue order. Identification already
+    // fetched these — a row reaches Ready by settling on one match, and that
+    // match carries the thumbnail URL — so the Ready tab has no reason to open
+    // on a grid of blanks. Unfiltered and unsorted: what the tab is about to
+    // draw does not depend on what the filter box currently says.
+    internal static List<string> ReadyCoverThumbnailUrls(BridgeTriageQueue queue) =>
+        queue.Sections
+            .Where(section => section.Tab == BridgeTriageTab.Ready)
+            .SelectMany(section => section.Entries)
+            .OfType<BridgeTriageEntry.Candidate>()
+            .Select(candidate => candidate.Row.Matched?.CoverThumbnailUrl)
+            .Where(url => !string.IsNullOrEmpty(url))
+            .Select(url => url!)
+            .ToList();
+
     internal static BridgeTriageRow? Row(BridgeTriageQueue queue, string key) =>
         queue.Sections
             .SelectMany(section => section.Entries)

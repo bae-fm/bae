@@ -273,6 +273,49 @@ public final class ImageStore: Sendable, Observable {
         return image
     }
 
+    /// Decode `contents` at `pointSize` into the cache, so a view that mounts
+    /// later draws the art on its first frame instead of a loading placeholder.
+    ///
+    /// For art the app already knows it is about to show somewhere the user has
+    /// not looked yet. Each entry costs a cache lookup once it is warm, and a
+    /// failure is logged and skipped rather than failing the rest — warming is
+    /// about what a later frame draws, and that frame's own load reports the
+    /// failure where it can be seen.
+    public func warm(
+        _ contents: [ImageContent],
+        pointSize: CGFloat,
+        displayScale: CGFloat
+    ) async {
+        for content in contents {
+            if cachedImage(
+                content,
+                pointSize: pointSize,
+                displayScale: displayScale
+            ) != nil {
+                continue
+            }
+            do {
+                _ = try await image(
+                    content,
+                    pointSize: pointSize,
+                    displayScale: displayScale
+                )
+            }
+            catch is CancellationError {
+                return
+            }
+            catch {
+                logger.warning(
+                    """
+                    Failed to warm \
+                    \(content.description): \
+                    \(error.localizedDescription)
+                    """
+                )
+            }
+        }
+    }
+
     /// Where `content`'s bytes come from, resolved for a decode: a path for a
     /// local file (which streams rather than loading whole), the fetched bytes
     /// otherwise. Nil when no such image exists.

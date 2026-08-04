@@ -201,6 +201,27 @@ internal sealed class ImageStore
             TaskScheduler.Default);
     }
 
+    /// <summary>
+    /// Decode this content at this width into the cache, so a control bound to
+    /// it later paints the art the moment it binds instead of blanking first.
+    ///
+    /// For art the app already knows it is about to show somewhere the user has
+    /// not looked yet. Each entry costs a cache lookup once it is warm, and a
+    /// failure is skipped — LoadAsync has already logged it, and the frame that
+    /// really needs the image reports it where it can be seen.
+    /// </summary>
+    internal async Task WarmAsync(IEnumerable<ImageContent> contents, int pixelWidth)
+    {
+        foreach (var content in contents)
+        {
+            if (Cached(content, pixelWidth) is not null)
+            {
+                continue;
+            }
+            await LoadAsync(content, pixelWidth).ConfigureAwait(true);
+        }
+    }
+
     /// <summary>Raw bytes for this content, with no decode and no caching — the
     /// lightbox decodes them at native resolution itself. Null when no such image
     /// exists (logged).</summary>

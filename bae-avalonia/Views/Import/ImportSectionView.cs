@@ -44,6 +44,10 @@ internal sealed class ImportSectionView : UserControl
     // its row without asking the pane.
     private string? _selectedKey;
 
+    // The Ready covers already handed to the image store, so a re-render that
+    // left Ready alone does not queue the same decodes again.
+    private List<string> _warmedReadyCovers = new();
+
     // Header controls, built once and mutated in place on Render() so the
     // filter TextBox never loses focus or caret position while the user types.
     private readonly Panel _tabBarHost = new() { };
@@ -294,6 +298,24 @@ internal sealed class ImportSectionView : UserControl
         _clearFilterButton.IsVisible = _import.FilterText.Length > 0;
         RenderProgress();
         RenderContent();
+        WarmReadyCovers();
+    }
+
+    // Ready rows are covers this app has already downloaded once, for a tab
+    // that is one click away. Decoding them as the queue lands is what makes
+    // the tab's first paint the art rather than a grid of blanks. Keyed on the
+    // URL list so a re-render that changed nothing about Ready warms nothing.
+    private void WarmReadyCovers()
+    {
+        var urls = TriageListModel.ReadyCoverThumbnailUrls(_import.TriageQueue);
+        if (urls.SequenceEqual(_warmedReadyCovers))
+        {
+            return;
+        }
+        _warmedReadyCovers = urls;
+        _ = _app.Images.WarmAsync(
+            urls.Select(url => (ImageContent)new ImageContent.Remote(url)),
+            ImageWidths.Row);
     }
 
     private void RenderTabBar()
