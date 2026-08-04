@@ -236,11 +236,15 @@ impl ImportServiceHandle {
         self.library_manager
             .save_candidate_identity_pick(&files.content_hash(), &candidate_key, &pick_json)
             .await?;
+        Ok(())
+    }
+
+    /// Tell the surfaces a candidate's identity is decided.
+    pub(crate) fn announce_identity_pick(&self, candidate_key: String) {
         send_event(
             &self.event_tx,
             ImportEvent::Scan(ScanEvent::CandidateIdentityPicked { candidate_key }),
         );
-        Ok(())
     }
 
     /// Put one of a candidate's files in a role, or put it back in the one the

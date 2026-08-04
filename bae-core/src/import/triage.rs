@@ -25,7 +25,7 @@ use super::handle::{
     CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
     ImportServiceHandle,
 };
-use super::search::{MetadataResult, SourceTracks};
+use super::search::{ImportSearchReleaseDetail, MetadataResult, SourceTracks};
 use super::types::{IdentityChoice, MetadataSource};
 use crate::db::{DbImportCandidateState, LibraryCheck, LibraryStatus};
 use crate::identify::verdict::decode_stored;
@@ -338,6 +338,53 @@ impl MatchedRelease {
     }
 }
 
+impl MatchedRelease {
+    /// The release the user's own pick settled the candidate on, as its
+    /// documents describe it.
+    ///
+    /// A pick names one release, so its pressing is settled by definition —
+    /// there is no question left for the row to ask. No signal claims it
+    /// either: a match somebody chose was not matched by a disc ID or a
+    /// barcode, and the row shows the provider alone.
+    pub fn of_pick(source: MetadataSource, detail: &ImportSearchReleaseDetail) -> Self {
+        Self {
+            release_id: detail.release_id.clone(),
+            title: detail.title.clone(),
+            artist: detail.artist.clone(),
+            pressing: Some(MatchedPressing {
+                year: detail.year,
+                format: detail.format.clone(),
+                track_count: Some(detail.track_count),
+            }),
+            cover_thumbnail_url: detail
+                .default_cover()
+                .map(|cover| cover.thumbnail_url.clone()),
+            evidence: MatchEvidence {
+                source,
+                signal: None,
+            },
+        }
+    }
+}
+
+/// What a candidate's stored pick settled it on: the choice itself, and — for
+/// a release — how that release reads.
+///
+/// The two travel together because the row leads with the identity the
+/// candidate is settled on, and a pick is that identity: a manual search
+/// settles a folder on a release the verdict never named, and a row reading the
+/// verdict alone would go on showing the folder name while the pane shows the
+/// release.
+#[derive(Debug, Clone)]
+pub struct Picked {
+    pub pick: crate::import::IdentityPick,
+    /// The picked release as its own archived documents describe it. `None`
+    /// when the folder is read as its own tags, and when nothing archived the
+    /// documents behind a release pick — the row then leads with the folder
+    /// name until the pane's own read fetches them.
+    pub release: Option<MatchedRelease>,
+}
+
 fn source_track_count(result: &MetadataResult) -> Option<u32> {
     match result.source_tracks {
         Some(SourceTracks::Listed { count, .. }) => Some(count),
@@ -548,7 +595,7 @@ pub fn place(
 fn row(
     snapshot: &FolderImportCandidateSnapshot,
     answer: Option<&Answered>,
-    picked: Option<&crate::import::IdentityPick>,
+    picked: Option<&Picked>,
 ) -> TriageRow {
     let FolderCandidate {
         path,
@@ -583,11 +630,16 @@ fn row(
         combine_ancestor_key: combine_ancestor_key.clone(),
         actionable: snapshot.actionable,
         selectable: snapshot.actionable && matches!(placement, TriagePlacement::Ready),
-        matched: actionable_answer.and_then(|answer| MatchedRelease::of(&answer.verdict)),
+        // The identity the candidate is settled on, which is the user's pick
+        // wherever they made one and identification's own answer otherwise.
+        matched: match picked {
+            Some(picked) => picked.release.clone(),
+            None => actionable_answer.and_then(|answer| MatchedRelease::of(&answer.verdict)),
+        },
         placement,
         import_status,
-        claim: picked.map(crate::import::IdentityPick::choice),
-        picked: picked.cloned(),
+        claim: picked.map(|picked| picked.pick.choice()),
+        picked: picked.map(|picked| picked.pick.clone()),
     }
 }
 
@@ -598,7 +650,7 @@ fn row(
 pub fn project(
     snapshot: ImportCandidatesSnapshot,
     answers: &HashMap<(String, u64), Answered>,
-    picks: &HashMap<(String, u64), crate::import::IdentityPick>,
+    picks: &HashMap<(String, u64), Picked>,
 ) -> TriageQueue {
     let ImportCandidatesSnapshot {
         folder_candidates,
@@ -858,7 +910,7 @@ pub async fn load(
         );
     }
 
-    let picks = stored_picks(&snapshot, &stored)?;
+    let picks = stored_picks(&snapshot, &stored, library_manager).await?;
     Ok(project(snapshot, &answers, &picks))
 }
 
@@ -931,15 +983,18 @@ fn stored_verdicts(
     Ok(out)
 }
 
-/// The identity pick every scanned candidate's stored row holds, keyed like
-/// the verdicts: by content hash and edit revision, so a read racing an edit
-/// write serves nothing rather than mixed state. A pick this build cannot
-/// decode fails the read; persisted state is never silently omitted.
-fn stored_picks(
+/// The identity pick every scanned candidate's stored row holds, with the
+/// release each one settled on read back out of the documents behind it.
+///
+/// Keyed like the verdicts: by content hash and edit revision, so a read racing
+/// an edit write serves nothing rather than mixed state. A pick this build
+/// cannot decode fails the read; persisted state is never silently omitted.
+async fn stored_picks(
     snapshot: &ImportCandidatesSnapshot,
     stored: &HashMap<String, DbImportCandidateState>,
-) -> Result<HashMap<(String, u64), crate::import::IdentityPick>, LibraryError> {
-    let mut out = HashMap::new();
+    library_manager: &LibraryManager,
+) -> Result<HashMap<(String, u64), Picked>, LibraryError> {
+    let mut out: HashMap<(String, u64), Picked> = HashMap::new();
     for candidate in &snapshot.folder_candidates {
         let content_hash = candidate.candidate.files.content_hash();
         let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
@@ -961,9 +1016,44 @@ fn stored_picks(
                     "stored identity pick for {content_hash} does not decode: {error}"
                 ))
             })?;
-        out.insert(candidate_identity, pick);
+        let release = picked_release(library_manager, &pick).await?;
+        out.insert(candidate_identity, Picked { pick, release });
     }
     Ok(out)
+}
+
+/// The release a pick settled on, as the documents archived for it describe it.
+///
+/// Reading the folder as its own tags settles it on no release, and so leads
+/// with nothing. Neither does a release pick whose documents are not archived:
+/// the pick is persisted before they are fetched, so the window exists, and the
+/// pane's own read is what closes it.
+async fn picked_release(
+    library_manager: &LibraryManager,
+    pick: &crate::import::IdentityPick,
+) -> Result<Option<MatchedRelease>, LibraryError> {
+    let crate::import::IdentityPick::Release {
+        source, release_id, ..
+    } = pick
+    else {
+        return Ok(None);
+    };
+    let release = crate::import::MetadataRef::new(release_id.clone(), *source);
+    let payloads = crate::import::payloads::load(library_manager.database(), &release)
+        .await
+        .map_err(|error| LibraryError::Internal(error.to_string()))?;
+    let Some(payloads) = payloads else {
+        tracing::debug!(
+            "nothing archived the documents behind picked {} release {release_id}; its row leads \
+             with the folder name until they are fetched",
+            source.as_str()
+        );
+        return Ok(None);
+    };
+    let detail = payloads
+        .detail()
+        .map_err(|error| LibraryError::Internal(error.to_string()))?;
+    Ok(Some(MatchedRelease::of_pick(*source, &detail)))
 }
 
 #[cfg(test)]

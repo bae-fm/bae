@@ -202,6 +202,19 @@ fn release_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> Stri
     )
 }
 
+/// A release under a title and artist of its own — for a test that has to tell
+/// two releases apart by what a row shows.
+fn titled_release_json(release_id: &str, group_id: &str, title: &str, artist: &str) -> String {
+    format!(
+        r#"{{"id":"{release_id}","title":"{title}",
+            "artist-credit":[{{"name":"{artist}"}}],
+            "release-group":{{"id":"{group_id}"}},
+            "media":[{{"tracks":[
+                {{"position":1,"number":"1","title":"Track Title 1","length":180000}}
+            ]}}],"relations":[]}}"#
+    )
+}
+
 fn discid_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> String {
     format!(
         r#"{{"releases":[{}]}}"#,
@@ -2691,6 +2704,109 @@ async fn a_pick_reads_back_as_the_same_answer() {
         fixture.provider.requests().is_empty(),
         "every answer came from the archive: {:?}",
         fixture.provider.requests()
+    );
+}
+
+/// The sidebar row leads with the identity the candidate is settled on. A
+/// manual search settles it on a release identification never named, and the
+/// pick is the only record of that — a row reading the stored verdict alone
+/// goes on showing the folder name and a placeholder while the pane shows the
+/// release, with nothing to move it off.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_picked_release_is_what_the_row_leads_with() {
+    let fixture = Fixture::new("pick-row").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
+    let key = dir.to_string_lossy().into_owned();
+
+    // Identification settled on one release; the user searched and picked
+    // another, whose documents the search archived.
+    fixture
+        .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
+        .await;
+    fixture
+        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
+        .await;
+    // The picked release is one identification never fetched, which is what a
+    // manual search result is: its documents are archived by the pick itself.
+    fixture.provider.route(
+        "/release/mb-picked-1",
+        200,
+        titled_release_json(
+            "mb-picked-1",
+            "rg-picked-1",
+            "Picked Album Title",
+            "Picked Artist Name",
+        ),
+    );
+    fixture.cover_art.seed_lookup(
+        Some("mb-picked-1"),
+        Some("rg-picked-1"),
+        Some(crate::import::cover_art::RemoteCover {
+            url: "https://caa.example/picked.jpg".to_string(),
+            thumbnail_url: "https://caa.example/picked-250.jpg".to_string(),
+            label: "Cover Art Archive".to_string(),
+            source: crate::import::MetadataSource::MusicBrainz,
+        }),
+    );
+
+    // Read the queue on the event the surfaces refresh on, not after the pick
+    // has finished settling: the row has to be right the moment it lands.
+    let mut events = fixture.import.event_sender_for_test().subscribe();
+    let picking = {
+        let import = fixture.import.clone();
+        let key = key.clone();
+        tokio::spawn(async move {
+            import
+                .pick_candidate_identity(
+                    key,
+                    crate::import::IdentityPick::Release {
+                        source: crate::import::MetadataSource::MusicBrainz,
+                        release_id: "mb-picked-1".to_string(),
+                        claim: crate::import::ClaimLevel::Exact,
+                    },
+                )
+                .await
+        })
+    };
+    loop {
+        let event = events.recv().await.expect("the pick raises an event");
+        if matches!(
+            &event,
+            crate::import::ImportEvent::Scan(super::super::handle::ScanEvent::CandidateIdentityPicked {
+                candidate_key,
+            }) if *candidate_key == key
+        ) {
+            break;
+        }
+    }
+
+    let queue = crate::import::triage::load(&fixture.import, &fixture.manager)
+        .await
+        .expect("the triage queue loads");
+    picking
+        .await
+        .expect("the pick task runs")
+        .expect("picking the searched release succeeds");
+    let matched = queue
+        .sections
+        .iter()
+        .flat_map(|section| &section.entries)
+        .find_map(|entry| match entry {
+            crate::import::triage::TriageEntry::Candidate(row) if row.candidate_key == key => {
+                row.matched.clone()
+            }
+            _ => None,
+        })
+        .expect("the row leads with the release the pick settled it on");
+    assert_eq!(matched.release_id, "mb-picked-1");
+    assert_eq!(matched.title, "Picked Album Title");
+    assert_eq!(matched.artist.as_deref(), Some("Picked Artist Name"));
+    assert_eq!(
+        matched.cover_thumbnail_url.as_deref(),
+        Some("https://caa.example/picked-250.jpg")
     );
 }
 

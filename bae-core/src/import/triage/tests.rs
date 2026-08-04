@@ -261,6 +261,142 @@ fn answers_for(
         .collect()
 }
 
+fn picks_for(
+    snapshot: &ImportCandidatesSnapshot,
+    per_candidate: Vec<Option<Picked>>,
+) -> HashMap<(String, u64), Picked> {
+    snapshot
+        .folder_candidates
+        .iter()
+        .zip(per_candidate)
+        .filter_map(|(candidate, picked)| {
+            picked.map(|picked| {
+                (
+                    (
+                        candidate.candidate.files.content_hash(),
+                        candidate.candidate.file_edit_revision,
+                    ),
+                    picked,
+                )
+            })
+        })
+        .collect()
+}
+
+/// A release the user picked out of a manual search, as its archived documents
+/// describe it — a different release from anything `result` produces, so a row
+/// leading with the verdict's match instead is a failure rather than a
+/// coincidence.
+fn picked_release(release_id: &str) -> Picked {
+    Picked {
+        pick: crate::import::IdentityPick::Release {
+            source: MetadataSource::MusicBrainz,
+            release_id: release_id.to_string(),
+            claim: crate::import::ClaimLevel::Exact,
+        },
+        release: Some(MatchedRelease::of_pick(
+            MetadataSource::MusicBrainz,
+            &crate::import::search::ImportSearchReleaseDetail {
+                release_id: release_id.to_string(),
+                source: MetadataSource::MusicBrainz,
+                source_group_id: None,
+                title: "Picked Album Title".to_string(),
+                artist: Some("Picked Artist Name".to_string()),
+                year: Some(1987),
+                format: Some("LP".to_string()),
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+                track_count: 9,
+                tracks: Vec::new(),
+                cover_art: vec![RemoteCover {
+                    url: "https://example.test/picked.jpg".to_string(),
+                    thumbnail_url: "https://example.test/picked-thumb.jpg".to_string(),
+                    label: "Front".to_string(),
+                    source: MetadataSource::MusicBrainz,
+                }],
+            },
+        )),
+    }
+}
+
+/// The row leads with the identity the candidate is settled on. A manual search
+/// settles it on a release identification never named — nothing else refreshes
+/// the row, so a projection that reads the verdict alone leaves the sidebar
+/// showing the folder name and a placeholder while the pane shows the release.
+#[test]
+fn a_settled_pick_is_what_the_row_leads_with() {
+    let snapshot = snapshot_of(vec![
+        candidate("Release 01", false, false),
+        candidate("Release 02", false, false),
+    ]);
+    let answers = answers_for(
+        &snapshot,
+        vec![
+            // Nothing matched this folder; the user searched and picked.
+            Some(answer(
+                TerminalVerdict::NotFoundAnywhere,
+                QueueClassification::NeedsYou(NeedsYou::NoMatch),
+            )),
+            // Identification found one, and the user overruled it.
+            Some(answer(
+                found(vec![result("rel-found")]),
+                QueueClassification::Ready,
+            )),
+        ],
+    );
+    let picks = picks_for(
+        &snapshot,
+        vec![
+            Some(picked_release("rel-picked")),
+            Some(picked_release("rel-other")),
+        ],
+    );
+
+    let queue = project(snapshot, &answers, &picks);
+    let rows = candidate_rows(&queue);
+
+    for (row, release_id) in rows.iter().zip(["rel-picked", "rel-other"]) {
+        let matched = row
+            .matched
+            .as_ref()
+            .expect("the row leads with the release the pick settled it on");
+        assert_eq!(matched.release_id, release_id);
+        assert_eq!(matched.title, "Picked Album Title");
+        assert_eq!(matched.artist.as_deref(), Some("Picked Artist Name"));
+        assert_eq!(
+            matched.cover_thumbnail_url.as_deref(),
+            Some("https://example.test/picked-thumb.jpg")
+        );
+    }
+}
+
+/// Reading the folder as its own tags settles it on no release, so the row
+/// leads with the folder name — not with the match the user just rejected.
+#[test]
+fn reading_a_folder_as_its_own_tags_leaves_the_row_leading_with_the_folder() {
+    let snapshot = snapshot_of(vec![candidate("Release 01", false, false)]);
+    let answers = answers_for(
+        &snapshot,
+        vec![Some(answer(
+            found(vec![result("rel-found")]),
+            QueueClassification::Ready,
+        ))],
+    );
+    let picks = picks_for(
+        &snapshot,
+        vec![Some(Picked {
+            pick: crate::import::IdentityPick::Unknown,
+            release: None,
+        })],
+    );
+
+    let queue = project(snapshot, &answers, &picks);
+
+    assert!(candidate_rows(&queue)[0].matched.is_none());
+}
+
 #[test]
 fn a_tentative_candidate_hidden_by_a_boundary_is_not_a_row_or_count() {
     let mut snapshot = snapshot_of(vec![candidate("Release 01", false, false)]);

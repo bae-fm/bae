@@ -429,6 +429,12 @@ impl ImportServiceHandle {
     /// is the durable part, and a bundle that fails to build (a manual pick
     /// whose fetch drops) is re-derived by the next open rather than lost
     /// with the choice.
+    ///
+    /// The surfaces are told once the answer has been built, whether or not it
+    /// built: the sidebar row leads with the picked release read back out of
+    /// the documents this fetches, so announcing the decision before they are
+    /// archived would leave that row on the folder name with nothing to move
+    /// it off.
     pub async fn pick_candidate_identity(
         &self,
         candidate_key: String,
@@ -436,7 +442,9 @@ impl ImportServiceHandle {
     ) -> Result<crate::import::DecidedIdentity, crate::import::ImportError> {
         self.set_candidate_identity_pick(candidate_key.clone(), pick.clone())
             .await?;
-        self.answer_for_pick(&candidate_key, pick).await
+        let answer = self.answer_for_pick(&candidate_key, pick).await;
+        self.announce_identity_pick(candidate_key);
+        answer
     }
 
     /// The candidate's decided identity read back with everything the pane
