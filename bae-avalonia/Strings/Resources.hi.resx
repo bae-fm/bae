@@ -384,6 +384,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>कोई मिलान नहीं मिला</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>अब भी पहचान हो रही है</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>पहचान हो रही है</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>अभी पहचाने जा रहे उम्मीदवार पर जाएँ</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} चुने गए</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>सभी चुनें</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} इम्पोर्ट करें</value></data>

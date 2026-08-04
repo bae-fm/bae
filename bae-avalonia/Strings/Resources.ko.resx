@@ -384,6 +384,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>일치 항목 없음</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>아직 식별 중</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>식별 중</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>아직 식별 중인 항목으로 이동</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count}개 선택됨</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>전체 선택</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count}개 가져오기</value></data>

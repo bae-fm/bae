@@ -369,6 +369,29 @@ extension ImportStore {
             .first { $0.candidateKey == key }
     }
 
+    /// The first row the identify count is still waiting on — a candidate with
+    /// no verdict yet, whichever phase it is in. `nil` when the count has
+    /// nothing left to wait on.
+    ///
+    /// This is what the header's line points at: the number moves on its own,
+    /// but while it is short of its total there is a row somewhere behind it,
+    /// and the line is the only place that knows there is.
+    var firstUnidentifiedCandidateKey: String? {
+        triageQueue.sections.lazy
+            .flatMap(\.entries)
+            .compactMap { entry -> BridgeTriageRow? in
+                guard case .candidate(_, let row) = entry else { return nil }
+                return row
+            }
+            .first { row in
+                if case .needsYou(_, .stillIdentifying) = row.placement {
+                    return true
+                }
+                return false
+            }?
+            .candidateKey
+    }
+
     /// The cover art of every Ready row, in queue order.
     ///
     /// Identification already fetched these — a row reaches Ready by settling

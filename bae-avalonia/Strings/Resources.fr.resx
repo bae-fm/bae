@@ -384,6 +384,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Sans correspondance</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Identification en cours</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identification</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Aller à un candidat encore en cours d’identification</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} sélectionnés</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Tout sélectionner</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Importer {count}</value></data>

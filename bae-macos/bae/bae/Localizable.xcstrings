@@ -101954,6 +101954,197 @@
           }
         }
       }
+    },
+    "Go to a candidate still being identified" : {
+      "comment" : "Tooltip on the import sidebar's identify-progress line, which jumps to the first candidate with no verdict yet.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to a candidate still being identified"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir a un candidato aún en identificación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aller à un candidat encore en cours d’identification"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu einem noch zu identifizierenden Kandidaten"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir para um candidato ainda em identificação"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "まだ識別中の候補へ移動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳转到仍在识别的候选项"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الانتقال إلى مرشَّح ما زال قيد التعرّف"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעבר למועמד שעדיין בזיהוי"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перейти до кандидата, що ще ідентифікується"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Към кандидат, който още се разпознава"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przejdź do kandydata wciąż identyfikowanego"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přejít na kandidáta, který se stále identifikuje"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idi na kandidata koji se još prepoznaje"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳至仍在辨識的候選項"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vai a un candidato ancora in identificazione"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hâlâ tanımlanan bir adaya git"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đến ứng viên vẫn đang được nhận dạng"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ga naar een kandidaat die nog wordt geïdentificeerd"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभी पहचाने जा रहे उम्मीदवार पर जाएँ"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এখনও শনাক্ত হচ্ছে এমন প্রার্থীতে যান"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இன்னும் அடையாளம் காணப்படும் வேட்பாளருக்குச் செல்"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఇంకా గుర్తించబడుతున్న అభ్యర్థికి వెళ్లండి"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अजून ओळखल्या जाणाऱ्या उमेदवाराकडे जा"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ابھی شناخت ہونے والے امیدوار پر جائیں"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "હજુ ઓળખાઈ રહેલા ઉમેદવાર પર જાઓ"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿರುವ ಅಭ್ಯರ್ಥಿಗೆ ಹೋಗಿ"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഇപ്പോഴും തിരിച്ചറിയുന്ന ഇനത്തിലേക്ക് പോകുക"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਅਜੇ ਪਛਾਣੇ ਜਾ ਰਹੇ ਉਮੀਦਵਾਰ ਤੇ ਜਾਓ"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไปยังรายการที่ยังระบุอยู่"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아직 식별 중인 항목으로 이동"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

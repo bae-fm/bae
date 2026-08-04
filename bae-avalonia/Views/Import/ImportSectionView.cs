@@ -436,9 +436,41 @@ internal sealed class ImportSectionView : UserControl
             Grid.SetColumn(count, 1);
             labelRow.Children.Add(label);
             labelRow.Children.Add(count);
-            column.Children.Add(labelRow);
-            column.Children.Add(ThinProgressBar(
-                (double)progress.Identified / progress.Total));
+
+            // The line is a control, not a label. The candidates the count is
+            // waiting on are rows somewhere in the queue, and a number that
+            // sits still while giving no way to reach what it is waiting on is
+            // the frustrating half of this pane. Clicking it goes to the first.
+            var unidentified = TriageListModel.FirstUnidentified(_import.TriageQueue);
+            var lineContent = new StackPanel
+            {
+                Spacing = 7,
+                Children =
+                {
+                    labelRow,
+                    ThinProgressBar((double)progress.Identified / progress.Total),
+                },
+            };
+            var line = new Button
+            {
+                Content = lineContent,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                IsEnabled = unidentified is not null,
+            };
+            ToolTip.SetTip(line, Loc.Chrome("import.progress.go_to_unidentified"));
+            if (unidentified is { } row)
+            {
+                line.Click += (_, _) =>
+                {
+                    _import.SetActiveTab(BridgeTriageTab.NeedsYou);
+                    OnRowActivated(row);
+                };
+            }
+            column.Children.Add(line);
         }
         if (column.Children.Count > 0)
         {
@@ -1209,9 +1241,13 @@ internal sealed class ImportSectionView : UserControl
         switch (reason)
         {
             case BridgeNeedsYouReason.StillIdentifying stillIdentifying:
+                // A run in flight spins; one waiting its turn, or one that
+                // settled without an answer worth keeping, shows the clock —
+                // the same two glyphs the macOS row uses for the same three
+                // phases.
                 return stillIdentifying.Phase == BridgeIdentifyPhase.Running
                     ? new Spinner { Width = 14, Height = 14 }
-                    : DotIcon("BaeTextSecondaryBrush");
+                    : Icons.Glyph(Icons.Clock, 14, "BaeTextSecondaryBrush");
             case BridgeNeedsYouReason.Disagreement disagreement:
                 return group switch
                 {

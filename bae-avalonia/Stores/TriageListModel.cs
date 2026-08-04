@@ -120,6 +120,22 @@ internal static class TriageListModel
             .Select(url => url!)
             .ToList();
 
+    // The first row the identify count is still waiting on — a candidate with
+    // no verdict yet, whichever phase it is in. Null when the count has nothing
+    // left to wait on. This is what the header's line points at: the number
+    // moves on its own, but while it is short of its total there is a row
+    // somewhere behind it, and the line is the only place that knows there is.
+    internal static BridgeTriageRow? FirstUnidentified(BridgeTriageQueue queue) =>
+        queue.Sections
+            .SelectMany(section => section.Entries)
+            .OfType<BridgeTriageEntry.Candidate>()
+            .Select(candidate => candidate.Row)
+            .FirstOrDefault(row => row.Placement
+                is BridgeTriagePlacement.NeedsYou
+                {
+                    Reason: BridgeNeedsYouReason.StillIdentifying,
+                });
+
     internal static BridgeTriageRow? Row(BridgeTriageQueue queue, string key) =>
         queue.Sections
             .SelectMany(section => section.Entries)

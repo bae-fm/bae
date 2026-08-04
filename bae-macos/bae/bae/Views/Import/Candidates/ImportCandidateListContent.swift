@@ -135,7 +135,15 @@ struct ImportCandidateListContent: View {
                 {
                     QueueProgressView(
                         identified: progress.identified,
-                        total: progress.total
+                        total: progress.total,
+                        onGoToUnidentified: importStore
+                            .firstUnidentifiedCandidateKey
+                            .map { key in
+                                {
+                                    uiStore.setImportCandidateTab(.needsYou)
+                                    selectedKey = key
+                                }
+                            }
                     )
                     .padding(.horizontal, 14)
                     .padding(.bottom, 12)
