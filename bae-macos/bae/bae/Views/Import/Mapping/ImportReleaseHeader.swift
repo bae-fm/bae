@@ -40,6 +40,11 @@ struct ImportReleaseHeader: View {
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
+    /// The release's own fields, folded away at the card's foot: the card
+    /// states what they add up to, and this is where a wrong year or a missing
+    /// catalog number gets fixed before it is written. `nil` when there is no
+    /// release to edit.
+    let editor: Binding<BridgeRawReleaseEdit>?
     /// The commit row at the card's foot. `nil` while there is nothing to
     /// commit — a failed re-pick leaves the fields in place but nothing
     /// settled to commit them under.
@@ -52,6 +57,8 @@ struct ImportReleaseHeader: View {
 
     @Environment(ConfigStore.self)
     private var configStore
+    @State
+    private var detailsExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -67,12 +74,44 @@ struct ImportReleaseHeader: View {
                     onSetLevel: onSetClaimLevel,
                 )
             }
+            if let editor {
+                details(editor)
+            }
             if let commit {
                 commitRow(commit)
             }
         }
         .padding(14)
         .formGroupCard()
+    }
+
+    /// The card's own fold: the release's fields, under a row that is the
+    /// control end to end — a caret is a target the width of a glyph, and the
+    /// line beside it says what opens.
+    private func details(
+        _ editor: Binding<BridgeRawReleaseEdit>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                detailsExpanded.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(detailsExpanded ? 90 : 0))
+                    Text("Release details")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if detailsExpanded {
+                ReleaseFieldsForm(form: editor)
+            }
+        }
     }
 
     /// Storage, the unanswered tally when there is one, and the Import action

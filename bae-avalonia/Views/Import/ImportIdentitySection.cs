@@ -81,9 +81,9 @@ internal sealed class ImportIdentitySection
 
     internal required bool HasCoverOptions { get; init; }
 
-    /// <summary>The pressing this import records, edited behind a disclosure
-    /// alongside the album fields. Null until something has been settled for
-    /// this folder and there is a release to edit at all.</summary>
+    /// <summary>The pressing this import records, edited behind the card's own
+    /// disclosure alongside the album fields. Null until something has been
+    /// settled for this folder and there is a release to edit at all.</summary>
     internal required BridgeRawPressingEdit? Pressing { get; init; }
 
     /// <summary>The card's commit row — what is unanswered, storage, and the
@@ -114,16 +114,6 @@ internal sealed class ImportIdentitySection
         if (HasSettled)
         {
             column.Children.Add(Card());
-        }
-        if (Pressing is not null)
-        {
-            column.Children.Add(new Expander
-            {
-                Header = Loc.Chrome("import.pane.release_details"),
-                FontSize = 12,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Content = ReleaseFields(),
-            });
         }
         return column;
     }
@@ -222,6 +212,20 @@ internal sealed class ImportIdentitySection
 
         var body = new StackPanel { Spacing = 12 };
         body.Children.Add(grid);
+        // The card's own fold, at its foot: the card above states what these
+        // fields add up to, and this is where a wrong year or a missing catalog
+        // number gets fixed before it is written. The whole header line is the
+        // control — a caret is a target the width of a glyph.
+        if (Pressing is not null)
+        {
+            body.Children.Add(new Expander
+            {
+                Header = Loc.Chrome("import.pane.release_details"),
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Content = ReleaseFields(),
+            });
+        }
         if (CommitRow is not null)
         {
             body.Children.Add(CommitRow);
@@ -269,10 +273,8 @@ internal sealed class ImportIdentitySection
         return button;
     }
 
-    // The release's own fields, folded away: the album line the card states, and
-    // the pressing this import records. Behind a disclosure because the card
-    // above already says what they add up to; this is where a wrong year or a
-    // missing catalog number gets fixed before it is written.
+    // The release's own fields: the album line the card states, and the pressing
+    // this import records.
     private Control ReleaseFields()
     {
         var column = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };

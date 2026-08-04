@@ -62,9 +62,10 @@ public sealed class ImportIdentitySectionTests
 
     // The release's own fields are there to edit exactly when there is a release
     // to edit — before that the section states the open question and nothing
-    // else.
+    // else — and they fold away inside the card that states what they add up
+    // to, not on a line of their own beside it.
     [AvaloniaFact]
-    public void TheReleaseFieldsArriveWithSomethingSettled()
+    public void TheReleaseFieldsFoldAwayInsideTheCard()
     {
         Assert.Empty(Build(ImportIdentity.Release).GetLogicalDescendants().OfType<Expander>());
 
@@ -72,7 +73,13 @@ public sealed class ImportIdentitySectionTests
             ImportIdentity.Release,
             pressing: new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"));
 
-        Assert.Single(settled.GetLogicalDescendants().OfType<Expander>());
+        var expander = Assert.Single(settled.GetLogicalDescendants().OfType<Expander>());
+        var card = settled
+            .GetLogicalDescendants()
+            .OfType<Border>()
+            .First(border => border.GetLogicalDescendants().OfType<TextBlock>()
+                .Any(text => text.Text == "Album Title"));
+        Assert.Contains(expander, card.GetLogicalDescendants());
     }
 
     // The claim the card states is the user's to set: picking a release claims

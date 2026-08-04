@@ -45,8 +45,9 @@ struct ImportIdentitySection: View {
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
-    /// The album-level fields, behind a disclosure. `nil` until something has
-    /// been settled for this folder and there is a release to edit.
+    /// The album-level fields, behind the card's own disclosure. `nil` until
+    /// something has been settled for this folder and there is a release to
+    /// edit.
     let editor: Binding<BridgeRawReleaseEdit>?
     /// Identification's unresolved matches, offered inline. `nil` once a pick
     /// is in, when the folder reads as Unknown, or when there is nothing
@@ -99,6 +100,7 @@ struct ImportIdentitySection: View {
                         isReading: isReading,
                         coverContent: coverContent,
                         hasCoverOptions: hasCoverOptions,
+                        editor: editor,
                         commit: commit,
                         onEditCover: onEditCover,
                         onFindRelease: onFindRelease,
@@ -119,13 +121,6 @@ struct ImportIdentitySection: View {
                         .buttonStyle(.borderedProminent)
                     }
                     .disabled(isReading)
-                }
-                if let editor {
-                    DisclosureGroup(String(localized: "Release details")) {
-                        ReleaseFieldsForm(form: editor)
-                            .padding(.top, 10)
-                    }
-                    .font(.system(size: 12))
                 }
             }
         }
