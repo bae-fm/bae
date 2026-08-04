@@ -28,6 +28,14 @@ internal sealed class PrefetchedEdit
     public BridgeClaimLine? Claim { get; set; }
 
     /// <summary>
+    /// The picked release's own pressing fields — what claiming this pressing
+    /// exactly is a claim about. Null for an Unknown import, which claims
+    /// nothing. Editing <see cref="Edit"/>'s pressing away from these is a
+    /// different claim, and bae-core is what says so.
+    /// </summary>
+    public BridgeRawPressingEdit? ExactPressing { get; set; }
+
+    /// <summary>
     /// The file↔release mapping this pick produces — every source unit the
     /// folder offers with the track committing makes of it, the editable row
     /// inside the row that produces it, and the tally over them. It is what the

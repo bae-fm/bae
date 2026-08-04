@@ -17,7 +17,8 @@
 
 use crate::identify::IdentifyState;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
-use crate::import::{ClaimLevel, IdentityChoice, MetadataRef};
+use crate::import::{ClaimLevel, IdentityChoice, MetadataRef, RawPressingEdit};
+use tracing::warn;
 
 /// What identified the release a claim points at.
 ///
@@ -122,6 +123,40 @@ pub fn claim_line(state: &IdentifyState, release: &ClaimRelease, level: ClaimLev
         evidence: evidence_for(state, &release.release_ref),
         release: describe_release(release),
         track_count: release.track_count,
+    }
+}
+
+/// The claim an edited release still supports.
+///
+/// Holding exactly this pressing is a claim about *these* values — the year,
+/// the format, the label, the catalog number, the country and the barcode the
+/// source printed. Editing one of them away is no longer that claim, so the
+/// level falls to the album and the line says so.
+///
+/// Nothing here raises a claim. A claim is the user's own assertion about the
+/// record in the room, and typing the source's values back in is not them
+/// making it — the control that says "exactly this one" is, and it restores
+/// those values itself.
+pub fn claim_for_edit(
+    claim: ClaimLine,
+    edited: &RawPressingEdit,
+    exact: &RawPressingEdit,
+) -> ClaimLine {
+    if claim.level == ClaimLevel::Approximate || edited == exact {
+        return claim;
+    }
+    let (IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref }) =
+        &claim.choice
+    else {
+        // `claim_line` builds the choice out of the level and the picked
+        // release, so a claim naming no release is one nobody can construct.
+        warn!("a claim at the pressing level names no release; leaving it as it is");
+        return claim;
+    };
+    ClaimLine {
+        choice: ClaimLevel::Approximate.choice(release_ref.clone()),
+        level: ClaimLevel::Approximate,
+        ..claim
     }
 }
 

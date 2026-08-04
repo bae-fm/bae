@@ -89,7 +89,7 @@ pub struct ParsedAlbum {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use claim::{claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
+pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};

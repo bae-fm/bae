@@ -145,6 +145,11 @@ struct Candidate: Equatable, Identifiable {
     /// folder's own tags. Its `tracks` stay empty: the tracklist lives in
     /// `mapping`, where the row that produces a track is the row that edits it.
     var editValues: BridgeRawReleaseEdit?
+    /// The picked release's own pressing fields — what claiming this pressing
+    /// exactly is a claim about. `nil` for an Unknown import, which claims
+    /// nothing. Editing `editValues` away from these is a different claim, and
+    /// core is what says so.
+    var exactPressing: BridgeRawPressingEdit?
     /// Every source unit the folder offers with the track committing makes of
     /// it. `nil` until the folder's mapping has been read. Excluding a file or
     /// dropping a row trims it in place — re-reading it from core would throw
@@ -190,6 +195,7 @@ struct Candidate: Equatable, Identifiable {
         copy.signalsToolbar = existing.signalsToolbar
         copy.identityChoice = existing.identityChoice
         copy.editValues = existing.editValues
+        copy.exactPressing = existing.exactPressing
         copy.mapping = existing.mapping
         copy.searchTask = existing.searchTask
         copy.prefetchTask = existing.prefetchTask

@@ -887,6 +887,7 @@ internal static class NativeBae
                     RemoteCovers = release.Prefetch.Detail.CoverArt.ToList(),
                     LocalArtwork = LocalArtwork(handle.GetCandidate(candidateKey)),
                     Claim = release.Prefetch.Claim,
+                    ExactPressing = release.Prefetch.ExactPressing,
                     Mapping = release.Prefetch.Mapping,
                 },
             },

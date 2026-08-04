@@ -159,6 +159,14 @@ internal sealed class ReleaseActionDialogs
             var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
             confirm.IsEnabled = false;
 
+            // The claim sits beside the action that commits it, the way the
+            // import pane states it. Putting the box back in step with a
+            // rebuilt claim raises its own event, which the guard tells apart
+            // from a click.
+            var syncingClaim = false;
+            var exact = ClaimLineView.ExactCheckbox(BridgeClaimLevel.Exact, isReading: false);
+            exact.IsVisible = false;
+
             void ShowClaim(BridgeClaimLevel level)
             {
                 claim = pickedIndex >= 0 && pickedIndex < candidates.Count
@@ -168,10 +176,22 @@ internal sealed class ReleaseActionDialogs
                 claimRow.Children.Clear();
                 if (claim is { } picked)
                 {
-                    claimRow.Children.Add(ClaimLineView.Build(picked, isReading: false, ShowClaim));
+                    claimRow.Children.Add(ClaimLineView.Build(picked));
+                    syncingClaim = true;
+                    exact.IsChecked = picked.Level is BridgeClaimLevel.Exact;
+                    syncingClaim = false;
                 }
+                exact.IsVisible = claim is not null;
                 claimRow.IsVisible = claim is not null;
             }
+
+            exact.IsCheckedChanged += (_, _) =>
+            {
+                if (!syncingClaim)
+                {
+                    ShowClaim(ClaimLineView.LevelOf(exact));
+                }
+            };
 
             void ToggleSignal(string kind, string value)
             {
@@ -290,7 +310,7 @@ internal sealed class ReleaseActionDialogs
             column.Children.Add(sourceField);
             column.Children.Add(searchButton);
             column.Children.Add(status);
-            column.Children.Add(DialogUi.Actions(cancel, skip, confirm));
+            column.Children.Add(DialogUi.Actions(cancel, skip, exact, confirm));
 
             // Start the pipeline against the release's own files; its events flow
             // through the candidate invalidation the registration reads.

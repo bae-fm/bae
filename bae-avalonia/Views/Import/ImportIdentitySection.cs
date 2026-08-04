@@ -106,6 +106,11 @@ internal sealed class ImportIdentitySection
 
     internal required Action<BridgeRawPressingEdit> OnPressing { get; init; }
 
+    /// <summary>Where the card states the claim. The pane replaces its content
+    /// when an edit lowers the claim, because a keystroke must not rebuild the
+    /// field it was typed into.</summary>
+    internal ContentControl? ClaimHost { get; private set; }
+
     internal Control Build()
     {
         var column = new StackPanel { Spacing = 10 };
@@ -197,7 +202,12 @@ internal sealed class ImportIdentitySection
         // An import that claims nothing has no source release to name.
         if (Claim is { } claim)
         {
-            summary.Children.Add(ClaimLineView.Build(claim, IsReading, OnSetClaimLevel));
+            ClaimHost = new ContentControl
+            {
+                Content = ClaimLineView.Build(claim),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            summary.Children.Add(ClaimHost);
         }
         Grid.SetColumn(summary, 1);
         grid.Children.Add(summary);

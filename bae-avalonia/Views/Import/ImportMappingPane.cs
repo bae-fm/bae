@@ -86,6 +86,12 @@ internal sealed class ImportMappingPane : UserControl
 
     private PickedCover? _cover;
 
+    // What the import claims, as it stands: the pick's own claim until the
+    // release fields are edited away from the pressing it names, which lowers
+    // it — core decides that, the pane states what comes back and commits
+    // under it. Null for an Unknown import, which claims nothing.
+    private BridgeClaimLine? _claim;
+
     // The search editor, held open across rebuilds along with what has been
     // typed into it: the pane re-renders whenever a result lands, and a query
     // that reset itself each time would be unusable.
@@ -235,6 +241,7 @@ internal sealed class ImportMappingPane : UserControl
         _pressing = Empty();
         _albumTitle = string.Empty;
         _albumArtistText = string.Empty;
+        _claim = null;
         _cover = null;
         _searchOpen = false;
         _searchResults = new List<ReleaseCandidateChoice>();
@@ -366,8 +373,26 @@ internal sealed class ImportMappingPane : UserControl
         _albumTitle = prefetched.Edit.AlbumTitle;
         _albumArtistText = prefetched.Edit.AlbumArtistText;
         _pressing = prefetched.Edit.Pressing;
+        _claim = prefetched.Claim;
         _mapping = prefetched.Mapping;
         _commitError.IsVisible = false;
+    }
+
+    // Claiming exactly this pressing is a claim about the release's own values,
+    // so an edit that leaves them is a different claim. Core decides which.
+    private void WritePressing(BridgeRawPressingEdit edited)
+    {
+        _pressing = edited;
+        if (_claim is not { } claim || _prefetch?.ExactPressing is not { } exact)
+        {
+            return;
+        }
+        _claim = BaeBridgeMethods.BridgeClaimForEdit(claim, edited, exact);
+        RefreshClaimCheckbox();
+        if (_claimHost is { } host && _claim is { } lowered)
+        {
+            host.Content = ClaimLineView.Build(lowered);
+        }
     }
 
     // Read the folder's mapping again for whatever it is being read as. A
@@ -435,7 +460,9 @@ internal sealed class ImportMappingPane : UserControl
 
         var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };
         sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.identity.title")));
-        sections.Children.Add(BuildIdentity().Build());
+        var identity = BuildIdentity();
+        sections.Children.Add(identity.Build());
+        _claimHost = identity.ClaimHost;
         if (_searchOpen)
         {
             sections.Children.Add(BuildSearchEditor());
@@ -491,7 +518,7 @@ internal sealed class ImportMappingPane : UserControl
         AlbumTitle = _albumTitle,
         AlbumArtistText = _albumArtistText,
         MetaLine = MetaLine(),
-        Claim = _prefetch?.Claim,
+        Claim = _claim,
         HasPick = _releaseId is not null,
         IsReading = _prefetching,
         LoadCover = CoverFace() is { } face
@@ -506,7 +533,7 @@ internal sealed class ImportMappingPane : UserControl
         OnEditCover = () => _ = ChooseCover(),
         OnAlbumTitle = value => _albumTitle = value,
         OnAlbumArtist = value => _albumArtistText = value,
-        OnPressing = value => _pressing = value,
+        OnPressing = WritePressing,
     };
 
     /// <summary>"CD · 1996 · 9 tracks", from the live edit and the live table so
@@ -801,6 +828,12 @@ internal sealed class ImportMappingPane : UserControl
     // ── The commit row ───────────────────────────────────────────────────────
 
     private TextBlock? _unansweredText;
+    // The claim control lives on the commit row, so the row's rebuild owns it;
+    // an edit that lowers the claim moves it without rebuilding the row.
+    private CheckBox? _claimCheckbox;
+    // Where the card states the claim, so a lowered one is restated without the
+    // pane being rebuilt under the field the user is typing in.
+    private ContentControl? _claimHost;
 
     /// <summary>The identity card's foot: what is still unanswered, storage,
     /// and the Import action — the commit lives on the card that states what
@@ -821,6 +854,24 @@ internal sealed class ImportMappingPane : UserControl
             Spacing = 10,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        // What the import claims, next to the action that commits it.
+        _claimCheckbox = null;
+        if (_claim is { } claim)
+        {
+            var box = ClaimLineView.ExactCheckbox(claim.Level, _prefetching);
+            box.IsCheckedChanged += (_, _) =>
+            {
+                // Putting the box back in step with a lowered claim sets
+                // IsChecked, which raises this again; without the guard that
+                // would read as a click and re-pick at the level it just set.
+                if (!_syncingClaim)
+                {
+                    _ = SetClaimLevel(ClaimLineView.LevelOf(box));
+                }
+            };
+            _claimCheckbox = box;
+            storage.Children.Add(box);
+        }
         if (hasCloudHome)
         {
             var remote = new CheckBox { Content = Loc.Chrome("import.storage.managed"), IsChecked = _storageRemote };
@@ -860,6 +911,24 @@ internal sealed class ImportMappingPane : UserControl
         return column;
     }
 
+    // Whether the claim control is being put back in step with the claim rather
+    // than clicked.
+    private bool _syncingClaim;
+
+    // The claim, restated on the control that sets it — an edit to the release
+    // fields is what lowers it, and the box has to say so without the row being
+    // rebuilt under the field the user is typing in.
+    private void RefreshClaimCheckbox()
+    {
+        if (_claimCheckbox is not { } box || _claim is not { } claim)
+        {
+            return;
+        }
+        _syncingClaim = true;
+        box.IsChecked = claim.Level is BridgeClaimLevel.Exact;
+        _syncingClaim = false;
+    }
+
     // What is still unanswered, restated on every keystroke, because a title
     // typed into an unmatched row is what moves the number.
     private void RefreshCommitCounts()
@@ -883,7 +952,7 @@ internal sealed class ImportMappingPane : UserControl
         }
         var edit = new BridgeRawReleaseEdit(
             _albumTitle, _albumArtistText, _pressing, BaeBridgeMethods.BridgeMappingTracks(mapping));
-        var identity = _prefetch?.Claim?.Choice ?? new BridgeIdentityChoice.Unknown();
+        var identity = _claim?.Choice ?? new BridgeIdentityChoice.Unknown();
         var (settingsCurrent, settings) = _app.Settings.GetSettings();
         var remote = settingsCurrent && settings.HasCloudHome && _storageRemote;
 

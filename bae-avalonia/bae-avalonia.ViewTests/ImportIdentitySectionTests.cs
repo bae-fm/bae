@@ -82,30 +82,30 @@ public sealed class ImportIdentitySectionTests
         Assert.Contains(expander, card.GetLogicalDescendants());
     }
 
-    // The claim the card states is the user's to set: picking a release claims
-    // that pressing, and the control beside the sentence is how they say they
-    // hold the album but not necessarily this pressing.
+    // The card states the claim; it does not set it. The one control that does
+    // sits beside the action that commits it, and says the claim in a word.
     [AvaloniaFact]
-    public void TheClaimLineOffersBothLevelsAndReportsTheOneClicked()
+    public void TheCardStatesTheClaimAndTheCheckboxIsWhatSetsIt()
     {
-        var set = new List<BridgeClaimLevel>();
         var section = Build(
             ImportIdentity.Release,
             pressing: new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
-            claim: Claim(BridgeClaimLevel.Exact),
-            onSetClaimLevel: set.Add);
+            claim: Claim(BridgeClaimLevel.Exact));
 
-        var levels = Buttons(section)
-            .Where(button => Equals(button.Content, Loc.Core("ui.import.claim.level.exact"))
-                || Equals(button.Content, Loc.Core("ui.import.claim.level.album")))
-            .ToList();
-        Assert.Equal(2, levels.Count);
-        foreach (var button in levels)
-        {
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        }
+        Assert.Contains(Texts(section), text => text == Loc.Core("ui.import.claim.pressing", "release", "CD · 1996"));
+        Assert.Empty(section.GetLogicalDescendants().OfType<CheckBox>());
 
-        Assert.Equal(new[] { BridgeClaimLevel.Exact, BridgeClaimLevel.Approximate }, set);
+        var exact = ClaimLineView.ExactCheckbox(BridgeClaimLevel.Exact, isReading: false);
+        Assert.Equal(Loc.Core("ui.import.claim.level.exact"), exact.Content);
+        Assert.True(exact.IsChecked);
+        Assert.Equal(BridgeClaimLevel.Exact, ClaimLineView.LevelOf(exact));
+
+        exact.IsChecked = false;
+        Assert.Equal(BridgeClaimLevel.Approximate, ClaimLineView.LevelOf(exact));
+
+        // An album-level claim opens unchecked, so the box always states the
+        // claim the card is stating in words.
+        Assert.False(ClaimLineView.ExactCheckbox(BridgeClaimLevel.Approximate, isReading: false).IsChecked);
     }
 
     // A pressing claim names the release inside its own sentence; only the
@@ -147,8 +147,7 @@ public sealed class ImportIdentitySectionTests
         bool isReading = false,
         BridgeRawPressingEdit? pressing = null,
         BridgeClaimLine? claim = null,
-        System.Action<ImportIdentity>? onSetIdentity = null,
-        System.Action<BridgeClaimLevel>? onSetClaimLevel = null) =>
+        System.Action<ImportIdentity>? onSetIdentity = null) =>
         new ImportIdentitySection
         {
             Identity = identity,
@@ -167,7 +166,7 @@ public sealed class ImportIdentitySectionTests
             HasCoverOptions = false,
             Pressing = pressing,
             OnSetIdentity = onSetIdentity ?? (_ => { }),
-            OnSetClaimLevel = onSetClaimLevel ?? (_ => { }),
+            OnSetClaimLevel = _ => { },
             OnFindRelease = () => { },
             OnEditCover = () => { },
             OnAlbumTitle = _ => { },

@@ -177,8 +177,9 @@ struct ReIdentifySheet: View {
     /// it states the claim the same way and offers the same control over it.
     private func selectionFooter(for claim: BridgeClaimLine) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            ImportClaimLine(
-                claim: claim,
+            ImportClaimLine(claim: claim)
+            ImportClaimExactToggle(
+                level: claim.level,
                 isReading: false,
                 onSetLevel: setClaimLevel,
             )

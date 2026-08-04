@@ -6,7 +6,7 @@ use crate::db::LibraryStatus;
 use crate::identify::state::SignalsContext;
 use crate::identify::{GroupKey, ResultProvenance};
 use crate::import::search::ImportSearchReleaseDetail;
-use crate::import::{ClaimLevel, MetadataSource};
+use crate::import::{ClaimLevel, MetadataSource, RawPressingEdit};
 use crate::signals::DiscIdSignal;
 use std::collections::HashSet;
 
@@ -197,6 +197,64 @@ fn lowering_the_claim_keeps_the_release() {
     // The evidence is untouched: it says what identified the release, not what
     // the user claims about it.
     assert_eq!(lowered.evidence, ClaimEvidence::DiscIdAlone);
+}
+
+/// The pressing values the picked release states, as the editor holds them.
+fn exact_pressing() -> RawPressingEdit {
+    RawPressingEdit {
+        year: "2004".to_string(),
+        format: "CD".to_string(),
+        label: "Label Name".to_string(),
+        catalog_number: "CAT-1234".to_string(),
+        country: "UK".to_string(),
+        barcode: String::new(),
+    }
+}
+
+/// "I hold exactly this pressing" is a claim about the values on the screen.
+/// Editing one of them away is a different claim, so the level falls to the
+/// album by itself and the line reads as the album's.
+#[test]
+fn editing_a_pressing_field_lowers_the_claim() {
+    let state = found(&[(REL_A, provenance(true, false))]);
+    let claim = claim_line(&state, &picked(REL_A), ClaimLevel::Exact);
+
+    let edited = RawPressingEdit {
+        year: "2011".to_string(),
+        ..exact_pressing()
+    };
+    let lowered = claim_for_edit(claim.clone(), &edited, &exact_pressing());
+
+    assert_eq!(lowered.level, ClaimLevel::Approximate);
+    assert_eq!(
+        lowered.choice,
+        IdentityChoice::Approximate {
+            release_ref: mb_ref(REL_A)
+        }
+    );
+    // The release and the evidence are untouched: which pressing the metadata
+    // came from and what turned it up are not what the edit changed.
+    assert_eq!(lowered.release, claim.release);
+    assert_eq!(lowered.evidence, claim.evidence);
+
+    // Left as the source states them, the claim stands.
+    assert_eq!(
+        claim_for_edit(claim.clone(), &exact_pressing(), &exact_pressing()).level,
+        ClaimLevel::Exact
+    );
+}
+
+/// Nothing here raises a claim. Typing the source's values back into a lowered
+/// claim is not the user asserting they hold that pressing — the control that
+/// says so is, and it puts those values back itself.
+#[test]
+fn an_edit_never_raises_a_lowered_claim() {
+    let state = found(&[(REL_A, provenance(true, false))]);
+    let lowered = claim_line(&state, &picked(REL_A), ClaimLevel::Approximate);
+
+    let stays = claim_for_edit(lowered, &exact_pressing(), &exact_pressing());
+
+    assert_eq!(stays.level, ClaimLevel::Approximate);
 }
 
 /// The evidence itself is read off the candidate's identify state — which

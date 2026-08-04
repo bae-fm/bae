@@ -2952,6 +2952,11 @@ pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
     pub seed: BridgeReleaseUserEdit,
     pub claim: BridgeClaimLine,
+    /// The picked release's own pressing fields, whatever the claim reaches to
+    /// — what claiming this pressing exactly is a claim *about*. The control
+    /// that makes that claim restores these values, and
+    /// `bridge_claim_for_edit` reads an edit against them.
+    pub exact_pressing: BridgeRawPressingEdit,
     /// The file↔release pairing this pick produces: every source unit the
     /// folder offers with the track committing makes of it, the editable row
     /// inside the row that produces it. Empty for a key that names no scanned
@@ -4860,11 +4865,15 @@ impl BridgeReleasePrefetch {
         // binds it directly. Doing it here rather than in the UI is what keeps
         // the two desktop surfaces from each deciding what an album-level claim
         // shows.
+        let exact_pressing = BridgeRawPressingEdit::from_core(
+            bae_core::import::RawPressingEdit::from_pressing(&seed.pressing),
+        );
         let seed = bae_core::import::shape_user_edit_for_choice(&seed, &claim.choice);
         BridgeReleasePrefetch {
             detail: BridgeReleaseDetail::from_core(detail),
             seed: BridgeReleaseUserEdit::from_core(seed),
             claim: BridgeClaimLine::from_core(claim),
+            exact_pressing,
             mapping: BridgeMappingTable::from_core(mapping),
         }
     }
@@ -4888,6 +4897,43 @@ impl BridgeClaimLine {
             track_count,
         }
     }
+
+    fn into_core(self) -> bae_core::import::ClaimLine {
+        let BridgeClaimLine {
+            choice,
+            level,
+            evidence,
+            release,
+            track_count,
+        } = self;
+        bae_core::import::ClaimLine {
+            choice: choice.into_core(),
+            level: level.into_core(),
+            evidence: evidence.into_core(),
+            release,
+            track_count,
+        }
+    }
+}
+
+/// The claim an edited release still supports.
+///
+/// Holding exactly this pressing is a claim about the values on the screen, so
+/// editing one of them away lowers the claim to the album. Nothing here raises
+/// one: a claim is the user's own assertion, and the control that makes it
+/// restores the release's values itself.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_claim_for_edit(
+    claim: BridgeClaimLine,
+    edited: BridgeRawPressingEdit,
+    exact: BridgeRawPressingEdit,
+) -> BridgeClaimLine {
+    BridgeClaimLine::from_core(bae_core::import::claim_for_edit(
+        claim.into_core(),
+        &edited.into_core(),
+        &exact.into_core(),
+    ))
 }
 
 #[cfg(feature = "desktop")]
@@ -4901,6 +4947,16 @@ impl BridgeClaimEvidence {
             }
             ClaimEvidence::Barcode => BridgeClaimEvidence::Barcode,
             ClaimEvidence::Search => BridgeClaimEvidence::Search,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::ClaimEvidence {
+        use bae_core::import::ClaimEvidence;
+        match self {
+            Self::DiscIdAlone => ClaimEvidence::DiscIdAlone,
+            Self::DiscIdShared { match_count } => ClaimEvidence::DiscIdShared { match_count },
+            Self::Barcode => ClaimEvidence::Barcode,
+            Self::Search => ClaimEvidence::Search,
         }
     }
 }

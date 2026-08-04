@@ -68,11 +68,7 @@ struct ImportReleaseHeader: View {
                 changeControl
             }
             if let claim {
-                ImportClaimLine(
-                    claim: claim,
-                    isReading: isReading,
-                    onSetLevel: onSetClaimLevel,
-                )
+                ImportClaimLine(claim: claim)
             }
             if let editor {
                 details(editor)
@@ -129,6 +125,14 @@ struct ImportReleaseHeader: View {
                 .foregroundStyle(.orange)
             }
             Spacer(minLength: 12)
+            // What the import claims, next to the action that commits it.
+            if let claim, !commitSettled(commit) {
+                ImportClaimExactToggle(
+                    level: claim.level,
+                    isReading: isReading,
+                    onSetLevel: onSetClaimLevel,
+                )
+            }
             if !commitSettled(commit), configStore.config.hasCloudHome {
                 HStack(spacing: 10) {
                     ImportCheckboxToggle(

@@ -1,22 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// The two facts an import records, stated as a sentence with the claim on a
-/// control.
+/// The two facts an import records, stated as a sentence.
 ///
 /// The first line is what you claim to physically hold — this pressing, or the
 /// album with the pressing left open — with a muted note saying what identified
 /// it. The second line names the release the metadata was read from, and shows
-/// exactly when that is not the release being claimed. Picking a release claims
-/// that pressing; the control is how you say you hold the album but can't vouch
-/// for which pressing, and setting it re-picks the same release at the level
-/// you chose, so the claim is stored rather than kept in the view.
+/// exactly when that is not the release being claimed. The claim itself is set
+/// beside the action that commits it, by [`ImportClaimExactToggle`].
 struct ImportClaimLine: View {
     let claim: BridgeClaimLine
-    /// Whether the control takes input. Off while a read is in flight, since
-    /// the level it would set is what the read is settling.
-    let isReading: Bool
-    let onSetLevel: (BridgeClaimLevel) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -28,7 +21,6 @@ struct ImportClaimLine: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
-            levelPicker
             if claim.level == .approximate {
                 Text(metadataSourceLine)
                     .font(.system(size: 11.5))
@@ -39,28 +31,6 @@ struct ImportClaimLine: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .background(Theme.field, in: RoundedRectangle(cornerRadius: 6))
-    }
-
-    /// The claim itself, as the one control that moves it. Both sides name the
-    /// same picked release — lowering the claim says the pressing is not being
-    /// vouched for, not that the release is wrong.
-    private var levelPicker: some View {
-        Picker(
-            coreString("ui.import.claim.level.title"),
-            selection: Binding(
-                get: { claim.level },
-                set: { onSetLevel($0) },
-            )
-        ) {
-            Text(coreString("ui.import.claim.level.exact"))
-                .tag(BridgeClaimLevel.exact)
-            Text(coreString("ui.import.claim.level.album"))
-                .tag(BridgeClaimLevel.approximate)
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .disabled(isReading)
-        .fixedSize()
     }
 
     /// "You have this pressing — CD · 2004 · UK · CAT-1234", or the album-level
@@ -116,6 +86,34 @@ struct ImportClaimLine: View {
     }
 }
 
+/// The claim itself, as the one control that moves it: checked says the record
+/// in the room is exactly this pressing, and clearing it says you hold the
+/// album with the pressing left open.
+///
+/// It sits beside the action it qualifies, because it is a statement about what
+/// that action commits. Setting it re-picks the same release at the level
+/// chosen, which is what stores the claim and puts the release's own pressing
+/// fields back — or blanks them, since an album claim states none.
+struct ImportClaimExactToggle: View {
+    let level: BridgeClaimLevel
+    /// Whether the control takes input. Off while a read is in flight, since
+    /// the level it would set is what the read is settling.
+    let isReading: Bool
+    let onSetLevel: (BridgeClaimLevel) -> Void
+
+    var body: some View {
+        ImportCheckboxToggle(
+            core: coreString("ui.import.claim.level.exact"),
+            isOn: Binding(
+                get: { level == .exact },
+                set: { onSetLevel($0 ? .exact : .approximate) },
+            )
+        )
+        .disabled(isReading)
+        .fixedSize()
+    }
+}
+
 /// Resolve a `ui.*` catalog key out of the generated `Core` table. The claim
 /// sentences live in the shared catalog because all three desktop surfaces
 /// render the same words from the same `BridgeClaimLine`.
@@ -134,7 +132,10 @@ struct ImportClaimLine: View {
                     evidence: .discIdAlone,
                     release: "CD · 2004 · UK · CAT-1234",
                     trackCount: 11
-                ),
+                )
+            )
+            ImportClaimExactToggle(
+                level: .exact,
                 isReading: false,
                 onSetLevel: { _ in },
             )
@@ -148,9 +149,7 @@ struct ImportClaimLine: View {
                     evidence: .discIdShared(matchCount: 2),
                     release: "CD · 2004 · UK",
                     trackCount: 11
-                ),
-                isReading: false,
-                onSetLevel: { _ in },
+                )
             )
             ImportClaimLine(
                 claim: BridgeClaimLine(
@@ -162,9 +161,7 @@ struct ImportClaimLine: View {
                     evidence: .search,
                     release: "CD · 2015 · US",
                     trackCount: 14
-                ),
-                isReading: false,
-                onSetLevel: { _ in },
+                )
             )
         }
         .padding()

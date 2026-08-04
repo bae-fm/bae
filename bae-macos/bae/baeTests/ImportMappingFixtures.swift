@@ -332,9 +332,21 @@ enum MappingFixtures {
                 release: "CD \u{00b7} 1996",
                 trackCount: 12
             ),
+            exactPressing: exactPressing,
             mapping: mapping
         )
     }
+
+    /// The pressing the fixture release states — what claiming it exactly is a
+    /// claim about, and what an edit is read against.
+    static let exactPressing = BridgeRawPressingEdit(
+        year: "1996",
+        format: "CD",
+        label: "",
+        catalogNumber: "",
+        country: "",
+        barcode: ""
+    )
 
     static let emptyFiles = BridgeCandidateFiles(
         files: [],
@@ -364,6 +376,11 @@ enum MappingFixtures {
             source: pick.source
         )
         candidate.editValues = albumEdit
+        candidate.exactPressing = exactPressing
+        candidate.claim = prefetch(
+            mapping: mapping ?? BridgeMappingTable(rows: [], reconciliation: nil)
+        )
+        .claim
         candidate.mapping = mapping
         store.folderCandidates[candidate.key] = candidate
         return store

@@ -8,22 +8,17 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The two facts an import records, stated as a sentence with the claim on a
-/// control: what you claim to physically hold, and — when that is not the same
-/// release — where the metadata was read from. Picking a release claims that
-/// pressing; the control is how you say you hold the album but can't vouch for
-/// which pressing, and setting it re-picks the same release at the level
-/// chosen, so the claim is stored rather than kept in the view.
+/// The two facts an import records, stated as a sentence: what you claim to
+/// physically hold, and — when that is not the same release — where the
+/// metadata was read from. The claim itself is set beside the action that
+/// commits it, by <see cref="ExactCheckbox"/>.
 ///
 /// Shared by the import confirm dialog and the re-identify dialog, which take
 /// the same identity claim.
 /// </summary>
 internal static class ClaimLineView
 {
-    internal static Control Build(
-        BridgeClaimLine claim,
-        bool isReading,
-        Action<BridgeClaimLevel> onSetLevel)
+    internal static Control Build(BridgeClaimLine claim)
     {
         var sentence = new TextBlock { Text = ClaimSentence(claim), VerticalAlignment = VerticalAlignment.Center };
         var evidence = new TextBlock { Text = EvidenceNote(claim), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
@@ -35,7 +30,6 @@ internal static class ClaimLineView
 
         var column = new StackPanel { Spacing = 2 };
         column.Children.Add(top);
-        column.Children.Add(LevelPicker(claim, isReading, onSetLevel));
         if (claim.Level is BridgeClaimLevel.Approximate)
         {
             var source = new TextBlock { Text = MetadataSourceLine(claim), FontSize = 12.5 };
@@ -45,40 +39,30 @@ internal static class ClaimLineView
         return column;
     }
 
-    /// <summary>The claim itself, as the one control that moves it. Both sides
-    /// name the same picked release — lowering the claim says the pressing is
-    /// not being vouched for, not that the release is wrong.</summary>
-    private static Control LevelPicker(
-        BridgeClaimLine claim,
-        bool isReading,
-        Action<BridgeClaimLevel> onSetLevel)
+    /// <summary>The claim itself, as the one control that moves it: checked
+    /// says the record in the room is exactly this pressing, and clearing it
+    /// says the album is held with the pressing left open.
+    ///
+    /// It sits beside the action it qualifies, because it is a statement about
+    /// what that action commits. Setting it re-picks the same release at the
+    /// level chosen, which is what stores the claim and puts the release's own
+    /// pressing fields back — or blanks them, since an album claim states
+    /// none.
+    ///
+    /// The caller wires the change, because putting the box back in step with a
+    /// claim it did not set raises that event too, and only the caller holds the
+    /// state that tells the two apart.</summary>
+    internal static CheckBox ExactCheckbox(BridgeClaimLevel level, bool isReading) => new()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        row.Children.Add(Segment(
-            Loc.Core("ui.import.claim.level.exact"), BridgeClaimLevel.Exact, claim.Level, isReading, onSetLevel));
-        row.Children.Add(Segment(
-            Loc.Core("ui.import.claim.level.album"), BridgeClaimLevel.Approximate, claim.Level, isReading, onSetLevel));
-        ToolTip.SetTip(row, Loc.Core("ui.import.claim.level.title"));
-        return row;
-    }
+        Content = Loc.Core("ui.import.claim.level.exact"),
+        IsChecked = level is BridgeClaimLevel.Exact,
+        IsEnabled = !isReading,
+        VerticalAlignment = VerticalAlignment.Center,
+    };
 
-    private static Control Segment(
-        string label,
-        BridgeClaimLevel level,
-        BridgeClaimLevel current,
-        bool isReading,
-        Action<BridgeClaimLevel> onSetLevel)
-    {
-        var button = ImportPaneUi.RowButton(label);
-        button.IsEnabled = !isReading;
-        if (current == level)
-        {
-            button[!Button.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
-            button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
-        }
-        button.Click += (_, _) => onSetLevel(level);
-        return button;
-    }
+    /// <summary>The level a checkbox in this state claims.</summary>
+    internal static BridgeClaimLevel LevelOf(CheckBox box) =>
+        box.IsChecked == true ? BridgeClaimLevel.Exact : BridgeClaimLevel.Approximate;
 
     /// <summary>"You have this pressing — CD · 2004 · UK · CAT-1234", or the
     /// album-level claim, which names no pressing because none is claimed.

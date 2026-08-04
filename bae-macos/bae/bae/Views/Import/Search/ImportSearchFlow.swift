@@ -79,8 +79,22 @@ enum ImportSearchFlow {
                 return values
             },
             set: { newValue in
-                importStore.mutateCandidate(forKey: key) {
-                    $0.editValues = newValue
+                importStore.mutateCandidate(forKey: key) { candidate in
+                    candidate.editValues = newValue
+                    // Claiming exactly this pressing is a claim about the
+                    // release's own values, so an edit that leaves them is a
+                    // different claim. Core decides which — the pane states
+                    // what comes back and commits under it.
+                    guard let claim = candidate.claim,
+                        let exact = candidate.exactPressing
+                    else { return }
+                    let edited = bridgeClaimForEdit(
+                        claim: claim,
+                        edited: newValue.pressing,
+                        exact: exact
+                    )
+                    candidate.claim = edited
+                    candidate.identityChoice = edited.choice
                 }
             },
         )

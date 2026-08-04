@@ -682,7 +682,7 @@ impl RawPressingEdit {
     }
 
     /// Render a wire [`PressingEdit`] back to raw editor text.
-    fn from_pressing(pressing: &PressingEdit) -> Self {
+    pub fn from_pressing(pressing: &PressingEdit) -> Self {
         Self {
             year: pressing.year.map(|y| y.to_string()).unwrap_or_default(),
             format: option_to_raw(&pressing.format),

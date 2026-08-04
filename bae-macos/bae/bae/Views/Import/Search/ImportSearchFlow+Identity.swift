@@ -154,6 +154,9 @@ extension ImportSearchFlow {
                 // commit worker maps the release, and already masked for the
                 // claim (an album-level claim blanks the pressing block).
                 candidate.editValues = albumEdit(from: prefetch.seed)
+                // What the claim is a claim about: editing the fields away
+                // from these lowers it, which core decides.
+                candidate.exactPressing = prefetch.exactPressing
                 // The mapping this decision produces: every source unit the
                 // folder offers with the track committing makes of it.
                 candidate.mapping = prefetch.mapping
@@ -164,6 +167,7 @@ extension ImportSearchFlow {
                 candidate.claim = nil
                 candidate.selectedCover = nil
                 candidate.editValues = albumEdit(from: seed)
+                candidate.exactPressing = nil
                 candidate.mapping = mapping
             }
             candidate.prefetchTask = nil

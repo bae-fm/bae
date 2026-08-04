@@ -290,6 +290,51 @@ struct ImportMappingPaneTests {
         #expect(candidate.commitEdit == nil)
     }
 
+    // 4c. Claiming exactly this pressing is a claim about the values on the
+    //     screen, so editing one of them away lowers the claim by itself — and
+    //     the commit carries the lowered one, because it is the same state.
+    @MainActor
+    @Test("editing the pressing lowers the claim the commit carries")
+    func editingThePressingLowersTheClaim() throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let candidate = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(candidate.claim?.level == .exact)
+
+        // Through the same binding the release fields write with.
+        let editor = ImportSearchFlow.makeEditValuesBinding(
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            candidate: candidate
+        )
+        var edited = editor.wrappedValue
+        edited.pressing.year = "2011"
+        editor.wrappedValue = edited
+
+        let after = try #require(
+            store.folderCandidates[MappingFixtures.candidateKey]
+        )
+        #expect(after.claim?.level == .approximate)
+        #expect(
+            after.identityChoice
+                == .approximate(
+                    releaseId: MappingFixtures.pick.releaseId,
+                    source: MappingFixtures.pick.source
+                )
+        )
+        // Editing anything else says nothing about which pressing is held.
+        var titled = after.editValues ?? edited
+        titled.albumTitle = "Album Title Two"
+        editor.wrappedValue = titled
+        #expect(
+            store.folderCandidates[MappingFixtures.candidateKey]?.claim?.level
+                == .approximate
+        )
+    }
+
     // 5. The row's play control auditions that row's own audio. For a sheet
     //    entry that is the container the entry is carved from, which is the
     //    only file on disk there is to play.
