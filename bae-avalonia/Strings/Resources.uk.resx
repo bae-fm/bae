@@ -387,7 +387,6 @@
   <data name="import.footbar.selected" xml:space="preserve"><value>Вибрано: {count}</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Вибрати все</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Імпортувати {count}</value></data>
-  <data name="import.row.choose" xml:space="preserve"><value>Вибрати</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Усе одно імпортувати</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Повторити</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>Конфлікт</value></data>

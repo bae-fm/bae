@@ -100,6 +100,11 @@ internal static class TriageListModel
     // what the row actually shows.
     internal static string DisplayTitle(BridgeTriageRow row) => row.Matched?.Title ?? row.FolderName;
 
+    // Whether DisplayTitle fell through to the folder name — the rows that take
+    // a folder glyph, so the title reads as a place on disk rather than a
+    // release nobody has matched.
+    internal static bool TitleIsFolderName(BridgeTriageRow row) => row.Matched is null;
+
     internal static BridgeTriageRow? Row(BridgeTriageQueue queue, string key) =>
         queue.Sections
             .SelectMany(section => section.Entries)

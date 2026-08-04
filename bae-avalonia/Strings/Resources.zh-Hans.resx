@@ -387,7 +387,6 @@
   <data name="import.footbar.selected" xml:space="preserve"><value>已选择 {count} 项</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>全选</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>导入 {count} 项</value></data>
-  <data name="import.row.choose" xml:space="preserve"><value>选择</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>仍然导入</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>重试</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>冲突</value></data>

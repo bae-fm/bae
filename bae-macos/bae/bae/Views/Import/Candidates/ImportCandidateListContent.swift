@@ -454,37 +454,19 @@ extension ImportCandidateListContent {
         .background(Theme.surface)
     }
 
+    /// A folder group renders as a header row followed by its rows as
+    /// siblings — not a `DisclosureGroup`, which indents whatever it contains.
+    /// Grouped and ungrouped rows share one leading edge; the header row is
+    /// the only thing that says a group is there.
     @ViewBuilder
     private func releaseSection(_ section: ReleaseQueueSection) -> some View {
         if let group = section.group {
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: {
-                        uiStore.releaseGroupExpanded(
-                            releaseGroupDisclosureID(group.key)
-                        )
-                    },
-                    set: {
-                        uiStore.setReleaseGroupExpanded(
-                            releaseGroupDisclosureID(group.key),
-                            $0
-                        )
-                    }
-                )
-            ) {
+            let disclosureID = releaseGroupDisclosureID(group.key)
+            let expanded = uiStore.releaseGroupExpanded(disclosureID)
+            releaseGroupHeader(group, expanded: expanded, id: disclosureID)
+            if expanded {
                 ForEach(section.entries) { entry in
                     releaseEntry(entry.bridge)
-                }
-            } label: {
-                Label(group.name, systemImage: "folder")
-                    .font(.system(size: 12.5, weight: .semibold))
-            }
-            .contextMenu {
-                Button("Combine as One Release") {
-                    onReleaseDecision(group.key, .combineAsOneRelease)
-                }
-                Button("Keep as Separate Releases") {
-                    onReleaseDecision(group.key, .keepAsSeparateReleases)
                 }
             }
         }
@@ -495,13 +477,42 @@ extension ImportCandidateListContent {
         }
     }
 
+    private func releaseGroupHeader(
+        _ group: BridgeTriageGroup,
+        expanded: Bool,
+        id: ReleaseGroupDisclosureID
+    ) -> some View {
+        Button {
+            uiStore.setReleaseGroupExpanded(id, !expanded)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 9)
+                Label(group.name, systemImage: "folder")
+                    .font(.system(size: 12.5, weight: .semibold))
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Combine as One Release") {
+                onReleaseDecision(group.key, .combineAsOneRelease)
+            }
+            Button("Keep as Separate Releases") {
+                onReleaseDecision(group.key, .keepAsSeparateReleases)
+            }
+        }
+    }
+
     @ViewBuilder
     private func releaseEntry(_ entry: BridgeTriageEntry) -> some View {
         switch entry {
         case .candidate(_, let row):
             TriageRowView(
                 row: row,
-                isFocused: selectedKey == row.candidateKey,
                 selection: row.selectable
                     ? (
                         isSelected: uiStore.selectedReadyCandidates

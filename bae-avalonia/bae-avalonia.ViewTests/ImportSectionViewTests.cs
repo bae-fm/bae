@@ -114,6 +114,25 @@ public sealed class ImportSectionViewTests
         Assert.Equal(new[] { CandidateKey }, resumed);
     }
 
+    // A folder group renders as a header row with its rows as siblings, so
+    // there is no Expander indenting them. Collapsing therefore has to be this
+    // view's own doing: the header re-renders the list without the group's
+    // rows.
+    [AvaloniaFact]
+    public void CollapsingAFolderGroupHidesItsRows()
+    {
+        var view = BuildView(PreviewData.ImportQueue);
+        var groupedKey = $"{PreviewData.ImportRoot}/Collection/Release 01";
+        Assert.Contains(groupedKey, RowTags(view));
+
+        RaiseClick(GroupHeader(view, "Collection"));
+
+        Assert.DoesNotContain(groupedKey, RowTags(view));
+        // The ungrouped row is untouched — collapsing hides one group, not the
+        // tab.
+        Assert.Contains($"{PreviewData.ImportRoot}/Release 03", RowTags(view));
+    }
+
     private static ImportSectionView BuildView(
         BridgeTriageQueue queue,
         BridgeTriageTab activeTab = BridgeTriageTab.Ready,
@@ -267,4 +286,24 @@ public sealed class ImportSectionViewTests
 
     private static void RaiseTap(Control control) =>
         control.RaiseEvent(new TappedEventArgs(Gestures.TappedEvent, null!));
+
+    private static void RaiseClick(Button button) =>
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    private static List<string> RowTags(ImportSectionView view) =>
+        view
+            .GetLogicalDescendants()
+            .OfType<Control>()
+            .Select(control => control.Tag as string)
+            .Where(tag => tag is not null)
+            .Select(tag => tag!)
+            .ToList();
+
+    private static Button GroupHeader(ImportSectionView view, string name) =>
+        view
+            .GetLogicalDescendants()
+            .OfType<Button>()
+            .Single(button => button.GetLogicalDescendants()
+                .OfType<TextBlock>()
+                .Any(text => text.Text == name));
 }

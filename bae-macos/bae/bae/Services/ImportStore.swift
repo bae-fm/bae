@@ -352,6 +352,13 @@ extension ImportStore {
         row.matched?.title ?? row.folderName
     }
 
+    /// Whether `displayTitle` fell through to the folder name — the rows that
+    /// take a folder icon, so the title reads as a place on disk rather than a
+    /// release nobody has matched.
+    static func titleIsFolderName(_ row: BridgeTriageRow) -> Bool {
+        row.matched == nil
+    }
+
     func triageRow(forKey key: String) -> BridgeTriageRow? {
         triageQueue.sections.lazy
             .flatMap(\.entries)

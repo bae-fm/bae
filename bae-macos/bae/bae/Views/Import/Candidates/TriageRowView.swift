@@ -1,25 +1,23 @@
 import BaeKit
 import SwiftUI
 
-/// One triage row: state stripe, an optional bulk-select checkbox, the
-/// matched release's cover, its title/metadata/folder-name, and trailing
-/// evidence or status. Every decision about what the row shows — which tab,
-/// which group, whether it takes a checkbox — is `row`'s, read off
-/// `BridgeTriageRow`; this only renders it.
+/// One triage row: an optional bulk-select checkbox, the matched release's
+/// cover, its title/metadata, and trailing evidence or status. Every decision
+/// about what the row shows — which tab, which group, whether it takes a
+/// checkbox — is `row`'s, read off `BridgeTriageRow`; this only renders it.
 ///
-/// Two-line density: the folder-name mono subtitle, the one line this pane
-/// can drop, shows only on the focused row (`isFocused`). There is no density
-/// switch.
+/// Every row is the same two lines and the same height whether or not it is
+/// the selected one: the folder it came from is the main pane's to state, and
+/// a row that grows on selection shifts every row under it.
 struct TriageRowView: View {
     let row: BridgeTriageRow
-    let isFocused: Bool
     /// Non-nil exactly when `row.selectable` — the checkbox's checked state
     /// and toggle. Passed in rather than read off `row` again so the list
     /// content is the one place selection state (`UiStore`) meets the row.
     let selection: (isSelected: Bool, toggle: () -> Void)?
-    /// Select this row — what a click does, and what "Choose", "Import
-    /// Anyway" and "Retry" alias: each opens the main pane exactly as
-    /// selecting the row would.
+    /// Select this row — what a click does, and what "Import Anyway" and
+    /// "Retry" alias: each opens the main pane exactly as selecting the row
+    /// would.
     let onSelect: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
     let onReleaseDecision:
@@ -33,7 +31,6 @@ struct TriageRowView: View {
 
     init(
         row: BridgeTriageRow,
-        isFocused: Bool,
         selection: (isSelected: Bool, toggle: () -> Void)?,
         onSelect: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
@@ -44,7 +41,6 @@ struct TriageRowView: View {
             ) -> Void = { _, _ in }
     ) {
         self.row = row
-        self.isFocused = isFocused
         self.selection = selection
         self.onSelect = onSelect
         self.onSkip = onSkip
@@ -53,7 +49,6 @@ struct TriageRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            stripe
             checkbox
             cover
             VStack(alignment: .leading, spacing: 0) {
@@ -132,29 +127,6 @@ struct TriageRowView: View {
 
     // MARK: - Leading
 
-    private var stripe: some View {
-        Rectangle()
-            .fill(stripeColor ?? Color.clear)
-            .frame(width: 3)
-    }
-
-    private var stripeColor: Color? {
-        switch row.placement {
-        case .ready, .skipped:
-            return nil
-        case .needsYou(let group, _):
-            switch group {
-            case .signalsDisagree: return .red
-            case .pickAPressing, .countsOrLengthsDisagree: return .orange
-            case .alreadyInLibrary: return .blue
-            case .noMatch, .stillIdentifying: return nil
-            }
-        case .done:
-            if case .error = row.importStatus { return .red }
-            return nil
-        }
-    }
-
     @ViewBuilder
     private var checkbox: some View {
         if let selection {
@@ -201,10 +173,17 @@ struct TriageRowView: View {
 
     private var meta: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(ImportStore.displayTitle(row))
-                .font(.system(size: 14, weight: .semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
+            HStack(spacing: 5) {
+                if ImportStore.titleIsFolderName(row) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                Text(ImportStore.displayTitle(row))
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             if let subLine {
                 Text(subLine)
                     .font(.system(size: 12.5))
@@ -212,14 +191,6 @@ struct TriageRowView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .padding(.top, 1)
-            }
-            if isFocused {
-                Text(row.displayPath)
-                    .font(.system(size: 11.5, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .padding(.top, 4)
             }
             if case .importing(let percent, _) = row.importStatus {
                 ProgressTrackBar(
@@ -321,19 +292,13 @@ extension TriageRowView {
     private var rowActions: [RowAction] {
         var actions: [RowAction] = []
         switch row.placement {
-        case .needsYou(.pickAPressing, .disagreement):
-            actions = [
-                RowAction(label: "Choose", isKey: true, action: onSelect),
-                RowAction(label: "Skip", isKey: false) { onSkip(true) },
-            ]
         case .needsYou(.alreadyInLibrary, .disagreement):
             actions = [
-                RowAction(label: "Skip", isKey: false) { onSkip(true) },
                 RowAction(
                     label: "Import Anyway",
                     isKey: false,
                     action: onSelect
-                ),
+                )
             ]
         case .done:
             if case .error = row.importStatus {
@@ -562,56 +527,48 @@ extension BridgeMatchedSignal {
         VStack(alignment: .leading, spacing: 0) {
             TriageRowView(
                 row: PreviewData.triageRowReady,
-                isFocused: true,
                 selection: (isSelected: true, toggle: {}),
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowPickAPressing,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowSignalsConflict,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowAlreadyInLibrary,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowNoMatch,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowStillIdentifying,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowDoneFailed,
-                isFocused: false,
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }

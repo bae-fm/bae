@@ -387,7 +387,6 @@
   <data name="import.footbar.selected" xml:space="preserve"><value>{count}개 선택됨</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>전체 선택</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count}개 가져오기</value></data>
-  <data name="import.row.choose" xml:space="preserve"><value>선택</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>그래도 가져오기</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>다시 시도</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>충돌</value></data>

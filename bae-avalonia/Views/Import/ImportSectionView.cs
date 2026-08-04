@@ -685,43 +685,13 @@ internal sealed class ImportSectionView : UserControl
             }
             if (section.Group is { } group)
             {
-                var expander = new Expander
+                var expanded = _import.Interaction.IsGroupExpanded(
+                    ImportStore.GroupDisclosureKey(group.Key));
+                list.Children.Add(BuildGroupHeader(group, expanded));
+                if (expanded)
                 {
-                    Header = group.Name,
-                    Content = content,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    IsExpanded = _import.Interaction.IsGroupExpanded(
-                        ImportStore.GroupDisclosureKey(group.Key)),
-                    Padding = new Thickness(10, 4),
-                };
-                expander.PropertyChanged += (_, change) =>
-                {
-                    if (change.Property == Expander.IsExpandedProperty)
-                    {
-                        _import.Interaction.SetGroupExpanded(
-                            ImportStore.GroupDisclosureKey(group.Key),
-                            expander.IsExpanded);
-                    }
-                };
-                var combine = new MenuItem
-                {
-                    Header = Loc.Chrome("import.release.one"),
-                };
-                combine.Click += (_, _) => ApplyFolderReleaseDecision(
-                    group.Key,
-                    BridgeFolderReleaseDecision.CombineAsOneRelease);
-                var separate = new MenuItem
-                {
-                    Header = Loc.Chrome("import.release.separate"),
-                };
-                separate.Click += (_, _) => ApplyFolderReleaseDecision(
-                    group.Key,
-                    BridgeFolderReleaseDecision.KeepAsSeparateReleases);
-                expander.ContextFlyout = new MenuFlyout
-                {
-                    ItemsSource = new[] { combine, separate },
-                };
-                list.Children.Add(expander);
+                    list.Children.Add(content);
+                }
             }
             else
             {
@@ -729,6 +699,62 @@ internal sealed class ImportSectionView : UserControl
             }
         }
         return new ScrollViewer { Content = list };
+    }
+
+    // A folder group's header row: the disclosure caret, a folder glyph, and
+    // the folder's name. Its rows follow as siblings rather than as an
+    // Expander's content, which would indent them — grouped and ungrouped rows
+    // share one leading edge, and this row is the only thing that says a group
+    // is there.
+    private Control BuildGroupHeader(BridgeTriageGroup group, bool expanded)
+    {
+        var caret = Icons.Glyph(expanded ? Icons.ChevronDown : Icons.ChevronRight, 12, "BaeTextSecondaryBrush");
+        var folder = Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush");
+        var name = new TextBlock
+        {
+            Text = group.Name,
+            FontSize = 12.5,
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            MaxLines = 1,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 5,
+            Margin = new Thickness(9, 6, 10, 6),
+            Children = { caret, folder, name },
+        };
+
+        var button = new Button
+        {
+            Content = content,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+        };
+        button.Click += (_, _) =>
+        {
+            _import.Interaction.SetGroupExpanded(
+                ImportStore.GroupDisclosureKey(group.Key),
+                !expanded);
+            Render();
+        };
+
+        var combine = new MenuItem { Header = Loc.Chrome("import.release.one") };
+        combine.Click += (_, _) => ApplyFolderReleaseDecision(
+            group.Key,
+            BridgeFolderReleaseDecision.CombineAsOneRelease);
+        var separate = new MenuItem { Header = Loc.Chrome("import.release.separate") };
+        separate.Click += (_, _) => ApplyFolderReleaseDecision(
+            group.Key,
+            BridgeFolderReleaseDecision.KeepAsSeparateReleases);
+        button.ContextFlyout = new MenuFlyout { ItemsSource = new[] { combine, separate } };
+        return button;
     }
 
     private Control BuildBoundaryRow(BridgeFolderReleaseBoundary boundary)
@@ -836,45 +862,37 @@ internal sealed class ImportSectionView : UserControl
 
     // ── Rows ──────────────────────────────────────────────────────────────────
 
-    // One triage row: a state stripe, an optional bulk-select checkbox, the
-    // matched release's cover, its title/metadata, and trailing evidence or
-    // status. Every decision about what the row shows — which tab, which
-    // group, whether it takes a checkbox — is `row`'s, read off
-    // BridgeTriageRow; this only renders it.
+    // One triage row: an optional bulk-select checkbox, the matched release's
+    // cover, its title/metadata, and trailing evidence or status. Every
+    // decision about what the row shows — which tab, which group, whether it
+    // takes a checkbox — is `row`'s, read off BridgeTriageRow; this only
+    // renders it.
     private Control BuildRow(BridgeTriageRow row)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("3,26,44,*,Auto") };
-
-        var stripe = new Border();
-        if (StripeBrushKey(row) is { } stripeBrushKey)
-        {
-            stripe[!Border.BackgroundProperty] = new DynamicResourceExtension(stripeBrushKey);
-        }
-        Grid.SetColumn(stripe, 0);
-        grid.Children.Add(stripe);
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("26,44,*,Auto"), Margin = new Thickness(9, 0, 0, 0) };
 
         var checkboxSlot = new Panel { Width = 26, Height = 18, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 7, 0, 0) };
         if (row.Selectable)
         {
             checkboxSlot.Children.Add(BuildCheckbox(row.CandidateKey));
         }
-        Grid.SetColumn(checkboxSlot, 1);
+        Grid.SetColumn(checkboxSlot, 0);
         grid.Children.Add(checkboxSlot);
 
         var cover = BuildCover(row.Matched?.CoverThumbnailUrl);
         cover.Margin = new Thickness(0, 7, 10, 7);
-        Grid.SetColumn(cover, 2);
+        Grid.SetColumn(cover, 1);
         grid.Children.Add(cover);
 
         var text = BuildRowText(row);
         text.Margin = new Thickness(0, 7, 8, 7);
-        Grid.SetColumn(text, 3);
+        Grid.SetColumn(text, 2);
         grid.Children.Add(text);
 
         var trailing = BuildRowTrailing(row);
         trailing.Margin = new Thickness(0, 9, 10, 7);
         trailing.VerticalAlignment = VerticalAlignment.Top;
-        Grid.SetColumn(trailing, 4);
+        Grid.SetColumn(trailing, 3);
         grid.Children.Add(trailing);
 
         var isPending = row.Placement is BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying };
@@ -894,15 +912,6 @@ internal sealed class ImportSectionView : UserControl
         host.ContextMenu = BuildRowContextMenu(row);
         return host;
     }
-
-    private static string? StripeBrushKey(BridgeTriageRow row) => row.Placement switch
-    {
-        BridgeTriagePlacement.NeedsYou { Group: BridgeNeedsYouGroup.SignalsDisagree } => "BaeDangerBrush",
-        BridgeTriagePlacement.NeedsYou { Group: BridgeNeedsYouGroup.PickAPressing or BridgeNeedsYouGroup.CountsOrLengthsDisagree } => "BaeWarningBrush",
-        BridgeTriagePlacement.NeedsYou { Group: BridgeNeedsYouGroup.AlreadyInLibrary } => "BaeInfoBrush",
-        BridgeTriagePlacement.Done when row.ImportStatus is BridgeCandidateImportStatus.Error => "BaeDangerBrush",
-        _ => null,
-    };
 
     private Control BuildCheckbox(string key)
     {
@@ -965,9 +974,20 @@ internal sealed class ImportSectionView : UserControl
             FontWeight = FontWeight.SemiBold,
             MaxLines = 1,
             TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
-        column.Children.Add(title);
+        if (TriageListModel.TitleIsFolderName(row))
+        {
+            var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+            titleRow.Children.Add(Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush"));
+            titleRow.Children.Add(title);
+            column.Children.Add(titleRow);
+        }
+        else
+        {
+            column.Children.Add(title);
+        }
 
         if (RowSubLine(row) is { Length: > 0 } subLine)
         {
@@ -981,22 +1001,6 @@ internal sealed class ImportSectionView : UserControl
             };
             sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
             column.Children.Add(sub);
-        }
-
-        if (row.CandidateKey == _selectedKey)
-        {
-            var path = new TextBlock
-            {
-                Text = row.DisplayPath,
-                FontFamily = new FontFamily("monospace"),
-                FontSize = 11.5,
-                MaxLines = 1,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(0, 4, 0, 0),
-            };
-            path[!TextBlock.ForegroundProperty] =
-                new DynamicResourceExtension("BaeTextSecondaryBrush");
-            column.Children.Add(path);
         }
 
         if (row.ImportStatus is BridgeCandidateImportStatus.Importing importing)
@@ -1086,16 +1090,9 @@ internal sealed class ImportSectionView : UserControl
         var pills = new List<(string Label, bool IsKey, Action Action)>();
         pills.AddRange(row.Placement switch
         {
-            BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
-                new[]
-                {
-                    (Loc.Chrome("import.row.choose"), true, (Action)(() => OnRowActivated(row))),
-                    (Loc.Chrome("import.candidate.skip"), false, (Action)(() => _import.SetCandidateSkipped(row.CandidateKey, true))),
-                },
             BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
                 new[]
                 {
-                    (Loc.Chrome("import.candidate.skip"), false, (Action)(() => _import.SetCandidateSkipped(row.CandidateKey, true))),
                     (Loc.Chrome("import.row.import_anyway"), false, (Action)(() => OnRowActivated(row))),
                 },
             BridgeTriagePlacement.Done when row.ImportStatus is BridgeCandidateImportStatus.Error =>
@@ -1329,20 +1326,16 @@ internal sealed class ImportSectionView : UserControl
         reason[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
 
         var text = new StackPanel { Spacing = 0, Children = { name, reason } };
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("3,26,44,*"), Margin = new Thickness(0, 7, 10, 7) };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("26,44,*"), Margin = new Thickness(9, 7, 10, 7) };
 
-        var stripe = new Border();
-        stripe[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
-        Grid.SetColumn(stripe, 0);
         var warning = new TextBlock { Text = "!", FontWeight = FontWeight.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         warning[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
         var iconBox = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), Child = warning };
         iconBox[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
-        Grid.SetColumn(iconBox, 2);
-        Grid.SetColumn(text, 3);
+        Grid.SetColumn(iconBox, 1);
+        Grid.SetColumn(text, 2);
         text.Margin = new Thickness(10, 0, 0, 0);
         text.VerticalAlignment = VerticalAlignment.Center;
-        grid.Children.Add(stripe);
         grid.Children.Add(iconBox);
         grid.Children.Add(text);
 

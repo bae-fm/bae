@@ -387,7 +387,6 @@
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} ਚੁਣੇ ਗਏ</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>ਸਭ ਚੁਣੋ</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} ਆਯਾਤ ਕਰੋ</value></data>
-  <data name="import.row.choose" xml:space="preserve"><value>ਚੁਣੋ</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>ਫਿਰ ਵੀ ਆਯਾਤ ਕਰੋ</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>ਟਕਰਾਅ</value></data>
