@@ -377,13 +377,9 @@ CREATE TABLE IF NOT EXISTS source_release_payloads (
     --                                     release id — MusicBrainz's URL lookup
     --                                     found it, so nothing in the Discogs
     --                                     document names it back
-    --   'cover_art_archive_release'       the archive's answer for a release
-    --   'cover_art_archive_release_group' the archive's answer for a group
     source TEXT NOT NULL,
     source_release_id TEXT NOT NULL,
-    -- The document as the provider returned it, except for the two cover-art
-    -- sources: the archive's ordinary "no cover" is a 404 with no body to keep,
-    -- so those rows hold the selected cover, or JSON `null` when it has none.
+    -- The document as the provider returned it.
     json TEXT NOT NULL CHECK (json_valid(json)),
     fetched_at TEXT NOT NULL,
     PRIMARY KEY (source, source_release_id)
