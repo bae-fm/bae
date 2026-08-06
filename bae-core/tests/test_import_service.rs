@@ -3907,3 +3907,136 @@ async fn a_corrected_pairing_survives_the_commit() {
         ],
     );
 }
+// ── Task 2: the commit derives the cover from the picked release ────────────
+
+/// Seed a MusicBrainz release whose document says the Cover Art Archive holds a
+/// front image for it, so the commit has an address to fetch and a statement
+/// that there is something at it.
+fn seed_mb_release_with_front_cover(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
+    let response = MbReleaseResponse {
+        id: mb_release_id.to_string(),
+        title: title.to_string(),
+        date: Some("1996".to_string()),
+        country: None,
+        barcode: None,
+        artist_credit: vec![MbArtistCredit {
+            name: "Artist Name".to_string(),
+            artist: None,
+        }],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: Some(1),
+                number: Some("1".to_string()),
+                title: Some("Track".to_string()),
+                length: None,
+                recording: None,
+                artist_credit: vec![],
+            }],
+        }],
+        relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: true,
+            darkened: false,
+        },
+    };
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
+    );
+    mb_release_id.to_string()
+}
+
+/// A commit that carries no cover pick lands the cover the confirmation pane
+/// offered. The pane seeds its selection from the release's own cover options,
+/// so "the command names no cover" means the user changed nothing — not that
+/// they want none. Reading it as the latter is what imported releases bare
+/// whenever the pane's cover options came up empty.
+#[tokio::test]
+async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
+    support::tracing_init();
+
+    let mb_id = "mb-rel-derived-cover";
+    let release_id_key =
+        seed_mb_release_with_front_cover(mb_id, "mb-group-derived-cover", "Derived Cover Album");
+    support::cover_art_archive().serve_front(mb_id, support::cover_png());
+
+    let f = ImportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    // No folder art: the only cover this release can end up with is the one its
+    // own document points at.
+    generate_album_files(&album_dir, &["01 Track.flac"]);
+
+    let (release_id, _) = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Exact {
+            release_ref: MetadataRef::new(release_id_key, MetadataSource::MusicBrainz),
+        },
+    )
+    .await
+    .expect("the import succeeds");
+
+    let cover =
+        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect(
+                "the release document says the archive holds a front image, so the \
+                 import must land one",
+            );
+    assert_eq!(cover.source, "musicbrainz");
+    assert!(cover
+        .source_url
+        .as_deref()
+        .expect("a downloaded cover records where it came from")
+        .ends_with(&format!("/release/{mb_id}/front")));
+}
+
+/// And when that cover will not download, the import fails instead of quietly
+/// landing without one. A transient archive failure is exactly the case that
+/// used to produce a coverless release with no error anywhere.
+#[tokio::test]
+async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
+    support::tracing_init();
+
+    let mb_id = "mb-rel-unreachable-cover";
+    let release_id_key = seed_mb_release_with_front_cover(
+        mb_id,
+        "mb-group-unreachable-cover",
+        "Unreachable Cover Album",
+    );
+    support::cover_art_archive().fail_front(mb_id, 503);
+
+    let f = ImportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(&album_dir, &["01 Track.flac"]);
+
+    let error = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Exact {
+            release_ref: MetadataRef::new(release_id_key, MetadataSource::MusicBrainz),
+        },
+    )
+    .await
+    .expect_err("a cover the source says exists but cannot be fetched fails the import");
+    assert!(
+        error.contains("503") || error.to_lowercase().contains("cover"),
+        "the failure names the cover download, got: {error}"
+    );
+}

@@ -13,7 +13,9 @@ use {
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{ScanItem, ScannedFile},
     crate::import::track_slots::{audio_units, map_source_rows, resolve_track_files},
-    crate::import::types::{AudioFile, CoverSelection, ImportPhase, PrepareStep, TrackFile},
+    crate::import::types::{
+        AudioFile, CoverSelection, ImportPhase, MetadataSource, PrepareStep, TrackFile,
+    },
     crate::import::ParsedWorkGraph,
     notify_debouncer_full::DebounceEventResult,
     std::collections::{HashMap, HashSet},
@@ -89,6 +91,38 @@ pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
+}
+
+/// One downloaded cover as the import funnel's candidate.
+///
+/// The content type comes from the HTTP response, so no magic-byte sniffing is
+/// needed to reject a non-image download. It describes the download, not the
+/// stored blob — the resize re-encodes those bytes — so it is checked and
+/// dropped, never recorded.
+fn downloaded_cover(
+    image: crate::import::cover_art::RemoteImage,
+    url: &str,
+    source: MetadataSource,
+) -> Result<cover_image::CoverCandidate, crate::import::ImportError> {
+    let crate::import::cover_art::RemoteImage {
+        bytes,
+        content_type,
+        validator: _,
+    } = image;
+    if matches!(
+        content_type,
+        crate::util::content_type::ContentType::OctetStream
+    ) {
+        return Err(crate::import::ImportError::CoverArt {
+            detail: "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"
+                .to_string(),
+        });
+    }
+    Ok(cover_image::CoverCandidate {
+        bytes,
+        source: source.as_str().to_string(),
+        source_url: Some(url.to_string()),
+    })
 }
 
 /// The watched roots that contain at least one of the `changed` paths, in
@@ -1696,19 +1730,21 @@ impl ImportService {
             },
         );
 
-        let parsed = match &identity_choice {
+        let (parsed, release_cover) = match &identity_choice {
             crate::import::IdentityChoice::Exact { release_ref }
             | crate::import::IdentityChoice::Approximate { release_ref } => {
                 // The documents are archived by `prepare_release`, keyed by the
                 // picked source release — so nothing about this release's rows
                 // needs to carry them, and the pointer written below is what
                 // finds them again.
-                prepare_release(library_manager, release_ref, CallPriority::Interactive)
-                    .await?
-                    .parsed(
-                        library_manager.clock().as_ref(),
-                        library_manager.ids().as_ref(),
-                    )?
+                let payloads =
+                    prepare_release(library_manager, release_ref, CallPriority::Interactive)
+                        .await?;
+                let parsed = payloads.parsed(
+                    library_manager.clock().as_ref(),
+                    library_manager.ids().as_ref(),
+                )?;
+                (parsed, payloads.default_cover()?)
             }
             crate::import::IdentityChoice::Unknown => {
                 let folder_name = folder
@@ -1730,7 +1766,10 @@ impl ImportService {
                 .map_err(|e| crate::import::ImportError::Internal {
                     detail: format!("unknown-seed mapping task failed: {e}"),
                 })??;
-                parsed
+                // An Unknown import claims no source release, so there is no
+                // release cover to derive: its art comes from the folder or the
+                // files' own tags.
+                (parsed, None)
             }
         };
 
@@ -1787,39 +1826,47 @@ impl ImportService {
             .map(|s| s.to_string());
         prepared.db_release.content_hash = Some(content_hash);
 
-        // The content type comes from the HTTP response, so no magic-byte
-        // sniffing is needed to reject a non-image download. It describes the
-        // download, not the stored blob — the resize below re-encodes those bytes
-        // — so it is checked and dropped, never recorded.
-        let remote_cover_data = if let Some(CoverSelection::Remote(ref url, source)) =
-            selected_cover
-        {
-            emit_preparing(PrepareStep::WritingCoverArt);
-            let crate::import::cover_art::RemoteImage {
-                bytes,
-                content_type,
-                validator: _,
-            } = self
-                .library_manager
-                .remote_images()
-                .fetch_required(url)
-                .await?;
-            if matches!(
-                content_type,
-                crate::util::content_type::ContentType::OctetStream
-            ) {
-                return Err(crate::import::ImportError::CoverArt {
-                    detail: "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"
-                        .to_string(),
-                });
+        // Which cover this import downloads. A pick the command carries is the
+        // user's, and must be there. With no pick, the release's own first
+        // cover option is the one the confirmation pane offered — the pane
+        // seeds its selection from exactly this list — so the commit fetches
+        // that rather than reading "the command names no cover" as "no cover
+        // wanted", which is what imported releases bare whenever the pane's
+        // options came up empty.
+        let remote_cover_data = match (&selected_cover, &release_cover) {
+            (Some(CoverSelection::Remote(url, source)), _) => {
+                emit_preparing(PrepareStep::WritingCoverArt);
+                let image = self
+                    .library_manager
+                    .remote_images()
+                    .fetch_required(url)
+                    .await?;
+                Some(downloaded_cover(image, url, *source)?)
             }
-            Some(cover_image::CoverCandidate {
-                bytes,
-                source: source.as_str().to_string(),
-                source_url: Some(url.clone()),
-            })
-        } else {
-            None
+            (None, Some(cover)) => {
+                emit_preparing(PrepareStep::WritingCoverArt);
+                // A source that answers "no image here" has dropped the art
+                // since its document was stored — an answer, and one that
+                // leaves the release to whatever its folder holds. A fetch that
+                // *fails* fails the import: a cover the source says exists must
+                // not go missing quietly.
+                match self
+                    .library_manager
+                    .remote_images()
+                    .fetch(&cover.url)
+                    .await?
+                {
+                    Some(image) => Some(downloaded_cover(image, &cover.url, cover.source)?),
+                    None => {
+                        warn!(
+                            "{} serves no image at {}; importing with whatever the folder holds",
+                            cover.label, cover.url
+                        );
+                        None
+                    }
+                }
+            }
+            (Some(CoverSelection::Local(_)), _) | (None, None) => None,
         };
 
         step_times.push(("write_cover_art", last_step_start.elapsed()));

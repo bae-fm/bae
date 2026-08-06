@@ -339,10 +339,120 @@ pub async fn try_wait_for_import_complete(
 /// Write a small solid-color PNG to `path` — a folder cover an import picks up,
 /// so a test release actually has art (for exercising cover-embedding paths).
 pub fn write_cover_png(path: &std::path::Path) {
+    std::fs::write(path, cover_png()).expect("write cover png");
+}
+
+/// A small solid-color PNG, big enough to clear the download path's 100-byte
+/// floor — the bytes a stand-in image host serves.
+pub fn cover_png() -> Vec<u8> {
     let img = image::RgbImage::from_pixel(16, 16, image::Rgb([90, 30, 160]));
+    let mut bytes = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgb8(img)
-        .save_with_format(path, image::ImageFormat::Png)
-        .expect("write cover png");
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .expect("encode cover png");
+    bytes.into_inner()
+}
+
+/// A local stand-in for the Cover Art Archive, shared by every test in a
+/// binary.
+///
+/// Cover addresses are derived from a release's MusicBrainz ids rather than
+/// looked up, so any fixture whose release document says the archive holds a
+/// front image sends the commit to one of those addresses. This answers them on
+/// localhost. An address no test registered answers 404 — the archive holding
+/// nothing there, which is both what an unregistered release means and what
+/// keeps the rest of the suite from reaching the real service.
+pub struct CoverArtArchive {
+    routes: std::sync::Mutex<std::collections::HashMap<String, (u16, Vec<u8>)>>,
+}
+
+impl CoverArtArchive {
+    /// Serve `bytes` as a MusicBrainz release's front image, at both the full
+    /// and the thumbnail address.
+    pub fn serve_front(&self, release_id: &str, bytes: Vec<u8>) {
+        self.answer_front(release_id, 200, bytes);
+    }
+
+    /// Answer `status` for a release's front image, for a test driving the
+    /// download's failure path.
+    pub fn fail_front(&self, release_id: &str, status: u16) {
+        self.answer_front(release_id, status, Vec::new());
+    }
+
+    fn answer_front(&self, release_id: &str, status: u16, bytes: Vec<u8>) {
+        let mut routes = self.routes.lock().expect("archive routes mutex poisoned");
+        for suffix in ["front", "front-250"] {
+            routes.insert(
+                format!("/release/{release_id}/{suffix}"),
+                (status, bytes.clone()),
+            );
+        }
+    }
+}
+
+/// The binary's stand-in archive, started and pointed at on first use.
+pub fn cover_art_archive() -> &'static CoverArtArchive {
+    static ARCHIVE: std::sync::OnceLock<&'static CoverArtArchive> = std::sync::OnceLock::new();
+    ARCHIVE.get_or_init(start_cover_art_archive)
+}
+
+fn start_cover_art_archive() -> &'static CoverArtArchive {
+    use axum::extract::{Request, State};
+    use axum::http::StatusCode;
+
+    let archive: &'static CoverArtArchive = Box::leak(Box::new(CoverArtArchive {
+        routes: std::sync::Mutex::new(std::collections::HashMap::new()),
+    }));
+
+    async fn handler(
+        State(archive): State<&'static CoverArtArchive>,
+        request: Request,
+    ) -> (
+        StatusCode,
+        [(axum::http::HeaderName, &'static str); 1],
+        Vec<u8>,
+    ) {
+        let answer = archive
+            .routes
+            .lock()
+            .expect("archive routes mutex poisoned")
+            .get(request.uri().path())
+            .cloned();
+        let (status, bytes) = answer.unwrap_or((404, Vec::new()));
+        (
+            StatusCode::from_u16(status).expect("a valid stub status"),
+            [(axum::http::header::CONTENT_TYPE, "image/png")],
+            bytes,
+        )
+    }
+
+    // Its own runtime on its own thread: the archive outlives each `#[tokio::test]`
+    // that reaches it, so it cannot live on any one test's runtime.
+    let (address_tx, address_rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("the stub archive's runtime builds");
+        runtime.block_on(async move {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+                .await
+                .expect("the stub archive binds");
+            address_tx
+                .send(
+                    listener
+                        .local_addr()
+                        .expect("the stub archive has an address"),
+                )
+                .expect("the starting thread is waiting for the address");
+            let app = axum::Router::new().fallback(handler).with_state(archive);
+            let _ = axum::serve(listener, app).await;
+        });
+    });
+
+    let address = address_rx.recv().expect("the stub archive starts");
+    bae_core::import::cover_art::set_base_url_for_test(Some(format!("http://{address}")));
+    archive
 }
 
 pub async fn read_cover_image_blob(

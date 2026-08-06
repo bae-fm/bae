@@ -70,7 +70,7 @@ extension ImportSearchFlow {
                 // back re-picks.
                 candidate.releaseDetailBridge = nil
                 candidate.claim = nil
-                candidate.selectedCover = nil
+                candidate.coverPick = nil
             }
         }
 
@@ -149,7 +149,10 @@ extension ImportSearchFlow {
                 // stored pick. The header states it; the commit carries it.
                 candidate.claim = prefetch.claim
                 candidate.identityChoice = prefetch.claim.choice
-                candidate.selectedCover = prefetch.detail.defaultCover
+                // No pick yet: the pane shows the release's own first cover
+                // option through `coverFace`, and a commit with nothing picked
+                // lands that same option from bae-core.
+                candidate.coverPick = nil
                 // The seed arrives from bae-core projected the way the
                 // commit worker maps the release, and already masked for the
                 // claim (an album-level claim blanks the pressing block).
@@ -165,7 +168,7 @@ extension ImportSearchFlow {
                 candidate.identityChoice = .unknown
                 candidate.releaseDetailBridge = nil
                 candidate.claim = nil
-                candidate.selectedCover = nil
+                candidate.coverPick = nil
                 candidate.editValues = albumEdit(from: seed)
                 candidate.exactPressing = nil
                 candidate.mapping = mapping

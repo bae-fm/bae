@@ -18,6 +18,7 @@ use chrono::{DateTime, Utc};
 use crate::db::{Database, DbSourceReleasePayload};
 use crate::discogs::client::DiscogsClient;
 use crate::discogs::DiscogsRelease;
+use crate::import::cover_art::RemoteCover;
 use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
 use crate::import::{
     ImportError, MetadataRef, MetadataSource, ParsedAlbum, PayloadSource, SourcePayload,
@@ -135,22 +136,43 @@ impl ReleasePayloads {
         }
     }
 
+    /// The cover options this release offers, in the order a picker shows
+    /// them.
+    ///
+    /// Both come out of the documents themselves. A MusicBrainz release states
+    /// whether the archive holds a front image for it, and names the release
+    /// group whose album-level image is the other offer; a Discogs release
+    /// carries its cover's URL inside its own document.
+    pub fn covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+        match self.release.source {
+            MetadataSource::MusicBrainz => Ok(crate::import::cover_art::musicbrainz_covers(
+                &self.musicbrainz_anchor()?,
+            )),
+            MetadataSource::Discogs => {
+                Ok(self.discogs_anchor()?.remote_cover().into_iter().collect())
+            }
+        }
+    }
+
+    /// The cover a surface offers first for this release, and therefore the one
+    /// an import that names no other lands. Read off [`Self::covers`] so the
+    /// pane and the commit cannot default to different images.
+    pub fn default_cover(&self) -> Result<Option<RemoteCover>, ImportError> {
+        Ok(self.covers()?.into_iter().next())
+    }
+
     /// The picker's and confirmation pane's display shape.
     pub fn detail(&self) -> Result<ImportSearchReleaseDetail, ImportError> {
+        let covers = self.covers()?;
         match self.release.source {
-            MetadataSource::MusicBrainz => {
-                // The cover options come out of the release document itself —
-                // it states whether the archive holds a front image, and names
-                // the release group whose album-level image is the other
-                // offer. Discogs has no counterpart: a Discogs release carries
-                // its cover inside its own document, which is where
-                // `build_discogs_detail` reads it.
-                let anchor = self.musicbrainz_anchor()?;
-                let covers = crate::import::cover_art::musicbrainz_covers(&anchor);
-                crate::import::search::build_mb_detail(&self.release.id, &anchor, covers)
-            }
+            MetadataSource::MusicBrainz => crate::import::search::build_mb_detail(
+                &self.release.id,
+                &self.musicbrainz_anchor()?,
+                covers,
+            ),
             MetadataSource::Discogs => Ok(crate::import::search::build_discogs_detail(
                 &self.discogs_anchor()?,
+                covers,
             )),
         }
     }

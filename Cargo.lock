@@ -1154,6 +1154,7 @@ dependencies = [
 name = "bae-test-support"
 version = "0.0.0-dev"
 dependencies = [
+ "axum 0.7.9",
  "bae-core",
  "coven",
  "hex",

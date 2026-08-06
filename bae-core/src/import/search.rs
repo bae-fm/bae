@@ -421,6 +421,7 @@ pub struct ImportReleasePrefetch {
 /// release, for the picker and the confirmation pane.
 pub(crate) fn build_discogs_detail(
     release: &crate::discogs::DiscogsRelease,
+    cover_art: Vec<RemoteCover>,
 ) -> ImportSearchReleaseDetail {
     let processed = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
 
@@ -451,11 +452,6 @@ pub(crate) fn build_discogs_detail(
             }
         })
         .collect();
-
-    let mut cover_art = Vec::new();
-    if let Some(cover) = release.remote_cover() {
-        cover_art.push(cover);
-    }
 
     let year = release.year.map(|y| y as i32);
     let artist = release

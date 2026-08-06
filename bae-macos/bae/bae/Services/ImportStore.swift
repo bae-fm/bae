@@ -70,7 +70,7 @@ struct ReleaseQueueSection: Identifiable {
 /// Session state for the import flow. Mixed-writer: core drives event-driven
 /// fields — scan/identify state through the import-candidate projections, the
 /// triage queue through its own projection, preview state through the shared
-/// event dispatcher — while views drive user-set fields (mode, selectedCover)
+/// event dispatcher — while views drive user-set fields (mode, coverPick)
 /// via `mutateCandidate(forKey:_:)`. The single-writer rule applies per field,
 /// not per store.
 ///

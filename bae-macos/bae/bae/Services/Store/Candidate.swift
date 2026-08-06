@@ -124,7 +124,17 @@ struct Candidate: Equatable, Identifiable {
     /// before the pick or the tag read it starts has come back.
     var identity: ImportIdentity = .release
     var error: String?
-    var selectedCover: BridgeCoverChoice?
+    /// The cover the *user* picked, `nil` while they have picked none. Only a
+    /// pick crosses to the commit: with none, bae-core lands the release's own
+    /// first cover option — the one ``coverFace`` is already showing — so an
+    /// untouched pane must not send that option back as if it had been chosen.
+    var coverPick: BridgeCoverChoice?
+
+    /// The cover the pane shows: the user's pick, else the release's own first
+    /// option, which is what an untouched commit lands.
+    var coverFace: BridgeCoverChoice? {
+        coverPick ?? releaseDetailBridge?.defaultCover
+    }
     var search: CandidateSearchState = .init()
     /// Extracted signals (disc ID, barcodes, classified text), `nil` until the
     /// first extraction snapshot. The search UI surfaces these and feeds the
@@ -189,7 +199,7 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatuses = existing.libraryStatuses
         copy.identity = existing.identity
         copy.error = existing.error
-        copy.selectedCover = existing.selectedCover
+        copy.coverPick = existing.coverPick
         copy.search = existing.search
         copy.signals = existing.signals
         copy.signalsToolbar = existing.signalsToolbar

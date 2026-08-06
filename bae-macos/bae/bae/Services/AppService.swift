@@ -17,7 +17,7 @@ final class AppService: BaeKit.AppService {
     /// Import-flow session state — folder candidates and the preview audio
     /// state. Mixed-writer: core drives event-driven fields (scan/identify state
     /// via the projection registry, preview state via the shared event
-    /// dispatcher); views drive user-set fields (mode, selectedCover).
+    /// dispatcher); views drive user-set fields (mode, coverPick).
     let importStore: ImportStore
 
     /// Navigation and selection state — which album is expanded, which release

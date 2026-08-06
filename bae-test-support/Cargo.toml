@@ -21,6 +21,9 @@ path = "src/lib.rs"
 # below build on. bae-core dev-depends back on this crate; Cargo permits that
 # cycle because it runs only through dev-dependencies.
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+# The local stand-in for the Cover Art Archive: cover addresses are derived, so
+# a test that wants bytes at one has to answer it.
+axum = "0.7"
 coven = { workspace = true, features = ["test-utils"] }
 hex = "0.4"
 # For synthesizing a folder-cover image in tests that need a release with art.
