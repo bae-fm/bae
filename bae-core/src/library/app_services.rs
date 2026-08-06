@@ -307,7 +307,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+            crate::import::cover_art::RemoteImageCache::for_test(),
         );
 
         // A device-less output, not the real cpal sink: this test drives the

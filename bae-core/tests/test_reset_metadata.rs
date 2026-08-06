@@ -53,7 +53,7 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     (library_manager, database, temp_dir)
 }
@@ -177,6 +177,10 @@ fn mb_release_json(
                 .collect(),
         }],
         relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     };
     serde_json::to_string(&response).unwrap()
 }

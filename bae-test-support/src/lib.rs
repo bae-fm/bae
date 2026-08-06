@@ -459,7 +459,7 @@ pub fn setup_fresh_library(
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
 
     (lm, tmp)

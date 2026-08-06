@@ -131,7 +131,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+        crate::import::cover_art::RemoteImageCache::for_test(),
     );
     (manager, tmp)
 }

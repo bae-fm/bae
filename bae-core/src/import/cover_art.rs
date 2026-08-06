@@ -1,5 +1,4 @@
 use crate::import::{ImportError, MetadataSource};
-use crate::network::upgrade_to_https;
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
@@ -8,14 +7,72 @@ use lru::LruCache;
 use reqwest::header::{
     HeaderMap, CACHE_CONTROL, ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
 };
-use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
-use tokio::sync::{OnceCell, Semaphore};
-use tracing::{debug, warn};
+use tracing::debug;
 
-/// A remote cover art option from an external source.
+/// Where the Cover Art Archive serves images from. Every path under it is fixed
+/// by the entity's MusicBrainz id, so an image's address is knowable without
+/// asking the archive anything.
+#[cfg(not(any(test, feature = "test-utils")))]
+const COVER_ART_ARCHIVE: &str = "https://coverartarchive.org";
+
+#[cfg(not(any(test, feature = "test-utils")))]
+fn archive_base() -> String {
+    COVER_ART_ARCHIVE.to_string()
+}
+
+/// The redirectable form of [`archive_base`], compiled only into test builds —
+/// the same seam the MusicBrainz client carries, for the same reason: the
+/// addresses are built by free functions over a fixed host, so the override is
+/// a static and production pays neither the lock nor the branch.
+///
+/// Its default is a port nothing listens on, not the live archive: a cover
+/// address is derived from a release id, so any fixture whose release document
+/// says the archive holds a front image would otherwise reach the real service.
+/// A test that wants bytes served answers them itself through
+/// [`set_base_url_for_test`].
+#[cfg(any(test, feature = "test-utils"))]
+fn archive_base() -> String {
+    BASE_URL_OVERRIDE
+        .lock()
+        .expect("Cover Art Archive base URL mutex poisoned")
+        .clone()
+        .unwrap_or_else(|| UNSERVED_ARCHIVE.to_string())
+}
+
+/// Where a test build's cover addresses point until a test says otherwise.
+#[cfg(any(test, feature = "test-utils"))]
+const UNSERVED_ARCHIVE: &str = "http://127.0.0.1:9";
+
+#[cfg(any(test, feature = "test-utils"))]
+static BASE_URL_OVERRIDE: Mutex<Option<String>> = Mutex::new(None);
+
+/// Point every Cover Art Archive address at `url` (`None` restores the
+/// unserved default), so a test can answer image requests from a local server.
+/// Process-wide, like the MusicBrainz base it mirrors.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn set_base_url_for_test(url: Option<String>) {
+    *BASE_URL_OVERRIDE
+        .lock()
+        .expect("Cover Art Archive base URL mutex poisoned") = url;
+}
+
+/// Where cover addresses currently point, for a test asserting on one it did
+/// not build itself.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn archive_base_for_test() -> String {
+    archive_base()
+}
+
+/// A remote cover art option from an external source: where the full image and
+/// its thumbnail live, and which service is offering them.
+///
+/// This is an *address*, not a promise. For the Cover Art Archive it is derived
+/// from the entity id; whether the archive actually serves bytes there is
+/// answered by fetching it, and — for a MusicBrainz release — stated in advance
+/// by the release document's own `cover-art-archive` block.
 ///
 /// `Serialize`/`Deserialize`: reachable from `MetadataResult::cover_art`, which
 /// `identify::TerminalVerdict` persists.
@@ -27,14 +84,66 @@ pub struct RemoteCover {
     pub source: MetadataSource,
 }
 
+impl RemoteCover {
+    /// The archive's front image for a MusicBrainz release — this pressing's
+    /// own cover.
+    pub fn musicbrainz_release(release_id: &str) -> Self {
+        Self::cover_art_archive("release", release_id, |label| label.to_string())
+    }
+
+    /// The archive's front image for a MusicBrainz release group — the cover
+    /// the album is represented by, which is some release in the group's and
+    /// may not be this pressing's.
+    pub fn musicbrainz_release_group(release_group_id: &str) -> Self {
+        Self::cover_art_archive("release-group", release_group_id, |label| {
+            format!("{label} (Album)")
+        })
+    }
+
+    fn cover_art_archive(entity: &str, id: &str, label: impl FnOnce(&str) -> String) -> Self {
+        let base = archive_base();
+        Self {
+            url: format!("{base}/{entity}/{id}/front"),
+            thumbnail_url: format!("{base}/{entity}/{id}/front-250"),
+            label: label(MetadataSource::MusicBrainz.cover_source_label()),
+            source: MetadataSource::MusicBrainz,
+        }
+    }
+}
+
+/// The cover options a MusicBrainz release document offers, in the order the
+/// picker shows them: the pressing's own front image first, then the album's.
+///
+/// The pressing's is offered only when the document says the archive serves one
+/// — that block is the release's own statement, so nothing has to be asked. The
+/// album's has no such statement anywhere in MusicBrainz's data: a release group
+/// document carries no `cover-art-archive` block, so the address is offered and
+/// the fetch is what answers whether the archive has an image there.
+pub fn musicbrainz_covers(response: &crate::musicbrainz::MbReleaseResponse) -> Vec<RemoteCover> {
+    let mut covers = Vec::new();
+    if response.has_front_cover() {
+        covers.push(RemoteCover::musicbrainz_release(&response.id));
+    }
+    if let Some(group) = response.release_group.as_ref() {
+        covers.push(RemoteCover::musicbrainz_release_group(&group.id));
+    }
+    covers
+}
+
+/// Append `cover` unless the list already offers the same image. Two identity
+/// rows on one release can name the same archive entity, and the picker should
+/// show that image once.
+pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
+    if !covers.iter().any(|existing| existing.url == cover.url) {
+        covers.push(cover);
+    }
+}
+
 /// Max retries for transient HTTP failures (network errors, 5xx responses).
 const MAX_RETRIES: u32 = 3;
 
 /// Base delay between retries (doubles each attempt: 1s, 2s, 4s).
 const RETRY_BASE_DELAY: Duration = Duration::from_secs(1);
-
-const CAA_LOOKUP_CACHE_CAPACITY: usize = 128;
-const CAA_MAX_CONCURRENT_LOOKUPS: usize = 4;
 
 /// Capacity for the remote-image byte LRU. Sized for a typical session; a miss
 /// costs one HTTP fetch.
@@ -50,11 +159,6 @@ const DEFAULT_REMOTE_IMAGE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 /// arithmetic inside `chrono::Duration`'s range.
 const MAX_REMOTE_IMAGE_TTL: Duration = Duration::from_secs(365 * 24 * 60 * 60);
 
-/// Outer `None` means the lookup failed and must not be cached; inner `None`
-/// means CAA returned a cacheable no-cover result.
-type CaaLookup = Option<Option<RemoteCover>>;
-type CaaLookupCell = Arc<OnceCell<CaaLookup>>;
-
 fn image_download_client() -> Result<reqwest::Client, ImportError> {
     // The build error is stored as a String because `reqwest::Client`'s builder
     // error is not `Clone` and the cell is cloned on every read; each call
@@ -68,414 +172,6 @@ fn image_download_client() -> Result<reqwest::Client, ImportError> {
         })
         .clone()
         .map_err(|detail| ImportError::CoverArt { detail })
-}
-
-/// Cover Art Archive lookup client for release/release-group cover selection.
-#[derive(Clone)]
-pub struct CoverArtArchiveClient {
-    http: reqwest::Client,
-    lookup_cache: Arc<Mutex<LruCache<String, Option<RemoteCover>>>>,
-    in_flight: Arc<Mutex<HashMap<String, CaaLookupCell>>>,
-    lookup_limiter: Arc<Semaphore>,
-    retry_base_delay: Duration,
-    /// When set, any lookup that misses the cache panics instead of hitting the
-    /// network. Hermetic tests inject such a client (via [`hermetic`]) so an
-    /// unseeded cover-art lookup fails loud rather than silently reaching the
-    /// live Cover Art Archive and returning "no cover".
-    #[cfg(feature = "test-utils")]
-    forbid_network: bool,
-}
-
-impl CoverArtArchiveClient {
-    pub fn new() -> Self {
-        Self::with_retry_base_delay(RETRY_BASE_DELAY)
-    }
-
-    fn with_retry_base_delay(retry_base_delay: Duration) -> Self {
-        let http = crate::util::http::client_builder()
-            .build()
-            .expect("Failed to create HTTP client for Cover Art Archive");
-        Self {
-            http,
-            lookup_cache: Arc::new(Mutex::new(LruCache::new(
-                NonZeroUsize::new(CAA_LOOKUP_CACHE_CAPACITY)
-                    .expect("CAA_LOOKUP_CACHE_CAPACITY > 0"),
-            ))),
-            in_flight: Arc::new(Mutex::new(HashMap::new())),
-            lookup_limiter: Arc::new(Semaphore::new(CAA_MAX_CONCURRENT_LOOKUPS)),
-            retry_base_delay,
-            #[cfg(feature = "test-utils")]
-            forbid_network: false,
-        }
-    }
-
-    /// The base backoff this client retries transient failures with (doubling
-    /// each attempt). The import service reads it to give the cover-bytes
-    /// download the same retry cadence as this client's lookups, so a test that
-    /// injects a near-zero delay controls both paths through one seam.
-    ///
-    /// Gated with `import::service`, its only caller: the import pipeline is
-    /// desktop-only, so on mobile this accessor is dead and `dead_code` denies it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn retry_base_delay(&self) -> Duration {
-        self.retry_base_delay
-    }
-
-    /// A client for hermetic tests: any cover-art lookup that misses the cache
-    /// panics rather than reaching the live Cover Art Archive, so an accidental
-    /// unseeded fetch is a test failure instead of a silent network call.
-    #[cfg(feature = "test-utils")]
-    pub fn hermetic() -> Self {
-        let mut client = Self::with_retry_base_delay(Duration::from_millis(0));
-        client.forbid_network = true;
-        client
-    }
-
-    /// Pre-populate the lookup cache for a release and its release group, so a
-    /// hermetic test can drive the prefetch path without the network. `None` is
-    /// "no cover art" — the natural answer for a synthetic test release.
-    #[cfg(feature = "test-utils")]
-    pub fn seed_lookup(
-        &self,
-        release_id: Option<&str>,
-        release_group_id: Option<&str>,
-        cover: Option<RemoteCover>,
-    ) {
-        let mut cache = self
-            .lookup_cache
-            .lock()
-            .expect("Cover Art Archive lookup cache mutex poisoned");
-        if let Some(id) = release_id {
-            cache.put(lookup_cache_key("release", id), cover.clone());
-        }
-        if let Some(id) = release_group_id {
-            cache.put(lookup_cache_key("release-group", id), cover);
-        }
-    }
-
-    /// Fetch cover art candidates from Cover Art Archive for a MusicBrainz
-    /// release and release group.
-    pub async fn fetch_candidates(
-        &self,
-        release_id: Option<&str>,
-        release_group_id: Option<&str>,
-    ) -> Vec<RemoteCover> {
-        let mut covers = Vec::new();
-        if let Some(rid) = release_id {
-            if let Some(cover) = self.fetch_release(rid).await {
-                push_unique_cover(&mut covers, cover);
-            }
-        }
-        if let Some(rg_id) = release_group_id {
-            if let Some(cover) = self.fetch_release_group(rg_id).await {
-                push_unique_cover(&mut covers, cover);
-            }
-        }
-        covers
-    }
-
-    /// Cover art from the Cover Art Archive for a MusicBrainz release. Retries
-    /// transient failures (network errors, 5xx), but never a 404 (no cover art
-    /// exists) or another client error.
-    pub async fn fetch_release(&self, release_id: &str) -> Option<RemoteCover> {
-        self.lookup_release(release_id).await.flatten()
-    }
-
-    /// Cover art from the Cover Art Archive for a MusicBrainz release group. This
-    /// endpoint returns the community-selected cover for the album as a concept,
-    /// which may differ from any specific release's cover.
-    pub async fn fetch_release_group(&self, release_group_id: &str) -> Option<RemoteCover> {
-        self.lookup_release_group(release_group_id).await.flatten()
-    }
-
-    /// The archive's answer for a release, with "it never answered" kept apart
-    /// from "it answered and has no cover" — the outer `None` is the failure.
-    ///
-    /// Only the second is a fact about the release, so only the second may be
-    /// stored: a row saying "no cover" written because the network was down
-    /// would hide a cover the archive does have for as long as the row lives.
-    /// [`Self::fetch_release`] flattens the two for the callers that show
-    /// whatever is there and move on.
-    pub async fn lookup_release(&self, release_id: &str) -> Option<Option<RemoteCover>> {
-        self.lookup_entity(
-            "release",
-            "release",
-            release_id,
-            MetadataSource::MusicBrainz.cover_source_label().to_string(),
-        )
-        .await
-    }
-
-    /// The archive's answer for a release group, as [`Self::lookup_release`].
-    pub async fn lookup_release_group(
-        &self,
-        release_group_id: &str,
-    ) -> Option<Option<RemoteCover>> {
-        self.lookup_entity(
-            "release-group",
-            "release group",
-            release_group_id,
-            format!(
-                "{} (Album)",
-                MetadataSource::MusicBrainz.cover_source_label()
-            ),
-        )
-        .await
-    }
-}
-
-impl Default for CoverArtArchiveClient {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
-    if !covers.iter().any(|existing| existing.url == cover.url) {
-        covers.push(cover);
-    }
-}
-
-/// Key one CAA entity's cover lookup. The seeding seam and the fetch path both
-/// go through it, so a seeded lookup is the one the fetch reads.
-fn lookup_cache_key(caa_entity: &str, id: &str) -> String {
-    format!("{caa_entity}:{id}")
-}
-
-impl CoverArtArchiveClient {
-    async fn lookup_entity(
-        &self,
-        caa_entity: &str,
-        log_entity: &str,
-        id: &str,
-        label: String,
-    ) -> Option<Option<RemoteCover>> {
-        self.fetch_url(
-            lookup_cache_key(caa_entity, id),
-            format!("https://coverartarchive.org/{caa_entity}/{id}"),
-            log_entity,
-            id,
-            label,
-        )
-        .await
-    }
-
-    async fn fetch_url(
-        &self,
-        cache_key: String,
-        json_url: String,
-        entity: &str,
-        id: &str,
-        label: String,
-    ) -> Option<Option<RemoteCover>> {
-        if let Some(cached) = self
-            .lookup_cache
-            .lock()
-            .expect("Cover Art Archive lookup cache mutex poisoned")
-            .get(&cache_key)
-            .cloned()
-        {
-            return Some(cached);
-        }
-
-        #[cfg(feature = "test-utils")]
-        assert!(
-            !self.forbid_network,
-            "hermetic test made a live Cover Art Archive request for {json_url} \
-             ({entity} {id}); seed the lookup cache instead of hitting the network"
-        );
-
-        let cell = {
-            let mut inflight = self
-                .in_flight
-                .lock()
-                .expect("Cover Art Archive in-flight map mutex poisoned");
-            inflight
-                .entry(cache_key.clone())
-                .or_insert_with(|| Arc::new(OnceCell::new()))
-                .clone()
-        };
-
-        let owned_id = id.to_string();
-        let entity = entity.to_string();
-        let base_delay = self.retry_base_delay;
-        cell.get_or_init(|| async move {
-            let lookup = match self.lookup_limiter.acquire().await {
-                Ok(permit) => {
-                    let _permit = permit;
-                    fetch_cover_art_from_url(
-                        &self.http, json_url, &entity, &owned_id, label, base_delay,
-                    )
-                    .await
-                }
-                Err(e) => {
-                    warn!("Cover Art Archive lookup limiter closed: {}", e);
-                    None
-                }
-            };
-            if let Some(cache_value) = &lookup {
-                self.lookup_cache
-                    .lock()
-                    .expect("Cover Art Archive lookup cache mutex poisoned")
-                    .put(cache_key.clone(), cache_value.clone());
-            }
-            self.in_flight
-                .lock()
-                .expect("Cover Art Archive in-flight map mutex poisoned")
-                .remove(&cache_key);
-            lookup
-        })
-        .await
-        .clone()
-    }
-}
-
-/// Shared implementation for fetching cover art from a Cover Art Archive URL.
-async fn fetch_cover_art_from_url(
-    client: &reqwest::Client,
-    json_url: String,
-    entity: &str,
-    id: &str,
-    label: String,
-    base_delay: Duration,
-) -> CaaLookup {
-    debug!("Fetching cover art from Cover Art Archive: {}", json_url);
-
-    match retry_classified(
-        MAX_RETRIES + 1,
-        "Cover Art Archive fetch",
-        |attempt| exponential_backoff(base_delay, attempt),
-        || async {
-            match client.get(&json_url).send().await {
-                Ok(response) => {
-                    if response.status().is_success() {
-                        ClassifiedAttempt::Done(
-                            parse_cover_art_response(response, &json_url, &label).await,
-                        )
-                    } else if response.status() == reqwest::StatusCode::NOT_FOUND {
-                        debug!(
-                            "No cover art found in Cover Art Archive for {} {}",
-                            entity, id
-                        );
-                        ClassifiedAttempt::Done(Some(None))
-                    } else if is_transient_status(response.status()) {
-                        ClassifiedAttempt::Retry(format!("status {}", response.status()))
-                    } else {
-                        // A non-transient client error (400, 403, ...) — don't retry.
-                        debug!(
-                            "Cover Art Archive returned status {} for {} {}",
-                            response.status(),
-                            entity,
-                            id
-                        );
-                        ClassifiedAttempt::Done(None)
-                    }
-                }
-                Err(e) if is_permanent_request_error(&e) => {
-                    ClassifiedAttempt::Permanent(format!("Cover Art Archive fetch failed: {}", e))
-                }
-                Err(e) => ClassifiedAttempt::Retry(e.to_string()),
-            }
-        },
-    )
-    .await
-    {
-        Ok(lookup) => lookup,
-        Err(e) => {
-            warn!("Cover Art Archive fetch failed for {}: {}", json_url, e);
-            None
-        }
-    }
-}
-
-/// Parse the Cover Art Archive JSON response, extracting the best image URL.
-async fn parse_cover_art_response(
-    response: reqwest::Response,
-    url: &str,
-    label: &str,
-) -> CaaLookup {
-    let json = match response.json::<serde_json::Value>().await {
-        Ok(json) => json,
-        Err(e) => {
-            warn!(
-                "Cover Art Archive returned malformed JSON from {}: {}",
-                url, e
-            );
-            return None;
-        }
-    };
-    match select_cover_candidate(&json, label) {
-        Some(cover) => Some(Some(cover)),
-        None => {
-            debug!(
-                "Cover Art Archive JSON from {} had no usable cover image",
-                url
-            );
-            Some(None)
-        }
-    }
-}
-
-/// Pick the best image URL from a Cover Art Archive JSON body: the front cover,
-/// else the first image. Pure (no I/O), so the selection rules are testable
-/// without a live response.
-fn select_cover_candidate(json: &serde_json::Value, label: &str) -> Option<RemoteCover> {
-    let images = json.get("images").and_then(|i| i.as_array())?;
-
-    for image in images {
-        if image.get("front").and_then(|f| f.as_bool()) == Some(true) {
-            if let Some(cover) = extract_cover_candidate(image, label) {
-                return Some(cover);
-            }
-        }
-    }
-
-    // Fall back to the first image with a usable URL.
-    images
-        .iter()
-        .find_map(|image| extract_cover_candidate(image, label))
-}
-
-/// Extract the selected image URL and thumbnail from a Cover Art Archive image entry.
-fn extract_cover_candidate(image: &serde_json::Value, label: &str) -> Option<RemoteCover> {
-    let url = extract_image_url(image)?;
-    let thumbnail_url = extract_thumbnail_url(image, &url);
-    Some(RemoteCover {
-        url,
-        thumbnail_url,
-        label: label.to_string(),
-        source: MetadataSource::MusicBrainz,
-    })
-}
-
-/// Extract the image URL from a Cover Art Archive image entry.
-fn extract_image_url(image: &serde_json::Value) -> Option<String> {
-    let (key, url) = find_url_in(image, &["image", "thumb", "small"])?;
-    debug!("Using cover art ({}): {}", key, url);
-    Some(url)
-}
-
-/// Extract the thumbnail URL from a Cover Art Archive image entry.
-fn extract_thumbnail_url(image: &serde_json::Value, image_url: &str) -> String {
-    if let Some(thumbnails) = image.get("thumbnails") {
-        if let Some((_key, url)) = find_url_in(thumbnails, &["250", "small", "500", "large"]) {
-            return url;
-        }
-    }
-    if let Some((_key, url)) = find_url_in(image, &["thumb", "small"]) {
-        return url;
-    }
-    debug!("CAA image {image_url} has no thumbnail URL; using image URL");
-    image_url.to_string()
-}
-
-fn find_url_in<'a>(value: &serde_json::Value, keys: &'a [&'a str]) -> Option<(&'a str, String)> {
-    for key in keys {
-        if let Some(url) = value.get(*key).and_then(|v| v.as_str()) {
-            return Some((*key, upgrade_to_https(url)));
-        }
-    }
-    None
 }
 
 /// One remote image's bytes and the token identifying this exact content: the
@@ -595,8 +291,14 @@ impl CachedImage {
     }
 }
 
-/// What one image request returned: a body, or a 304 saying the bytes already
-/// held are still current.
+/// What one image request returned: a body, a 304 saying the bytes already held
+/// are still current, or a 404 saying the host serves no image at this address.
+///
+/// The third is an answer, not a failure. Cover addresses are derived, not
+/// discovered — the Cover Art Archive's path for a release group is knowable
+/// without knowing whether the archive has an image there — so "there is
+/// nothing here" is the ordinary reply to an address that turned out empty, and
+/// a caller that needs bytes is the one that turns it into an error.
 enum ImageResponse {
     Body {
         bytes: Vec<u8>,
@@ -606,6 +308,7 @@ enum ImageResponse {
     NotModified {
         freshness: Freshness,
     },
+    Nothing,
 }
 
 /// The session cache of remote image bytes, keyed by URL, with HTTP freshness:
@@ -621,31 +324,51 @@ enum ImageResponse {
 pub struct RemoteImageCache {
     clock: ClockRef,
     entries: Arc<Mutex<LruCache<String, CachedImage>>>,
+    /// The base backoff a transient download failure is retried with, doubling
+    /// each attempt. A test builds the cache with a near-zero one so a fetch
+    /// that is meant to fail does not sleep the real 1s + 2s + 4s.
+    retry_base_delay: Duration,
 }
 
 impl RemoteImageCache {
     pub fn new(clock: ClockRef) -> Self {
+        Self::with_retry_base_delay(clock, RETRY_BASE_DELAY)
+    }
+
+    /// A cache whose downloads retry immediately, so a test whose fetch is
+    /// meant to fail does not sleep the real 1s + 2s + 4s of backoff. Its clock
+    /// is the system one: nothing a test asserts turns on image freshness, and
+    /// a test that does exercise it builds the cache through [`Self::new`] with
+    /// a clock of its own.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn for_test() -> Self {
+        Self::with_retry_base_delay(
+            std::sync::Arc::new(coven::SystemClock),
+            Duration::from_millis(1),
+        )
+    }
+
+    fn with_retry_base_delay(clock: ClockRef, retry_base_delay: Duration) -> Self {
         Self {
             clock,
             entries: Arc::new(Mutex::new(LruCache::new(
                 NonZeroUsize::new(REMOTE_IMAGE_CACHE_CAPACITY)
                     .expect("REMOTE_IMAGE_CACHE_CAPACITY > 0"),
             ))),
+            retry_base_delay,
         }
     }
 
     /// Bytes for a remote image URL, served from the cache while fresh and
     /// revalidated once stale. Retries transient failures (network errors, 5xx)
     /// up to `MAX_RETRIES` times.
-    pub async fn fetch(&self, url: &str) -> Result<RemoteImage, ImportError> {
-        self.fetch_with_backoff(url, RETRY_BASE_DELAY).await
-    }
-
-    pub(crate) async fn fetch_with_backoff(
-        &self,
-        url: &str,
-        base_delay: Duration,
-    ) -> Result<RemoteImage, ImportError> {
+    ///
+    /// `Ok(None)` is the host answering that it serves no image at this address
+    /// — the reply a derived cover address gets when the archive holds nothing
+    /// for that entity. A caller that requires the bytes says so itself with
+    /// [`Self::fetch_required`].
+    pub async fn fetch(&self, url: &str) -> Result<Option<RemoteImage>, ImportError> {
+        let base_delay = self.retry_base_delay;
         let now = self.clock.now();
         let cached = self
             .entries
@@ -657,7 +380,7 @@ impl RemoteImageCache {
         let stale = match cached {
             Some(entry) if entry.is_fresh(now) => {
                 debug!("Remote image cache hit for {url}");
-                return Ok(entry.to_remote_image());
+                return Ok(Some(entry.to_remote_image()));
             }
             Some(entry) => {
                 debug!("Revalidating stale remote image {url}");
@@ -678,6 +401,10 @@ impl RemoteImageCache {
         .await?;
 
         let entry = match (response, stale) {
+            (ImageResponse::Nothing, _) => {
+                debug!("No image is served at {url}");
+                return Ok(None);
+            }
             (
                 ImageResponse::Body {
                     bytes,
@@ -705,7 +432,16 @@ impl RemoteImageCache {
             .lock()
             .expect("remote image cache mutex poisoned")
             .put(url.to_string(), entry);
-        Ok(image)
+        Ok(Some(image))
+    }
+
+    /// Bytes for an image the caller cannot proceed without — a cover the user
+    /// picked, or one a release document says the archive holds. An address
+    /// that serves nothing is a failure here, named as one.
+    pub(crate) async fn fetch_required(&self, url: &str) -> Result<RemoteImage, ImportError> {
+        self.fetch(url).await?.ok_or_else(|| ImportError::CoverArt {
+            detail: format!("no image is served at {url}"),
+        })
     }
 }
 
@@ -721,6 +457,9 @@ pub(crate) async fn download_image_bytes(
             content_type,
             freshness: _,
         } => Ok((bytes, content_type)),
+        ImageResponse::Nothing => Err(ImportError::CoverArt {
+            detail: format!("no image is served at {image_url}"),
+        }),
         ImageResponse::NotModified { .. } => Err(ImportError::CoverArt {
             detail: format!("{image_url} answered 304 to an unconditional request"),
         }),
@@ -775,6 +514,8 @@ async fn send_image_request(
                     Ok(body) => ClassifiedAttempt::Done(body),
                     Err(e) => ClassifiedAttempt::Permanent(e),
                 }
+            } else if response.status() == reqwest::StatusCode::NOT_FOUND {
+                ClassifiedAttempt::Done(ImageResponse::Nothing)
             } else if is_transient_status(response.status()) {
                 ClassifiedAttempt::Retry(ImportError::CoverArt {
                     detail: format!("Image download failed with status {}", response.status()),
@@ -827,67 +568,30 @@ async fn read_image_response(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
+    /// The archive's addresses are derived from the entity id alone: the
+    /// release's own front image, and the album's, at fixed paths with a
+    /// 250px thumbnail beside each.
     #[test]
-    fn select_cover_candidate_prefers_front_then_first() {
-        // A front cover wins even when it isn't first in the list.
-        let body = json!({
-            "images": [
-                { "front": false, "image": "https://caa.example/back.jpg" },
-                {
-                    "front": true,
-                    "image": "https://caa.example/front.jpg",
-                    "thumbnails": {
-                        "250": "https://caa.example/front-250.jpg",
-                        "500": "https://caa.example/front-500.jpg"
-                    }
-                },
-            ]
-        });
-        let cover = select_cover_candidate(&body, "Cover Art Archive").unwrap();
-        assert_eq!(cover.url, "https://caa.example/front.jpg");
-        assert_eq!(cover.thumbnail_url, "https://caa.example/front-250.jpg");
-        assert_eq!(cover.label, "Cover Art Archive");
-        assert_eq!(cover.source, MetadataSource::MusicBrainz);
+    fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
+        let base = archive_base();
 
-        // With no front cover, the first image is the fallback.
-        let body = json!({
-            "images": [
-                { "front": false, "image": "https://caa.example/a.jpg" },
-                { "front": false, "image": "https://caa.example/b.jpg" },
-            ]
-        });
-        let cover = select_cover_candidate(&body, "Cover Art Archive").unwrap();
-        assert_eq!(cover.url, "https://caa.example/a.jpg");
-        assert_eq!(cover.thumbnail_url, "https://caa.example/a.jpg");
-
-        // No images array / empty list means nothing to select.
-        assert!(select_cover_candidate(&json!({}), "Cover Art Archive").is_none());
-        assert!(select_cover_candidate(&json!({ "images": [] }), "Cover Art Archive").is_none());
-    }
-
-    #[test]
-    fn extract_cover_candidate_walks_keys_and_upgrades_to_https() {
-        // 'image' is preferred over 'thumb'/'small' and http is upgraded.
-        let image = json!({
-            "image": "http://caa.example/full.jpg",
-            "thumbnails": {
-                "small": "http://caa.example/thumb.jpg",
-            },
-        });
-        let cover = extract_cover_candidate(&image, "Cover Art Archive").unwrap();
-        assert_eq!(cover.url, "https://caa.example/full.jpg");
-        assert_eq!(cover.thumbnail_url, "https://caa.example/thumb.jpg");
-
-        // Falls through to 'thumb' then 'small' when 'image' is absent.
+        let release = RemoteCover::musicbrainz_release("rel-1");
+        assert_eq!(release.url, format!("{base}/release/rel-1/front"));
         assert_eq!(
-            extract_image_url(&json!({ "small": "https://caa.example/s.jpg" })),
-            Some("https://caa.example/s.jpg".to_string())
+            release.thumbnail_url,
+            format!("{base}/release/rel-1/front-250")
         );
+        assert_eq!(release.label, "Cover Art Archive");
+        assert_eq!(release.source, MetadataSource::MusicBrainz);
 
-        // An entry with none of the keys yields nothing.
-        assert_eq!(extract_image_url(&json!({ "front": true })), None);
+        let group = RemoteCover::musicbrainz_release_group("rg-1");
+        assert_eq!(group.url, format!("{base}/release-group/rg-1/front"));
+        assert_eq!(
+            group.thumbnail_url,
+            format!("{base}/release-group/rg-1/front-250")
+        );
+        assert_eq!(group.label, "Cover Art Archive (Album)");
     }
 
     #[test]
@@ -973,238 +677,6 @@ mod tests {
             std::future::pending::<()>().await;
         });
         format!("http://{addr}/cover.jpg")
-    }
-
-    #[tokio::test]
-    async fn caa_lookup_does_not_cache_transient_failure() {
-        let success = br#"{
-            "images": [
-                {
-                    "front": true,
-                    "image": "https://caa.example/cover.jpg",
-                    "thumbnails": {
-                        "250": "https://caa.example/thumb.jpg"
-                    }
-                }
-            ]
-        }"#
-        .to_vec();
-        let url = start_mock(vec![
-            (503, vec![]),
-            (503, vec![]),
-            (503, vec![]),
-            (503, vec![]),
-            (200, success),
-        ])
-        .await;
-        let cache_key = "release:transient-cache-test".to_string();
-        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
-        // Inject a near-zero backoff so the four transient failures don't sleep
-        // the real 1s + 2s + 4s.
-        let client = CoverArtArchiveClient::with_retry_base_delay(Duration::from_millis(1));
-
-        assert!(client
-            .fetch_url(
-                cache_key.clone(),
-                url.clone(),
-                "release",
-                "transient-cache-test",
-                label.clone(),
-            )
-            .await
-            .is_none());
-
-        let cover = client
-            .fetch_url(cache_key, url, "release", "transient-cache-test", label)
-            .await
-            .expect("transient failure should not be cached")
-            .expect("the retry answers with a cover");
-
-        assert_eq!(cover.url, "https://caa.example/cover.jpg");
-        assert_eq!(cover.thumbnail_url, "https://caa.example/thumb.jpg");
-    }
-
-    #[tokio::test]
-    async fn caa_lookup_caches_selected_cover() {
-        let first = br#"{
-            "images": [
-                {
-                    "front": true,
-                    "image": "https://caa.example/cover-a.jpg",
-                    "thumbnails": {
-                        "250": "https://caa.example/thumb-a.jpg"
-                    }
-                }
-            ]
-        }"#
-        .to_vec();
-        let second = br#"{
-            "images": [
-                {
-                    "front": true,
-                    "image": "https://caa.example/cover-b.jpg",
-                    "thumbnails": {
-                        "250": "https://caa.example/thumb-b.jpg"
-                    }
-                }
-            ]
-        }"#
-        .to_vec();
-        let url = start_mock(vec![(200, first), (200, second)]).await;
-        let cache_key = "release:cover-cache-test".to_string();
-        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
-        let client = CoverArtArchiveClient::new();
-
-        let first = client
-            .fetch_url(
-                cache_key.clone(),
-                url.clone(),
-                "release",
-                "cover-cache-test",
-                label.clone(),
-            )
-            .await
-            .unwrap()
-            .unwrap();
-        let second = client
-            .fetch_url(cache_key, url, "release", "cover-cache-test", label)
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(first.url, "https://caa.example/cover-a.jpg");
-        assert_eq!(second.url, "https://caa.example/cover-a.jpg");
-    }
-
-    #[tokio::test]
-    async fn caa_lookup_caches_not_found() {
-        let success = br#"{
-            "images": [
-                {
-                    "front": true,
-                    "image": "https://caa.example/cover.jpg",
-                    "thumbnails": {
-                        "250": "https://caa.example/thumb.jpg"
-                    }
-                }
-            ]
-        }"#
-        .to_vec();
-        let url = start_mock(vec![(404, vec![]), (200, success)]).await;
-        let cache_key = "release:not-found-cache-test".to_string();
-        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
-        let client = CoverArtArchiveClient::new();
-
-        // A 404 is the archive answering that it has no cover: an answer, and a
-        // cacheable one, so the second call never reaches the wire.
-        assert_eq!(
-            client
-                .fetch_url(
-                    cache_key.clone(),
-                    url.clone(),
-                    "release",
-                    "not-found-cache-test",
-                    label.clone(),
-                )
-                .await,
-            Some(None)
-        );
-        assert_eq!(
-            client
-                .fetch_url(cache_key, url, "release", "not-found-cache-test", label,)
-                .await,
-            Some(None)
-        );
-    }
-
-    /// Spawn a localhost server that counts every request and always answers
-    /// 200 with `body`. Lets a test assert how many fetches reached the wire.
-    async fn start_counting_mock(
-        hits: Arc<std::sync::atomic::AtomicUsize>,
-        body: Vec<u8>,
-    ) -> String {
-        use axum::extract::State;
-        use axum::http::StatusCode;
-        use std::sync::atomic::Ordering;
-
-        #[derive(Clone)]
-        struct Mock {
-            hits: Arc<std::sync::atomic::AtomicUsize>,
-            body: Arc<Vec<u8>>,
-        }
-
-        async fn handler(State(m): State<Mock>) -> (StatusCode, Vec<u8>) {
-            m.hits.fetch_add(1, Ordering::SeqCst);
-            (StatusCode::OK, (*m.body).clone())
-        }
-
-        let state = Mock {
-            hits,
-            body: Arc::new(body),
-        };
-        let app = axum::Router::new().fallback(handler).with_state(state);
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        tokio::spawn(async move {
-            let _ = axum::serve(listener, app).await;
-        });
-        format!("http://{addr}/cover.jpg")
-    }
-
-    #[tokio::test]
-    async fn caa_lookup_coalesces_concurrent_fetches_into_one_request() {
-        use std::sync::atomic::{AtomicUsize, Ordering};
-
-        let success = br#"{
-            "images": [
-                {
-                    "front": true,
-                    "image": "https://caa.example/cover.jpg",
-                    "thumbnails": {
-                        "250": "https://caa.example/thumb.jpg"
-                    }
-                }
-            ]
-        }"#
-        .to_vec();
-        let hits = Arc::new(AtomicUsize::new(0));
-        let url = start_counting_mock(hits.clone(), success).await;
-        let cache_key = "release:coalesce-test".to_string();
-        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
-        let client = CoverArtArchiveClient::new();
-
-        // Two fetches for the same key, launched together, share the in-flight
-        // OnceCell: only one reaches the wire, and both see the same cover.
-        let (a, b) = tokio::join!(
-            client.fetch_url(
-                cache_key.clone(),
-                url.clone(),
-                "release",
-                "coalesce-test",
-                label.clone(),
-            ),
-            client.fetch_url(
-                cache_key.clone(),
-                url.clone(),
-                "release",
-                "coalesce-test",
-                label.clone(),
-            ),
-        );
-
-        let a = a
-            .flatten()
-            .expect("first concurrent fetch resolves a cover");
-        let b = b
-            .flatten()
-            .expect("second concurrent fetch resolves a cover");
-        assert_eq!(a.url, "https://caa.example/cover.jpg");
-        assert_eq!(a.url, b.url);
-        assert_eq!(
-            hits.load(Ordering::SeqCst),
-            1,
-            "concurrent fetches for one key must hit the wire exactly once"
-        );
     }
 
     /// A clock the test moves by hand, so each fetch sees exactly the instant
@@ -1317,7 +789,7 @@ mod tests {
     }
 
     fn cache_with(clock: Arc<TestClock>) -> RemoteImageCache {
-        RemoteImageCache::new(clock as ClockRef)
+        RemoteImageCache::with_retry_base_delay(clock as ClockRef, Duration::from_millis(1))
     }
 
     #[test]
@@ -1355,13 +827,13 @@ mod tests {
         let clock = TestClock::at(1_700_000_000);
         let cache = cache_with(clock.clone());
 
-        let first = cache.fetch(&url).await.unwrap();
+        let first = cache.fetch_required(&url).await.unwrap();
         assert_eq!(first.bytes, body);
         assert_eq!(first.validator, "\"v1\"");
 
         // Still inside the declared 600s lifetime: served from memory.
         clock.advance(599);
-        let second = cache.fetch(&url).await.unwrap();
+        let second = cache.fetch_required(&url).await.unwrap();
         assert_eq!(second.bytes, body);
         assert_eq!(host.hits(), 1, "a fresh entry must not reach the wire");
     }
@@ -1378,15 +850,15 @@ mod tests {
         let clock = TestClock::at(1_700_000_000);
         let cache = cache_with(clock.clone());
 
-        cache.fetch(&url).await.unwrap();
+        cache.fetch_required(&url).await.unwrap();
         clock.advance(DEFAULT_REMOTE_IMAGE_TTL.as_secs() as i64 - 1);
-        cache.fetch(&url).await.unwrap();
+        cache.fetch_required(&url).await.unwrap();
         assert_eq!(host.hits(), 1, "still fresh under the default TTL");
 
         // Past the default TTL there is no ETag to revalidate with, so the
         // fetch is an unconditional re-download.
         clock.advance(2);
-        let refetched = cache.fetch(&url).await.unwrap();
+        let refetched = cache.fetch_required(&url).await.unwrap();
         assert_eq!(refetched.bytes, body);
         assert_eq!(host.hits(), 2);
         assert_eq!(host.conditional_hits(), 0);
@@ -1404,11 +876,11 @@ mod tests {
         let clock = TestClock::at(1_700_000_000);
         let cache = cache_with(clock.clone());
 
-        cache.fetch(&url).await.unwrap();
+        cache.fetch_required(&url).await.unwrap();
 
         // Stale: revalidated with If-None-Match, answered 304, bytes kept.
         clock.advance(11);
-        let revalidated = cache.fetch(&url).await.unwrap();
+        let revalidated = cache.fetch_required(&url).await.unwrap();
         assert_eq!(revalidated.bytes, body);
         assert_eq!(revalidated.validator, "\"v1\"");
         assert_eq!(host.hits(), 2);
@@ -1417,7 +889,7 @@ mod tests {
         // The 304 restarted the entry's lifetime, so the next read inside it
         // serves from memory instead of revalidating again.
         clock.advance(5);
-        cache.fetch(&url).await.unwrap();
+        cache.fetch_required(&url).await.unwrap();
         assert_eq!(host.hits(), 2, "a 304 must refresh the entry's clock");
     }
 
@@ -1441,12 +913,12 @@ mod tests {
         let clock = TestClock::at(1_700_000_000);
         let cache = cache_with(clock.clone());
 
-        let first = cache.fetch(&url).await.unwrap();
+        let first = cache.fetch_required(&url).await.unwrap();
         assert_eq!(first.validator, "\"v1\"");
 
         host.serve_version(1);
         clock.advance(11);
-        let second = cache.fetch(&url).await.unwrap();
+        let second = cache.fetch_required(&url).await.unwrap();
         assert_eq!(second.bytes, second_body);
         assert_eq!(
             second.validator, "\"v2\"",
@@ -1455,7 +927,7 @@ mod tests {
 
         // The replacement is what the next fresh read serves.
         clock.advance(1);
-        let third = cache.fetch(&url).await.unwrap();
+        let third = cache.fetch_required(&url).await.unwrap();
         assert_eq!(third.bytes, second_body);
         assert_eq!(host.hits(), 2);
     }
@@ -1471,7 +943,7 @@ mod tests {
         .await;
         let cache = cache_with(TestClock::at(1_700_000_000));
 
-        let image = cache.fetch(&url).await.unwrap();
+        let image = cache.fetch_required(&url).await.unwrap();
         assert_eq!(image.validator, crate::util::fs::hash_bytes(&body));
     }
 
@@ -1482,11 +954,11 @@ mod tests {
         let url = start_mock(vec![(200, body.clone()), (200, other)]).await;
         let cache = cache_with(TestClock::at(1_700_000_000));
 
-        let first = cache.fetch(&url).await.unwrap();
+        let first = cache.fetch_required(&url).await.unwrap();
         assert_eq!(first.bytes, body);
         // The second call is served from the session cache: it returns the
         // first body, not the mock's second (different) response.
-        let second = cache.fetch(&url).await.unwrap();
+        let second = cache.fetch_required(&url).await.unwrap();
         assert_eq!(second.bytes, body, "second call should be a cache hit");
     }
 
@@ -1505,9 +977,12 @@ mod tests {
     async fn download_rejects_declared_over_cap_response() {
         let url = start_declared_length_response(crate::util::http::MAX_IMAGE_BYTES + 1).await;
         let cache = cache_with(TestClock::at(1_700_000_000));
-        let result = tokio::time::timeout(std::time::Duration::from_secs(1), cache.fetch(&url))
-            .await
-            .expect("oversized response should fail before reading the body");
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            cache.fetch_required(&url),
+        )
+        .await
+        .expect("oversized response should fail before reading the body");
         let err = result.unwrap_err();
         assert!(
             matches!(&err, ImportError::CoverArt { detail } if detail.contains("too large")),
@@ -1519,21 +994,23 @@ mod tests {
     async fn download_retries_transient_then_succeeds() {
         let body = vec![0xCDu8; 256];
         // A 503 is transient: retried after backoff, then the 200 succeeds.
-        // A near-zero backoff keeps the retry from sleeping the real second.
+        // `for_test` gives the cache a near-zero backoff, so the retry does not
+        // sleep the real second.
         let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
         let cache = cache_with(TestClock::at(1_700_000_000));
-        let image = cache
-            .fetch_with_backoff(&url, Duration::from_millis(1))
-            .await
-            .unwrap();
+        let image = cache.fetch_required(&url).await.unwrap();
         assert_eq!(image.bytes, body);
     }
 
     #[tokio::test]
-    async fn download_does_not_retry_client_error() {
-        // 404 is non-transient: fail without burning the retry budget.
+    async fn a_404_is_no_image_rather_than_a_failed_download() {
+        // 404 is non-transient: answered without burning the retry budget.
         let url = start_mock(vec![(404, vec![])]).await;
         let cache = cache_with(TestClock::at(1_700_000_000));
-        assert!(cache.fetch(&url).await.is_err());
+        // A 404 is the host answering that it serves no image at this address —
+        // an answer, and the one a derived cover address gets when the archive
+        // holds nothing. A caller that needs the bytes names that a failure.
+        assert!(cache.fetch(&url).await.unwrap().is_none());
+        assert!(cache.fetch_required(&url).await.is_err());
     }
 }

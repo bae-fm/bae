@@ -136,10 +136,12 @@ public final class ImageStore: Sendable, Observable {
     private let fetchReleaseImageBytes:
         @Sendable (_ releaseId: String, _ source: BridgeGallerySource)
             async throws -> Data
-    /// Bytes of provider art at a URL, with the validator identifying them.
+    /// Bytes of provider art at a URL, with the validator identifying them, or
+    /// nil when the source serves no image there — cover addresses are derived
+    /// from a release's ids, so an offered one can hold nothing.
     /// Desktop-only; iOS has no import flow and leaves it unwired.
     private let fetchRemoteImage:
-        @Sendable (_ url: String) async throws -> RemoteImageBytes
+        @Sendable (_ url: String) async throws -> RemoteImageBytes?
 
     private let buckets: Buckets
     private let remoteValidators = RemoteValidators()
@@ -153,7 +155,7 @@ public final class ImageStore: Sendable, Observable {
             @escaping @Sendable (String, BridgeGallerySource) async throws ->
             Data = { _, _ in throw ImageStoreUnavailable() },
         fetchRemoteImage:
-            @escaping @Sendable (String) async throws -> RemoteImageBytes = {
+            @escaping @Sendable (String) async throws -> RemoteImageBytes? = {
                 _ in throw ImageStoreUnavailable()
             },
         budgets: ImageStoreBudgets = .default
@@ -177,7 +179,13 @@ public final class ImageStore: Sendable, Observable {
                     )
                 },
                 fetchRemoteImage: {
-                    let image = try await handle.fetchRemoteImageBytes(url: $0)
+                    guard
+                        let image = try await handle.fetchRemoteImageBytes(
+                            url: $0
+                        )
+                    else {
+                        return nil
+                    }
                     return RemoteImageBytes(
                         bytes: image.bytes,
                         validator: image.validator
@@ -337,7 +345,10 @@ public final class ImageStore: Sendable, Observable {
         case .releaseImage(let releaseId, let source):
             return .data(try await fetchReleaseImageBytes(releaseId, source))
         case .remote(let url):
-            let fetched = try await fetchRemoteImage(url)
+            guard let fetched = try await fetchRemoteImage(url) else {
+                logger.debug("No provider art is served at \(url)")
+                return nil
+            }
             dropDecodesPredating(validator: fetched.validator, of: url)
             return .data(fetched.bytes)
         case .localFile(let path):

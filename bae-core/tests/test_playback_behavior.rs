@@ -482,7 +482,7 @@ where
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         runtime_handle.clone(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     configure(&library_manager)?;
 
@@ -638,7 +638,7 @@ impl PlaybackTestFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             runtime_handle.clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
 
         // A real-time capture sink stands in for the audio device: no hardware
@@ -1120,7 +1120,7 @@ impl CueFlacTestFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -3542,7 +3542,7 @@ impl HighSampleRateTestFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -3997,7 +3997,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4092,7 +4092,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4271,7 +4271,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4338,7 +4338,7 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     (library_manager, tokio::runtime::Handle::current(), temp_dir)
 }
@@ -4618,7 +4618,7 @@ impl CloudOnlyPlaybackFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         let master_key = [11u8; 32];
         let cloud = Arc::new(coven::InMemoryCloudHome::new());
@@ -5029,7 +5029,7 @@ impl MultiWindowPlayback {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             runtime_handle.clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
 
         let (playback_handle, capture_stream_rx) =
@@ -6086,7 +6086,7 @@ async fn build_remote_multi_window_template(
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     let cloud = coven::InMemoryCloudHome::new();
     library_manager
@@ -6241,7 +6241,7 @@ impl RemoteMultiWindowPlayback {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             runtime_handle.clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
 
         // Reconnect the template's bucket: the cloned rows name the blob, but the

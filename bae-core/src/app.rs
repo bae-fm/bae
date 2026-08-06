@@ -223,8 +223,7 @@ fn bootstrap_inner(
         diagnostics.clone(),
         runtime.handle().clone(),
         cloudkit_ops,
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        crate::import::cover_art::CoverArtArchiveClient::new(),
+        crate::import::cover_art::RemoteImageCache::new(Arc::clone(&clock)),
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 

@@ -3,7 +3,7 @@
 //! fetching full release details for the import confirmation step.
 
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
-use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
+use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
 use crate::import::types::MetadataSource;
 use crate::import::ImportError;
@@ -124,18 +124,6 @@ pub struct ReleaseTrack {
     pub side: u32,
 }
 
-async fn search_covers(
-    cover_art_archive: &CoverArtArchiveClient,
-    release_ids: &[String],
-) -> Vec<Option<RemoteCover>> {
-    futures::future::join_all(
-        release_ids
-            .iter()
-            .map(|release_id| cover_art_archive.fetch_release(release_id)),
-    )
-    .await
-}
-
 /// Convert a Discogs search result to a MetadataResult.
 pub fn discogs_search_result_to_metadata(
     r: crate::discogs::client::DiscogsSearchResult,
@@ -225,29 +213,26 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
     }
 }
 
-async fn musicbrainz_releases_to_metadata(
-    cover_art_archive: &CoverArtArchiveClient,
-    releases: Vec<SearchRelease>,
-) -> Vec<MetadataResult> {
-    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-    let covers = search_covers(cover_art_archive, &release_ids).await;
-
-    releases
-        .into_iter()
-        .zip(covers)
-        .map(|(r, cover_art)| search_release_to_metadata(r, cover_art))
-        .collect()
-}
-
 /// Search MusicBrainz for metadata matching the provider params.
+///
+/// Each result carries the archive's address for that release's front image.
+/// The search endpoint takes no `inc` and returns no `cover-art-archive` block,
+/// so nothing here states whether the archive holds one — the thumbnail fetch
+/// the result card makes is what answers that, and it is the same request the
+/// card would make anyway.
 pub async fn search_mb(
-    cover_art_archive: &CoverArtArchiveClient,
     params: ReleaseSearchParams,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
     let releases = musicbrainz::search_releases_with_params(&params, priority).await?;
 
-    Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
+    Ok(releases
+        .into_iter()
+        .map(|r| {
+            let cover_art = RemoteCover::musicbrainz_release(&r.id);
+            search_release_to_metadata(r, Some(cover_art))
+        })
+        .collect())
 }
 
 /// Search Discogs for metadata matching the provider params.
@@ -284,7 +269,6 @@ fn mb_error_to_lookup_failure(e: musicbrainz::MusicBrainzError) -> LookupFailure
 /// when the disc is unknown to MB — a settled lookup with no matches, which is
 /// what `NotFound` means on this endpoint too.
 pub async fn lookup_by_discid(
-    cover_art_archive: &CoverArtArchiveClient,
     discid: &str,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, LookupFailure> {
@@ -294,13 +278,17 @@ pub async fn lookup_by_discid(
         Err(e) => return Err(mb_error_to_lookup_failure(e)),
     };
 
-    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-    let covers = search_covers(cover_art_archive, &release_ids).await;
-
     Ok(releases
         .into_iter()
-        .zip(covers)
-        .map(|(r, cover_art)| mb_release_to_metadata(r, cover_art))
+        .map(|r| {
+            // Unlike the search endpoint, this one returns whole release
+            // documents, so each states whether the archive holds a front image
+            // for it.
+            let cover_art = r
+                .has_front_cover()
+                .then(|| RemoteCover::musicbrainz_release(&r.id));
+            mb_release_to_metadata(r, cover_art)
+        })
         .collect())
 }
 
@@ -554,6 +542,10 @@ mod tests {
             label_info: vec![],
             media,
             relations: vec![],
+            cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+                front: true,
+                darkened: false,
+            },
         }
     }
 

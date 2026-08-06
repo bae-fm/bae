@@ -3,11 +3,10 @@
 //!
 //! A release is described by more than its own document: MusicBrainz adds a
 //! release group and, where an editor linked one, a Discogs cross-reference
-//! with its master; the Cover Art Archive answers separately for the pressing
-//! and for the album. [`ReleasePayloads`] is that whole set, and every shape the
+//! with its master. [`ReleasePayloads`] is that whole set, and every shape the
 //! import surfaces need — the picker's detail, the editor's seed, the commit's
-//! `ParsedAlbum`, the tracklist the Ready rule checks — is projected from it
-//! without touching the network.
+//! `ParsedAlbum`, the tracklist the Ready rule checks, the cover options the
+//! archive serves — is projected from it without touching the network.
 //!
 //! Each document is stored under the entity it describes, so two releases that
 //! share a release group or a Discogs master share its row. The set is
@@ -19,7 +18,6 @@ use chrono::{DateTime, Utc};
 use crate::db::{Database, DbSourceReleasePayload};
 use crate::discogs::client::DiscogsClient;
 use crate::discogs::DiscogsRelease;
-use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
 use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
 use crate::import::{
     ImportError, MetadataRef, MetadataSource, ParsedAlbum, PayloadSource, SourcePayload,
@@ -35,8 +33,8 @@ use tracing::warn;
 /// this type cannot exist without the document it is about — which is what
 /// makes holding one mean "identification fetched this release". The supporting
 /// documents are each present or not on their own terms: a release with no
-/// group, a source with no cross-reference, and a cover archive that has no
-/// image all read the same way they did at fetch time.
+/// group and a source with no cross-reference both read the same way they did
+/// at fetch time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleasePayloads {
     release: MetadataRef,
@@ -124,34 +122,6 @@ impl ReleasePayloads {
         }
     }
 
-    /// The archive's cover options for a MusicBrainz release, in the order the
-    /// picker shows them: the pressing's own first, then the album-level one.
-    ///
-    /// Discogs has no counterpart — a Discogs release carries its cover inside
-    /// its own document, which is where `build_discogs_detail` reads it.
-    fn musicbrainz_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
-        let mut covers = Vec::new();
-        for source in [
-            PayloadSource::CoverArtRelease,
-            PayloadSource::CoverArtReleaseGroup,
-        ] {
-            if let Some(cover) = self.stored_cover(source)? {
-                crate::import::cover_art::push_unique_cover(&mut covers, cover);
-            }
-        }
-        Ok(covers)
-    }
-
-    /// One archive answer: the cover it selected, or `None` for both "no row"
-    /// and the stored JSON `null` that says the archive has no cover here.
-    fn stored_cover(&self, source: PayloadSource) -> Result<Option<RemoteCover>, ImportError> {
-        let Some(json) = self.document(source) else {
-            return Ok(None);
-        };
-        serde_json::from_str::<Option<RemoteCover>>(json)
-            .map_err(|e| self.source_data(format!("stored {source} answer does not parse: {e}")))
-    }
-
     /// What the source says about this release's own tracklist — the half of the
     /// Ready rule the folder's probed durations are checked against.
     pub fn source_tracks(&self) -> Result<SourceTracks, ImportError> {
@@ -168,11 +138,17 @@ impl ReleasePayloads {
     /// The picker's and confirmation pane's display shape.
     pub fn detail(&self) -> Result<ImportSearchReleaseDetail, ImportError> {
         match self.release.source {
-            MetadataSource::MusicBrainz => crate::import::search::build_mb_detail(
-                &self.release.id,
-                &self.musicbrainz_anchor()?,
-                self.musicbrainz_covers()?,
-            ),
+            MetadataSource::MusicBrainz => {
+                // The cover options come out of the release document itself —
+                // it states whether the archive holds a front image, and names
+                // the release group whose album-level image is the other
+                // offer. Discogs has no counterpart: a Discogs release carries
+                // its cover inside its own document, which is where
+                // `build_discogs_detail` reads it.
+                let anchor = self.musicbrainz_anchor()?;
+                let covers = crate::import::cover_art::musicbrainz_covers(&anchor);
+                crate::import::search::build_mb_detail(&self.release.id, &anchor, covers)
+            }
             MetadataSource::Discogs => Ok(crate::import::search::build_discogs_detail(
                 &self.discogs_anchor()?,
             )),
@@ -219,14 +195,13 @@ impl ReleasePayloads {
 /// a Discogs key that is not configured. The release's own document is not —
 /// without it there is nothing to describe.
 pub async fn fetch(
-    cover_art_archive: &CoverArtArchiveClient,
     discogs_client: Option<&DiscogsClient>,
     release: &MetadataRef,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let (anchor, supporting) = match release.source {
         MetadataSource::MusicBrainz => {
-            fetch_musicbrainz(cover_art_archive, discogs_client, &release.id, priority).await?
+            fetch_musicbrainz(discogs_client, &release.id, priority).await?
         }
         MetadataSource::Discogs => {
             let client = discogs_client.ok_or(ImportError::DiscogsNotConfigured)?;
@@ -241,7 +216,6 @@ pub async fn fetch(
 }
 
 async fn fetch_musicbrainz(
-    cover_art_archive: &CoverArtArchiveClient,
     discogs_client: Option<&DiscogsClient>,
     release_id: &str,
     priority: CallPriority,
@@ -257,50 +231,7 @@ async fn fetch_musicbrainz(
         }
     }
 
-    let release_group_id = fetched
-        .response
-        .release_group
-        .as_ref()
-        .map(|rg| rg.id.as_str());
-    supporting.extend(
-        fetch_cover_answers(cover_art_archive, &fetched.response.id, release_group_id).await?,
-    );
-
     Ok((fetched.raw_json, supporting))
-}
-
-/// The archive's answers for a release and its group, as documents.
-///
-/// A lookup that never got an answer stores nothing and fails the fetch: a row
-/// saying "no cover" is a permanent answer, and writing one because the network
-/// was down would keep a cover the archive does have from ever appearing.
-async fn fetch_cover_answers(
-    cover_art_archive: &CoverArtArchiveClient,
-    release_id: &str,
-    release_group_id: Option<&str>,
-) -> Result<Vec<SourcePayload>, ImportError> {
-    let mut documents = Vec::new();
-    let entities = [
-        (PayloadSource::CoverArtRelease, Some(release_id)),
-        (PayloadSource::CoverArtReleaseGroup, release_group_id),
-    ];
-    for (source, id) in entities {
-        let Some(id) = id else { continue };
-        let answer = match source {
-            PayloadSource::CoverArtRelease => cover_art_archive.lookup_release(id).await,
-            _ => cover_art_archive.lookup_release_group(id).await,
-        };
-        let Some(cover) = answer else {
-            return Err(ImportError::CoverArt {
-                detail: format!("the Cover Art Archive never answered for {source} {id}"),
-            });
-        };
-        let json = serde_json::to_string(&cover).map_err(|e| ImportError::CoverArt {
-            detail: format!("could not encode the archive's answer for {source} {id}: {e}"),
-        })?;
-        documents.push(SourcePayload::new(source, id, json));
-    }
-    Ok(documents)
 }
 
 /// The Discogs release, the master it names, and the MusicBrainz release an
@@ -370,10 +301,9 @@ pub async fn load(
                     metadata_source: MetadataSource::MusicBrainz,
                     detail: format!("stored MusicBrainz release does not parse: {e}"),
                 })?;
-            let mut keys = vec![(PayloadSource::CoverArtRelease, response.id.clone())];
+            let mut keys = Vec::new();
             if let Some(rg) = response.release_group.as_ref() {
                 keys.push((PayloadSource::MusicBrainzReleaseGroup, rg.id.clone()));
-                keys.push((PayloadSource::CoverArtReleaseGroup, rg.id.clone()));
             }
             if let Some(xref_id) = response
                 .discogs_release_url()

@@ -3,7 +3,6 @@
 //! signal-extraction service; identify only looks the codes up.
 
 use crate::discogs::client::{DiscogsClient, DiscogsSearchParams};
-use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{search_discogs, search_mb, MetadataResult};
 use crate::musicbrainz::ReleaseSearchParams;
 use crate::util::rate_limiter::CallPriority;
@@ -12,13 +11,11 @@ use crate::util::rate_limiter::CallPriority;
 /// Discogs failures are logged and skipped so a provider outage doesn't break
 /// the phase.
 pub async fn lookup_barcode(
-    cover_art_archive: &CoverArtArchiveClient,
     barcode: &str,
     discogs_client: Option<&DiscogsClient>,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, String> {
     let mb = search_mb(
-        cover_art_archive,
         ReleaseSearchParams {
             barcode: Some(barcode.to_string()),
             ..Default::default()

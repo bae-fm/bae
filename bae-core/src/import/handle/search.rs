@@ -81,10 +81,14 @@ impl ImportServiceHandle {
     /// commit worker's later download is a cache hit rather than a re-fetch. The
     /// returned validator identifies this exact content, so a UI keyed on it
     /// re-decodes only when the bytes at the URL actually change.
+    ///
+    /// `None` when the source serves no image at that address — an offered
+    /// cover the archive turns out not to hold. The slot then renders as having
+    /// no image, which is what it has, rather than as a failed load.
     pub async fn fetch_remote_image_bytes(
         &self,
         url: String,
-    ) -> Result<crate::import::cover_art::RemoteImage, crate::import::ImportError> {
+    ) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError> {
         self.library_manager.remote_images().fetch(&url).await
     }
 
@@ -104,12 +108,7 @@ impl ImportServiceHandle {
 
         let results = match query.into_provider_params() {
             ProviderSearchParams::MusicBrainz(params) => {
-                crate::import::search::search_mb(
-                    &self.cover_art_archive,
-                    params,
-                    CallPriority::Interactive,
-                )
-                .await?
+                crate::import::search::search_mb(params, CallPriority::Interactive).await?
             }
             ProviderSearchParams::Discogs(params) => {
                 let client = self.discogs_client()?;
@@ -150,11 +149,13 @@ impl ImportServiceHandle {
         Ok(GroupedSearchResults { groups, statuses })
     }
 
-    /// The remote cover art options for a release: read its
-    /// `release_identities` and query each source's cover endpoint. MusicBrainz
-    /// yields both the per-pressing CAA cover (from `source_release_id`) and the
-    /// album-level one (from `source_group_id`); Discogs yields only the
-    /// per-pressing cover.
+    /// The remote cover art options for a release, from its
+    /// `release_identities`. A MusicBrainz identity offers both the archive's
+    /// per-pressing image (from `source_release_id`) and its album-level one
+    /// (from `source_group_id`) at the archive's fixed addresses for them —
+    /// costing no request, since the picker's thumbnail fetch is what resolves
+    /// each. Discogs has no address to derive, so its per-pressing cover comes
+    /// from fetching the release document that carries the URL.
     ///
     /// Covers come back in resolution order and the picker renders them as-is.
     /// An Unknown import has no identity rows, so it returns an empty list —
@@ -173,14 +174,15 @@ impl ImportServiceHandle {
         for identity in &identities {
             match identity.source {
                 MetadataSource::MusicBrainz => {
-                    for cover in self
-                        .cover_art_archive
-                        .fetch_candidates(
-                            identity.source_release_id.as_deref(),
-                            Some(identity.source_group_id.as_str()),
-                        )
-                        .await
-                    {
+                    let release_cover = identity
+                        .source_release_id
+                        .as_deref()
+                        .map(crate::import::cover_art::RemoteCover::musicbrainz_release);
+                    let group_cover =
+                        crate::import::cover_art::RemoteCover::musicbrainz_release_group(
+                            &identity.source_group_id,
+                        );
+                    for cover in release_cover.into_iter().chain([group_cover]) {
                         crate::import::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }

@@ -311,7 +311,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         (manager, temp)
     }

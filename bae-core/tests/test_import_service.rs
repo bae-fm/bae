@@ -35,9 +35,6 @@ struct ImportFixture {
     library_manager: LibraryManager,
     config_handle: Arc<bae_core::config::ConfigHandle>,
     ids: Arc<dyn coven::IdProvider>,
-    /// The library manager's cover-art client, kept so a test that drives a
-    /// lookup can seed it (the hermetic client panics on a live request).
-    cover_art: bae_core::import::cover_art::CoverArtArchiveClient,
     _temp: TempDir,
 }
 
@@ -65,13 +62,9 @@ impl ImportFixture {
             ids.clone(),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
 
-        // The manager's own client, not a second one: the import reads cover
-        // answers through the manager, so a test seeding this handle has to be
-        // seeding the instance the import will ask.
-        let cover_art = library_manager.cover_art_archive_for_test();
         let handle =
             ImportService::start(tokio::runtime::Handle::current(), library_manager.clone())
                 .await
@@ -83,7 +76,6 @@ impl ImportFixture {
             library_manager,
             config_handle,
             ids,
-            cover_art,
             _temp: temp,
         }
     }
@@ -1747,6 +1739,10 @@ fn seed_mb_release_with_works(
             tracks,
         }],
         relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
@@ -1782,10 +1778,6 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             work_with_composer(MB_WORK_SHARED, "Shared Work", "composer-shared", None),
         )],
     );
-    f.cover_art
-        .seed_lookup(Some(&prior_mb), Some("mb-group-prior"), None);
-    f.cover_art
-        .seed_lookup(Some("mb-rel-remote"), Some("mb-group-remote"), None);
     let prior_dir = f.temp_path().join("prior");
     fs::create_dir_all(&prior_dir).unwrap();
     generate_album_files(&prior_dir, &["01 Prior Movement.flac"]);
@@ -1959,8 +1951,6 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
             work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
         )],
     );
-    f.cover_art
-        .seed_lookup(Some(&first_mb), Some("mb-group-first"), None);
     let first_dir = f.temp_path().join("first");
     fs::create_dir_all(&first_dir).unwrap();
     generate_album_files(&first_dir, &["01 First Movement.flac"]);
@@ -1986,8 +1976,6 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
             work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
         )],
     );
-    f.cover_art
-        .seed_lookup(Some(&second_mb), Some("mb-group-second"), None);
     let second_dir = f.temp_path().join("second");
     fs::create_dir_all(&second_dir).unwrap();
     generate_album_files(&second_dir, &["01 Second Movement.flac"]);
@@ -2532,6 +2520,10 @@ fn seed_mb_with_discogs_xref(
             }],
         }],
         relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     };
     let discogs_url = Some(format!(
         "https://www.discogs.com/release/{}",
@@ -2566,8 +2558,6 @@ async fn cross_source_exact_writes_both_release_ids() {
     );
 
     let f = ImportFixture::new().await;
-    f.cover_art
-        .seed_lookup(Some(&mb_id), Some("xref-mb-group-exact"), None);
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -2634,8 +2624,6 @@ async fn cross_source_approximate_nulls_both_release_ids() {
     );
 
     let f = ImportFixture::new().await;
-    f.cover_art
-        .seed_lookup(Some(&mb_id), Some("xref-mb-group-approx"), None);
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -2720,6 +2708,10 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
         label_info: vec![],
         media: vec![],
         relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     };
     let mb_raw_json = serde_json::to_string(&mb_response).expect("the test response serializes");
     bae_core::musicbrainz::seed_release_cache(&mb_release_id, (mb_response, None, mb_raw_json));
@@ -3376,7 +3368,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     let handle = ImportService::start(tokio::runtime::Handle::current(), library_manager)
         .await
@@ -3489,6 +3481,10 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
             }],
         }],
         relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
@@ -3513,8 +3509,6 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     let mb_id = seed_two_credit_mb_release("two-credit-mb-rel", "two-credit-mb-group");
-    f.cover_art
-        .seed_lookup(Some(&mb_id), Some("two-credit-mb-group"), None);
 
     // Scan the album in so the prefetch runs against a candidate key the
     // service actually knows — the key is what core reads the identify evidence
@@ -3629,6 +3623,10 @@ fn seed_mb_release_with_track_count(
                 .collect(),
         }],
         relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
@@ -3740,8 +3738,6 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
     support::tracing_init();
     let f = ImportFixture::new().await;
     let mb_id = seed_mb_release_with_track_count("mb-rel-13v12", "mb-group-13v12", 12);
-    f.cover_art
-        .seed_lookup(Some(&mb_id), Some("mb-group-13v12"), None);
 
     let collection = f.temp_path().join("collection-13v12");
     let album_dir = collection.join("album");
@@ -3808,8 +3804,6 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     let mb_id = seed_mb_release_with_track_count("mb-rel-14v13", "mb-group-14v13", 14);
-    f.cover_art
-        .seed_lookup(Some(&mb_id), Some("mb-group-14v13"), None);
 
     let collection = f.temp_path().join("collection-14v13");
     let album_dir = collection.join("album");
@@ -3866,8 +3860,6 @@ async fn a_corrected_pairing_survives_the_commit() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     let mb_id = seed_mb_release_with_track_count("mb-rel-repair", "mb-group-repair", 3);
-    f.cover_art
-        .seed_lookup(Some(&mb_id), Some("mb-group-repair"), None);
 
     let collection = f.temp_path().join("collection-repair");
     let album_dir = collection.join("album");

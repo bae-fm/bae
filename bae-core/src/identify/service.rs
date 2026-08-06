@@ -6,7 +6,6 @@ use super::annotate_with_library_status;
 use super::barcode::lookup_barcode;
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, ExcludedSignal, IdentifyEvent, IdentifyState};
-use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;
 use crate::signals::LookupFailure;
@@ -54,7 +53,6 @@ struct IdentifyServiceInner {
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
-    cover_art_archive: CoverArtArchiveClient,
     drivers: Mutex<HashMap<String, CandidateDriver>>,
 }
 
@@ -71,12 +69,10 @@ impl IdentifyServiceHandle {
         runtime_handle: tokio::runtime::Handle,
         event_tx: broadcast::Sender<ImportEvent>,
     ) -> IdentifyServiceHandle {
-        let cover_art_archive = library_manager.cover_art_archive().clone();
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
             runtime_handle,
             event_tx,
-            cover_art_archive,
             drivers: Mutex::new(HashMap::new()),
         });
         let mut removal_rx = inner.event_tx.subscribe();
@@ -325,11 +321,8 @@ fn dispatch_effect(
             track_count,
         } => {
             let library_manager = inner.library_manager.clone();
-            let cover_art_archive = inner.cover_art_archive.clone();
             runtime.spawn(async move {
-                let outcome =
-                    lookup_and_resolve(&cover_art_archive, &disc_id, &library_manager, priority)
-                        .await;
+                let outcome = lookup_and_resolve(&disc_id, &library_manager, priority).await;
                 if token.is_cancelled() {
                     return;
                 }
@@ -358,7 +351,6 @@ fn dispatch_effect(
 
         Effect::LookupBarcode { barcode } => {
             let library_manager = inner.library_manager.clone();
-            let cover_art_archive = inner.cover_art_archive.clone();
             runtime.spawn(async move {
                 let discogs = match library_manager.discogs_client() {
                     Ok(c) => c,
@@ -373,8 +365,7 @@ fn dispatch_effect(
                         return;
                     }
                 };
-                let lookup =
-                    lookup_barcode(&cover_art_archive, &barcode, discogs.as_ref(), priority).await;
+                let lookup = lookup_barcode(&barcode, discogs.as_ref(), priority).await;
                 if token.is_cancelled() {
                     return;
                 }
@@ -436,14 +427,13 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+            crate::import::cover_art::RemoteImageCache::for_test(),
         );
         let (event_tx, _) = broadcast::channel(64);
         let inner = Arc::new(IdentifyServiceInner {
             library_manager: manager,
             runtime_handle: tokio::runtime::Handle::current(),
             event_tx,
-            cover_art_archive: CoverArtArchiveClient::hermetic(),
             drivers: Mutex::new(HashMap::new()),
         });
         (inner, temp_dir)

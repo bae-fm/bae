@@ -54,7 +54,7 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     )
     .unwrap();
     (mgr.database_for_test(), mgr)

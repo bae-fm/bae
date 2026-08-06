@@ -1,5 +1,4 @@
 use crate::discogs::DiscogsClient;
-use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
@@ -1047,7 +1046,6 @@ pub struct ImportServiceHandle {
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
     watcher_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     runtime_handle: tokio::runtime::Handle,
-    cover_art_archive: CoverArtArchiveClient,
 }
 
 #[derive(Debug, Clone)]
@@ -1148,7 +1146,6 @@ impl ImportServiceHandle {
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: Arc<Mutex<ImportCandidateState>>,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
-        cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
         Self {
             requests_tx,
@@ -1161,7 +1158,6 @@ impl ImportServiceHandle {
             watcher_tx,
             watcher_thread: Arc::new(Mutex::new(Some(watcher_thread))),
             runtime_handle,
-            cover_art_archive,
         }
     }
 

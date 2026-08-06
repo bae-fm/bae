@@ -1900,15 +1900,19 @@ impl AppHandle {
     /// device, and its byte cache is core's. The returned validator identifies
     /// the content, so a UI holding a decoded copy replaces it only when the
     /// bytes at the URL actually change.
+    ///
+    /// `None` when the source serves no image at that address: cover addresses
+    /// are derived from a release's ids, so an offered one can turn out to hold
+    /// nothing. That is the slot having no image, not a failed load.
     pub async fn fetch_remote_image_bytes(
         &self,
         url: String,
-    ) -> Result<crate::types::BridgeRemoteImage, BridgeError> {
+    ) -> Result<Option<crate::types::BridgeRemoteImage>, BridgeError> {
         self.services
             .import()
             .fetch_remote_image_bytes(url)
             .await
-            .map(crate::types::BridgeRemoteImage::from_core)
+            .map(|image| image.map(crate::types::BridgeRemoteImage::from_core))
             .map_err(BridgeError::import)
     }
 }
@@ -4196,7 +4200,7 @@ mod tests {
             ids,
             bae_core::diagnostics::Diagnostics::noop(),
             runtime.handle().clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         let playback = bae_core::playback::PlaybackService::start(
             manager.clone(),

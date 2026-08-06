@@ -56,7 +56,7 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+        crate::import::cover_art::RemoteImageCache::for_test(),
     );
     (manager, temp_dir)
 }
@@ -932,6 +932,10 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
             ],
         }],
         relations: vec![],
+        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     }
 }
 

@@ -915,6 +915,10 @@ mod tests {
             label_info: vec![],
             media: vec![],
             relations: vec![],
+            cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+                front: false,
+                darkened: false,
+            },
         }
     }
 

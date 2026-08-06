@@ -130,6 +130,19 @@ pub struct MbMedium {
     pub tracks: Vec<MbTrack>,
 }
 
+/// What a release document says the Cover Art Archive holds for it. Every
+/// endpoint that returns a whole release — the release lookup, the disc-ID
+/// lookup, the release browse — carries this block, so it is the release's own
+/// statement about its artwork and needs no separate call to the archive.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MbCoverArtArchive {
+    /// The archive holds an image marked as this release's front cover.
+    pub front: bool,
+    /// The archive has taken this release's art down and serves none of it,
+    /// whatever the other fields say.
+    pub darkened: bool,
+}
+
 /// A full release as returned by the MB release lookup API
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbReleaseResponse {
@@ -148,9 +161,17 @@ pub struct MbReleaseResponse {
     pub media: Vec<MbMedium>,
     #[serde(default)]
     pub relations: Vec<MbRelation>,
+    #[serde(rename = "cover-art-archive")]
+    pub cover_art_archive: MbCoverArtArchive,
 }
 
 impl MbReleaseResponse {
+    /// Whether the Cover Art Archive serves a front image for this release: one
+    /// is registered and the archive has not darkened the release's art.
+    pub fn has_front_cover(&self) -> bool {
+        self.cover_art_archive.front && !self.cover_art_archive.darkened
+    }
+
     /// The Discogs release URL from this release's url-rels, falling back to
     /// the inline release-group relations when the release-level ones carry
     /// none.

@@ -14,7 +14,6 @@ use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::{Database, DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::ready::{classify, NeedsYou, QueueClassification};
-use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::keys::StoreKeys;
 use crate::library::LibraryManager;
@@ -197,7 +196,8 @@ fn release_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> Stri
     format!(
         r#"{{"id":"{release_id}","title":"Album","artist-credit":[{{"name":"Artist"}}],
             "release-group":{{"id":"{group_id}"}},
-            "media":[{{"tracks":[{}]}}],"relations":[]}}"#,
+            "media":[{{"tracks":[{}]}}],"relations":[],
+            "cover-art-archive":{{"front":false,"darkened":false}}}}"#,
         tracks.join(",")
     )
 }
@@ -211,7 +211,8 @@ fn titled_release_json(release_id: &str, group_id: &str, title: &str, artist: &s
             "release-group":{{"id":"{group_id}"}},
             "media":[{{"tracks":[
                 {{"position":1,"number":"1","title":"Track Title 1","length":180000}}
-            ]}}],"relations":[]}}"#
+            ]}}],"relations":[],
+            "cover-art-archive":{{"front":true,"darkened":false}}}}"#
     )
 }
 
@@ -277,7 +278,6 @@ struct Fixture {
     import: ImportServiceHandle,
     identify: IdentifyServiceHandle,
     extraction: ExtractionServiceHandle,
-    cover_art: CoverArtArchiveClient,
     provider: FakeProvider,
     /// One context for the fixture's whole life, so consecutive `sweep_once`
     /// calls are the same sweep — which is what a second pass after a failed
@@ -328,10 +328,9 @@ impl Fixture {
             ids,
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+            crate::import::cover_art::RemoteImageCache::for_test(),
         );
 
-        let cover_art = manager.cover_art_archive_for_test();
         let import =
             crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
                 .await
@@ -383,7 +382,6 @@ impl Fixture {
             import,
             identify,
             extraction,
-            cover_art,
             provider,
             context,
             sweep,
@@ -550,27 +548,9 @@ impl Fixture {
             json: release_json(release_id, group_id, track_lengths),
             fetched_at: fixed_now(),
         };
-        let cover = crate::db::DbSourceReleasePayload {
-            source: crate::import::PayloadSource::CoverArtRelease,
-            source_release_id: release_id.to_string(),
-            json: serde_json::to_string(&Some(crate::import::cover_art::RemoteCover {
-                url: "https://caa.example/front.jpg".to_string(),
-                thumbnail_url: "https://caa.example/front-250.jpg".to_string(),
-                label: "Cover Art Archive".to_string(),
-                source: crate::import::MetadataSource::MusicBrainz,
-            }))
-            .unwrap(),
-            fetched_at: fixed_now(),
-        };
-        let group_cover = crate::db::DbSourceReleasePayload {
-            source: crate::import::PayloadSource::CoverArtReleaseGroup,
-            source_release_id: group_id.to_string(),
-            json: "null".to_string(),
-            fetched_at: fixed_now(),
-        };
         self.manager
             .database_for_test()
-            .save_source_release_payloads(&[now, cover, group_cover])
+            .save_source_release_payloads(&[now])
             .await
             .unwrap();
     }
@@ -697,9 +677,6 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     let fixture = Fixture::new("acquires-verdict").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-ready-1"), Some("rg-ready-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -757,9 +734,6 @@ async fn a_stored_verdict_is_not_re_fetched() {
     let fixture = Fixture::new("not-re-fetched").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-cached-1"), Some("rg-cached-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -805,9 +779,6 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
     let fixture = Fixture::new("failure-retried").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-retry-1"), Some("rg-retry-1"), None);
     fixture
         .provider
         .set_routes(vec![("/discid/", 400, "{}".to_string())]);
@@ -871,11 +842,6 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         dirs.push(dir);
     }
     let probed = fixture.probed_total_ms(&dirs[0]);
-    for i in 0..8 {
-        fixture
-            .cover_art
-            .seed_lookup(Some(&format!("mb-flood-{i}")), None, None);
-    }
     fixture.provider.route(
         "/discid/",
         200,
@@ -889,9 +855,6 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     fixture
         .provider
         .route("/release?", 200, search_json("mb-typed", "rg-typed"));
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-typed"), Some("rg-typed"), None);
     fixture.scan(8).await;
 
     let context = fixture.context();
@@ -910,7 +873,6 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
 
     let started = std::time::Instant::now();
     let typed = crate::import::search::search_mb(
-        &fixture.cover_art,
         crate::musicbrainz::ReleaseSearchParams {
             artist: Some("Artist".to_string()),
             album: Some("Album".to_string()),
@@ -1081,7 +1043,6 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     let probed = fixture.probed_total_ms(&disc_dir);
 
     for (id, group) in [("mb-disc-1", "rg-disc-1"), ("mb-barcode-1", "rg-barcode-1")] {
-        fixture.cover_art.seed_lookup(Some(id), Some(group), None);
         fixture.provider.route(
             &format!("/release/{id}?"),
             200,
@@ -1133,9 +1094,6 @@ async fn a_settled_verdict_never_stores_without_its_documents() {
     let fixture = Fixture::new("settle-ordering").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-order-1"), Some("rg-order-1"), None);
     // The disc-ID lookup answers; the release lookup that settles the lead does
     // not. The verdict is reachable, and must still not be stored.
     fixture.provider.route(
@@ -1193,9 +1151,6 @@ async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
         }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-interactive-1"), Some("rg-interactive-1"), None);
     fixture.provider.route(
         "/release?",
         200,
@@ -1280,9 +1235,18 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
     assert_eq!(prefetch.detail.tracks.len(), 2);
     assert_eq!(prefetch.seed.tracks.len(), 2);
     assert_eq!(
-        prefetch.detail.cover_art.len(),
-        1,
-        "the archive's answer for the pressing rides along"
+        prefetch
+            .detail
+            .cover_art
+            .iter()
+            .map(|cover| cover.url.as_str())
+            .collect::<Vec<_>>(),
+        vec![format!(
+            "{}/release-group/rg-offline-1/front",
+            crate::import::cover_art::archive_base_for_test()
+        )],
+        "the pressing states no front image of its own, so the album's is the \
+         only option — and it is read off the stored document, not asked for"
     );
     assert_eq!(
         fixture.provider.requests().len(),
@@ -1333,9 +1297,6 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-manual-1"), Some("rg-manual-1"), None);
     fixture.provider.route(
         "/release/mb-manual-1?",
         200,
@@ -1391,9 +1352,6 @@ async fn a_skipped_candidate_is_not_swept() {
     let fixture = Fixture::new("skipped").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-skipped-1"), Some("rg-skipped-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -1437,12 +1395,6 @@ async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
     let running = fixture.disc_id_candidate("Running");
     std::fs::write(running.join("notes.txt"), "distinct candidate").unwrap();
     let probed = fixture.probed_total_ms(&running);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-unskip-stored"), Some("rg-unskip-stored"), None);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-unskip-running"), Some("rg-unskip-running"), None);
     fixture.provider.route(
         "/release?",
         200,
@@ -1545,9 +1497,6 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
     std::fs::write(importing.join("notes.txt"), "distinct candidate").unwrap();
     let importing_hash = fixture.content_hash(&importing);
     let probed = fixture.probed_total_ms(&remaining);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-import-progress"), Some("rg-import-progress"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -1607,9 +1556,6 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     let importing = fixture.disc_id_candidate("Importing");
     std::fs::write(importing.join("notes.txt"), "distinct candidate").unwrap();
     let probed = fixture.probed_total_ms(&remaining);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-import-rescan"), Some("rg-import-rescan"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -1679,9 +1625,6 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
         }));
     let dir = fixture.barcode_candidate("From Barcode");
     let hash = fixture.content_hash(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-mid-write"), Some("rg-mid-write"), None);
     fixture.provider.route(
         "/release?",
         200,
@@ -1730,9 +1673,6 @@ async fn progress_carries_both_counts() {
     let second = fixture.disc_id_candidate("Album Two");
     std::fs::write(second.join("notes.txt"), "different bytes").unwrap();
     let probed = fixture.probed_total_ms(&first);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-prog-1"), Some("rg-prog-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -1788,9 +1728,6 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     let fixture = Fixture::new("progress-after-commit").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-progress-commit"), Some("rg-progress-commit"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -1840,9 +1777,6 @@ async fn only_a_watched_run_invalidates_the_ui() {
     let fixture = Fixture::new("ui-invalidation").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-ui-1"), Some("rg-ui-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -1965,9 +1899,6 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     let fixture = Fixture::new("no-driver-left").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-drv-1"), Some("rg-drv-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -2106,9 +2037,6 @@ async fn a_cancelled_candidate_writes_no_row() {
     let fixture = Fixture::new("cancelled-writes-nothing").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-cancel-1"), Some("rg-cancel-1"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -2180,11 +2108,6 @@ async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
     let fixture = Fixture::new("malformed-late-row").await;
     let running = fixture.disc_id_candidate("Running");
     let probed = fixture.probed_total_ms(&running);
-    fixture.cover_art.seed_lookup(
-        Some("mb-malformed-running"),
-        Some("rg-malformed-running"),
-        None,
-    );
     fixture.provider.route(
         "/discid/",
         200,
@@ -2493,9 +2416,6 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     fixture
         .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1", probed)
         .await;
-    fixture
-        .cover_art
-        .seed_lookup(Some("mb-rerun-2"), Some("rg-rerun-2"), None);
     fixture.provider.route(
         "/discid/",
         200,
@@ -2741,16 +2661,6 @@ async fn a_picked_release_is_what_the_row_leads_with() {
             "Picked Artist Name",
         ),
     );
-    fixture.cover_art.seed_lookup(
-        Some("mb-picked-1"),
-        Some("rg-picked-1"),
-        Some(crate::import::cover_art::RemoteCover {
-            url: "https://caa.example/picked.jpg".to_string(),
-            thumbnail_url: "https://caa.example/picked-250.jpg".to_string(),
-            label: "Cover Art Archive".to_string(),
-            source: crate::import::MetadataSource::MusicBrainz,
-        }),
-    );
 
     // Read the queue on the event the surfaces refresh on, not after the pick
     // has finished settling: the row has to be right the moment it lands.
@@ -2804,9 +2714,14 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     assert_eq!(matched.release_id, "mb-picked-1");
     assert_eq!(matched.title, "Picked Album Title");
     assert_eq!(matched.artist.as_deref(), Some("Picked Artist Name"));
-    assert_eq!(
-        matched.cover_thumbnail_url.as_deref(),
-        Some("https://caa.example/picked-250.jpg")
+    let thumbnail = matched
+        .cover_thumbnail_url
+        .as_deref()
+        .expect("the picked release's document says the archive holds a front image");
+    assert!(
+        thumbnail.ends_with("/release/mb-picked-1/front-250"),
+        "the row's thumbnail is the archive's address for the picked release's \
+         front image, got {thumbnail}"
     );
 }
 

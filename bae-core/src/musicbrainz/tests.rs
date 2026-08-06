@@ -134,7 +134,11 @@ fn test_deserialize_mb_release_response() {
         }],
         "relations": [{
             "url": { "resource": "https://www.discogs.com/release/67890" }
-        }]
+        }],
+        "cover-art-archive": {
+            "count": 2, "artwork": true, "front": true, "back": true,
+            "darkened": false
+        }
     }"#;
 
     let response: MbReleaseResponse = serde_json::from_str(json).unwrap();
@@ -157,14 +161,22 @@ fn test_deserialize_mb_release_response() {
         Some("3822202")
     );
     assert_eq!(response.relations.len(), 1);
+    assert!(response.has_front_cover());
 }
 
 #[test]
 fn test_deserialize_mb_release_response_minimal() {
-    // Minimal response with only required fields — all optional arrays absent
+    // Minimal response: every field the type requires, every optional array
+    // absent. The `cover-art-archive` block is required because every endpoint
+    // this type is parsed from — the release lookup, the disc-ID lookup, the
+    // release browse — returns it.
     let json = r#"{
         "id": "abc-123",
-        "title": "Minimal Release"
+        "title": "Minimal Release",
+        "cover-art-archive": {
+            "count": 0, "artwork": false, "front": false, "back": false,
+            "darkened": false
+        }
     }"#;
 
     let response: MbReleaseResponse = serde_json::from_str(json).unwrap();
@@ -174,6 +186,25 @@ fn test_deserialize_mb_release_response_minimal() {
     assert!(response.artist_credit.is_empty());
     assert!(response.media.is_empty());
     assert!(response.relations.is_empty());
+    assert!(!response.has_front_cover());
+}
+
+/// A takedown darkens the whole release's art: the archive serves nothing for
+/// it, whatever `front` says.
+#[test]
+fn a_darkened_release_serves_no_front_cover() {
+    let json = r#"{
+        "id": "darkened-1",
+        "title": "Album Title",
+        "cover-art-archive": {
+            "count": 3, "artwork": true, "front": true, "back": false,
+            "darkened": true
+        }
+    }"#;
+
+    let response: MbReleaseResponse = serde_json::from_str(json).unwrap();
+    assert!(!response.has_front_cover());
+    assert!(crate::import::cover_art::musicbrainz_covers(&response).is_empty());
 }
 
 // ── fetch_mb_xref ────────────────────────────────────────────────
@@ -198,6 +229,10 @@ fn make_mb_response(id: &str, release_group_id: Option<&str>) -> MbReleaseRespon
         label_info: vec![],
         media: vec![],
         relations: vec![],
+        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     }
 }
 
@@ -349,6 +384,10 @@ fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResp
         label_info: vec![],
         media: vec![],
         relations: vec![],
+        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     }
 }
 

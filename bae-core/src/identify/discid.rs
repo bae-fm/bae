@@ -3,7 +3,6 @@
 //! scan, release re-identify resolution) lives in `crate::signals`.
 
 use crate::db::LibraryStatus;
-use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, MetadataResult};
 use crate::signals::LookupFailure;
 use crate::util::rate_limiter::CallPriority;
@@ -12,14 +11,12 @@ use crate::util::rate_limiter::CallPriority;
 /// Empty when MB has no hits — which the reducer treats as a settled signal with
 /// zero results, ready for combine, exactly like a barcode that matched nothing.
 pub async fn lookup_and_resolve(
-    cover_art_archive: &CoverArtArchiveClient,
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
     priority: CallPriority,
 ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
     // The MB lookup's failure is already typed — pass it through structured.
-    let matches: Vec<MetadataResult> =
-        lookup_by_discid(cover_art_archive, disc_id, priority).await?;
+    let matches: Vec<MetadataResult> = lookup_by_discid(disc_id, priority).await?;
 
     // The in-library check is a local DB read, so its failure is diagnostic
     // detail, never a provider verdict.

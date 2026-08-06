@@ -86,7 +86,7 @@ async fn setup_manager(
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
     let cloud = Arc::new(InMemoryCloudHome::new());
     let enc = EncryptionService::from_key([9u8; 32]);

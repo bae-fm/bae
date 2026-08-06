@@ -1146,7 +1146,7 @@ mod load {
                 ids,
                 crate::diagnostics::Diagnostics::noop(),
                 tokio::runtime::Handle::current(),
-                crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+                crate::import::cover_art::RemoteImageCache::for_test(),
             );
             let import = ImportService::start(tokio::runtime::Handle::current(), manager.clone())
                 .await

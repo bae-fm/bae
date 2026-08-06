@@ -79,7 +79,7 @@ impl ExportFixture {
             Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         let cloud = Arc::new(InMemoryCloudHome::new());
         mgr.connect_test_cloud_home_caller_driven(

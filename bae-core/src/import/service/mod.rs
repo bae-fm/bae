@@ -89,12 +89,6 @@ pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
-    /// The base backoff the commit worker's remote-cover download retries
-    /// transient failures with, taken from the injected `CoverArtArchiveClient`
-    /// so it shares the client's retry cadence (1s in production). A test that
-    /// injects a near-zero-delay client stops the download burning real seconds
-    /// of backoff when a cover URL is unreachable.
-    cover_retry_base_delay: std::time::Duration,
 }
 
 /// The watched roots that contain at least one of the `changed` paths, in
@@ -1500,18 +1494,12 @@ impl ImportService {
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        let cover_art_archive = library_manager.cover_art_archive().clone();
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
         let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
         let library_manager_for_handle = library_manager.clone();
-        // Take the retry cadence from the injected client before it moves into
-        // the handle, so the worker's cover download and the handle's lookups
-        // share one test-controllable delay.
-        let cover_retry_base_delay = cover_art_archive.retry_base_delay();
-
         // One `Arc` shared by the watcher (which reads the skip set while stamping
         // candidates) and the handle (which mutates it on add/remove/skip).
         let loaded_registry = library_manager_for_handle
@@ -1562,7 +1550,6 @@ impl ImportService {
                     commands_rx,
                     event_tx: event_tx_for_worker,
                     library_manager,
-                    cover_retry_base_delay,
                 };
 
                 while let Some(message) = service.commands_rx.recv().await {
@@ -1588,7 +1575,6 @@ impl ImportService {
             folder_registry,
             candidate_state,
             folder_state_commit,
-            cover_art_archive,
         ))
     }
 
@@ -1816,7 +1802,7 @@ impl ImportService {
             } = self
                 .library_manager
                 .remote_images()
-                .fetch_with_backoff(url, self.cover_retry_base_delay)
+                .fetch_required(url)
                 .await?;
             if matches!(
                 content_type,
@@ -2680,13 +2666,7 @@ pub(crate) async fn prepare_release(
             None
         }
     };
-    let payloads = crate::import::payloads::fetch(
-        library_manager.cover_art_archive(),
-        discogs.as_ref(),
-        release_ref,
-        priority,
-    )
-    .await?;
+    let payloads = crate::import::payloads::fetch(discogs.as_ref(), release_ref, priority).await?;
     crate::import::payloads::store(
         library_manager.database(),
         &payloads,

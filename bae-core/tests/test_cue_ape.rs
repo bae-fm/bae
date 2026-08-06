@@ -136,7 +136,7 @@ async fn test_cue_ape_records_correct_durations() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
 
     let runtime_handle = tokio::runtime::Handle::current();
@@ -326,7 +326,7 @@ async fn test_cue_ape_records_track_timing() {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
 
     let runtime_handle = tokio::runtime::Handle::current();
@@ -459,7 +459,7 @@ impl CueApeTestFixture {
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -1066,7 +1066,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
     )
     .expect("open library manager");
     if storage_mode == StorageMode::Remote {

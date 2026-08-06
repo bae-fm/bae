@@ -45,7 +45,7 @@ async fn setup_import_service() -> (ImportService, TempDir) {
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+        crate::import::cover_art::RemoteImageCache::for_test(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let (event_tx, _) = tokio::sync::broadcast::channel(16);
@@ -54,9 +54,6 @@ async fn setup_import_service() -> (ImportService, TempDir) {
             commands_rx,
             event_tx,
             library_manager: manager,
-            // Near-zero so a test that drives an unreachable cover URL through the
-            // retry loop doesn't sleep the real 1s + 2s + 4s of backoff.
-            cover_retry_base_delay: std::time::Duration::from_millis(0),
         },
         temp_dir,
     )

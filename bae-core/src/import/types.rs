@@ -81,8 +81,8 @@ impl std::str::FromStr for MetadataSource {
 ///
 /// Wider than [`MetadataSource`]: identifying one release fetches supporting
 /// documents that belong to other entities — its release group, a Discogs
-/// master, the cover archive's answers — and each is keyed by the entity it
-/// describes so two releases that share one never store it twice.
+/// master — and each is keyed by the entity it describes so two releases that
+/// share one never store it twice.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PayloadSource {
     /// A MusicBrainz release, by release id.
@@ -102,11 +102,6 @@ pub enum PayloadSource {
     /// direction's is: MusicBrainz's URL lookup endpoint found it, and nothing
     /// in the Discogs document names it back.
     MusicBrainzDiscogsXref,
-    /// The Cover Art Archive's answer for a MusicBrainz release, by release id.
-    CoverArtRelease,
-    /// The Cover Art Archive's answer for a MusicBrainz release group, by group
-    /// id — the album-level cover, which can differ from any one pressing's.
-    CoverArtReleaseGroup,
 }
 
 impl PayloadSource {
@@ -118,8 +113,6 @@ impl PayloadSource {
             Self::Discogs => "discogs",
             Self::DiscogsMaster => "discogs_master",
             Self::MusicBrainzDiscogsXref => "musicbrainz_discogs_xref",
-            Self::CoverArtRelease => "cover_art_archive_release",
-            Self::CoverArtReleaseGroup => "cover_art_archive_release_group",
         }
     }
 
@@ -143,8 +136,6 @@ impl std::str::FromStr for PayloadSource {
             "discogs" => Ok(Self::Discogs),
             "discogs_master" => Ok(Self::DiscogsMaster),
             "musicbrainz_discogs_xref" => Ok(Self::MusicBrainzDiscogsXref),
-            "cover_art_archive_release" => Ok(Self::CoverArtRelease),
-            "cover_art_archive_release_group" => Ok(Self::CoverArtReleaseGroup),
             _ => Err(format!("unknown payload source: {s}")),
         }
     }

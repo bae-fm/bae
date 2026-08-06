@@ -89,7 +89,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+        crate::import::cover_art::RemoteImageCache::for_test(),
     );
     (manager, temp_dir)
 }
@@ -325,7 +325,7 @@ async fn setup_forget_library_manager_at(
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+        crate::import::cover_art::RemoteImageCache::for_test(),
     )
 }
 
@@ -5510,6 +5510,10 @@ fn make_mb_release_for_re_identify(
                 .collect(),
         }],
         relations: vec![],
+        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     }
 }
 
@@ -5565,11 +5569,6 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"exact-re-identify-mb-group-new"}"#.to_string(),
-    );
-    manager.cover_art_archive_for_test().seed_lookup(
-        Some(new_release_id),
-        Some(new_group_id),
-        None,
     );
 
     manager
@@ -5664,11 +5663,6 @@ async fn re_identify_release_approximate_archives_the_picked_release() {
         new_group_id,
         r#"{"id":"approx-re-identify-mb-group-new"}"#.to_string(),
     );
-    manager.cover_art_archive_for_test().seed_lookup(
-        Some(new_release_id),
-        Some(new_group_id),
-        None,
-    );
 
     manager
         .re_identify_release(
@@ -5761,11 +5755,6 @@ async fn re_identify_release_rejects_track_count_mismatch() {
         new_group_id,
         r#"{"id":"mismatch-re-identify-mb-group-new"}"#.to_string(),
     );
-    manager.cover_art_archive_for_test().seed_lookup(
-        Some(new_release_id),
-        Some(new_group_id),
-        None,
-    );
 
     let err = manager
         .re_identify_release(
@@ -5825,11 +5814,6 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"reset-re-identify-mb-group-new"}"#.to_string(),
-    );
-    manager.cover_art_archive_for_test().seed_lookup(
-        Some(new_release_id),
-        Some(new_group_id),
-        None,
     );
 
     manager

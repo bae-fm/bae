@@ -386,7 +386,7 @@ mod tests {
             Arc::new(coven::UuidProvider),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+            crate::import::cover_art::RemoteImageCache::for_test(),
         );
         (manager, transport, home)
     }
