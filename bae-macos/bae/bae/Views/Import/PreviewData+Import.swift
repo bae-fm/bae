@@ -55,15 +55,33 @@
             for candidate in folderCandidates {
                 s.folderCandidates[candidate.key] = candidate
             }
+            // The row the preview selects is the settled one, so the pane
+            // behind the sidebar is the pane a picked release draws.
+            s.folderCandidates[importTabCandidate.key] = importTabCandidate
             let rows = [
                 triageRow(
                     for: folderCandidates[0],
                     placement: .ready,
+                    // The row states the pressing the pane behind it settled
+                    // on, so the two halves cannot read differently.
                     matched: triageMatch(
-                        releaseId: "rel-preview-one",
-                        title: "Album Title One"
+                        releaseId: releaseDetailBridge.releaseId,
+                        title: releaseDetailBridge.title,
+                        artist: releaseDetailBridge.artist,
+                        year: releaseDetailBridge.year,
+                        format: releaseDetailBridge.format,
+                        trackCount: releaseDetailBridge.trackCount
                     ),
-                    selectable: true
+                    selectable: true,
+                    importStatus: nil,
+                    // Ready means identification settled on one match, which
+                    // is a pick — the record a bulk import commits from.
+                    picked: .release(
+                        source: releaseDetailBridge.source,
+                        releaseId: releaseDetailBridge.releaseId,
+                        claim: .exact
+                    ),
+                    claim: claimBridge.choice
                 ),
                 triageRow(
                     for: folderCandidates[1],
@@ -107,20 +125,57 @@
                     ),
                     selectable: false
                 ),
+                triageRow(
+                    for: folderCandidates[5],
+                    placement: .ready,
+                    matched: triageMatch(
+                        releaseId: "rel-preview-six",
+                        title: "Album Title Three",
+                        year: 2002,
+                        trackCount: 11
+                    ),
+                    selectable: true
+                ),
+                triageRow(
+                    for: folderCandidates[6],
+                    placement: .ready,
+                    matched: triageMatch(
+                        releaseId: "rel-preview-seven",
+                        title: "Single Release",
+                        year: 1984,
+                        format: "7\u{2033}",
+                        trackCount: 2,
+                        source: .discogs,
+                        signal: .barcode
+                    ),
+                    selectable: true
+                ),
             ]
             s.triageQueue = BridgeTriageQueue(
                 sections: [
+                    // Two of the three Ready rows sit under a folder the scan
+                    // read as one release's worth of subfolders; the third is
+                    // its own folder and sits at the same leading edge.
                     BridgeTriageSection(
                         tab: .ready,
                         watchedFolderPath: importWatchedFolder.path,
                         group: BridgeTriageGroup(
-                            key: BridgeFolderReleaseDecisionKey(
-                                watchedFolderPath: importWatchedFolder.path,
-                                relativeFolderPath: "Collection"
-                            ),
+                            key: folderReleaseBoundaryKey,
                             name: "Collection"
                         ),
-                        entries: [candidateEntry(rows[0])]
+                        entries: [rows[0], rows[5]].map(candidateEntry)
+                    ),
+                    BridgeTriageSection(
+                        tab: .ready,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [candidateEntry(rows[6])]
+                    ),
+                    BridgeTriageSection(
+                        tab: .needsYou,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [boundaryEntry(folderReleaseBoundary)]
                     ),
                     BridgeTriageSection(
                         tab: .done,
@@ -139,14 +194,16 @@
                     ),
                 ],
                 counts: BridgeTriageTabCounts(
-                    ready: 1,
-                    needsYou: 0,
+                    ready: 3,
+                    needsYou: 1,
                     done: 3,
                     skipped: 1 + UInt32(invalidCandidates.count)
                 ),
                 folderScanStatuses: []
             )
-            s.queueIdentifyProgress = (identified: 5, total: 5)
+            // Mid-sweep, so the header's progress line is drawn rather than
+            // being the nothing-left-to-say state that hides it.
+            s.queueIdentifyProgress = (identified: 112, total: 130)
             return s
         }()
 
@@ -197,6 +254,26 @@
                 // Added example (content-hash match) — renders under the Added tab.
                 skipped: false,
                 isAdded: true
+            ),
+            // Two more Ready folders, so the tab shows a folder group with
+            // rows in it beside a row that belongs to no group.
+            BridgeFolderCandidate(
+                folderPath: "/Music/Downloads/Album Title Three",
+                sourceFolderName: "Album Title Three",
+                watchedFolderPath: "/Music/Downloads",
+                files: bridgeCandidateFiles,
+                trackCount: 11,
+                skipped: false,
+                isAdded: false
+            ),
+            BridgeFolderCandidate(
+                folderPath: "/Music/Downloads/Single Release",
+                sourceFolderName: "Single Release",
+                watchedFolderPath: "/Music/Downloads",
+                files: candidateFilesTracks,
+                trackCount: 2,
+                skipped: false,
+                isAdded: false
             ),
         ]
         .map(Candidate.init(bridge:))
@@ -527,9 +604,9 @@
         static func triageMatch(
             releaseId: String,
             title: String,
-            artist: String = "Artist Name",
-            year: Int32 = 1997,
-            format: String = "CD",
+            artist: String? = "Artist Name",
+            year: Int32? = 1997,
+            format: String? = "CD",
             trackCount: UInt32 = 12,
             source: BridgeMetadataSource = .musicBrainz,
             signal: BridgeMatchedSignal? = .discId
@@ -1065,12 +1142,18 @@
             role: .document
         )
 
+        static let notesDocument = previewFile(
+            name: "notes.txt",
+            size: 1200,
+            role: .document
+        )
+
         static let candidateFilesTracks = BridgeCandidateFiles(
             files: trackAudioFiles
                 + [
                     coverImage,
                     infoLog,
-                    previewFile(name: "notes.txt", size: 1200, role: .document),
+                    notesDocument,
                     previewFile(
                         name: "Album.cue",
                         size: 1100,
@@ -1272,6 +1355,26 @@
             reconciliation: .agrees(count: 9)
         )
 
+        /// Every row kind the table draws, in one folder: the sheet heading the
+        /// nine entries it carves, the images as one gallery, the two documents
+        /// carried with the release, and the rip logs collapsed to the one row
+        /// their shared role makes of them. What the Import-tab preview reads,
+        /// so a change to any row kind shows up in the canvas without hunting
+        /// for the fixture that has it.
+        static let everyRowKindMappingTable = BridgeMappingTable(
+            rows: [
+                .sheet(
+                    sheet: previewSheetGroup,
+                    entries: (0..<9).map(sheetEntryUnit)
+                ),
+                .images(images: mappingImages),
+                carriedRow(infoLog, role: .document, becomes: .kept),
+                carriedRow(notesDocument, role: .document, becomes: .kept),
+                .directory(directory: previewLogsDirectory),
+            ],
+            reconciliation: .agrees(count: 9)
+        )
+
         /// What the folder's own tags say it is: nine tracks, and no release to
         /// tally them against.
         static let unknownMappingTable = BridgeMappingTable(
@@ -1370,6 +1473,17 @@
         static let sheetMappingCandidate: Candidate = {
             var candidate = mappingCandidate
             candidate.mapping = sheetMappingTable
+            return candidate
+        }()
+
+        /// The candidate the Import-tab preview selects: the settled release
+        /// read off the CUE+FLAC folder it came from, with every row kind in
+        /// its table. Keyed to `folderCandidates`' first, so the row the
+        /// sidebar selects and the pane behind it are the same folder.
+        static let importTabCandidate: Candidate = {
+            var candidate = mappingCandidate
+            candidate.files = bridgeCandidateFiles
+            candidate.mapping = everyRowKindMappingTable
             return candidate
         }()
 
