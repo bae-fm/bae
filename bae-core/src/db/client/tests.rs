@@ -2493,6 +2493,142 @@ mod import_candidate_state_tests {
         );
     }
 
+    fn release_pick(release_id: &str) -> String {
+        serde_json::to_string(&crate::import::IdentityPick::Release {
+            source: crate::import::MetadataSource::MusicBrainz,
+            release_id: release_id.to_string(),
+            claim: crate::import::ClaimLevel::Exact,
+        })
+        .expect("the pick encodes")
+    }
+
+    fn found_nothing() -> TerminalVerdict {
+        TerminalVerdict::NotFoundAnywhere
+    }
+
+    /// A pick identification derived from its own single match belongs to that
+    /// verdict. When a re-run settles on anything else, the pick goes with the
+    /// verdict that made it — otherwise the candidate keeps naming a release it
+    /// is no longer identified as, and an import would commit that release
+    /// against a folder nothing now matches.
+    #[tokio::test]
+    async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_made() {
+        let (db, _tmp) = empty_db().await;
+        let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
+
+        let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
+        settled.identity_pick = Some(release_pick("mb-rel-1"));
+        db.save_import_candidate_verdict(&settled).await.unwrap();
+
+        let re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
+        assert_eq!(re_run.identity_pick, None, "nothing was found to pick");
+        db.save_import_candidate_verdict(&re_run).await.unwrap();
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert_eq!(
+            loaded
+                .get(&hash)
+                .expect("the row is still there")
+                .identity_pick,
+            None,
+            "the pick the superseded verdict made must not outlive it"
+        );
+    }
+
+    /// A person's pick is not identification's to revise. A later run's signals
+    /// turning up nothing says nothing about a release they chose by hand, so
+    /// the choice stands and the pane reopens on it.
+    #[tokio::test]
+    async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
+        let (db, _tmp) = empty_db().await;
+        let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
+
+        db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("mb-rel-chosen"))
+            .await
+            .unwrap();
+
+        let re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
+        db.save_import_candidate_verdict(&re_run).await.unwrap();
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert_eq!(
+            loaded
+                .get(&hash)
+                .expect("the row is still there")
+                .identity_pick,
+            Some(release_pick("mb-rel-chosen")),
+            "a verdict must not unmake a choice a person made"
+        );
+    }
+
+    /// And a re-run that settles on a *different* single match replaces the
+    /// pick its predecessor made, rather than leaving the older release named.
+    #[tokio::test]
+    async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
+        let (db, _tmp) = empty_db().await;
+        let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
+
+        let mut first = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
+        first.identity_pick = Some(release_pick("mb-rel-first"));
+        db.save_import_candidate_verdict(&first).await.unwrap();
+
+        let mut second = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
+        second.identity_pick = Some(release_pick("mb-rel-second"));
+        db.save_import_candidate_verdict(&second).await.unwrap();
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert_eq!(
+            loaded
+                .get(&hash)
+                .expect("the row is still there")
+                .identity_pick,
+            Some(release_pick("mb-rel-second")),
+            "the live verdict's own conclusion is the one that stands"
+        );
+    }
+
+    /// A file decision clears the verdict, and identification's pick goes with
+    /// it: that pick was the verdict's conclusion about a folder shape the
+    /// decision just changed. The person's own pick is untouched — their choice
+    /// names a release, not a shape.
+    #[tokio::test]
+    async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
+        let (db, _tmp) = empty_db().await;
+        let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
+        let hash = candidate.content_hash();
+        let edits = crate::import::folder_scanner::CandidateFileEdits::default();
+
+        let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
+        settled.identity_pick = Some(release_pick("mb-rel-derived"));
+        db.save_import_candidate_verdict(&settled).await.unwrap();
+        db.save_import_candidate_file_edits(&hash, "/music/Album", 0, &edits, &[])
+            .await
+            .unwrap();
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        let row = loaded.get(&hash).expect("the row is still there");
+        assert!(row.identify.is_none(), "the decision clears the verdict");
+        assert_eq!(
+            row.identity_pick, None,
+            "and the pick that verdict concluded goes with it"
+        );
+
+        db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("mb-rel-chosen"))
+            .await
+            .unwrap();
+        db.save_import_candidate_file_edits(&hash, "/music/Album", 1, &edits, &[])
+            .await
+            .unwrap();
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert_eq!(
+            loaded
+                .get(&hash)
+                .expect("the row is still there")
+                .identity_pick,
+            Some(release_pick("mb-rel-chosen")),
+            "a file decision must not unmake a choice a person made"
+        );
+    }
+
     /// Same files, same relative paths and sizes, under a different parent
     /// directory: `content_hash` never looks at the absolute path, so the row
     /// saved for the folder at its old location is still the row found for it

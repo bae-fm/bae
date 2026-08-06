@@ -1,4 +1,23 @@
 use super::*;
+
+/// Who decided a candidate's stored identity pick. The two outlive different
+/// things — identification's goes with the verdict that concluded it, a
+/// person's outlives every verdict — so the row records which it holds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PickAuthor {
+    User,
+    Identification,
+}
+
+impl PickAuthor {
+    /// The stored `identity_pick_author` value.
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Identification => "identification",
+        }
+    }
+}
 use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionKey, FolderReleaseDecisions,
     StoredCandidateEdits,
@@ -567,27 +586,39 @@ impl Database {
             Some(_) | None => return Ok(false),
         };
         self.call(move |sql| {
+            // A pick identification made belongs to the verdict that made it,
+            // so this write replaces it — with the new verdict's own
+            // conclusion, or with nothing when it concluded none. A pick a
+            // person made is theirs and is left exactly as it is: a run whose
+            // signals turn up nothing says nothing about a release they chose.
             let wrote = if update_existing {
                 sql.execute(
                     "UPDATE import_candidate_state SET \
-                         folder_path = ?, verdict = ?, probed_total_duration_ms = ?, identified_at = ?, \
-                         identity_pick = COALESCE(identity_pick, ?) \
-                     WHERE content_hash = ? AND edit_revision = ?",
-                    params![
-                        verdict.folder_path,
-                        verdict.verdict,
-                        verdict.probed_total_duration_ms,
-                        now,
-                        verdict.identity_pick,
-                        verdict.content_hash,
-                        expected,
-                    ],
+                         folder_path = :folder_path, verdict = :verdict, \
+                         probed_total_duration_ms = :probed, identified_at = :now, \
+                         identity_pick = CASE \
+                             WHEN identity_pick_author = 'user' THEN identity_pick \
+                             ELSE :pick END, \
+                         identity_pick_author = CASE \
+                             WHEN identity_pick_author = 'user' THEN 'user' \
+                             WHEN :pick IS NULL THEN NULL \
+                             ELSE 'identification' END \
+                     WHERE content_hash = :content_hash AND edit_revision = :expected",
+                    named_params! {
+                        ":folder_path": verdict.folder_path,
+                        ":verdict": verdict.verdict,
+                        ":probed": verdict.probed_total_duration_ms,
+                        ":now": now,
+                        ":pick": verdict.identity_pick,
+                        ":content_hash": verdict.content_hash,
+                        ":expected": expected,
+                    },
                 )? == 1
             } else {
                 sql.execute(
                     "INSERT INTO import_candidate_state \
-                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, identity_pick, sheet_bindings, file_roles, sheet_discs, edit_revision) \
-                     VALUES (?, ?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
+                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, identity_pick, identity_pick_author, sheet_bindings, file_roles, sheet_discs, edit_revision) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
                     params![
                         verdict.content_hash,
                         verdict.folder_path,
@@ -595,6 +626,10 @@ impl Database {
                         verdict.probed_total_duration_ms,
                         now,
                         verdict.identity_pick,
+                        verdict
+                            .identity_pick
+                            .as_ref()
+                            .map(|_| PickAuthor::Identification.as_str()),
                     ],
                 )? == 1
             };
@@ -612,6 +647,10 @@ impl Database {
     /// verdict was derived from a shape that no longer exists. Writing the
     /// decision without clearing it would leave the queue believing an answer
     /// to a question that changed.
+    ///
+    /// A pick identification concluded from that verdict goes with it, for the
+    /// same reason. A pick a person made stays: their choice names a release,
+    /// not a shape, and the mapping re-derives against the reshaped folder.
     ///
     /// The content hash covers files, never role decisions, so this addresses
     /// the same row the verdict lived in rather than orphaning it.
@@ -680,6 +719,12 @@ impl Database {
                     "UPDATE import_candidate_state SET \
                          folder_path = ?, sheet_bindings = ?, file_roles = ?, sheet_discs = ?, \
                          verdict = NULL, probed_total_duration_ms = NULL, identified_at = NULL, \
+                         identity_pick = CASE \
+                             WHEN identity_pick_author = 'user' THEN identity_pick \
+                             ELSE NULL END, \
+                         identity_pick_author = CASE \
+                             WHEN identity_pick_author = 'user' THEN 'user' \
+                             ELSE NULL END, \
                          edit_revision = ? \
                      WHERE content_hash = ? AND edit_revision = ?",
                     params![
@@ -807,6 +852,9 @@ impl Database {
     /// folder's own tags. An upsert that leaves the row's other halves alone:
     /// a choice can precede identification (a manual pick on a folder nothing
     /// matched) and must not erase a verdict or a file decision.
+    ///
+    /// It is recorded as the person's, which is what keeps a later run's
+    /// verdict from revising it.
     pub async fn save_candidate_identity_pick(
         &self,
         content_hash: &str,
@@ -819,12 +867,18 @@ impl Database {
         self.call(move |sql| {
             let changed = sql.execute(
                 "INSERT INTO import_candidate_state \
-                     (content_hash, folder_path, identity_pick) \
-                 VALUES (?, ?, ?) \
+                     (content_hash, folder_path, identity_pick, identity_pick_author) \
+                 VALUES (?, ?, ?, ?) \
                  ON CONFLICT (content_hash) DO UPDATE SET \
                      folder_path = excluded.folder_path, \
-                     identity_pick = excluded.identity_pick",
-                params![content_hash, folder_path, pick_json],
+                     identity_pick = excluded.identity_pick, \
+                     identity_pick_author = excluded.identity_pick_author",
+                params![
+                    content_hash,
+                    folder_path,
+                    pick_json,
+                    PickAuthor::User.as_str()
+                ],
             )?;
             if changed != 1 {
                 return Err(DbError::Message(format!(

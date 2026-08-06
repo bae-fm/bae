@@ -382,9 +382,12 @@ pub struct NewImportCandidateVerdict {
     pub expected_edit_revision: u64,
     /// `import::IdentityPick` JSON, written with the verdict when the verdict
     /// itself decides the identity — a single settled match IS the pick, made
-    /// by identification instead of by a click. It fills a blank only: a pick
-    /// a person already made outranks it and stays. `None` decides nothing
-    /// (several matches, a conflict, nothing found).
+    /// by identification instead of by a click. `None` decides nothing (several
+    /// matches, a conflict, nothing found).
+    ///
+    /// Either way it replaces whatever identification concluded last time: the
+    /// pick belongs to the verdict that made it. A pick a person made outranks
+    /// both and is left alone.
     pub identity_pick: Option<String>,
 }
 
@@ -418,8 +421,10 @@ pub struct DbImportCandidateState {
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
     /// The identity decided for this candidate, `import::IdentityPick`
-    /// JSON-encoded, or `None` while nothing is decided. Survives file
-    /// decisions — the choice names a release, not a shape.
+    /// JSON-encoded, or `None` while nothing is decided. A person's choice
+    /// survives file decisions and later verdicts alike — it names a release,
+    /// not a shape; one identification concluded lives exactly as long as the
+    /// verdict that concluded it.
     pub identity_pick: Option<String>,
 }
 

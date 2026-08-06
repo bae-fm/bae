@@ -511,12 +511,23 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     sheet_discs              TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(sheet_discs)),
     -- `import::IdentityPick`, JSON-encoded: the identity decided for this
     -- candidate — the pressing picked, the decision to read the folder's own
-    -- tags, or the single match identification settled (which fills a blank
-    -- and never overwrites a person's choice). What lets an answered pane
-    -- reopen answered after a restart. Survives file decisions: the choice
-    -- names a release, not a shape, and the mapping re-derives against the
-    -- reshaped folder.
+    -- tags, or the single match identification settled. What lets an answered
+    -- pane reopen answered after a restart.
     identity_pick            TEXT CHECK (identity_pick IS NULL OR json_valid(identity_pick)),
+    -- Who decided it: 'user' or 'identification'. The two outlive different
+    -- things, which is the only reason this is recorded.
+    --
+    -- Identification's pick is its verdict's own conclusion — a single settled
+    -- match IS the pick — so it belongs to that verdict: a re-run replaces it
+    -- with whatever the new verdict concludes, and a verdict concluding nothing
+    -- leaves none. A person's pick is theirs, and a later run's signals turning
+    -- up nothing says nothing about a release they chose by hand, so no verdict
+    -- overwrites or clears it, and it survives the file decisions that clear
+    -- one: their choice names a release, not a shape, and the mapping
+    -- re-derives against the reshaped folder.
+    --
+    -- NULL exactly when `identity_pick` is: nothing decided has no decider.
+    identity_pick_author     TEXT CHECK (identity_pick_author IN ('user', 'identification')),
     -- Monotonic compare-and-set revision for file decisions. Identification
     -- writes carry the revision they observed and cannot overwrite a verdict
     -- cleared by a later edit.
@@ -534,7 +545,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
             AND probed_total_duration_ms >= 0
             AND identified_at IS NOT NULL
         )
-    )
+    ),
+    CHECK ((identity_pick IS NULL) = (identity_pick_author IS NULL))
 );
 
 -- Device-local watched-root intent. These tables deliberately have no

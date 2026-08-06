@@ -4,7 +4,7 @@ use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-use coven::rusqlite::{params, OptionalExtension, Params, Row};
+use coven::rusqlite::{named_params, params, OptionalExtension, Params, Row};
 // bae holds no production connection — coven owns them all. Only the cloud-path
 // resolvers' unit tests seed a bare one to run against.
 #[cfg(test)]

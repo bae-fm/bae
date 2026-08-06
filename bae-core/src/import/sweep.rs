@@ -1094,8 +1094,9 @@ async fn save(
     // A single settled match IS the identity pick: identification made the
     // decision a click makes on a several-match row, so it lands the same way,
     // at the same claim a click lands, and the pane reopens on it after a
-    // restart. Anything else leaves the question open — and clears whatever
-    // pick a superseded verdict had made.
+    // restart. Anything else leaves the question open, and takes with it
+    // whatever pick a superseded verdict of this run's own had made — a pick a
+    // person made stands either way.
     let identity_pick = match verdict {
         TerminalVerdict::Found { matches, .. } if matches.len() == 1 => {
             let only = &matches[0];
