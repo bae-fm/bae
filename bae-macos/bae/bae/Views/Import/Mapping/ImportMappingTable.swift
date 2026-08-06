@@ -19,6 +19,21 @@ struct ImportMappingTable: View {
     let previewingPath: String?
     let actions: ImportMappingActions
 
+    /// The width the pane leaves the table. The columns are resolved against
+    /// it, and the table is laid out at it or at its own minimum, whichever is
+    /// wider — so the pane never has more table than it has room for, and the
+    /// row never has less than its columns need.
+    @State
+    private var paneWidth: CGFloat = ImportMappingColumns.minimumTableWidth
+
+    private var tableWidth: CGFloat {
+        max(paneWidth, ImportMappingColumns.minimumTableWidth)
+    }
+
+    private var columns: ImportMappingColumns {
+        ImportMappingColumns.resolved(tableWidth: tableWidth)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             FormSectionHeader(
@@ -26,13 +41,26 @@ struct ImportMappingTable: View {
                 trailing: table.reconciliation
                     .map(bridgeSlotReconciliationText)
             )
-            VStack(spacing: 0) {
-                headerRow
-                ForEach(table.rows, id: \.rowId) { row in
-                    body(of: row)
+            // A pane too narrow for the columns scrolls the table sideways.
+            // The alternative is squeezing a column past the point it says
+            // anything — or, as it stood, running the last two off the pane's
+            // right edge where there is no way to reach them at all.
+            ScrollView(.horizontal) {
+                VStack(spacing: 0) {
+                    headerRow
+                    ForEach(table.rows, id: \.rowId) { row in
+                        body(of: row)
+                    }
                 }
+                .frame(width: tableWidth, alignment: .leading)
+                .formGroupCard()
             }
-            .formGroupCard()
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .onGeometryChange(for: CGFloat.self) { geo in
+                geo.size.width
+            } action: {
+                paneWidth = $0
+            }
         }
     }
 
@@ -44,17 +72,25 @@ struct ImportMappingTable: View {
         case .sheet(let sheet, let entries):
             ImportMappingSheetRow(
                 sheet: sheet,
+                columns: columns,
                 options: bindingOptions[sheet.sheetId],
                 actions: actions,
             )
             .rowChrome()
             ForEach(entries, id: \.rowId, content: unitRow)
         case .images(let images):
-            ImportMappingImagesRow(images: images, actions: actions)
-                .rowChrome()
+            ImportMappingImagesRow(
+                images: images,
+                columns: columns,
+                actions: actions
+            )
+            .rowChrome()
         case .directory(let directory):
-            ImportMappingDirectoryRow(directory: directory)
-                .rowChrome()
+            ImportMappingDirectoryRow(
+                directory: directory,
+                columns: columns
+            )
+            .rowChrome()
         }
     }
 
@@ -64,6 +100,7 @@ struct ImportMappingTable: View {
     private func unitRow(_ unit: BridgeMappingUnit) -> some View {
         ImportMappingRowView(
             unit: unit,
+            columns: columns,
             audioChoices: table.audioChoices,
             previewingPath: previewingPath,
             actions: actions,
@@ -81,11 +118,11 @@ struct ImportMappingTable: View {
                     verbatim: coreString("ui.import.mapping.column.source")
                 )
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: columns.source, alignment: .leading)
             FormEyebrow(
                 text: Text(verbatim: coreString("ui.import.roles.column.role"))
             )
-            .frame(width: ImportMappingColumns.role, alignment: .leading)
+            .frame(width: columns.role, alignment: .leading)
             FormEyebrow(text: Text(verbatim: "#"))
                 .frame(
                     width: ImportMappingColumns.position,
@@ -96,9 +133,9 @@ struct ImportMappingTable: View {
                     verbatim: coreString("ui.import.roles.column.becomes")
                 )
             )
-            .frame(width: ImportMappingColumns.title, alignment: .leading)
+            .frame(width: columns.title, alignment: .leading)
             FormEyebrow(text: Text("Artist"))
-                .frame(width: ImportMappingColumns.artist, alignment: .leading)
+                .frame(width: columns.artist, alignment: .leading)
             FormEyebrow(
                 text: Text(
                     verbatim: coreString("ui.import.slots.column.length")
@@ -113,6 +150,17 @@ struct ImportMappingTable: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(.white.opacity(0.13)).frame(height: 1)
         }
+    }
+}
+
+extension View {
+    /// A cell in the source column: exactly the column's width, and clipped to
+    /// it. A file name truncates on its own; what a cell cannot truncate — a
+    /// control, a size, a gallery tile — stops at the column's edge rather than
+    /// running into the role beside it.
+    func sourceColumn(_ columns: ImportMappingColumns) -> some View {
+        frame(width: columns.source, alignment: .leading)
+            .clipped()
     }
 }
 
@@ -134,18 +182,40 @@ extension View {
     }
 }
 
-/// The table's columns, shared by its header and every one of its rows.
+/// The table's columns, resolved against the width the table has to lay them
+/// out in and shared by its header and every one of its rows.
 ///
-/// Every column but the source is a fixed width, so a header sits over its own
-/// column's content on every row: a row negotiating its own widths against its
-/// own content is what puts one row's length under another row's role. The
-/// source column takes whatever is left, because a file name is the one thing
-/// here with no length worth assuming.
-enum ImportMappingColumns {
-    static let role: CGFloat = 118
+/// The widths are the table's, not each row's: a row negotiating its own widths
+/// against its own content is what puts one row's length under another row's
+/// role.
+///
+/// One set of widths only holds at one table width, which is the whole reason
+/// this is resolved rather than declared. Four columns carry the give: the
+/// source and the role, and the two editable fields. At `idealTableWidth` each
+/// of them has what it asks for; every point narrower is taken off all four at
+/// once, each giving up its share of the shortfall in proportion to how much it
+/// has to give, so they arrive at their floors together instead of one
+/// collapsing while its neighbour is still roomy. `minimumTableWidth` is where
+/// all four sit at their floor; the table is never laid out narrower than that,
+/// because a column squeezed past its floor stops saying what it is there to
+/// say — the pane scrolls it sideways instead.
+///
+/// Every column is an exact width, the source included. A cell asked to fit in
+/// less than its content wants must truncate inside its column and not push its
+/// neighbours along: a row whose width is negotiated with its own cells is a
+/// row that can come out wider than the table, which is how the last columns
+/// ended up off the pane's right edge.
+struct ImportMappingColumns {
+    let source: CGFloat
+    let role: CGFloat
+    let title: CGFloat
+    let artist: CGFloat
+
+    /// The position, the length, and the row's own actions. There is no
+    /// truncation of a track number, a running time or the two words that *are*
+    /// the actions that leaves something still readable, so these three are the
+    /// same width at every table width.
     static let position: CGFloat = 34
-    static let title: CGFloat = 220
-    static let artist: CGFloat = 180
     static let length: CGFloat = 64
     static let actions: CGFloat = 118
     /// The gap between two columns.
@@ -155,6 +225,72 @@ enum ImportMappingColumns {
     /// The length and actions columns with the gap between them — what a row
     /// with no track to edit leaves empty at the end.
     static var trailingColumns: CGFloat { length + actions + spacing }
+
+    /// What each column that gives asks for, and what it will come down to: a
+    /// file name truncated in the middle beside its audition control, a role
+    /// word still read as that word, and a field narrow enough to scroll under
+    /// the caret but wide enough to read a title in.
+    private static let idealSource: CGFloat = 240
+    private static let floorSource: CGFloat = 110
+    private static let idealRole: CGFloat = 118
+    private static let floorRole: CGFloat = 60
+    private static let idealTitle: CGFloat = 220
+    private static let floorTitle: CGFloat = 96
+    private static let idealArtist: CGFloat = 180
+    private static let floorArtist: CGFloat = 72
+
+    /// What a row spends on something that is not a column: the leading edge at
+    /// each end, and the six gaps between seven columns.
+    private static let chrome: CGFloat = rowPadding * 2 + spacing * 6
+    /// The three columns that are the same width at every table width.
+    private static let rigid: CGFloat = position + length + actions
+
+    /// The width at which every column has what it asks for. Wider than this,
+    /// the surplus is the source's and nothing else moves.
+    static let idealTableWidth: CGFloat =
+        idealSource + idealRole + idealTitle + idealArtist + rigid + chrome
+
+    /// The width at which all four giving columns are at their floor. The table
+    /// is laid out at this width even when the pane is narrower, and the pane
+    /// scrolls it sideways rather than squeezing a column out of the row.
+    static let minimumTableWidth: CGFloat =
+        floorSource + floorRole + floorTitle + floorArtist + rigid + chrome
+
+    static func resolved(tableWidth: CGFloat) -> ImportMappingColumns {
+        let width = max(tableWidth, minimumTableWidth)
+        let given =
+            width < idealTableWidth
+            ? (idealTableWidth - width)
+                / ((idealSource - floorSource) + (idealRole - floorRole)
+                    + (idealTitle - floorTitle) + (idealArtist - floorArtist))
+            : 0
+        let role = shrunk(idealRole, to: floorRole, by: given)
+        let title = shrunk(idealTitle, to: floorTitle, by: given)
+        let artist = shrunk(idealArtist, to: floorArtist, by: given)
+        return ImportMappingColumns(
+            // What the other six leave. Stating the source's share as the
+            // remainder rather than as its own number is what makes the seven
+            // add up to the table exactly at every width: the surplus above
+            // `idealTableWidth` lands here, and nowhere else.
+            source: width - chrome - rigid - role - title - artist,
+            role: role,
+            title: title,
+            artist: artist
+        )
+    }
+
+    /// A column `fraction` of the way from what it asks for to what it will
+    /// take. Not rounded to whole points: rounding three columns and leaving
+    /// the fourth the remainder means widening the table by a point can *narrow*
+    /// the source, and a column that walks backwards as the pane is dragged
+    /// wider is worse than one sitting on a half-point.
+    private static func shrunk(
+        _ ideal: CGFloat,
+        to floor: CGFloat,
+        by fraction: CGFloat
+    ) -> CGFloat {
+        ideal - (ideal - floor) * fraction
+    }
 }
 
 /// A directory whose files all do the same job, as the one row core decided it
@@ -163,6 +299,7 @@ enum ImportMappingColumns {
 /// what becomes of it where every other row says so.
 struct ImportMappingDirectoryRow: View {
     let directory: BridgeCollapsedDirectory
+    let columns: ImportMappingColumns
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
@@ -182,21 +319,21 @@ struct ImportMappingDirectoryRow: View {
                 .foregroundStyle(.tertiary)
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .sourceColumn(columns)
             Text(
                 bridgeFileRowKindText(directory.kind, count: directory.count)
             )
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
             .lineLimit(1)
-            .frame(width: ImportMappingColumns.role, alignment: .leading)
+            .frame(width: columns.role, alignment: .leading)
             Spacer().frame(width: ImportMappingColumns.position)
             Text(coreString("ui.import.becomes.kept"))
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
-                .frame(width: ImportMappingColumns.title, alignment: .leading)
-            Spacer().frame(width: ImportMappingColumns.artist)
+                .frame(width: columns.title, alignment: .leading)
+            Spacer().frame(width: columns.artist)
             Spacer().frame(width: ImportMappingColumns.trailingColumns)
         }
     }

@@ -10,6 +10,9 @@ import SwiftUI
 /// release's is what catches it.
 struct ImportMappingRowView: View {
     let unit: BridgeMappingUnit
+    /// The widths the table resolved for this pane, so the row's cells land
+    /// under the header's.
+    let columns: ImportMappingColumns
     /// Every audio unit the folder offers — what a row with nothing behind it
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
@@ -35,9 +38,9 @@ struct ImportMappingRowView: View {
                 lengthsDiverge: lengthsDiverge,
                 actions: actions,
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .sourceColumn(columns)
             ImportMappingRoleCell(source: unit.source, actions: actions)
-                .frame(width: ImportMappingColumns.role, alignment: .leading)
+                .frame(width: columns.role, alignment: .leading)
             becomesCells
         }
     }
@@ -61,13 +64,13 @@ struct ImportMappingRowView: View {
                 text: field(of: track, \.title),
                 boxed: false,
             )
-            .frame(width: ImportMappingColumns.title)
+            .frame(width: columns.title)
             MetadataField(
                 placeholder: String(localized: "Artist"),
                 text: field(of: track, \.artistText),
                 boxed: false,
             )
-            .frame(width: ImportMappingColumns.artist)
+            .frame(width: columns.artist)
             Text(importDurationText(sourceMs))
                 .font(.system(size: 12))
                 .monospacedDigit()
@@ -103,8 +106,8 @@ struct ImportMappingRowView: View {
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
             .lineLimit(1)
-            .frame(width: ImportMappingColumns.title, alignment: .leading)
-        Spacer().frame(width: ImportMappingColumns.artist)
+            .frame(width: columns.title, alignment: .leading)
+        Spacer().frame(width: columns.artist)
         Spacer().frame(width: ImportMappingColumns.trailingColumns)
     }
 

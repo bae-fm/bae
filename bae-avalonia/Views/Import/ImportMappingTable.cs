@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -35,6 +36,10 @@ internal sealed class ImportMappingTable
     // user is typing in.
     private readonly List<(Border Host, string? AudioPath)> _rowHosts = new();
 
+    // Every row's grid, the header's included, so the resolved widths reach all
+    // of them at once when the pane is resized. One column grid means one list.
+    private readonly List<Grid> _grids = new();
+
     internal ImportMappingTable(
         BridgeMappingTable table,
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
@@ -53,7 +58,8 @@ internal sealed class ImportMappingTable
     internal Control Build()
     {
         _rowHosts.Clear();
-        var column = new StackPanel { Spacing = 0 };
+        _grids.Clear();
+        var column = new StackPanel { Spacing = 0, MinWidth = ImportMappingColumns.MinimumWidth };
         column.Children.Add(HeaderRow());
         foreach (var row in _table.Rows)
         {
@@ -80,7 +86,37 @@ internal sealed class ImportMappingTable
             }
         }
         ApplyPreviewAccent();
-        return column;
+
+        // A pane too narrow for the columns scrolls the table sideways. The
+        // alternative is squeezing a column past the point it says anything —
+        // or, as it stood, running the last two off the pane's right edge where
+        // there is no way to reach them at all.
+        var scroller = new ScrollViewer
+        {
+            Content = column,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        };
+        scroller.SizeChanged += (_, e) => ApplyColumns(e.NewSize.Width);
+        ApplyColumns(scroller.Bounds.Width);
+        return scroller;
+    }
+
+    /// <summary>Resolve the columns against the width the pane leaves the table
+    /// and write them onto every row's grid, the header's included. The table is
+    /// laid out at this width or at its own minimum, whichever is wider — so the
+    /// pane never has more table than it has room for, and the row never has
+    /// less than its columns need.</summary>
+    private void ApplyColumns(double paneWidth)
+    {
+        var columns = ImportMappingColumns.Resolve(paneWidth);
+        foreach (var grid in _grids)
+        {
+            grid.ColumnDefinitions[0].Width = new GridLength(columns.Source);
+            grid.ColumnDefinitions[1].Width = new GridLength(columns.Role);
+            grid.ColumnDefinitions[3].Width = new GridLength(columns.Title);
+            grid.ColumnDefinitions[4].Width = new GridLength(columns.Artist);
+        }
     }
 
     /// <summary>The heading above the table, with the tally beside it. Absent for
@@ -116,18 +152,33 @@ internal sealed class ImportMappingTable
     // Source, the role in force, the position the release gives the row, the two
     // editable fields, the release's length, and the row's own actions.
     //
-    // Every column but the source is a fixed width, so a header sits over its
-    // own column's content on every row: a row negotiating its own widths
-    // against its own content is what puts one row's length under another row's
-    // role. The source column takes whatever is left, because a file name is the
-    // one thing here with no length worth assuming.
-    private static Grid Grid() => new()
+    // Every width is the table's, so a header sits over its own column's content
+    // on every row: a row negotiating its own widths against its own content is
+    // what puts one row's length under another row's role. The four that give
+    // are written in by ApplyColumns once the pane's width is known; they start
+    // at the narrowest the table is ever laid out at.
+    private Grid Grid()
     {
-        ColumnDefinitions = new ColumnDefinitions("*,118,34,220,180,64,118"),
-        ColumnSpacing = 10,
-    };
+        var start = ImportMappingColumns.Resolve(ImportMappingColumns.MinimumWidth);
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions
+            {
+                new ColumnDefinition(new GridLength(start.Source)),
+                new ColumnDefinition(new GridLength(start.Role)),
+                new ColumnDefinition(new GridLength(ImportMappingColumns.Position)),
+                new ColumnDefinition(new GridLength(start.Title)),
+                new ColumnDefinition(new GridLength(start.Artist)),
+                new ColumnDefinition(new GridLength(ImportMappingColumns.Length)),
+                new ColumnDefinition(new GridLength(ImportMappingColumns.Actions)),
+            },
+            ColumnSpacing = ImportMappingColumns.Spacing,
+        };
+        _grids.Add(grid);
+        return grid;
+    }
 
-    private static Control HeaderRow()
+    private Control HeaderRow()
     {
         var grid = Grid();
         grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.source"), 0));

@@ -11,6 +11,9 @@ import SwiftUI
 /// the assignment is the truth and no name is read for it.
 struct ImportMappingSheetRow: View {
     let sheet: BridgeSheetGroup
+    /// The widths the table resolved for this pane, so the group header holds
+    /// its entries' columns open at the width they are drawn at.
+    let columns: ImportMappingColumns
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core. `nil` until it has been asked for; empty means there is nothing to
     /// offer, so no menu appears.
@@ -53,17 +56,17 @@ struct ImportMappingSheetRow: View {
                 }
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .sourceColumn(columns)
             ImportSheetDiscMenu(
                 sheet: sheet,
                 onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
             )
-            .frame(width: ImportMappingColumns.role, alignment: .leading)
+            .frame(width: columns.role, alignment: .leading)
             // The becomes half is the entries' to fill; the header only holds
             // its columns open so the group and its rows line up.
             Spacer().frame(width: ImportMappingColumns.position)
-            Spacer().frame(width: ImportMappingColumns.title)
-            Spacer().frame(width: ImportMappingColumns.artist)
+            Spacer().frame(width: columns.title)
+            Spacer().frame(width: columns.artist)
             Spacer().frame(width: ImportMappingColumns.trailingColumns)
         }
     }

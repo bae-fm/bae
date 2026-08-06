@@ -9,6 +9,9 @@ import SwiftUI
 /// becomes of them is stated once for the group.
 struct ImportMappingImagesRow: View {
     let images: [BridgeMappingImage]
+    /// The widths the table resolved for this pane, so the gallery ends where
+    /// every other row's source cell does.
+    let columns: ImportMappingColumns
     let actions: ImportMappingActions
 
     private static let tileSize: CGFloat = 96
@@ -24,15 +27,15 @@ struct ImportMappingImagesRow: View {
             ) {
                 ForEach(images, id: \.fileId, content: tile)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Spacer().frame(width: ImportMappingColumns.role)
+            .sourceColumn(columns)
+            Spacer().frame(width: columns.role)
             Spacer().frame(width: ImportMappingColumns.position)
             Text(coreString("ui.import.becomes.kept"))
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
-                .frame(width: ImportMappingColumns.title, alignment: .leading)
-            Spacer().frame(width: ImportMappingColumns.artist)
+                .frame(width: columns.title, alignment: .leading)
+            Spacer().frame(width: columns.artist)
             Spacer().frame(width: ImportMappingColumns.trailingColumns)
         }
     }

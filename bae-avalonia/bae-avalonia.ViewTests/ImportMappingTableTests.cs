@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -71,12 +72,69 @@ public sealed class ImportMappingTableTests
         var columns = Rows(table).Select(ColumnWidths).ToList();
 
         Assert.All(columns, widths => Assert.Equal(columns[0], widths));
-        // Only the source column stretches; every other width is the table's,
-        // not the row's.
-        Assert.Equal(GridUnitType.Star, columns[0][0].GridUnitType);
+        // Every width is the table's, not the row's, and every one of them is a
+        // number: a column that stretches is a column the row gets to argue
+        // about against its own content.
         Assert.All(
-            columns[0].Skip(1),
+            columns[0],
             width => Assert.Equal(GridUnitType.Pixel, width.GridUnitType));
+    }
+
+    // The whole row has to fit the pane. Seven columns at a width the pane never
+    // had is what ran the length and the row's actions off its right edge.
+    [Theory]
+    [InlineData(400)]
+    [InlineData(ImportMappingColumns.MinimumWidth)]
+    [InlineData(700)]
+    [InlineData(900)]
+    [InlineData(ImportMappingColumns.IdealWidth)]
+    [InlineData(1600)]
+    public void TheColumnsAddUpToTheTable(double paneWidth)
+    {
+        var columns = ImportMappingColumns.Resolve(paneWidth);
+
+        var row = columns.Source + columns.Role + columns.Title + columns.Artist
+            + ImportMappingColumns.Position + ImportMappingColumns.Length
+            + ImportMappingColumns.Actions + ImportMappingColumns.Spacing * 6;
+
+        // Under its minimum the table stops shrinking; the pane scrolls it
+        // sideways from there rather than squeezing a column out of the row.
+        Assert.Equal(Math.Max(paneWidth, ImportMappingColumns.MinimumWidth), row, 6);
+    }
+
+    // Wide enough and every column has the width it asks for, with the surplus
+    // going to the file names and nowhere else — the layout a wide window has
+    // always drawn, unchanged. The same four numbers the macOS table resolves.
+    [Fact]
+    public void TheSurplusAboveTheIdealWidthIsAllTheSource()
+    {
+        var columns = ImportMappingColumns.Resolve(ImportMappingColumns.IdealWidth + 300);
+
+        Assert.Equal(118, columns.Role);
+        Assert.Equal(220, columns.Title);
+        Assert.Equal(180, columns.Artist);
+        Assert.Equal(540, columns.Source);
+    }
+
+    // Narrowing takes from all four at once. A column that kept its width while
+    // its neighbour collapsed would be the same bug in miniature: the row still
+    // fits, and one cell has stopped saying anything.
+    [Fact]
+    public void NarrowingTakesFromEveryColumnThatHasGive()
+    {
+        var wide = ImportMappingColumns.Resolve(ImportMappingColumns.IdealWidth);
+        var middle = ImportMappingColumns.Resolve(
+            (ImportMappingColumns.IdealWidth + ImportMappingColumns.MinimumWidth) / 2);
+        var narrow = ImportMappingColumns.Resolve(ImportMappingColumns.MinimumWidth);
+
+        Assert.True(middle.Source < wide.Source);
+        Assert.True(middle.Role < wide.Role);
+        Assert.True(middle.Title < wide.Title);
+        Assert.True(middle.Artist < wide.Artist);
+        Assert.True(narrow.Source < middle.Source);
+        Assert.True(narrow.Role < middle.Role);
+        Assert.True(narrow.Title < middle.Title);
+        Assert.True(narrow.Artist < middle.Artist);
     }
 
     // Cue filenames are arbitrary, so the header carries the assignment: every
@@ -314,9 +372,11 @@ public sealed class ImportMappingTableTests
                 Exclude: _ => { })).Build();
 
     /// <summary>The table's children: the column header, then one per rendered
-    /// row — a sheet's own row and each of its entries.</summary>
+    /// row — a sheet's own row and each of its entries. The table hangs inside
+    /// the scroller that carries it sideways in a pane too narrow for its
+    /// columns.</summary>
     private static IReadOnlyList<Control> Rows(Control table) =>
-        ((StackPanel)table).Children.OfType<Control>().ToList();
+        ((StackPanel)((ScrollViewer)table).Content!).Children.OfType<Control>().ToList();
 
     /// <summary>A row's left half, which is the first cell of its grid.</summary>
     private static Control SourceCell(Control row) =>

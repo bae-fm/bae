@@ -14,9 +14,10 @@ extension ImportView {
                 .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
             if let candidate = selectedCandidate {
                 mainPane(for: candidate)
-                    // The floor keeps the mapping table's columns readable —
-                    // below it the split pane scrolls the window, not the
-                    // table into per-character wrapping.
+                    // The floor is the identity card's and the commit bar's.
+                    // The mapping table keeps its own — it is laid out at
+                    // whatever its columns need and scrolls sideways inside the
+                    // pane when the pane has less than that.
                     .frame(
                         minWidth: 620,
                         maxWidth: .infinity,
