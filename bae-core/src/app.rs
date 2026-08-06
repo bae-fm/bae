@@ -223,7 +223,10 @@ fn bootstrap_inner(
         diagnostics.clone(),
         runtime.handle().clone(),
         cloudkit_ops,
-        crate::import::cover_art::RemoteImageCache::new(Arc::clone(&clock)),
+        crate::import::cover_art::RemoteImageCache::new(
+            Arc::clone(&clock),
+            &config_handle.config().store_dir,
+        ),
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
