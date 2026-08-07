@@ -86,6 +86,12 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "6.2"
         SWIFT_OBJC_BRIDGING_HEADER: bae/bae-Bridging-Header.h
+        # The compiler writes each file's localizable strings to .stringsdata
+        # during compilation; scripts/check_localizable_strings.py compares
+        # that ground truth against Localizable.xcstrings. (Xcode's
+        # parser-based catalog sync misses strings in some closure shapes —
+        # only the compile-emitted data is trustworthy.)
+        SWIFT_EMIT_LOC_STRINGS: YES
         # CODE_SIGN_ENTITLEMENTS is set in Signing.xcconfig (full) and overridden
         # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the
