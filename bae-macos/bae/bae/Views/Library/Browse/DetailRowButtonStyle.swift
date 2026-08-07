@@ -39,9 +39,9 @@ struct DetailRowButtonStyle: ButtonStyle {
 #if DEBUG
     #Preview("Detail Row Button Style") {
         VStack(alignment: .leading, spacing: 2) {
-            Button("Sample Row") {}
+            Button(action: {}) { Text(verbatim: "Sample Row") }
                 .buttonStyle(DetailRowButtonStyle())
-            Button("Another Row") {}
+            Button(action: {}) { Text(verbatim: "Another Row") }
                 .buttonStyle(DetailRowButtonStyle())
         }
         .padding()

@@ -6,13 +6,19 @@ import SwiftUI
 /// queued-time / cancel cluster.
 ///
 /// The cancel button is optional — a row for work that cannot be abandoned (a
-/// cloud tombstone, whose object would otherwise be stranded) passes neither
-/// `cancelHelp` nor `onCancel` and keeps the trailing space empty.
+/// cloud tombstone, whose object would otherwise be stranded) passes no
+/// `cancel` and keeps the trailing space empty.
 struct QueueRow<Content: View, Badge: View>: View {
+    /// The cancel affordance as one value: a button always ships with the
+    /// tooltip naming what it abandons.
+    struct CancelAction {
+        let help: LocalizedStringKey
+        let action: () -> Void
+    }
+
     let icon: String
     let createdAt: Int64
-    var cancelHelp: LocalizedStringKey?
-    var onCancel: (() -> Void)?
+    var cancel: CancelAction?
     @ViewBuilder
     let content: () -> Content
     @ViewBuilder
@@ -37,12 +43,12 @@ struct QueueRow<Content: View, Badge: View>: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 90, alignment: .trailing)
 
-            if let onCancel {
-                Button(action: onCancel) {
+            if let cancel {
+                Button(action: cancel.action) {
                     Image(systemName: "xmark.circle")
                 }
                 .buttonStyle(.plain)
-                .help(cancelHelp ?? "")
+                .help(cancel.help)
             }
         }
         .padding(.horizontal)
@@ -61,11 +67,16 @@ func queuedRelativeLabel(_ epochMs: Int64) -> String {
 
 #if DEBUG
     #Preview("Queue row") {
+        // Routed through a String so the extractor never takes preview-only
+        // copy into the catalog.
+        let sampleHelp = "Cancel this item"
         QueueRow(
             icon: "arrow.down.circle",
             createdAt: Int64(Date().timeIntervalSince1970 * 1000) - 120_000,
-            cancelHelp: "Cancel this item",
-            onCancel: {}
+            cancel: .init(
+                help: LocalizedStringKey(sampleHelp),
+                action: {}
+            )
         ) {
             Text("Album Title")
                 .lineLimit(1)

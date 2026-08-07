@@ -32,10 +32,11 @@ struct ModalOverlay<Content: View>: View {
     #Preview("Modal Overlay") {
         ModalOverlay(onDismiss: {}) {
             VStack(spacing: 12) {
-                Text("Sample Modal")
+                Text(verbatim: "Sample Modal")
                     .font(.headline)
                 Text(
-                    "Any content hosts inside the dimmed, dismissible overlay."
+                    verbatim:
+                        "Any content hosts inside the dimmed, dismissible overlay."
                 )
                 .font(.callout)
                 .foregroundStyle(.secondary)

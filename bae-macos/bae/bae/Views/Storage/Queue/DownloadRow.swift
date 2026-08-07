@@ -11,8 +11,7 @@ struct DownloadRow: View {
         QueueRow(
             icon: "arrow.down.circle",
             createdAt: op.createdAt,
-            cancelHelp: "Cancel this download",
-            onCancel: onCancel
+            cancel: .init(help: "Cancel this download", action: onCancel)
         ) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {

@@ -22,9 +22,9 @@ struct NumericCellStyle: ViewModifier {
         // Hosts centered tabular digits where the disc/track-number fields sit —
         // resting then focused.
         HStack(spacing: 12) {
-            Text("1").modifier(NumericCellStyle(focused: false))
-            Text("2").modifier(NumericCellStyle(focused: true))
-            Text("12").modifier(NumericCellStyle(focused: false))
+            Text(verbatim: "1").modifier(NumericCellStyle(focused: false))
+            Text(verbatim: "2").modifier(NumericCellStyle(focused: true))
+            Text(verbatim: "12").modifier(NumericCellStyle(focused: false))
         }
         .padding(24)
         .frame(width: 220)

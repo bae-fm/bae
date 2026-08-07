@@ -28,7 +28,7 @@ struct ImportSidebarList<Header: View, Content: View>: View {
     #Preview("Sidebar list") {
         ImportSidebarList {
             HStack {
-                Text("Header")
+                Text(verbatim: "Header")
                     .font(.headline)
                 Spacer()
                 Image(systemName: "plus")

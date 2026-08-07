@@ -69,19 +69,22 @@ struct InfoTip: View {
 #if DEBUG
     // The info popover is hover-driven, so a static preview shows the "?" trigger
     // glyph beside its label; hovering it in the live preview opens the popover.
+    // Sample copy routes through String values so the extractor never takes
+    // preview-only prose into the catalog.
     #Preview("Info Tip") {
+        let encryptionTip =
+            "Your library is encrypted with a key only this device holds."
+        let watchedFolderTip =
+            "New rips dropped here are picked up automatically."
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
-                Text("Encryption key")
-                InfoTip(
-                    text:
-                        "Your library is encrypted with a key only this device holds."
-                )
+                Text(verbatim: "Encryption key")
+                InfoTip(text: LocalizedStringKey(encryptionTip))
             }
             HStack(spacing: 8) {
-                Text("Watched folder")
+                Text(verbatim: "Watched folder")
                 InfoTip(
-                    text: "New rips dropped here are picked up automatically.",
+                    text: LocalizedStringKey(watchedFolderTip),
                     learnMoreURL: URL(string: "https://example.com/docs"),
                     arrowEdge: .trailing
                 )

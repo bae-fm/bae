@@ -45,11 +45,13 @@ extension View {
     // top anchor on appear and rests at full scale/opacity.
     #Preview("Popover Entrance") {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Add to queue")
+            Text(verbatim: "Add to queue")
                 .font(.headline)
-            Text("Springs in from its anchor when the popover appears.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            Text(
+                verbatim: "Springs in from its anchor when the popover appears."
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
         }
         .padding(16)
         .frame(width: 240)

@@ -17,8 +17,7 @@ struct OutputRow: View {
         QueueRow(
             icon: "square.and.arrow.up",
             createdAt: op.createdAt,
-            cancelHelp: "Cancel this export",
-            onCancel: onCancel
+            cancel: .init(help: "Cancel this export", action: onCancel)
         ) {
             Text(op.title)
                 .lineLimit(1)

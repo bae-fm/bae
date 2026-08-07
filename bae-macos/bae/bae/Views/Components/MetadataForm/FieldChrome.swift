@@ -40,13 +40,13 @@ struct FieldChrome: ViewModifier {
         // The four resting/focused × boxed/borderless combinations the chrome
         // renders, hosting plain text where a real field would sit.
         VStack(alignment: .leading, spacing: 12) {
-            Text("Boxed · resting")
+            Text(verbatim: "Boxed · resting")
                 .modifier(FieldChrome(focused: false, boxed: true))
-            Text("Boxed · focused")
+            Text(verbatim: "Boxed · focused")
                 .modifier(FieldChrome(focused: true, boxed: true))
-            Text("Borderless · resting")
+            Text(verbatim: "Borderless · resting")
                 .modifier(FieldChrome(focused: false, boxed: false))
-            Text("Borderless · focused")
+            Text(verbatim: "Borderless · focused")
                 .modifier(FieldChrome(focused: true, boxed: false))
         }
         .font(.system(size: 13))
