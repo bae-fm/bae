@@ -39,6 +39,7 @@ jobs:
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          SWIFT_EMIT_LOC_STRINGS=YES \
           -derivedDataPath .build/derivedData build
 
     # Each post-build check below runs whenever the build itself succeeded,
@@ -46,6 +47,10 @@ jobs:
     # failure short-circuits the audit step (`skipped`) and a real env-binding
     # bug slips through — exactly how the OutboxStore crash in #738 reached
     # main.
+
+    - name: Check localizable strings against the catalog
+      if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
+      run: python3 scripts/check_localizable_strings.py
 
     - name: Run macOS unit tests (baeTests)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
@@ -136,7 +141,13 @@ jobs:
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          SWIFT_EMIT_LOC_STRINGS=YES \
           -derivedDataPath .build/derivedData build
+
+    # The baeium flavor compiles the other side of every BAE_* #if; the same
+    # catalog must cover both.
+    - name: Check localizable strings against the catalog (baeium)
+      run: python3 scripts/check_localizable_strings.py
 
     - name: Guard — baeium bridge exports no OAuth/CloudKit binding
       run: |

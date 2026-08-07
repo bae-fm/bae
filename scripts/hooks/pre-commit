@@ -213,12 +213,23 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
             exit 1
         }
         # Keep xcodebuild and periphery pointed at the same index store.
+        # SWIFT_EMIT_LOC_STRINGS on the command line reaches SPM package
+        # targets (BaeKit) too — project.yml's copy covers only the app
+        # target — so the string gate below sees every compiled string.
         run_check "xcodebuild (bae-macos)" xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            SWIFT_EMIT_LOC_STRINGS=YES \
             -derivedDataPath "$MACOS_DERIVED_DATA_PATH" \
             -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
             -disableAutomaticPackageResolution build || {
             echo "macOS app build failed"
+            exit 1
+        }
+
+        run_check "localizable strings (bae-macos)" \
+            python3 ../../scripts/check_localizable_strings.py \
+            --derived-data "$MACOS_DERIVED_DATA_PATH" || {
+            echo "Localizable.xcstrings disagrees with compiled strings. See above."
             exit 1
         }
 
