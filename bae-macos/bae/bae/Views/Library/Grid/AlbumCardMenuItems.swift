@@ -14,8 +14,10 @@ struct AlbumCardMenuItems: View {
 
 #if DEBUG
     #Preview("Album Card Menu Items") {
-        Menu("Album Actions") {
+        Menu {
             AlbumCardMenuItems(menu: PreviewData.albumCardMenu())
+        } label: {
+            Text(verbatim: "Album Actions")
         }
         .menuStyle(.button)
         .padding()
@@ -23,8 +25,10 @@ struct AlbumCardMenuItems: View {
     }
 
     #Preview("Album Card Menu Items \u{2014} Multi") {
-        Menu("Album Actions") {
+        Menu {
             AlbumCardMenuItems(menu: PreviewData.albumCardMenu(targetCount: 3))
+        } label: {
+            Text(verbatim: "Album Actions")
         }
         .menuStyle(.button)
         .padding()

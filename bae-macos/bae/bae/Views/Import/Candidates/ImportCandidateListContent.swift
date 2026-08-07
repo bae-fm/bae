@@ -281,7 +281,7 @@ struct FolderReleaseBoundaryRow: View {
                 Image(systemName: "opticaldisc")
                 Text(row.name)
                 Spacer(minLength: 4)
-                Text("\(Int(trackCount)) \u{b7} \(formatLabel)")
+                Text(verbatim: "\(Int(trackCount)) \u{b7} \(formatLabel)")
                     .foregroundStyle(.secondary)
             case .invalid(let reason):
                 Image(systemName: "exclamationmark.triangle.fill")

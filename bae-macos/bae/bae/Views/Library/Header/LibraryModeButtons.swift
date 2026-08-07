@@ -28,8 +28,10 @@ struct LibraryModeButtons: View {
     #Preview("Library Mode Buttons") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.composers)
-        return Menu("Browse Mode") {
+        return Menu {
             LibraryModeButtons(uiStore: uiStore, select: { _ in })
+        } label: {
+            Text(verbatim: "Browse Mode")
         }
         .menuStyle(.button)
         .padding()

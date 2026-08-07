@@ -10,9 +10,12 @@ struct TrackSideCell: View {
     private var focused: Bool
 
     var body: some View {
-        TextField("", value: $value, format: .number)
-            .focused($focused)
-            .modifier(NumericCellStyle(focused: focused))
+        TextField(value: $value, format: .number) {
+            Text(verbatim: "")
+        }
+        .accessibilityLabel("Side")
+        .focused($focused)
+        .modifier(NumericCellStyle(focused: focused))
     }
 }
 

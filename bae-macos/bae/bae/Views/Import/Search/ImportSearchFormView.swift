@@ -64,7 +64,7 @@ struct ImportSearchFormView: View {
         VStack(spacing: 8) {
             HStack {
                 sourcePicker
-                Picker("", selection: $activeTab) {
+                Picker("Search by", selection: $activeTab) {
                     Text("General").tag(SearchTab.general)
                     Text("Catalog #").tag(SearchTab.catalogNumber)
                     Text("Barcode").tag(SearchTab.barcode)

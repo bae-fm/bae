@@ -7,6 +7,22 @@ import SwiftUI
 /// Prop-driven — the flow view owns the generated code, the decode, and the
 /// join; this renders them and reports the button taps.
 struct JoinCodeExchange: View {
+    /// What a provider mismatch tells the joiner, per build flavor. Both
+    /// sentences compile in every flavor — only the selection is gated — so
+    /// single-flavor builds still extract (and the string gate still sees)
+    /// both catalog keys.
+    private static let oauthMismatchLine: LocalizedStringKey =
+        "This library needs a signed-in provider. Go back and choose the provider it uses."
+    private static let noProviderLine: LocalizedStringKey =
+        "This library uses a provider this build can't connect to."
+    #if BAE_OAUTH_PROVIDERS
+        private static let hasOauthProviders = true
+    #else
+        private static let hasOauthProviders = false
+    #endif
+    private static let providerMismatchLine =
+        hasOauthProviders ? oauthMismatchLine : noProviderLine
+
     let joinRequest: Result<BridgeJoinRequest, Error>?
     @Binding
     var inviteCodeInput: String
@@ -130,19 +146,15 @@ struct JoinCodeExchange: View {
                 // already held. A missing token here means the joiner picked a
                 // provider that doesn't match this library — send them back.
                 if info.needsOauth && !oauthConnected {
-                    Text(
-                        "This library needs a signed-in provider. Go back and choose the provider it uses."
-                    )
-                    .foregroundStyle(.red)
-                    .font(.callout)
+                    Text(Self.providerMismatchLine)
+                        .foregroundStyle(.red)
+                        .font(.callout)
                 }
             #else
                 if info.needsOauth {
-                    Text(
-                        "This library uses a provider this build can't connect to."
-                    )
-                    .foregroundStyle(.red)
-                    .font(.callout)
+                    Text(Self.providerMismatchLine)
+                        .foregroundStyle(.red)
+                        .font(.callout)
                 }
             #endif
         }
