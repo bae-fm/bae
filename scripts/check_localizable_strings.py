@@ -26,20 +26,41 @@ REPO = Path(__file__).resolve().parent.parent
 CATALOG = REPO / "bae-macos/bae/bae/Localizable.xcstrings"
 CORE_CATALOG = REPO / "bae-macos/bae/bae/Core.xcstrings"
 DERIVED_DATA = REPO / "bae-macos/bae/.build/derivedData"
-STRINGSDATA_ROOT = "Build/Intermediates.noindex/bae.build"
+# The app target and the BaeKit package target. BaeKit's Text/String(localized:)
+# calls resolve against the main bundle at runtime, so its strings are app-
+# catalog obligations like the app's own. Other packages (Sparkle, Sentry) keep
+# their own tables and stay out of the union.
+STRINGSDATA_TARGETS = ("bae", "BaeKit")
 
 
 def extracted_keys(derived_data: Path) -> set[str]:
-    root = derived_data / STRINGSDATA_ROOT
-    files = sorted(root.glob("*/bae.build/Objects-normal/*/*.stringsdata"))
+    root = derived_data / "Build/Intermediates.noindex"
+    files: list[Path] = []
+    for target in STRINGSDATA_TARGETS:
+        files += sorted(
+            (root / f"{target}.build").glob(
+                f"*/{target}.build/Objects-normal/*/*.stringsdata"
+            )
+        )
     if not files:
         sys.exit(
-            f"no .stringsdata under {root} — build the bae scheme first "
-            "(SWIFT_EMIT_LOC_STRINGS is set in project.yml)"
+            f"no .stringsdata under {root} — build the bae scheme with "
+            "SWIFT_EMIT_LOC_STRINGS=YES first"
         )
-    keys: set[str] = set()
+    # Old build-config and architecture directories keep stale .stringsdata
+    # forever; per source file, only the newest emission tells the truth, and
+    # a source file that no longer exists tells none.
+    newest: dict[str, tuple[float, dict]] = {}
     for f in files:
         data = json.loads(f.read_text())
+        source = data.get("source", "")
+        if not Path(source).exists():
+            continue
+        mtime = f.stat().st_mtime
+        if source not in newest or mtime > newest[source][0]:
+            newest[source] = (mtime, data)
+    keys: set[str] = set()
+    for _, data in newest.values():
         for entry in data.get("tables", {}).get("Localizable", []):
             keys.add(entry["key"])
     return keys
@@ -55,12 +76,31 @@ def locale_set() -> set[str]:
     return locales
 
 
+def translated(localization: dict) -> bool:
+    """A localization carries either a plain stringUnit or per-plural
+    variations; it counts as translated when every unit it has is."""
+    if "stringUnit" in localization:
+        unit = localization["stringUnit"]
+        return unit.get("state") == "translated" and bool(unit.get("value"))
+    variations = localization.get("variations", {}).get("plural", {})
+    if not variations:
+        return False
+    return all(
+        v.get("stringUnit", {}).get("state") == "translated"
+        and bool(v.get("stringUnit", {}).get("value"))
+        for v in variations.values()
+    )
+
+
 def untranslated(entry: dict, locales: set[str]) -> list[str]:
     gaps = []
     localizations = entry.get("localizations", {})
     for locale in sorted(locales):
-        unit = localizations.get(locale, {}).get("stringUnit", {})
-        if unit.get("state") != "translated" or not unit.get("value"):
+        if locale == "en" and locale not in localizations:
+            # The key itself is the English source; an explicit en slot is
+            # optional.
+            continue
+        if not translated(localizations.get(locale, {})):
             gaps.append(locale)
     return gaps
 

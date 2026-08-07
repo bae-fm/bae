@@ -93,7 +93,7 @@ extension View {
 
 #if DEBUG
     #Preview("Theme Test") {
-        Text("Hello")
+        Text(verbatim: "Hello")
             .padding()
             .background(Theme.background)
     }
