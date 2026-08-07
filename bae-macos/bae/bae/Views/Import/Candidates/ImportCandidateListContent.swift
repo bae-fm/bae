@@ -347,7 +347,8 @@ extension ImportCandidateListContent {
         return HStack(alignment: .firstTextBaseline, spacing: 7) {
             Image(systemName: icon)
             Text(
-                "\(scan.watchedFolderName) (\(scan.watchedFolderPath)): \(text)"
+                verbatim:
+                    "\(scan.watchedFolderName) (\(scan.watchedFolderPath)): \(text)"
             )
             .lineLimit(2)
             .truncationMode(.middle)

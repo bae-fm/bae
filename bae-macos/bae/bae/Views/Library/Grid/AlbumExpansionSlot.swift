@@ -24,7 +24,7 @@ struct AlbumExpansionSlot<ExpansionContent: View>: View {
         RoundedRectangle(cornerRadius: 10)
             .fill(Theme.surface)
             .frame(height: 120)
-            .overlay(Text("Expansion for \(id)"))
+            .overlay(Text(verbatim: "Expansion for \(id)"))
             .padding(.vertical, 8)
     }
 

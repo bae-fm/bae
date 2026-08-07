@@ -13,7 +13,7 @@ struct OutboxDeleteRow: View {
             icon: "trash",
             createdAt: op.createdAt
         ) {
-            Text("\(op.namespace)/\(op.blobId)")
+            Text(verbatim: "\(op.namespace)/\(op.blobId)")
                 .lineLimit(1)
         } badge: {
             Label("Pending delete", systemImage: "clock")

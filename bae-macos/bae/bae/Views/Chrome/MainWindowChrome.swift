@@ -85,7 +85,7 @@ private struct LoadErrorLine: View {
                 Image(systemName: "music.note.list")
                     .font(.system(size: 48))
                     .foregroundStyle(.secondary)
-                Text("Shell content")
+                Text(verbatim: "Shell content")
                     .font(.title2)
                     .foregroundStyle(.secondary)
             }

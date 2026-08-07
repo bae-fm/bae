@@ -58,7 +58,7 @@ struct ImportSheetBindingMenu: View {
         if let refusal = option.refusalLine {
             Button {
             } label: {
-                Text("\(option.fileId) — \(refusal)")
+                Text(verbatim: "\(option.fileId) — \(refusal)")
             }
             .disabled(true)
         }
