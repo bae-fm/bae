@@ -10,7 +10,7 @@
     extension View {
         func importPreviewEnvironment() -> some View {
             self
-                .environment(ImageStore.stub)
+                .environment(PreviewData.artImageStore)
                 .environment(UiStore())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
                 .environment(PreviewData.configStore)

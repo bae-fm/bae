@@ -114,7 +114,7 @@
                 onImportSelected: { _ in }
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-            .environment(ImageStore.stub)
+            .environment(PreviewData.artImageStore)
             .environment(uiStore)
             .windowBackground()
         }

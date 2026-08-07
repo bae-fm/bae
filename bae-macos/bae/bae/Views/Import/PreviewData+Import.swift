@@ -1,4 +1,5 @@
 #if DEBUG
+    import AppKit
     import BaeKit
     import Foundation
 
@@ -12,6 +13,99 @@
         static let importWatchedFolder = BridgeWatchedFolder(
             path: "/Music/Downloads",
             name: "Downloads"
+        )
+
+        // MARK: - Generated placeholder art
+
+        /// Placeholder art for a fixture image: a flat color derived from the
+        /// name with the name drawn across it, written as a PNG under the
+        /// temporary directory on first use. Fixture paths point here so image
+        /// slots decode real bytes instead of settling on the failure
+        /// placeholder.
+        static func previewArtPath(_ name: String) -> String {
+            let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("bae-preview-art", isDirectory: true)
+            let file =
+                directory
+                .appendingPathComponent(
+                    name.replacingOccurrences(of: "/", with: "-")
+                )
+                .appendingPathExtension("png")
+            if !FileManager.default.fileExists(atPath: file.path) {
+                // A generator failure means every slot draws the failure
+                // placeholder anyway — crash the preview with the reason
+                // instead of rendering a wall of warning triangles.
+                // swiftlint:disable force_try
+                try! FileManager.default.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true
+                )
+                try! previewArtData(name).write(to: file)
+                // swiftlint:enable force_try
+            }
+            return file.path
+        }
+
+        /// PNG bytes for one placeholder: the name decides the hue, so the
+        /// same fixture always renders the same tile and different fixtures
+        /// are telling them apart at a glance.
+        private static func previewArtData(_ name: String) -> Data {
+            let side: CGFloat = 600
+            let hash = name.unicodeScalars.reduce(into: UInt32(5381)) {
+                $0 = $0 &* 33 &+ $1.value
+            }
+            let fill = NSColor(
+                hue: CGFloat(hash % 360) / 360,
+                saturation: 0.35,
+                brightness: 0.5,
+                alpha: 1
+            )
+            let image = NSImage(
+                size: NSSize(width: side, height: side),
+                flipped: false
+            ) { rect in
+                fill.setFill()
+                rect.fill()
+                let text = NSAttributedString(
+                    string: name,
+                    attributes: [
+                        .font: NSFont.systemFont(ofSize: 56, weight: .semibold),
+                        .foregroundColor: NSColor.white.withAlphaComponent(
+                            0.85
+                        ),
+                    ]
+                )
+                let textSize = text.size()
+                text.draw(
+                    at: NSPoint(
+                        x: (rect.width - textSize.width) / 2,
+                        y: (rect.height - textSize.height) / 2
+                    )
+                )
+                return true
+            }
+            guard
+                let tiff = image.tiffRepresentation,
+                let bitmap = NSBitmapImageRep(data: tiff),
+                let png = bitmap.representation(using: .png, properties: [:])
+            else {
+                preconditionFailure("placeholder art must encode as PNG")
+            }
+            return png
+        }
+
+        /// ImageStore for previews whose fixtures carry image addresses: a
+        /// remote "URL" in fixture data is a path to generated placeholder
+        /// art, served straight from disk. The library and release reads stay
+        /// unwired exactly like `ImageStore.stub` — previews have no live
+        /// library to read from.
+        static let artImageStore = ImageStore(
+            fetchRemoteImage: { url in
+                RemoteImageBytes(
+                    bytes: try Data(contentsOf: URL(fileURLWithPath: url)),
+                    validator: url
+                )
+            }
         )
 
         private static func candidateEntry(
@@ -620,7 +714,9 @@
                     format: format,
                     trackCount: trackCount
                 ),
-                coverThumbnailUrl: nil,
+                // In fixtures the "URL" is a path to generated placeholder
+                // art; `PreviewData.artImageStore` serves it from disk.
+                coverThumbnailUrl: previewArtPath(title),
                 evidence: BridgeMatchEvidence(source: source, signal: signal)
             )
         }
@@ -942,7 +1038,8 @@
             size: UInt64,
             role: BridgeFileRole,
             becomes: BridgeFileBecomes = .noSlots,
-            dirPrefix: String? = nil
+            dirPrefix: String? = nil,
+            localPath: String? = nil
         ) -> BridgeCandidateFile {
             // Only audio is a decision, so only audio carries alternatives —
             // the same rule core applies.
@@ -952,7 +1049,7 @@
                     size: size,
                     dirPrefix: dirPrefix,
                     fileName: name,
-                    localPath: "/tmp/fake/\(name)"
+                    localPath: localPath ?? "/tmp/fake/\(name)"
                 ),
                 role: role,
                 becomes: becomes,
@@ -967,17 +1064,19 @@
             isCover: Bool = false,
             dirPrefix: String? = nil
         ) -> BridgeCandidateFile {
+            let path = previewArtPath(name)
             let choice = BridgeCoverChoice(
                 selection: .releaseImage(fileId: name),
-                previewSource: .local(path: "/tmp/fake/\(name)"),
-                thumbnailSource: .local(path: "/tmp/fake/\(name)")
+                previewSource: .local(path: path),
+                thumbnailSource: .local(path: path)
             )
             return previewFile(
                 name: name,
                 size: size,
                 role: isCover
                     ? .cover(choice: choice) : .artwork(choice: choice),
-                dirPrefix: dirPrefix
+                dirPrefix: dirPrefix,
+                localPath: path
             )
         }
 
@@ -1062,7 +1161,11 @@
                 trackCount: 9,
                 tracks: tracks,
                 coverArt: [],
-                defaultCover: nil
+                defaultCover: BridgeCoverChoice(
+                    selection: .releaseImage(fileId: "Front.png"),
+                    previewSource: .local(path: previewArtPath("Front.png")),
+                    thumbnailSource: .local(path: previewArtPath("Front.png"))
+                )
             )
         }()
 
@@ -1237,21 +1340,21 @@
                 fileId: "Front.png",
                 name: "Front.png",
                 size: 2_500_000,
-                localPath: "/tmp/fake/Front.png",
+                localPath: previewArtPath("Front.png"),
                 isCover: true
             ),
             BridgeMappingImage(
                 fileId: "Back.png",
                 name: "Back.png",
                 size: 1_800_000,
-                localPath: "/tmp/fake/Back.png",
+                localPath: previewArtPath("Back.png"),
                 isCover: false
             ),
             BridgeMappingImage(
                 fileId: "scans/scan-1.jpg",
                 name: "scan-1.jpg",
                 size: 1_400_000,
-                localPath: "/tmp/fake/scans/scan-1.jpg",
+                localPath: previewArtPath("scan-1.jpg"),
                 isCover: false
             ),
         ]

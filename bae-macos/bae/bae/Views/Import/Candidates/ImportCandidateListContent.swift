@@ -579,6 +579,7 @@ extension ImportCandidateListContent {
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(UiStore())
+        .environment(PreviewData.artImageStore)
         .frame(width: 340, height: 560)
         .windowBackground()
     }
@@ -608,6 +609,7 @@ extension ImportCandidateListContent {
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
+        .environment(PreviewData.artImageStore)
         .frame(width: 280, height: 560)
         .windowBackground()
     }
