@@ -35,6 +35,9 @@ jobs:
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
 
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@nextest
+
     - name: Check Rust formatting
       run: cargo fmt --all -- --check
 
@@ -83,19 +86,19 @@ jobs:
 
     - name: Run localization + bridge tests
       run: |
-        cargo test -p bae-loc
+        cargo nextest run -p bae-loc
         # Both editions' surfaces. Default features are what the baeium build
         # compiles; `desktop` is what the full build compiles, and the conversions
         # behind it (the metadata-edit round trips, the identify-progress mirror)
         # have no other test run.
-        cargo test -p bae-bridge --lib
-        cargo test -p bae-bridge --lib --features desktop
-        cargo test -p bae-automation
-        cargo test -p bae-mcp
-        cargo test -p bae-cli
-        cargo test -p bae-subsonic
-        cargo test -p bae-cast
-        cargo test -p bae-desktop
+        cargo nextest run -p bae-bridge --lib
+        cargo nextest run -p bae-bridge --lib --features desktop
+        cargo nextest run -p bae-automation
+        cargo nextest run -p bae-mcp
+        cargo nextest run -p bae-cli
+        cargo nextest run -p bae-subsonic
+        cargo nextest run -p bae-cast
+        cargo nextest run -p bae-desktop
         # chrome-string orphan gate (core.* keys are covered by the bae-bridge
         # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
         python3 scripts/loc-chrome-orphans.py
@@ -107,7 +110,10 @@ jobs:
 
     - name: Check Rust documentation
       # Broken intra-doc links and invalid rustdoc syntax fail the build.
-      run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+      run: |
+        RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+        cargo test --doc --workspace --features bae-core/test-utils
+        cargo test --doc -p bae-bridge --features desktop
 
     - name: Run bae-core tests
       run: |
@@ -122,5 +128,5 @@ jobs:
         # real playback, which is the optimized build. An unoptimized decode is a
         # different workload, so measuring it here and the optimized one locally
         # would mean the gate never guards the code that ships.
-        cargo test -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
-        cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu
+        cargo nextest run -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
+        cargo nextest run -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1

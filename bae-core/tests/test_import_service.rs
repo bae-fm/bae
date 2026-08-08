@@ -40,6 +40,11 @@ struct ImportFixture {
 
 impl ImportFixture {
     async fn new() -> Self {
+        // Every MusicBrainz release group offers a derived cover address. Route
+        // unseeded addresses to the local archive's 404 response rather than
+        // depending on another test to start the archive first.
+        support::cover_art_archive();
+
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
