@@ -1,4 +1,4 @@
-namespace Bae.Desktop;
+﻿namespace Bae.Desktop;
 
 // The pure decision layer behind the settings Casting section, mirroring macOS's
 // CastingSettingsTab.toggleAction. Plain BCL types so it is unit-tested apart

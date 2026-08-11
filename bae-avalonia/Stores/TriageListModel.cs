@@ -132,9 +132,9 @@ internal static class TriageListModel
             .Select(candidate => candidate.Row)
             .FirstOrDefault(row => row.Placement
                 is BridgeTriagePlacement.NeedsYou
-                {
-                    Reason: BridgeNeedsYouReason.StillIdentifying,
-                });
+            {
+                Reason: BridgeNeedsYouReason.StillIdentifying,
+            });
 
     internal static BridgeTriageRow? Row(BridgeTriageQueue queue, string key) =>
         queue.Sections
