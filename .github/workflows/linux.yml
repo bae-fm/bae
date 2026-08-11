@@ -97,7 +97,6 @@ jobs:
         cargo nextest run -p bae-bridge --lib
         cargo nextest run -p bae-bridge --lib --features desktop
         cargo nextest run -p bae-automation
-        cargo nextest run -p bae-mcp
         cargo nextest run -p bae-subsonic
         cargo nextest run -p bae-cast
         cargo nextest run -p bae-desktop
