@@ -45,7 +45,7 @@ echo "Using simulator: $DEVICE"
 xcrun simctl boot "$DEVICE" 2>/dev/null || true
 
 echo "Building Rust bridge (iOS)..."
-BAE_BRIDGE_FEATURES="oauth-providers,cloudkit" ./bae-bridge/build-ios.sh
+./bae-bridge/build-ios.sh
 ./bae-bridge/install-swift-bindings.sh ios
 
 echo "Generating Xcode project..."
