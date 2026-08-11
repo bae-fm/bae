@@ -6,6 +6,7 @@ use coven::ClockRef;
 use reqwest::header::{
     HeaderMap, CACHE_CONTROL, ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
 };
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tracing::{debug, warn};
@@ -311,10 +312,19 @@ impl CachedImage {
 struct DiskImageCache {
     dir: std::path::PathBuf,
     budget: u64,
+    state: Mutex<DiskImageCacheState>,
+}
+
+struct DiskImageCacheState {
     /// Bytes currently held. `None` until the first write measures the
     /// directory; after that the writes and evictions that are the only things
     /// changing it keep it current.
-    held: Mutex<Option<u64>>,
+    held: Option<u64>,
+    /// Files touched by this cache instance, in exact access order. Filesystem
+    /// modified times carry order across launches, but their precision is not
+    /// sufficient to distinguish accesses made close together on every host.
+    next_access: u64,
+    accessed: HashMap<std::path::PathBuf, u64>,
 }
 
 /// What an entry's file records beside the bytes.
@@ -333,7 +343,11 @@ impl DiskImageCache {
         Self {
             dir,
             budget,
-            held: Mutex::new(None),
+            state: Mutex::new(DiskImageCacheState {
+                held: None,
+                next_access: 0,
+                accessed: HashMap::new(),
+            }),
         }
     }
 
@@ -380,6 +394,7 @@ impl DiskImageCache {
                 path.display()
             );
         }
+        self.record_access(&path);
         Some(CachedImage {
             bytes: raw[split + 1..].to_vec(),
             content_type: ContentType::from_mime(&header.content_type),
@@ -428,10 +443,11 @@ impl DiskImageCache {
         let written = (header.len() + 1 + entry.bytes.len()) as u64;
         spool.persist(&path).map_err(|error| error.error)?;
 
-        let mut held = self.held.lock().expect("image cache size mutex poisoned");
-        if let Some(held) = held.as_mut() {
+        let mut state = self.state.lock().expect("image cache state mutex poisoned");
+        if let Some(held) = state.held.as_mut() {
             *held = held.saturating_sub(replaced) + written;
         }
+        state.record_access(path);
         Ok(())
     }
 
@@ -441,7 +457,12 @@ impl DiskImageCache {
         // A running total that already clears the budget answers on its own: it
         // is raised only by a write and lowered only by an eviction, so nothing
         // else can have pushed the directory over.
-        if let Some(held) = *self.held.lock().expect("image cache size mutex poisoned") {
+        if let Some(held) = self
+            .state
+            .lock()
+            .expect("image cache state mutex poisoned")
+            .held
+        {
             if held <= self.budget {
                 return;
             }
@@ -457,16 +478,27 @@ impl DiskImageCache {
             }
         };
         let mut held: u64 = entries.iter().map(|(_, _, size)| size).sum();
-        // Longest unread first, which is the order they go in.
-        entries.sort_by_key(|(_, last_read, _)| *last_read);
+        // Longest unread first, which is the order they go in. Entries touched
+        // by this instance are newer than entries inherited from a prior
+        // launch, and their counter breaks timestamp ties exactly.
+        {
+            let state = self.state.lock().expect("image cache state mutex poisoned");
+            entries.sort_by_key(|(path, last_read, _)| match state.accessed.get(path) {
+                Some(access) => CacheAccess::Current(*access),
+                None => CacheAccess::Prior(*last_read),
+            });
+        }
         let mut dropped = 0usize;
+        let mut dropped_paths = Vec::new();
         for (path, _, size) in entries {
             if held <= self.budget {
                 break;
             }
-            self.remove(&path);
-            held -= size;
-            dropped += 1;
+            if self.remove(&path) {
+                held -= size;
+                dropped += 1;
+                dropped_paths.push(path);
+            }
         }
         if dropped > 0 {
             debug!(
@@ -475,7 +507,11 @@ impl DiskImageCache {
                 self.budget
             );
         }
-        *self.held.lock().expect("image cache size mutex poisoned") = Some(held);
+        let mut state = self.state.lock().expect("image cache state mutex poisoned");
+        state.held = Some(held);
+        for path in dropped_paths {
+            state.accessed.remove(&path);
+        }
     }
 
     /// Every entry with when it was last read and how big it is.
@@ -496,15 +532,41 @@ impl DiskImageCache {
         Ok(entries)
     }
 
-    fn remove(&self, path: &std::path::Path) {
-        if let Err(error) = std::fs::remove_file(path) {
-            if error.kind() != std::io::ErrorKind::NotFound {
+    fn remove(&self, path: &std::path::Path) -> bool {
+        match std::fs::remove_file(path) {
+            Ok(()) => true,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
+            Err(error) => {
                 warn!(
                     "Could not drop the cached image at {}: {error}",
                     path.display()
                 );
+                false
             }
         }
+    }
+
+    fn record_access(&self, path: &std::path::Path) {
+        self.state
+            .lock()
+            .expect("image cache state mutex poisoned")
+            .record_access(path.to_path_buf());
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum CacheAccess {
+    Prior(std::time::SystemTime),
+    Current(u64),
+}
+
+impl DiskImageCacheState {
+    fn record_access(&mut self, path: std::path::PathBuf) {
+        self.next_access = self
+            .next_access
+            .checked_add(1)
+            .expect("image cache access counter overflow");
+        self.accessed.insert(path, self.next_access);
     }
 }
 
