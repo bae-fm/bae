@@ -39,78 +39,10 @@ struct PlaybackSettingsTab: View {
 #if DEBUG
     #Preview("Playback Settings") {
         let uiStore = UiStore()
-        let appService = PlaybackSettingsPreviewAppService.make(
-            uiStore: uiStore
-        )
-
-        appService.installSharedEnvironment(PlaybackSettingsTab())
+        PlaybackSettingsTab()
+            .environment(Playback.stub())
+            .environment(PreviewData.configStore())
             .environment(uiStore)
             .frame(width: 500, height: 300)
-    }
-
-    @MainActor
-    private enum PlaybackSettingsPreviewAppService {
-        static func make(uiStore: UiStore) -> AppService {
-            AppService(
-                appHandle: PlaybackSettingsPreviewAppHandle(),
-                mediaControlService: MediaControlService(),
-                diagnostics: configureDiagnostics(config: .disabled),
-                uiStore: uiStore,
-                config: BridgeConfig(
-                    libraryId: "lib-preview",
-                    libraryName: "Preview Library",
-                    libraryPath: "/preview",
-                    encryptionKeyStored: false,
-                    encryptionKeyFingerprint: nil,
-                    pauseBetweenSides: false,
-                    maxConcurrentUploads: 3,
-                    maxConcurrentDownloads: 3,
-                    showRemainingTime: false,
-                    libraryFullWidth: false,
-                    savePresets: PreviewData.savePresets,
-                    defaultTrackSavePreset: "flac",
-                    defaultReleaseSavePreset: "flac",
-                    castEnabled: false,
-                    mcp: BridgeMcpConfig(enabled: false, port: 47777),
-                    subsonic: BridgeSubsonicConfig(
-                        enabled: false,
-                        port: 4533,
-                        username: "",
-                        bindAddress: "127.0.0.1"
-                    ),
-                    discogsTokenStatus: .notConfigured,
-                    discogsUsable: false,
-                    sync: nil
-                ),
-                initialOutbox: OutboxStore.emptySnapshot
-            )
-        }
-    }
-
-    private final class PlaybackSettingsPreviewAppHandle: AppHandle,
-        @unchecked Sendable
-    {
-        init() {
-            super.init(noHandle: AppHandle.NoHandle())
-        }
-
-        required init(unsafeFromHandle handle: UInt64) {
-            super.init(unsafeFromHandle: handle)
-        }
-
-        override func isSyncReady() -> Bool {
-            false
-        }
-
-        override func getDownloadSnapshot() -> BridgeDownloadSnapshot {
-            BridgeDownloadSnapshot(
-                downloads: [],
-                total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
-                summaryParts: [],
-                paused: false
-            )
-        }
-
-        override func setPauseBetweenSides(enabled: Bool) throws {}
     }
 #endif

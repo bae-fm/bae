@@ -239,28 +239,30 @@ struct ImportView: View {
     /// `importPreviewEnvironment` installs a `UiStore` of its own, so the one
     /// carrying the tab and the selection goes on *before* it: the innermost
     /// value of an environment key is the one the view under it reads.
-    private struct ImportTabPreview: View {
+    private enum ImportTabPreview {
         /// The sidebar's tab, the selected row, and the rows ticked for a bulk
         /// import — the three things that decide what either half of the tab
         /// has to draw. Production opens on Pending with nothing selected and
         /// nothing ticked, which is the one state worth no canvas.
-        @State
-        private var uiStore: UiStore
-
-        init(
+        @MainActor
+        static func uiStore(
             tab: BridgeTriageTab,
             selected: String? = nil,
             ticked: [String] = []
-        ) {
+        ) -> UiStore {
             let store = UiStore()
             store.setImportCandidateTab(tab)
             store.selectFolderCandidate(selected)
             store.selectAllReady(ticked)
-            _uiStore = State(initialValue: store)
+            return store
         }
+    }
 
-        var body: some View {
-            ImportView()
+    extension View {
+        fileprivate func importTabPreviewEnvironment(uiStore: UiStore)
+            -> some View
+        {
+            self
                 .environment(uiStore)
                 .importPreviewEnvironment()
                 .environment(Library.stub())
@@ -273,18 +275,21 @@ struct ImportView: View {
     }
 
     #Preview("Import tab — a release settled") {
-        ImportTabPreview(
+        let uiStore = ImportTabPreview.uiStore(
             tab: .ready,
             selected: PreviewData.importTabCandidate.key,
             ticked: [PreviewData.importTabCandidate.key]
         )
+        ImportView().importTabPreviewEnvironment(uiStore: uiStore)
     }
 
     #Preview("Import tab — nothing selected") {
-        ImportTabPreview(tab: .ready, selected: nil)
+        let uiStore = ImportTabPreview.uiStore(tab: .ready)
+        ImportView().importTabPreviewEnvironment(uiStore: uiStore)
     }
 
     #Preview("Import tab — needs you") {
-        ImportTabPreview(tab: .needsYou, selected: nil)
+        let uiStore = ImportTabPreview.uiStore(tab: .needsYou)
+        ImportView().importTabPreviewEnvironment(uiStore: uiStore)
     }
 #endif
