@@ -89,6 +89,10 @@ run_check "cargo fmt" cargo fmt --all || {
 }
 restage_and_fail_if_changed "cargo fmt"
 
+run_check "source file layout" scripts/check-source-file-size.py || {
+    exit 1
+}
+
 # Parse the complete Rust and Swift source trees on every commit: ownership can
 # leak through a type declared in one module and a field or getter in another.
 run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {

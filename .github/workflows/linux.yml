@@ -41,6 +41,9 @@ jobs:
     - name: Check Rust formatting
       run: cargo fmt --all -- --check
 
+    - name: Check source file layout
+      run: scripts/check-source-file-size.py
+
     - name: Check owner dependency boundaries
       run: scripts/owner-dependency-boundary.sh
 

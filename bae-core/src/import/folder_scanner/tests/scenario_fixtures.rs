@@ -1,0 +1,547 @@
+/// Minimal valid APE (Monkey's Audio) header — just the "MAC " magic.
+fn fake_ape() -> Vec<u8> {
+    std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cue_ape/Test Album.ape"
+    ))
+    .expect("read APE fixture")
+}
+
+/// Minimal valid MP3 with an ID3v2 header.
+fn fake_mp3() -> Vec<u8> {
+    b"ID3\x04\x00\x00\x00\x00\x00\x00".to_vec()
+}
+
+/// Minimal M4A: an ISO base media `ftyp` box with `M4A ` as the major
+/// brand. `is_valid_audio` has no m4a-specific validator (dispatches to
+/// the unknown-extension fallback `Ok(true)`), so the bytes only need
+/// to be non-empty and have a plausible shape for anything downstream
+/// that might sniff them.
+fn fake_m4a() -> Vec<u8> {
+    std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-fixtures/alac/cue-alac.m4a"
+    ))
+    .expect("read ALAC fixture")
+}
+
+/// Minimal valid JPEG (only the SOI + APP0 marker — enough for magic check).
+fn fake_jpeg() -> Vec<u8> {
+    vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]
+}
+
+/// Minimal valid PNG (just the 8-byte signature).
+fn fake_png() -> Vec<u8> {
+    vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+}
+
+/// A plausible AVI file. Never validated by the scanner, but should not be
+/// mistaken for audio. RIFF header with an `AVI ` form type.
+fn fake_avi() -> Vec<u8> {
+    let mut v = b"RIFF".to_vec();
+    v.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);
+    v.extend_from_slice(b"AVI ");
+    v
+}
+
+/// FLAC with valid magic but a malformed STREAMINFO block length.
+fn malformed_flac_streaminfo() -> Vec<u8> {
+    let mut buf = vec![b'f', b'L', b'a', b'C', 0x00, 0x00, 0x00, 33];
+    buf.resize(42, 0x00);
+    buf
+}
+
+/// FLAC with wrong magic bytes. `is_valid_flac` rejects on the magic
+/// check before even looking at STREAMINFO.
+fn broken_flac() -> Vec<u8> {
+    // Valid size, but the leading four bytes are not `fLaC`.
+    let mut buf = b"BROK".to_vec();
+    buf.resize(64, 0u8);
+    buf
+}
+
+/// CUE sheet content referencing `audio_filename` with `n_tracks` entries.
+/// Each track is spaced 5 minutes apart so the sheet parses cleanly.
+fn make_cue_content_n_tracks(audio_filename: &str, title: &str, n_tracks: usize) -> String {
+    let mut s =
+        format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE \"{audio_filename}\" WAVE\n");
+    for i in 1..=n_tracks {
+        let minute = (i - 1) * 5;
+        s.push_str(&format!(
+            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 {:02}:00:00\n",
+            i, minute,
+        ));
+    }
+    s
+}
+
+/// Like `make_cue_content_n_tracks` but emits an unquoted FILE directive
+/// (`FILE name.wav WAVE`). Exercises the unquoted branch of the
+/// CUE parser's FILE directive.
+fn make_cue_content_unquoted(audio_filename: &str, title: &str, n_tracks: usize) -> String {
+    let mut s =
+        format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE {audio_filename} WAVE\n");
+    for i in 1..=n_tracks {
+        let minute = (i - 1) * 5;
+        s.push_str(&format!(
+            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 {:02}:00:00\n",
+            i, minute,
+        ));
+    }
+    s
+}
+
+/// CUE sheet without PERFORMER / TITLE. The unified CUE parser is lenient
+/// enough to accept it — both fields land as `None`.
+fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
+    let mut s = format!("FILE \"{audio_filename}\" WAVE\n");
+    for i in 1..=n_tracks {
+        let minute = (i - 1) * 5;
+        s.push_str(&format!(
+            "  TRACK {:02} AUDIO\n    INDEX 01 {:02}:00:00\n",
+            i, minute,
+        ));
+    }
+    s
+}
+
+// --- Spec types ---
+
+/// A file the scenario builder writes at `rel_path`. Folder creation is
+/// implicit via `create_dir_all` on the parent.
+#[derive(Debug)]
+enum FixtureEntry {
+    File { rel_path: String, kind: FileKind },
+}
+
+/// Every file the fixture writes. One variant per distinct byte pattern
+/// or semantic role. The walker matches on this to pick the right bytes;
+/// the invariant pass matches on this to pick the right validator.
+///
+/// Audio extensions must stay in lock-step with `ContentTypeHint::is_audio`
+/// — if the walker emits `.flac`/`.mp3`/`.ape`/`.m4a`, the scanner must
+/// recognize those.
+#[derive(Debug, Clone, Copy)]
+enum FileKind {
+    // Audio formats recognised by the scanner.
+    Flac,
+    Mp3,
+    M4a,
+    /// Empty FLAC file (size 0). The scanner must reject the candidate.
+    ZeroByteFlac,
+    /// Valid `fLaC` magic with malformed STREAMINFO length.
+    MalformedFlacStreaminfo,
+    /// Wrong magic bytes where a FLAC is expected. `is_valid_flac` must
+    /// reject it.
+    BrokenFlac,
+    // Image formats.
+    Jpeg,
+    Png,
+    /// Empty `.jpg` file (size 0). The scanner's image validator must
+    /// reject it, which in practice short-circuits the categorize pass
+    /// and drops the enclosing candidate.
+    ZeroByteJpeg,
+    /// File whose extension is an arbitrary string the scanner does not
+    /// recognize (e.g. `"xyz"`, `"sh"`). Used to pin that unknown file
+    /// types are silently ignored rather than mis-categorized.
+    UnrecognizedFile(&'static str),
+    // Non-music video. Scanner must not treat it as audio.
+    Avi,
+    // Document sidecars — fall into `files.documents`.
+    Log,
+    M3u,
+    Md5,
+    Ffp,
+    TracklistTxt,
+    /// A CUE sheet intended to pair with an audio file sharing its own
+    /// path stem in the same directory. `stem` is written into the CUE's
+    /// FILE directive as `FILE "<stem>" WAVE`; the scanner's pair
+    /// detection keys on path stems, not on the FILE directive content,
+    /// so `stem` is only used for CUE content validity.
+    CueFor {
+        stem: &'static str,
+        n_tracks: usize,
+    },
+    /// Like `CueFor`, but emits an unquoted FILE directive —
+    /// `FILE <stem> WAVE` rather than `FILE "<stem>" WAVE`. Exercises
+    /// the unquoted branch of the CUE parser's FILE directive.
+    CueUnquoted {
+        stem: &'static str,
+        n_tracks: usize,
+    },
+    /// A CUE sheet whose path stem deliberately does not match any audio
+    /// in the same directory. `file_reference` goes into the FILE
+    /// directive; when it names something not on disk and `n_tracks`
+    /// exceeds the direct-child audio count, the mismatch guard rejects
+    /// the candidate.
+    NonPairingCue {
+        n_tracks: usize,
+        file_reference: &'static str,
+    },
+    /// A CUE sheet lacking the PERFORMER/TITLE preamble. The unified
+    /// CUE parser accepts it (both fields land as `None`) and still
+    /// surfaces the file reference + track count the incomplete-rip
+    /// guard depends on.
+    CueNoHeader {
+        n_tracks: usize,
+        file_reference: &'static str,
+    },
+    /// Partial-download marker. The argument is the trailing extension
+    /// (e.g. `"part"`, `"crdownload"`, `"aria2"`) — purely self-documenting,
+    /// the walker does not inspect it. The full file name lives in the
+    /// entry's `rel_path`, so different rippers' conventions (`01.flac.part`,
+    /// `01.flac.crdownload`, `01.flac.aria2`) are all expressible.
+    PartialMarker(&'static str),
+    // Root-level non-music junk.
+    Pdf,
+    Zip,
+    Dmg,
+}
+
+// --- Byte writers & validators keyed purely on FileKind ---
+
+/// Bytes to write for each kind. The walker uses this directly.
+fn bytes_for(kind: FileKind) -> Vec<u8> {
+    match kind {
+        FileKind::Flac => fake_flac(),
+        FileKind::Mp3 => fake_mp3(),
+        FileKind::M4a => fake_m4a(),
+        FileKind::ZeroByteFlac => Vec::new(),
+        FileKind::MalformedFlacStreaminfo => malformed_flac_streaminfo(),
+        FileKind::BrokenFlac => broken_flac(),
+        FileKind::Jpeg => fake_jpeg(),
+        FileKind::Png => fake_png(),
+        FileKind::ZeroByteJpeg => Vec::new(),
+        FileKind::UnrecognizedFile(_) => b"opaque contents".to_vec(),
+        FileKind::Avi => fake_avi(),
+        FileKind::Log => b"EAC log\n".to_vec(),
+        FileKind::M3u => b"01.flac\n02.flac\n".to_vec(),
+        FileKind::Md5 => b"abc  01.flac\n".to_vec(),
+        FileKind::Ffp => b"01.flac:abc\n".to_vec(),
+        FileKind::TracklistTxt => b"01. Track One\n02. Track Two\n".to_vec(),
+        FileKind::CueFor { stem, n_tracks } => {
+            make_cue_content_n_tracks(stem, "Album", n_tracks).into_bytes()
+        }
+        FileKind::CueUnquoted { stem, n_tracks } => {
+            make_cue_content_unquoted(stem, "Album", n_tracks).into_bytes()
+        }
+        FileKind::NonPairingCue {
+            n_tracks,
+            file_reference,
+        } => make_cue_content_n_tracks(file_reference, "Album", n_tracks).into_bytes(),
+        FileKind::CueNoHeader {
+            n_tracks,
+            file_reference,
+        } => make_cue_content_no_header(file_reference, n_tracks).into_bytes(),
+        FileKind::PartialMarker(_) => b"partial data".to_vec(),
+        FileKind::Pdf => b"%PDF-1.4\n".to_vec(),
+        FileKind::Zip => b"PK\x03\x04".to_vec(),
+        FileKind::Dmg => b"koly".to_vec(),
+    }
+}
+
+/// Fixture-builder invariant: validate the written bytes match the kind.
+/// Failure here is always a fixture-builder bug, never a scanner bug.
+fn assert_kind_invariant(path: &Path, kind: FileKind) {
+    assert!(
+        path.exists(),
+        "fixture builder bug, not scanner bug: file missing at {:?}",
+        path,
+    );
+    match kind {
+        FileKind::Flac => {
+            assert!(
+                file_validation::is_valid_flac(path).unwrap_or(false),
+                "fixture builder bug: FLAC at {:?} fails validator",
+                path,
+            );
+        }
+        FileKind::Mp3 => {
+            assert!(
+                file_validation::is_valid_mp3(path).unwrap_or(false),
+                "fixture builder bug: MP3 at {:?} fails validator",
+                path,
+            );
+        }
+        FileKind::M4a => {
+            // is_valid_audio dispatches by extension and falls through to
+            // Ok(true) for m4a, so "validation" is really just "file
+            // exists, non-empty, extension is .m4a". Pin those.
+            let size = std::fs::metadata(path).unwrap().len();
+            assert!(
+                size > 0,
+                "fixture builder bug: M4A at {:?} must be non-empty",
+                path,
+            );
+            assert_eq!(
+                path.extension()
+                    .and_then(|e| e.to_str())
+                    .map(str::to_lowercase),
+                Some("m4a".to_string()),
+                "fixture builder bug: M4A at {:?} must have .m4a extension",
+                path,
+            );
+        }
+        FileKind::ZeroByteFlac => {
+            let size = std::fs::metadata(path).unwrap().len();
+            assert_eq!(
+                size, 0,
+                "fixture builder bug: {:?} should be zero-byte, is {}",
+                path, size,
+            );
+        }
+        FileKind::MalformedFlacStreaminfo | FileKind::BrokenFlac => {
+            // is_valid_flac must reject both — the test matrix depends on
+            // these kinds being seen as invalid audio.
+            assert!(
+                !file_validation::is_valid_flac(path).unwrap_or(true),
+                "fixture builder bug: {:?} at {:?} unexpectedly passes is_valid_flac",
+                kind,
+                path,
+            );
+        }
+        FileKind::Jpeg | FileKind::Png => {
+            assert!(
+                file_validation::is_valid_image(path).unwrap_or(false),
+                "fixture builder bug: image at {:?} fails validator",
+                path,
+            );
+        }
+        FileKind::ZeroByteJpeg => {
+            let size = std::fs::metadata(path).unwrap().len();
+            assert_eq!(
+                size, 0,
+                "fixture builder bug: {:?} should be zero-byte, is {}",
+                path, size,
+            );
+            assert_eq!(
+                path.extension()
+                    .and_then(|e| e.to_str())
+                    .map(str::to_lowercase),
+                Some("jpg".to_string()),
+                "fixture builder bug: ZeroByteJpeg at {:?} must have .jpg extension",
+                path,
+            );
+        }
+        FileKind::UnrecognizedFile(ext) => {
+            // No byte-level validation — the scanner only cares that the
+            // extension is unrecognized.
+            let got = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(str::to_lowercase);
+            assert_eq!(
+                got,
+                Some(ext.to_lowercase()),
+                "fixture builder bug: UnrecognizedFile({:?}) at {:?} extension mismatch (got {:?})",
+                ext,
+                path,
+                got,
+            );
+        }
+        FileKind::CueFor { n_tracks, .. }
+        | FileKind::CueUnquoted { n_tracks, .. }
+        | FileKind::NonPairingCue { n_tracks, .. } => {
+            let sheet = parse_cue_sheet(path).unwrap_or_else(|e| {
+                panic!(
+                    "fixture builder bug: CUE at {:?} fails parse: {:?}",
+                    path, e,
+                )
+            });
+            assert_eq!(
+                sheet.tracks.len(),
+                n_tracks,
+                "fixture builder bug: CUE at {:?} declares {} tracks, expected {}",
+                path,
+                sheet.tracks.len(),
+                n_tracks,
+            );
+        }
+        FileKind::CueNoHeader {
+            n_tracks,
+            file_reference,
+        } => {
+            let sheet = parse_cue_sheet(path).unwrap_or_else(|e| {
+                panic!(
+                    "fixture builder bug: headerless CUE at {:?} fails parse: {:?}",
+                    path, e,
+                )
+            });
+            assert!(
+                sheet.title.is_none() && sheet.performer.is_none(),
+                "fixture builder bug: headerless CUE at {:?} unexpectedly has title/performer",
+                path,
+            );
+            assert_eq!(
+                sheet.tracks.len(),
+                n_tracks,
+                "fixture builder bug: headerless CUE at {:?} counts {} tracks, expected {}",
+                path,
+                sheet.tracks.len(),
+                n_tracks,
+            );
+            assert_eq!(
+                sheet.single_file(),
+                Some(file_reference as &str),
+                "fixture builder bug: headerless CUE at {:?} single_file mismatch",
+                path,
+            );
+        }
+        FileKind::PartialMarker(ext) => {
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default();
+            assert!(
+                name.ends_with(&format!(".{ext}")),
+                "fixture builder bug: partial marker at {:?} does not end with .{}",
+                path,
+                ext,
+            );
+        }
+        FileKind::Avi
+        | FileKind::Log
+        | FileKind::M3u
+        | FileKind::Md5
+        | FileKind::Ffp
+        | FileKind::TracklistTxt
+        | FileKind::Pdf
+        | FileKind::Zip
+        | FileKind::Dmg => {
+            // Presence-only kinds: the scanner does not validate their bytes.
+        }
+    }
+}
+
+// --- Sugar: per-track audio ---
+
+/// Produce `n` `File` entries at `{dir}/{i:02}.<ext>`, one per track,
+/// with the given audio `kind`. The extension is derived from the kind
+/// (Flac / ZeroByteFlac → `flac`, Mp3 → `mp3`). Panics on
+/// non-audio kinds — the helper is named for the "per-track audio
+/// release" shape and refuses to be repurposed.
+fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
+    let ext = match kind {
+        FileKind::Flac | FileKind::ZeroByteFlac => "flac",
+        FileKind::Mp3 => "mp3",
+        FileKind::M4a => "m4a",
+        other => panic!(
+            "flat_audio: unsupported kind {:?} — this helper only produces audio tracks",
+            other,
+        ),
+    };
+    (1..=n)
+        .map(|i| FixtureEntry::File {
+            rel_path: format!("{dir}/{i:02}.{ext}"),
+            kind,
+        })
+        .collect()
+}
+
+// --- Walker: pure dispatch over the spec ---
+
+/// Build a fixture on disk at `root` from a spec. Parent directories for any
+/// file path are created implicitly, so container folders need no entries.
+fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
+    for entry in spec {
+        match entry {
+            FixtureEntry::File { rel_path, kind } => {
+                let path = root.join(rel_path);
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent).unwrap();
+                }
+                std::fs::write(&path, bytes_for(*kind)).unwrap();
+            }
+        }
+    }
+}
+
+// --- Invariant pass: confirm each File entry exists with expected bytes.
+
+fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
+    for entry in spec {
+        match entry {
+            FixtureEntry::File { rel_path, kind } => {
+                assert_kind_invariant(&root.join(rel_path), *kind);
+            }
+        }
+    }
+}
+
+// ── Scenario test library ──────────────────────────────────────────────
+//
+// Each test builds the minimum tree needed to exercise one rule, scans
+// it, and asserts a specific outcome. All tests go through the
+// `run_scenario` helper, which handles tempdir creation, fixture
+// invariant checking, and top-level path extraction.
+//
+// Test names name the scenario, not the implementation.
+
+/// Wraps the common "build tempdir, scan, filter top-level" shape. Keeps
+/// `_tmp` alive for the lifetime of the result so the tempdir isn't
+/// pulled out from under `candidates`.
+struct ScenarioResult {
+    /// Held for its `Drop`: keeps the tempdir alive so `candidates` paths
+    /// remain valid for the result's lifetime. Never read directly.
+    _tmp: tempfile::TempDir,
+    candidates: Vec<FolderCandidate>,
+    root: PathBuf,
+}
+
+impl ScenarioResult {
+    /// Candidate rel paths, stripped of the tempdir prefix. Rendered with `/`
+    /// separators from the path's components rather than `to_string_lossy`, so a
+    /// candidate under `A/B` reads `A/B` on Windows too — `candidate.path` is a
+    /// real, host-separated filesystem path (backslashes on Windows), and only
+    /// this test view flattens it to the OS-neutral form the expectations use.
+    fn top_level_paths(&self) -> Vec<String> {
+        self.candidates
+            .iter()
+            .map(|c| {
+                c.path
+                    .strip_prefix(&self.root)
+                    .unwrap()
+                    .components()
+                    .map(|component| component.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/")
+            })
+            .collect()
+    }
+
+    /// Find a candidate by exact rel path.
+    fn candidate(&self, rel_path: &str) -> &FolderCandidate {
+        let target = Path::new(rel_path);
+        self.candidates
+            .iter()
+            .find(|c| {
+                c.path
+                    .strip_prefix(&self.root)
+                    .expect("candidate path is under scan root")
+                    == target
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "no candidate at {rel_path:?}; have {:?}",
+                    self.top_level_paths()
+                )
+            })
+    }
+}
+
+fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().to_path_buf();
+    build_fixture(&root, &entries);
+    assert_fixture_invariants(&root, &entries);
+    let candidates = scan_valid(root.clone());
+    ScenarioResult {
+        _tmp: tmp,
+        candidates,
+        root,
+    }
+}
+
+// ── Layer 1: single-case minimal tests ────────────────────────────────
+
+// --- Completeness signals (A-series) ---

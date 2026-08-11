@@ -175,6 +175,7 @@ _android_clippy() {
 section "Rust"
 
 check "cargo fmt"                   cargo fmt --all -- --check
+check "source file layout"          scripts/check-source-file-size.py
 check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
 check "clippy (workspace)"          cargo clippy --workspace -- -D warnings
 check "clippy (bae-core + test-utils)" \

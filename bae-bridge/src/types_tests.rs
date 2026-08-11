@@ -1,0 +1,771 @@
+use super::*;
+
+/// Airtight cross-check that the `core.*` localization catalog stays in sync
+/// with the keys the `bridge_*_key` functions produce — in both directions:
+///
+/// - `every_produced_key_exists_in_catalog`: every key a key fn can emit (plus
+///   every direct-reference key the UI uses) has a catalog entry. A renamed or
+///   dropped catalog key fails the build instead of rendering a raw key.
+/// - `no_orphan_core_keys`: every `core.*` catalog entry is produced by a key
+///   fn or listed in `DIRECT_KEYS`. A catalog key no producer references is
+///   dead and must be deleted (or, if a real UI direct-reference, added to
+///   `DIRECT_KEYS`).
+///
+/// Each keyed enum is covered by an explicit array of every variant AND an
+/// inline exhaustive `match` with no `_` arm, so adding a variant is a compile
+/// error here that forces updating the coverage.
+#[cfg(test)]
+mod loc_key_coverage {
+    use super::*;
+
+    /// `core.*` keys the UI references directly with its own args — not emitted
+    /// by any `bridge_*_key` fn. Kept in sync with the catalog by
+    /// `no_orphan_core_keys`.
+    const DIRECT_KEYS: &[&str] = &[
+        // Storage queue summary (UI composes counts).
+        "core.queue.uploading",
+        "core.queue.downloading",
+        "core.queue.output",
+        "core.queue.failed",
+        "core.queue.queued",
+        "core.download.bytes_progress",
+        "core.outbox.pending_deletes",
+        "core.outbox.bytes_progress",
+        "core.outbox.throughput",
+        "core.outbox.eta",
+        // Album total playing time: the UI switches on `BridgeDurationUnits` and
+        // composes the hours and minutes words through the join pattern.
+        "core.duration.hours",
+        "core.duration.minutes",
+        "core.duration.hours_minutes",
+        // Release-group card pressing count.
+        "core.import.pressings",
+        // Disconnect-sync confirmation: releases that live only in the cloud (the
+        // UI composes the count into its own base sentence).
+        "core.sync.cloud_only_releases",
+        // Generic lookup-failure line for the keyless `Diagnostic` variant:
+        // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
+        "core.lookup.failure.diagnostic",
+    ];
+
+    /// A stand-in cover choice for walking the file roles that carry one. The
+    /// key a role reads under never looks at it.
+    fn loc_cover_choice() -> BridgeCoverChoice {
+        BridgeCoverChoice {
+            selection: BridgeCoverSelection::ReleaseImage {
+                file_id: String::new(),
+            },
+            preview_source: BridgeCoverImageSource::Local {
+                path: String::new(),
+            },
+            thumbnail_source: BridgeCoverImageSource::Local {
+                path: String::new(),
+            },
+        }
+    }
+
+    /// Every key the `bridge_*_key` fns can emit. For each keyed enum an
+    /// explicit array of all variants feeds an inline exhaustive `match` that
+    /// re-derives the key, asserted equal to the production fn's output — so a
+    /// new variant fails to compile here.
+    fn produced_keys() -> Vec<String> {
+        let mut keys = Vec::new();
+
+        // bridge_transfer_action_key — every variant carries a key.
+        for a in [
+            BridgeReleaseStorageAction::MakeRemote,
+            BridgeReleaseStorageAction::Pin,
+            BridgeReleaseStorageAction::Unpin,
+            BridgeReleaseStorageAction::MakeLocal,
+        ] {
+            let expected = match a {
+                BridgeReleaseStorageAction::MakeRemote => "core.transfer.action.manage",
+                BridgeReleaseStorageAction::Pin => "core.transfer.action.pin",
+                BridgeReleaseStorageAction::Unpin => "core.transfer.action.unpin",
+                BridgeReleaseStorageAction::MakeLocal => "core.transfer.action.unmanage",
+            };
+            assert_eq!(bridge_transfer_action_key(a), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_sheet_refused_codec_key — one key, no variants to walk.
+        keys.push(bridge_sheet_refused_codec_key());
+        keys.push(bridge_sheet_refused_unreadable_key());
+
+        // bridge_file_role_key — every role the scan can propose has a name.
+        for role in [
+            BridgeFileRole::Audio,
+            BridgeFileRole::TrackSheet {
+                binding: BridgeSheetBinding::Unresolved {
+                    requested: Vec::new(),
+                },
+                track_count: 0,
+            },
+            BridgeFileRole::Cover {
+                choice: loc_cover_choice(),
+            },
+            BridgeFileRole::Artwork {
+                choice: loc_cover_choice(),
+            },
+            BridgeFileRole::Document,
+            BridgeFileRole::Other,
+        ] {
+            let expected = match role {
+                BridgeFileRole::Audio => "core.import.role.audio",
+                BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
+                BridgeFileRole::Cover { .. } => "core.import.role.cover",
+                BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
+                BridgeFileRole::Document => "core.import.role.document",
+                BridgeFileRole::Other => "core.import.role.other",
+            };
+            assert_eq!(bridge_file_role_key(&role), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_file_role_choice_key — the roles a person can pick between.
+        for choice in [BridgeFileRoleChoice::Audio, BridgeFileRoleChoice::NotATrack] {
+            let expected = match choice {
+                // Deliberately the same key the Audio role reads under: the
+                // picker's option and the column's label name one thing.
+                BridgeFileRoleChoice::Audio => "core.import.role.audio",
+                BridgeFileRoleChoice::NotATrack => "core.import.role.not_a_track",
+            };
+            assert_eq!(bridge_file_role_choice_key(choice), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_file_becomes_key — one slot, a run of slots, or none. The
+        // single-slot case has its own key because "slot 12" and "slots 1-11"
+        // are different sentences, not one sentence with a range in it.
+        for becomes in [
+            BridgeFileBecomes::Slots { first: 3, last: 3 },
+            BridgeFileBecomes::Slots { first: 1, last: 11 },
+            BridgeFileBecomes::NoSlots,
+        ] {
+            let expected = match becomes {
+                BridgeFileBecomes::Slots { first, last } if first == last => {
+                    "core.import.becomes.slot"
+                }
+                BridgeFileBecomes::Slots { .. } => "core.import.becomes.slots",
+                BridgeFileBecomes::NoSlots => "core.import.becomes.not_a_track",
+            };
+            assert_eq!(bridge_file_becomes_key(becomes), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_file_row_kind_key — what a collapsed directory holds.
+        for kind in [BridgeFileRowKind::Document, BridgeFileRowKind::Other] {
+            let expected = match kind {
+                BridgeFileRowKind::Document => "core.import.files.documents",
+                BridgeFileRowKind::Other => "core.import.files.other",
+            };
+            assert_eq!(bridge_file_row_kind_key(kind), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_slot_reconciliation_key — the tally above the slot table.
+        for reconciliation in [
+            BridgeSlotReconciliation::Agrees { count: 12 },
+            BridgeSlotReconciliation::MoreFiles {
+                files: 13,
+                tracks: 12,
+            },
+            BridgeSlotReconciliation::MoreTracks {
+                files: 11,
+                tracks: 12,
+            },
+        ] {
+            let expected = match reconciliation {
+                BridgeSlotReconciliation::Agrees { .. } => "core.import.reconciliation.agrees",
+                BridgeSlotReconciliation::MoreFiles { .. } => {
+                    "core.import.reconciliation.more_files"
+                }
+                BridgeSlotReconciliation::MoreTracks { .. } => {
+                    "core.import.reconciliation.more_tracks"
+                }
+            };
+            assert_eq!(bridge_slot_reconciliation_key(reconciliation), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_sheet_binding_offer_key — an offered file needs no reason.
+        for o in [
+            BridgeSheetBindingOffer::Offered,
+            BridgeSheetBindingOffer::RefusedCodec {
+                codec: String::new(),
+            },
+            BridgeSheetBindingOffer::RefusedUnreadable,
+        ] {
+            let expected: Option<&str> = match o {
+                BridgeSheetBindingOffer::Offered => None,
+                BridgeSheetBindingOffer::RefusedCodec { .. } => {
+                    Some("core.import.sheet.refused_codec")
+                }
+                BridgeSheetBindingOffer::RefusedUnreadable => {
+                    Some("core.import.sheet.refused_unreadable")
+                }
+            };
+            assert_eq!(bridge_sheet_binding_offer_key(o).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // BridgeTrackSide::header_key — Flat carries no key (None). This is what
+        // BridgeTrackGroup::header_key is built from at conversion.
+        for s in [
+            BridgeTrackSide::Sided {
+                side_letter: "A".to_string(),
+            },
+            BridgeTrackSide::Disc { disc: 1 },
+            BridgeTrackSide::Flat,
+        ] {
+            let expected: Option<&str> = match s {
+                BridgeTrackSide::Sided { .. } => Some("core.track.side"),
+                BridgeTrackSide::Disc { .. } => Some("core.track.disc"),
+                BridgeTrackSide::Flat => None,
+            };
+            assert_eq!(s.header_key(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_audio_channels_key — only 1 and 2 carry words.
+        for (channels, expected) in [
+            (1_i64, Some("core.audio.channels.mono")),
+            (2, Some("core.audio.channels.stereo")),
+        ] {
+            assert_eq!(bridge_audio_channels_key(channels).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_cloud_provider_label_key — None (local-only) and S3 carry
+        // keys; the brand-name providers pass through (None).
+        for p in [
+            None,
+            Some(BridgeCloudProvider::S3),
+            Some(BridgeCloudProvider::GoogleDrive),
+            Some(BridgeCloudProvider::Dropbox),
+            Some(BridgeCloudProvider::OneDrive),
+            Some(BridgeCloudProvider::CloudKit),
+        ] {
+            let expected: Option<&str> = match p {
+                None => Some("core.cloud.local_only"),
+                Some(BridgeCloudProvider::S3) => Some("core.cloud.s3_compatible"),
+                Some(
+                    BridgeCloudProvider::GoogleDrive
+                    | BridgeCloudProvider::Dropbox
+                    | BridgeCloudProvider::OneDrive
+                    | BridgeCloudProvider::CloudKit,
+                ) => None,
+            };
+            assert_eq!(bridge_cloud_provider_label_key(p).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_invalid_reason_key — every variant carries a key.
+        for r in [
+            BridgeInvalidReason::CorruptAudioFile {
+                path: String::new(),
+            },
+            BridgeInvalidReason::CorruptImage {
+                path: String::new(),
+            },
+            BridgeInvalidReason::NoValidAudio,
+        ] {
+            let expected = match r {
+                BridgeInvalidReason::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
+                BridgeInvalidReason::CorruptImage { .. } => "core.import.invalid.corrupt_image",
+                BridgeInvalidReason::NoValidAudio => "core.import.invalid.no_valid_audio",
+            };
+            assert_eq!(bridge_invalid_reason_key(r.clone()), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_needs_you_key — every variant carries a key.
+        for needs_you in [
+            BridgeNeedsYou::AlreadyInLibrary,
+            BridgeNeedsYou::SeveralMatches { count: 0 },
+            BridgeNeedsYou::SignalsConflict,
+            BridgeNeedsYou::NoMatch,
+            BridgeNeedsYou::NothingToLookUp,
+            BridgeNeedsYou::TrackCountDisagrees {
+                local: 0,
+                source: 0,
+            },
+            BridgeNeedsYou::DurationsDisagree {
+                probed_ms: 0,
+                source_ms: 0,
+                tolerance_ms: 0,
+            },
+            BridgeNeedsYou::SourceLengthsUnknown,
+            BridgeNeedsYou::LocalDurationUnknown,
+        ] {
+            let expected = match needs_you {
+                BridgeNeedsYou::AlreadyInLibrary => "core.import.triage.already_in_library",
+                BridgeNeedsYou::SeveralMatches { .. } => "core.import.triage.several_matches",
+                BridgeNeedsYou::SignalsConflict => "core.import.triage.signals_conflict",
+                BridgeNeedsYou::NoMatch => "core.import.triage.no_match",
+                BridgeNeedsYou::NothingToLookUp => "core.import.triage.nothing_to_look_up",
+                BridgeNeedsYou::TrackCountDisagrees { .. } => {
+                    "core.import.triage.track_count_disagrees"
+                }
+                BridgeNeedsYou::DurationsDisagree { .. } => "core.import.triage.durations_disagree",
+                BridgeNeedsYou::SourceLengthsUnknown => "core.import.triage.source_lengths_unknown",
+                BridgeNeedsYou::LocalDurationUnknown => "core.import.triage.local_duration_unknown",
+            };
+            assert_eq!(bridge_needs_you_key(&needs_you), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_prepare_step_key — every variant carries a key.
+        for step in [
+            BridgePrepareStep::ParsingMetadata,
+            BridgePrepareStep::WritingCoverArt,
+            BridgePrepareStep::DiscoveringFiles,
+            BridgePrepareStep::ValidatingTracks,
+            BridgePrepareStep::SavingToDatabase,
+        ] {
+            let expected = match step {
+                BridgePrepareStep::ParsingMetadata => "core.import.prepare.parsing_metadata",
+                BridgePrepareStep::WritingCoverArt => "core.import.prepare.writing_cover_art",
+                BridgePrepareStep::DiscoveringFiles => "core.import.prepare.discovering_files",
+                BridgePrepareStep::ValidatingTracks => "core.import.prepare.validating_tracks",
+                BridgePrepareStep::SavingToDatabase => "core.import.prepare.saving_to_database",
+            };
+            assert_eq!(bridge_prepare_step_key(step), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_import_phase_key — every variant carries a key.
+        for phase in [
+            BridgeImportPhase::ReferencingFiles,
+            BridgeImportPhase::MeasuringLoudness,
+            BridgeImportPhase::Finalizing,
+        ] {
+            let expected = match phase {
+                BridgeImportPhase::ReferencingFiles => "core.import.phase.referencing_files",
+                BridgeImportPhase::MeasuringLoudness => "core.import.phase.measuring_loudness",
+                BridgeImportPhase::Finalizing => "core.import.phase.finalizing",
+            };
+            assert_eq!(bridge_import_phase_key(phase), expected);
+            keys.push(expected.to_string());
+        }
+
+        // BridgeValidationReason::loc_key — every variant carries a key.
+        for reason in [
+            BridgeValidationReason::EmptyAlbumTitle,
+            BridgeValidationReason::NoAlbumArtist,
+            BridgeValidationReason::InvalidYear,
+        ] {
+            let expected = match reason {
+                BridgeValidationReason::EmptyAlbumTitle => {
+                    "core.import.validation.empty_album_title"
+                }
+                BridgeValidationReason::NoAlbumArtist => "core.import.validation.no_album_artist",
+                BridgeValidationReason::InvalidYear => "core.import.validation.invalid_year",
+            };
+            assert_eq!(reason.loc_key(), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_lookup_failure_key — all keyed variants must produce catalog
+        // keys; Diagnostic carries no key.
+        for f in [
+            BridgeLookupFailure::Network,
+            BridgeLookupFailure::Provider { status: Some(503) },
+            BridgeLookupFailure::Provider { status: None },
+            BridgeLookupFailure::Timeout,
+            BridgeLookupFailure::ArtworkAnalysis,
+        ] {
+            keys.push(
+                bridge_lookup_failure_key(f)
+                    .expect("typed lookup failure is keyed")
+                    .to_string(),
+            );
+        }
+        assert!(bridge_lookup_failure_key(BridgeLookupFailure::Diagnostic {
+            detail: String::new(),
+        })
+        .is_none());
+
+        // bridge_error_category_key — every variant carries a key.
+        for c in [
+            BridgeErrorCategory::Database,
+            BridgeErrorCategory::Config,
+            BridgeErrorCategory::Internal,
+            BridgeErrorCategory::Import,
+            BridgeErrorCategory::Export,
+            BridgeErrorCategory::Save,
+            BridgeErrorCategory::Credentials,
+            BridgeErrorCategory::Network,
+            BridgeErrorCategory::Keyring,
+            BridgeErrorCategory::Membership,
+            BridgeErrorCategory::AirPlayUnsupported,
+        ] {
+            let expected = match c {
+                BridgeErrorCategory::Database => "core.error.category.database",
+                BridgeErrorCategory::Config => "core.error.category.config",
+                BridgeErrorCategory::Internal => "core.error.category.internal",
+                BridgeErrorCategory::Import => "core.error.category.import",
+                BridgeErrorCategory::Export => "core.error.category.export",
+                BridgeErrorCategory::Save => "core.error.category.save",
+                BridgeErrorCategory::Credentials => "core.error.category.credentials",
+                BridgeErrorCategory::Network => "core.error.category.network",
+                BridgeErrorCategory::Keyring => "core.error.category.keyring",
+                BridgeErrorCategory::Membership => "core.error.category.membership",
+                BridgeErrorCategory::AirPlayUnsupported => {
+                    "core.error.category.airplay_unsupported"
+                }
+            };
+            assert_eq!(bridge_error_category_key(c), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_entity_not_found_key — every variant carries a key.
+        for e in [
+            BridgeEntityKind::Library,
+            BridgeEntityKind::Album,
+            BridgeEntityKind::Release,
+            BridgeEntityKind::Track,
+            BridgeEntityKind::File,
+        ] {
+            let expected = match e {
+                BridgeEntityKind::Library => "core.error.not_found.library",
+                BridgeEntityKind::Album => "core.error.not_found.album",
+                BridgeEntityKind::Release => "core.error.not_found.release",
+                BridgeEntityKind::Track => "core.error.not_found.track",
+                BridgeEntityKind::File => "core.error.not_found.file",
+            };
+            assert_eq!(bridge_entity_not_found_key(e), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_error_line_key — Cancelled carries no line (None); the other two
+        // agree with the per-part key fns above, so an error has exactly one line
+        // and it is not re-derived anywhere. The keys themselves are already
+        // pushed by those loops, so nothing is added here.
+        for e in [
+            BridgeError::Cancelled,
+            BridgeError::NotFound {
+                entity: BridgeEntityKind::Album,
+                id: "a".to_string(),
+            },
+            BridgeError::internal(""),
+        ] {
+            let expected: Option<String> = match &e {
+                BridgeError::Cancelled => None,
+                BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
+                BridgeError::Diagnostic { category, .. } => {
+                    Some(bridge_error_category_key(*category))
+                }
+            };
+            assert_eq!(bridge_error_line_key(&e), expected);
+        }
+
+        // bridge_playback_error_reason_key — Diagnostic carries no key (None).
+        for r in [
+            BridgePlaybackErrorReason::SyncDisconnected,
+            BridgePlaybackErrorReason::UploadPending,
+            BridgePlaybackErrorReason::Diagnostic {
+                error: BridgeError::internal(""),
+            },
+        ] {
+            let expected: Option<&str> = match r {
+                BridgePlaybackErrorReason::SyncDisconnected => {
+                    Some("core.playback.error.sync_disconnected")
+                }
+                BridgePlaybackErrorReason::UploadPending => {
+                    Some("core.playback.error.upload_pending")
+                }
+                BridgePlaybackErrorReason::Diagnostic { .. } => None,
+            };
+            assert_eq!(bridge_playback_error_reason_key(&r).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        keys.extend(
+            [
+                bae_core::playback::SIDE_PAUSE_TITLE_KEY,
+                bae_core::playback::SIDE_PAUSE_VINYL_MESSAGE_KEY,
+                bae_core::playback::SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+            ]
+            .into_iter()
+            .map(str::to_string),
+        );
+
+        keys
+    }
+
+    fn catalog() -> bae_loc::Catalog {
+        bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml")).expect("catalog parses")
+    }
+
+    /// Missing-key direction: every produced key and every direct-reference key
+    /// has a catalog entry.
+    #[test]
+    fn every_produced_key_exists_in_catalog() {
+        let cat = catalog();
+        for key in produced_keys()
+            .iter()
+            .map(String::as_str)
+            .chain(DIRECT_KEYS.iter().copied())
+        {
+            assert!(
+                cat.messages.contains_key(key),
+                "catalog missing `{key}` — a key fn or DIRECT_KEYS produces it but the entry is gone"
+            );
+        }
+    }
+
+    /// Orphan direction: every `core.*` catalog entry is produced by a key fn
+    /// or listed in `DIRECT_KEYS`.
+    #[test]
+    fn no_orphan_core_keys() {
+        let cat = catalog();
+        let mut accounted: std::collections::HashSet<String> =
+            produced_keys().into_iter().collect();
+        accounted.extend(DIRECT_KEYS.iter().map(|k| k.to_string()));
+
+        for key in cat.messages.keys() {
+            if !key.starts_with("core.") {
+                continue;
+            }
+            assert!(
+                accounted.contains(key),
+                "catalog key `{key}` has no producer — delete it or add a producer \
+                 (a bridge_*_key fn) or list it in DIRECT_KEYS"
+            );
+        }
+    }
+}
+
+#[cfg(all(test, feature = "desktop"))]
+mod triage_tests {
+    use super::*;
+
+    /// The stacking order the UIs iterate is core's, spelled once on this side
+    /// so mobile builds carry it too. This is what keeps the two spellings from
+    /// drifting — reorder either and it fails.
+    #[test]
+    fn group_order_mirrors_core() {
+        let core: Vec<BridgeNeedsYouGroup> = bae_core::import::NeedsYouGroup::IN_ORDER
+            .iter()
+            .map(|group| BridgeNeedsYouGroup::from_core(*group))
+            .collect();
+        assert_eq!(bridge_needs_you_groups_in_order(), core);
+    }
+
+    /// A placement's tab is the one core's own projection gives it, for every
+    /// variant — so `bridge_triage_tab` cannot become a second, divergent
+    /// rule.
+    #[test]
+    fn tab_of_placement_mirrors_core() {
+        use bae_core::import::{NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageTab};
+        for core in [
+            TriagePlacement::Ready,
+            TriagePlacement::NeedsYou {
+                group: NeedsYouGroup::StillIdentifying,
+                reason: NeedsYouReason::StillIdentifying {
+                    phase: bae_core::import::IdentifyPhase::Queued,
+                },
+            },
+            TriagePlacement::Importing,
+            TriagePlacement::Done,
+            TriagePlacement::Skipped,
+        ] {
+            let expected = match core.tab() {
+                TriageTab::Ready => BridgeTriageTab::Ready,
+                TriageTab::NeedsYou => BridgeTriageTab::NeedsYou,
+                TriageTab::Done => BridgeTriageTab::Done,
+                TriageTab::Skipped => BridgeTriageTab::Skipped,
+            };
+            let bridge = BridgeTriagePlacement::from_core(core);
+            assert_eq!(bridge_triage_tab(&bridge), expected);
+        }
+    }
+}
+
+#[cfg(all(test, feature = "desktop"))]
+mod identify_progress_tests {
+    use super::*;
+
+    #[test]
+    fn barcode_progress_failure_crosses_bridge() {
+        let progress = bae_core::identify::BarcodeProgress::Failed {
+            failure: bae_core::signals::LookupFailure::Diagnostic {
+                detail: "provider lookup failed".to_string(),
+            },
+        };
+
+        let view = bae_core::identify::BarcodeProgressView::from(progress);
+        match BridgeBarcodeProgress::from_view(view) {
+            BridgeBarcodeProgress::Failed {
+                failure: BridgeLookupFailure::Diagnostic { detail },
+            } => assert_eq!(detail, "provider lookup failed"),
+            other => panic!("expected failed barcode progress, got {other:?}"),
+        }
+    }
+}
+
+/// Round-trips a fully-populated sample through `from_core` then `into_core` and
+/// asserts equality with the original. The one bug the exhaustive-destructure
+/// compile checks can't catch is a transposed same-typed field introduced during
+/// a rewrite; these catch it for both directions in one assertion (types without
+/// `PartialEq` compare their `Debug` forms). Placeholder names only.
+#[cfg(test)]
+mod conversion_roundtrip {
+    use super::*;
+
+    #[test]
+    fn image_ref_round_trips() {
+        let core = bae_core::album_detail::ImageRef {
+            id: "rel-123".to_string(),
+            version: "v1".to_string(),
+            image_type: bae_core::db::LibraryImageType::Artist,
+        };
+        assert_eq!(core, BridgeImageRef::from_core(core.clone()).into_core());
+    }
+
+    #[test]
+    fn export_preset_round_trips_and_re_derives_extension() {
+        let core = bae_core::config::SavePreset {
+            id: "preset-1".to_string(),
+            name: "Preset One".to_string(),
+            codec: bae_core::config::SaveCodec::Flac {
+                bit_depth: bae_core::config::SaveBitDepth::Bits24,
+            },
+            filename_tokens: vec![
+                bae_core::config::SaveFilenameToken::Artist,
+                bae_core::config::SaveFilenameToken::Title,
+            ],
+            pregap_placement: bae_core::config::SavePregapPlacement::Exclude,
+            applies_to_track: true,
+            applies_to_release: false,
+            embed_cover: false,
+        };
+        let bridge = BridgeSavePreset::from_core(&core);
+        // `extension` is derived from the codec, not carried in the core preset.
+        assert_eq!(bridge.extension, core.codec.extension());
+        assert!(!bridge.embed_cover);
+        assert_eq!(core, bridge.into_core());
+    }
+
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn release_user_edit_round_trips() {
+        let core = bae_core::import::ReleaseUserEdit {
+            album_title: "Album Title".to_string(),
+            album_artist_names: vec!["Artist Name".to_string(), "Second Artist".to_string()],
+            pressing: bae_core::import::PressingEdit {
+                year: Some(1990),
+                format: Some("CD".to_string()),
+                label: Some("Label Name".to_string()),
+                catalog_number: Some("CAT-1".to_string()),
+                country: Some("US".to_string()),
+                barcode: Some("012345678905".to_string()),
+            },
+            tracks: vec![bae_core::import::TrackUserEdit {
+                title: "Track Title".to_string(),
+                side: 1,
+                track_number: Some(1),
+                artist_names: vec!["Track Artist".to_string()],
+                file: Some(bae_core::import::AudioFile::SheetSlice {
+                    file_id: "CDImage.flac".to_string(),
+                    sheet_id: "CDImage.cue".to_string(),
+                    index: 0,
+                }),
+            }],
+        };
+        assert_eq!(
+            core,
+            BridgeReleaseUserEdit::from_core(core.clone()).into_core()
+        );
+    }
+
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn raw_release_edit_round_trips() {
+        let core = bae_core::import::RawReleaseEdit {
+            album_title: "Album Title".to_string(),
+            album_artist_text: "Artist Name, Second Artist".to_string(),
+            pressing: bae_core::import::RawPressingEdit {
+                year: "1990".to_string(),
+                format: "CD".to_string(),
+                label: "Label Name".to_string(),
+                catalog_number: "CAT-1".to_string(),
+                country: "US".to_string(),
+                barcode: "012345678905".to_string(),
+            },
+            tracks: vec![bae_core::import::RawTrackEdit {
+                id: "row-1".to_string(),
+                title: "Track Title".to_string(),
+                artist_text: "Track Artist".to_string(),
+                side: 1,
+                track_number: Some(1),
+                // The audio binding is not a form field, so it has to survive
+                // the editor's round trip untouched or a corrected pairing is
+                // lost between the slot table and the commit.
+                file: Some(bae_core::import::AudioFile::Standalone {
+                    file_id: "01.flac".to_string(),
+                }),
+            }],
+        };
+        assert_eq!(
+            core,
+            BridgeRawReleaseEdit::from_core(core.clone()).into_core()
+        );
+    }
+
+    /// The detail crosses the bridge outbound only — it is the picker's display
+    /// shape, never a seed — so this pins the derived fields and the carried ones,
+    /// not a round trip.
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn release_detail_derives_default_cover() {
+        let core = bae_core::import::search::ImportSearchReleaseDetail {
+            release_id: "rel-123".to_string(),
+            source: bae_core::import::MetadataSource::MusicBrainz,
+            source_group_id: Some("rg-1".to_string()),
+            title: "Album Title".to_string(),
+            artist: Some("Artist Name".to_string()),
+            year: Some(1990),
+            format: Some("CD".to_string()),
+            label: Some("Label Name".to_string()),
+            catalog_number: Some("CAT-1".to_string()),
+            country: Some("US".to_string()),
+            barcode: Some("012345678905".to_string()),
+            track_count: 10,
+            tracks: vec![bae_core::import::search::ReleaseTrack {
+                title: "Track Title".to_string(),
+                artist: Some("Track Artist".to_string()),
+                duration_ms: Some(210_000),
+                position: "A1".to_string(),
+                side: 1,
+            }],
+            cover_art: vec![bae_core::import::cover_art::RemoteCover {
+                url: "https://example.test/cover.jpg".to_string(),
+                thumbnail_url: "https://example.test/thumb.jpg".to_string(),
+                label: "Front".to_string(),
+                source: bae_core::import::MetadataSource::MusicBrainz,
+            }],
+        };
+        // `default_cover` is derived from the first cover.
+        let bridge = BridgeReleaseDetail::from_core(core.clone());
+        assert!(bridge.default_cover.is_some());
+        assert_eq!(bridge.release_id, core.release_id);
+        assert_eq!(bridge.track_count, core.track_count);
+        assert_eq!(bridge.tracks.len(), core.tracks.len());
+        assert_eq!(bridge.tracks[0].title, core.tracks[0].title);
+        assert_eq!(bridge.tracks[0].position, core.tracks[0].position);
+        assert_eq!(bridge.cover_art.len(), core.cover_art.len());
+        assert_eq!(bridge.barcode, core.barcode);
+    }
+}

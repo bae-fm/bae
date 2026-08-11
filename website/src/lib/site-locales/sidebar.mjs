@@ -1,0 +1,110 @@
+export const sidebarTranslations = {
+  sections: {
+    useGuide: {
+      en: 'Use guide',
+    },
+    technicalReference: {
+      en: 'Technical reference',
+    },
+  },
+  pages: {
+    installation: { en: 'Installation' },
+    gettingStarted: { en: 'Getting started' },
+    importing: { en: 'Importing' },
+    releases: { en: 'Releases and metadata' },
+    browsing: { en: 'Browsing and search' },
+    playback: { en: 'Playback' },
+    sync: { en: 'Sync' },
+    devices: { en: 'Devices and members' },
+    storage: { en: 'Storage and offline' },
+    exporting: { en: 'Exporting' },
+    automation: { en: 'Automation' },
+    architecture: { en: 'Architecture' },
+    dataModel: { en: 'Data model' },
+    syncInternals: { en: 'Sync' },
+    cloudStorage: { en: 'Cloud storage' },
+    encryption: { en: 'Encryption' },
+    membership: { en: 'Identity and membership' },
+    importPipeline: { en: 'Import pipeline' },
+    playbackEngine: { en: 'Playback engine' },
+  },
+};
+
+const addedSidebarTranslations = {
+  sections: {
+    useGuide: {
+      es: 'Guía de uso',
+      fr: 'Guide d’utilisation',
+      de: 'Nutzungsanleitung',
+      'pt-BR': 'Guia de uso',
+      ja: '使い方ガイド',
+      ko: '사용 가이드',
+      'zh-Hans': '使用指南',
+      'zh-Hant': '使用指南',
+      ar: 'دليل الاستخدام',
+      he: 'מדריך שימוש',
+      uk: 'Посібник користувача',
+      bg: 'Ръководство за употреба',
+      pl: 'Przewodnik użytkowania',
+      cs: 'Uživatelská příručka',
+      hr: 'Vodič za upotrebu',
+      it: 'Guida all’uso',
+      tr: 'Kullanım kılavuzu',
+      vi: 'Hướng dẫn sử dụng',
+      nl: 'Gebruiksgids',
+      hi: 'उपयोग मार्गदर्शिका',
+      bn: 'ব্যবহার নির্দেশিকা',
+      ta: 'பயன்பாட்டு வழிகாட்டி',
+      te: 'వినియోగ మార్గదర్శిని',
+      mr: 'वापर मार्गदर्शक',
+      ur: 'استعمال کی رہنما',
+      gu: 'ઉપયોગ માર્ગદર્શિકા',
+      kn: 'ಬಳಕೆ ಮಾರ್ಗದರ್ಶಿ',
+      ml: 'ഉപയോഗ മാർഗ്ഗനിർദേശം',
+      pa: 'ਵਰਤੋਂ ਗਾਈਡ',
+      th: 'คู่มือการใช้งาน',
+    },
+    technicalReference: {
+      es: 'Referencia técnica',
+      fr: 'Référence technique',
+      de: 'Technische Referenz',
+      'pt-BR': 'Referência técnica',
+      ja: '技術リファレンス',
+      ko: '기술 참조',
+      'zh-Hans': '技术参考',
+      'zh-Hant': '技術參考',
+      ar: 'المرجع التقني',
+      he: 'מפרט טכני',
+      uk: 'Технічний довідник',
+      bg: 'Техническа справка',
+      pl: 'Dokumentacja techniczna',
+      cs: 'Technická reference',
+      hr: 'Tehnička referenca',
+      it: 'Riferimento tecnico',
+      tr: 'Teknik başvuru',
+      vi: 'Tham khảo kỹ thuật',
+      nl: 'Technische referentie',
+      hi: 'तकनीकी संदर्भ',
+      bn: 'প্রযুক্তিগত রেফারেন্স',
+      ta: 'தொழில்நுட்ப குறிப்பு',
+      te: 'సాంకేతిక సూచన',
+      mr: 'तांत्रिक संदर्भ',
+      ur: 'تکنیکی حوالہ',
+      gu: 'તકનીકી સંદર્ભ',
+      kn: 'ತಾಂತ್ರಿಕ ಉಲ್ಲೇಖ',
+      ml: 'സാങ്കേതിക റഫറൻസ്',
+      pa: 'ਤਕਨੀਕੀ ਹਵਾਲਾ',
+      th: 'เอกสารอ้างอิงทางเทคนิค',
+    },
+  },
+  pages: {},
+};
+
+for (const [section, values] of Object.entries(addedSidebarTranslations.sections)) {
+  Object.assign(sidebarTranslations.sections[section], values);
+}
+for (const [page, values] of Object.entries(addedSidebarTranslations.pages)) {
+  Object.assign(sidebarTranslations.pages[page], values);
+}
+
+export default sidebarTranslations;
