@@ -88,7 +88,6 @@ capability_types=(
   LocalSessionManager
   LruCache
   MasterCache
-  McpClient
   McpServerController
   McpTokenProvider
   MediaUrlProvider
@@ -113,8 +112,6 @@ capability_types=(
   RootRemovalBackend
   RtspConnection
   Runtime
-  RunningMcpClient
-  RunningService
   RwLock
   SaveService
   Sender
@@ -154,7 +151,6 @@ allowed_capability_outputs=(
   ExtractionServiceHandle
   IdentifyServiceHandle
   ImportServiceHandle
-  RunningMcpClient
 )
 
 checker_args=(--owner-dependency-only)

@@ -10,23 +10,17 @@ pub use bae_automation::Automation;
 
 use bae_automation::{AutomationError, AutomationTool};
 use rmcp::model::{
-    CallToolRequestParams, CallToolResult, ClientInfo, Content, JsonObject, ListToolsResult,
-    PaginatedRequestParams, RawContent, ServerCapabilities, ServerInfo, Tool,
+    CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams,
+    ServerCapabilities, ServerInfo, Tool,
 };
-use rmcp::service::{RequestContext, RoleServer, Service};
-use rmcp::transport::streamable_http_client::{
-    StreamableHttpClientTransport, StreamableHttpClientTransportConfig,
-};
+use rmcp::service::{RequestContext, RoleServer};
 use rmcp::transport::streamable_http_server::{
     session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
 };
-use rmcp::{ErrorData, ServerHandler, ServiceExt};
-use serde_json::{Map, Value};
-use std::future::Future;
+use rmcp::{ErrorData, ServerHandler};
+use serde_json::Value;
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::sync::Arc;
-use thiserror::Error;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -34,10 +28,6 @@ use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
 type McpTokenProvider = dyn Fn() -> Result<String, String> + Send + Sync;
-type RunningMcpClient =
-    rmcp::service::RunningService<rmcp::RoleClient, rmcp::model::InitializeRequestParams>;
-type McpClientCall<'a, T> = Pin<Box<dyn Future<Output = Result<T, McpError>> + Send + 'a>>;
-
 #[derive(Debug, Clone)]
 pub enum McpServerStatus {
     Disabled,
@@ -350,239 +340,4 @@ fn automation_error_value(error: AutomationError) -> Result<Value, ErrorData> {
     serde_json::to_value(error).map_err(|e| {
         ErrorData::internal_error(format!("failed to serialize tool error: {e}"), None)
     })
-}
-
-pub async fn serve_stdio(automation: Automation) -> Result<(), McpError> {
-    serve_stdio_server(BaeMcpServer::new(automation)).await
-}
-
-pub async fn proxy_stdio(uri: String, token: String) -> Result<(), McpError> {
-    serve_stdio_server(BaeMcpProxyServer {
-        client: McpClient::new(uri, token),
-    })
-    .await
-}
-
-async fn serve_stdio_server<S>(server: S) -> Result<(), McpError>
-where
-    S: Service<RoleServer>,
-{
-    let service = server
-        .serve(rmcp::transport::stdio())
-        .await
-        .map_err(|e| McpError::Transport(e.to_string()))?;
-    service
-        .waiting()
-        .await
-        .map_err(|e| McpError::Transport(e.to_string()))?;
-    Ok(())
-}
-
-struct BaeMcpProxyServer {
-    client: McpClient,
-}
-
-impl ServerHandler for BaeMcpProxyServer {
-    fn get_info(&self) -> ServerInfo {
-        mcp_server_info()
-    }
-
-    async fn call_tool(
-        &self,
-        request: CallToolRequestParams,
-        _: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, rmcp::ErrorData> {
-        self.client
-            .call_tool_raw(request)
-            .await
-            .map_err(|e| rmcp::ErrorData::internal_error(e.to_string(), None))
-    }
-
-    async fn list_tools(
-        &self,
-        request: Option<PaginatedRequestParams>,
-        _: RequestContext<RoleServer>,
-    ) -> Result<ListToolsResult, rmcp::ErrorData> {
-        self.client
-            .list_tools(request)
-            .await
-            .map_err(|e| rmcp::ErrorData::internal_error(e.to_string(), None))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct McpClient {
-    uri: String,
-    token: String,
-}
-
-impl McpClient {
-    pub fn new(uri: String, token: String) -> Self {
-        Self { uri, token }
-    }
-
-    pub async fn call_tool(&self, name: &'static str, arguments: Value) -> Result<Value, McpError> {
-        let arguments = arguments_object(arguments)?;
-        let result = self
-            .call_tool_raw(CallToolRequestParams::new(name).with_arguments(arguments))
-            .await?;
-        structured_tool_result(result)
-    }
-
-    async fn call_tool_raw(
-        &self,
-        params: CallToolRequestParams,
-    ) -> Result<CallToolResult, McpError> {
-        self.with_client(|client| {
-            Box::pin(async move {
-                client
-                    .call_tool(params)
-                    .await
-                    .map_err(|e| McpError::Transport(e.to_string()))
-            })
-        })
-        .await
-    }
-
-    async fn list_tools(
-        &self,
-        request: Option<PaginatedRequestParams>,
-    ) -> Result<ListToolsResult, McpError> {
-        self.with_client(|client| {
-            Box::pin(async move {
-                client
-                    .list_tools(request)
-                    .await
-                    .map_err(|e| McpError::Transport(e.to_string()))
-            })
-        })
-        .await
-    }
-
-    async fn with_client<T>(
-        &self,
-        call: impl for<'a> FnOnce(&'a RunningMcpClient) -> McpClientCall<'a, T>,
-    ) -> Result<T, McpError> {
-        let client = self.connect().await?;
-        let result = call(&client).await;
-        client
-            .cancel()
-            .await
-            .map_err(|e| McpError::Transport(format!("failed to close MCP client: {e}")))?;
-        result
-    }
-
-    async fn connect(&self) -> Result<RunningMcpClient, McpError> {
-        let transport = StreamableHttpClientTransport::from_config(
-            StreamableHttpClientTransportConfig::with_uri(self.uri.clone())
-                .auth_header(self.token.clone()),
-        );
-        ClientInfo::default()
-            .serve(transport)
-            .await
-            .map_err(|e| McpError::Transport(e.to_string()))
-    }
-}
-
-fn structured_tool_result(result: CallToolResult) -> Result<Value, McpError> {
-    if result.is_error == Some(true) {
-        let value = match result.structured_content {
-            Some(value) => value,
-            None => tool_error_content(result.content)?,
-        };
-        return Err(McpError::Tool(value));
-    }
-    result
-        .structured_content
-        .ok_or_else(|| McpError::Protocol("tool success missing structured content".to_string()))
-}
-
-fn tool_error_content(content: Vec<Content>) -> Result<Value, McpError> {
-    let mut text = Vec::new();
-    for item in content {
-        match item.raw {
-            RawContent::Text(raw) => text.push(raw.text),
-            other => {
-                return Err(McpError::Protocol(format!(
-                    "tool error returned non-text content: {}",
-                    content_kind(&other)
-                )));
-            }
-        }
-    }
-    match text.len() {
-        0 => Err(McpError::Protocol(
-            "tool error missing structured content and text content".to_string(),
-        )),
-        1 => {
-            let text = text.remove(0);
-            match serde_json::from_str(&text) {
-                Ok(value) => Ok(value),
-                Err(error) => {
-                    warn!("MCP tool error text was not JSON: {error}");
-                    Ok(Value::String(text))
-                }
-            }
-        }
-        _ => Ok(Value::Array(text.into_iter().map(Value::String).collect())),
-    }
-}
-
-fn content_kind(content: &RawContent) -> &'static str {
-    match content {
-        RawContent::Text(_) => "text",
-        RawContent::Image(_) => "image",
-        RawContent::Resource(_) => "resource",
-        RawContent::Audio(_) => "audio",
-        RawContent::ResourceLink(_) => "resource_link",
-    }
-}
-
-fn arguments_object(value: Value) -> Result<JsonObject, McpError> {
-    match value {
-        Value::Object(map) => Ok(map),
-        Value::Null => Ok(Map::new()),
-        other => Err(McpError::InvalidArguments(format!(
-            "tool arguments must be a JSON object, got {other}"
-        ))),
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum McpError {
-    #[error("transport: {0}")]
-    Transport(String),
-    #[error("tool: {0}")]
-    Tool(Value),
-    #[error("protocol: {0}")]
-    Protocol(String),
-    #[error("invalid arguments: {0}")]
-    InvalidArguments(String),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn tool_error_uses_unstructured_json_content() {
-        let payload = json!({"kind": "validation", "message": "bad input"});
-        let result = CallToolResult::error(vec![Content::text(payload.to_string())]);
-
-        let Err(McpError::Tool(value)) = structured_tool_result(result) else {
-            panic!("expected tool error");
-        };
-        assert_eq!(value, payload);
-    }
-
-    #[test]
-    fn successful_tool_result_requires_structured_content() {
-        let result = CallToolResult::success(vec![Content::text("ok")]);
-
-        let Err(McpError::Protocol(message)) = structured_tool_result(result) else {
-            panic!("expected protocol error");
-        };
-        assert_eq!(message, "tool success missing structured content");
-    }
 }

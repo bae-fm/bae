@@ -1,16 +1,9 @@
 ---
 title: Automatisation
-description: Piloter la bibliothèque depuis des agents, des scripts et la ligne de commande
 ---
-
-La bibliothèque peut être pilotée par des logiciels que vous exécutez : agents IA via MCP, et scripts via un outil en ligne de commande. Les deux exposent les mêmes opérations que l’interface utilise : recherche, détails de sortie, importations, actions de stockage, état de lecture.
 
 ## Le serveur MCP
 
 Activez le serveur MCP dans Réglages, Automatisation. Il sert le Model Context Protocol via HTTP sur un port local (47777 par défaut), afin que des clients MCP comme Claude puissent parcourir votre bibliothèque, rechercher des sorties et agir dessus. L’accès exige un jeton porteur : copiez-le depuis le même volet de réglages, et faites-le tourner là quand vous voulez couper l’accès à tout ce qui l’avait.
 
 Le serveur est désactivé par défaut et ne fonctionne que pendant que l’application fonctionne.
-
-## La ligne de commande
-
-La CLI `bae` pilote les mêmes opérations depuis un terminal : JSON en entrée, JSON en sortie, adapté aux scripts. Elle peut aussi agir comme client MCP, en reliant le serveur du bureau à stdio pour les outils qui attendent un processus MCP local.

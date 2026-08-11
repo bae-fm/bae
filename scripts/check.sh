@@ -207,7 +207,7 @@ check "dead_code (bae-core lib only)" \
 # so that false positive is gone rather than tolerated.
 check "no new #[allow(dead_code)]" bash -c '
   offenders=$(grep -rn --include="*.rs" "allow(dead_code)" \
-    bae-core bae-bridge bae-cast bae-cli bae-mcp bae-automation bae-desktop \
+    bae-core bae-bridge bae-cast bae-mcp bae-automation bae-desktop \
     bae-loc bae-test-support third-party \
     || true)
   if [ -n "$offenders" ]; then
@@ -234,7 +234,6 @@ check "cargo test (bae-bridge --lib, desktop)" \
   cargo test -p bae-bridge --lib --features desktop
 check "cargo test (bae-automation)"    cargo test -p bae-automation
 check "cargo test (bae-mcp)"           cargo test -p bae-mcp
-check "cargo test (bae-cli)"           cargo test -p bae-cli
 check "cargo test (bae-subsonic)"      cargo test -p bae-subsonic
 check "cargo test (bae-cast)"          cargo test -p bae-cast
 check "cargo test (bae-desktop)"       cargo test -p bae-desktop

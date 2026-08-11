@@ -538,8 +538,8 @@ fn option_to_raw(value: &Option<String>) -> String {
 impl ReleaseUserEdit {
     /// Trim the album title and every track title, and drop blank artist names.
     /// The normalization the editor's [`RawReleaseEdit::shape`] performs on typed
-    /// text, hoisted onto the wire type so a surface that builds one
-    /// field-for-field — MCP, the CLI — gets the same treatment instead of
+    /// text, hoisted onto the wire type so MCP, which builds one
+    /// field-for-field, gets the same treatment instead of
     /// writing whatever it was handed. Idempotent.
     pub fn normalized(mut self) -> Self {
         self.album_title = self.album_title.trim().to_string();

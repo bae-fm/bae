@@ -2369,8 +2369,8 @@ fn import_trace_line(
 ///
 /// The command's edit carries the track slots the user saw, each row naming the
 /// audio bound to it — that is the mapping, and it wins. A command whose edit
-/// names no audio at all changed metadata without opening the slot table (the
-/// CLI, an automation script, a surface with no mapping pane), so the slots are
+/// names no audio at all changed metadata without opening the slot table (an
+/// automation surface with no mapping pane), so the slots are
 /// computed here from this folder and this tracklist, exactly as picking the
 /// release computes them; whatever metadata that edit does carry still applies,
 /// row for row.

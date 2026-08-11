@@ -3,7 +3,6 @@ members = [
     "bae-automation",
     "bae-bridge",
     "bae-cast",
-    "bae-cli",
     "bae-core",
     "bae-desktop",
     "bae-loc",

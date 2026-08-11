@@ -401,8 +401,8 @@ impl LibraryManager {
     /// Apply a user-supplied metadata edit to an existing release.
     ///
     /// Every surface a user edits through reaches the write here — the desktop
-    /// editor, MCP's `release_metadata_update`, the CLI. The desktop shapes its
-    /// form first ([`crate::import::RawReleaseEdit::shape`]); the others hand over
+    /// editor and MCP's `release_metadata_update`. The desktop shapes its form
+    /// first ([`crate::import::RawReleaseEdit::shape`]); MCP hands over
     /// a wire edit built field-for-field. So the edit is normalized and validated
     /// here rather than at any one caller: a blank album title or an artist-less
     /// album is rejected, and surrounding whitespace is trimmed, no matter which

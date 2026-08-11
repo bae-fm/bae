@@ -2,8 +2,8 @@
 //! The release-metadata edit rule is enforced on the write, not on one caller.
 //!
 //! The desktop editor shapes its form through `RawReleaseEdit::shape`, which
-//! rejects a blank album title and an artist-less album. Every other surface —
-//! MCP's `release_metadata_update`, the CLI — builds a `ReleaseUserEdit`
+//! rejects a blank album title and an artist-less album. MCP's
+//! `release_metadata_update` builds a `ReleaseUserEdit`
 //! field-for-field and hands it straight to
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.

@@ -571,13 +571,6 @@ impl Config {
         Self::load_registered_library_from_bae_dir(&bae_dir, library_id, ids)
     }
 
-    pub fn load_from_library_path(
-        library_path: PathBuf,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<Self, ConfigError> {
-        Self::load_from_library_dir(library_path, ids)
-    }
-
     pub(crate) fn load_registered_library_from_bae_dir(
         bae_dir: &std::path::Path,
         library_id: &str,
@@ -585,15 +578,6 @@ impl Config {
     ) -> Result<Self, ConfigError> {
         let library_dir = registered_library_path(bae_dir, library_id);
         Self::load_from_registered_library_dir(library_dir, library_id, ids)
-    }
-
-    fn load_from_library_dir(
-        library_dir: PathBuf,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<Self, ConfigError> {
-        let config_path = library_dir.join("config.yaml");
-        let (yaml_config, migrated) = Self::load_config_yaml(&config_path)?;
-        Self::config_from_yaml(yaml_config, migrated, library_dir, &config_path, ids)
     }
 
     fn load_from_registered_library_dir(
@@ -1586,8 +1570,9 @@ mod tests {
 
         // And it actually opens, keeping what the user had set and taking the
         // default for the field it never had.
-        let config = Config::load_from_library_path(library_dir.clone(), &coven::UuidProvider)
-            .expect("the old library opens");
+        let config =
+            Config::load_registered_library_from_bae_dir(bae_dir, "lib-old", &coven::UuidProvider)
+                .expect("the old library opens");
         assert_eq!(config.store_name, "Old Library");
         assert!(config.pause_between_sides);
         assert!(config.verify_decode_on_import);
@@ -1748,24 +1733,6 @@ mod tests {
         .unwrap();
         assert_eq!(yaml.library_id, "my-library-id");
         assert_eq!(yaml.mcp, McpConfig::disabled_default());
-    }
-
-    #[test]
-    fn load_from_library_path_reads_exact_directory() {
-        let tmp = TempDir::new().unwrap();
-        let library_path = tmp.path().join("external-library");
-        make_test_config("external-lib-id", library_path.clone())
-            .save_to_config_yaml()
-            .unwrap();
-
-        let loaded = Config::load_from_library_path(
-            library_path.clone(),
-            &coven::SequentialIdProvider::new("device"),
-        )
-        .unwrap();
-
-        assert_eq!(loaded.store_id, "external-lib-id");
-        assert_eq!(loaded.library_path(), library_path.as_path());
     }
 
     #[test]

@@ -12,7 +12,7 @@ bae は 1 つの Rust コアを、4 つのネイティブアプリから使い�
 - **`bae-bridge`**: UniFFI 境界です。ブリッジ型は Rust で一度定義され、ビルド時に Swift と Kotlin へ生成されます。
 - **アプリ**: macOS と iOS は SwiftUI、Android は Jetpack Compose、Windows はネイティブアプリです。それぞれ、コアが要求するプラットフォーム部分も実装します。音声出力、アートワークの文字認識、メディアコントロール、キーリングアクセス、クラッシュレポートです。
 
-アプリの横には、`bae-mcp`（MCP サーバー）、`bae-cli`（コマンドライン）、`bae-automation`（両方が使う共有ツール層）があります。
+アプリの横には、`bae-mcp`（MCP サーバー）と `bae-automation` があります。
 
 ## ディスク上の 1 つのライブラリ
 

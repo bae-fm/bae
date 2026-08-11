@@ -78,7 +78,7 @@ jobs:
       # [workspace.lints]; an allow here is the way back around that deny.
       run: |
         offenders=$(grep -rn --include='*.rs' 'allow(dead_code)' \
-          bae-core bae-bridge bae-cli bae-mcp bae-automation bae-desktop bae-loc \
+          bae-core bae-bridge bae-mcp bae-automation bae-desktop bae-loc \
           bae-test-support third-party \
           || true)
         if [ -n "$offenders" ]; then
@@ -98,7 +98,6 @@ jobs:
         cargo nextest run -p bae-bridge --lib --features desktop
         cargo nextest run -p bae-automation
         cargo nextest run -p bae-mcp
-        cargo nextest run -p bae-cli
         cargo nextest run -p bae-subsonic
         cargo nextest run -p bae-cast
         cargo nextest run -p bae-desktop

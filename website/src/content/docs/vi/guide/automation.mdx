@@ -1,16 +1,9 @@
 ---
 title: Tự động hóa
-description: Điều khiển thư viện từ tác tử, tập lệnh và dòng lệnh
 ---
-
-Thư viện có thể được điều khiển bằng phần mềm bạn chạy: tác tử AI qua MCP, và tập lệnh qua công cụ dòng lệnh. Cả hai bộc lộ cùng các thao tác mà giao diện dùng: tìm kiếm, chi tiết bản phát hành, nhập, thao tác lưu trữ, trạng thái phát lại.
 
 ## Máy chủ MCP
 
 Bật máy chủ MCP trong Settings, Automation. Nó phục vụ Model Context Protocol qua HTTP trên một cổng cục bộ (mặc định là 47777), nên các máy khách MCP như Claude có thể duyệt thư viện, tra cứu bản phát hành và thao tác trên chúng. Truy cập cần bearer token: sao chép token từ cùng khung cài đặt đó, và xoay vòng token ở đó bất cứ khi nào bạn muốn cắt quyền mọi thứ đang giữ token.
 
 Máy chủ tắt theo mặc định và chỉ chạy khi ứng dụng chạy.
-
-## Dòng lệnh
-
-CLI `bae` điều khiển cùng các thao tác từ terminal: JSON vào, JSON ra, phù hợp cho tập lệnh. Nó cũng có thể hoạt động như một máy khách MCP, nối máy chủ của ứng dụng desktop sang stdio cho các công cụ cần một tiến trình MCP cục bộ.

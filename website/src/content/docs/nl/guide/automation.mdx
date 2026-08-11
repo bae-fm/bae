@@ -1,16 +1,9 @@
 ---
 title: Automatisering
-description: Stuur de bibliotheek aan vanuit agents, scripts en de opdrachtregel
 ---
-
-De bibliotheek kan worden aangestuurd door software die je draait: AI-agents via MCP, en scripts via een opdrachtregeltool. Beide bieden dezelfde bewerkingen die de UI gebruikt: zoeken, releasedetails, imports, opslagacties, afspeelstatus.
 
 ## De MCP-server
 
 Zet de MCP-server aan in Settings, Automation. Hij serveert het Model Context Protocol via HTTP op een lokale poort (standaard 47777), zodat MCP-clients zoals Claude door je bibliotheek kunnen bladeren, releases kunnen opzoeken en erop kunnen handelen. Toegang vereist een bearer token: kopieer die uit hetzelfde instellingenpaneel, en roteer hem daar wanneer je alles wat hem had wilt afsluiten.
 
 De server staat standaard uit en draait alleen terwijl de app draait.
-
-## De opdrachtregel
-
-De `bae` CLI stuurt dezelfde bewerkingen aan vanuit een terminal: JSON erin, JSON eruit, geschikt voor scripts. Hij kan ook als MCP-client werken en de server van de desktop naar stdio overbruggen voor tools die een lokaal MCP-proces verwachten.

@@ -5,7 +5,6 @@
 //! extraction services, and wires the UI event bus — no per-frontend copy to
 //! drift.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use tracing::info;
@@ -56,7 +55,7 @@ where
     F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
 {
     bootstrap_on_thread(
-        BootstrapTarget::RegisteredId(library_id),
+        library_id,
         position_update_interval_ms,
         restore_playback,
         diagnostics,
@@ -65,29 +64,8 @@ where
     )
 }
 
-pub fn bootstrap_library_path<T, F>(
-    library_path: PathBuf,
-    position_update_interval_ms: u32,
-    restore_playback: bool,
-    diagnostics: Diagnostics,
-    compose: F,
-) -> Result<T, BootstrapError>
-where
-    T: Send + 'static,
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
-{
-    bootstrap_on_thread(
-        BootstrapTarget::LibraryPath(library_path),
-        position_update_interval_ms,
-        restore_playback,
-        diagnostics,
-        None,
-        compose,
-    )
-}
-
 fn bootstrap_on_thread<T, F>(
-    target: BootstrapTarget,
+    library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
@@ -107,7 +85,7 @@ where
         .stack_size(32 * 1024 * 1024)
         .spawn(move || {
             bootstrap_inner(
-                target,
+                library_id,
                 position_update_interval_ms,
                 restore_playback,
                 diagnostics,
@@ -120,13 +98,8 @@ where
         .expect("bae-bootstrap thread panicked")
 }
 
-enum BootstrapTarget {
-    RegisteredId(String),
-    LibraryPath(PathBuf),
-}
-
 fn bootstrap_inner<T, F>(
-    target: BootstrapTarget,
+    library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
@@ -136,12 +109,20 @@ fn bootstrap_inner<T, F>(
 where
     F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T,
 {
-    // The injected wall clock + id source, built before `load_bootstrap_config` so
-    // the device-id auto-generation draws from the injected source too.
+    // The injected wall clock + id source are built before loading the config so
+    // device-id auto-generation draws from the injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
-    let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
+    let config =
+        Config::load_registered_library(&library_id, ids.as_ref()).map_err(
+            |error| match error {
+                coven::ConfigError::Config(_) => {
+                    BootstrapError::LibraryNotFound(library_id.clone())
+                }
+                other => BootstrapError::Config(other.to_string()),
+            },
+        )?;
     let library_id = config.store_id.clone();
 
     // Telemetry was built by the host at process start (from compiled-in values
@@ -210,7 +191,7 @@ where
     // Bootstrap still completes (sync deferred); the caller diverts to an unlock
     // screen the user may cancel without ever entering this library.
     let locked = config.encryption_key_stored && !key_established;
-    let advance_active_pointer = save_active_library && !locked;
+    let advance_active_pointer = !locked;
 
     // A browsable home (a provider is configured but the home is stored in the
     // clear) has no key, so the opaque/locked resolution above leaves
@@ -297,9 +278,9 @@ where
         .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
     // The durable active-library pointer names the library the user last actually
-    // landed in, so launch ordering (discovery sorts active-first), the CLI's
-    // active-library selector, and forget_library's pointer check all refer to a
-    // library that opens. It advances only over a fully-realized open: written
+    // landed in, so launch ordering (discovery sorts active-first) and
+    // forget_library's pointer check both refer to a library that opens. It
+    // advances only over a fully-realized open: written
     // after every fallible step above has succeeded, and never for a locked
     // library — cancelling the unlock screen must leave the previously-active
     // library in charge. A successful unlock re-runs bootstrap unlocked and
@@ -312,29 +293,4 @@ where
     }
 
     Ok(compose(app_services, ui_event_bus, runtime))
-}
-
-/// Load the config for a bootstrap target. The returned bool is whether this
-/// open should advance the active-library pointer once fully realized:
-/// registered-id targets yes (they name a device library), explicit-path targets
-/// no.
-fn load_bootstrap_config(
-    target: BootstrapTarget,
-    ids: &dyn coven::IdProvider,
-) -> Result<(Config, bool), BootstrapError> {
-    match target {
-        BootstrapTarget::RegisteredId(library_id) => {
-            let config =
-                Config::load_registered_library(&library_id, ids).map_err(|e| match e {
-                    coven::ConfigError::Config(_) => {
-                        BootstrapError::LibraryNotFound(library_id.clone())
-                    }
-                    other => BootstrapError::Config(other.to_string()),
-                })?;
-            Ok((config, true))
-        }
-        BootstrapTarget::LibraryPath(path) => Config::load_from_library_path(path, ids)
-            .map(|config| (config, false))
-            .map_err(|e| BootstrapError::Config(e.to_string())),
-    }
 }

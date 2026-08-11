@@ -12,7 +12,7 @@ bae 是一個 Rust 核心，外面套著四個原生 App。定義產品的所有
 - **`bae-bridge`**：UniFFI 邊界。橋接型別在 Rust 中定義一次，建置時產生到 Swift 與 Kotlin。
 - **App**：macOS 與 iOS 使用 SwiftUI，Android 使用 Jetpack Compose，Windows 使用原生 App。每個 App 也實作核心要求的平台部分：音訊輸出、圖片文字辨識、媒體控制、鑰匙圈存取、當機報告。
 
-App 旁邊還有：`bae-mcp`（MCP 伺服器）、`bae-cli`（命令列），以及 `bae-automation`（兩者共用的工具層）。
+App 旁邊還有：`bae-mcp`（MCP 伺服器）和 `bae-automation`。
 
 ## 磁碟上的一個資料庫
 

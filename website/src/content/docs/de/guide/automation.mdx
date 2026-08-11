@@ -1,16 +1,9 @@
 ---
 title: Automatisierung
-description: Steuere die Mediathek über Agenten, Skripte und die Befehlszeile
 ---
-
-Die Mediathek kann von Software gesteuert werden, die du ausführst: KI-Agenten über MCP und Skripte über ein Befehlszeilenwerkzeug. Beide stellen dieselben Vorgänge bereit, die auch die Oberfläche nutzt: Suche, Release-Details, Importe, Speicheraktionen und Wiedergabestatus.
 
 ## Der MCP-Server
 
 Aktiviere den MCP-Server unter Einstellungen, Automatisierung. Er stellt das Model Context Protocol per HTTP auf einem lokalen Port bereit (standardmäßig 47777), damit MCP-Clients wie Claude deine Mediathek durchsuchen, Releases nachschlagen und Aktionen darauf ausführen können. Der Zugriff erfordert ein Bearer-Token: Kopiere es aus demselben Einstellungsbereich und rotiere es dort, wenn du allem, was es hatte, den Zugriff entziehen willst.
 
 Der Server ist standardmäßig ausgeschaltet und läuft nur, solange die App läuft.
-
-## Die Befehlszeile
-
-Die `bae`-CLI steuert dieselben Vorgänge aus einem Terminal: JSON hinein, JSON heraus, geeignet für Skripte. Sie kann auch als MCP-Client arbeiten und den Server der Desktop-App per stdio für Werkzeuge bereitstellen, die einen lokalen MCP-Prozess erwarten.
