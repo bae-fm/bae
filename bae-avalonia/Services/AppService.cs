@@ -166,7 +166,7 @@ internal sealed class AppService
 
 #if DEBUG
     /// <summary>A scene composition for the shot-capture gallery: every domain
-    /// service is a fail-loud stub except the caller-supplied <paramref name="library"/>,
+    /// service is a fail-loud stub except those supplied by the caller,
     /// so a render that touches any unwired delegate crashes the capture loudly
     /// rather than drawing a lie. The stores are built around a handle-less
     /// <paramref name="session"/>; the shell renders its content off the stub
@@ -176,12 +176,26 @@ internal sealed class AppService
         SessionStore session,
         Dispatcher dispatcher,
         LibraryService library) =>
-        Stubbed(
+        CreateStubbed(
             session,
             dispatcher,
             library,
             new ImportService(),
-            new PlaybackService());
+            new PlaybackService(),
+            new SettingsService());
+
+    public static AppService Stubbed(
+        SessionStore session,
+        Dispatcher dispatcher,
+        LibraryService library,
+        SettingsService settings) =>
+        CreateStubbed(
+            session,
+            dispatcher,
+            library,
+            new ImportService(),
+            new PlaybackService(),
+            settings);
 
     public static AppService Stubbed(
         SessionStore session,
@@ -189,6 +203,21 @@ internal sealed class AppService
         LibraryService library,
         ImportService import,
         PlaybackService playback) =>
+        CreateStubbed(
+            session,
+            dispatcher,
+            library,
+            import,
+            playback,
+            new SettingsService());
+
+    private static AppService CreateStubbed(
+        SessionStore session,
+        Dispatcher dispatcher,
+        LibraryService library,
+        ImportService import,
+        PlaybackService playback,
+        SettingsService settings) =>
         new(
             session,
             dispatcher,
@@ -200,7 +229,7 @@ internal sealed class AppService
             new DownloadsService(),
             new SyncService(),
             new CastService(),
-            new SettingsService(),
+            settings,
             import,
             new ReleaseEditorService(),
             new DiscogsService(),

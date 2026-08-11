@@ -19,7 +19,13 @@ dotnet run \
     --framework net8.0 \
     --configuration Debug \
     -- \
-    --capture-shots "$OUT_DIR"
+    --capture-shots "$OUT_DIR" || {
+        capture_exit=$?
+        if [[ -f "$OUT_DIR/capture.log" ]]; then
+            cat "$OUT_DIR/capture.log" >&2
+        fi
+        exit "$capture_exit"
+    }
 
 platform="macos"
 case "$(uname -s)" in

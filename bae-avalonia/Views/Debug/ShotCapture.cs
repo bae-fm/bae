@@ -257,7 +257,15 @@ internal static class ShotCapture
     private static Control BuildEmptyLibrary()
     {
         var session = new SessionStore(Dispatcher.UIThread);
-        var app = AppService.Stubbed(session, Dispatcher.UIThread, EmptyLibrary());
+        var settings = new SettingsService
+        {
+            GetSettings = () => (true, new Settings()),
+        };
+        var app = AppService.Stubbed(
+            session,
+            Dispatcher.UIThread,
+            EmptyLibrary(),
+            settings);
         var modalHost = new ModalHost();
         var lightbox = new LightboxOverlay();
         Func<Task> closeLibrary = () => Task.CompletedTask;
