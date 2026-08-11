@@ -57,6 +57,49 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     .await
     .unwrap();
 
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
+    let config = Config::with_defaults(
+        library_id.to_string(),
+        "test-device".to_string(),
+        library_dir,
+        "Test Library".to_string(),
+    );
+    assemble_test_manager(library_id, temp_dir, database, config).await
+}
+
+#[cfg(feature = "test-utils")]
+async fn setup_browsable_test_manager() -> (LibraryManager, TempDir) {
+    let library_id = format!("test-{}", Uuid::new_v4());
+    let temp_dir = TempDir::new().unwrap();
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
+    let mut config = Config::with_defaults(
+        library_id.clone(),
+        "test-device".to_string(),
+        library_dir.clone(),
+        "Test Library".to_string(),
+    );
+    config.cloud_home.storage = crate::config::HomeStorage::Browsable;
+    crate::config::install_test_keyring();
+    let clock: Arc<dyn coven::Clock> = Arc::new(coven::SystemClock);
+    let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
+    let database = Database::open(
+        library_dir,
+        config.inner.clone(),
+        clock,
+        ids,
+        crate::sync::synced_tables(),
+        None,
+    )
+    .unwrap();
+    assemble_test_manager(&library_id, temp_dir, database, config).await
+}
+
+async fn assemble_test_manager(
+    library_id: &str,
+    temp_dir: TempDir,
+    database: Database,
+    config: Config,
+) -> (LibraryManager, TempDir) {
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {
         id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
@@ -68,13 +111,6 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     };
     database.insert_artist(&artist).await.unwrap();
 
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let config = Config::with_defaults(
-        library_id.to_string(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
-    );
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
     let key_service = StoreKeys::bind(library_id.to_string());
@@ -2049,67 +2085,66 @@ async fn change_cover_twice_replaces_the_cover_blob() {
 /// applying a changeset written before a replacement could never satisfy that
 /// changeset's content hash. Distinct keys leave the superseded object readable
 /// until its tombstone is collected.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    manager.set_home_storage(crate::config::HomeStorage::Browsable);
+async fn replacing_a_cover_on_a_browsable_home_writes_a_distinct_cloud_key() {
+    let (manager, _temp_dir) = setup_browsable_test_manager().await;
+    manager
+        .connect_test_cloud_home(Arc::new(InMemoryCloudHome::new()), CloudCipher::Plaintext)
+        .await
+        .expect("connect browsable in-memory cloud home");
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
 
-    let source_dir = TempDir::new().unwrap();
-    let png = |rgb: [u8; 3]| {
+    let jpeg = |rgb: [u8; 3]| {
         let img = ::image::RgbImage::from_pixel(400, 400, ::image::Rgb(rgb));
         let mut buf = std::io::Cursor::new(Vec::new());
         ::image::DynamicImage::ImageRgb8(img)
             .write_to(&mut buf, ::image::ImageFormat::Png)
             .unwrap();
-        buf.into_inner()
+        crate::util::cover::resize_cover(&buf.into_inner()).unwrap()
     };
-    let add_source = |name: &str, bytes: &[u8]| {
-        std::fs::write(source_dir.path().join(name), bytes).unwrap();
-        DbFile::new(
+    let store_cover = async |bytes: Vec<u8>| {
+        let mut image = DbLibraryImage::cover(
             &release.id,
-            name,
-            bytes.len() as i64,
-            ContentType::Png,
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-            crate::util::fs::hash_bytes(bytes),
-        )
-    };
-    let green = add_source("green.png", &png([20, 160, 90]));
-    let red = add_source("red.png", &png([200, 40, 40]));
-    manager.add_file(&green).await.unwrap();
-    manager.add_file(&red).await.unwrap();
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &source_dir.path().to_string_lossy())
-        .await
-        .unwrap();
-
-    let change_to = async |file: &DbFile| {
-        manager
-            .change_cover(
-                &album.id,
-                &release.id,
-                CoverSelection::ReleaseImage {
-                    file_id: file.id.clone(),
-                },
+            &Uuid::new_v4().to_string(),
+            "local",
+            None,
+            &bytes,
+            manager.clock.now(),
+        );
+        image.cloud_path = manager
+            .database
+            .cover_cloud_path_for_storage(
+                crate::config::HomeStorage::Browsable,
+                &image.id,
+                &image.blob_id,
+                &image.content_type,
             )
             .await
             .unwrap();
         manager
+            .store_library_image_blob(&image, &bytes)
+            .await
+            .unwrap();
+        wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
+        let stored = manager
+            .database
+            .row_blob_ref(crate::sync::COVERS_NAMESPACE, &release.id)
+            .await
+            .unwrap();
+        let image = manager
             .get_library_image(&release.id, &LibraryImageType::Cover)
             .await
             .unwrap()
-            .expect("cover row stored")
+            .expect("cover row stored");
+        (image, stored)
     };
 
-    let first = change_to(&green).await;
-    let second = change_to(&red).await;
+    let (first, first_stored) = store_cover(jpeg([20, 160, 90])).await;
+    let (second, second_stored) = store_cover(jpeg([200, 40, 40])).await;
 
     // Each row's readable path names its own blob, so the two never collide.
     assert_eq!(
@@ -2136,6 +2171,11 @@ async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys()
     let old_key = manager.database.blob_cloud_key(&old_blob).unwrap();
     let new_key = manager.database.blob_cloud_key(&new_blob).unwrap();
     assert_ne!(old_key, new_key);
+    assert!(
+        first_stored.stored().is_some() && second_stored.stored().is_some(),
+        "both covers reached the cloud"
+    );
+    assert_ne!(first_stored.stored(), second_stored.stored());
 }
 
 /// Queueing an album expands to its PRIMARY release's tracks, not the
