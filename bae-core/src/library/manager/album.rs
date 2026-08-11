@@ -43,6 +43,10 @@ impl LibraryManager {
         Ok(self.database.get_album_count().await?)
     }
 
+    pub(crate) fn subscribe_album_count(&self) -> coven::LiveQuery<u64> {
+        self.database.subscribe_album_count()
+    }
+
     /// Test-only. Production reads albums through `find_album_detail` /
     /// `get_album_page`, never as a bare row.
     #[cfg(any(test, feature = "test-utils"))]

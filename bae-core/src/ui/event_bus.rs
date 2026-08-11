@@ -411,6 +411,35 @@ impl UiEventBus {
             app_services.clone(),
             runtime_handle,
         );
+        self.wire_album_count(app_services.subscribe_album_count(), runtime_handle);
+    }
+
+    fn wire_album_count(
+        &self,
+        mut count: coven::LiveQuery<u64>,
+        runtime_handle: &tokio::runtime::Handle,
+    ) {
+        let bus = self.clone();
+        runtime_handle.spawn(async move {
+            let mut previous = None;
+            loop {
+                match count.next().await {
+                    Ok(current) if previous != Some(current) => {
+                        previous = Some(current);
+                        bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        tracing::warn!("album-count live query failed: {error}");
+                        bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
+                    }
+                }
+            }
+        });
     }
 
     fn wire_library_events(
@@ -427,9 +456,6 @@ impl UiEventBus {
                 match rx.recv().await {
                     Ok(LibraryEvent::AlbumAdded { album }) => {
                         let album_id = album.album.id.clone();
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album { album_id });
                     }
                     Ok(LibraryEvent::AlbumUpdated { album }) => {
@@ -443,9 +469,6 @@ impl UiEventBus {
                         album_id,
                         release_ids,
                     }) => {
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -539,7 +562,7 @@ impl UiEventBus {
 mod tests {
     use super::*;
     use crate::config::{Config, ConfigHandle};
-    use crate::db::Database;
+    use crate::db::{Database, DbAlbum, DbArtist};
     use crate::library::LibraryEvent;
     use coven::StoreDir;
     use std::sync::Arc;
@@ -560,7 +583,7 @@ mod tests {
 
     fn make_test_app_services(
         runtime: &tokio::runtime::Runtime,
-    ) -> (crate::library::AppServices, TempDir) {
+    ) -> (crate::library::AppServices, Database, TempDir) {
         let tmp = TempDir::new().unwrap();
         let library_dir = StoreDir::new(tmp.path().join("lib"));
         let database = runtime
@@ -579,7 +602,7 @@ mod tests {
         );
         crate::config::install_test_keyring();
         let manager = crate::library::LibraryManager::new(
-            database,
+            database.clone(),
             Arc::new(ConfigHandle::new(config)),
             crate::keys::StoreKeys::bind(library_id),
             Arc::new(coven::SystemClock),
@@ -603,7 +626,23 @@ mod tests {
         };
         #[cfg(any(target_os = "ios", target_os = "android"))]
         let services = crate::library::AppServices::new(manager, playback);
-        (services, tmp)
+        (services, database, tmp)
+    }
+
+    fn recv_browse_list_invalidations(
+        runtime: &tokio::runtime::Runtime,
+        rx: &mut broadcast::Receiver<UiBusEvent>,
+    ) {
+        for expected in [
+            Invalidation::AlbumList,
+            Invalidation::ComposerList,
+            Invalidation::ArtistList,
+        ] {
+            match recv_ui_event(runtime, rx) {
+                UiBusEvent::Invalidated(actual) => assert_eq!(actual, expected),
+                other => panic!("expected browse-list invalidation, got {other:?}"),
+            }
+        }
     }
 
     /// A config change published by the handle is forwarded to the bus as a
@@ -663,7 +702,7 @@ mod tests {
             .unwrap();
         drop(library_tx);
 
-        let (services, _tmp) = make_test_app_services(&runtime);
+        let (services, _database, _tmp) = make_test_app_services(&runtime);
         bus.wire_library_events(library_rx, services, runtime.handle());
 
         let expected = [
@@ -690,7 +729,7 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(16);
-        let (services, _tmp) = make_test_app_services(&runtime);
+        let (services, _database, _tmp) = make_test_app_services(&runtime);
         bus.wire_library_events(library_rx, services, runtime.handle());
 
         library_tx
@@ -709,7 +748,7 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(16);
-        let (services, _tmp) = make_test_app_services(&runtime);
+        let (services, _database, _tmp) = make_test_app_services(&runtime);
         bus.wire_library_events(library_rx, services, runtime.handle());
 
         library_tx
@@ -740,13 +779,42 @@ mod tests {
         }
     }
 
+    #[test]
+    fn album_count_live_query_invalidates_browse_lists_after_database_insert() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (services, database, _tmp) = make_test_app_services(&runtime);
+        let artist = DbArtist {
+            id: bae_test_support::test_uuid("album-count-artist"),
+            name: "Artist Name".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: chrono::Utc::now(),
+        };
+        runtime
+            .block_on(database.insert_artist(&artist))
+            .expect("insert artist");
+
+        let bus = UiEventBus::new();
+        let mut ui_rx = bus.subscribe();
+        bus.wire_library(&services, runtime.handle());
+        recv_browse_list_invalidations(&runtime, &mut ui_rx);
+
+        let album = DbAlbum::new_test("Album Title", &artist.id);
+        runtime
+            .block_on(database.insert_album(&album))
+            .expect("insert album directly through the database");
+
+        recv_browse_list_invalidations(&runtime, &mut ui_rx);
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[test]
     fn import_lag_emits_coarse_invalidations() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
-        let (services, _tmp) = make_test_app_services(&runtime);
+        let (services, _database, _tmp) = make_test_app_services(&runtime);
         let (import_tx, import_rx) = broadcast::channel(1);
 
         import_tx

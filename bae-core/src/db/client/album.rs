@@ -312,14 +312,13 @@ impl Database {
     }
 
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
-        self.read(move |sql| {
-            sql.query_row("SELECT COUNT(*) FROM albums", [], |row| {
-                row.get::<_, i64>(0)
-            })
-            .map(|c| c as u64)
-            .map_err(DbError::from)
-        })
-        .await
+        self.read(album_count_on).await
+    }
+
+    pub(crate) fn subscribe_album_count(&self) -> coven::LiveQuery<u64> {
+        self.inner
+            .handle
+            .subscribe(|sql| album_count_on(sql).map_err(CovenError::from))
     }
 
     /// Raw album-summary lookup for a single album. Shares the JSON aggregates with
@@ -453,4 +452,12 @@ impl Database {
         })
         .await
     }
+}
+
+fn album_count_on(sql: SqlReadContext<'_>) -> Result<u64, DbError> {
+    sql.query_row("SELECT COUNT(*) FROM albums", [], |row| {
+        row.get::<_, i64>(0)
+    })
+    .map(|count| count as u64)
+    .map_err(DbError::from)
 }

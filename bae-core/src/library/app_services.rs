@@ -136,6 +136,10 @@ impl AppServices {
         self.inner.manager.subscribe_events()
     }
 
+    pub(crate) fn subscribe_album_count(&self) -> coven::LiveQuery<u64> {
+        self.inner.manager.subscribe_album_count()
+    }
+
     pub fn subscribe_playback_progress(
         &self,
     ) -> tokio::sync::mpsc::UnboundedReceiver<crate::playback::PlaybackProgress> {
