@@ -428,24 +428,14 @@ impl Fixture {
     /// Watch the root and wait for the scan to surface every candidate, so a
     /// sweep started after this sees a populated queue.
     async fn scan(&self, expected: usize) {
-        let mut events = self.import.subscribe_events();
-        self.import
-            .add_watched_folder(self.root.to_string_lossy().into_owned())
-            .await
-            .unwrap();
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
-        loop {
-            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-            let event = tokio::time::timeout(remaining, events.recv())
-                .await
-                .expect("scan finishes")
-                .expect("bus stays open");
-            if matches!(event, ImportEvent::Scan(ScanEvent::Finished))
-                && self.import.get_import_candidates().folder_candidates.len() == expected
-            {
-                return;
-            }
-        }
+        let root = self.root.to_string_lossy().into_owned();
+        self.import.add_watched_folder(root.clone()).await.unwrap();
+        self.import.refresh_watched_folder(root).await.unwrap();
+        assert_eq!(
+            self.import.get_import_candidates().folder_candidates.len(),
+            expected,
+            "the completed scan surfaces every fixture candidate"
+        );
     }
 
     /// What `ImportView.selectCandidate` does, through the one entry point core
