@@ -184,7 +184,7 @@ struct CoverSheetView: View {
         )
         .frame(width: 500, height: 450)
         .background(Theme.surface)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 
     #Preview("Cover Sheet Loading") {
@@ -200,6 +200,6 @@ struct CoverSheetView: View {
         )
         .frame(width: 500, height: 450)
         .background(Theme.surface)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

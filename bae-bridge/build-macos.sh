@@ -36,6 +36,7 @@ fi
 # must match exactly. Both the bindings and the guards derive from this one
 # variable — there's no second place to keep in sync.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
+export BAE_BRIDGE_FEATURES
 
 # Map each Rust feature to its Swift compilation condition. A build compiled
 # with `oauth-providers` defines BAE_OAUTH_PROVIDERS; one without it must not.
@@ -86,38 +87,6 @@ else
     mv "$FEATURES_XCCONFIG_TMP" "$FEATURES_XCCONFIG"
 fi
 
-# The BaeKit package can't inherit SWIFT_ACTIVE_COMPILATION_CONDITIONS from the
-# app's xcconfig, so emit the same conditions as JSON next to Package.swift; the
-# manifest reads it and maps each to a .define. SwiftPM evaluates the manifest
-# once per resolve and caches the result by manifest content, so Features.json
-# is re-read on a fresh resolve (a CI checkout, a first build, or after a clean)
-# — which is every automated flow, each building a single edition, so the
-# conditions always match the bridge that was just built. Touch Package.swift as
-# a cheap hint, but a warm build tree that already resolved the other edition
-# needs both its DerivedData and the SwiftPM manifest cache
-# (~/Library/Caches/org.swift.swiftpm/manifests) cleared for new conditions to
-# take — SwiftPM keys the cached evaluation on manifest content, which is
-# identical across editions.
-FEATURES_JSON="BaeKit/Features.json"
-echo "Writing package compilation conditions to $FEATURES_JSON"
-FEATURES_JSON_TMP="${FEATURES_JSON}.tmp.$$"
-{
-    printf '['
-    first=1
-    for cond in $SWIFT_CONDITIONS; do
-        [ "$first" -eq 0 ] && printf ', '
-        printf '"%s"' "$cond"
-        first=0
-    done
-    printf ']\n'
-} > "$FEATURES_JSON_TMP"
-if cmp -s "$FEATURES_JSON_TMP" "$FEATURES_JSON"; then
-    rm "$FEATURES_JSON_TMP"
-else
-    mv "$FEATURES_JSON_TMP" "$FEATURES_JSON"
-    touch BaeKit/Package.swift
-fi
-
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
 STATIC_LIB="$CARGO_TARGET_DIR/aarch64-apple-darwin/$CARGO_PROFILE/libbae_bridge.a"
 INSTALLED_BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
@@ -146,7 +115,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     rm -f "$COMPLETION_STAMP"
 
     GENERATION_TMP="$(mktemp -d "$CARGO_TARGET_DIR/bridge-generation.XXXXXX")"
-    trap 'rm -rf "$GENERATION_TMP" "$FEATURES_XCCONFIG_TMP" "$FEATURES_JSON_TMP"' EXIT
+    trap 'rm -rf "$GENERATION_TMP" "$FEATURES_XCCONFIG_TMP"' EXIT
     GENERATED_BINDINGS="$GENERATION_TMP/swift-bindings"
     GENERATED_XCFRAMEWORK="$GENERATION_TMP/BaeBridgeFFI.xcframework"
     mkdir -p "$GENERATED_BINDINGS"

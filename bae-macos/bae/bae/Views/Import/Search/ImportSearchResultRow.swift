@@ -263,6 +263,6 @@ struct ImportSearchResultRow: View {
         .frame(width: 520)
         .windowBackground()
         .environment(UiStore())
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

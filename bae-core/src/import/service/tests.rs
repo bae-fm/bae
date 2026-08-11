@@ -54,6 +54,8 @@ async fn setup_import_service() -> (ImportService, TempDir) {
             commands_rx,
             event_tx,
             library_manager: manager,
+            clock: Arc::new(coven::SystemClock),
+            ids: Arc::new(coven::UuidProvider),
         },
         temp_dir,
     )
@@ -729,7 +731,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .is_empty());
     assert!(service
         .library_manager
-        .database_for_test()
         .load_folder_scan_snapshots()
         .await
         .unwrap()
@@ -1124,19 +1125,9 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
         )
         .await;
 
-    let database = service.library_manager.database_for_test();
-    let (artist_count, artist_image_count) = database
-        .handle()
-        .sql_read(move |conn| {
-            let artist_count = conn.query_row("SELECT COUNT(*) FROM artists", [], |row| {
-                row.get::<_, i64>(0)
-            })?;
-            let artist_image_count =
-                conn.query_row("SELECT COUNT(*) FROM artist_images", [], |row| {
-                    row.get::<_, i64>(0)
-                })?;
-            Ok::<_, coven::CovenError>((artist_count, artist_image_count))
-        })
+    let (artist_count, artist_image_count) = service
+        .library_manager
+        .artist_and_image_counts_for_test()
         .await
         .unwrap();
 

@@ -47,6 +47,6 @@ struct DetailMediaRow: View {
         }
         .padding()
         .frame(width: 420, alignment: .leading)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

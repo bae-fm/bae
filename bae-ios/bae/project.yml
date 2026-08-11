@@ -34,6 +34,7 @@ targets:
       - path: bae
         excludes:
           - bae_bridge.swift
+      - path: ../../BaeKit/Sources/AppleHost/CloudKitService.swift
     preBuildScripts:
       - name: Build Rust Bridge
         basedOnDependencyAnalysis: false

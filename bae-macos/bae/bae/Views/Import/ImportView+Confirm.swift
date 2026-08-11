@@ -71,12 +71,14 @@ extension ImportView {
                 rawEdit: commitEdit
             ) {
                 try await importer.startImport(
-                    candidate.key,
-                    coverSelection,
-                    storageMode,
-                    storagePinned,
-                    identityChoice,
-                    $0
+                    ImportCommitRequest(
+                        candidateKey: candidate.key,
+                        selectedCover: coverSelection,
+                        storageMode: storageMode,
+                        pin: storagePinned,
+                        identityChoice: identityChoice,
+                        userEdit: $0
+                    )
                 )
             }
         }

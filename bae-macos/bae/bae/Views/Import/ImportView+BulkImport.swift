@@ -35,16 +35,19 @@ extension ImportView {
                 }
                 do {
                     try await importer.startImport(
-                        key,
-                        nil,
-                        storageMode,
-                        storagePinned,
-                        // The row's stored decision, in the shape commit takes
-                        // — identification settled this candidate on one match
-                        // and recorded the pick, so a bulk import commits the
-                        // same claim opening the pane would state.
-                        claim,
-                        nil
+                        ImportCommitRequest(
+                            candidateKey: key,
+                            selectedCover: nil,
+                            storageMode: storageMode,
+                            pin: storagePinned,
+                            // The row's stored decision, in the shape commit
+                            // takes — identification settled this candidate on
+                            // one match and recorded the pick, so a bulk import
+                            // commits the same claim opening the pane would
+                            // state.
+                            identityChoice: claim,
+                            userEdit: nil
+                        )
                     )
                 }
                 catch {

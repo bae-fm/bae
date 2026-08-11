@@ -1,4 +1,3 @@
-use crate::discogs::DiscogsClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
@@ -7,6 +6,7 @@ use crate::import::folder_scanner::{
 use crate::import::types::{
     ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
 };
+use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
 use crate::library::LibraryManager;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -993,32 +993,6 @@ pub enum DiscogsSaveOutcome {
     Rejected,
 }
 
-/// Map a `DiscogsClient::validate_token` result to the validation state it
-/// implies: success confirms the key, a 401 rejects it, and anything else —
-/// network, rate-limit, or a `DiscogsError` a search request can't even reach —
-/// folds to `Unvalidated`, "couldn't confirm", so the match stays total without
-/// a catch-all. Shared by the save and revalidate paths so both fold alike.
-fn validation_from_validate_result(
-    result: Result<(), crate::discogs::client::DiscogsError>,
-) -> crate::config::DiscogsValidation {
-    use crate::config::DiscogsValidation;
-    use crate::discogs::client::DiscogsError;
-    match result {
-        Ok(()) => DiscogsValidation::Valid,
-        Err(DiscogsError::InvalidApiKey) => DiscogsValidation::Rejected,
-        Err(
-            e @ (DiscogsError::RateLimit
-            | DiscogsError::Transport(_)
-            | DiscogsError::Provider(_)
-            | DiscogsError::NotFound
-            | DiscogsError::Serialization(_)),
-        ) => {
-            debug!("Discogs validation couldn't confirm the key ({e}); leaving it unvalidated to retry later");
-            DiscogsValidation::Unvalidated
-        }
-    }
-}
-
 /// Handle for sending import requests and subscribing to progress updates.
 ///
 /// A thin orchestration layer that dispatches prefetches, builds
@@ -1036,10 +1010,10 @@ pub struct ImportServiceHandle {
     /// handle clones; `take`n by whichever runs the join.
     worker_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     library_manager: LibraryManager,
+    clock: coven::ClockRef,
+    ids: coven::IdRef,
     /// Unified event channel — all import service events go here.
-    /// `pub(crate)` because `app.rs` clones it to seed the identify and signals
-    /// services at startup.
-    pub(crate) event_tx: broadcast::Sender<ImportEvent>,
+    event_tx: broadcast::Sender<ImportEvent>,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     candidate_state: Arc<Mutex<ImportCandidateState>>,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
@@ -1140,6 +1114,8 @@ impl ImportServiceHandle {
         worker_thread: std::thread::JoinHandle<()>,
         watcher_thread: std::thread::JoinHandle<()>,
         library_manager: LibraryManager,
+        clock: coven::ClockRef,
+        ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
@@ -1151,6 +1127,8 @@ impl ImportServiceHandle {
             requests_tx,
             worker_thread: Arc::new(Mutex::new(Some(worker_thread))),
             library_manager,
+            clock,
+            ids,
             event_tx,
             folder_registry,
             candidate_state,
@@ -1159,6 +1137,25 @@ impl ImportServiceHandle {
             watcher_thread: Arc::new(Mutex::new(Some(watcher_thread))),
             runtime_handle,
         }
+    }
+
+    pub(crate) fn start_candidate_services(
+        &self,
+    ) -> (
+        crate::identify::IdentifyServiceHandle,
+        crate::signals::ExtractionServiceHandle,
+    ) {
+        let identify = crate::identify::IdentifyServiceHandle::new(
+            self.library_manager.clone(),
+            self.runtime_handle.clone(),
+            self.event_tx.clone(),
+        );
+        let extraction = crate::signals::ExtractionService::start(
+            self.runtime_handle.clone(),
+            self.event_tx.clone(),
+            self.library_manager.clone(),
+        );
+        (identify, extraction)
     }
 
     /// Stop and join the worker thread. Idempotent (the join handle is taken
@@ -1201,11 +1198,6 @@ impl ImportServiceHandle {
         }
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn event_sender_for_test(&self) -> broadcast::Sender<ImportEvent> {
-        self.event_tx.clone()
-    }
-
     /// Broadcast a resumed identify state — a stored verdict standing back up
     /// as the state opening its candidate shows, with no run behind it. Rides
     /// the same event every live driver's transitions do, so the runtime
@@ -1227,6 +1219,25 @@ impl ImportServiceHandle {
                 priority: crate::util::rate_limiter::CallPriority::Interactive,
             },
         );
+    }
+
+    pub(crate) fn announce_candidate_verdict_stored(&self, candidate_key: String) {
+        send_event(
+            &self.event_tx,
+            ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }),
+        );
+    }
+
+    pub(crate) fn announce_queue_identify_progress(&self, identified: u32, total: u32) {
+        send_event(
+            &self.event_tx,
+            ImportEvent::QueueIdentifyProgress { identified, total },
+        );
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn emit_event_for_test(&self, event: ImportEvent) {
+        send_event(&self.event_tx, event);
     }
 
     pub fn get_import_candidates(&self) -> ImportCandidatesSnapshot {
@@ -1329,52 +1340,6 @@ pub(crate) fn remap_links<T: Clone>(
             Ok(remapped)
         })
         .collect()
-}
-
-/// Fetch artist images for artists that have a Discogs ID but no image yet.
-/// Best-effort: never fails the import.
-pub(crate) async fn fetch_artist_images(
-    library_manager: &LibraryManager,
-    discogs_client: &DiscogsClient,
-    parsed_artists: &[crate::db::DbArtist],
-    artist_id_map: &HashMap<String, String>,
-) -> Vec<(crate::db::DbLibraryImage, Vec<u8>)> {
-    let mut images = Vec::new();
-    for parsed_artist in parsed_artists {
-        let actual_id = match artist_id_map.get(&parsed_artist.id) {
-            Some(id) => id,
-            None => continue,
-        };
-
-        let discogs_artist_id = match &parsed_artist.discogs_artist_id {
-            Some(id) => id.clone(),
-            None => continue,
-        };
-
-        match library_manager
-            .get_library_image(actual_id, &crate::db::LibraryImageType::Artist)
-            .await
-        {
-            Ok(Some(_)) => continue,
-            Ok(None) => {}
-            Err(e) => {
-                warn!("failed to check existing artist image for artist {actual_id}: {e}");
-                continue;
-            }
-        }
-
-        if let Some(image) = crate::import::artist_image::fetch_artist_image(
-            actual_id,
-            &discogs_artist_id,
-            discogs_client,
-            library_manager,
-        )
-        .await
-        {
-            images.push(image);
-        }
-    }
-    images
 }
 
 /// Project a parsed album (mapper output) into the editor's `ReleaseUserEdit`

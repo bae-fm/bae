@@ -352,20 +352,7 @@ fn dispatch_effect(
         Effect::LookupBarcode { barcode } => {
             let library_manager = inner.library_manager.clone();
             runtime.spawn(async move {
-                let discogs = match library_manager.discogs_client() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        emit_step(
-                            &event_tx,
-                            barcode_lookup_failed(
-                                barcode,
-                                format!("Failed to read Discogs key: {e}"),
-                            ),
-                        );
-                        return;
-                    }
-                };
-                let lookup = lookup_barcode(&barcode, discogs.as_ref(), priority).await;
+                let lookup = lookup_barcode(&barcode, &library_manager, priority).await;
                 if token.is_cancelled() {
                     return;
                 }

@@ -81,7 +81,7 @@ struct ExpandedNowPlayingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             ProgressBar(
-                positionSubject: playbackStore.playbackPositionSubject,
+                positionPublisher: playbackStore.playbackPositionPublisher,
                 showRemainingTime: configStore.config.showRemainingTime,
                 onSeek: { ratio in
                     playbackStore.projectSeek(ratio: ratio)

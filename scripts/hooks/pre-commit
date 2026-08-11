@@ -89,6 +89,12 @@ run_check "cargo fmt" cargo fmt --all || {
 }
 restage_and_fail_if_changed "cargo fmt"
 
+# Parse the complete Rust and Swift source trees on every commit: ownership can
+# leak through a type declared in one module and a field or getter in another.
+run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {
+    exit 1
+}
+
 # bae-core checks. bae-test-support compiles into bae-core's integration tests,
 # so a change there has to re-run them even when bae-core itself is untouched.
 if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
@@ -151,7 +157,8 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
     || has_changes_in "BaeKit"; then
     if xcrun --find swift-format &> /dev/null; then
         run_check "swift-format format (bae-macos + BaeKit)" bash -c '
-            find bae-macos/bae/bae BaeKit/Sources/BaeKit -name "*.swift" -print0 \
+            find bae-macos/bae/bae BaeKit/Sources/BaeKit \
+                BaeKit/Sources/AppleHost -name "*.swift" -print0 \
                 | xargs -0 xcrun swift-format format -i -p
         ' || {
             echo "swift-format format failed"
@@ -164,7 +171,8 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
         # (e.g. OnlyOneTrailingClosureArgument, TypeNamesShouldBeCapitalized,
         # EndOfLineComment). These need a manual fix.
         run_check "swift-format lint (bae-macos + BaeKit)" bash -c '
-            find bae-macos/bae/bae BaeKit/Sources/BaeKit -name "*.swift" -print0 \
+            find bae-macos/bae/bae BaeKit/Sources/BaeKit \
+                BaeKit/Sources/AppleHost -name "*.swift" -print0 \
                 | xargs -0 xcrun swift-format lint -s
         ' || {
             echo "swift-format lint failed — fix the violations above and commit again"
@@ -178,7 +186,8 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
         # that it is the same gate.
         run_check "swiftlint (bae-macos + BaeKit + bae-ios)" \
             swiftlint lint --quiet --strict --config .swiftlint.yml \
-            bae-macos/bae/bae BaeKit/Sources/BaeKit bae-ios/bae/bae || {
+            bae-macos/bae/bae BaeKit/Sources/BaeKit \
+            BaeKit/Sources/AppleHost bae-ios/bae/bae || {
             echo "swiftlint failed — fix the violations above and commit again"
             exit 1
         }

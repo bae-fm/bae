@@ -14,7 +14,7 @@
             WelcomeWindowChrome {
                 WelcomeView(onLibraryReady: { _ in })
             }
-            .environment(PreviewData.welcomeSetup)
+            .environment(PreviewData.welcomeSetup())
         }
 
         /// The restore-from-cloud flow, entered directly, in the welcome chrome.
@@ -22,7 +22,7 @@
             WelcomeWindowChrome {
                 WelcomeView(onLibraryReady: { _ in }, initialMode: .restore)
             }
-            .environment(PreviewData.welcomeSetup)
+            .environment(PreviewData.welcomeSetup())
         }
 
         /// The album grid backed by the fixture albums, wired with the same live
@@ -35,15 +35,15 @@
                 libraryStore: libraryStore
             )
             return LibraryView()
-                .environment(ImageStore.stub)
-                .environment(Playback.stub)
-                .environment(Queue.stub)
-                .environment(Downloads.stub)
+                .environment(ImageStore.stub())
+                .environment(Playback.stub())
+                .environment(Queue.stub())
+                .environment(Downloads.stub())
                 .environment(backing.library)
                 .environment(libraryStore)
                 .environment(uiStore)
                 .environment(backing.session)
-                .environment(PreviewData.configStore)
+                .environment(PreviewData.configStore())
                 .windowBackground()
         }
 
@@ -63,8 +63,8 @@
                 .environment(backing.session)
                 .environment(libraryStore)
                 .environment(uiStore)
-                .environment(PreviewAudio.stub)
-                .environment(Cast.stub)
+                .environment(PreviewAudio.stub())
+                .environment(Cast.stub())
                 .environment(CastStore())
                 .albumDetailPreviewEnvironment(store: libraryStore)
                 .windowBackground()
@@ -114,7 +114,7 @@
                 onImportSelected: { _ in }
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-            .environment(PreviewData.artImageStore)
+            .environment(PreviewData.artImageStore())
             .environment(uiStore)
             .windowBackground()
         }
@@ -131,7 +131,7 @@
 
     #Preview("Import Release Queue Scanning") {
         PreviewScenes.importReleaseQueue(
-            store: PreviewData.releaseQueueScanningImportStore,
+            store: PreviewData.releaseQueueScanningImportStore(),
             tab: .ready,
             collapseReadyGroup: false,
             refreshingWatchedFolderPath:

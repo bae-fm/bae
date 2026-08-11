@@ -10,7 +10,7 @@ impl LibraryManager {
     /// source files, and re-emits the subtree (the host-provided cover then rides
     /// along). Returns once enqueued; completion fires `on_root_made_remote`.
     pub async fn coven_make_remote(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
-        self.handle()
+        self.database
             .make_remote("releases", release_id, pin)
             .await
             .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
@@ -23,20 +23,29 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<(), LibraryError> {
-        self.handle()
+        self.database
             .cancel_make_remote("releases", release_id)
             .await
             .map_err(|e| {
                 LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
             })?;
         // `cancel_make_remote` records the intent to unwind; the drain carries it
-        // out — dropping the still-queued uploads and tombstoning whatever already
-        // landed. Run it here rather than waiting for the next cycle, so the user's
-        // cancel is done when it returns instead of leaving the release reading as
-        // still-uploading. A drain with no provider connected is not an error the
-        // user needs.
-        if let Err(e) = self.handle().drain_uploads().await {
-            warn!("finishing the cancelled make-remote for {release_id}: {e}");
+        // out — dropping the still-queued uploads and deleting whatever already
+        // landed. The operation has not completed until that drain succeeds.
+        self.database.drain_uploads().await.map_err(|error| {
+            LibraryError::Storage(format!(
+                "finish cancelling make release {release_id} remote: {error}"
+            ))
+        })?;
+        if self
+            .database
+            .make_remote_progress_for_release(release_id)
+            .await?
+            .is_some()
+        {
+            return Err(LibraryError::Storage(format!(
+                "cancel make release {release_id} remote did not finish"
+            )));
         }
         Ok(())
     }
@@ -57,7 +66,7 @@ impl LibraryManager {
         let (cancel_rx, bridge) =
             crate::library::cancel_token_to_watch(&self.runtime_handle, cancel.clone());
         let result = self
-            .handle()
+            .database
             .make_local("releases", release_id, &dest, &cancel_rx)
             .await;
         bridge.abort();
@@ -119,7 +128,7 @@ impl LibraryManager {
     /// floor read from the cloud — a network round trip, hence async (coven's
     /// own `CovenHandle::generate_restore_code` is the same way).
     pub async fn generate_restore_code(&self) -> Result<String, LibraryError> {
-        Ok(self.handle().generate_restore_code().await?)
+        Ok(self.database.generate_restore_code().await?)
     }
 
     /// The library's membership: its devices (with this device flagged, each
@@ -282,7 +291,8 @@ impl LibraryManager {
     /// activate/cancel race, cancel-is-not-a-failure, remove vs mark-failed).
     ///
     /// All this supplies is how a pin runs: resolve the release's byte totals,
-    /// spawn `TransferService::pin_release_task`, and yield its outcome. The
+    /// ask `TransferService` to compose the pin task with this worker's progress
+    /// drain, and yield the resulting operation. The
     /// outcome comes from draining the transfer's progress channel — that drain is
     /// also what emits the inline `ReleaseTransferProgress` bar the storage row
     /// reads — and then joining the pin task, so a panicked pin reports the panic
@@ -294,7 +304,7 @@ impl LibraryManager {
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
     /// to report on the way out.
     pub(super) async fn run_download_worker(&self) {
-        use crate::library::release_queue::{run_serial_worker, RunningOp};
+        use crate::library::release_queue::run_serial_worker;
         use crate::storage::transfer::TransferService;
 
         run_serial_worker(
@@ -304,24 +314,12 @@ impl LibraryManager {
                 let release_id = op.release_id;
                 let initial_progress = self.initial_download_progress(&release_id).await?;
                 let transfer = TransferService::new(self.clone());
-                let (rx, pin_task) = transfer.pin_release_task(release_id.clone());
-                let abort = pin_task.abort_handle();
-                let outcome = async move {
-                    let drained = self
-                        .drive_transfer(&release_id, ReleaseStorageAction::Pin, rx)
-                        .await;
-                    match pin_task.await {
-                        // The task's own failure already came through the channel.
-                        Ok(()) => drained,
-                        // Aborted by a cancel, which also removed the entry — the
-                        // driver's `contains` check is what reads that as a cancel.
-                        Err(join_error) if join_error.is_cancelled() => drained,
-                        Err(join_error) => Err(LibraryError::Storage(format!(
-                            "pin task for {release_id} panicked: {join_error}"
-                        ))),
-                    }
-                };
-                Ok((initial_progress, RunningOp { abort, outcome }))
+                let drive_release_id = release_id.clone();
+                let running = transfer.pin_release(release_id, move |progress| async move {
+                    self.drive_transfer(&drive_release_id, ReleaseStorageAction::Pin, progress)
+                        .await
+                });
+                Ok((initial_progress, running))
             },
             || self.emit_download_queue_changed(),
             |_release_id, _result| {},

@@ -21,7 +21,7 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 use axum::Router;
 use bae_core::config::SubsonicCredential;
-use bae_core::library::LibraryManager;
+use bae_core::library::AppServices;
 
 mod auth;
 mod controller;
@@ -38,7 +38,7 @@ pub use controller::{SubsonicServerController, SubsonicServerError, SubsonicServ
 /// Shared handler state: the library and the one accepted credential.
 #[derive(Clone)]
 pub(crate) struct AppState {
-    manager: LibraryManager,
+    services: AppServices,
     credential: Arc<SubsonicCredential>,
 }
 
@@ -53,9 +53,9 @@ impl FromRef<AppState> for Arc<SubsonicCredential> {
 /// and `/rest/<n>.view` — Subsonic clients append `.view` to the method name.
 /// [`SubsonicServerController`] mounts this on a listener; it is also the seam
 /// integration tests drive directly.
-pub fn router(manager: LibraryManager, credential: SubsonicCredential) -> Router {
+pub fn router(services: AppServices, credential: SubsonicCredential) -> Router {
     let state = AppState {
-        manager,
+        services,
         credential: Arc::new(credential),
     };
 

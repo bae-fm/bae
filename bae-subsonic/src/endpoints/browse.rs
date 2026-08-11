@@ -42,13 +42,13 @@ async fn artist_index(
     state: &AppState,
     payload_name: &'static str,
 ) -> Result<Option<Element>, SubError> {
-    let manager = &state.manager;
-    let count = manager.get_artist_count().await.map_err(lib_err)?;
+    let services = &state.services;
+    let count = services.get_artist_count().await.map_err(lib_err)?;
     let sort = [ArtistSortCriterion {
         field: ArtistSortField::Name,
         direction: SortDirection::Ascending,
     }];
-    let summaries = manager
+    let summaries = services
         .get_artist_page(&sort, 0, count)
         .await
         .map_err(lib_err)?;
@@ -59,7 +59,7 @@ async fn artist_index(
         let artist = &summary.raw.artist;
         // Album count is this artist's release total (a Subsonic album is a
         // release), summed over the artist's bae albums.
-        let release_count = crate::library_map::artist_release_count(manager, &artist.id).await?;
+        let release_count = crate::library_map::artist_release_count(services, &artist.id).await?;
         let id3 = artist_id3(
             &artist.id,
             &artist.name,
@@ -105,11 +105,11 @@ pub(crate) async fn get_artist(
 }
 
 async fn get_artist_inner(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
-    let manager = &state.manager;
+    let services = &state.services;
     let artist_id = SubId::parse(params.require("id")?)?
         .expect_artist()?
         .to_string();
-    let detail = manager
+    let detail = services
         .get_artist_detail(&artist_id)
         .await
         .map_err(lib_err)?
@@ -132,7 +132,7 @@ async fn get_artist_inner(state: &AppState, params: &Params) -> Result<Option<El
     .to_element();
 
     for release_id in release_ids {
-        let album = release_album_id3(manager, &release_id).await?;
+        let album = release_album_id3(services, &release_id).await?;
         element = element.child(album.to_element());
     }
     Ok(Some(element))
@@ -148,25 +148,25 @@ pub(crate) async fn get_album(
 }
 
 async fn get_album_inner(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
-    let manager = &state.manager;
+    let services = &state.services;
     let release_id = SubId::parse(params.require("id")?)?
         .expect_album()?
         .to_string();
-    let release = manager
+    let release = services
         .get_release_by_id(&release_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
 
-    let album = release_album_id3_with(manager, &release).await?;
+    let album = release_album_id3_with(services, &release).await?;
     let album_title = album.name.clone();
     let has_cover_art = album.cover_art.is_some();
 
-    let tracks = manager
+    let tracks = services
         .get_tracks_for_release(&release_id)
         .await
         .map_err(lib_err)?;
-    let files = manager
+    let files = services
         .get_files_for_release(&release_id)
         .await
         .map_err(lib_err)?;
@@ -175,7 +175,7 @@ async fn get_album_inner(state: &AppState, params: &Params) -> Result<Option<Ele
     for track in &tracks {
         songs.push(
             track_child(
-                manager,
+                services,
                 track,
                 &release,
                 &album_title,

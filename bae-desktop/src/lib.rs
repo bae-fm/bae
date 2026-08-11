@@ -2,29 +2,19 @@
 
 use std::sync::Arc;
 
-use bae_core::app::{bootstrap as bootstrap_core, BootstrapError, RunningApp};
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
-use bae_core::diagnostics::Diagnostics;
-use bae_core::library::{AppServices, LibraryManager};
-use bae_core::ui::UiEventBus;
+use bae_core::library::AppServices;
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_subsonic::SubsonicServerController;
 pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 
-/// Field order is drop order: the tokio runtime is declared **last** so
-/// everything that runs on it — `AppServices`' background tasks above all — is
-/// torn down while the runtime is still alive to run their shutdown. Declared
-/// first, as it was, the runtime is destroyed before `AppServicesInner::drop`
-/// gets to stop anything, and every task it would have cancelled is already
-/// gone.
-pub struct DesktopApp {
-    pub services: AppServices,
-    pub ui_event_bus: UiEventBus,
+pub struct DesktopServices {
+    services: AppServices,
     mcp_controller: McpServerController,
     subsonic_controller: SubsonicServerController,
-    pub runtime: Runtime,
+    runtime: Handle,
 }
 
 #[derive(Debug)]
@@ -61,59 +51,36 @@ impl std::fmt::Display for DesktopSubsonicConfigError {
 
 impl std::error::Error for DesktopSubsonicConfigError {}
 
-pub fn bootstrap(
-    library_id: String,
-    position_update_interval_ms: u32,
-    restore_playback: bool,
-    diagnostics: Diagnostics,
-    cloudkit_ops: Option<bae_core::CloudKitOpsRef>,
-) -> Result<DesktopApp, BootstrapError> {
-    bootstrap_core(
-        library_id,
-        position_update_interval_ms,
-        restore_playback,
-        diagnostics,
-        cloudkit_ops,
-    )
-    .map(DesktopApp::from_running_app)
-}
-
-impl DesktopApp {
-    pub fn from_running_app(app: RunningApp) -> Self {
-        let RunningApp {
-            runtime,
-            services,
-            ui_event_bus,
-        } = app;
-
-        let automation = Automation::new(services.clone(), runtime.handle().clone());
+impl DesktopServices {
+    pub fn start(services: AppServices, runtime: Handle) -> Self {
+        let automation = Automation::new(services.clone(), runtime.clone());
         automation.start_event_indexing();
-        let token_manager = services.library_manager().clone();
+        let token_manager = services.clone();
         let controller = McpServerController::new(
             automation,
             Arc::new(move || token_manager.ensure_mcp_token().map_err(|e| e.to_string())),
         );
-        let initial = services.library_manager().get_config().mcp;
+        let initial = services.get_config().mcp;
         runtime.block_on(controller.apply_config(initial));
 
         // The Subsonic server's runtime credential is the config username plus
         // the keyring password; the provider supplies the password, and the
         // username rides on each applied `SubsonicConfig`.
-        let password_manager = services.library_manager().clone();
+        let password_manager = services.clone();
         let subsonic_controller = SubsonicServerController::new(
-            services.library_manager().clone(),
+            services.clone(),
             Arc::new(move || {
                 password_manager
                     .get_subsonic_password()
                     .map_err(|e| e.to_string())
             }),
         );
-        let initial_subsonic = services.library_manager().get_config().subsonic;
+        let initial_subsonic = services.get_config().subsonic;
         runtime.block_on(subsonic_controller.apply_config(initial_subsonic));
 
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
-        let mut config_rx = services.library_manager().subscribe_config_changes();
+        let mut config_rx = services.subscribe_config_changes();
         runtime.spawn(async move {
             loop {
                 match config_rx.changed().await {
@@ -134,11 +101,10 @@ impl DesktopApp {
         });
 
         Self {
-            runtime,
             services,
-            ui_event_bus,
             mcp_controller: controller,
             subsonic_controller,
+            runtime,
         }
     }
 
@@ -148,7 +114,7 @@ impl DesktopApp {
 
     pub fn set_mcp_config(&self, config: McpConfig) -> Result<(), DesktopMcpConfigError> {
         config.validate().map_err(DesktopMcpConfigError::Config)?;
-        let previous = self.services.library_manager().get_config().mcp;
+        let previous = self.services.get_config().mcp;
         let status = self
             .runtime
             .block_on(self.mcp_controller.apply_config(config));
@@ -158,7 +124,7 @@ impl DesktopApp {
             return Err(DesktopMcpConfigError::Server(error));
         }
 
-        match self.services.library_manager().set_mcp_config(config) {
+        match self.services.set_mcp_config(config) {
             Ok(()) => Ok(()),
             Err(error) => {
                 if let McpServerStatus::Error {
@@ -194,7 +160,7 @@ impl DesktopApp {
         apply_subsonic_config(
             &self.runtime,
             &self.subsonic_controller,
-            self.services.library_manager(),
+            &self.services,
             config,
         )
     }
@@ -205,10 +171,9 @@ impl DesktopApp {
     /// is how a running server picks it up.
     pub fn set_subsonic_password(&self, password: &str) -> Result<(), DesktopSubsonicConfigError> {
         self.services
-            .library_manager()
             .set_subsonic_password(password.to_string())
             .map_err(|e| DesktopSubsonicConfigError::Config(ConfigError::Config(e.to_string())))?;
-        let config = self.services.library_manager().get_config().subsonic;
+        let config = self.services.get_config().subsonic;
         if let SubsonicServerStatus::Error { error } = self
             .runtime
             .block_on(self.subsonic_controller.restart(config))
@@ -224,25 +189,25 @@ impl DesktopApp {
 }
 
 /// Validate, runtime-apply (with rollback on error), then persist a Subsonic
-/// config. Extracted from the [`DesktopApp`] method so the rollback contract is
+/// config. Extracted from the [`DesktopServices`] method so the rollback contract is
 /// testable against a bare controller + manager, without a full app bootstrap.
 fn apply_subsonic_config(
-    runtime: &Runtime,
+    runtime: &Handle,
     controller: &SubsonicServerController,
-    manager: &LibraryManager,
+    services: &AppServices,
     config: SubsonicConfig,
 ) -> Result<(), DesktopSubsonicConfigError> {
     config
         .validate()
         .map_err(DesktopSubsonicConfigError::Config)?;
-    let previous = manager.get_config().subsonic;
+    let previous = services.get_config().subsonic;
     let status = runtime.block_on(controller.apply_config(config.clone()));
     if let SubsonicServerStatus::Error { error } = status {
         runtime.block_on(controller.apply_config(previous));
         return Err(DesktopSubsonicConfigError::Server(error));
     }
 
-    match manager.set_subsonic_config(config) {
+    match services.set_subsonic_config(config) {
         Ok(()) => Ok(()),
         Err(error) => {
             if let SubsonicServerStatus::Error {
@@ -276,15 +241,18 @@ mod tests {
             .build()
             .unwrap();
         let (manager, _tmp) = support::setup_fresh_library(&runtime);
-        manager
+        let services = runtime
+            .block_on(AppServices::for_test(manager))
+            .expect("app services");
+        services
             .set_subsonic_password("s3cret".to_string())
             .expect("seed keyring password");
 
-        let provider_manager = manager.clone();
+        let password_services = services.clone();
         let controller = SubsonicServerController::new(
-            manager.clone(),
+            services.clone(),
             Arc::new(move || {
-                provider_manager
+                password_services
                     .get_subsonic_password()
                     .map_err(|e| e.to_string())
             }),
@@ -294,11 +262,11 @@ mod tests {
         let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = occupied.local_addr().unwrap().port();
 
-        let before = manager.get_config().subsonic;
+        let before = services.get_config().subsonic;
         let result = apply_subsonic_config(
-            &runtime,
+            runtime.handle(),
             &controller,
-            &manager,
+            &services,
             SubsonicConfig {
                 enabled: true,
                 port,
@@ -312,7 +280,7 @@ mod tests {
             "a failed bind must surface as a server error, got {result:?}"
         );
         assert_eq!(
-            manager.get_config().subsonic,
+            services.get_config().subsonic,
             before,
             "a runtime apply failure must not persist the new config"
         );

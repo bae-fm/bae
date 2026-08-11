@@ -15,7 +15,7 @@ use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
     IdentityChoice, ImportCommand, MetadataRef, MetadataSource, ReleaseFileScope, StorageMode,
 };
-use bae_core::library::LibraryManager;
+use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
 use coven::StoreDir;
 use md5::{Digest, Md5};
@@ -134,6 +134,12 @@ async fn new_manager() -> (LibraryManager, TempDir) {
     (manager, temp)
 }
 
+async fn new_services() -> (AppServices, TempDir) {
+    let (manager, temp) = new_manager().await;
+    let services = AppServices::for_test(manager).await.expect("app services");
+    (services, temp)
+}
+
 fn flac_fixture(name: &str) -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -152,7 +158,7 @@ fn cue_fixture(name: &str) -> std::path::PathBuf {
 
 /// A seeded library plus the ids a test addresses it by.
 struct Library {
-    manager: LibraryManager,
+    services: AppServices,
     per_track_release: String,
     cue_release: String,
     _temps: Vec<TempDir>,
@@ -249,8 +255,9 @@ async fn seed_library() -> Library {
     let mut cue_rx = cue_import.subscribe_import(cue_id);
     let (cue_release, _cue_album) = support::wait_for_import_complete(&mut cue_rx).await;
 
+    let services = AppServices::for_test(manager).await.expect("app services");
     Library {
-        manager,
+        services,
         per_track_release,
         cue_release,
         _temps: vec![db_temp, pt_temp, cue_temp],
@@ -299,8 +306,8 @@ fn cue_track(position: &str, title: &str) -> DiscogsTrack {
 async fn auth_gate() {
     // Spec: token auth. valid → ok; wrong token → 40; missing s/t → 10; short
     // salt → 40; token hex is case-insensitive.
-    let (manager, _t) = new_manager().await;
-    let router = bae_subsonic::router(manager, credential());
+    let (services, _t) = new_services().await;
+    let router = bae_subsonic::router(services, credential());
 
     let ok = call(&router, "ping", &authed("")).await;
     assert!(ok.text().contains(r#"status="ok""#), "valid: {}", ok.text());
@@ -349,8 +356,8 @@ async fn auth_gate() {
 async fn envelope_formats() {
     // Spec: xml is the default; f=json yields JSON; f=jsonp wraps in the
     // callback; every envelope carries openSubsonic, version, and type.
-    let (manager, _t) = new_manager().await;
-    let router = bae_subsonic::router(manager, credential());
+    let (services, _t) = new_services().await;
+    let router = bae_subsonic::router(services, credential());
 
     let xml = call(&router, "ping", &authed("")).await;
     assert!(xml.content_type.contains("xml"));
@@ -375,8 +382,8 @@ async fn envelope_formats() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn system_endpoints() {
-    let (manager, _t) = new_manager().await;
-    let router = bae_subsonic::router(manager, credential());
+    let (services, _t) = new_services().await;
+    let router = bae_subsonic::router(services, credential());
 
     let license = call(&router, "getLicense", &authed("f=json")).await;
     assert_eq!(license.sub()["license"]["valid"], true);
@@ -391,8 +398,8 @@ async fn system_endpoints() {
 #[tokio::test(flavor = "multi_thread")]
 async fn malformed_and_wrong_kind_ids_are_not_found() {
     // Spec: a malformed id, or a wrong-kind id to getAlbum, is error 70.
-    let (manager, _t) = new_manager().await;
-    let router = bae_subsonic::router(manager, credential());
+    let (services, _t) = new_services().await;
+    let router = bae_subsonic::router(services, credential());
 
     let malformed = call(&router, "getAlbum", &authed("id=not-namespaced")).await;
     assert!(malformed.text().contains(r#"code="70""#));
@@ -406,7 +413,7 @@ async fn malformed_and_wrong_kind_ids_are_not_found() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_artists_indexes_and_counts() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     let resp = call(&router, "getArtists", &authed("f=json")).await;
     let artists = &resp.sub()["artists"];
@@ -444,7 +451,7 @@ fn find_artist<'a>(indexes: &'a [Value], name: &str) -> &'a Value {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_artist_lists_releases_as_albums() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     // Resolve the per-track release's artist id, then browse the artist.
     let album = call(
@@ -478,7 +485,7 @@ async fn get_artist_lists_releases_as_albums() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_album_lists_songs_with_required_child_fields() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     let resp = call(
         &router,
@@ -504,7 +511,7 @@ async fn get_album_lists_songs_with_required_child_fields() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_album_cue_lists_its_windowed_tracks() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     let resp = call(
         &router,
@@ -524,7 +531,7 @@ async fn get_album_cue_lists_its_windowed_tracks() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_song_and_unknown() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     let album = call(
         &router,
@@ -553,7 +560,7 @@ async fn get_song_and_unknown() {
 #[tokio::test(flavor = "multi_thread")]
 async fn album_list2_orderings_and_paging() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     let names = |resp: &Resp| -> Vec<String> {
         resp.sub()["albumList2"]["album"]
@@ -672,7 +679,7 @@ async fn album_list2_orderings_and_paging() {
 #[tokio::test(flavor = "multi_thread")]
 async fn search3_matches_and_caps() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     // A query matching the per-track album/artist.
     let hit = call(&router, "search3", &authed("f=json&query=Solo")).await;
@@ -759,7 +766,7 @@ async fn search3_matches_and_caps() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_raw_serves_original_bytes_and_ranges() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let full = call(
@@ -796,7 +803,7 @@ async fn stream_raw_serves_original_bytes_and_ranges() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let resp = call(
@@ -860,7 +867,7 @@ async fn stream_transcode_mp3_is_chunked_and_decodes() {
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_art_resolves_every_id_kind() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
 
     // Album id serves the release cover.
     let by_album = call(
@@ -915,7 +922,7 @@ async fn cover_art_resolves_every_id_kind() {
 #[tokio::test(flavor = "multi_thread")]
 async fn scrobble_is_an_accepted_no_op() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.manager.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let resp = call(
@@ -987,7 +994,8 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let router = bae_subsonic::router(manager, credential());
+    let services = AppServices::for_test(manager).await.expect("app services");
+    let router = bae_subsonic::router(services, credential());
 
     let artists = call(&router, "getArtists", &authed("f=json")).await;
     let sub = artists.sub();
@@ -1015,8 +1023,8 @@ async fn lossy_track_reports_bit_depth_zero() {
     // its Child bitDepth is 0, in contrast to the lossless bitDepth=16 case.
     // (AAC-in-MP4 is unsuitable: the MP4 sound sample entry always declares 16,
     // so FFmpeg reports a bit depth for it; Opus carries none.)
-    let (manager, release_id, _temps) = seed_lossy_release().await;
-    let router = bae_subsonic::router(manager, credential());
+    let (services, release_id, _temps) = seed_lossy_release().await;
+    let router = bae_subsonic::router(services, credential());
 
     let album = call(
         &router,
@@ -1039,7 +1047,7 @@ async fn lossy_track_reports_bit_depth_zero() {
 }
 
 /// Import the single-file lossy Opus fixture through the normal import path.
-async fn seed_lossy_release() -> (LibraryManager, String, Vec<TempDir>) {
+async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     let (manager, db_temp) = new_manager().await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
@@ -1089,7 +1097,8 @@ async fn seed_lossy_release() -> (LibraryManager, String, Vec<TempDir>) {
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
     let (release_id, _album) = support::wait_for_import_complete(&mut rx).await;
-    (manager, release_id, vec![db_temp, temp])
+    let services = AppServices::for_test(manager).await.expect("app services");
+    (services, release_id, vec![db_temp, temp])
 }
 
 async fn first_song_id(router: &Router, release_id: &str) -> String {

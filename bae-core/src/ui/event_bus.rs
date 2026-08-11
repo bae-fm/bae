@@ -59,10 +59,7 @@ impl UiEventBus {
         // Import/scan/identify events come from the desktop-only import service.
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.wire_import(app_services, runtime_handle);
-        self.wire_config_changes(
-            app_services.library_manager().subscribe_config_changes(),
-            runtime_handle,
-        );
+        self.wire_config_changes(app_services.subscribe_config_changes(), runtime_handle);
     }
 
     /// Forward config changes to the bus as a scoped invalidation — the UI reads
@@ -92,9 +89,9 @@ impl UiEventBus {
         app_services: &crate::library::AppServices,
         runtime_handle: &tokio::runtime::Handle,
     ) {
-        let mut rx = app_services.playback().subscribe_progress();
+        let mut rx = app_services.subscribe_playback_progress();
         let bus = self.clone();
-        let lm = app_services.library_manager().clone();
+        let services = app_services.clone();
 
         runtime_handle.spawn(async move {
             use crate::playback::PlaybackProgress;
@@ -179,7 +176,7 @@ impl UiEventBus {
                             )
                             .map(|entry| entry.id.0.clone())
                             .collect();
-                        match lm.resolve_queue_projection(projection).await {
+                        match services.resolve_queue_projection(projection).await {
                             Ok(snapshot) => {
                                 bus.emit(UiBusEvent::QueueUpdated(snapshot));
                             }
@@ -250,12 +247,9 @@ impl UiEventBus {
         app_services: &crate::library::AppServices,
         runtime_handle: &tokio::runtime::Handle,
     ) {
-        let rx = app_services.import().subscribe_events();
-        let diagnostics = app_services.library_manager().diagnostics().clone();
         self.wire_import_events(
-            rx,
-            app_services.import().clone(),
-            diagnostics,
+            app_services.subscribe_import_events(),
+            app_services.clone(),
             runtime_handle,
         );
     }
@@ -264,8 +258,7 @@ impl UiEventBus {
     fn wire_import_events(
         &self,
         mut rx: broadcast::Receiver<crate::import::ImportEvent>,
-        import: crate::import::ImportServiceHandle,
-        diagnostics: crate::diagnostics::Diagnostics,
+        services: crate::library::AppServices,
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let bus = self.clone();
@@ -276,7 +269,7 @@ impl UiEventBus {
             loop {
                 match rx.recv().await {
                     Ok(event) => {
-                        import.record_candidate_event(&event);
+                        services.record_import_candidate_event(&event);
                         match event {
                             ImportEvent::Scan(scan_event) => match scan_event {
                                 ScanEvent::WatchedFoldersChanged { .. } => {
@@ -396,7 +389,7 @@ impl UiEventBus {
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Import event bus lagged by {n} events");
-                        diagnostics.event(crate::diagnostics::TelemetryEvent::Anomaly {
+                        services.record_telemetry(crate::diagnostics::TelemetryEvent::Anomaly {
                             kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                         });
                         bus.invalidate_import_lag();
@@ -413,15 +406,17 @@ impl UiEventBus {
         app_services: &crate::library::AppServices,
         runtime_handle: &tokio::runtime::Handle,
     ) {
-        let rx = app_services.library_manager().subscribe_events();
-        let diagnostics = app_services.library_manager().diagnostics().clone();
-        self.wire_library_events(rx, diagnostics, runtime_handle);
+        self.wire_library_events(
+            app_services.subscribe_library_events(),
+            app_services.clone(),
+            runtime_handle,
+        );
     }
 
     fn wire_library_events(
         &self,
         mut rx: broadcast::Receiver<crate::library::LibraryEvent>,
-        diagnostics: crate::diagnostics::Diagnostics,
+        services: crate::library::AppServices,
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let bus = self.clone();
@@ -528,7 +523,7 @@ impl UiEventBus {
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Library event bus lagged by {n} events");
-                        diagnostics.event(crate::diagnostics::TelemetryEvent::Anomaly {
+                        services.record_telemetry(crate::diagnostics::TelemetryEvent::Anomaly {
                             kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                         });
                         bus.invalidate_library_lag();
@@ -563,9 +558,9 @@ mod tests {
         })
     }
 
-    fn make_test_library_manager(
+    fn make_test_app_services(
         runtime: &tokio::runtime::Runtime,
-    ) -> (crate::library::LibraryManager, TempDir) {
+    ) -> (crate::library::AppServices, TempDir) {
         let tmp = TempDir::new().unwrap();
         let library_dir = StoreDir::new(tmp.path().join("lib"));
         let database = runtime
@@ -593,7 +588,22 @@ mod tests {
             runtime.handle().clone(),
             crate::import::cover_art::RemoteImageCache::for_test(),
         );
-        (manager, tmp)
+        let playback = manager.start_playback_service_with_output(
+            runtime.handle().clone(),
+            50,
+            false,
+            Box::new(crate::playback::audio_output::FailingAudioOutput),
+        );
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let services = {
+            let import = runtime
+                .block_on(manager.start_import_service(runtime.handle().clone()))
+                .unwrap();
+            crate::library::AppServices::new(manager, playback, import)
+        };
+        #[cfg(any(target_os = "ios", target_os = "android"))]
+        let services = crate::library::AppServices::new(manager, playback);
+        (services, tmp)
     }
 
     /// A config change published by the handle is forwarded to the bus as a
@@ -653,11 +663,8 @@ mod tests {
             .unwrap();
         drop(library_tx);
 
-        bus.wire_library_events(
-            library_rx,
-            crate::diagnostics::Diagnostics::noop(),
-            runtime.handle(),
-        );
+        let (services, _tmp) = make_test_app_services(&runtime);
+        bus.wire_library_events(library_rx, services, runtime.handle());
 
         let expected = [
             Invalidation::AlbumList,
@@ -683,11 +690,8 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(16);
-        bus.wire_library_events(
-            library_rx,
-            crate::diagnostics::Diagnostics::noop(),
-            runtime.handle(),
-        );
+        let (services, _tmp) = make_test_app_services(&runtime);
+        bus.wire_library_events(library_rx, services, runtime.handle());
 
         library_tx
             .send(LibraryEvent::SyncingChanged { syncing: true })
@@ -705,11 +709,8 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(16);
-        bus.wire_library_events(
-            library_rx,
-            crate::diagnostics::Diagnostics::noop(),
-            runtime.handle(),
-        );
+        let (services, _tmp) = make_test_app_services(&runtime);
+        bus.wire_library_events(library_rx, services, runtime.handle());
 
         library_tx
             .send(LibraryEvent::ReleaseRemoved {
@@ -745,13 +746,7 @@ mod tests {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
-        let (library_manager, _tmp) = make_test_library_manager(&runtime);
-        let import = runtime
-            .block_on(crate::import::ImportService::start(
-                runtime.handle().clone(),
-                library_manager,
-            ))
-            .unwrap();
+        let (services, _tmp) = make_test_app_services(&runtime);
         let (import_tx, import_rx) = broadcast::channel(1);
 
         import_tx
@@ -765,12 +760,7 @@ mod tests {
             ))
             .unwrap();
         drop(import_tx);
-        bus.wire_import_events(
-            import_rx,
-            import,
-            crate::diagnostics::Diagnostics::noop(),
-            runtime.handle(),
-        );
+        bus.wire_import_events(import_rx, services, runtime.handle());
 
         match recv_ui_event(&runtime, &mut ui_rx) {
             UiBusEvent::Invalidated(Invalidation::WatchedFolders) => {}

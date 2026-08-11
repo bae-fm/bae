@@ -20,7 +20,7 @@ use crate::playback::source::TrackFmt;
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::stream_pipeline::{
     log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
-    SegmentDecodeParams, StreamDecodeParams, StreamPipeline, StreamPipelineStart,
+    SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
 };
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
@@ -352,16 +352,16 @@ impl PreviewPlayer {
         let start_offset = seek_to
             .map(|d| (d.as_secs_f64() * sample_rate as f64) as u64)
             .unwrap_or(0);
-        let decode = StreamDecodeParams {
-            segments: vec![SegmentDecodeParams {
-                buffer: buffer.clone(),
-                span: crate::db::SegmentSpan::whole_file(), // audition the whole file
+        let decode = StreamDecodeParams::new(
+            vec![SegmentDecodeParams::new(
+                buffer.clone(),
+                crate::db::SegmentSpan::whole_file(), // audition the whole file
                 start_offset,
-            }],
-            byte_seekable: true,
-            leading_silence_frames: 0,
-            trailing_silence_frames: 0,
-        };
+            )],
+            true,
+            0,
+            0,
+        );
 
         // Preview never chains, and plays an unimported file (no stored loudness
         // measurements) at unity gain. The listener reads position off this fmt,
@@ -374,10 +374,11 @@ impl PreviewPlayer {
             replay_gain_linear: 1.0,
         };
 
-        let StreamPipelineStart {
-            pipeline,
-            audio_events,
-        } = match start_stream_pipeline(
+        let progress_tx = self.progress_tx.clone();
+        let command_tx = self.command_tx.clone();
+        let active_path = path.clone();
+        let active_buffer = buffer.clone();
+        let active = match start_stream_pipeline(
             self.audio_output.as_deref_mut().unwrap(),
             decode,
             fmt,
@@ -386,6 +387,15 @@ impl PreviewPlayer {
             self.position_update_interval_ms,
             "Preview decode",
             DecodeFailureReport::LogOnly,
+            move |pipeline, audio_events| ActivePreview {
+                path: active_path,
+                duration,
+                sample_rate,
+                channels,
+                buffer: active_buffer,
+                listener_handle: spawn_preview_listener(progress_tx, command_tx, audio_events),
+                pipeline,
+            },
         )
         .await
         {
@@ -422,86 +432,77 @@ impl PreviewPlayer {
             PlaybackProgress::PreviewStateChanged(preview_state),
         );
 
-        let listener_handle = self.spawn_listener(audio_events);
-
-        self.active = Some(ActivePreview {
-            path,
-            duration,
-            sample_rate,
-            channels,
-            buffer,
-            listener_handle,
-            pipeline,
-        });
+        self.active = Some(active);
         true
     }
+}
 
-    /// Spawn the preview event-listener task. Keeps the preview-specific arms
-    /// (Position → `PreviewPositionUpdate`, Completion → `PreviewCompleted`) and
-    /// delegates the diagnostics and dropped-event accounting to the shared unit.
-    fn spawn_listener(&self, mut audio_events: AudioEventReceiver) -> JoinHandle<()> {
-        let progress_tx = self.progress_tx.clone();
-        let command_tx = self.command_tx.clone();
-
-        tokio::spawn(async move {
-            let mut event_tick = tokio::time::interval(Duration::from_millis(10));
-            event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-            loop {
-                event_tick.tick().await;
-                let mut completed = false;
-                while let Some(event) = audio_events.pop() {
-                    match event {
-                        // Preview is single-track: every tick carries the same fmt
-                        // built above, so read its fields rather than keeping a
-                        // parallel copy here.
-                        AudioEvent::Position((fmt, pos)) => {
-                            let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
-                            emit_progress(
-                                &progress_tx,
-                                PlaybackProgress::PreviewPositionUpdate {
-                                    position_ms: actual_pos_ms,
-                                    progress: crate::playback::format::compute_progress(
-                                        actual_pos_ms,
-                                        fmt.duration_ms,
-                                        fmt.pregap_ms,
-                                    ),
-                                },
-                            );
-                        }
-                        AudioEvent::Completion(_) => {
-                            // The event's decode stats are dropped: a preview is
-                            // not a library track, so there's nothing to record
-                            // them against.
-                            dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
-                            completed = true;
-                        }
-                        // Diagnostics (and the never-relevant TrackCrossing) go to
-                        // the shared logger.
-                        other => {
-                            log_stream_diagnostic("preview", &other);
-                        }
+/// Spawn the preview event-listener task. Keeps the preview-specific arms
+/// (Position → `PreviewPositionUpdate`, Completion → `PreviewCompleted`) and
+/// delegates the diagnostics and dropped-event accounting to the shared unit.
+fn spawn_preview_listener(
+    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    mut audio_events: AudioEventReceiver,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut event_tick = tokio::time::interval(Duration::from_millis(10));
+        event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            event_tick.tick().await;
+            let mut completed = false;
+            while let Some(event) = audio_events.pop() {
+                match event {
+                    // Preview is single-track: every tick carries the same fmt
+                    // built above, so read its fields rather than keeping a
+                    // parallel copy here.
+                    AudioEvent::Position((fmt, pos)) => {
+                        let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
+                        emit_progress(
+                            &progress_tx,
+                            PlaybackProgress::PreviewPositionUpdate {
+                                position_ms: actual_pos_ms,
+                                progress: crate::playback::format::compute_progress(
+                                    actual_pos_ms,
+                                    fmt.duration_ms,
+                                    fmt.pregap_ms,
+                                ),
+                            },
+                        );
                     }
-                    if completed {
-                        break;
+                    AudioEvent::Completion(_) => {
+                        // The event's decode stats are dropped: a preview is
+                        // not a library track, so there's nothing to record
+                        // them against.
+                        dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
+                        completed = true;
                     }
-                }
-                if report_dropped_audio_events(&audio_events, "preview") {
-                    emit_progress(
-                        &progress_tx,
-                        PlaybackProgress::PlaybackError {
-                            reason: crate::ui::PlaybackErrorReason::internal(
-                                "Preview event queue dropped a required audio event".to_string(),
-                            ),
-                        },
-                    );
-                    break;
+                    // Diagnostics (and the never-relevant TrackCrossing) go to
+                    // the shared logger.
+                    other => {
+                        log_stream_diagnostic("preview", &other);
+                    }
                 }
                 if completed {
                     break;
                 }
             }
-        })
-    }
+            if report_dropped_audio_events(&audio_events, "preview") {
+                emit_progress(
+                    &progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::ui::PlaybackErrorReason::internal(
+                            "Preview event queue dropped a required audio event".to_string(),
+                        ),
+                    },
+                );
+                break;
+            }
+            if completed {
+                break;
+            }
+        }
+    })
 }
 
 async fn probe_preview_audio(path: &str) -> Option<crate::audio_codec::ProbeResult> {
@@ -643,7 +644,11 @@ mod tests {
         let player = PreviewPlayer::new(progress_tx, command_tx, 50);
 
         let (mut audio_tx, audio_rx) = audio_event_channel();
-        let handle = player.spawn_listener(audio_rx);
+        let handle = spawn_preview_listener(
+            player.progress_tx.clone(),
+            player.command_tx.clone(),
+            audio_rx,
+        );
 
         audio_tx.push_required(AudioEvent::Completion((
             Arc::new(TrackFmt {

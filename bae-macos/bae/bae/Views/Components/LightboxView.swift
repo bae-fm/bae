@@ -434,7 +434,7 @@ private struct LiveTextOverlay: NSViewRepresentable {
             ),
         ]) {
             LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
-                .environment(ImageStore.stub)
+                .environment(ImageStore.stub())
         }
     }
 #endif

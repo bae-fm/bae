@@ -9,8 +9,8 @@ use bae_test_support as support;
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
-    CoverSelection, IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource,
-    PressingEdit, ReleaseUserEdit, ScanEvent, StorageMode, TrackUserEdit,
+    CoverSelection, IdentityChoice, ImportCommand, MetadataRef, MetadataSource, PressingEdit,
+    ReleaseUserEdit, ScanEvent, StorageMode, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
@@ -70,10 +70,10 @@ impl ImportFixture {
             bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
 
-        let handle =
-            ImportService::start(tokio::runtime::Handle::current(), library_manager.clone())
-                .await
-                .expect("import service starts");
+        let handle = library_manager
+            .start_import_service(tokio::runtime::Handle::current())
+            .await
+            .expect("import service starts");
 
         Self {
             db,
@@ -1537,7 +1537,7 @@ async fn successful_reimport_replaces_prior_release_once() {
         "one release should carry the re-imported content hash"
     );
     assert_eq!(
-        f.db.handle().queued_deletes().await.unwrap().len(),
+        f.db.queued_delete_count_for_test().await.unwrap(),
         1,
         "replacing the prior remote release should queue its cloud blob for deletion"
     );
@@ -1626,17 +1626,8 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     // and artist remain. The remote import's artist is referenced by nothing
     // else, so leaving it behind would orphan a row on every failed remote
     // import.
-    let (release_count, album_count, artist_count): (i64, i64, i64) =
-        f.db.handle()
-            .sql_read(|conn| {
-                Ok::<_, coven::CovenError>((
-                    conn.query_row("SELECT COUNT(*) FROM releases", [], |row| row.get(0))?,
-                    conn.query_row("SELECT COUNT(*) FROM albums", [], |row| row.get(0))?,
-                    conn.query_row("SELECT COUNT(*) FROM artists", [], |row| row.get(0))?,
-                ))
-            })
-            .await
-            .unwrap();
+    let (release_count, album_count, artist_count) =
+        f.db.library_row_counts_for_test().await.unwrap();
     assert_eq!(release_count, 1, "only the prior release remains");
     assert_eq!(album_count, 1, "only the prior album remains");
     assert_eq!(
@@ -1867,40 +1858,16 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         shared_composer,
         exclusive_composer,
         orphan_work_artists,
-    ): (bool, bool, bool, i64, bool, bool, i64) =
-        f.db.handle()
-            .sql_read(|conn| {
-                let exists = |q: &str| -> coven::rusqlite::Result<bool> {
-                    Ok(conn.query_row(q, [], |r| r.get::<_, i64>(0))? > 0)
-                };
-                Ok::<_, coven::CovenError>((
-                exists(&format!(
-                    "SELECT COUNT(*) FROM works WHERE musicbrainz_work_id = '{MB_WORK_SHARED}'"
-                ))?,
-                exists(&format!(
-                    "SELECT COUNT(*) FROM works WHERE musicbrainz_work_id = '{MB_WORK_EXCLUSIVE}'"
-                ))?,
-                exists(&format!(
-                    "SELECT COUNT(*) FROM works WHERE musicbrainz_work_id = '{MB_WORK_PART}'"
-                ))?,
-                conn.query_row("SELECT COUNT(*) FROM work_parts", [], |r| r.get(0))?,
-                exists(
-                    "SELECT COUNT(*) FROM artists WHERE musicbrainz_artist_id = 'composer-shared'",
-                )?,
-                exists(
-                    "SELECT COUNT(*) FROM artists \
-                     WHERE musicbrainz_artist_id = 'composer-exclusive'",
-                )?,
-                conn.query_row(
-                    "SELECT COUNT(*) FROM work_artists wa \
-                     WHERE wa.work_id NOT IN (SELECT work_id FROM track_works)",
-                    [],
-                    |r| r.get(0),
-                )?,
-            ))
-            })
-            .await
-            .unwrap();
+    ) =
+        f.db.failed_import_work_state_for_test(
+            MB_WORK_SHARED,
+            MB_WORK_EXCLUSIVE,
+            MB_WORK_PART,
+            "composer-shared",
+            "composer-exclusive",
+        )
+        .await
+        .unwrap();
 
     assert!(
         shared_work,
@@ -1996,26 +1963,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     .await
     .expect("second local MB import succeeds");
 
-    let (work_ids, linked_release_ids): (Vec<String>, Vec<String>) =
-        f.db.handle()
-            .sql_read(move |conn| {
-                let work_ids = conn.query(
-                    "SELECT id FROM works WHERE musicbrainz_work_id = ?",
-                    [V3_WORK],
-                    |r| r.get::<_, String>(0),
-                )?;
-                let linked_release_ids = conn.query(
-                    "SELECT DISTINCT t.release_id FROM track_works tw \
-                     JOIN tracks t ON t.id = tw.track_id \
-                     JOIN works w ON w.id = tw.work_id \
-                     WHERE w.musicbrainz_work_id = ? ORDER BY t.release_id",
-                    [V3_WORK],
-                    |r| r.get::<_, String>(0),
-                )?;
-                Ok::<_, coven::CovenError>((work_ids, linked_release_ids))
-            })
-            .await
-            .unwrap();
+    let (work_ids, linked_release_ids) = f.db.work_links_for_test(V3_WORK).await.unwrap();
 
     assert_eq!(
         work_ids.len(),
@@ -2044,7 +1992,7 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
             .await
             .unwrap()
             .expect("cover row");
-    let bytes = support::read_cover_image_blob(&f.db, &f.library_manager, release_id)
+    let bytes = support::read_cover_image_blob(&f.library_manager, release_id)
         .await
         .expect("cover blob readable");
     assert_eq!(
@@ -2103,7 +2051,7 @@ async fn import_with_cover_art() {
     assert_eq!(cover.source, "local");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
-    let cover_bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
+    let cover_bytes = support::read_cover_image_blob(&f.library_manager, &release_id)
         .await
         .expect("cover blob should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
@@ -2159,7 +2107,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     );
 
     // The stored blob is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
-    let cover_bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
+    let cover_bytes = support::read_cover_image_blob(&f.library_manager, &release_id)
         .await
         .expect("cover blob should be readable");
     assert_eq!(
@@ -3044,7 +2992,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
 
     // The embedded picture (≤600) keeps its dimensions but the store path
     // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
-    let bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
+    let bytes = support::read_cover_image_blob(&f.library_manager, &release_id)
         .await
         .expect("cover blob readable");
     assert_eq!(
@@ -3375,7 +3323,8 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         tokio::runtime::Handle::current(),
         bae_core::import::cover_art::RemoteImageCache::for_test(),
     );
-    let handle = ImportService::start(tokio::runtime::Handle::current(), library_manager)
+    let handle = library_manager
+        .start_import_service(tokio::runtime::Handle::current())
         .await
         .expect("import service starts");
 
@@ -3644,23 +3593,7 @@ fn seed_mb_release_with_track_count(
 
 /// A release's tracks in track order, each with the file its samples come from.
 async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(String, String)> {
-    let release_id = release_id.to_string();
-    f.db.handle()
-        .sql_read(move |sql| {
-            let rows = sql.query(
-                "SELECT t.title, rf.original_filename \
-                 FROM tracks t \
-                 JOIN audio_formats af ON af.track_id = t.id \
-                 JOIN audio_format_segments seg \
-                   ON seg.audio_format_id = af.id AND seg.role = 'main' \
-                 JOIN release_files rf ON rf.id = seg.file_id \
-                 WHERE t.release_id = ?1 \
-                 ORDER BY t.side, t.track_number",
-                [&release_id],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )?;
-            Ok::<_, coven::CovenError>(rows)
-        })
+    f.db.committed_track_files_for_test(release_id)
         .await
         .expect("read committed track files")
 }

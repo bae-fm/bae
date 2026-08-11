@@ -10,6 +10,10 @@ struct LibrarySettingsTab: View {
 
     @Environment(Sync.self)
     var sync
+    #if BAE_OAUTH_PROVIDERS
+        @Environment(CloudSyncSetup.self)
+        var cloudSyncSetup
+    #endif
     @Environment(ConfigStore.self)
     var configStore
     @Environment(UiStore.self)
@@ -84,23 +88,7 @@ struct LibrarySettingsTab: View {
         }
         .formStyle(.grouped)
         .sheet(isPresented: $showSyncSetup) {
-            SyncSetupWizard(
-                onConnectS3: { config in
-                    try await sync.saveSyncConfig(config)
-                    storeRestoreCode()
-                },
-                onConnectOAuth: { provider, storage in
-                    try await sync.signInCloudProvider(provider, storage)
-                    storeRestoreCode()
-                },
-                onConnectCloudKit: { storage in
-                    try await sync.connectCloudkit(storage)
-                    storeRestoreCode()
-                },
-                onDone: {
-                    showSyncSetup = false
-                },
-            )
+            syncSetupWizard
         }
         .alert(
             "Remove this library from this Mac?",
@@ -118,6 +106,51 @@ struct LibrarySettingsTab: View {
                 )
             )
         }
+    }
+
+    @ViewBuilder
+    private var syncSetupWizard: some View {
+        #if BAE_OAUTH_PROVIDERS
+            SyncSetupWizard(
+                onConnectS3: connectS3,
+                onConnectOAuth: connectOAuth,
+                onConnectCloudKit: connectCloudKit,
+                onDone: dismissSyncSetup
+            )
+        #else
+            SyncSetupWizard(
+                onConnectS3: connectS3,
+                onDone: dismissSyncSetup
+            )
+        #endif
+    }
+
+    private func connectS3(_ config: BridgeSaveSyncConfig) async throws {
+        try await sync.saveSyncConfig(config)
+        storeRestoreCode()
+    }
+
+    #if BAE_OAUTH_PROVIDERS
+        private func connectOAuth(
+            _ provider: BridgeCloudProvider,
+            _ storage: BridgeHomeStorage
+        ) async throws {
+            try await cloudSyncSetup.connectOAuth(
+                provider: provider,
+                storage: storage
+            )
+            storeRestoreCode()
+        }
+
+        private func connectCloudKit(_ storage: BridgeHomeStorage) async throws
+        {
+            try await cloudSyncSetup.connectCloudKit(storage: storage)
+            storeRestoreCode()
+        }
+    #endif
+
+    private func dismissSyncSetup() {
+        showSyncSetup = false
     }
 
     /// Section footer for the remove-library control. A synced library's cloud
@@ -317,19 +350,27 @@ private struct RecoveryCodeSection: View {
     ) -> some View {
         LibrarySettingsTab(onForgetLibrary: {})
             .frame(width: 500, height: 640)
-            .environment(PreviewData.previewSync)
+            .environment(PreviewData.previewSync())
+            #if BAE_OAUTH_PROVIDERS
+                .environment(
+                    CloudSyncSetup(
+                        connectOAuth: { _, _ in },
+                        connectCloudKit: { _ in }
+                    )
+                )
+            #endif
             .environment(configStore)
             .environment(UiStore())
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     }
 
     #Preview("Not connected") {
-        librarySettingsTabPreview(configStore: PreviewData.configStore)
+        librarySettingsTabPreview(configStore: PreviewData.configStore())
     }
 
     #Preview("Connected") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore
+            configStore: PreviewData.connectedConfigStore()
         )
     }
 #endif

@@ -414,7 +414,7 @@ dependencies = [
  "fastrand",
  "hex",
  "http 1.4.0",
- "sha1",
+ "sha1 0.10.6",
  "time",
  "tokio",
  "tracing",
@@ -645,9 +645,9 @@ dependencies = [
  "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
- "md-5",
+ "md-5 0.10.6",
  "pin-project-lite",
- "sha1",
+ "sha1 0.10.6",
  "sha2 0.10.9",
  "tracing",
 ]
@@ -1001,7 +1001,7 @@ dependencies = [
  "bae-test-support",
  "hex",
  "local-ip-address",
- "md-5",
+ "md-5 0.10.6",
  "rand 0.9.2",
  "reqwest",
  "tempfile",
@@ -1049,15 +1049,14 @@ dependencies = [
  "encoding_rs",
  "ffmpeg-next",
  "ffmpeg-sys-next",
- "futures",
  "getrandom 0.2.17",
  "hex",
- "hkdf",
+ "hkdf 0.12.4",
  "image",
  "keyring-core",
  "libc",
  "lofty",
- "lru 0.17.0",
+ "lru 0.18.2",
  "mdns-sd",
  "natord",
  "ndk 0.9.0",
@@ -1076,7 +1075,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serial_test",
- "sha1",
+ "sha1 0.10.6",
  "sha2 0.10.9",
  "strsim",
  "tempfile",
@@ -1140,7 +1139,7 @@ dependencies = [
  "coven",
  "hex",
  "http-body-util",
- "md-5",
+ "md-5 0.10.6",
  "serde_json",
  "tempfile",
  "tokio",
@@ -1628,11 +1627,166 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=95cd1d5bb0bb0b8c56c5a496548c2345b49e703a#95cd1d5bb0bb0b8c56c5a496548c2345b49e703a"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "coven-database",
+ "coven-domain",
+ "coven-foundation",
+ "coven-keys",
+ "coven-protocol",
+ "coven-replication",
+ "coven-storage",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "coven-database"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "coven-foundation",
+ "coven-keys",
+ "coven-protocol",
+ "fallible-streaming-iterator",
+ "hex",
+ "lz4_flex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "coven-domain"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
+ "coven-database",
+ "coven-foundation",
+ "coven-keys",
+ "coven-protocol",
+ "coven-replication",
+ "coven-storage",
+ "hex",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "coven-foundation"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
+ "async-trait",
+ "base64",
+ "bytes",
+ "chrono",
+ "futures-util",
+ "hex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "coven-keys"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
  "argon2",
+ "base64",
+ "chacha20poly1305",
+ "coven-foundation",
+ "crypto_box",
+ "ed25519-dalek",
+ "hex",
+ "hkdf 0.13.0",
+ "keyring-core",
+ "rand 0.9.2",
+ "security-framework",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 1.0.69",
+ "tracing",
+ "windows-native-keyring-store",
+ "x25519-dalek 3.0.0",
+ "zeroize",
+]
+
+[[package]]
+name = "coven-protocol"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "coven-foundation",
+ "coven-keys",
+ "hex",
+ "hkdf 0.13.0",
+ "hmac 0.13.0",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 1.0.69",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "coven-replication"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "coven-database",
+ "coven-foundation",
+ "coven-keys",
+ "coven-protocol",
+ "coven-storage",
+ "ed25519-dalek",
+ "futures-util",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "coven-storage"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/bae-fm/coven?rev=7a4f7a41faad65c5c31d2c447fd88a9f90592923#7a4f7a41faad65c5c31d2c447fd88a9f90592923"
+dependencies = [
  "async-trait",
  "aws-config",
  "aws-credential-types",
@@ -1642,35 +1796,24 @@ dependencies = [
  "axum 0.7.9",
  "base64",
  "bytes",
- "chacha20poly1305",
  "chrono",
- "crypto_box",
- "ed25519-dalek",
- "fallible-streaming-iterator",
+ "coven-foundation",
+ "coven-keys",
+ "coven-protocol",
  "futures-util",
  "hex",
- "hkdf",
- "hmac 0.12.1",
- "keyring-core",
+ "md-5 0.11.0",
  "open",
  "rand 0.9.2",
  "reqwest",
- "rusqlite",
- "security-framework",
  "serde",
  "serde_json",
  "serde_urlencoded",
- "serde_yaml",
- "sha2 0.10.9",
- "tempfile",
+ "sha1 0.11.0",
+ "sha2 0.11.0",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
- "url",
- "uuid",
- "windows-native-keyring-store",
- "x25519-dalek 3.0.0",
- "zeroize",
 ]
 
 [[package]]
@@ -2690,6 +2833,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashlink"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "824e001ac4f3012dd16a264bec811403a67ca9deb6c102fc5049b32c4574b35f"
+dependencies = [
+ "hashbrown 0.16.1",
+]
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2714,6 +2866,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
 dependencies = [
  "hmac 0.12.1",
+]
+
+[[package]]
+name = "hkdf"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018"
+dependencies = [
+ "hmac 0.13.0",
 ]
 
 [[package]]
@@ -3353,9 +3514,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.17.0"
+version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e0b564323a0fb6d54b864f625ae139de9612e27edb944dda37c109f05aac531"
+checksum = "5d2f2f9b4ba7e6b24d95e7e899329d35be83bcded72c8540cdd5368932d1d90a"
 dependencies = [
  "hashbrown 0.17.0",
 ]
@@ -3365,6 +3526,15 @@ name = "lru-slab"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
+
+[[package]]
+name = "lz4_flex"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecbdfe44b1bd960b68170b417450a628c43f7cf56bb3c5317e61cb230ee7f226"
+dependencies = [
+ "twox-hash",
+]
 
 [[package]]
 name = "mach2"
@@ -3404,6 +3574,16 @@ checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
+]
+
+[[package]]
+name = "md-5"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b6441f590336821bb897fb28fc622898ccceb1d6cea3fde5ea86b090c4de98"
+dependencies = [
+ "cfg-if",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -4536,6 +4716,7 @@ dependencies = [
  "bitflags 2.11.0",
  "fallible-iterator",
  "fallible-streaming-iterator",
+ "hashlink",
  "libsqlite3-sys",
  "smallvec",
 ]
@@ -4806,7 +4987,7 @@ dependencies = [
  "futures-util",
  "generic-array",
  "getrandom 0.2.17",
- "hkdf",
+ "hkdf 0.12.4",
  "num",
  "once_cell",
  "serde",
@@ -4992,6 +5173,17 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.2.17",
  "digest 0.10.7",
+]
+
+[[package]]
+name = "sha1"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.0",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -5651,6 +5843,12 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "twox-hash"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8464ec13c3691491391d9fce00f6416c9a48e46972f72d7865688be2080192c9"
 
 [[package]]
 name = "typenum"

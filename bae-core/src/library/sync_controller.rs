@@ -20,11 +20,11 @@ use crate::db::Database;
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
+use crate::sync::upload_observer::UploadObserverEvent;
 use crate::sync::S3ConfigData;
 use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
-use coven::CloudHome;
-use coven::CovenHandle;
+use coven::ExactCloudHome;
 
 /// How a device join this library invited ended. The payloads coven returns
 /// (the activation, the abandonment) are protocol records bae keeps nothing
@@ -83,6 +83,7 @@ pub(crate) struct SyncController {
     key_service: StoreKeys,
     /// This installation's clock, shared with the owning manager. coven's cloud
     /// homes take it for the OAuth sessions that refresh their own tokens.
+    #[cfg(feature = "oauth-providers")]
     clock: ClockRef,
     event_tx: broadcast::Sender<LibraryEvent>,
     database: Database,
@@ -120,9 +121,12 @@ impl SyncController {
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         diagnostics: Diagnostics,
     ) -> Self {
+        #[cfg(not(feature = "oauth-providers"))]
+        let _ = clock;
         Self {
             config_handle,
             key_service,
+            #[cfg(feature = "oauth-providers")]
             clock,
             event_tx,
             database,
@@ -133,13 +137,6 @@ impl SyncController {
             cloudkit_ops,
             diagnostics,
         }
-    }
-
-    /// The one coven data handle, read from the database that owns it. coven's
-    /// handle is a large value type, so bae keeps the single copy behind the
-    /// database's `Arc` rather than embedding one per holder.
-    fn handle(&self) -> &CovenHandle {
-        self.database.handle()
     }
 
     /// Emit a library event to all subscribers. Mirrors `LibraryManager::emit` so
@@ -158,7 +155,7 @@ impl SyncController {
     /// caller of this predicate is a plain boolean UI/test signal with no
     /// error channel of its own.
     pub(crate) fn has_encryption(&self) -> bool {
-        match self.handle().master_key_fingerprint() {
+        match self.database.master_key_fingerprint() {
             Ok(fingerprint) => fingerprint.is_some(),
             Err(error) => {
                 warn!("failed to read master-key fingerprint: {error}");
@@ -167,32 +164,26 @@ impl SyncController {
         }
     }
 
-    /// The shared upload-in-flight map, for tests that drive the outbox snapshot
-    /// by simulating coven's per-file upload progress directly.
     #[cfg(test)]
-    pub(crate) fn outbox_in_flight(&self) -> Arc<Mutex<HashMap<String, u64>>> {
-        self.outbox_in_flight.clone()
+    pub(crate) fn set_upload_progress_for_test(&self, file_id: &str, bytes_done: u64) {
+        self.outbox_in_flight
+            .lock()
+            .unwrap()
+            .insert(file_id.to_string(), bytes_done);
     }
 
-    /// The shared upload-throughput tracker, for tests that assert the rolling
-    /// rate after feeding the observer.
     #[cfg(test)]
-    pub(crate) fn upload_throughput(&self) -> Arc<UploadThroughput> {
-        self.upload_throughput.clone()
+    pub(crate) fn clear_upload_progress_for_test(&self, file_id: &str) {
+        self.outbox_in_flight.lock().unwrap().remove(file_id);
     }
 
-    /// The shared upload-pause flag, for tests that build an observer over the
-    /// same pipeline state the controller holds.
     #[cfg(test)]
-    pub(crate) fn sync_paused(&self) -> Arc<AtomicBool> {
-        self.sync_paused.clone()
+    pub(crate) fn upload_bytes_per_second_for_test(&self) -> u64 {
+        self.upload_throughput.bytes_per_sec()
     }
 
-    /// The shared completed-upload tallies, so the observer records into the
-    /// same state the controller's snapshot reads, and the cancel path can
-    /// drop a release's tally.
-    pub(crate) fn upload_sessions(&self) -> Arc<crate::library::UploadSessions> {
-        self.upload_sessions.clone()
+    pub(crate) fn clear_upload_session(&self, release_id: &str) {
+        self.upload_sessions.clear_group(Some(release_id));
     }
 
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
@@ -206,7 +197,7 @@ impl SyncController {
         if !paused {
             // Kick the loop so the queue starts draining immediately on resume
             // rather than waiting for the next idle tick.
-            self.handle().sync_now();
+            self.database.sync_now();
         }
         self.emit_outbox_changed().await;
     }
@@ -249,13 +240,88 @@ impl SyncController {
         ))
     }
 
+    pub(super) async fn process_upload_observer_event(&self, event: UploadObserverEvent) {
+        match event {
+            UploadObserverEvent::OutboxChanged => {}
+            UploadObserverEvent::BlobUploaded {
+                file_id,
+                already_counted,
+            } => self.record_uploaded_blob(&file_id, already_counted).await,
+            UploadObserverEvent::ReleaseMadeRemote { release_id } => {
+                self.emit_release_updated(&release_id).await;
+                self.upload_sessions.clear_group(Some(&release_id));
+            }
+            UploadObserverEvent::ReleaseMadeLocal { release_id } => {
+                self.emit_release_updated(&release_id).await;
+            }
+        }
+        self.emit_outbox_changed().await;
+    }
+
+    async fn record_uploaded_blob(&self, file_id: &str, already_counted: u64) {
+        match self.database.find_file_by_id(file_id).await {
+            Ok(Some(file)) => {
+                let remaining = (file.file_size as u64).saturating_sub(already_counted);
+                if remaining > 0 {
+                    self.upload_throughput.record(remaining);
+                }
+                self.upload_sessions.record_done(
+                    Some(file.release_id),
+                    crate::library::upload_sessions::DoneFile {
+                        file_id: file_id.to_string(),
+                        display_name: file.original_filename,
+                        bytes: file.file_size as u64,
+                    },
+                );
+            }
+            Ok(None) => {
+                warn!("on_blob_uploaded: no file row for {file_id}; tallying unattributed");
+                self.upload_sessions.record_done(
+                    None,
+                    crate::library::upload_sessions::DoneFile {
+                        file_id: file_id.to_string(),
+                        display_name: file_id.to_string(),
+                        bytes: already_counted,
+                    },
+                );
+            }
+            Err(error) => warn!("on_blob_uploaded: looking up {file_id}: {error}"),
+        }
+    }
+
+    async fn emit_release_updated(&self, release_id: &str) {
+        let album_id = match self.database.find_release_by_id(release_id).await {
+            Ok(Some(release)) => release.album_id,
+            Ok(None) => {
+                warn!("emit_release_updated: release {release_id} not found");
+                return;
+            }
+            Err(error) => {
+                warn!("emit_release_updated: {error}");
+                return;
+            }
+        };
+        match crate::library::manager::find_release_detail_with(
+            &self.database,
+            true,
+            true,
+            release_id,
+        )
+        .await
+        {
+            Ok(Some(release)) => self.emit(LibraryEvent::ReleaseUpdated { album_id, release }),
+            Ok(None) => warn!("emit_release_updated: release {release_id} not found"),
+            Err(error) => warn!("emit_release_updated: {error}"),
+        }
+    }
+
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
     pub(crate) async fn get_members(
         &self,
     ) -> Result<crate::sync::membership::Membership, LibraryError> {
-        let members = self.handle().get_members().await?;
+        let members = self.database.get_members().await?;
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
@@ -269,7 +335,7 @@ impl SyncController {
         provider_account_email: Option<&str>,
     ) -> Result<String, LibraryError> {
         Ok(self
-            .handle()
+            .database
             .invite_member(
                 public_key_hex,
                 provider_account_email,
@@ -298,7 +364,6 @@ impl SyncController {
         let join_request_code = join_request_code.to_string();
         run_device_join_future("device-invite", move || async move {
             Ok(database
-                .handle()
                 .begin_device_invite(
                     &join_request_code,
                     crate::sync::membership::MemberRole::Member,
@@ -332,11 +397,9 @@ impl SyncController {
             let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
                 .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
             let outcome = database
-                .handle()
                 .drive_device_join(
                     &invite,
                     coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
-                    None,
                     device_join_timing(),
                 )
                 .await?;
@@ -359,7 +422,6 @@ impl SyncController {
             let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
                 .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
             database
-                .handle()
                 .cancel_device_invite(&invite, device_join_timing())
                 .await?;
             Ok(())
@@ -388,7 +450,7 @@ impl SyncController {
                 .map_err(|e| {
                     LibraryError::Internal(format!("failed to build member-removal runtime: {e}"))
                 })?
-                .block_on(database.handle().remove_member(&public_key_hex))
+                .block_on(database.remove_member(&public_key_hex))
                 .map_err(LibraryError::from)
         })
         .await
@@ -414,11 +476,6 @@ impl SyncController {
         proposed.s3_endpoint = data.endpoint.filter(|s| !s.is_empty());
         proposed.s3_key_prefix = data.key_prefix.filter(|s| !s.is_empty());
         proposed.storage = data.storage;
-        // bae exposes no operator toggle asserting a custom S3 endpoint supports
-        // conditional requests, so exact slots stay off for a custom endpoint
-        // (AWS-native, `endpoint` unset, has them regardless).
-        proposed.s3_exact_slots = None;
-
         // Probe the bucket before the library records the provider: a typo or a
         // missing bucket would otherwise leave the UI showing "Connected", with
         // the user learning sync is broken only from the reconnect banner after
@@ -473,15 +530,7 @@ impl SyncController {
     async fn probe_cloud_home(&self, home: &coven::CloudHomeConfig) -> Result<(), LibraryError> {
         let mut probe_config = self.config_handle.config().to_coven();
         probe_config.cloud_home = home.clone();
-        coven::create_cloud_home(
-            &probe_config,
-            &self.key_service,
-            &crate::oauth::clients(),
-            self.clock.clone(),
-        )
-        .await?
-        .probe()
-        .await?;
+        self.database.probe_cloud_home(&probe_config).await?;
         Ok(())
     }
 
@@ -585,7 +634,7 @@ impl SyncController {
 
         // Stop the sync loop and drop the installed manager; the library becomes
         // home-less until the next connect.
-        self.handle().disconnect_sync();
+        self.database.disconnect_sync();
 
         // Connecting fills the whole cloud home; disconnecting clears it as a unit.
         self.config_handle
@@ -629,10 +678,10 @@ impl SyncController {
                 let ops = self.cloudkit_ops.clone().ok_or_else(|| {
                     LibraryError::Internal("CloudKit driver not provided".to_string())
                 })?;
-                self.handle().connect_sync_with_cloudkit(ops).await?;
+                self.database.connect_sync_with_cloudkit(ops).await?;
             }
             _ => {
-                self.handle().connect_sync().await?;
+                self.database.connect_sync().await?;
             }
         }
         Ok(())
@@ -648,11 +697,11 @@ impl SyncController {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn connect_test_cloud_home(
         &self,
-        cloud_home: Arc<dyn CloudHome>,
+        cloud_home: Arc<dyn ExactCloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
-        self.establish_test_store_identity()?;
-        self.handle()
+        self.establish_test_store_security(&cipher)?;
+        self.database
             .connect_sync_with_test_home(cloud_home, cipher)
             .await?;
         Ok(())
@@ -673,29 +722,27 @@ impl SyncController {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn connect_test_cloud_home_caller_driven(
         &self,
-        cloud_home: Arc<dyn CloudHome>,
+        cloud_home: Arc<dyn ExactCloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
-        self.establish_test_store_identity()?;
-        self.handle()
+        self.establish_test_store_security(&cipher)?;
+        self.database
             .connect_sync_with_test_home_caller_driven(cloud_home, cipher)
             .await?;
         Ok(())
     }
 
-    /// An opaque home's blob keyspace shards by the uploading device's public
-    /// key, so establish this store's identity before connecting one if a test
-    /// building its handle straight off this config (rather than through
-    /// `Database::new_test`, which already does this under its own fixed store
-    /// id) hasn't already. Get-or-create: never mint over one already
-    /// established.
+    /// Establish the security state an injected test home requires through the
+    /// database that owns its coven handle. Every home needs a device identity;
+    /// an encrypted home also needs routing encryption.
     #[cfg(any(test, feature = "test-utils"))]
-    fn establish_test_store_identity(&self) -> Result<(), LibraryError> {
-        let config = self.config_handle.config();
-        let identity_custody =
-            coven::IdentityCustody::Keyring.resolve(&self.key_service, &config.store_dir);
-        if identity_custody.unlock()?.is_none() {
-            identity_custody.persist(&coven::UserKeypair::generate())?;
+    fn establish_test_store_security(
+        &self,
+        cipher: &crate::sync::CloudCipher,
+    ) -> Result<(), LibraryError> {
+        self.database.establish_test_identity()?;
+        if matches!(cipher, crate::sync::CloudCipher::Encrypted(_)) {
+            self.database.establish_test_master_key()?;
         }
         Ok(())
     }
@@ -703,8 +750,8 @@ impl SyncController {
     /// Ensure a sync manager exists — minting the encryption key if the home needs
     /// one — and start the sync loop.
     async fn ensure_sync_manager_and_start(&self) -> Result<(), LibraryError> {
-        if self.handle().is_connected() {
-            self.handle().start_sync().await?;
+        if self.database.is_connected() {
+            self.database.start_sync().await?;
             return Ok(());
         }
 
@@ -716,9 +763,9 @@ impl SyncController {
         // makes this idempotent across a retry after a failed sync init.
         let storage = self.config_handle.config().cloud_home.storage;
         let fingerprint = if storage.is_opaque() {
-            Some(match self.handle().master_key_fingerprint()? {
+            Some(match self.database.master_key_fingerprint()? {
                 Some(fingerprint) => fingerprint,
-                None => self.handle().initialize_master_key()?,
+                None => self.database.initialize_master_key()?,
             })
         } else {
             None
@@ -754,7 +801,7 @@ impl SyncController {
         // next launch or retry.
         self.connect_provider().await?;
 
-        self.handle().sync_now();
+        self.database.sync_now();
 
         Ok(())
     }

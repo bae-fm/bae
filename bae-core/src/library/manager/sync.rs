@@ -12,28 +12,7 @@ impl LibraryManager {
     }
 
     pub fn has_cloud_home(&self) -> bool {
-        self.handle().is_connected()
-    }
-
-    /// The one coven data handle, read from the database that owns it. The
-    /// playback reader clones it to stream blob ranges; callers route every blob
-    /// read/write and the sync lifecycle through it rather than reaching into
-    /// coven's internals. coven's handle is a large value type, so bae keeps the
-    /// single copy behind the database's `Arc` rather than embedding one per
-    /// holder.
-    pub(crate) fn handle(&self) -> &CovenHandle {
-        self.database.handle()
-    }
-
-    /// The store database. Playback asks it whether a file's upload is still
-    /// queued, to classify a failed blob read (pending upload vs missing files).
-    pub(crate) fn database(&self) -> &Database {
-        &self.database
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn database_for_test(&self) -> Database {
-        self.database.clone()
+        self.database.is_connected()
     }
 
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
@@ -56,7 +35,7 @@ impl LibraryManager {
     /// remote only once the upload observer, which fires from inside the running
     /// loop, confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
-        self.handle().is_syncing()
+        self.database.is_syncing()
     }
 
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {
@@ -70,7 +49,7 @@ impl LibraryManager {
     }
 
     pub fn trigger_sync(&self) {
-        self.handle().sync_now();
+        self.database.sync_now();
     }
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {

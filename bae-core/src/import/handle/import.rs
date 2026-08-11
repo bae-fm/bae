@@ -1,4 +1,5 @@
 use super::*;
+use crate::discogs::DiscogsClient;
 use crate::util::rate_limiter::CallPriority;
 
 /// The row identity the mapping table's tracks carry when the folder's own
@@ -126,8 +127,8 @@ impl ImportServiceHandle {
         let folder_name = Some(candidate.name);
         let categorized = candidate.files;
 
-        let clock = self.library_manager.clock().clone();
-        let ids = self.library_manager.ids().clone();
+        let clock = self.clock.clone();
+        let ids = self.ids.clone();
         tokio::task::spawn_blocking(move || {
             let parsed = crate::import::file_tag_mapper::map_unknown_candidate_to_db(
                 &categorized,
@@ -173,7 +174,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
-        let import_id = self.library_manager.ids().new_id();
+        let import_id = self.library_manager.new_id();
         let command = ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
@@ -248,28 +249,10 @@ impl ImportServiceHandle {
         if self.library_manager.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        let Some(client) = self.library_manager.discogs_client()? else {
-            // The guard above established config says a key is stored and
-            // Unvalidated, so no client here means the keyring has no matching
-            // bytes — the two durable stores disagree. Our own writes cannot
-            // produce this (see `set_discogs_key`/`clear_discogs_key`), so it is
-            // external tampering or a torn write from before those existed. Fail
-            // loudly rather than leave the key stuck Unvalidated behind a log line.
-            return Err(crate::import::ImportError::Config {
-                detail: "config says a Discogs key is stored but the keyring has none".to_string(),
-            });
-        };
-        match validation_from_validate_result(
-            client.validate_token(CallPriority::Interactive).await,
-        ) {
-            settled @ (DiscogsValidation::Valid | DiscogsValidation::Rejected) => self
-                .library_manager
-                .set_discogs_validation(settled)
-                .map_err(|e| crate::import::ImportError::Config {
-                    detail: e.to_string(),
-                }),
-            DiscogsValidation::Unvalidated => Ok(()),
-        }
+        self.library_manager
+            .revalidate_discogs_token()
+            .await
+            .map_err(Into::into)
     }
 
     /// Remove the Discogs API token from the OS keyring and clear the

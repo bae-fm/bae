@@ -49,8 +49,10 @@ case "$EDITION" in
         ;;
 esac
 
+export BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE"
+
 if [[ "$SKIP_RUST" == false ]]; then
-    BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE" ./bae-bridge/build-ios.sh
+    ./bae-bridge/build-ios.sh
 fi
 
 cd bae-ios/bae && xcodegen && cd ../..

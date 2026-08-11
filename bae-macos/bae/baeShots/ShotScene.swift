@@ -1,6 +1,7 @@
-@testable import bae
 import BaeKit
 import SwiftUI
+
+@testable import bae
 
 /// One named UI scene to capture for the screenshot gallery: a stable id
 /// shared across platforms by convention, the point size to render at, and a
@@ -24,7 +25,10 @@ struct ShotScene {
         ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize) {
             AnyView(PreviewScenes.libraryEmpty())
         },
-        ShotScene(id: "import-release-queue", size: CGSize(width: 900, height: 700)) {
+        ShotScene(
+            id: "import-release-queue",
+            size: CGSize(width: 900, height: 700)
+        ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
                     store: PreviewData.releaseQueueImportStore,
@@ -66,11 +70,11 @@ struct ShotScene {
         ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
-                    store: PreviewData.releaseQueueScanningImportStore,
+                    store: PreviewData.releaseQueueScanningImportStore(),
                     tab: .ready,
                     collapseReadyGroup: false,
                     refreshingWatchedFolderPath:
-                    PreviewData.releaseQueueWatchedFolder.path
+                        PreviewData.releaseQueueWatchedFolder.path
                 )
             )
         },

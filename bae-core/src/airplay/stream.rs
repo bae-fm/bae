@@ -234,12 +234,35 @@ pub struct StreamEndpoints {
 pub struct RaopStream {
     stop: Arc<AtomicBool>,
     threads: Vec<JoinHandle<()>>,
+}
+
+#[derive(Clone)]
+pub(super) struct RaopStreamControl {
     frames_sent: Arc<AtomicU64>,
-    /// Bumped to re-anchor the pacing after a FLUSH (resume / seek).
     reanchor: Arc<AtomicU64>,
-    /// Set when the audio flow to the receiver fails persistently — a dead
-    /// receiver — so the session end can be surfaced rather than erroring silently.
     failed: Arc<AtomicBool>,
+}
+
+impl RaopStreamControl {
+    pub(super) fn new() -> Self {
+        Self {
+            frames_sent: Arc::new(AtomicU64::new(0)),
+            reanchor: Arc::new(AtomicU64::new(0)),
+            failed: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    pub(super) fn frames_sent(&self) -> u64 {
+        self.frames_sent.load(Ordering::Relaxed)
+    }
+
+    pub(super) fn reanchor(&self) {
+        self.reanchor.fetch_add(1, Ordering::Release);
+    }
+
+    pub(super) fn has_failed(&self) -> bool {
+        self.failed.load(Ordering::Relaxed)
+    }
 }
 
 impl RaopStream {
@@ -249,7 +272,7 @@ impl RaopStream {
     /// former, and RAOP sync packets go out from the latter. AirPlay 2 anchors its
     /// timeline with SETRATEANCHORTIME instead, so it passes `send_sync = false`.
     #[allow(clippy::too_many_arguments)]
-    pub fn spawn(
+    pub(super) fn spawn(
         source: Box<dyn PcmSource>,
         crypto: PayloadCrypto,
         endpoints: StreamEndpoints,
@@ -261,16 +284,13 @@ impl RaopStream {
         control_socket: UdpSocket,
         clock: Arc<dyn MonotonicClock>,
         send_sync: bool,
+        control: RaopStreamControl,
     ) -> std::io::Result<Self> {
         let audio_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
         let audio_dst = SocketAddr::new(endpoints.receiver, endpoints.audio_port);
         let control_dst = SocketAddr::new(endpoints.receiver, endpoints.control_port);
 
         let stop = Arc::new(AtomicBool::new(false));
-        let frames_sent = Arc::new(AtomicU64::new(0));
-        let reanchor = Arc::new(AtomicU64::new(0));
-        let failed = Arc::new(AtomicBool::new(false));
-
         let mut threads = vec![
             spawn_audio_thread(AudioThread {
                 source,
@@ -282,9 +302,9 @@ impl RaopStream {
                 dst: audio_dst,
                 clock: clock.clone(),
                 stop: stop.clone(),
-                frames_sent: frames_sent.clone(),
-                reanchor: reanchor.clone(),
-                failed: failed.clone(),
+                frames_sent: control.frames_sent.clone(),
+                reanchor: control.reanchor.clone(),
+                failed: control.failed.clone(),
             }),
             spawn_timing_thread(timing_socket, stop.clone()),
         ];
@@ -294,48 +314,13 @@ impl RaopStream {
                 control_dst,
                 initial_timestamp,
                 endpoints.latency_frames,
-                frames_sent.clone(),
+                control.frames_sent.clone(),
                 sample_rate,
                 stop.clone(),
             ));
         }
 
-        Ok(RaopStream {
-            stop,
-            threads,
-            frames_sent,
-            reanchor,
-            failed,
-        })
-    }
-
-    /// Frames handed to the receiver so far — the basis for the audible position.
-    pub fn frames_sent(&self) -> u64 {
-        self.frames_sent.load(Ordering::Relaxed)
-    }
-
-    /// The cumulative frames-sent counter, shared so a control handle off the
-    /// stream can read the audible position.
-    pub fn frames_sent_handle(&self) -> Arc<AtomicU64> {
-        self.frames_sent.clone()
-    }
-
-    /// The re-anchor epoch, shared so a control handle can trigger a re-anchor.
-    pub fn reanchor_handle(&self) -> Arc<AtomicU64> {
-        self.reanchor.clone()
-    }
-
-    /// The transport-failure flag, shared so a control handle can report a dead
-    /// receiver to the service.
-    pub fn failed_handle(&self) -> Arc<AtomicBool> {
-        self.failed.clone()
-    }
-
-    /// Re-anchor the pacing after a FLUSH: the audio thread resets its lead and
-    /// clock and re-marks the next packet, so a resumed or sought stream starts
-    /// fresh rather than bursting to catch a stale clock.
-    pub fn reanchor(&self) {
-        self.reanchor.fetch_add(1, Ordering::Release);
+        Ok(RaopStream { stop, threads })
     }
 }
 

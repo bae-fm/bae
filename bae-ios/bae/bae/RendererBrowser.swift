@@ -52,11 +52,13 @@ final class RendererBrowser: Observable {
 
     #if DEBUG
     // periphery:ignore
-    static let stub = RendererBrowser(
-        services: [],
-        found: { _ in },
-        lost: { _, _ in }
-    )
+    static func stub() -> RendererBrowser {
+        RendererBrowser(
+            services: [],
+            found: { _ in },
+            lost: { _, _ in }
+        )
+    }
     #endif
 
     /// Begin browsing every service type core names. Idempotent.

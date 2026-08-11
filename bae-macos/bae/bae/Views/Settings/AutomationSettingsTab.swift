@@ -274,7 +274,7 @@ struct AutomationSettingsContent: View {
                 generateMcpToken: { "replacement-token" },
                 setMcpToken: { _ in }
             ),
-            configStore: PreviewData.configStore,
+            configStore: PreviewData.configStore(),
             copyToPasteboard: { _ in }
         )
         .frame(width: 500, height: 300)

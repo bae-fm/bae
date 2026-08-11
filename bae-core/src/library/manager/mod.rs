@@ -51,8 +51,7 @@ use crate::queue::QueueItem;
 use crate::sync::S3ConfigData;
 use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
-use coven::CloudHome;
-use coven::CovenHandle;
+use coven::ExactCloudHome;
 use coven::IdRef;
 use coven::SyncLoopStatus;
 
@@ -65,6 +64,7 @@ mod artist;
 mod composer;
 mod config;
 mod coven_blobs;
+mod discogs;
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a
@@ -88,6 +88,9 @@ mod save;
 mod storage;
 mod sync;
 mod track;
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use discogs::discogs_validation_from_result;
 
 pub(crate) use release::find_release_detail_with;
 
@@ -159,6 +162,9 @@ pub enum LibraryError {
     /// established when none was expected) failed.
     #[error("Master key error: {0}")]
     MasterKey(#[from] coven::MasterKeyError),
+    /// Establishing this store's device identity failed.
+    #[error("Identity error: {0}")]
+    Identity(#[from] coven::IdentityError),
 }
 
 /// A stored fragment we refuse to join onto a local path surfaces as an import
@@ -186,7 +192,7 @@ impl LibraryError {
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
-            LibraryError::MasterKey(_) => C::Keyring,
+            LibraryError::MasterKey(_) | LibraryError::Identity(_) => C::Keyring,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
             | LibraryError::Encryption(_)
@@ -243,6 +249,7 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         | SyncError::Store(_)
         | SyncError::Circle(_)
         | SyncError::Database(_)
+        | SyncError::RoutingEncryption(_)
         | SyncError::BlobUpload(_)
         | SyncError::Loop(_) => C::Internal,
     }
@@ -392,12 +399,12 @@ struct SyncStatusState {
 }
 
 impl SyncStatusState {
-    fn initial(handle: &CovenHandle) -> Self {
+    fn initial(database: &Database) -> Self {
         Self {
             error: None,
             last_sync_time_raw: None,
             last_sync_time: None,
-            syncing: handle.is_syncing(),
+            syncing: database.is_syncing(),
         }
     }
 }
@@ -649,41 +656,6 @@ pub struct ResolvedSaveTags {
     pub is_digital: bool,
 }
 
-/// Pre-assembled data for exporting a single track. Everything
-/// `SaveService::save_track` needs comes out of a single
-/// `LibraryManager::get_save_track_plan` call; the export service
-/// never chases back into the database to resolve tags, paths, or
-/// neighbours.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub struct SaveTrackPlan {
-    /// Source audio files opened for streaming at plan time, keyed by release
-    /// file id. Each buffer is filled on demand through coven's locality-aware
-    /// ranged read, so the save decoder pulls windows instead of whole files.
-    pub(crate) audio_buffers: Vec<SaveAudioBuffer>,
-    /// The track's tag data, exactly as the filename template and the tag writer
-    /// take it — embedded rather than copied field by field, so the plan and the
-    /// template always describe the same track.
-    pub resolved: ResolvedSaveTags,
-    /// The cover image bytes to embed, read through coven at plan time, or `None`
-    /// when the album has no primary release with a cover.
-    pub cover_image_bytes: Option<Vec<u8>>,
-    /// The source/silence window to decode for this save — the same decode-window
-    /// type playback runs. Playback uses the stored audio format directly; a save
-    /// can exclude or move CUE pregaps (its builders take the placement).
-    pub(crate) decode: crate::playback::stream_pipeline::StreamDecodeParams,
-    /// Raw audio-format aggregate. Held internally so `SaveService::save_track`
-    /// can decode CUE-split byte ranges / APE sample bounds without re-resolving.
-    pub(crate) audio_meta: TrackAudioMeta,
-}
-
-/// One release file the save decoder streams from: its sparse buffer, filled
-/// on demand by a reader spawned at plan time.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) struct SaveAudioBuffer {
-    pub file_id: String,
-    pub buffer: crate::playback::SharedSparseBuffer,
-}
-
 /// Which image to use when changing an album's cover art.
 pub enum CoverSelection {
     /// Use an image file already in the library.
@@ -888,14 +860,13 @@ pub struct LibraryManager {
     output_queue: Arc<crate::library::OutputQueue>,
     /// The upload observer coven reports blob transitions to. coven holds only a
     /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
-    /// sole owner and its lifetime is the manager's: when the last manager clone
-    /// drops, the observer drops, releasing the `CovenHandle` it holds and coven's
-    /// store-open lock with it. Registering the observer strongly in coven would
-    /// instead close a cycle (observer → handle → coven → observer) that pins the
-    /// lock forever. `None` only for the database-only [`Self::new`] test
-    /// constructor, which installs no observer. Held for its lifetime, never read
-    /// (coven reaches it through the `Weak`), so it carries the leading underscore.
-    _upload_observer: Option<Arc<crate::sync::upload_observer::ReleaseUploadObserver>>,
+    /// sole owner and its lifetime is the manager's. Its event sender feeds a task
+    /// that owns a `SyncController`; dropping the last manager clone drops this
+    /// sender, ends that task, and releases its database clone and store-open lock.
+    /// Registering the observer strongly in coven would close that cycle. Held for
+    /// its lifetime and read only by named test operations, so it carries the
+    /// leading underscore.
+    _upload_observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
     /// Bytes of provider art (Cover Art Archive, Discogs) that isn't in the
     /// library, cached under HTTP freshness rules. It lives here because all
     /// three readers — the cover picker, the import commit worker, and
@@ -940,13 +911,12 @@ impl LibraryManager {
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
         let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-        let observer = Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
+        let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
             outbox_in_flight.clone(),
-            upload_sessions.clone(),
             upload_throughput.clone(),
             sync_paused.clone(),
-            event_tx.clone(),
-        ));
+        );
+        let observer = Arc::new(observer);
         // coven holds only a `Weak` to the observer (via `WeakUploadObserver`);
         // the `LibraryManager` below owns the strong `Arc`. Registering the
         // observer strongly here would close a cycle through the `CovenHandle` it
@@ -961,9 +931,8 @@ impl LibraryManager {
                 crate::config::usize_bound(config.max_concurrent_downloads),
             )
         };
-        let ch = Arc::clone(&config_handle);
-        let config_provider = move || ch.config().to_coven();
-        let handle = coven::Coven::builder(config_provider)
+        let handle = config_handle
+            .coven_builder()
             .synced_tables(crate::sync::synced_tables())
             .clock(clock.clone())
             .oauth_clients(crate::oauth::clients())
@@ -978,9 +947,7 @@ impl LibraryManager {
                 other => coven::DbError::Message(other.to_string()),
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
-        observer.set_database(Arc::new(database.clone()));
-        observer.set_handle(handle);
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(database.handle())));
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
 
         let sync = SyncController::new(
             config_handle.clone(),
@@ -1013,8 +980,9 @@ impl LibraryManager {
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             output_queue: Arc::new(crate::library::OutputQueue::new()),
-            _upload_observer: Some(observer),
+            _upload_observer: observer,
         };
+        manager.start_upload_observer_events(observer_events);
         manager.start_queue_workers();
         Ok(manager)
     }
@@ -1035,6 +1003,15 @@ impl LibraryManager {
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
+        let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
+        let upload_sessions = Arc::new(crate::library::UploadSessions::new());
+        let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
+        let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
+            outbox_in_flight.clone(),
+            upload_throughput.clone(),
+            sync_paused.clone(),
+        );
 
         let sync = SyncController::new(
             config_handle.clone(),
@@ -1042,14 +1019,14 @@ impl LibraryManager {
             clock.clone(),
             event_tx.clone(),
             database.clone(),
-            Arc::new(Mutex::new(HashMap::new())),
-            Arc::new(crate::library::UploadSessions::new()),
-            Arc::new(crate::library::UploadThroughput::new()),
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            outbox_in_flight,
+            upload_sessions,
+            upload_throughput,
+            sync_paused,
             None,
             diagnostics.clone(),
         );
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(database.handle())));
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
 
         let manager = LibraryManager {
             database,
@@ -1068,10 +1045,28 @@ impl LibraryManager {
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             output_queue: Arc::new(crate::library::OutputQueue::new()),
-            _upload_observer: None,
+            _upload_observer: Arc::new(observer),
         };
+        manager.start_upload_observer_events(observer_events);
         manager.start_queue_workers();
         manager
+    }
+
+    fn start_upload_observer_events(
+        &self,
+        events: crate::sync::upload_observer::UploadObserverEvents,
+    ) {
+        let sync = self.sync.clone();
+        self.runtime_handle.spawn(async move {
+            events
+                .run(move |event| {
+                    let sync = sync.clone();
+                    async move {
+                        sync.process_upload_observer_event(event).await;
+                    }
+                })
+                .await;
+        });
     }
 
     fn start_queue_workers(&self) {
@@ -1111,7 +1106,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn connect_test_cloud_home(
         &self,
-        cloud_home: Arc<dyn CloudHome>,
+        cloud_home: Arc<dyn ExactCloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
         self.sync.connect_test_cloud_home(cloud_home, cipher).await
@@ -1124,7 +1119,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn connect_test_cloud_home_caller_driven(
         &self,
-        cloud_home: Arc<dyn CloudHome>,
+        cloud_home: Arc<dyn ExactCloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
         self.sync
@@ -1153,28 +1148,40 @@ impl LibraryManager {
             .release_file_row_blob_ref(file_id)
             .await
             .expect("blob ref");
-        self.handle()
+        self.database
             .blob_cloud_key(blob.blob())
             .expect("cloud key")
     }
 
-    /// The injected wall clock. The import layer and the mappers read "now"
-    /// through this so the whole import shares one clock under test.
-    pub(crate) fn clock(&self) -> &ClockRef {
-        &self.clock
+    /// Read the injected wall clock without handing its service to callers.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn now(&self) -> chrono::DateTime<chrono::Utc> {
+        self.clock.now()
     }
 
-    /// The session cache of remote image bytes. Every provider-art download in
-    /// the app reads through this one instance.
-    pub(crate) fn remote_images(&self) -> &crate::import::cover_art::RemoteImageCache {
-        &self.remote_images
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn new_id(&self) -> String {
+        self.ids.new_id()
     }
 
-    /// The injected telemetry sink. The playback and import services read it
-    /// off the manager they already hold rather than each taking a separate
-    /// handle, so there is one source threaded from bootstrap.
-    pub(crate) fn diagnostics(&self) -> &Diagnostics {
-        &self.diagnostics
+    pub(crate) fn record_telemetry(&self, event: TelemetryEvent) {
+        self.diagnostics.event(event);
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn fetch_remote_image(
+        &self,
+        url: &str,
+    ) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError> {
+        self.remote_images.fetch(url).await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn fetch_required_remote_image(
+        &self,
+        url: &str,
+    ) -> Result<crate::import::cover_art::RemoteImage, crate::import::ImportError> {
+        self.remote_images.fetch_required(url).await
     }
 
     /// Ship one `audio_format_orphaned` anomaly per orphan the release-detail
@@ -1188,29 +1195,72 @@ impl LibraryManager {
         }
     }
 
-    /// The injected id source. The import layer and the mappers mint row ids
-    /// through this so tests get a deterministic-but-unique sequence; the
-    /// playback queue mints per-instance `QueueEntryId`s through it on every
-    /// platform.
-    pub(crate) fn ids(&self) -> &IdRef {
-        &self.ids
+    #[cfg(test)]
+    pub(crate) fn local_blob_exists_for_test(
+        &self,
+        namespace: &str,
+        blob_id: &str,
+    ) -> Result<bool, String> {
+        self.config_handle
+            .local_blob_exists_for_test(namespace, blob_id)
     }
 
-    /// The library's on-disk directory. The import layer reads/writes sibling
-    /// appdata files (e.g. the watched-folder registry) under it.
-    /// Desktop-only: the import module that uses it is gated off iOS/Android,
-    /// and playback reads blobs through coven's handle rather than this path.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[cfg(test)]
-    pub(crate) fn library_dir(&self) -> coven::StoreDir {
-        self.config_handle.config().store_dir.clone()
+    pub(crate) async fn observe_blob_upload_started_for_test(&self, file_id: &str) {
+        coven::BlobTransitionObserver::on_blob_upload_started(
+            self._upload_observer.as_ref(),
+            file_id,
+        )
+        .await;
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn observe_blob_upload_progress_for_test(
+        &self,
+        file_id: &str,
+        bytes_done: u64,
+        bytes_total: u64,
+    ) {
+        coven::BlobTransitionObserver::on_blob_upload_progress(
+            self._upload_observer.as_ref(),
+            file_id,
+            bytes_done,
+            bytes_total,
+        )
+        .await;
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn observe_blob_uploaded_for_test(&self, file_id: &str) {
+        coven::BlobTransitionObserver::on_blob_uploaded(self._upload_observer.as_ref(), file_id)
+            .await;
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn observe_root_made_remote_for_test(&self, root_table: &str, root_id: &str) {
+        coven::BlobTransitionObserver::on_root_made_remote(
+            self._upload_observer.as_ref(),
+            root_table,
+            root_id,
+        )
+        .await;
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn observe_root_made_local_for_test(&self, root_table: &str, root_id: &str) {
+        coven::BlobTransitionObserver::on_root_made_local(
+            self._upload_observer.as_ref(),
+            root_table,
+            root_id,
+        )
+        .await;
     }
 
     /// Subscribe to the sync loop's status and turn it into library events: the
     /// banner state, and granular entity events for the rows an applied changeset
     /// touched. Call once after construction, with a tokio runtime available.
     pub fn start(&self) {
-        let mut rx = self.handle().subscribe_sync_status();
+        let mut rx = self.database.subscribe_sync_status();
         let lm = self.clone();
         self.runtime_handle.spawn(async move {
             loop {
@@ -1226,7 +1276,7 @@ impl LibraryManager {
                         let (changes, missing_fk) =
                             crate::library::sync_events::changes_from_row_changes(row_changes);
                         for _ in 0..missing_fk {
-                            lm.diagnostics().event(TelemetryEvent::Anomaly {
+                            lm.record_telemetry(TelemetryEvent::Anomaly {
                                 kind: crate::diagnostics::AnomalyKind::ChangesetMissingFk,
                             });
                         }
@@ -1647,10 +1697,10 @@ enum ReleasePinState {
 /// rejected (never trusted), while a real I/O failure on the pin check still
 /// surfaces.
 async fn release_file_pin_state(
-    handle: &CovenHandle,
+    database: &Database,
     file_id: &str,
 ) -> Result<ReleasePinState, LibraryError> {
-    let blob = match handle
+    let blob = match database
         .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
         .await
     {
@@ -1669,7 +1719,7 @@ async fn release_file_pin_state(
     if blob.stored().is_none() {
         return Ok(ReleasePinState::NotPinned);
     }
-    match handle.is_pinned(&[blob]).await {
+    match database.is_pinned(&[blob]).await {
         Ok(true) => Ok(ReleasePinState::Pinned),
         Ok(false) => Ok(ReleasePinState::NotPinned),
         Err(e) => Err(LibraryError::Storage(format!(
@@ -1698,7 +1748,7 @@ impl LibraryManager {
         // whether anything is still queued, which would read as done too early.
         let make_remote_in_flight = !release.remote
             && self
-                .handle()
+                .database
                 .make_remote_progress("releases", release_id)
                 .await
                 .map_err(|e| {
@@ -1747,7 +1797,7 @@ impl LibraryManager {
 
         if cover.is_some() {
             let blob = self
-                .handle()
+                .database
                 .row_blob_ref(crate::sync::COVERS_NAMESPACE, release_id)
                 .await
                 .map_err(|e| {
@@ -1771,21 +1821,9 @@ impl LibraryManager {
         })
     }
 
-    /// Ask coven to unwind an in-flight make-remote for a release being deleted.
-    ///
-    /// Best-effort by design: the delete proceeds either way, and a failure here
-    /// leaves coven's own queue state to its next cycle rather than blocking the
-    /// user's delete. `SyncNotReady` is the ordinary case with no provider
-    /// connected — there is nothing in the cloud to unwind then.
-    async fn cancel_release_make_remote(&self, release_id: &str) {
-        if let Err(e) = self.coven_cancel_make_remote(release_id).await {
-            warn!("cancelling the in-flight make-remote for {release_id}: {e}");
-        }
-    }
-
     async fn evict_delete_blobs(&self, blobs: Vec<coven::RowBlobRef>) {
         for blob in blobs {
-            if let Err(e) = self.handle().evict_blob(&blob).await {
+            if let Err(e) = self.database.evict_blob(&blob).await {
                 warn!(
                     "Failed to drop on-device copies during deletion for {}/{}: {e}",
                     blob.table(),

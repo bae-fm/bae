@@ -248,8 +248,8 @@ private struct PresetRow: View {
 #if DEBUG
     #Preview("Formats settings") {
         FormatsSettingsTab()
-            .environment(PreviewData.configStore)
-            .environment(Outputs.stub)
+            .environment(PreviewData.configStore())
+            .environment(Outputs.stub())
             .environment(UiStore())
             .frame(width: 500, height: 600)
     }

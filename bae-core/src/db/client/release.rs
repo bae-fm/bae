@@ -491,8 +491,8 @@ impl Database {
     /// Insert an audio format and its segments in one transaction — the rows the
     /// import commit writes, exposed for tests that need a resolvable track
     /// without running the whole import pipeline.
-    #[cfg(test)]
-    pub(crate) async fn insert_audio_format_with_segments_for_test(
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_audio_format_with_segments_for_test(
         &self,
         audio_format: &DbAudioFormat,
         segments: &[DbAudioSegment],
@@ -609,7 +609,7 @@ impl Database {
         let replacement_outcomes_for_write = Arc::clone(&replacement_outcomes);
         self.inner
             .handle
-            .write(
+            .write_with_blobs(
                 move |w| {
                     for (namespace, id, bytes) in image_blobs {
                         w.put_blob(namespace, id, bytes);
@@ -900,7 +900,7 @@ impl Database {
         let declared = image_blobs.clone();
         self.inner
             .handle
-            .write(
+            .write_with_blobs(
                 move |w| {
                     for (namespace, blob_id, cloud_path) in declared {
                         w.delete_blob(crate::sync::image_blob_ref(namespace, &blob_id, cloud_path));

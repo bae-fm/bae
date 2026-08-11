@@ -225,7 +225,7 @@ extension ImageView {
         }
         .padding(28)
         .background(Theme.background)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .preferredColorScheme(.dark)
     }
 #endif

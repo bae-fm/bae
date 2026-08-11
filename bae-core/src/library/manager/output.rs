@@ -190,14 +190,14 @@ impl LibraryManager {
                             ))),
                         }
                     };
-                    Ok((0, RunningOp { abort, outcome }))
+                    Ok((0, RunningOp::new(abort, outcome)))
                 }
             },
             || self.emit_output_queue_changed(),
             |release_id, result| {
                 let release_id = crate::diagnostics::LocalId(release_id.to_string());
                 let is_save = running_is_save.load(Ordering::Relaxed);
-                self.diagnostics().event(match (is_save, result) {
+                self.diagnostics.event(match (is_save, result) {
                     (false, Ok(())) => TelemetryEvent::ExportCompleted { release_id },
                     (false, Err(_)) => TelemetryEvent::ExportFailed { release_id },
                     (true, Ok(())) => TelemetryEvent::SaveCompleted { release_id },

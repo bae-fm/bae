@@ -15,7 +15,7 @@ use bae_test_support as support;
 use support::tracing_init;
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
+use bae_core::db::{DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
 use bae_core::library::{CancellationToken, LibraryEvent, LibraryManager};
 use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
 use bae_core::sync::CloudCipher;
@@ -43,10 +43,10 @@ async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState
     (s.storage_state, s.pinned)
 }
 
-async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
+async fn setup(tmp: &TempDir) -> LibraryManager {
     let library_dir = StoreDir::new(tmp.path());
     let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
-    let mgr = LibraryManager::open(
+    LibraryManager::open(
         config_handle,
         key_service,
         Arc::new(coven::SystemClock),
@@ -56,8 +56,7 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
         None,
         bae_core::import::cover_art::RemoteImageCache::for_test(),
     )
-    .unwrap();
-    (mgr.database_for_test(), mgr)
+    .unwrap()
 }
 
 /// A manager with a `SyncManager` connected over an injected `InMemoryCloudHome`,
@@ -65,21 +64,20 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
 /// upload drain themselves. After this, `get_cloud_home` is Some. Opaque home
 /// (the default at-rest mode), so blobs are keyed hashed and
 /// `release_files.cloud_path` stays NULL.
-async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager) {
-    let (db, mgr) = setup(tmp).await;
+async fn setup_with_cloud(tmp: &TempDir) -> LibraryManager {
+    let mgr = setup(tmp).await;
     let cloud = Arc::new(InMemoryCloudHome::new());
     let enc = EncryptionService::from_key([9u8; 32]);
     mgr.connect_test_cloud_home_caller_driven(cloud, CloudCipher::Encrypted(enc))
         .await
         .unwrap();
-    (db, mgr)
+    mgr
 }
 
 /// Insert a Local release: an album + release with `remote = false`, its originals
 /// written under `source_dir`, one `DbFile` per file, and each file registered as
 /// a coven user-provided external ref (the in-place files of a Local release).
 async fn create_local_release(
-    db: &Database,
     mgr: &LibraryManager,
     source_dir: &Path,
     files: &[(&str, &[u8])],
@@ -142,7 +140,7 @@ async fn create_local_release(
         result.push((name.to_string(), data.to_vec()));
     }
     // Register the in-place files as coven external refs (after the rows exist).
-    db.register_release_external_refs_for_test(&release_id, &source_dir.to_string_lossy())
+    mgr.register_release_external_refs_for_test(&release_id, &source_dir.to_string_lossy())
         .await
         .unwrap();
     (album_id, release_id, result)
@@ -153,12 +151,11 @@ async fn create_local_release(
 /// drain flips the gate Remote (dropping the external refs + deleting the
 /// originals, exactly as production does).
 async fn create_remote_release(
-    db: &Database,
     mgr: &LibraryManager,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (_album_id, release_id, named) = create_local_release(db, mgr, source_dir, files).await;
+    let (_album_id, release_id, named) = create_local_release(mgr, source_dir, files).await;
     mgr.coven_make_remote(&release_id, false).await.unwrap();
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
@@ -233,10 +230,9 @@ async fn expect_release_updated(
 async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
     let (_album_id, release_id, named) = create_local_release(
-        &db,
         &mgr,
         &source,
         &[("01.flac", b"aaaaaaaa"), ("02.flac", b"bbbbbbbbbbbb")],
@@ -272,12 +268,12 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
 async fn test_cover_blob_stored_via_local_files_is_readable() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup(&tmp).await;
-    let (_a, release_id, _f) = create_local_release(&db, &mgr, &tmp.path().join("src"), &[]).await;
+    let mgr = setup(&tmp).await;
+    let (_a, release_id, _f) = create_local_release(&mgr, &tmp.path().join("src"), &[]).await;
 
     // No cover row yet → no bytes.
     assert!(
-        support::read_cover_image_blob(&db, &mgr, &release_id)
+        support::read_cover_image_blob(&mgr, &release_id)
             .await
             .is_none(),
         "no cover before one is stored"
@@ -307,7 +303,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     .unwrap();
 
     // read_image_blob serves it from coven's local store, byte-for-byte.
-    let read = support::read_cover_image_blob(&db, &mgr, &release_id)
+    let read = support::read_cover_image_blob(&mgr, &release_id)
         .await
         .expect("cover resolves to bytes once stored");
     assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
@@ -323,16 +319,17 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
 async fn test_pin_rejects_local_release() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup(&tmp).await;
+    let mgr = setup(&tmp).await;
     let (_a, release_id, _f) =
-        create_local_release(&db, &mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
-    let events = collect_progress(
-        TransferService::new(mgr.clone())
-            .pin_release_task(release_id)
-            .0,
-    )
-    .await;
+    let events = TransferService::new(mgr.clone())
+        .pin_release(release_id, |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
     assert!(failed(&events), "pin must fail for a local release");
 }
 
@@ -341,9 +338,9 @@ async fn test_pin_rejects_local_release() {
 async fn test_unpin_rejects_local_release() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup(&tmp).await;
+    let mgr = setup(&tmp).await;
     let (_a, release_id, _f) =
-        create_local_release(&db, &mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
     assert!(
         mgr.unpin_release(&release_id).await.is_err(),
@@ -361,21 +358,21 @@ async fn test_unpin_rejects_local_release() {
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
-        &db,
         &mgr,
         &tmp.path().join("src"),
         &[("a.flac", b"pin-bytes-a"), ("b.flac", b"pin-bytes-b")],
     )
     .await;
 
-    let events = collect_progress(
-        TransferService::new(mgr.clone())
-            .pin_release_task(release_id.clone())
-            .0,
-    )
-    .await;
+    let events = TransferService::new(mgr.clone())
+        .pin_release(release_id.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
     assert!(completed(&events) && !failed(&events), "pin succeeds");
     assert!(
         matches!(events.first(), Some(TransferProgress::Started)),
@@ -409,21 +406,17 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 async fn test_unpin_remote_drops_from_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup_with_cloud(&tmp).await;
-    let release_id = create_remote_release(
-        &db,
-        &mgr,
-        &tmp.path().join("src"),
-        &[("a.flac", b"unpin-bytes")],
-    )
-    .await;
+    let mgr = setup_with_cloud(&tmp).await;
+    let release_id =
+        create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")]).await;
 
-    collect_progress(
-        TransferService::new(mgr.clone())
-            .pin_release_task(release_id.clone())
-            .0,
-    )
-    .await;
+    TransferService::new(mgr.clone())
+        .pin_release(release_id.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, true)
@@ -447,10 +440,10 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
 async fn test_missing_external_source_maps_to_error() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup(&tmp).await;
+    let mgr = setup(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _f) =
-        create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"present")]).await;
+        create_local_release(&mgr, &source_dir, &[("a.flac", b"present")]).await;
     let file = mgr
         .get_files_for_release(&release_id)
         .await
@@ -484,10 +477,10 @@ async fn test_missing_external_source_maps_to_error() {
 async fn transition_completions_emit_release_updated() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
-        create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
+        create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
     let mut events = mgr.subscribe_events();
 
     // A drained make-Remote completion emits ReleaseUpdated.

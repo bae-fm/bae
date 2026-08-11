@@ -1098,7 +1098,7 @@ fn projected_entry_keys_are_stable_and_variant_distinct() {
 mod load {
     use super::*;
     use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewImportCandidateVerdict};
-    use crate::import::{ImportService, ReleaseIdentity};
+    use crate::import::ReleaseIdentity;
     use std::path::Path;
     use std::sync::Arc;
     use tempfile::TempDir;
@@ -1148,7 +1148,8 @@ mod load {
                 tokio::runtime::Handle::current(),
                 crate::import::cover_art::RemoteImageCache::for_test(),
             );
-            let import = ImportService::start(tokio::runtime::Handle::current(), manager.clone())
+            let import = manager
+                .start_import_service(tokio::runtime::Handle::current())
                 .await
                 .unwrap();
             let root = temp.path().join("watched");

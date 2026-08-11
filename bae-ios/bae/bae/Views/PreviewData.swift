@@ -4,14 +4,14 @@ import SwiftUI
 
 /// Fixture data and preview-only environment wiring for the iOS views.
 /// Every fixture uses generic placeholders — never a real artist, album, or
-/// track name. Screen previews inject empty-but-live stores plus the shared
+/// track name. Screen previews inject empty-but-live stores plus fresh
 /// service stubs through `.previewStores()`; leaf previews take fixture values
 /// directly.
 enum PreviewData {
     // MARK: - Config
 
     @MainActor
-    static var configStore: ConfigStore {
+    static func configStore() -> ConfigStore {
         ConfigStore(
             config: Config(
                 bridge: BridgeConfig(
@@ -316,20 +316,20 @@ extension View {
         playbackStore: PlaybackStore? = nil,
         downloadStore: DownloadStore? = nil
     ) -> some View {
-        environment(PreviewData.configStore)
+        environment(PreviewData.configStore())
             .environment(libraryStore ?? PreviewData.libraryStore())
             .environment(playbackStore ?? PreviewData.playbackStore())
             .environment(downloadStore ?? PreviewData.downloadStore())
             .environment(ProjectionRegistry())
-            .environment(Library.stub)
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
-            .environment(Sync.stub)
-            .environment(ImageStore.stub)
-            .environment(Cast.stub)
+            .environment(Library.stub())
+            .environment(Playback.stub())
+            .environment(Queue.stub())
+            .environment(Downloads.stub())
+            .environment(Sync.stub())
+            .environment(ImageStore.stub())
+            .environment(Cast.stub())
             .environment(CastStore())
-            .environment(RendererBrowser.stub)
+            .environment(RendererBrowser.stub())
     }
 }
 #endif

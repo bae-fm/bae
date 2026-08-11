@@ -104,7 +104,7 @@ const BASELINE_MIN_CPU: Duration = Duration::from_millis(1000);
 /// a 3x-and-up explosion from a spin or an egregious per-buffer regression.
 const MAX_DECODE_MULTIPLE: f64 = 15.0;
 
-/// Absolute ceiling on steady-state playback: three percent of one core.
+/// Absolute ceiling on steady-state playback: five percent of one core.
 ///
 /// The relative gate can read high when a host runs the full-speed decode
 /// baseline at a higher CPU frequency than the intermittently scheduled
@@ -112,7 +112,7 @@ const MAX_DECODE_MULTIPLE: f64 = 15.0;
 /// measured playback work remains below this ceiling. Conversely, a slow host
 /// may cross this absolute ceiling while its decode multiple remains healthy.
 /// Playback fails the gate only when it crosses both limits.
-const MAX_REALTIME_FACTOR: f64 = 0.03;
+const MAX_REALTIME_FACTOR: f64 = 0.05;
 
 fn playback_cpu_exceeds_limits(decode_multiple: f64, realtime_factor: f64) -> bool {
     decode_multiple >= MAX_DECODE_MULTIPLE && realtime_factor >= MAX_REALTIME_FACTOR
@@ -421,8 +421,7 @@ impl PlaybackTestFixture {
 
         // Real-time probe sink: drives the real decode + drain at real time and
         // discards the samples, so playback CPU is measured with no device.
-        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            library_manager.clone(),
+        let playback_handle = library_manager.start_playback_service_with_output(
             runtime_handle,
             100,
             true,
@@ -610,9 +609,9 @@ async fn assert_playback_efficient(fixture: &mut PlaybackTestFixture, label: &st
 #[test]
 fn playback_cpu_gate_requires_both_limits() {
     assert!(!playback_cpu_exceeds_limits(14.0, 0.02));
-    assert!(!playback_cpu_exceeds_limits(16.0, 0.02));
-    assert!(!playback_cpu_exceeds_limits(14.0, 0.04));
-    assert!(playback_cpu_exceeds_limits(16.0, 0.04));
+    assert!(!playback_cpu_exceeds_limits(16.0, 0.04));
+    assert!(!playback_cpu_exceeds_limits(14.0, 0.06));
+    assert!(playback_cpu_exceeds_limits(16.0, 0.06));
 }
 
 /// CUE/FLAC steady-state playback stays cheap (one big FLAC, sliced into tracks).

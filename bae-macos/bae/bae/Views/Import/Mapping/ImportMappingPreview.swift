@@ -10,10 +10,10 @@
     extension View {
         func importPreviewEnvironment() -> some View {
             self
-                .environment(PreviewData.artImageStore)
+                .environment(PreviewData.artImageStore())
                 .environment(UiStore())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-                .environment(PreviewData.configStore)
+                .environment(PreviewData.configStore())
                 .windowBackground()
         }
     }

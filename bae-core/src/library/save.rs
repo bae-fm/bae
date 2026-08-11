@@ -1,5 +1,5 @@
 use crate::audio_codec::{EncodeFormat, StreamingEncoder};
-use crate::library::manager::SaveTrackPlan;
+use crate::library::SaveTrackPlan;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -220,7 +220,7 @@ impl SaveService {
             for (index, plan) in plans.iter().enumerate() {
                 let pregap_sample_frames = plan
                     .decode
-                    .leading_silence_frames
+                    .leading_silence_frames()
                     .checked_add(non_negative_samples(
                         plan.audio_meta.audio_format.pregap_samples,
                     )?)

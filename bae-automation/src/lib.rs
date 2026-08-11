@@ -1027,6 +1027,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Sync(e) => Self::Unavailable(e.to_string()),
             LibraryError::Validation(e) => Self::Validation(e),
             LibraryError::MasterKey(e) => Self::Unavailable(e.to_string()),
+            LibraryError::Identity(e) => Self::Unavailable(e.to_string()),
         }
     }
 }
@@ -1293,7 +1294,7 @@ impl Automation {
             return;
         }
         let state = self.state.clone();
-        let mut rx = self.services.import().subscribe_events();
+        let mut rx = self.services.import_subscribe_events();
         self.runtime_handle.spawn(async move {
             loop {
                 match rx.recv().await {
@@ -1325,19 +1326,18 @@ impl Automation {
     }
 
     pub fn config_get(&self) -> AutomationConfig {
-        let config = self.services.library_manager().get_config();
+        let config = self.services.get_config();
         AutomationConfig {
             library_id: config.store_id.clone(),
             library_name: config.store_name.clone(),
-            library_path: config.store_dir.to_string_lossy().to_string(),
+            library_path: config.library_path().to_string_lossy().to_string(),
             mcp: config.mcp.into(),
         }
     }
 
     pub fn watched_folders(&self) -> Vec<AutomationWatchedFolder> {
         self.services
-            .import()
-            .watched_folders()
+            .import_watched_folders()
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
                 path: folder.path,
@@ -1350,7 +1350,7 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import().add_watched_folder(path).await?;
+        self.services.import_add_watched_folder(path).await?;
         Ok(self.watched_folders())
     }
 
@@ -1358,7 +1358,7 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import().remove_watched_folder(path).await?;
+        self.services.import_remove_watched_folder(path).await?;
         Ok(self.watched_folders())
     }
 
@@ -1368,18 +1368,17 @@ impl Automation {
     ) -> Result<AutomationScanResult, AutomationError> {
         match wait {
             ScanWait::NoWait => {
-                self.services.import().scan_watched_folders()?;
+                self.services.import_scan_watched_folders()?;
             }
             ScanWait::UntilFinished { timeout_ms } => {
-                let mut rx = self.services.import().subscribe_folder_scan_events();
+                let mut rx = self.services.import_subscribe_folder_scan_events();
                 let mut pending: std::collections::HashSet<_> = self
                     .services
-                    .import()
-                    .watched_folders()
+                    .import_watched_folders()
                     .into_iter()
                     .map(|folder| folder.path)
                     .collect();
-                self.services.import().scan_watched_folders()?;
+                self.services.import_scan_watched_folders()?;
                 let wait_for_finish = async {
                     while !pending.is_empty() {
                         let Some(event) = rx.recv().await else {
@@ -1436,8 +1435,7 @@ impl Automation {
         skipped: bool,
     ) -> Result<(), AutomationError> {
         self.services
-            .import()
-            .set_candidate_skipped(candidate_key, skipped)
+            .import_set_candidate_skipped(candidate_key, skipped)
             .await?;
         Ok(())
     }
@@ -1448,8 +1446,7 @@ impl Automation {
     ) -> Result<AutomationSearchResults, AutomationError> {
         let results = self
             .services
-            .import()
-            .search_with_status(search_query(query))
+            .import_search_with_status(search_query(query))
             .await?;
         Ok(automation_search_results(results))
     }
@@ -1473,8 +1470,7 @@ impl Automation {
 
         let prefetch = self
             .services
-            .import()
-            .prefetch_release(
+            .import_prefetch_release(
                 candidate.key(),
                 &release_id,
                 source.into(),
@@ -1498,8 +1494,7 @@ impl Automation {
         self.state.get_candidate(&candidate_key)?;
         let edit = self
             .services
-            .import()
-            .preview_file_tags_for_folder(candidate_key)
+            .import_preview_file_tags_for_folder(candidate_key)
             .await?;
         Ok(automation_release_user_edit(edit))
     }
@@ -1522,8 +1517,7 @@ impl Automation {
     ) -> Result<AutomationImportStarted, AutomationError> {
         let import_id = self
             .services
-            .import()
-            .start_import(
+            .import_start_import(
                 &request.candidate_key,
                 request.selected_cover.map(cover_selection),
                 storage_mode(request.storage_mode),
@@ -1540,7 +1534,6 @@ impl Automation {
         release_id: String,
     ) -> Result<AutomationRelease, AutomationError> {
         self.services
-            .library_manager()
             .find_release_detail(&release_id)
             .await?
             .map(automation_release)
@@ -1555,7 +1548,6 @@ impl Automation {
         target_dir: String,
     ) -> Result<AutomationReleaseExport, AutomationError> {
         self.services
-            .library_manager()
             .enqueue_export(&release_id, PathBuf::from(target_dir))
             .await?;
         Ok(AutomationReleaseExport { release_id })
@@ -1563,7 +1555,7 @@ impl Automation {
 
     /// The current export-queue snapshot: per-release state and rolled-up counts.
     pub fn output_status(&self) -> AutomationOutputSnapshot {
-        automation_output_snapshot(self.services.library_manager().output_snapshot())
+        automation_output_snapshot(self.services.output_snapshot())
     }
 
     pub async fn reidentify_release(
@@ -1572,7 +1564,6 @@ impl Automation {
         choice: AutomationIdentityChoice,
     ) -> Result<(), AutomationError> {
         self.services
-            .library_manager()
             .re_identify_release(&release_id, identity_choice(choice))
             .await?;
         Ok(())
@@ -1583,7 +1574,6 @@ impl Automation {
         release_id: String,
     ) -> Result<AutomationReleaseUserEdit, AutomationError> {
         self.services
-            .library_manager()
             .reset_metadata_to_source(&release_id)
             .await
             .map(automation_release_user_edit)
@@ -1596,7 +1586,6 @@ impl Automation {
         edit: AutomationReleaseUserEdit,
     ) -> Result<(), AutomationError> {
         self.services
-            .library_manager()
             .apply_release_metadata_user_edit(&release_id, &release_user_edit(edit))
             .await?;
         Ok(())
@@ -1609,12 +1598,7 @@ impl Automation {
         // Trimming and the blank check are core policy: a blank query is not a
         // search and returns nothing, rather than matching every row.
         let results = match bae_core::library::LibrarySearchQuery::parse(&query) {
-            Some(query) => {
-                self.services
-                    .library_manager()
-                    .search_library(&query)
-                    .await?
-            }
+            Some(query) => self.services.search_library(&query).await?,
             None => SearchResults::default(),
         };
         Ok(automation_library_search_results(results))

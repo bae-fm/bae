@@ -13,9 +13,7 @@ use axum::response::{IntoResponse, Response};
 use bae_core::audio_codec::{decode_audio_to_sink, StreamEncodeFormat, StreamingEncoder};
 use bae_core::config::SaveCodec;
 use bae_core::db::LibraryImageType;
-use bae_core::library::LibraryManager;
-use bae_core::playback::data_source::{create_audio_reader, FetchArbiter};
-use bae_core::playback::sparse_buffer::create_sparse_buffer;
+use bae_core::library::AppServices;
 use bae_core::playback::SharedSparseBuffer;
 use bytes::Bytes;
 use tokio::sync::mpsc;
@@ -53,12 +51,12 @@ async fn stream_inner(
     params: &Params,
     headers: &HeaderMap,
 ) -> Result<Response, SubError> {
-    let manager = &state.manager;
+    let services = &state.services;
     let track_id = SubId::parse(params.require("id")?)?
         .expect_track()?
         .to_string();
 
-    let existing = manager
+    let existing = services
         .filter_existing_track_ids(std::slice::from_ref(&track_id))
         .await
         .map_err(lib_err)?;
@@ -72,20 +70,20 @@ async fn stream_inner(
         requested_format == Some("raw") || (requested_format.is_none() && max_bitrate.is_none());
 
     if wants_original {
-        stream_raw(manager, &track_id, headers).await
+        stream_raw(services, &track_id, headers).await
     } else {
         let estimate = params.bool_or("estimateContentLength", false);
-        stream_transcode(manager, &track_id, requested_format, max_bitrate, estimate).await
+        stream_transcode(services, &track_id, requested_format, max_bitrate, estimate).await
     }
 }
 
 /// Serve the track's backing file bytes, honoring an HTTP `Range` request.
 async fn stream_raw(
-    manager: &LibraryManager,
+    services: &AppServices,
     track_id: &str,
     headers: &HeaderMap,
 ) -> Result<Response, SubError> {
-    let audio = manager
+    let audio = services
         .resolve_track_audio(track_id)
         .await
         .map_err(lib_err)?;
@@ -93,7 +91,7 @@ async fn stream_raw(
     // is the image itself, an accepted edge (raw is normally used with a
     // per-track file; clients wanting exact track bounds request a transcode).
     let segment = audio.segments.first().ok_or_else(SubError::not_found)?;
-    let file = manager
+    let file = services
         .get_file_by_id(&segment.file_id)
         .await
         .map_err(lib_err)?
@@ -103,7 +101,7 @@ async fn stream_raw(
         .map_err(|_| SubError::generic(format!("file {} has a negative size", file.id)))?;
     let content_type = file.content_type.as_str().to_string();
 
-    let buffer = open_file_stream(manager, &segment.file_id, total);
+    let buffer = services.open_release_file_stream(&segment.file_id, total);
 
     match parse_range(headers, total) {
         Some((start, end_inclusive)) => {
@@ -132,23 +130,6 @@ async fn stream_raw(
                 .expect("full response builds"))
         }
     }
-}
-
-/// Open a sparse buffer over one release file, filled on demand through coven's
-/// locality-aware read (the user's own file, the cache, or the cloud). `size` sizes
-/// the buffer; the reader takes no size of its own — the blob stream it opens
-/// reports the plaintext length coven proved.
-fn open_file_stream(manager: &LibraryManager, file_id: &str, size: u64) -> SharedSparseBuffer {
-    let buffer = create_sparse_buffer(size);
-    let reader = create_audio_reader(manager, file_id, FetchArbiter::new(), None, false);
-    let file_id = file_id.to_string();
-    reader.start_reading(
-        buffer.clone(),
-        Box::new(move |error| {
-            warn!("subsonic stream: reading release file {file_id} failed: {error}");
-        }),
-    );
-    buffer
 }
 
 /// Stream `len` bytes of `buffer` from `start` as an HTTP body. The blocking
@@ -192,13 +173,13 @@ fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Body {
 /// response channel) — a socket can't patch a header, which is why the encoder's
 /// streaming constructor is required.
 async fn stream_transcode(
-    manager: &LibraryManager,
+    services: &AppServices,
     track_id: &str,
     requested_format: Option<&str>,
     max_bitrate: Option<i64>,
     estimate_length: bool,
 ) -> Result<Response, SubError> {
-    let audio = manager
+    let audio = services
         .resolve_track_audio(track_id)
         .await
         .map_err(lib_err)?;
@@ -214,7 +195,7 @@ async fn stream_transcode(
         if buffers.iter().any(|(id, _)| id == &segment.file_id) {
             continue;
         }
-        let file = manager
+        let file = services
             .get_file_by_id(&segment.file_id)
             .await
             .map_err(lib_err)?
@@ -223,7 +204,7 @@ async fn stream_transcode(
             .map_err(|_| SubError::generic(format!("file {} has a negative size", file.id)))?;
         buffers.push((
             segment.file_id.clone(),
-            open_file_stream(manager, &segment.file_id, size),
+            services.open_release_file_stream(&segment.file_id, size),
         ));
     }
 
@@ -390,8 +371,8 @@ pub(crate) async fn get_cover_art(
 }
 
 async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, SubError> {
-    let manager = &state.manager;
-    let release_id = cover_release_id(manager, params.require("id")?).await?;
+    let services = &state.services;
+    let release_id = cover_release_id(services, params.require("id")?).await?;
 
     // `size` scaling isn't applied: covers are stored pre-resized, so the stored
     // image is served at its stored size.
@@ -399,12 +380,12 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
         debug!("getCoverArt: size scaling is not applied; serving the stored cover");
     }
 
-    let row = manager
+    let row = services
         .get_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let bytes = manager
+    let bytes = services
         .read_cover_image_blob(&release_id)
         .await
         .map_err(lib_err)?
@@ -418,18 +399,18 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
 }
 
 /// Resolve any namespaced id to the release whose cover to serve.
-async fn cover_release_id(manager: &LibraryManager, raw_id: &str) -> Result<String, SubError> {
+async fn cover_release_id(services: &AppServices, raw_id: &str) -> Result<String, SubError> {
     match SubId::parse(raw_id)? {
         SubId::Album(release_id) => Ok(release_id),
         SubId::Track(track_id) => {
-            let info = manager
+            let info = services
                 .get_playback_track_info(&track_id)
                 .await
                 .map_err(lib_err)?;
             Ok(info.release_id)
         }
         SubId::Artist(artist_id) => {
-            let detail = manager
+            let detail = services
                 .get_artist_detail(&artist_id)
                 .await
                 .map_err(lib_err)?

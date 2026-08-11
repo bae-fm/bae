@@ -48,6 +48,8 @@ final class TrackSave: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        static let stub = TrackSave()
+        static func stub() -> TrackSave {
+            TrackSave()
+        }
     #endif
 }

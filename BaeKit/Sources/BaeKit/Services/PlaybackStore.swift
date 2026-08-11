@@ -51,7 +51,7 @@ public class PlaybackStore {
     /// far too frequent for `@Observable`; published as a Combine signal so
     /// only the progress-bar NSView re-renders.
     @ObservationIgnored
-    public let playbackPositionSubject = CurrentValueSubject<
+    private let playbackPositionSubject = CurrentValueSubject<
         PlaybackPositionEvent, Never
     >(.reset)
     private var playbackPosition: PlaybackPositionState?
@@ -62,11 +62,31 @@ public class PlaybackStore {
     /// One-shot signal — view-local state holds the displayed count and a
     /// fade timer.
     @ObservationIgnored
-    public let queueItemsAddedSubject = PassthroughSubject<Int, Never>()
+    private let queueItemsAddedSubject = PassthroughSubject<Int, Never>()
+
+    public var playbackPositionPublisher:
+        AnyPublisher<PlaybackPositionEvent, Never>
+    {
+        playbackPositionSubject.eraseToAnyPublisher()
+    }
+
+    public var playbackPositionEvent: PlaybackPositionEvent {
+        playbackPositionSubject.value
+    }
+
+    public var queueItemsAddedPublisher: AnyPublisher<Int, Never> {
+        queueItemsAddedSubject.eraseToAnyPublisher()
+    }
 
     public init() {}
 
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
+        guard snapshot.revision >= revision else {
+            logger.debug(
+                "dropping queue snapshot at revision \(snapshot.revision); revision \(self.revision) is already applied"
+            )
+            return
+        }
         manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
         revision = snapshot.revision
@@ -317,6 +337,10 @@ public class PlaybackStore {
     public func resetPlaybackPosition() {
         playbackPosition = nil
         playbackPositionSubject.send(.reset)
+    }
+
+    func publishQueueItemsAdded(_ count: Int) {
+        queueItemsAddedSubject.send(count)
     }
 
     private func preparePlaybackPosition(for track: NowPlayingTrack) {

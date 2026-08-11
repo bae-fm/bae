@@ -1,8 +1,9 @@
 import AppKit
-@testable import bae
 import BaeKit
 import SwiftUI
 import Testing
+
+@testable import bae
 
 @Suite("Import release boundary rendering")
 struct ImportReleaseBoundaryViewTests {
@@ -53,7 +54,9 @@ struct ImportReleaseBoundaryViewTests {
     }
 
     @MainActor
-    @Test("choosing an ambiguity decision clears the selected release immediately")
+    @Test(
+        "choosing an ambiguity decision clears the selected release immediately"
+    )
     func decisionClearsSelectionBeforeCoreCompletes() async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.needsYou)
@@ -69,8 +72,8 @@ struct ImportReleaseBoundaryViewTests {
                 .environment(uiStore)
                 .importPreviewEnvironment()
                 .environment(uiStore)
-                .environment(Library.stub)
-                .environment(PreviewAudio.stub)
+                .environment(Library.stub())
+                .environment(PreviewAudio.stub())
                 .environment(PreviewData.releaseQueueImportStore)
                 .environment(importer),
             size: size

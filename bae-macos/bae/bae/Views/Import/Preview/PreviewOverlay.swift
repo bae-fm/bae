@@ -66,7 +66,7 @@ struct PreviewOverlay: View {
             durationMs: 210_000,
         )
         .frame(width: 600, height: 400)
-        .environment(PreviewAudio.stub)
+        .environment(PreviewAudio.stub())
         .windowBackground()
     }
 #endif

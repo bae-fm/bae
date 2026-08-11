@@ -1,5 +1,6 @@
 #if BAE_CLOUDKIT
 
+    import BaeKit
     import CloudKit
     import Foundation
     import os.log

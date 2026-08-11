@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use bae_core::config::{SubsonicConfig, SubsonicCredential};
-use bae_core::library::LibraryManager;
+use bae_core::library::AppServices;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -51,7 +51,7 @@ impl SubsonicServerError {
 
 #[derive(Clone)]
 pub struct SubsonicServerController {
-    manager: LibraryManager,
+    services: AppServices,
     password_provider: Arc<SubsonicPasswordProvider>,
     inner: Arc<Mutex<SubsonicServerControllerState>>,
 }
@@ -88,9 +88,9 @@ impl SubsonicServerControllerState {
 }
 
 impl SubsonicServerController {
-    pub fn new(manager: LibraryManager, password_provider: Arc<SubsonicPasswordProvider>) -> Self {
+    pub fn new(services: AppServices, password_provider: Arc<SubsonicPasswordProvider>) -> Self {
         Self {
-            manager,
+            services,
             password_provider,
             inner: Arc::new(Mutex::new(SubsonicServerControllerState::Disabled)),
         }
@@ -229,7 +229,7 @@ impl SubsonicServerController {
         let cancellation = CancellationToken::new();
         let server_cancellation = cancellation.clone();
         let task_state = self.inner.clone();
-        let router = crate::router(self.manager.clone(), credential);
+        let router = crate::router(self.services.clone(), credential);
         let task = tokio::spawn(async move {
             if let Err(e) = axum::serve(listener, router)
                 .with_graceful_shutdown(async move {
@@ -284,12 +284,12 @@ mod tests {
     use std::sync::Arc;
 
     use bae_core::db::Database;
-    use bae_core::library::LibraryManager;
+    use bae_core::library::{AppServices, LibraryManager};
     use bae_test_support as support;
     use coven::StoreDir;
     use tempfile::TempDir;
 
-    async fn test_manager() -> (LibraryManager, TempDir) {
+    async fn test_manager() -> (AppServices, TempDir) {
         support::tracing_init();
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
@@ -313,7 +313,8 @@ mod tests {
             tokio::runtime::Handle::current(),
             bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
-        (manager, temp)
+        let services = AppServices::for_test(manager).await.expect("app services");
+        (services, temp)
     }
 
     /// A free port on loopback: bind an ephemeral listener, read the port, and
@@ -333,8 +334,8 @@ mod tests {
         Arc::new(move || Ok(password.clone()))
     }
 
-    fn controller(manager: &LibraryManager, password: Option<&str>) -> SubsonicServerController {
-        SubsonicServerController::new(manager.clone(), password_provider(password))
+    fn controller(services: &AppServices, password: Option<&str>) -> SubsonicServerController {
+        SubsonicServerController::new(services.clone(), password_provider(password))
     }
 
     /// An enabled config on loopback with the given port and username.
@@ -349,8 +350,8 @@ mod tests {
 
     #[tokio::test]
     async fn disabled_config_reports_disabled() {
-        let (manager, _temp) = test_manager().await;
-        let controller = controller(&manager, Some("s3cret"));
+        let (services, _temp) = test_manager().await;
+        let controller = controller(&services, Some("s3cret"));
         let status = controller
             .apply_config(SubsonicConfig::disabled_default())
             .await;
@@ -359,8 +360,8 @@ mod tests {
 
     #[tokio::test]
     async fn enabled_with_valid_credential_runs() {
-        let (manager, _temp) = test_manager().await;
-        let controller = controller(&manager, Some("s3cret"));
+        let (services, _temp) = test_manager().await;
+        let controller = controller(&services, Some("s3cret"));
         let config = enabled_config(free_port(), "listener");
         let status = controller.apply_config(config).await;
         assert!(
@@ -372,8 +373,8 @@ mod tests {
 
     #[tokio::test]
     async fn enabled_without_stored_password_is_invalid_and_does_not_bind() {
-        let (manager, _temp) = test_manager().await;
-        let controller = controller(&manager, None);
+        let (services, _temp) = test_manager().await;
+        let controller = controller(&services, None);
         let port = free_port();
         let config = enabled_config(port, "listener");
         let status = controller.apply_config(config).await;
@@ -395,9 +396,9 @@ mod tests {
 
     #[tokio::test]
     async fn keyring_read_failure_is_credential_unavailable() {
-        let (manager, _temp) = test_manager().await;
+        let (services, _temp) = test_manager().await;
         let controller = SubsonicServerController::new(
-            manager.clone(),
+            services.clone(),
             Arc::new(|| Err("keyring is locked".to_string())),
         );
         let config = enabled_config(free_port(), "listener");
@@ -415,8 +416,8 @@ mod tests {
 
     #[tokio::test]
     async fn transitions_disabled_enabled_disabled() {
-        let (manager, _temp) = test_manager().await;
-        let controller = controller(&manager, Some("s3cret"));
+        let (services, _temp) = test_manager().await;
+        let controller = controller(&services, Some("s3cret"));
         let enabled = enabled_config(free_port(), "listener");
 
         assert!(matches!(
@@ -443,8 +444,8 @@ mod tests {
 
     #[tokio::test]
     async fn bind_then_shutdown_frees_the_port() {
-        let (manager, _temp) = test_manager().await;
-        let controller = controller(&manager, Some("s3cret"));
+        let (services, _temp) = test_manager().await;
+        let controller = controller(&services, Some("s3cret"));
         let port = free_port();
         let config = enabled_config(port, "listener");
         assert!(matches!(
@@ -468,8 +469,8 @@ mod tests {
     /// released. `apply_config` must not treat a bind-address change as no-op.
     #[tokio::test]
     async fn changing_bind_address_restarts_the_server() {
-        let (manager, _temp) = test_manager().await;
-        let controller = controller(&manager, Some("s3cret"));
+        let (services, _temp) = test_manager().await;
+        let controller = controller(&services, Some("s3cret"));
         let port = free_port();
 
         let loopback = enabled_config(port, "listener");

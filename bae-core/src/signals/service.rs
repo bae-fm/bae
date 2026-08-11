@@ -124,7 +124,7 @@ impl ExtractionService {
                     Ok(_) => {}
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         warn!("signals: candidate-removal listener lagged by {n} import events; an extraction for a removed candidate may run to completion");
-                        removal_inner.library_manager.diagnostics().event(
+                        removal_inner.library_manager.record_telemetry(
                             crate::diagnostics::TelemetryEvent::Anomaly {
                                 kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                             },
@@ -140,8 +140,24 @@ impl ExtractionService {
 }
 
 impl ExtractionServiceInner {
-    fn analyzer(&self) -> Option<Arc<dyn ArtworkAnalyzer>> {
-        self.analyzer.lock().unwrap().clone()
+    fn has_artwork_analyzer(&self) -> bool {
+        self.analyzer.lock().unwrap().is_some()
+    }
+
+    async fn analyze_artwork(&self, path: PathBuf) -> Result<ArtworkAnalysis, LookupFailure> {
+        let analyzer = self
+            .analyzer
+            .lock()
+            .unwrap()
+            .clone()
+            .ok_or(LookupFailure::ArtworkAnalysis)?;
+        let log_path = path.clone();
+        let failure_context = format!("OCR worker failed for {log_path:?}");
+        run_blocking(&self.runtime_handle, &failure_context, move || {
+            analyzer.analyze(&path)
+        })
+        .await
+        .ok_or(LookupFailure::ArtworkAnalysis)
     }
 }
 
@@ -158,12 +174,15 @@ impl ExtractionServiceHandle {
     /// calls. It rides the `SignalsUpdated` snapshots so a consumer can tell a
     /// candidate a person opened from one the background sweep picked up.
     pub fn start(&self, key: String, source: ExtractionSource, priority: CallPriority) {
-        let (token, generation) = self.inner.cancellation.register(key.clone());
-
         let inner = self.inner.clone();
-        self.inner.runtime_handle.spawn(async move {
-            run_extraction(inner, key, source, token, generation, priority).await;
-        });
+        let runtime_handle = self.inner.runtime_handle.clone();
+        self.inner
+            .cancellation
+            .register(key.clone(), move |token, generation| {
+                runtime_handle.spawn(async move {
+                    run_extraction(inner, key, source, token, generation, priority).await;
+                });
+            });
     }
 
     /// Cancel a candidate's in-flight extraction. For the bridge's candidate
@@ -216,7 +235,7 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let artwork = ArtworkPass::new(inner.analyzer(), fast.artwork_paths);
+            let artwork = ArtworkPass::new(inner.has_artwork_analyzer(), fast.artwork_paths);
             stream_extraction(
                 inner,
                 key,
@@ -259,17 +278,17 @@ async fn run_extraction(
             // means the release's files can't be read at all (a missing cover is
             // already a skip inside), so abort rather than emit a misleading
             // settled-with-no-signals result.
-            let (artwork, _cover_staging) = match inner.analyzer() {
-                Some(analyzer) => {
+            let (artwork, _cover_staging) = match inner.has_artwork_analyzer() {
+                true => {
                     match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
-                        Ok((paths, staging)) => (ArtworkPass::new(Some(analyzer), paths), staging),
+                        Ok((paths, staging)) => (ArtworkPass::new(true, paths), staging),
                         Err(e) => {
                             error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
                             return;
                         }
                     }
                 }
-                None => (None, None),
+                false => (None, None),
             };
             stream_extraction(
                 inner,
@@ -296,20 +315,6 @@ where
     F: FnOnce() -> FastPass + Send + 'static,
 {
     run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await
-}
-
-async fn run_ocr_blocking(
-    runtime_handle: &Handle,
-    analyzer: Arc<dyn ArtworkAnalyzer>,
-    path: PathBuf,
-) -> Result<ArtworkAnalysis, LookupFailure> {
-    let log_path = path.clone();
-    let failure_context = format!("OCR worker failed for {log_path:?}");
-    run_blocking(runtime_handle, &failure_context, move || {
-        analyzer.analyze(&path)
-    })
-    .await
-    .ok_or(LookupFailure::ArtworkAnalysis)
 }
 
 async fn run_blocking<T, F>(runtime_handle: &Handle, failure_context: &str, task: F) -> Option<T>
@@ -343,15 +348,13 @@ struct ExtractionInputs {
 /// are one fact to everything downstream, and pairing the paths with the analyzer
 /// makes "images to scan, but nothing to scan them with" unrepresentable.
 struct ArtworkPass {
-    analyzer: Arc<dyn ArtworkAnalyzer>,
     /// Non-empty by construction.
     paths: Vec<PathBuf>,
 }
 
 impl ArtworkPass {
-    fn new(analyzer: Option<Arc<dyn ArtworkAnalyzer>>, paths: Vec<PathBuf>) -> Option<Self> {
-        let analyzer = analyzer?;
-        (!paths.is_empty()).then_some(ArtworkPass { analyzer, paths })
+    fn new(analyzer_available: bool, paths: Vec<PathBuf>) -> Option<Self> {
+        (analyzer_available && !paths.is_empty()).then_some(ArtworkPass { paths })
     }
 }
 
@@ -396,30 +399,28 @@ async fn stream_extraction(
     );
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
-    if let Some(ArtworkPass { analyzer, paths }) = artwork {
+    if let Some(ArtworkPass { paths }) = artwork {
         for path in paths {
             if token.is_cancelled() {
                 return;
             }
 
-            let analysis =
-                match run_ocr_blocking(&inner.runtime_handle, analyzer.clone(), path.clone()).await
-                {
-                    Ok(analysis) => analysis,
-                    Err(failure) => {
-                        emit_failed_ocr_signals(
-                            &inner,
-                            &key,
-                            disc_id,
-                            &barcodes,
-                            &mut pool,
-                            failure,
-                            probed_total_duration_ms,
-                            priority,
-                        );
-                        return;
-                    }
-                };
+            let analysis = match inner.analyze_artwork(path.clone()).await {
+                Ok(analysis) => analysis,
+                Err(failure) => {
+                    emit_failed_ocr_signals(
+                        &inner,
+                        &key,
+                        disc_id,
+                        &barcodes,
+                        &mut pool,
+                        failure,
+                        probed_total_duration_ms,
+                        priority,
+                    );
+                    return;
+                }
+            };
 
             if token.is_cancelled() {
                 return;

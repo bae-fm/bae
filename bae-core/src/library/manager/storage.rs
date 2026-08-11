@@ -56,7 +56,7 @@ impl LibraryManager {
     /// timestamps. A drain with no provider connected is not an error the user
     /// needs: there is simply nothing to send yet.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
-        if let Err(e) = self.handle().drain_uploads().await {
+        if let Err(e) = self.database.drain_uploads().await {
             warn!("retrying uploads now: {e}");
         }
         self.trigger_sync();
@@ -75,7 +75,7 @@ impl LibraryManager {
         // The cancel tombstones the blobs that already reached the cloud, so
         // the release's completed-upload tally would now report done work that
         // isn't — drop it before re-deriving the snapshot.
-        self.sync.upload_sessions().clear_group(Some(release_id));
+        self.sync.clear_upload_session(release_id);
         self.emit_outbox_changed().await;
         // Refresh the release row (it no longer reads as "uploading"). A
         // best-effort UI nudge — the cancel itself already succeeded above.
@@ -106,7 +106,7 @@ impl LibraryManager {
     /// [`drain_uploads_expecting_work`](Self::drain_uploads_expecting_work).
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn drain_uploads_for_test(&self) -> Result<coven::DrainOutcome, String> {
-        self.handle()
+        self.database
             .drain_uploads()
             .await
             .map_err(|error| error.to_string())

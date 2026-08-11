@@ -1,7 +1,7 @@
 //! Minimum-interval rate limiter for provider API clients.
 
 use std::collections::VecDeque;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use tokio::sync::Notify;
@@ -115,6 +115,7 @@ impl Inner {
 
 /// What a queued waiter found when it last looked.
 enum Turn {
+    Admitted,
     /// The next slot is this waiter's, and opens at this instant.
     NotBefore(Instant),
     /// Someone is ahead of it; there is nothing to time, only the queue moving.
@@ -137,12 +138,8 @@ impl RateLimiter {
     /// place and costs no slot — the interval budget is spent on calls that are
     /// actually made.
     pub async fn wait(&self, priority: CallPriority) {
-        {
-            let mut inner = self.lock();
-            if !inner.has_waiters() && self.hold_until(&inner).is_none() {
-                inner.last_call = Some(Instant::now());
-                return;
-            }
+        if self.admit_when_idle() {
+            return;
         }
 
         let mut ticket = Ticket::take(self, priority);
@@ -153,23 +150,12 @@ impl RateLimiter {
             tokio::pin!(advanced);
             advanced.as_mut().enable();
 
-            let turn = {
-                let mut inner = self.lock();
-                if !inner.is_next(priority, ticket.id) {
-                    Turn::Behind
-                } else if let Some(deadline) = self.hold_until(&inner) {
-                    Turn::NotBefore(deadline)
-                } else {
-                    inner.last_call = Some(Instant::now());
-                    inner.remove(priority, ticket.id);
+            match self.ticket_turn(priority, ticket.id) {
+                Turn::Admitted => {
                     ticket.queued = false;
-                    drop(inner);
                     self.advanced.notify_waiters();
                     return;
                 }
-            };
-
-            match turn {
                 Turn::NotBefore(deadline) => {
                     tokio::select! {
                         _ = &mut advanced => {}
@@ -193,7 +179,10 @@ impl RateLimiter {
         // Refuse outside the lock: panicking while holding it would poison a
         // limiter that every later test shares.
         let had_waiters = {
-            let mut inner = self.lock();
+            let mut inner = self
+                .inner
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let had_waiters = inner.has_waiters();
             if !had_waiters {
                 *inner = Inner::new();
@@ -207,22 +196,68 @@ impl RateLimiter {
         );
     }
 
-    /// The instant before which nothing may be admitted; `None` once the
-    /// interval since the last call has passed.
-    fn hold_until(&self, inner: &Inner) -> Option<Instant> {
-        let ready = inner.last_call? + self.interval;
+    fn hold_until(&self, last_call: Option<Instant>) -> Option<Instant> {
+        let ready = last_call? + self.interval;
         (ready > Instant::now()).then_some(ready)
     }
 
-    /// Poisoning cannot mean the queues are inconsistent — every critical
-    /// section here is a few infallible statements — and `Ticket::drop` takes
-    /// this lock while unwinding, where a panic would abort the process rather
-    /// than report anything. So an unrelated panic elsewhere does not take the
-    /// limiter with it.
-    fn lock(&self) -> MutexGuard<'_, Inner> {
+    fn admit_when_idle(&self) -> bool {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if inner.has_waiters() || self.hold_until(inner.last_call).is_some() {
+            return false;
+        }
+        inner.last_call = Some(Instant::now());
+        true
+    }
+
+    fn enqueue_ticket(&self, priority: CallPriority) -> u64 {
         self.inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .push(priority)
+    }
+
+    fn ticket_turn(&self, priority: CallPriority, id: u64) -> Turn {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !inner.is_next(priority, id) {
+            return Turn::Behind;
+        }
+        if let Some(deadline) = self.hold_until(inner.last_call) {
+            return Turn::NotBefore(deadline);
+        }
+        inner.last_call = Some(Instant::now());
+        inner.remove(priority, id);
+        Turn::Admitted
+    }
+
+    fn remove_ticket(&self, priority: CallPriority, id: u64) {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(priority, id);
+    }
+
+    #[cfg(test)]
+    fn queued_count(&self, priority: CallPriority) -> usize {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .queue(priority)
+            .len()
+    }
+
+    #[cfg(test)]
+    fn has_waiters_for_test(&self) -> bool {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .has_waiters()
     }
 }
 
@@ -239,7 +274,7 @@ struct Ticket<'a> {
 
 impl<'a> Ticket<'a> {
     fn take(limiter: &'a RateLimiter, priority: CallPriority) -> Self {
-        let id = limiter.lock().push(priority);
+        let id = limiter.enqueue_ticket(priority);
         Self {
             limiter,
             priority,
@@ -254,7 +289,7 @@ impl Drop for Ticket<'_> {
         if !self.queued {
             return;
         }
-        self.limiter.lock().remove(self.priority, self.id);
+        self.limiter.remove_ticket(self.priority, self.id);
         self.limiter.advanced.notify_waiters();
     }
 }
@@ -268,7 +303,7 @@ mod tests {
     const INTERVAL: Duration = Duration::from_secs(1);
 
     fn queued(limiter: &RateLimiter, priority: CallPriority) -> usize {
-        limiter.lock().queue(priority).len()
+        limiter.queued_count(priority)
     }
 
     /// Spawned waiters reach the queue only when they run, so a test that cares
@@ -439,7 +474,7 @@ mod tests {
                 .num_alive_tasks(),
             alive_before
         );
-        assert!(!limiter.lock().has_waiters());
+        assert!(!limiter.has_waiters_for_test());
     }
 
     /// The limiters are `static`s that outlive any one runtime — the import

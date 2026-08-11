@@ -50,7 +50,7 @@ impl PlaybackService {
                 .unwrap()
                 .map(|d| d.as_millis() as u64)
                 .unwrap_or(0);
-            self.telemetry().event(TelemetryEvent::PlaybackStarved {
+            self.record_telemetry(TelemetryEvent::PlaybackStarved {
                 track_id: LocalId(track_id.to_string()),
                 position_ms,
             });

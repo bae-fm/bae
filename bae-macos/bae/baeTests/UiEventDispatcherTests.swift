@@ -27,7 +27,7 @@ struct UiEventDispatcherTransportTests {
 
         sink(playingEvent(trackId: "t1"))
 
-        guard case .playing(let track) = appService.playbackStore.nowPlaying
+        guard case .playing(let track) = appService.stateForTesting.nowPlaying
         else {
             Issue.record("expected .playing")
             return
@@ -52,8 +52,8 @@ struct UiEventDispatcherTransportTests {
         sink(pausedEvent(trackId: "t1"))
 
         guard
-            case .paused(let track, let reason) = appService.playbackStore
-                .nowPlaying
+            case .paused(let track, let reason) = appService
+                .stateForTesting.nowPlaying
         else {
             Issue.record("expected .paused")
             return
@@ -79,8 +79,8 @@ struct UiEventDispatcherTransportTests {
 
         sink(.playbackLoading(trackId: "t2", track: nil))
 
-        #expect(appService.playbackStore.nowPlaying.track?.trackId == "t1")
-        #expect(appService.playbackStore.nowPlaying.loadingTrackId == "t2")
+        #expect(appService.stateForTesting.nowPlaying.track?.trackId == "t1")
+        #expect(appService.stateForTesting.nowPlaying.loadingTrackId == "t2")
         let title =
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
         let priorTitle = infoBeforeLoading?[MPMediaItemPropertyTitle] as? String
@@ -114,7 +114,7 @@ struct UiEventDispatcherTransportTests {
             )
         )
 
-        #expect(appService.playbackStore.nowPlaying.track?.trackId == "t2")
+        #expect(appService.stateForTesting.nowPlaying.track?.trackId == "t2")
         let info = infoCenter.nowPlayingInfo
         #expect(info?[MPMediaItemPropertyTitle] as? String == "Target Title")
         #expect(info?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 0.0)
@@ -138,20 +138,26 @@ struct UiEventDispatcherTransportTests {
             onUnhandled: DesktopUiEvents.apply
         )
         sink(playingEvent(trackId: "t1"))
-        appService.mediaControlService.updateCommandAvailability(
-            hasNext: true,
-            hasPrevious: true
+        sink(
+            .queueUpdated(
+                snapshot: BridgeQueueSnapshot(
+                    manual: [],
+                    context: nil,
+                    hasNext: true,
+                    hasPrevious: true,
+                    revision: 1
+                )
+            )
         )
 
         sink(.playbackStopped)
 
-        guard case .stopped = appService.playbackStore.nowPlaying else {
+        guard case .stopped = appService.stateForTesting.nowPlaying else {
             Issue.record("expected .stopped")
             return
         }
         guard
-            case .reset = appService.playbackStore.playbackPositionSubject
-                .value
+            case .reset = appService.stateForTesting.playbackPosition
         else {
             Issue.record("expected playback position to reset")
             return
@@ -206,11 +212,10 @@ struct UiEventDispatcherQueueTests {
         )
 
         #expect(
-            appService.playbackStore.manualQueue.map(\.entryId) == ["manual-1"]
+            appService.stateForTesting.manualQueueEntryIds == ["manual-1"]
         )
         #expect(
-            appService.playbackStore.queueContext?.upcoming.map(\.entryId)
-                == ["upcoming-1"]
+            appService.stateForTesting.upcomingQueueEntryIds == ["upcoming-1"]
         )
         #expect(center.nextTrackCommand.isEnabled)
         #expect(!center.previousTrackCommand.isEnabled)
@@ -242,15 +247,13 @@ struct UiEventDispatcherQueueTests {
         let appService = makeAppService(handle: handle)
         appService.registerCommonProjections()
 
-        appService.projectionRegistry.invalidate(.queue)
+        appService.invalidateProjection(.queue)
         await waitUntil {
-            appService.playbackStore.manualQueue.map(\.entryId)
-                == ["manual-2"]
+            appService.stateForTesting.manualQueueEntryIds == ["manual-2"]
         }
 
         #expect(
-            appService.playbackStore.manualQueue.map(\.entryId)
-                == ["manual-2"]
+            appService.stateForTesting.manualQueueEntryIds == ["manual-2"]
         )
         #expect(!center.nextTrackCommand.isEnabled)
         #expect(center.previousTrackCommand.isEnabled)
@@ -283,7 +286,7 @@ struct UiEventDispatcherErrorTests {
 
         sink(.playbackError(reason: .syncDisconnected))
 
-        #expect(appService.uiStore.lastError != nil)
+        #expect(appService.hasDisplayedErrorForTesting)
     }
 
     @Test("error reaches uiStore through the showError override")
@@ -300,7 +303,7 @@ struct UiEventDispatcherErrorTests {
             )
         )
 
-        #expect(appService.uiStore.lastError != nil)
+        #expect(appService.hasDisplayedErrorForTesting)
     }
 }
 
@@ -315,7 +318,7 @@ struct UiEventDispatcherControlTests {
             onUnhandled: DesktopUiEvents.apply
         )
         var addedCounts: [Int] = []
-        let subscription = appService.playbackStore.queueItemsAddedSubject
+        let subscription = appService.queueItemsAddedPublisherForTesting
             .sink { addedCounts.append($0) }
         defer { subscription.cancel() }
 
@@ -324,9 +327,9 @@ struct UiEventDispatcherControlTests {
         sink(.repeatModeChanged(mode: .context))
         sink(.queueItemsAdded(count: 3))
 
-        #expect(appService.playbackStore.volume == 0.4)
-        #expect(appService.playbackStore.isMuted)
-        #expect(appService.playbackStore.repeatMode == .context)
+        #expect(appService.stateForTesting.volume == 0.4)
+        #expect(appService.stateForTesting.isMuted)
+        #expect(appService.stateForTesting.repeatMode == .context)
         #expect(addedCounts == [3])
     }
 }
@@ -471,14 +474,18 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             showRemainingTime: false,
-                    libraryFullWidth: false,
+            libraryFullWidth: false,
             savePresets: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             castEnabled: false,
             mcp: BridgeMcpConfig(enabled: false, port: 47777),
             subsonic: BridgeSubsonicConfig(
-                enabled: false, port: 4533, username: "", bindAddress: "127.0.0.1"),
+                enabled: false,
+                port: 4533,
+                username: "",
+                bindAddress: "127.0.0.1"
+            ),
             discogsTokenStatus: .notConfigured,
             discogsUsable: false,
             sync: nil

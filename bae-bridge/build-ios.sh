@@ -41,6 +41,7 @@ fi
 # edition, so `cast` is what anchors a non-empty baeium value here, the way
 # `desktop` does on macOS.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cloudkit,cast}"
+export BAE_BRIDGE_FEATURES
 
 # Map each Rust feature to its Swift compilation condition. A build compiled
 # with `oauth-providers` defines BAE_OAUTH_PROVIDERS; one without it must not.
@@ -135,32 +136,6 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
     echo "SWIFT_ACTIVE_COMPILATION_CONDITIONS = \$(inherited) $SWIFT_CONDITIONS"
     [ -n "$ENTITLEMENTS_OVERRIDE" ] && echo "$ENTITLEMENTS_OVERRIDE"
 } > "$FEATURES_XCCONFIG"
-
-# The BaeKit package can't inherit SWIFT_ACTIVE_COMPILATION_CONDITIONS from the
-# app's xcconfig, so emit the same conditions as JSON next to Package.swift; the
-# manifest reads it and maps each to a .define. SwiftPM evaluates the manifest
-# once per resolve and caches the result by manifest content, so Features.json
-# is re-read on a fresh resolve (a CI checkout, a first build, or after a clean)
-# — which is every automated flow, each building a single edition, so the
-# conditions always match the bridge that was just built. Touch Package.swift as
-# a cheap hint, but a warm build tree that already resolved the other edition
-# needs both its DerivedData and the SwiftPM manifest cache
-# (~/Library/Caches/org.swift.swiftpm/manifests) cleared for new conditions to
-# take — SwiftPM keys the cached evaluation on manifest content, which is
-# identical across editions.
-FEATURES_JSON="BaeKit/Features.json"
-echo "Writing package compilation conditions to $FEATURES_JSON"
-{
-    printf '['
-    first=1
-    for cond in $SWIFT_CONDITIONS; do
-        [ "$first" -eq 0 ] && printf ', '
-        printf '"%s"' "$cond"
-        first=0
-    done
-    printf ']\n'
-} > "$FEATURES_JSON"
-touch BaeKit/Package.swift
 
 echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"

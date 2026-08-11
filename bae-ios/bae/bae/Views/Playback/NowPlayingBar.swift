@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Persistent now-playing bar. Reads transport state from the shared
-/// `PlaybackStore` and the high-frequency position from its Combine subject,
+/// `PlaybackStore` and the high-frequency position from its Combine publisher,
 /// and sends transport commands through `Playback`. Hidden until a track is
 /// loaded. Tapping the cover / title area expands into the full-screen
 /// `ExpandedNowPlayingView`.
@@ -24,7 +24,7 @@ struct NowPlayingBar: View {
             VStack(spacing: 6) {
                 transport(track: track)
                 ProgressBar(
-                    positionSubject: playbackStore.playbackPositionSubject,
+                    positionPublisher: playbackStore.playbackPositionPublisher,
                     showRemainingTime: configStore.config.showRemainingTime,
                     onSeek: { ratio in
                         playbackStore.projectSeek(ratio: ratio)
@@ -130,8 +130,7 @@ struct NowPlayingBar: View {
         .accessibilityLabel("Queue")
         .overlay(alignment: .topTrailing) {
             QueueAddBadge(
-                events: playbackStore.queueItemsAddedSubject
-                    .eraseToAnyPublisher(),
+                events: playbackStore.queueItemsAddedPublisher,
                 scheduler: .main,
                 style: QueueAddBadgeStyle(
                     textFont: .system(size: 11, weight: .semibold),

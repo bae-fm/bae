@@ -1039,7 +1039,8 @@ async fn picked_release(
         return Ok(None);
     };
     let release = crate::import::MetadataRef::new(release_id.clone(), *source);
-    let payloads = crate::import::payloads::load(library_manager.database(), &release)
+    let payloads = library_manager
+        .load_release_payloads(&release)
         .await
         .map_err(|error| LibraryError::Internal(error.to_string()))?;
     let Some(payloads) = payloads else {

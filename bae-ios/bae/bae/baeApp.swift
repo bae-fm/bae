@@ -2,6 +2,14 @@ import BaeKit
 import SwiftUI
 import os.log
 
+private let appEdition: AppEdition = {
+    #if BAE_OAUTH_PROVIDERS
+    .bae
+    #else
+    .baeium
+    #endif
+}()
+
 @main
 struct BaeApp: App {
     // The host's OAuth client config and any error loading it. Present only in a
@@ -23,11 +31,14 @@ struct BaeApp: App {
         #endif
         // Telemetry first, from compiled-in values only (no $HOME needed), so the
         // sink exists for every later launch step and any failure it reports.
-        let diagnostics = BaeDiagnostics.configure(source: "ios")
+        let diagnostics = BaeDiagnostics.configure(
+            source: "ios",
+            edition: appEdition
+        )
         self.diagnostics = diagnostics
         var launchError: String?
         do {
-            BaeCrashReporting.configure()
+            BaeCrashReporting.configure(edition: appEdition)
             Logger.bae("BaeApp").info("application launched")
             // App processes on iOS have no $HOME, which bae-core needs to locate its
             // data root (`~/.bae`). Point it at our Application Support container

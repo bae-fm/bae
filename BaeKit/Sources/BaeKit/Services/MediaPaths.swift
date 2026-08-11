@@ -25,7 +25,7 @@ public final class MediaPaths: Sendable, Observable {
         // periphery:ignore
         /// All-no-op instance for SwiftUI previews. Previews don't have a live
         /// library to resolve paths against.
-        public static let stub = MediaPaths()
+        public static func stub() -> MediaPaths { MediaPaths() }
     #endif
 }
 

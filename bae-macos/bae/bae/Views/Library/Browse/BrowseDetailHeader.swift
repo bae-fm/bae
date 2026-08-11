@@ -32,6 +32,6 @@ struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
         }
         .padding()
         .frame(width: 420, alignment: .leading)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

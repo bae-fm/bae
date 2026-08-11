@@ -14,7 +14,7 @@
 //!   coven's local store), then flips `remote` false, registers the external refs,
 //!   and tombstones the cloud blobs — one atomic commit. A cancel before the
 //!   commit rolls back the partial copies and leaves the release Remote.
-//! - `pin_release_task` / `unpin_release`: pin/unpin a Remote release's blobs in
+//! - `pin_release` / `unpin_release`: pin/unpin a Remote release's blobs in
 //!   coven's cache (`storage/pinned/` vs the evictable `storage/cache/`).
 //!
 //! Pinned-ness is coven cache state; bae stores no pin flag. A Remote release's
@@ -25,7 +25,8 @@ use std::future::Future;
 use crate::album_detail::ReleaseStorageAction;
 use crate::db::DbFile;
 use crate::diagnostics::{LocalId, TelemetryEvent};
-use crate::library::{DownloadTransferProgress, LibraryManager};
+use crate::library::release_queue::RunningOp;
+use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
@@ -75,18 +76,19 @@ impl TransferService {
         Self { library_manager }
     }
 
-    /// Pin a release: have coven fetch its blobs into `storage/pinned/` on a
-    /// spawned task. Returns a receiver for progress updates plus the task's
-    /// handle, so the download queue worker can abort the fetch when the user
-    /// cancels.
-    pub fn pin_release_task(
+    /// Pin a release and compose its progress drain, task completion, and abort
+    /// control into the operation the serial queue owns.
+    pub fn pin_release<Drive, DriveFuture, DriveOutput>(
         &self,
         release_id: String,
-    ) -> (
-        mpsc::UnboundedReceiver<TransferProgress>,
-        tokio::task::JoinHandle<()>,
-    ) {
-        self.spawn_transfer(
+        drive: Drive,
+    ) -> RunningOp<impl Future<Output = Result<DriveOutput, LibraryError>>>
+    where
+        Drive: FnOnce(mpsc::UnboundedReceiver<TransferProgress>) -> DriveFuture,
+        DriveFuture: Future<Output = Result<DriveOutput, LibraryError>>,
+    {
+        let (progress, task) = spawn_transfer(
+            self.library_manager.clone(),
             release_id,
             ReleaseStorageAction::Pin,
             |release_id, library_manager, tx| async move {
@@ -97,13 +99,26 @@ impl TransferService {
                     .await?;
                 Ok(())
             },
-        )
+        );
+        let abort = task.abort_handle();
+        let outcome = async move {
+            let drained = drive(progress).await;
+            match task.await {
+                Ok(()) => drained,
+                Err(join_error) if join_error.is_cancelled() => drained,
+                Err(join_error) => Err(LibraryError::Storage(format!(
+                    "pin task panicked: {join_error}"
+                ))),
+            }
+        };
+        RunningOp::new(abort, outcome)
     }
 
     /// Unpin a release: move its blobs from `storage/pinned/` to the evictable
     /// `storage/cache/`. Returns a receiver for progress updates.
     pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = self.spawn_transfer(
+        let (rx, _) = spawn_transfer(
+            self.library_manager.clone(),
             release_id,
             ReleaseStorageAction::Unpin,
             |release_id, library_manager, _tx| async move {
@@ -123,7 +138,8 @@ impl TransferService {
         release_id: String,
         pin: bool,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = self.spawn_transfer(
+        let (rx, _) = spawn_transfer(
+            self.library_manager.clone(),
             release_id,
             ReleaseStorageAction::MakeRemote,
             move |release_id, library_manager, _tx| async move {
@@ -165,7 +181,8 @@ impl TransferService {
         new_path: String,
         cancel: crate::library::CancellationToken,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = self.spawn_transfer(
+        let (rx, _) = spawn_transfer(
+            self.library_manager.clone(),
             release_id,
             ReleaseStorageAction::MakeLocal,
             move |release_id, library_manager, _tx| async move {
@@ -183,53 +200,49 @@ impl TransferService {
         );
         rx
     }
+}
 
-    fn spawn_transfer<Run, Fut>(
-        &self,
-        release_id: String,
-        action: ReleaseStorageAction,
-        run: Run,
-    ) -> (
-        mpsc::UnboundedReceiver<TransferProgress>,
-        tokio::task::JoinHandle<()>,
-    )
-    where
-        Run: FnOnce(String, LibraryManager, ProgressTx) -> Fut + Send + 'static,
-        Fut: Future<Output = TransferResult> + Send + 'static,
-    {
-        let (tx, rx) = mpsc::unbounded_channel();
-        let library_manager = self.library_manager.clone();
-
-        let task = tokio::spawn(async move {
-            let label = transfer_label(action);
-            let result = run_transfer(
-                release_id.clone(),
+fn spawn_transfer<Run, Fut>(
+    library_manager: LibraryManager,
+    release_id: String,
+    action: ReleaseStorageAction,
+    run: Run,
+) -> (
+    mpsc::UnboundedReceiver<TransferProgress>,
+    tokio::task::JoinHandle<()>,
+)
+where
+    Run: FnOnce(String, LibraryManager, ProgressTx) -> Fut + Send + 'static,
+    Fut: Future<Output = TransferResult> + Send + 'static,
+{
+    let (tx, rx) = mpsc::unbounded_channel();
+    let task = tokio::spawn(async move {
+        let label = transfer_label(action);
+        let result = run_transfer(
+            release_id.clone(),
+            action,
+            library_manager.clone(),
+            tx.clone(),
+            run,
+        )
+        .await;
+        if let Err(e) = result {
+            error!("{} failed for release {}: {}", label, release_id, e);
+            library_manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
                 action,
-                library_manager.clone(),
-                tx.clone(),
-                run,
-            )
-            .await;
-            if let Err(e) = result {
-                error!("{} failed for release {}: {}", label, release_id, e);
-                library_manager
-                    .diagnostics()
-                    .event(TelemetryEvent::StorageTransferFailed {
-                        action,
-                        release_id: LocalId(release_id.clone()),
-                    });
-                send_progress(
-                    &tx,
-                    TransferProgress::Failed {
-                        release_id,
-                        error: e.to_string(),
-                    },
-                );
-            }
-        });
+                release_id: LocalId(release_id.clone()),
+            });
+            send_progress(
+                &tx,
+                TransferProgress::Failed {
+                    release_id,
+                    error: e.to_string(),
+                },
+            );
+        }
+    });
 
-        (rx, task)
-    }
+    (rx, task)
 }
 
 async fn run_transfer<Fut>(
@@ -249,13 +262,11 @@ where
         release_id = %release_id,
         "release transfer complete"
     );
-    library_manager
-        .diagnostics()
-        .event(TelemetryEvent::StorageTransferCompleted {
-            action,
-            release_id: LocalId(release_id.clone()),
-            file_count,
-        });
+    library_manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+        action,
+        release_id: LocalId(release_id.clone()),
+        file_count,
+    });
     send_progress(&tx, TransferProgress::Complete { release_id });
     Ok(())
 }
@@ -337,8 +348,12 @@ mod tests {
 
     /// A `LibraryManager` (over an empty test DB) whose diagnostics ship to a
     /// recording transport, so an emitted event can be read back off the wire.
-    async fn manager_with_recording_transport() -> (LibraryManager, Arc<RecordingTransport>, TempDir)
-    {
+    async fn manager_with_recording_transport() -> (
+        LibraryManager,
+        Diagnostics,
+        Arc<RecordingTransport>,
+        TempDir,
+    ) {
         let home = TempDir::new().unwrap();
         let db_path = home.path().join("transfer-test.db");
         let database = crate::db::Database::new_test(
@@ -388,7 +403,7 @@ mod tests {
             tokio::runtime::Handle::current(),
             crate::import::cover_art::RemoteImageCache::for_test(),
         );
-        (manager, transport, home)
+        (manager, diagnostics, transport, home)
     }
 
     /// Pinning a release that isn't in the library fails the transfer's
@@ -396,13 +411,16 @@ mod tests {
     /// event — through the real diagnostics pipeline to the wire.
     #[tokio::test]
     async fn a_failed_transfer_ships_storage_transfer_failed() {
-        let (manager, transport, _home) = manager_with_recording_transport().await;
-        let diagnostics = manager.diagnostics().clone();
+        let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
         let transfer = TransferService::new(manager);
 
         // No such release, so `start_transfer` errors before any blob work.
-        let (_progress_rx, task) = transfer.pin_release_task("missing-release".to_string());
-        task.await.expect("transfer task completes");
+        let running =
+            transfer.pin_release("missing-release".to_string(), |mut progress| async move {
+                while progress.recv().await.is_some() {}
+                Ok(())
+            });
+        running.finish().await.expect("transfer task completes");
 
         diagnostics.flush().await.expect("flush succeeds");
         let events: Vec<DiagnosticEvent> = transport

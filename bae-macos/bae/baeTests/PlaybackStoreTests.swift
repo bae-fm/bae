@@ -14,6 +14,48 @@ private func makeTrack(_ id: String) -> NowPlayingTrack {
     )
 }
 
+private func makeQueueSnapshot(
+    entryId: String,
+    revision: UInt64
+) -> BridgeQueueSnapshot {
+    BridgeQueueSnapshot(
+        manual: [
+            BridgeQueueEntry(
+                entryId: entryId,
+                trackId: "track-\(entryId)",
+                title: "Track Title",
+                artistNames: "Artist Name",
+                durationClock: bridgeClock(ms: 180_000),
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
+        ],
+        context: nil,
+        hasNext: false,
+        hasPrevious: false,
+        revision: revision
+    )
+}
+
+@Suite("PlaybackStore queue revisions")
+struct PlaybackStoreQueueRevisionTests {
+    @MainActor
+    @Test("an older queue read cannot overwrite a newer event")
+    func rejectsOlderSnapshot() {
+        let store = PlaybackStore()
+
+        store.applyQueueSnapshot(
+            makeQueueSnapshot(entryId: "newer", revision: 2)
+        )
+        store.applyQueueSnapshot(
+            makeQueueSnapshot(entryId: "older", revision: 1)
+        )
+
+        #expect(store.revision == 2)
+        #expect(store.manualQueue.map(\.entryId) == ["newer"])
+    }
+}
+
 @Suite("PlaybackStore loading transition")
 struct PlaybackStoreBeginLoadingTests {
     /// Core's first `PlaybackLoading` carries only a track id. The now-playing
@@ -246,7 +288,7 @@ struct PlaybackStoreSeekProjectionTests {
         )
         #expect(stale.positionMs == 25_000)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.25,
             positionMs: 25_000,
             durationMs: 100_000
@@ -275,7 +317,7 @@ struct PlaybackStoreSeekProjectionTests {
 
         #expect(projected?.positionMs == 25_000)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.25,
             positionMs: 25_000,
             durationMs: 100_000
@@ -287,7 +329,7 @@ struct PlaybackStoreSeekProjectionTests {
         )
         #expect(stale.positionMs == 25_000)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.25,
             positionMs: 25_000,
             durationMs: 100_000
@@ -301,7 +343,7 @@ struct PlaybackStoreSeekProjectionTests {
 
         #expect(reachedTargetProgress.positionMs == 25_000)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.25,
             positionMs: 25_000,
             durationMs: 100_000
@@ -315,7 +357,7 @@ struct PlaybackStoreSeekProjectionTests {
 
         #expect(accepted.positionMs == 25_100)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.251,
             positionMs: 25_100,
             durationMs: 100_000
@@ -341,7 +383,7 @@ struct PlaybackStoreSeekProjectionTests {
         )
         #expect(stale.positionMs == 25_000)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.25,
             positionMs: 25_000,
             durationMs: 100_000
@@ -376,7 +418,7 @@ struct PlaybackStoreSeekProjectionTests {
 
         #expect(store.projectSeek(ratio: 0.75) == nil)
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.1,
             positionMs: 10_000,
             durationMs: 0
@@ -396,7 +438,7 @@ struct PlaybackStoreSeekProjectionTests {
 
         store.resetPlaybackPosition()
 
-        guard case .reset = store.playbackPositionSubject.value else {
+        guard case .reset = store.playbackPositionEvent else {
             Issue.record("position did not reset")
             return
         }
@@ -417,7 +459,7 @@ struct PlaybackStoreSeekProjectionTests {
         store.beginLoading(trackId: "track-1")
 
         expectPosition(
-            store.playbackPositionSubject.value,
+            store.playbackPositionEvent,
             progress: 0.75,
             positionMs: 75_000,
             durationMs: 100_000
@@ -454,7 +496,7 @@ private func expectStorePosition(
     durationMs: UInt64
 ) {
     expectPosition(
-        store.playbackPositionSubject.value,
+        store.playbackPositionEvent,
         progress: progress,
         positionMs: positionMs,
         durationMs: durationMs

@@ -413,9 +413,9 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: false,
         )
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 2))
-        .environment(Queue.stub)
+        .environment(Queue.stub())
     }
 
     #Preview("Paused — Repeat Context") {
@@ -426,9 +426,9 @@ extension NowPlayingBar {
             repeatMode: .context,
             shuffled: false,
         )
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
-        .environment(Queue.stub)
+        .environment(Queue.stub())
     }
 
     #Preview("Shuffle active") {
@@ -439,9 +439,9 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: true,
         )
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
-        .environment(Queue.stub)
+        .environment(Queue.stub())
     }
 
     #Preview("Loading") {
@@ -453,9 +453,9 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: nil,
         )
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 5, context: nil))
-        .environment(Queue.stub)
+        .environment(Queue.stub())
     }
 
     #Preview("Empty") {
@@ -466,8 +466,8 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: nil,
         )
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 0, context: nil))
-        .environment(Queue.stub)
+        .environment(Queue.stub())
     }
 #endif

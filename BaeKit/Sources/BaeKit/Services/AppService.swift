@@ -1,5 +1,75 @@
+import Combine
 import Foundation
 import Observation
+import SwiftUI
+
+/// The shared services one platform `AppService` constructs before handing
+/// ownership to its BaeKit base. Its fields are deliberately hidden: the value
+/// crosses the superclass-initialization boundary, but none of the retained
+/// services can be unpacked afterward.
+public struct AppServiceComponents {
+    fileprivate let playbackStore: PlaybackStore
+    fileprivate let configStore: ConfigStore
+    fileprivate let libraryStore: LibraryStore
+    fileprivate let downloadStore: DownloadStore
+    fileprivate let castStore: CastStore
+    fileprivate let outboxStore: OutboxStore
+    fileprivate let projectionRegistry: ProjectionRegistry
+    fileprivate let library: Library
+    fileprivate let playback: Playback
+    fileprivate let queue: Queue
+    fileprivate let mediaPaths: MediaPaths
+    fileprivate let imageStore: ImageStore
+    fileprivate let sync: Sync
+    fileprivate let downloads: Downloads
+    fileprivate let cast: Cast
+
+    public init(
+        playbackStore: PlaybackStore,
+        configStore: ConfigStore,
+        libraryStore: LibraryStore,
+        downloadStore: DownloadStore,
+        castStore: CastStore,
+        outboxStore: OutboxStore,
+        projectionRegistry: ProjectionRegistry,
+        library: Library,
+        playback: Playback,
+        queue: Queue,
+        mediaPaths: MediaPaths,
+        imageStore: ImageStore,
+        sync: Sync,
+        downloads: Downloads,
+        cast: Cast
+    ) {
+        self.playbackStore = playbackStore
+        self.configStore = configStore
+        self.libraryStore = libraryStore
+        self.downloadStore = downloadStore
+        self.castStore = castStore
+        self.outboxStore = outboxStore
+        self.projectionRegistry = projectionRegistry
+        self.library = library
+        self.playback = playback
+        self.queue = queue
+        self.mediaPaths = mediaPaths
+        self.imageStore = imageStore
+        self.sync = sync
+        self.downloads = downloads
+        self.cast = cast
+    }
+}
+
+#if DEBUG
+    public struct AppServiceTestState {
+        public let nowPlaying: NowPlaying
+        public let playbackPosition: PlaybackPositionEvent
+        public let manualQueueEntryIds: [String]
+        public let upcomingQueueEntryIds: [String]?
+        public let volume: Float
+        public let isMuted: Bool
+        public let repeatMode: BridgeRepeatMode
+    }
+#endif
 
 /// Root application object for one unlocked library — the platform-shared base.
 /// Not `@Observable`: the reactive state lives on the contained stores. Conforms
@@ -20,87 +90,258 @@ open class AppService: @unchecked Sendable, Observable {
 
     /// Handle to bae-core via the uniffi bridge. All library, playback, and
     /// sync requests go through this.
-    public nonisolated let appHandle: AppHandle
+    private nonisolated let appHandle: AppHandle
 
     /// The process-lifetime telemetry sink (built at launch, before this
     /// library opened). Host-originated events route through it; unlike
     /// `appHandle` it outlives any one library, so switching libraries keeps the
     /// same sink.
-    public nonisolated let diagnostics: BridgeDiagnostics
+    private nonisolated let diagnostics: BridgeDiagnostics
 
     /// Drives the platform Now Playing surface and remote-control events, kept
     /// in sync with `playbackStore.nowPlaying`.
-    public nonisolated let mediaControlService: MediaControlService
+    private nonisolated let mediaControlService: MediaControlService
 
     // MARK: - Stores
 
-    public let playbackStore: PlaybackStore
-    public let configStore: ConfigStore
-    public let libraryStore: LibraryStore
+    private let playbackStore: PlaybackStore
+    private let configStore: ConfigStore
+    private let libraryStore: LibraryStore
     /// In-memory download (pin) queue mirror — per-release state and summary.
-    public let downloadStore: DownloadStore
+    private let downloadStore: DownloadStore
     /// Which device playback is on, and what the picker found while it was open.
-    public let castStore: CastStore
+    private let castStore: CastStore
     /// Cloud outbox processing mirror — queue depth, per-item state, summary
     /// (carries the sync-pause flag).
-    public let outboxStore: OutboxStore
+    private let outboxStore: OutboxStore
 
     /// Query-backed projections refreshed by scoped invalidation events.
-    public let projectionRegistry = ProjectionRegistry()
-    private var projectionRegistrations: [ProjectionRegistration] = []
+    private let projectionRegistry: ProjectionRegistry
+    private let commonProjections: CommonProjections
 
     // MARK: - Domain services
     //
     // Narrow, per-domain projections of `AppHandle` that views read via
     // `@Environment(...)` instead of reaching for `appService.appHandle`.
 
-    public nonisolated let library: Library
-    public nonisolated let playback: Playback
-    public nonisolated let queue: Queue
-    public nonisolated let mediaPaths: MediaPaths
+    private nonisolated let library: Library
+    private nonisolated let playback: Playback
+    private nonisolated let queue: Queue
+    private nonisolated let mediaPaths: MediaPaths
     /// The app's image pipeline: fetch, decode-at-size, bounded decoded cache.
-    public nonisolated let imageStore: ImageStore
-    public nonisolated let sync: Sync
-    public nonisolated let downloads: Downloads
+    private nonisolated let imageStore: ImageStore
+    private nonisolated let sync: Sync
+    private nonisolated let downloads: Downloads
     /// Cast transport: browse for devices, and move playback to or from one.
-    public nonisolated let cast: Cast
+    private nonisolated let cast: Cast
+    private let playbackEvents: PlaybackEventHandler
+
+    #if DEBUG
+        private let testAccess: AppServiceTestAccess
+    #endif
 
     /// Build the shared half of an `AppService` around an already-open,
-    /// already-unlocked `AppHandle` and a config snapshot the caller read off
-    /// it. Pure field assignment; every side effect lives in the subclass
-    /// `wireUp()` after construction.
+    /// already-unlocked `AppHandle` and the services constructed for it. Pure
+    /// field assignment; every side effect lives in the subclass `wireUp()`
+    /// after construction.
     public init(
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
         diagnostics: BridgeDiagnostics,
-        config: BridgeConfig,
-        initialOutbox: BridgeOutboxSnapshot
+        components: AppServiceComponents
     ) {
         self.appHandle = appHandle
         self.mediaControlService = mediaControlService
         self.diagnostics = diagnostics
-        playbackStore = PlaybackStore()
-        configStore = ConfigStore(
-            config: Config(bridge: config),
-            syncReady: appHandle.isSyncReady()
+        playbackStore = components.playbackStore
+        configStore = components.configStore
+        libraryStore = components.libraryStore
+        downloadStore = components.downloadStore
+        castStore = components.castStore
+        outboxStore = components.outboxStore
+        projectionRegistry = components.projectionRegistry
+        commonProjections = CommonProjections(
+            registry: components.projectionRegistry,
+            appHandle: appHandle,
+            configStore: components.configStore,
+            outboxStore: components.outboxStore,
+            downloadStore: components.downloadStore,
+            libraryStore: components.libraryStore,
+            castStore: components.castStore
         )
-        libraryStore = LibraryStore()
-        // Both reads are infallible — `getDownloadSnapshot` never throws, and
-        // the outbox snapshot is read (and its failure handled) by the caller.
-        downloadStore = DownloadStore(snapshot: appHandle.getDownloadSnapshot())
-        outboxStore = OutboxStore(snapshot: initialOutbox)
-        castStore = CastStore()
-        // Uniform across platforms: each `init(handle:)` wires exactly the
-        // bridge methods its platform exports (the iOS flavors omit the
-        // desktop-only reads).
-        library = Library(handle: appHandle)
-        playback = Playback(handle: appHandle)
-        queue = Queue(handle: appHandle)
-        mediaPaths = MediaPaths(handle: appHandle)
-        imageStore = ImageStore(handle: appHandle)
-        sync = Sync(handle: appHandle)
-        downloads = Downloads(handle: appHandle)
-        cast = Cast(handle: appHandle)
+        library = components.library
+        playback = components.playback
+        queue = components.queue
+        mediaPaths = components.mediaPaths
+        imageStore = components.imageStore
+        sync = components.sync
+        downloads = components.downloads
+        cast = components.cast
+        playbackEvents = PlaybackEventHandler(
+            appHandle: appHandle,
+            playbackStore: components.playbackStore,
+            castStore: components.castStore,
+            mediaControlService: mediaControlService
+        )
+        #if DEBUG
+            testAccess = AppServiceTestAccess(
+                playbackStore: components.playbackStore
+            )
+        #endif
+    }
+
+    public func installSharedEnvironment<Content: View>(
+        _ content: Content
+    ) -> some View {
+        content
+            .environment(playbackStore)
+            .environment(configStore)
+            .environment(libraryStore)
+            .environment(downloadStore)
+            .environment(outboxStore)
+            .environment(downloads)
+            .environment(projectionRegistry)
+            .environment(imageStore)
+            .environment(library)
+            .environment(playback)
+            .environment(queue)
+            .environment(sync)
+            .environment(cast)
+            .environment(castStore)
+            .environment(mediaPaths)
+    }
+
+    public func installSharedEnvironment<Content: Scene>(
+        _ content: Content
+    ) -> some Scene {
+        content
+            .environment(playbackStore)
+            .environment(configStore)
+            .environment(libraryStore)
+            .environment(downloadStore)
+            .environment(outboxStore)
+            .environment(downloads)
+            .environment(projectionRegistry)
+            .environment(imageStore)
+            .environment(library)
+            .environment(playback)
+            .environment(queue)
+            .environment(sync)
+            .environment(cast)
+            .environment(castStore)
+            .environment(mediaPaths)
+    }
+
+    public static func installSharedEnvironment<Content: Scene>(
+        _ content: Content,
+        from service: AppService?
+    ) -> some Scene {
+        content
+            .environment(service?.playbackStore)
+            .environment(service?.configStore)
+            .environment(service?.libraryStore)
+            .environment(service?.downloadStore)
+            .environment(service?.outboxStore)
+            .environment(service?.downloads)
+            .environment(service?.projectionRegistry)
+            .environment(service?.imageStore)
+            .environment(service?.library)
+            .environment(service?.playback)
+            .environment(service?.queue)
+            .environment(service?.sync)
+            .environment(service?.cast)
+            .environment(service?.castStore)
+            .environment(service?.mediaPaths)
+    }
+
+    public var libraryId: String { configStore.config.libraryId }
+    public var libraryName: String { configStore.config.libraryName }
+    public var libraryPath: String { configStore.config.libraryPath }
+
+    public var playbackPositionPublisher:
+        AnyPublisher<PlaybackPositionEvent, Never>
+    {
+        playbackStore.playbackPositionPublisher
+    }
+
+    public func savePlaybackState() async {
+        await appHandle.savePlaybackState()
+    }
+
+    public nonisolated func forgetLibrary() throws {
+        try appHandle.forgetLibrary()
+    }
+
+    public func shutdown() async {
+        await appHandle.shutdown()
+    }
+
+    public func triggerSync() {
+        sync.triggerSync()
+    }
+
+    public nonisolated func renameLibrary(
+        _ libraryId: String,
+        to name: String
+    ) throws {
+        try sync.renameLibrary(libraryId, name)
+    }
+
+    public nonisolated func lockActiveLibrary() throws {
+        try sync.lockActiveLibrary()
+    }
+
+    public func storeRestoreCodeInKeychain(
+        libraryId: String,
+        onError: @escaping @Sendable (String) -> Void
+    ) {
+        sync.storeRestoreCodeInKeychain(
+            libraryId: libraryId,
+            onError: onError
+        )
+    }
+
+    #if os(iOS)
+        public func setupRemoteCommands() {
+            mediaControlService.setupRemoteCommands(
+                playback: playback,
+                playbackStore: playbackStore
+            )
+        }
+    #else
+        public func activateMediaControls(previewAudio: PreviewAudio) {
+            mediaControlService.activate(
+                playback: playback,
+                previewAudio: previewAudio,
+                playbackStore: playbackStore
+            )
+        }
+    #endif
+
+    #if os(macOS)
+        public func deactivateMediaControls() {
+            mediaControlService.deactivate(playbackStore: playbackStore)
+        }
+
+        public func registerArtworkAnalyzer(
+            _ analyzer: ArtworkAnalyzerCallback
+        ) {
+            appHandle.registerArtworkAnalyzer(analyzer: analyzer)
+        }
+    #endif
+
+    public func subscribeUIEvents(
+        onUnhandled:
+            @escaping @MainActor @Sendable (BridgeUiEvent) -> Void
+    ) {
+        appHandle.subscribeUiEvents(
+            callback: UiEventPump(
+                sink: UiEventDispatcher.makeSink(
+                    appService: self,
+                    onUnhandled: { event, _ in onUnhandled(event) }
+                )
+            )
+        )
     }
 
     /// Report that a host UI screen was opened, as a typed telemetry event,
@@ -139,180 +380,33 @@ open class AppService: @unchecked Sendable, Observable {
         #endif
     }
 
-    /// Mirror a queue snapshot into the playback store and refresh the
-    /// media-control next/previous availability.
-    public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
-        playbackStore.applyQueueSnapshot(snapshot)
-        mediaControlService.updateCommandAvailability(
-            hasNext: snapshot.hasNext,
-            hasPrevious: snapshot.hasPrevious
-        )
-    }
-
-    /// Register the projections both platforms share. Called first by each
-    /// subclass's `wireUp()`; platform-only projections are added after via
-    /// `registerProjection`.
+    /// Start the projections both platforms share.
     public func registerCommonProjections() {
-        precondition(projectionRegistrations.isEmpty)
-        projectionRegistrations = [
-            projectionRegistry.register(makeConfigProjection()),
-            projectionRegistry.register(makeSyncStatusProjection()),
-            projectionRegistry.register(makeOutboxProjection()),
-            projectionRegistry.register(makeDownloadProjection()),
-            projectionRegistry.register(makeReleaseDetailProjection()),
-            projectionRegistry.register(makeCastDevicesProjection()),
-            // The bridge's lag-recovery path is `.queue`'s only invalidation
-            // producer (normal queue changes land through the `queueUpdated`
-            // direct apply), so this projection exists purely for that recovery
-            // case. A lag-recovery refetch queried before the next queue event
-            // but applied after that event's direct apply can overwrite one
-            // newer snapshot with an older one — corrected on the next queue
-            // event. Both applies write idempotent full snapshots, and
-            // `Projection`'s generation guard covers invalidation-vs-invalidation
-            // races, not this invalidation-vs-direct-apply race.
-            projectionRegistry.register(makeQueueProjection()),
-        ]
-    }
-
-    /// Register a platform-only projection and retain its subscription for the
-    /// life of the service.
-    public func registerProjection<Value: Sendable>(
-        _ projection: Projection<Value>
-    ) {
-        projectionRegistrations.append(projectionRegistry.register(projection))
-    }
-}
-
-extension AppService {
-    private struct ConfigProjectionValue: Sendable {
-        let config: BridgeConfig
-        let syncReady: Bool
-    }
-
-    private func makeConfigProjection() -> Projection<ConfigProjectionValue> {
-        Projection(
-            domain: .config,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    ConfigProjectionValue(
-                        config: appHandle.getConfig(),
-                        syncReady: appHandle.isSyncReady()
-                    )
-                }
-            },
-            apply: { [configStore] value in
-                configStore.applyConfigSnapshot(
-                    value.config,
-                    syncReady: value.syncReady
-                )
+        commonProjections.start(
+            applyQueue: { [weak self] snapshot in
+                self?.playbackEvents.applyQueueSnapshot(snapshot)
             },
             onError: { [weak self] error in self?.showError(error) }
         )
     }
 
-    private func makeSyncStatusProjection()
-        -> Projection<BridgeSyncStatusSnapshot>
-    {
-        Projection(
-            domain: .syncStatus,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getSyncStatus()
-                }
-            },
-            apply: { [configStore] snapshot in
-                configStore.applySyncStatusSnapshot(snapshot)
-            },
-            onError: { [weak self] error in self?.showError(error) }
-        )
+    public func invalidateProjection(_ invalidation: BridgeInvalidation) {
+        projectionRegistry.invalidate(invalidation)
     }
 
-    private func makeQueueProjection() -> Projection<BridgeQueueSnapshot> {
-        Projection(
-            domain: .queue,
-            query: { [appHandle] _ in
-                try await appHandle.getQueueSnapshot()
-            },
-            apply: { [weak self] snapshot in
-                self?.applyQueueSnapshot(snapshot)
-            },
-            onError: { [weak self] error in self?.showError(error) }
-        )
+    func applyPlaybackEvent(_ event: BridgeUiEvent) {
+        playbackEvents.apply(event)
     }
 
-    private func makeOutboxProjection() -> Projection<BridgeOutboxSnapshot> {
-        Projection(
-            domain: .outbox,
-            query: { [appHandle] _ in
-                try await appHandle.getOutboxSnapshot()
-            },
-            apply: { [outboxStore] snapshot in
-                outboxStore.applySnapshot(snapshot)
-            },
-            onError: { [weak self] error in self?.showError(error) }
-        )
-    }
+    #if DEBUG
+        public var stateForTesting: AppServiceTestState {
+            testAccess.state
+        }
 
-    private func makeDownloadProjection() -> Projection<BridgeDownloadSnapshot>
-    {
-        Projection(
-            domain: .downloadQueue,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getDownloadSnapshot()
-                }
-            },
-            apply: { [downloadStore] snapshot in
-                downloadStore.applySnapshot(snapshot)
-            },
-            onError: { [weak self] error in self?.showError(error) }
-        )
-    }
+        public var queueItemsAddedPublisherForTesting: AnyPublisher<Int, Never>
+        {
+            testAccess.queueItemsAddedPublisher
+        }
 
-    private struct ReleaseDetailProjectionValue: Sendable {
-        let releaseId: String
-        let release: BridgeRelease?
-    }
-
-    private func makeReleaseDetailProjection()
-        -> Projection<ReleaseDetailProjectionValue>
-    {
-        Projection(
-            domain: .release,
-            query: { [appHandle] invalidation in
-                guard case .release(let releaseId) = invalidation else {
-                    preconditionFailure(
-                        "Release projection received \(invalidation)"
-                    )
-                }
-                let release = try await appHandle.findReleaseDetail(
-                    releaseId: releaseId
-                )
-                return ReleaseDetailProjectionValue(
-                    releaseId: releaseId,
-                    release: release
-                )
-            },
-            apply: { [libraryStore] value in
-                libraryStore.applyReleaseDetailSnapshot(
-                    releaseId: value.releaseId,
-                    bridge: value.release
-                )
-            },
-            onError: { [weak self] error in self?.showError(error) }
-        )
-    }
-
-    /// The picker's device list. Only ever invalidated while a picker is open —
-    /// discovery is what produces the invalidation, and it runs with the picker.
-    private func makeCastDevicesProjection() -> Projection<[BridgeCastDevice]> {
-        Projection(
-            domain: .castDevices,
-            query: { [appHandle] _ in
-                try await DetachedWork.run { appHandle.getCastDevices() }
-            },
-            apply: { [castStore] devices in castStore.devices = devices },
-            onError: { [weak self] error in self?.showError(error) }
-        )
-    }
+    #endif
 }

@@ -1132,7 +1132,7 @@ mod composer_mode_tests {
         assert_eq!(composer_detail.work_groups.len(), 1);
         assert_eq!(composer_detail.work_groups[0].works[0].work.id, WORK_A);
         let release_role_count = db
-            .call(|conn| {
+            .read(|conn| {
                 conn.query_row(
                     "SELECT COUNT(*) FROM release_artist_roles WHERE id = '9b72bbbf-621e-41ca-8930-1623b643a20d'",
                     [],
@@ -1151,7 +1151,7 @@ mod composer_mode_tests {
             .expect("work detail");
         assert_eq!(work_detail.tracks.len(), 1);
         let track_role_count = db
-            .call(|conn| {
+            .read(|conn| {
                 conn.query_row(
                     "SELECT COUNT(*) FROM track_artist_roles WHERE id = 'fa0c8483-f09a-4b69-8903-b1ebcdc31322'",
                     [],
@@ -3110,19 +3110,7 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn imported_content_hash_lookup_uses_its_partial_index() {
         let (db, _tmp) = empty_db().await;
-        let plan = db
-            .handle()
-            .sql_read(move |sql| {
-                let details = sql.query(
-                    "EXPLAIN QUERY PLAN \
-                     SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
-                    ["hash"],
-                    |row| row.get::<_, String>(3),
-                )?;
-                Ok::<_, coven::CovenError>(details)
-            })
-            .await
-            .unwrap();
+        let plan = db.content_hash_query_plan_for_test().await.unwrap();
 
         assert!(
             plan.iter()

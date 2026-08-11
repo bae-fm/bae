@@ -168,7 +168,7 @@ struct OutboxSection: View {
     #Preview("Populated") {
         OutboxSection()
             .environment(PreviewData.outboxStore())
-            .environment(Sync.stub)
+            .environment(Sync.stub())
             .environment(UiStore())
             .frame(width: 720, height: 360)
     }
@@ -180,7 +180,7 @@ struct OutboxSection: View {
                     PreviewData.outboxSnapshot(paused: true)
                 )
             )
-            .environment(Sync.stub)
+            .environment(Sync.stub())
             .environment(UiStore())
             .frame(width: 720, height: 360)
     }

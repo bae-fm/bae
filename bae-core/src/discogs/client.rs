@@ -329,7 +329,7 @@ pub enum DiscogsKeySignal {
 
 /// Invoked after every call a [`DiscogsClient`] makes, so the stored key's persisted
 /// validation state tracks reality without each call site recording it. Injected by
-/// `LibraryManager::discogs_client`.
+/// the library manager's Discogs operation session.
 pub type DiscogsValidationObserver = std::sync::Arc<dyn Fn(DiscogsKeySignal) + Send + Sync>;
 
 /// Where every Discogs request goes.
@@ -341,9 +341,9 @@ fn api_base_url() -> String {
 }
 
 /// The redirectable form of [`API_BASE_URL`], compiled only into test builds —
-/// the same seam `musicbrainz::set_base_url_for_test` gives that client. A
-/// client is built per call site rather than held as one static, so the
-/// override is read at construction.
+/// the same seam `musicbrainz::set_base_url_for_test` gives that client. Each
+/// operation session builds its client on demand, so the override is read at
+/// construction.
 #[cfg(any(test, feature = "test-utils"))]
 fn api_base_url() -> String {
     BASE_URL_OVERRIDE
@@ -395,17 +395,6 @@ impl DiscogsClient {
             api_key,
             base_url: api_base_url(),
             observer,
-        }
-    }
-
-    /// Requests target `base_url` instead of the live API, so a test can point at a
-    /// local mock or a refused port. Production always goes through `new` /
-    /// `with_observer`.
-    #[cfg(test)]
-    pub(crate) fn with_base_url(api_key: String, base_url: String) -> Self {
-        Self {
-            base_url,
-            ..Self::build(api_key, None)
         }
     }
 

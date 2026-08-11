@@ -5,7 +5,8 @@
 //! observer only *reports* what coven did, so the UI stays current:
 //!
 //! - the upload callbacks drive the `in_flight` map and the rolling-window
-//!   `throughput`, and re-emit the outbox snapshot as a `LibraryEvent`;
+//!   `throughput`, then tell the database-owning sync controller which UI
+//!   projection changed;
 //! - `on_root_made_remote` / `on_root_made_local` fire when coven completes a
 //!   transition, including one resumed after a restart — so the `ReleaseUpdated`
 //!   event survives a restart rather than dying with an in-memory flag.
@@ -13,14 +14,64 @@
 //! `should_skip_uploads` lets the host pause the upload pipeline without touching
 //! the queue.
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock, Weak};
+use std::future::Future;
+use std::sync::{Arc, Mutex, Weak};
 
-use coven::{BlobTransitionObserver, CovenHandle};
-use tokio::sync::broadcast;
+use coven::BlobTransitionObserver;
+use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, warn};
 
-use crate::db::Database;
-use crate::library::LibraryEvent;
+#[derive(Debug)]
+pub(crate) enum UploadObserverEvent {
+    OutboxChanged,
+    BlobUploaded {
+        file_id: String,
+        already_counted: u64,
+    },
+    ReleaseMadeRemote {
+        release_id: String,
+    },
+    ReleaseMadeLocal {
+        release_id: String,
+    },
+}
+
+impl UploadObserverEvent {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::OutboxChanged => "OutboxChanged",
+            Self::BlobUploaded { .. } => "BlobUploaded",
+            Self::ReleaseMadeRemote { .. } => "ReleaseMadeRemote",
+            Self::ReleaseMadeLocal { .. } => "ReleaseMadeLocal",
+        }
+    }
+}
+
+struct UploadObserverMessage {
+    event: UploadObserverEvent,
+    completed: oneshot::Sender<()>,
+}
+
+/// Receives the observer's facts and keeps each coven callback waiting until
+/// the database-owning consumer has rebuilt the corresponding UI projection.
+pub(crate) struct UploadObserverEvents {
+    receiver: mpsc::UnboundedReceiver<UploadObserverMessage>,
+}
+
+impl UploadObserverEvents {
+    pub(crate) async fn run<F, Fut>(mut self, mut process: F)
+    where
+        F: FnMut(UploadObserverEvent) -> Fut,
+        Fut: Future<Output = ()>,
+    {
+        while let Some(message) = self.receiver.recv().await {
+            process(message.event).await;
+            if message.completed.send(()).is_err() {
+                debug!("upload observer callback ended before its UI projection completed");
+            }
+        }
+    }
+}
 
 /// Reports coven's blob transitions to the UI: the outbox/throughput state while
 /// a make-Remote uploads, and a `ReleaseUpdated` whenever coven completes a
@@ -33,125 +84,47 @@ use crate::library::LibraryEvent;
 /// files in the cumulative progress and never re-derives a completed file as
 /// queued while coven's post-upload commit hasn't removed its row yet.
 /// `throughput` records the byte deltas as they transfer, for a rolling-window
-/// rate. `handle` is what `find_release_detail_with` answers the pin-state query
-/// through when rebuilding a `ReleaseDetail` for a `ReleaseUpdated` event; it is
-/// filled by [`set_handle`](Self::set_handle) right after the handle is built,
-/// since the handle owns this observer and so can't be passed at construction.
+/// rate. Database-backed projection work is sent to the sync controller rather
+/// than retaining or exposing its database.
 pub struct ReleaseUploadObserver {
-    db: OnceLock<Arc<Database>>,
-    handle: OnceLock<CovenHandle>,
     in_flight: Arc<Mutex<HashMap<String, u64>>>,
-    sessions: Arc<crate::library::UploadSessions>,
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
-    events: broadcast::Sender<LibraryEvent>,
+    events: mpsc::UnboundedSender<UploadObserverMessage>,
 }
 
 impl ReleaseUploadObserver {
-    pub fn new(
+    pub(crate) fn new(
         in_flight: Arc<Mutex<HashMap<String, u64>>>,
-        sessions: Arc<crate::library::UploadSessions>,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
-        events: broadcast::Sender<LibraryEvent>,
-    ) -> Self {
-        Self {
-            db: OnceLock::new(),
-            handle: OnceLock::new(),
-            in_flight,
-            sessions,
-            throughput,
-            sync_paused,
-            events,
-        }
-    }
-
-    /// Install the bae database wrapper after coven has opened the handle it owns.
-    pub fn set_database(&self, db: Arc<Database>) {
-        if self.db.set(db).is_err() {
-            panic!("ReleaseUploadObserver database already set — the observer was wired twice");
-        }
-    }
-
-    /// Install the handle the observer answers pin-state through. Called once,
-    /// right after the `CovenHandle` (which owns this observer) is built, so the
-    /// observer can rebuild `ReleaseDetail` payloads when a transition completes.
-    pub fn set_handle(&self, handle: CovenHandle) {
-        if self.handle.set(handle).is_err() {
-            panic!("ReleaseUploadObserver handle already set — the observer was wired twice");
-        }
-    }
-
-    /// The installed handle. Set right after construction and before any
-    /// transition can fire, so its absence is a wiring bug, not a runtime state.
-    fn handle(&self) -> &CovenHandle {
-        self.handle
-            .get()
-            .expect("observer handle set before any blob transition fires")
-    }
-
-    /// The installed bae database wrapper. Set before sync can start.
-    fn db(&self) -> &Database {
-        self.db
-            .get()
-            .expect("observer database set before any blob transition fires")
-            .as_ref()
-    }
-
-    /// Emit a `ReleaseUpdated` event after coven completes a transition, so the
-    /// UI's cached summary picks up the new `storage_state`.
-    async fn emit_release_updated(&self, release_id: &str) {
-        let album_id = match self.db().find_release_by_id(release_id).await {
-            Ok(Some(release)) => release.album_id,
-            Ok(None) => {
-                warn!("emit_release_updated: release {release_id} not found");
-                return;
-            }
-            Err(e) => {
-                warn!("emit_release_updated: {e}");
-                return;
-            }
-        };
-        match crate::library::manager::find_release_detail_with(
-            self.db(),
-            self.handle(),
-            true,
-            true,
-            release_id,
+    ) -> (Self, UploadObserverEvents) {
+        let (events, receiver) = mpsc::unbounded_channel();
+        (
+            Self {
+                in_flight,
+                throughput,
+                sync_paused,
+                events,
+            },
+            UploadObserverEvents { receiver },
         )
-        .await
-        {
-            Ok(Some(release)) => {
-                // A `send` error means no UI is subscribed right now — harmless.
-                let _ = self
-                    .events
-                    .send(LibraryEvent::ReleaseUpdated { album_id, release });
-            }
-            Ok(None) => warn!("emit_release_updated: release {release_id} not found"),
-            Err(e) => warn!("emit_release_updated: {e}"),
-        }
     }
 
-    /// Rebuild the outbox snapshot and broadcast it.
-    async fn emit_outbox_changed(&self) {
-        let queue = match self.db().outbox_queue().await {
-            Ok(queue) => queue,
-            Err(e) => {
-                warn!("Failed to read the upload queue for the outbox snapshot: {e}");
-                return;
-            }
-        };
-        let in_flight = { self.in_flight.lock().unwrap().clone() };
-        let paused = self.sync_paused.load(std::sync::atomic::Ordering::SeqCst);
-        let snapshot = crate::library::outbox_snapshot::build_outbox_snapshot(
-            queue,
-            &in_flight,
-            &self.sessions,
-            &self.throughput,
-            paused,
-        );
-        // A `send` error means no UI is subscribed right now — harmless.
-        let _ = self.events.send(LibraryEvent::OutboxChanged { snapshot });
+    async fn report(&self, event: UploadObserverEvent) {
+        let event_name = event.name();
+        let (completed, completion) = oneshot::channel();
+        if self
+            .events
+            .send(UploadObserverMessage { event, completed })
+            .is_err()
+        {
+            warn!("upload observer event processor stopped before {event_name}");
+            return;
+        }
+        if completion.await.is_err() {
+            warn!("upload observer event processor dropped {event_name}");
+        }
     }
 }
 
@@ -164,7 +137,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                 .unwrap()
                 .insert(file_id.to_string(), 0);
         }
-        self.emit_outbox_changed().await;
+        self.report(UploadObserverEvent::OutboxChanged).await;
     }
 
     async fn on_blob_upload_progress(&self, file_id: &str, bytes_done: u64, _bytes_total: u64) {
@@ -195,7 +168,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         if delta > 0 {
             self.throughput.record(delta);
         }
-        self.emit_outbox_changed().await;
+        self.report(UploadObserverEvent::OutboxChanged).await;
     }
 
     async fn on_blob_uploaded(&self, file_id: &str) {
@@ -217,43 +190,11 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                 0
             }
         };
-        // Tally the completion under its release, so the snapshot derives this
-        // file as done (its outbox row lingers until coven's post-upload commit
-        // removes it) and keeps its bytes in the cumulative progress.
-        match self.db().find_file_by_id(file_id).await {
-            Ok(Some(file)) => {
-                let remaining = (file.file_size as u64).saturating_sub(already_counted);
-                if remaining > 0 {
-                    self.throughput.record(remaining);
-                }
-                self.sessions.record_done(
-                    Some(file.release_id),
-                    crate::library::upload_sessions::DoneFile {
-                        file_id: file_id.to_string(),
-                        display_name: file.original_filename,
-                        bytes: file.file_size as u64,
-                    },
-                );
-            }
-            // No release-file row backs this blob: tally it in the
-            // unattributed bucket, labelled by its id, with the encrypted byte
-            // count the transfer reported.
-            Ok(None) => {
-                warn!("on_blob_uploaded: no file row for {file_id}; tallying unattributed");
-                self.sessions.record_done(
-                    None,
-                    crate::library::upload_sessions::DoneFile {
-                        file_id: file_id.to_string(),
-                        display_name: file_id.to_string(),
-                        bytes: already_counted,
-                    },
-                );
-            }
-            // DB error: the tally and throughput credit are UI bookkeeping, so
-            // a miss only degrades the display — log it rather than swallow it.
-            Err(e) => warn!("on_blob_uploaded: looking up {file_id}: {e}"),
-        }
-        self.emit_outbox_changed().await;
+        self.report(UploadObserverEvent::BlobUploaded {
+            file_id: file_id.to_string(),
+            already_counted,
+        })
+        .await;
     }
 
     async fn on_blob_upload_failed(&self, file_id: &str, _error: &str) {
@@ -262,7 +203,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         }
         // coven's drain records the attempt count and the error on its own
         // queue entry; the snapshot we emit here reads them back.
-        self.emit_outbox_changed().await;
+        self.report(UploadObserverEvent::OutboxChanged).await;
     }
 
     fn should_skip_uploads(&self) -> bool {
@@ -278,12 +219,14 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     /// snapshot instead of clearing.
     async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
         if root_table == "releases" {
-            self.emit_release_updated(root_id).await;
-            self.sessions.clear_group(Some(root_id));
+            self.report(UploadObserverEvent::ReleaseMadeRemote {
+                release_id: root_id.to_string(),
+            })
+            .await;
         } else {
             debug!("on_root_made_remote for non-release root {root_table:?}/{root_id}");
+            self.report(UploadObserverEvent::OutboxChanged).await;
         }
-        self.emit_outbox_changed().await;
     }
 
     /// coven finished making a root Local (blobs materialized to local files,
@@ -292,26 +235,29 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     /// every root — the retraction changed the queue either way.
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
         if root_table == "releases" {
-            self.emit_release_updated(root_id).await;
+            self.report(UploadObserverEvent::ReleaseMadeLocal {
+                release_id: root_id.to_string(),
+            })
+            .await;
         } else {
             debug!("on_root_made_local for non-release root {root_table:?}/{root_id}");
+            self.report(UploadObserverEvent::OutboxChanged).await;
         }
-        self.emit_outbox_changed().await;
     }
 }
 
 /// The `BlobTransitionObserver` coven actually holds, keeping only a [`Weak`]
 /// reference to the real [`ReleaseUploadObserver`].
 ///
-/// coven's builder takes the observer as a strong `Arc`, and the observer holds
-/// the `CovenHandle` back (to answer pin-state when rebuilding a `ReleaseDetail`).
-/// Registering the observer directly would close a strong cycle
-/// coven → observer → handle → coven that outlives every `LibraryManager`, so
+/// coven's builder takes the observer as a strong `Arc`. The observer's event
+/// receiver is driven by a task that owns the sync controller, whose database
+/// retains the Coven handle. Registering the observer directly would therefore
+/// close a strong cycle that outlives every `LibraryManager`, so
 /// coven's exclusive store-open lock would never release and an in-process
 /// reopen of the same store fails with "store is already open". Registering this
 /// weak adapter instead leaves the observer owned solely by the `LibraryManager`
 /// (see `LibraryManager::open`): when the last manager clone drops, the observer
-/// drops, its handle clone drops, and the lock is released.
+/// drops, its event sender closes, the task exits, and the lock is released.
 ///
 /// A callback that arrives after the observer is gone — teardown racing a late
 /// transition — upgrades to `None` and is a no-op: there is no UI left to notify.

@@ -103,7 +103,7 @@ public final class Playback: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        public static let stub = Playback()
+        public static func stub() -> Playback { Playback() }
     #endif
 }
 

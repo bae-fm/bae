@@ -157,7 +157,7 @@ impl PlaybackService {
                 .is_some_and(|m| m.generation == generation)
             {
                 let measurement = self.first_audio_pending.take().expect("just checked Some");
-                self.telemetry().event(TelemetryEvent::FirstAudio {
+                self.record_telemetry(TelemetryEvent::FirstAudio {
                     track_id: LocalId(measurement.track_id),
                     wait: measurement.started_at.elapsed(),
                 });
@@ -441,9 +441,7 @@ impl PlaybackService {
     /// a non-zero level, and always emits `VolumeChanged`.
     pub(super) fn set_volume(&mut self, volume: f32) {
         self.audio_output.set_volume(volume);
-        if let Renderer::Remote(remote) = &self.renderer {
-            remote.session.set_volume(volume);
-        }
+        self.renderer.set_remote_volume(volume);
         if volume > 0.0 && self.is_muted {
             self.is_muted = false;
             emit_progress(
@@ -459,13 +457,10 @@ impl PlaybackService {
 
     pub(super) fn pause(&mut self) {
         // While playing remotely, the device holds playback: pause it too.
-        if let Renderer::Remote(remote) = &self.renderer {
-            remote.session.pause();
-        }
+        self.renderer.pause_remote();
         // On AirPlay, decode is local: `sync_audio_state` below stops the sink
         // pulling, and a FLUSH drops the receiver's buffered audio so resume
         // starts clean rather than replaying the ~2 s already sent.
-        let airplay = self.renderer.airplay_control();
         // Pausing during a load collapses the Loading phase to Paused, so the
         // pending TrackReady no longer matches and is ignored. A Stopped or
         // still-resolving slot is a no-op (nothing is playing to pause).
@@ -474,9 +469,7 @@ impl PlaybackService {
             self.sync_audio_state();
             self.emit_state();
         }
-        if let Some(control) = airplay {
-            control.flush();
-        }
+        self.renderer.flush_airplay();
     }
 
     pub(super) async fn resume(&mut self) {
@@ -491,20 +484,15 @@ impl PlaybackService {
         }
 
         // While playing remotely, the device holds playback: resume it too.
-        if let Renderer::Remote(remote) = &self.renderer {
-            remote.session.play();
-        }
+        self.renderer.play_remote();
         // On AirPlay, re-anchor the pacing after the FLUSH so the resumed stream
         // starts fresh rather than bursting to catch a clock that ran during the
         // pause.
-        let airplay = self.renderer.airplay_control();
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Playing;
             self.sync_audio_state();
             self.emit_state();
         }
-        if let Some(control) = airplay {
-            control.reanchor();
-        }
+        self.renderer.reanchor_airplay();
     }
 }

@@ -223,31 +223,42 @@ impl Database {
             .map_err(|error| DbError::Message(format!("encoding folder scan item: {error}")))?;
         let removed_keys = removed_keys.to_vec();
         self.call(move |sql| {
-            let current: Option<i64> = sql
-                .query_row(
-                    "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                    [&watched_folder_path],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            if current != Some(generation) {
-                return Ok(false);
-            }
             for removed_key in removed_keys {
                 sql.execute(
                     "DELETE FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? AND entry_key = ?",
-                    params![watched_folder_path, removed_key],
+                     WHERE watched_folder_path = ? AND entry_key = ? \
+                       AND EXISTS (\
+                           SELECT 1 FROM folder_scan_roots \
+                           WHERE watched_folder_path = ? AND generation = ?\
+                       )",
+                    params![
+                        watched_folder_path,
+                        removed_key,
+                        watched_folder_path,
+                        generation
+                    ],
                 )?;
             }
-            sql.execute(
+            let changed = sql.execute(
                 "INSERT INTO folder_scan_entries \
-                     (watched_folder_path, entry_key, generation, item) VALUES (?, ?, ?, ?) \
+                     (watched_folder_path, entry_key, generation, item) \
+                 SELECT ?, ?, ?, ? \
+                 WHERE EXISTS (\
+                     SELECT 1 FROM folder_scan_roots \
+                     WHERE watched_folder_path = ? AND generation = ?\
+                 ) \
                  ON CONFLICT(watched_folder_path, entry_key) DO UPDATE SET \
                      generation = excluded.generation, item = excluded.item",
-                params![watched_folder_path, entry_key, generation, item],
+                params![
+                    watched_folder_path,
+                    entry_key,
+                    generation,
+                    item,
+                    watched_folder_path,
+                    generation
+                ],
             )?;
-            Ok(true)
+            Ok(changed == 1)
         })
         .await
     }

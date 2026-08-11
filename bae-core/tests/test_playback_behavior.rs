@@ -428,8 +428,7 @@ fn start_capture_service_with_restore(
     restore_playback: bool,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
     let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
-    let handle = bae_core::playback::PlaybackService::start_with_output(
-        library_manager,
+    let handle = library_manager.start_playback_service_with_output(
         runtime_handle,
         100,
         restore_playback,
@@ -646,8 +645,7 @@ impl PlaybackTestFixture {
         // position/seek/auto-advance timing matches production.
         let (capture_output, capture_stream_rx) =
             bae_core::playback::RealtimeCaptureAudioOutput::new();
-        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            library_manager.clone(),
+        let playback_handle = library_manager.start_playback_service_with_output(
             runtime_handle,
             100,
             true,
@@ -1166,8 +1164,7 @@ impl CueFlacTestFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
-        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            library_manager.clone(),
+        let playback_handle = library_manager.start_playback_service_with_output(
             runtime_handle,
             100,
             true,
@@ -1231,8 +1228,7 @@ impl SidePauseTestFixture {
         // can only slow that sink down, never speed it up.
         let (capture_output, capture_stream_rx) =
             bae_core::playback::RealtimeCaptureAudioOutput::new();
-        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            setup.library_manager.clone(),
+        let playback_handle = setup.library_manager.start_playback_service_with_output(
             setup.runtime_handle,
             100,
             true,
@@ -2187,8 +2183,7 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     // race to its end before we seek).
     let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
     let mut capture_stream_rx = Some(capture_stream_rx);
-    let handle = bae_core::playback::PlaybackService::start_with_output(
-        lib.library_manager,
+    let handle = lib.library_manager.start_playback_service_with_output(
         lib.runtime_handle,
         100,
         true,

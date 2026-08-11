@@ -136,37 +136,22 @@ async fn test_same_name_no_ids_reuses_existing() {
 #[serial(discogs_rate_limiter)]
 async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
     let (manager, _tmp) = setup_test_manager().await;
-    let database = manager.database_for_test();
-    database
-        .handle()
-        .sql(|sql| {
-            // Renamed rather than dropped: `artist_images` carries a blob, so
-            // coven owns a cleanup-guard trigger on it and refuses host SQL that
-            // would take the trigger with the table. The rename leaves the
-            // lookup with no `artist_images` to read, which is the failure this
-            // exercises.
-            sql.execute(
-                "ALTER TABLE artist_images RENAME TO artist_images_renamed",
-                [],
-            )?;
-            Ok::<(), coven::CovenError>(())
-        })
-        .await
+    manager
+        .set_discogs_key("test-token", crate::config::DiscogsValidation::Valid)
         .unwrap();
+    // Renamed rather than dropped: `artist_images` carries a blob, so coven
+    // owns a cleanup-guard trigger on it and refuses host SQL that would take
+    // the trigger with the table. The rename leaves the lookup with no
+    // `artist_images` to read, which is the failure this exercises.
+    manager.rename_artist_images_table_for_test().await.unwrap();
 
     let parsed_artist = make_artist("Artist Name", Some("discogs-artist-1"), None);
     let actual_artist_id = ARTIST_ACTUAL_1.to_string();
     let artist_id_map = HashMap::from([(parsed_artist.id.clone(), actual_artist_id.clone())]);
-    let discogs_client = DiscogsClient::new("token".to_string());
-
     let logs = capture_warn_logs_async(|| async {
-        fetch_artist_images(
-            &manager,
-            &discogs_client,
-            std::slice::from_ref(&parsed_artist),
-            &artist_id_map,
-        )
-        .await;
+        manager
+            .fetch_discogs_artist_images(std::slice::from_ref(&parsed_artist), &artist_id_map)
+            .await;
     })
     .await;
 
@@ -1471,9 +1456,7 @@ fn remove_root_returns_the_removed_candidate_keys() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
-    use crate::signals::{
-        ArtworkAnalysis, ArtworkAnalyzer, ExtractionService, ExtractionSource, TextSignal,
-    };
+    use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource, TextSignal};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
@@ -1516,15 +1499,11 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         std::fs::write(release_folder.join(img), minimal_jpeg()).unwrap();
     }
 
-    let import_handle =
-        crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
-            .await
-            .unwrap();
-    let extraction = ExtractionService::start(
-        tokio::runtime::Handle::current(),
-        import_handle.event_sender_for_test(),
-        manager.clone(),
-    );
+    let import_handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let (_identify, extraction) = import_handle.start_candidate_services();
     let analyzer = std::sync::Arc::new(DelayedAnalyzer {
         calls: AtomicUsize::new(0),
         delay: Duration::from_millis(200),
@@ -1603,7 +1582,8 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    let handle = crate::import::ImportService::start(tokio::runtime::Handle::current(), manager)
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
     handle

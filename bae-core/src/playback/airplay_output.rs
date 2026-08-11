@@ -46,45 +46,85 @@ pub trait AirPlayStreamControl: Send + Sync {
     fn latency_frames(&self) -> u32;
 }
 
-/// A drop-guard for the running stream: dropping it tears the receiver session
-/// and its threads down. Held by the [`AudioStream`] the output returns.
-pub trait AirPlayStreamGuard: Send {}
-
-/// A started stream: the drop-guard that owns the session and the control handle
-/// the service drives it through.
-pub type StartedStream = (Box<dyn AirPlayStreamGuard>, Arc<dyn AirPlayStreamControl>);
-
 /// Starts pushing decoded PCM to an AirPlay receiver. The real implementation
 /// connects a RAOP session; tests supply a fake.
 pub trait AirPlaySink: Send {
-    /// Begin streaming `source`, returning the drop-guard and control handle.
-    fn start(&self, source: Box<dyn PcmSource>) -> Result<StartedStream, AudioError>;
+    /// Begin streaming `source`. The returned session owns the receiver
+    /// connection and is retained by the output stream.
+    fn start(
+        &self,
+        source: Box<dyn PcmSource>,
+    ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError>;
 }
 
-/// A shared slot the live stream's control is published into on `create_stream`,
-/// so the renderer (which is set up before the stream starts) can reach it.
-pub type ControlSlot = Arc<Mutex<Option<Arc<dyn AirPlayStreamControl>>>>;
+pub(crate) struct AirPlayControl {
+    session: Mutex<Option<std::sync::Weak<dyn AirPlayStreamControl>>>,
+}
+
+impl AirPlayControl {
+    pub(crate) fn new() -> Self {
+        Self {
+            session: Mutex::new(None),
+        }
+    }
+
+    fn bind(&self, session: &Arc<dyn AirPlayStreamControl>) {
+        *self.session.lock().unwrap() = Some(Arc::downgrade(session));
+    }
+
+    fn with_session<T>(&self, run: impl FnOnce(&dyn AirPlayStreamControl) -> T) -> Option<T> {
+        self.session
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(std::sync::Weak::upgrade)
+            .map(|session| run(session.as_ref()))
+    }
+}
+
+impl AirPlayStreamControl for AirPlayControl {
+    fn flush(&self) {
+        self.with_session(|session| session.flush());
+    }
+
+    fn reanchor(&self) {
+        self.with_session(|session| session.reanchor());
+    }
+
+    fn has_failed(&self) -> bool {
+        self.with_session(|session| session.has_failed())
+            .unwrap_or(false)
+    }
+
+    fn frames_sent(&self) -> u64 {
+        self.with_session(|session| session.frames_sent())
+            .unwrap_or(0)
+    }
+
+    fn latency_frames(&self) -> u32 {
+        self.with_session(|session| session.latency_frames())
+            .unwrap_or(0)
+    }
+}
 
 /// An `AudioOutput` that streams to an AirPlay receiver via `sink`.
 pub struct AirPlayOutput {
     controls: AudioOutputControls,
     sink: Box<dyn AirPlaySink>,
-    control_slot: ControlSlot,
+    control: Arc<AirPlayControl>,
 }
 
 impl AirPlayOutput {
-    /// Build an output over `sink`, seeded to `initial_volume`. The returned
-    /// `control_slot` receives the live stream's control on `create_stream`.
-    pub fn new(sink: Box<dyn AirPlaySink>, initial_volume: f32) -> (Self, ControlSlot) {
-        let control_slot: ControlSlot = Arc::new(Mutex::new(None));
-        (
-            AirPlayOutput {
-                controls: AudioOutputControls::new(initial_volume),
-                sink,
-                control_slot: control_slot.clone(),
-            },
-            control_slot,
-        )
+    pub(crate) fn new(
+        sink: Box<dyn AirPlaySink>,
+        initial_volume: f32,
+        control: Arc<AirPlayControl>,
+    ) -> Self {
+        AirPlayOutput {
+            controls: AudioOutputControls::new(initial_volume),
+            sink,
+            control,
+        }
     }
 }
 
@@ -109,9 +149,9 @@ impl AudioOutput for AirPlayOutput {
             source_sample_rate,
             source_channels,
         ));
-        let (guard, control) = self.sink.start(pcm_source)?;
-        *self.control_slot.lock().unwrap() = Some(control);
-        Ok(Box::new(AirPlayAudioStream { _guard: guard }))
+        let session = self.sink.start(pcm_source)?;
+        self.control.bind(&session);
+        Ok(Box::new(AirPlayAudioStream { _session: session }))
     }
 
     fn set_state(&self, state: AudioState) {
@@ -138,7 +178,7 @@ impl AudioOutput for AirPlayOutput {
 /// The [`AudioStream`] the output returns: it owns the session drop-guard, so the
 /// service dropping the stream tears the receiver session down.
 struct AirPlayAudioStream {
-    _guard: Box<dyn AirPlayStreamGuard>,
+    _session: Arc<dyn AirPlayStreamControl>,
 }
 
 impl AudioStream for AirPlayAudioStream {
@@ -294,7 +334,10 @@ pub struct RaopSink {
 }
 
 impl AirPlaySink for RaopSink {
-    fn start(&self, source: Box<dyn PcmSource>) -> Result<StartedStream, AudioError> {
+    fn start(
+        &self,
+        source: Box<dyn PcmSource>,
+    ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let cipher = match self.encryption {
             RaopEncryption::None => RaopCipher::none(),
             RaopEncryption::RsaAes => RaopCipher::new_aes(&apple_public_key())
@@ -311,43 +354,31 @@ impl AirPlaySink for RaopSink {
         )
         .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
 
-        let control: Arc<dyn AirPlayStreamControl> = Arc::new(RaopControlOps(session.control()));
-        Ok((Box::new(RaopGuard { _session: session }), control))
+        Ok(Arc::new(session))
     }
 }
 
-/// Holds the session alive; dropping it tears down the receiver and threads. The
-/// field is never read — it exists only for its `Drop`.
-struct RaopGuard {
-    _session: RaopSession,
-}
-impl AirPlayStreamGuard for RaopGuard {}
-
-/// Adapts the RAOP control handle (whose ops return `Result`) to the infallible
-/// [`AirPlayStreamControl`] the service drives, logging transport failures.
-struct RaopControlOps(crate::airplay::session::RaopControl);
-
-impl AirPlayStreamControl for RaopControlOps {
+impl AirPlayStreamControl for RaopSession {
     fn flush(&self) {
-        if let Err(e) = self.0.flush() {
+        if let Err(e) = self.flush() {
             warn!("airplay FLUSH failed: {e}");
         }
     }
 
     fn reanchor(&self) {
-        self.0.reanchor();
+        self.reanchor();
     }
 
     fn has_failed(&self) -> bool {
-        self.0.has_failed()
+        self.has_failed()
     }
 
     fn frames_sent(&self) -> u64 {
-        self.0.frames_sent()
+        self.frames_sent()
     }
 
     fn latency_frames(&self) -> u32 {
-        self.0.latency_frames()
+        self.latency_frames()
     }
 }
 
@@ -365,7 +396,10 @@ pub struct Ap2Sink {
 }
 
 impl AirPlaySink for Ap2Sink {
-    fn start(&self, source: Box<dyn PcmSource>) -> Result<StartedStream, AudioError> {
+    fn start(
+        &self,
+        source: Box<dyn PcmSource>,
+    ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let session = crate::airplay::ap2_session::Ap2Session::start(
             self.receiver,
             self.airplay_port,
@@ -376,45 +410,33 @@ impl AirPlaySink for Ap2Sink {
         )
         .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
 
-        let control: Arc<dyn AirPlayStreamControl> = Arc::new(Ap2ControlOps(session.control()));
-        Ok((Box::new(Ap2Guard { _session: session }), control))
+        Ok(Arc::new(session))
     }
 }
 
-/// Holds the AirPlay 2 session alive; dropping it tears the receiver down.
-struct Ap2Guard {
-    _session: crate::airplay::ap2_session::Ap2Session,
-}
-impl AirPlayStreamGuard for Ap2Guard {}
-
-/// Adapts the AirPlay 2 session control (whose ops return `Result`) to the
-/// infallible [`AirPlayStreamControl`], logging transport failures. Pause/resume
-/// map to SETRATEANCHORTIME rate changes; volume is applied locally in the drain.
-struct Ap2ControlOps(crate::airplay::ap2_session::Ap2SessionControl);
-
-impl AirPlayStreamControl for Ap2ControlOps {
+impl AirPlayStreamControl for crate::airplay::ap2_session::Ap2Session {
     fn flush(&self) {
-        if let Err(e) = self.0.flush() {
+        if let Err(e) = self.flush() {
             warn!("airplay 2 pause (rate 0) failed: {e}");
         }
     }
 
     fn reanchor(&self) {
-        if let Err(e) = self.0.reanchor() {
+        if let Err(e) = self.reanchor() {
             warn!("airplay 2 resume (rate 1) failed: {e}");
         }
     }
 
     fn has_failed(&self) -> bool {
-        self.0.has_failed()
+        self.has_failed()
     }
 
     fn frames_sent(&self) -> u64 {
-        self.0.frames_sent()
+        self.frames_sent()
     }
 
     fn latency_frames(&self) -> u32 {
-        self.0.latency_frames()
+        self.latency_frames()
     }
 }
 
@@ -459,16 +481,14 @@ mod tests {
         torn_down: AtomicBool,
     }
 
-    struct FakeGuard(Arc<FakeState>);
-    impl AirPlayStreamGuard for FakeGuard {}
-    impl Drop for FakeGuard {
+    struct FakeSession(Arc<FakeState>);
+    impl Drop for FakeSession {
         fn drop(&mut self) {
             self.0.torn_down.store(true, Ordering::Release);
         }
     }
 
-    struct FakeControl(Arc<FakeState>);
-    impl AirPlayStreamControl for FakeControl {
+    impl AirPlayStreamControl for FakeSession {
         fn flush(&self) {
             self.0.flushed.store(true, Ordering::Release);
         }
@@ -487,15 +507,15 @@ mod tests {
     }
 
     impl AirPlaySink for FakeSink {
-        fn start(&self, mut source: Box<dyn PcmSource>) -> Result<StartedStream, AudioError> {
+        fn start(
+            &self,
+            mut source: Box<dyn PcmSource>,
+        ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
             // Pull one packet synchronously to record the frame conversion.
             let mut buf = vec![0i16; 8]; // 4 stereo frames
             let frames = source.next_frames(&mut buf);
             self.state.frames.store(frames as u64, Ordering::Relaxed);
-            Ok((
-                Box::new(FakeGuard(self.state.clone())),
-                Arc::new(FakeControl(self.state.clone())),
-            ))
+            Ok(Arc::new(FakeSession(self.state.clone())))
         }
     }
 
@@ -508,7 +528,8 @@ mod tests {
 
         let sink = FakeSink::default();
         let state = sink.state.clone();
-        let (mut output, slot) = AirPlayOutput::new(Box::new(sink), 1.0);
+        let control = Arc::new(AirPlayControl::new());
+        let mut output = AirPlayOutput::new(Box::new(sink), 1.0, control.clone());
         output.set_state(AudioState::Playing);
 
         let (tx, _rx) = audio_event_channel();
@@ -519,7 +540,6 @@ mod tests {
         // The fake pulled 4 stereo frames.
         assert_eq!(state.frames.load(Ordering::Relaxed), 4);
         // The control was published for the renderer to drive.
-        let control = slot.lock().unwrap().clone().expect("control published");
         control.flush();
         control.reanchor();
         assert!(state.flushed.load(Ordering::Acquire));

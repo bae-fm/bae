@@ -7,12 +7,12 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(AppService.self)
-    private var appService
     @Environment(AppSessionHolder.self)
     private var holder
     @Environment(Sync.self)
     private var sync
+    @Environment(Playback.self)
+    private var playback
     @Environment(Cast.self)
     private var cast
     @Environment(CastStore.self)
@@ -99,9 +99,7 @@ struct SettingsView: View {
                 Section {
                     PauseBetweenSidesToggle(
                         configStore: configStore,
-                        setEnabled: { [appHandle = appService.appHandle] in
-                            try appHandle.setPauseBetweenSides(enabled: $0)
-                        },
+                        setEnabled: playback.setPauseBetweenSides,
                         showError: { @MainActor error in
                             configStore.showError(error)
                         }
@@ -224,7 +222,7 @@ struct SettingsView: View {
                     Text(error.line)
                 }
             }
-            .onAppear { appService.reportScreen(.settings) }
+            .onAppear { holder.reportScreen(.settings) }
         }
     }
 

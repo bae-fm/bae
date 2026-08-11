@@ -295,7 +295,7 @@ async fn test_manage_refused_when_sync_not_running() {
         "make-Remote must fail when the upload pipeline isn't running, got {result:?}"
     );
     assert!(
-        db.handle().queued_uploads().await.unwrap().is_empty(),
+        db.queued_upload_count_for_test().await.unwrap() == 0,
         "no upload may be enqueued when the pipeline can't drain it"
     );
     assert_eq!(
@@ -401,7 +401,7 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
     assert!(result.is_err(), "truncated source must abort make-Remote");
 
     assert!(
-        db.handle().queued_uploads().await.unwrap().is_empty(),
+        db.queued_upload_count_for_test().await.unwrap() == 0,
         "no upload may be enqueued when a source is truncated"
     );
     for (name, _) in &files {
@@ -454,8 +454,10 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
             "external ref points at the new path"
         );
     }
-    let deletes = db.handle().queued_deletes().await.unwrap();
-    assert_eq!(deletes.len(), files.len());
+    assert_eq!(
+        db.queued_delete_count_for_test().await.unwrap(),
+        files.len()
+    );
 }
 
 /// Remove one release file's cloud object from the mock home.
@@ -466,22 +468,18 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
 /// slot, then drop the cache copy the read just populated so the next read has
 /// to go back to the (now empty) cloud.
 async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
-    let db = mgr.database_for_test();
-    let blob = db
-        .handle()
-        .row_blob_ref("release_files", file_id)
+    let blob = mgr
+        .release_blob_ref_for_test(file_id)
         .await
         .expect("the release_files row");
     cloud.clear_exact_reads();
-    db.handle()
-        .read_blob(&blob)
+    mgr.materialize_release_blob_for_test(file_id)
         .await
         .expect("the blob is readable before it is removed");
     let slots = cloud.exact_reads();
     assert_eq!(slots.len(), 1, "one exact read for one blob");
     cloud.remove_exact_object(&slots[0]);
-    db.handle()
-        .evict_blob(&blob)
+    mgr.evict_blob_for_test(&blob)
         .await
         .expect("drop the cache copy the probe read populated");
 }
@@ -517,7 +515,7 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
         .await;
     assert!(result.is_err(), "missing blob must be a hard error");
 
-    assert!(db.handle().queued_deletes().await.unwrap().is_empty());
+    assert_eq!(db.queued_delete_count_for_test().await.unwrap(), 0);
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)

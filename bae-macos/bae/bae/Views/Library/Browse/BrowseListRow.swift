@@ -130,6 +130,6 @@ private struct SummaryRowPlaceholder: View {
         .padding()
         .frame(width: 320)
         .environment(libraryStore)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

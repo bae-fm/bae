@@ -9,14 +9,20 @@ public enum BaeDiagnostics {
     /// Call once at startup, before `initKeyring` and `initApp`. Infallible:
     /// the core falls back to the no-op sink (with a local error log) rather
     /// than let telemetry setup block a launch.
-    public static func configure(source: String) -> BridgeDiagnostics {
-        configureDiagnostics(config: bridgeConfig(source: source))
+    public static func configure(
+        source: String,
+        edition: AppEdition
+    ) -> BridgeDiagnostics {
+        configureDiagnostics(
+            config: bridgeConfig(source: source, edition: edition)
+        )
     }
 
     static func bridgeConfig(
-        source: String
+        source: String,
+        edition: AppEdition
     ) -> BridgeDiagnosticsConfig {
-        guard BuildInfo.edition == "bae",
+        guard edition == .bae,
             let datadogSite = BuildInfo.infoString("BaeDatadogSite"),
             let clientToken = BuildInfo.infoString("BaeDatadogClientToken"),
             let environment = BuildInfo.infoString("BaeEnvironment"),
@@ -35,7 +41,7 @@ public enum BaeDiagnostics {
                     service: "bae",
                     environment: environment,
                     appVersion: appVersion,
-                    edition: BuildInfo.edition,
+                    edition: edition.rawValue,
                     gitCommit: gitCommit
                 )
             )

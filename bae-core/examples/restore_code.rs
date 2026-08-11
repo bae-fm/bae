@@ -51,11 +51,14 @@ fn main() {
     // storage-free generator directly.
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<String, String> = runtime.block_on(async {
-        let handle = coven::Coven::builder(config.to_coven())
-            .synced_tables(bae_core::sync::synced_tables())
-            .migrations(bae_core::migrations::all())
-            .open()
-            .map_err(|e| format!("open store failed: {e}"))?;
+        let handle = coven::Coven::builder(
+            coven::StoreDir::new(config.library_path().to_path_buf()),
+            config.to_coven(),
+        )
+        .synced_tables(bae_core::sync::synced_tables())
+        .migrations(bae_core::migrations::all())
+        .open()
+        .map_err(|e| format!("open store failed: {e}"))?;
         handle
             .connect_sync()
             .await

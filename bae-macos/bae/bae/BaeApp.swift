@@ -1,11 +1,17 @@
 import BaeKit
-import Combine
 import Sparkle
 import SwiftUI
 import os.log
 
 private let logger = Logger.bae("BaeApp")
 private let appProcessEnvironment = ProcessInfo.processInfo.environment
+private let appEdition: AppEdition = {
+    #if BAE_OAUTH_PROVIDERS
+        .bae
+    #else
+        .baeium
+    #endif
+}()
 
 private enum AppRuntime {
     static func skipsApplicationServices(environment: [String: String]) -> Bool
@@ -66,6 +72,7 @@ struct BaeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
     var appDelegate
     private let updaterController: SPUStandardUpdaterController
+    private let librarySetup = LibrarySetup.live()
     @ObservedObject
     private var checkForUpdatesViewModel: CheckForUpdatesViewModel
 
@@ -97,32 +104,10 @@ struct BaeApp: App {
     /// just "bae". With multiple libraries on one device the title
     /// disambiguates which one the main window currently shows.
     private var windowTitle: String {
-        if let name = appDelegate.appService?.configStore.config.libraryName,
-            !name.isEmpty
-        {
+        if let name = appDelegate.appService?.libraryName, !name.isEmpty {
             return String(localized: "\(name) — bae")
         }
         return "bae"
-    }
-
-    private var playbackPublisher: AnyPublisher<PlaybackPositionEvent, Never> {
-        appDelegate.appService?.playbackStore.playbackPositionSubject
-            .eraseToAnyPublisher()
-            ?? Empty().eraseToAnyPublisher()
-    }
-
-    private var previewPublisher: AnyPublisher<PreviewProgressEvent, Never> {
-        appDelegate.appService?.importStore.previewProgressSubject
-            .eraseToAnyPublisher()
-            ?? Empty().eraseToAnyPublisher()
-    }
-
-    private var importLoudnessPublisher:
-        AnyPublisher<ImportLoudnessProgressEvent?, Never>
-    {
-        appDelegate.appService?.importStore.importLoudnessSubject
-            .eraseToAnyPublisher()
-            ?? Empty().eraseToAnyPublisher()
     }
 
     /// WelcomeView constructed with the deep-link mode if a menu item
@@ -148,7 +133,7 @@ struct BaeApp: App {
                 )
             }
         }
-        .environment(LibrarySetup.live)
+        .environment(librarySetup)
     }
 
     /// Main-window content once the first library has opened. Switching
@@ -187,7 +172,7 @@ struct BaeApp: App {
     /// Modal hosts attached to the main window: the welcome flow (New
     /// Library / Restore from Code), the rename sheet, and the lock
     /// confirmation. Each is driven by `AppDelegate` trigger state set from
-    /// the File menu and acts on the active library via `appService.sync`.
+    /// the File menu and acts through the active `AppService`.
     private func libraryModals<Content: View>(
         _ content: Content
     ) -> some View {
@@ -241,7 +226,7 @@ struct BaeApp: App {
     /// user knows which one they're locking.
     private var lockConfirmMessage: String {
         let name =
-            appDelegate.appService?.configStore.config.libraryName
+            appDelegate.appService?.libraryName
             ?? String(localized: "This library")
         return String(
             localized:
@@ -329,43 +314,22 @@ extension BaeApp {
 
     private var mainWindow: some Scene {
         Window("bae", id: "main") {
-            libraryModals(
-                MainWindowChrome(loadError: appDelegate.loadError) {
-                    detailContent
-                }
-                .navigationTitle(windowTitle)
-                .background(WindowSwapDriver(hasShell: appDelegate.hasShell))
-            )
-            .environment(appDelegate.appService?.playbackStore)
-            .environment(appDelegate.appService?.configStore)
-            .environment(appDelegate.appService?.importStore)
-            .environment(appDelegate.appService?.libraryStore)
-            .environment(appDelegate.appService?.libraryBrowseSession)
-            .environment(appDelegate.appService?.projectionRegistry)
-            .environment(appDelegate.appService?.mediaPaths)
-            .environment(appDelegate.appService?.imageStore)
-            .environment(appDelegate.appService?.playback)
-            .environment(appDelegate.appService?.queue)
-            .environment(appDelegate.appService?.previewAudio)
-            .environment(appDelegate.appService?.library)
-            .environment(appDelegate.appService?.releaseEditor)
-            .environment(appDelegate.appService?.importer)
-            .environment(appDelegate.appService?.sync)
-            .environment(appDelegate.appService?.downloads)
-            .environment(appDelegate.appService?.outputs)
-            .environment(appDelegate.appService?.discogs)
-            .environment(appDelegate.appService?.automation)
-            .environment(appDelegate.appService?.subsonic)
-            .environment(appDelegate.appService?.export)
-            .environment(appDelegate.appService?.cast)
-            .environment(appDelegate.appService?.castStore)
-            .environment(appDelegate.appService?.outboxStore)
-            .environment(appDelegate.appService?.downloadStore)
-            .environment(appDelegate.appService?.outputStore)
-            .environment(\.playbackPositionPublisher, playbackPublisher)
-            .environment(\.previewProgressPublisher, previewPublisher)
-            .environment(\.importLoudnessPublisher, importLoudnessPublisher)
-            .environment(appDelegate.uiStore)
+            if let appService = appDelegate.appService {
+                appService.installEnvironment(
+                    libraryModals(
+                        MainWindowChrome(loadError: appDelegate.loadError) {
+                            detailContent
+                        }
+                        .navigationTitle(windowTitle)
+                        .background(
+                            WindowSwapDriver(hasShell: appDelegate.hasShell)
+                        )
+                    )
+                )
+            }
+            else {
+                ProgressView()
+            }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(
@@ -380,23 +344,7 @@ extension BaeApp {
     private var storageManagerWindow: some Scene {
         Window("Storage Manager", id: "storage-manager") {
             if let appService = appDelegate.appService {
-                StorageManagerView()
-                    .environment(appService.libraryStore)
-                    .environment(appService.projectionRegistry)
-                    .environment(appService.mediaPaths)
-                    .environment(appService.imageStore)
-                    .environment(appService.releaseEditor)
-                    .environment(appService.library)
-                    .environment(appService.outboxStore)
-                    .environment(appService.downloadStore)
-                    .environment(appService.outputStore)
-                    .environment(appService.sync)
-                    .environment(appService.downloads)
-                    .environment(appService.outputs)
-                    .environment(appService.configStore)
-                    .environment(appDelegate.uiStore)
-                    .environment(\.playbackPositionPublisher, playbackPublisher)
-                    .environment(\.previewProgressPublisher, previewPublisher)
+                appService.installEnvironment(StorageManagerView())
             }
             else {
                 ContentUnavailableView(
@@ -412,84 +360,69 @@ extension BaeApp {
     }
 
     private var settingsWindow: some Scene {
-        Settings {
-            if let appService = appDelegate.appService {
-                SettingsView(
-                    checkForUpdatesViewModel: checkForUpdatesViewModel,
-                    onForgetLibrary: { appDelegate.forgetActiveLibrary() }
-                )
-                .environment(appService.configStore)
-                .environment(appService.libraryStore)
-                .environment(appService.playback)
-                .environment(appService.sync)
-                .environment(appService.outputs)
-                .environment(appService.discogs)
-                .environment(appService.automation)
-                .environment(appService.subsonic)
-                .environment(appService.cast)
-                .environment(appService.castStore)
-                .environment(appService.outboxStore)
-                .environment(\.playbackPositionPublisher, playbackPublisher)
-                .environment(\.previewProgressPublisher, previewPublisher)
-                .environment(appDelegate.uiStore)
-                .errorAlert(appDelegate.uiStore)
-                .onAppear { appService.reportScreen(.settings) }
+        AppService.installEnvironment(
+            Settings {
+                if let appService = appDelegate.appService {
+                    SettingsView(
+                        checkForUpdatesViewModel: checkForUpdatesViewModel,
+                        onForgetLibrary: { appDelegate.forgetActiveLibrary() }
+                    )
+                    .errorAlert(appDelegate.uiStore)
+                    .onAppear { appService.reportScreen(.settings) }
+                }
+                else {
+                    ContentUnavailableView(
+                        "No library loaded",
+                        systemImage: "books.vertical",
+                        description: Text(
+                            "Open a library first to access settings"
+                        ),
+                    )
+                    .frame(width: 300, height: 200)
+                }
             }
-            else {
-                ContentUnavailableView(
-                    "No library loaded",
-                    systemImage: "books.vertical",
-                    description: Text(
-                        "Open a library first to access settings"
-                    ),
-                )
-                .frame(width: 300, height: 200)
-            }
-        }
-        .commands {
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(viewModel: checkForUpdatesViewModel)
-            }
-            if let appService = appDelegate.appService {
-                MainAppMenuCommands(
-                    playback: appService.playback,
-                    importer: appService.importer,
-                    library: appService.library,
-                    libraryStore: appService.libraryStore,
-                    playbackStore: appService.playbackStore,
-                    uiStore: appDelegate.uiStore,
-                    configStore: appService.configStore,
-                    libraries: appDelegate.libraries,
-                    onNewLibrary: { mode in
-                        appDelegate.welcomeInitialMode = mode
-                        appDelegate.showAddLibrarySheet = true
-                    },
-                    onOpenLibrary: { appDelegate.openLibrary($0) },
-                    onSwitchOffset: { appDelegate.switchLibrary(byOffset: $0) },
-                    onRenameLibrary: {
-                        let cfg = appService.configStore.config
-                        appDelegate.renameLibrarySheet =
-                            RenameLibrarySheetState(
-                                id: cfg.libraryId,
-                                newName: cfg.libraryName
+            .commands {
+                CommandGroup(after: .appInfo) {
+                    CheckForUpdatesView(viewModel: checkForUpdatesViewModel)
+                }
+                if let appService = appDelegate.appService {
+                    MainAppMenuCommands(
+                        libraries: appDelegate.libraries,
+                        onNewLibrary: { mode in
+                            appDelegate.welcomeInitialMode = mode
+                            appDelegate.showAddLibrarySheet = true
+                        },
+                        onOpenLibrary: { appDelegate.openLibrary($0) },
+                        onSwitchOffset: {
+                            appDelegate.switchLibrary(byOffset: $0)
+                        },
+                        onRenameLibrary: {
+                            appDelegate.renameLibrarySheet =
+                                RenameLibrarySheetState(
+                                    id: appService.libraryId,
+                                    newName: appService.libraryName
+                                )
+                        },
+                        onLockLibrary: {
+                            appDelegate.confirmLockLibrary = true
+                        },
+                        onSyncNow: { appService.triggerSync() },
+                        onRevealLibrary: {
+                            SystemActions.revealInFinder(
+                                path: appService.libraryPath
                             )
-                    },
-                    onLockLibrary: { appDelegate.confirmLockLibrary = true },
-                    onSyncNow: { appService.sync.triggerSync() },
-                    onRevealLibrary: {
-                        SystemActions.revealInFinder(
-                            path: appService.configStore.config.libraryPath
-                        )
-                    },
-                    onCopyLibraryId: {
-                        SystemActions.copyToPasteboard(
-                            appService.configStore.config.libraryId
-                        )
-                    },
-                    onCloseLibrary: { appDelegate.closeLibrary() }
-                )
-            }
-        }
+                        },
+                        onCopyLibraryId: {
+                            SystemActions.copyToPasteboard(
+                                appService.libraryId
+                            )
+                        },
+                        onCloseLibrary: { appDelegate.closeLibrary() }
+                    )
+                }
+            },
+            from: appDelegate.appService
+        )
     }
 }
 
@@ -508,7 +441,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let diagnostics: BridgeDiagnostics =
         AppRuntime.skipsApplicationServices(environment: appProcessEnvironment)
         ? configureDiagnostics(config: .disabled)
-        : BaeDiagnostics.configure(source: "macos")
+        : BaeDiagnostics.configure(source: "macos", edition: appEdition)
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: String?
@@ -586,7 +519,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Telemetry is already up (built at delegate construction, from
             // compiled-in values only), so every step from here on has a sink
             // for any failure it reports.
-            BaeCrashReporting.configure()
+            BaeCrashReporting.configure(edition: appEdition)
             logger.info("application launched")
             initKeyring(diagnostics: diagnostics)
             // Hand Rust the CloudKit driver once. It can't build the driver
@@ -703,9 +636,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         renameSlot.cancel()
         lockSlot.cancel()
         forgetSlot.cancel()
-        mediaControlService.deactivate(playbackStore: service.playbackStore)
-        Task { [handle = service.appHandle] in
-            await handle.shutdown()
+        service.deactivateMediaControls()
+        Task { [service] in
+            await service.shutdown()
         }
         appService = nil
         uiStore = UiStore()
@@ -755,11 +688,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// error is written back into the open sheet; the sheet stays up so the
     /// user can retry.
     func renameLibrary(_ libraryId: String, to newName: String) {
-        guard let sync = appService?.sync else { return }
+        guard let appService else { return }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         renameSlot.replace(
             "rename of \(libraryId)",
-            work: { try sync.renameLibrary(libraryId, trimmed) },
+            work: { try appService.renameLibrary(libraryId, to: trimmed) },
             onSuccess: {
                 self.renameLibrarySheet = nil
                 self.reloadLibraries()
@@ -777,10 +710,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the keychain. The current session keeps working; the key is needed again
     /// on next launch. Errors surface through `loadError`.
     func lockActiveLibrary() {
-        guard let sync = appService?.sync else { return }
+        guard let appService else { return }
         lockSlot.replace(
             "lock",
-            work: { try sync.lockActiveLibrary() },
+            work: { try appService.lockActiveLibrary() },
             onSuccess: {},
             onError: {
                 logger.error(
@@ -812,9 +745,7 @@ extension AppDelegate {
         }
         forgetSlot.replace(
             "forget",
-            work: { [handle = service.appHandle] in
-                try handle.forgetLibrary()
-            },
+            work: { try service.forgetLibrary() },
             onSuccess: {
                 self.closeLibrary()
                 self.reloadLibraries()
@@ -823,10 +754,10 @@ extension AppDelegate {
                 logger.error(
                     "Failed to remove library: \($0.localizedDescription)"
                 )
+                guard let displayed = DisplayError($0) else { return }
                 self.uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't remove library: \($0.displayLine)"
+                    displayed.addingContext(
+                        String(localized: "Couldn't remove library")
                     )
                 )
             }
@@ -847,19 +778,19 @@ private actor ShutdownRace {
     /// `onTimeout` runs (synchronously, from this actor) only if the timeout
     /// wins the race — the caller uses it to log.
     func run(
-        handle: AppHandle,
+        operation: @escaping @Sendable () async -> Void,
         timeout: Duration,
         onTimeout: @Sendable @escaping () -> Void
     ) async {
         await withCheckedContinuation { continuation in
             self.continuation = continuation
             Task {
-                await handle.shutdown()
-                await self.finish()
+                await operation()
+                self.finish()
             }
             Task {
                 try? await Task.sleep(for: timeout)
-                await self.finish(onTimeout: onTimeout)
+                self.finish(onTimeout: onTimeout)
             }
         }
     }
@@ -889,9 +820,12 @@ extension AppDelegate {
             // (or none was ever opened), so there's nothing left to save.
             return .terminateNow
         }
-        Task { [handle = appService.appHandle] in
+        Task { [appService] in
             await ShutdownRace()
-                .run(handle: handle, timeout: .seconds(5)) {
+                .run(
+                    operation: { await appService.shutdown() },
+                    timeout: .seconds(5)
+                ) {
                     logger.warning(
                         "Shutdown on quit timed out after 5s; terminating anyway"
                     )
@@ -933,13 +867,13 @@ extension AppDelegate {
         }
         Task {
             do {
-                try await appService?.appHandle.addWatchedFolder(path: url.path)
+                try await appService?.addWatchedFolder(path: url.path)
             }
             catch {
+                guard let displayed = DisplayError(error) else { return }
                 uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't add folder: \(error.displayLine)"
+                    displayed.addingContext(
+                        String(localized: "Couldn't add folder")
                     )
                 )
             }

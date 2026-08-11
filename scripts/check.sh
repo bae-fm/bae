@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Locally reproduce all non-Windows CI checks before pushing.
+# Locally reproduce the complete non-Windows CI matrix in one serial run.
 #
 # Usage: scripts/check.sh
 #
-# Runs the same non-Windows gates as CI. Missing platform toolchains or lint
-# tools are failures.
+# Normal changes use the dependency-aware pre-commit hook plus directly affected
+# tests, then rely on CI to run platform jobs concurrently. This command is for
+# explicit full-system validation. Missing platform toolchains or lint tools are
+# failures.
 #
 # Only the Windows bridge is excluded: the C# uniffi bindings need the Windows
 # toolchain and are validated in CI, and so is the Avalonia app that compiles
@@ -90,21 +92,6 @@ if [[ ! -d "bae-ffmpeg/ios" ]]; then
   exit 1
 fi
 
-require_free_kib() {
-  local path="$1"
-  local required_kib="$2"
-  local available_kib
-  available_kib="$(df -Pk "$path" | awk 'NR == 2 { print $4 }')"
-  if [[ -z "$available_kib" || "$available_kib" -lt "$required_kib" ]]; then
-    echo "$path has ${available_kib:-0} KiB free; scripts/check.sh requires ${required_kib} KiB" >&2
-    exit 1
-  fi
-}
-
-REQUIRED_CHECK_SPACE_KIB=$((40 * 1024 * 1024))
-require_free_kib "$ROOT" "$REQUIRED_CHECK_SPACE_KIB"
-require_free_kib "${TMPDIR:-/tmp}" "$REQUIRED_CHECK_SPACE_KIB"
-
 # ── Output helpers ────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
 
@@ -188,6 +175,7 @@ _android_clippy() {
 section "Rust"
 
 check "cargo fmt"                   cargo fmt --all -- --check
+check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
 check "clippy (workspace)"          cargo clippy --workspace -- -D warnings
 check "clippy (bae-core + test-utils)" \
   cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
@@ -274,8 +262,8 @@ section "macOS"
 # The baeium (S3-only) edition, mirroring ci.yml's feature-parity job. The Swift
 # `#if` surface has two cells and the full build below exercises only one; the
 # export guard is what proves a feature gate didn't leak into the S3-only bridge.
-# It runs first so the section ends with the bindings, BaeKit/Features.json, and
-# the Swift conditions back in the full/default state a dev's next build expects.
+# It runs first so the section ends with the bindings and Swift conditions back
+# in the full/default state a dev's next build expects.
 check "bridge build (macOS baeium)" \
   env BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
 check "install macOS bridge binding (baeium)" \
@@ -284,6 +272,7 @@ check "guard: baeium bridge exports no OAuth/CloudKit binding" \
   _baeium_macos_export_guard
 check "xcodegen (macOS baeium)" bash -c 'cd bae-macos/bae && xcodegen'
 check "xcodebuild (macOS baeium)" \
+  env BAE_BRIDGE_FEATURES=desktop \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
@@ -295,6 +284,7 @@ check "install macOS bridge binding" \
   ./bae-bridge/install-swift-bindings.sh macos
 check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
 check "xcodebuild" \
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
@@ -302,6 +292,7 @@ check "xcodebuild" \
     -disableAutomaticPackageResolution build
 
 check "xcodebuild test (baeTests)" \
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
@@ -312,10 +303,13 @@ check "swift-format lint" _swift_format_lint bae-macos/bae/bae
 # The shared package is built inside both app builds above; lint it once here
 # (its sources are platform-invariant text, so one run covers both apps).
 check "swift-format lint (BaeKit)" _swift_format_lint BaeKit/Sources/BaeKit
+check "swift-format lint (Apple host)" \
+  _swift_format_lint BaeKit/Sources/AppleHost
 
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
 check "swiftlint (BaeKit)" \
-  swiftlint lint --strict --config .swiftlint.yml BaeKit/Sources/BaeKit
+  swiftlint lint --strict --config .swiftlint.yml \
+    BaeKit/Sources/BaeKit BaeKit/Sources/AppleHost
 
 check "periphery" bash -c '
   cd bae-macos/bae && periphery scan --strict --skip-build \
@@ -338,6 +332,7 @@ check "bridge build (iOS baeium)" \
   env BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-ios.sh
 check "xcodegen (iOS baeium)" bash -c 'cd bae-ios/bae && xcodegen'
 check "xcodebuild (iOS baeium, iphonesimulator)" \
+  env BAE_BRIDGE_FEATURES=cast \
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -sdk iphonesimulator -arch arm64 \
@@ -346,6 +341,7 @@ check "xcodebuild (iOS baeium, iphonesimulator)" \
 check "bridge build" ./bae-bridge/build-ios.sh
 check "xcodegen" bash -c 'cd bae-ios/bae && xcodegen'
 check "xcodebuild (iphonesimulator)" \
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -sdk iphonesimulator -arch arm64 \
@@ -359,6 +355,7 @@ check "xcodebuild test (iOS baeTests)" bash -c '
   DEST_ID=${DEST%%$'\''\t'\''*}
   DEST_NAME=${DEST#*$'\''\t'\''}
   echo "Testing on simulator: $DEST_NAME ($DEST_ID)"
+  BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
     -destination "platform=iOS Simulator,id=$DEST_ID" \
     -derivedDataPath bae-ios/bae/.build/derivedData test

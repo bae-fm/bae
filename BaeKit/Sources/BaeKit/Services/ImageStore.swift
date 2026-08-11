@@ -216,7 +216,7 @@ public final class ImageStore: Sendable, Observable {
         // periphery:ignore
         /// All-no-op instance for SwiftUI previews. Resolves no bytes; previews
         /// don't have a live library to read from.
-        public static let stub = ImageStore()
+        public static func stub() -> ImageStore { ImageStore() }
     #endif
 
     /// The already-decoded image for `content` at this size, or nil when it

@@ -175,7 +175,7 @@
             return store
         }
 
-        /// A `LibraryBrowseSession` over `Library.stub` — the detail-pane
+        /// A `LibraryBrowseSession` over `Library.stub()` — the detail-pane
         /// previews drive their content through `paneDetail`/`detail` props,
         /// so the session only supplies the selection state the panes read.
         @MainActor
@@ -184,7 +184,7 @@
             uiStore: UiStore,
         ) -> LibraryBrowseSession {
             LibraryBrowseSession(
-                library: .stub,
+                library: .stub(),
                 projectionRegistry: ProjectionRegistry(),
                 libraryStore: libraryStore,
                 uiStore: uiStore,
@@ -198,7 +198,7 @@
         static func composerList() -> ComposerList {
             let list = ComposerList(
                 pageSource: LibraryComposerPageSource(
-                    library: .stub,
+                    library: .stub(),
                     sort: []
                 ),
                 ingest: { _ in },

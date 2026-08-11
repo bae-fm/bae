@@ -91,6 +91,8 @@ pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
+    clock: coven::ClockRef,
+    ids: coven::IdRef,
 }
 
 /// One downloaded cover as the import funnel's candidate.
@@ -1524,9 +1526,11 @@ impl ImportService {
     /// Start the import service worker: one task that drains the import queue
     /// sequentially, never concurrently. The returned handle is cloneable and
     /// is how the rest of the app submits import requests.
-    pub async fn start(
+    pub(crate) async fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
+        clock: coven::ClockRef,
+        ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
         let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
@@ -1574,6 +1578,8 @@ impl ImportService {
             folder_watcher.clone(),
         );
 
+        let clock_for_handle = clock.clone();
+        let ids_for_handle = ids.clone();
         let worker_thread = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -1584,6 +1590,8 @@ impl ImportService {
                     commands_rx,
                     event_tx: event_tx_for_worker,
                     library_manager,
+                    clock,
+                    ids,
                 };
 
                 while let Some(message) = service.commands_rx.recv().await {
@@ -1603,6 +1611,8 @@ impl ImportService {
             worker_thread,
             watcher_thread,
             library_manager_for_handle,
+            clock_for_handle,
+            ids_for_handle,
             runtime_handle,
             watcher_tx,
             event_tx,
@@ -1634,8 +1644,7 @@ impl ImportService {
         if let Err(e) = result {
             error!("Import failed: {}", e);
             self.library_manager
-                .diagnostics()
-                .event(TelemetryEvent::ImportFailed {});
+                .record_telemetry(TelemetryEvent::ImportFailed {});
             // The typed error becomes a user-facing string only here, at the
             // pipeline's terminal consumer. The variant Displays embed their
             // `#[from]` source messages, so `to_string()` carries the chain.
@@ -1740,10 +1749,7 @@ impl ImportService {
                 let payloads =
                     prepare_release(library_manager, release_ref, CallPriority::Interactive)
                         .await?;
-                let parsed = payloads.parsed(
-                    library_manager.clock().as_ref(),
-                    library_manager.ids().as_ref(),
-                )?;
+                let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
                 (parsed, payloads.default_cover()?)
             }
             crate::import::IdentityChoice::Unknown => {
@@ -1751,8 +1757,8 @@ impl ImportService {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .map(|s| s.to_string());
-                let clock = library_manager.clock().clone();
-                let ids = library_manager.ids().clone();
+                let clock = self.clock.clone();
+                let ids = self.ids.clone();
                 let categorized_for_seed = categorized.clone();
                 let parsed = tokio::task::spawn_blocking(move || {
                     crate::import::file_tag_mapper::map_unknown_candidate_to_db(
@@ -1782,8 +1788,8 @@ impl ImportService {
             &mut parsed,
             &mut user_edit,
             &categorized,
-            library_manager.ids().as_ref(),
-            library_manager.clock().now(),
+            self.ids.as_ref(),
+            self.clock.now(),
         );
 
         let mut prepared = self
@@ -1838,8 +1844,7 @@ impl ImportService {
                 emit_preparing(PrepareStep::WritingCoverArt);
                 let image = self
                     .library_manager
-                    .remote_images()
-                    .fetch_required(url)
+                    .fetch_required_remote_image(url)
                     .await?;
                 Some(downloaded_cover(image, url, *source)?)
             }
@@ -1850,12 +1855,7 @@ impl ImportService {
                 // leaves the release to whatever its folder holds. A fetch that
                 // *fails* fails the import: a cover the source says exists must
                 // not go missing quietly.
-                match self
-                    .library_manager
-                    .remote_images()
-                    .fetch(&cover.url)
-                    .await?
-                {
+                match self.library_manager.fetch_remote_image(&cover.url).await? {
                     Some(image) => Some(downloaded_cover(image, &cover.url, cover.source)?),
                     None => {
                         warn!(
@@ -1953,8 +1953,7 @@ impl ImportService {
         // The release is written (`run_import` succeeded via `?` above). Report
         // the real track count and the monotonic elapsed — never a zero default.
         self.library_manager
-            .diagnostics()
-            .event(TelemetryEvent::ImportCompleted {
+            .record_telemetry(TelemetryEvent::ImportCompleted {
                 track_count: tracks_to_files.len() as u32,
                 duration_ms: total_duration,
             });
@@ -1977,7 +1976,7 @@ impl ImportService {
                 }
                 let trace_path = trace_dir.join("imports.jsonl");
                 let line = import_trace_line(
-                    library_manager.clock().now().to_rfc3339(),
+                    library_manager.now().to_rfc3339(),
                     &import_id,
                     &prepared.album_title,
                     &prepared.artist_name,
@@ -2057,7 +2056,7 @@ impl ImportService {
 
         // Keyed by absolute path, the same key TrackFile uses, so disc-subfolder
         // siblings with identical bare filenames stay distinct.
-        let files_now = library_manager.clock().now();
+        let files_now = library_manager.now();
         let mut db_files: Vec<DbFile> = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
         for file in discovered_files.iter() {
@@ -2075,7 +2074,7 @@ impl ImportService {
                 &file.relative_path,
                 file.size as i64,
                 resolve_file_content_type(&file.path)?,
-                library_manager.ids().new_id(),
+                library_manager.new_id(),
                 files_now,
                 content_hash,
             );
@@ -2154,8 +2153,8 @@ impl ImportService {
         let mut built_audio = Self::build_audio_formats(
             tracks_to_files,
             &file_ids,
-            self.library_manager.clock().as_ref(),
-            self.library_manager.ids().as_ref(),
+            self.clock.as_ref(),
+            self.ids.as_ref(),
         )?;
 
         // Measured from the source decode: bae stores originals verbatim (no
@@ -2221,11 +2220,11 @@ impl ImportService {
                     .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
                 let image = crate::db::DbLibraryImage::cover(
                     &db_release.id,
-                    &library_manager.ids().new_id(),
+                    &library_manager.new_id(),
                     &candidate.source,
                     candidate.source_url,
                     &bytes,
-                    library_manager.clock().now(),
+                    library_manager.now(),
                 );
                 Some((image, bytes))
             }
@@ -2698,28 +2697,13 @@ pub(crate) async fn prepare_release(
     release_ref: &MetadataRef,
     priority: CallPriority,
 ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-    if let Some(stored) =
-        crate::import::payloads::load(library_manager.database(), release_ref).await?
-    {
+    if let Some(stored) = library_manager.load_release_payloads(release_ref).await? {
         return Ok(stored);
     }
-    // A Discogs client that will not build costs a MusicBrainz release only its
-    // cross-reference, which is best-effort either way; a Discogs release has
-    // nothing to fetch without one, and `fetch` refuses it by name.
-    let discogs = match library_manager.discogs_client() {
-        Ok(client) => client,
-        Err(error) => {
-            warn!("no Discogs client for {}: {error}", release_ref.id);
-            None
-        }
-    };
-    let payloads = crate::import::payloads::fetch(discogs.as_ref(), release_ref, priority).await?;
-    crate::import::payloads::store(
-        library_manager.database(),
-        &payloads,
-        library_manager.clock().now(),
-    )
-    .await?;
+    let payloads = library_manager
+        .fetch_release_payloads(release_ref, priority)
+        .await?;
+    library_manager.store_release_payloads(&payloads).await?;
     Ok(payloads)
 }
 

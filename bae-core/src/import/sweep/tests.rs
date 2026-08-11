@@ -17,7 +17,7 @@ use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::keys::StoreKeys;
 use crate::library::LibraryManager;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionService};
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use serial_test::serial;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -318,7 +318,7 @@ impl Fixture {
             "Test Library".to_string(),
         );
         crate::config::install_test_keyring();
-        // No Discogs key is seeded, so `discogs_client()` yields `None` and the
+        // No Discogs key is seeded, so Discogs operations are unavailable and the
         // barcode lookup is MusicBrainz-only — one provider to fake.
         let manager = LibraryManager::new(
             database,
@@ -331,20 +331,11 @@ impl Fixture {
             crate::import::cover_art::RemoteImageCache::for_test(),
         );
 
-        let import =
-            crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
-                .await
-                .unwrap();
-        let identify = IdentifyServiceHandle::new(
-            manager.clone(),
-            tokio::runtime::Handle::current(),
-            import.event_sender_for_test(),
-        );
-        let extraction = ExtractionService::start(
-            tokio::runtime::Handle::current(),
-            import.event_sender_for_test(),
-            manager.clone(),
-        );
+        let import = manager
+            .start_import_service(tokio::runtime::Handle::current())
+            .await
+            .unwrap();
+        let (identify, extraction) = import.start_candidate_services();
 
         let provider = FakeProvider::start().await;
         crate::musicbrainz::set_base_url_for_test(Some(provider.base_url.clone()));
@@ -526,17 +517,9 @@ impl Fixture {
     /// The archived MusicBrainz document for a release, if one was written.
     async fn archived(&self, release_id: &str) -> Option<String> {
         self.manager
-            .database_for_test()
-            .load_source_release_payloads(&[(
-                crate::import::PayloadSource::MusicBrainz,
-                release_id.to_string(),
-            )])
+            .source_release_payload_for_test(crate::import::PayloadSource::MusicBrainz, release_id)
             .await
             .unwrap()
-            .remove(&(
-                crate::import::PayloadSource::MusicBrainz,
-                release_id.to_string(),
-            ))
     }
 
     /// Archive a release's documents directly, as a settle step would have — for
@@ -549,8 +532,7 @@ impl Fixture {
             fetched_at: fixed_now(),
         };
         self.manager
-            .database_for_test()
-            .save_source_release_payloads(&[now])
+            .save_source_release_payloads_for_test(&[now])
             .await
             .unwrap();
     }
@@ -1474,16 +1456,15 @@ async fn start_import_for(fixture: &Fixture, candidate: &Path) {
         .import
         .claim_candidate_for_import(&candidate_key)
         .await;
-    crate::import::handle::send_event(
-        &fixture.import.event_tx,
-        ImportEvent::ImportProgress {
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::ImportProgress {
             candidate_key,
             progress: crate::import::ImportProgress::Started {
                 id: "release-importing".to_string(),
                 import_id: "import-running".to_string(),
             },
-        },
-    );
+        });
 }
 
 /// An import started mid-pass takes its candidate away from the sweep: no
@@ -1581,14 +1562,13 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
         Some(ImportCandidateSnapshot::Folder { candidate, .. }) => candidate,
         other => panic!("the claimed candidate is still a folder candidate: {other:?}"),
     };
-    crate::import::handle::send_event(
-        &fixture.import.event_tx,
-        ImportEvent::Scan(ScanEvent::FolderCandidate {
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
             candidate: claimed,
             skipped: false,
             is_added: false,
-        }),
-    );
+        }));
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(15), pass)
         .await
@@ -2664,7 +2644,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
 
     // Read the queue on the event the surfaces refresh on, not after the pick
     // has finished settling: the row has to be right the moment it lands.
-    let mut events = fixture.import.event_sender_for_test().subscribe();
+    let mut events = fixture.import.subscribe_events();
     let picking = {
         let import = fixture.import.clone();
         let key = key.clone();

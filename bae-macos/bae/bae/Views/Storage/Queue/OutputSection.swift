@@ -49,7 +49,7 @@ struct OutputSection: View {
     #Preview("Populated") {
         OutputSection()
             .environment(PreviewData.outputStore())
-            .environment(Outputs.stub)
+            .environment(Outputs.stub())
             .frame(width: 700)
     }
 
@@ -60,7 +60,7 @@ struct OutputSection: View {
                     PreviewData.outputSnapshot(paused: true)
                 )
             )
-            .environment(Outputs.stub)
+            .environment(Outputs.stub())
             .frame(width: 700)
     }
 #endif

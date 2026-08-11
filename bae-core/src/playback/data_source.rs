@@ -4,7 +4,9 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::playback::sparse_buffer::{ReaderDemand, SharedSparseBuffer, SparseStreamingBuffer};
+use crate::playback::sparse_buffer::{SharedSparseBuffer, SparseStreamingBuffer, FILL_WINDOW_SIZE};
+#[cfg(test)]
+use crate::playback::sparse_buffer::{KEEP_BEHIND, MIN_READAHEAD};
 use crate::playback::PlaybackError;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
@@ -161,30 +163,21 @@ fn report_fill_failure(
     }
 }
 
-/// Hand back the fill-wake signal and a weak buffer ref, consuming the caller's
-/// strong ref. The fill follows the buffer's real users (decoder + cache) via
-/// the `Weak` and must not keep the buffer alive itself, so the strong ref is
-/// dropped here. Both readers prepare their fill this way. The file size is
-/// already set at the buffer's construction, so there's nothing else to wire.
-fn prepare_fill(buffer: SharedSparseBuffer) -> (Arc<Notify>, Weak<SparseStreamingBuffer>) {
-    let wake = buffer.fill_wake_handle();
-    (wake, Arc::downgrade(&buffer))
-}
-
 impl AudioDataReader for LocalReader {
     fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler) {
         let path = self.path;
-        let (wake, buffer) = prepare_fill(buffer);
 
         tokio::spawn(async move {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
+
+            let weak_buffer = Arc::downgrade(&buffer);
 
             let file = match tokio::fs::File::open(&path).await {
                 Ok(f) => f,
                 Err(e) => {
                     report_fill_failure(
                         on_error,
-                        &buffer,
+                        &weak_buffer,
                         PlaybackError::io(format!("Failed to open file {path}: {e}")),
                     );
                     return;
@@ -194,29 +187,32 @@ impl AudioDataReader for LocalReader {
             // turn, so the lock is never actually contended.
             let file = tokio::sync::Mutex::new(file);
 
-            let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
-                let file = &file;
-                let path = &path;
-                async move {
-                    let mut f = file.lock().await;
-                    f.seek(std::io::SeekFrom::Start(src_off))
-                        .await
-                        .map_err(|e| {
-                            PlaybackError::io(format!("Failed to seek {path} to {src_off}: {e}"))
+            let result = buffer
+                .fill_on_demand(|src_off, len| {
+                    let file = &file;
+                    let path = &path;
+                    async move {
+                        let mut f = file.lock().await;
+                        f.seek(std::io::SeekFrom::Start(src_off))
+                            .await
+                            .map_err(|e| {
+                                PlaybackError::io(format!(
+                                    "Failed to seek {path} to {src_off}: {e}"
+                                ))
+                            })?;
+                        let mut buf = vec![0u8; len as usize];
+                        f.read_exact(&mut buf).await.map_err(|e| {
+                            PlaybackError::io(format!(
+                                "Failed to read {len} bytes at {src_off} from {path}: {e}"
+                            ))
                         })?;
-                    let mut buf = vec![0u8; len as usize];
-                    f.read_exact(&mut buf).await.map_err(|e| {
-                        PlaybackError::io(format!(
-                            "Failed to read {len} bytes at {src_off} from {path}: {e}"
-                        ))
-                    })?;
-                    Ok(buf)
-                }
-            })
-            .await;
+                        Ok(buf)
+                    }
+                })
+                .await;
 
             if let Err(e) = result {
-                report_fill_failure(on_error, &buffer, e);
+                report_fill_failure(on_error, &weak_buffer, e);
             }
         });
     }
@@ -271,14 +267,7 @@ pub fn create_audio_reader(
     prefetch_byte: Option<u64>,
     prefetch_file_end: bool,
 ) -> Box<dyn AudioDataReader> {
-    Box::new(CovenBlobReader {
-        handle: library_manager.handle().clone(),
-        db: library_manager.database().clone(),
-        file_id: file_id.to_string(),
-        arbiter,
-        prefetch_byte,
-        prefetch_file_end,
-    })
+    library_manager.create_audio_reader(file_id, arbiter, prefetch_byte, prefetch_file_end)
 }
 
 /// Streams a release file's plaintext off one opened [`coven::BlobStream`]. The
@@ -286,8 +275,6 @@ pub fn create_audio_reader(
 /// when the stream opens, so playback never branches on locality and every window
 /// after that costs only its own bytes.
 pub struct CovenBlobReader {
-    handle: coven::CovenHandle,
-    /// For classifying a failed open or read — the pending-upload check.
     db: crate::db::Database,
     file_id: String,
     arbiter: Arc<FetchArbiter>,
@@ -304,10 +291,27 @@ pub struct CovenBlobReader {
     prefetch_file_end: bool,
 }
 
+impl CovenBlobReader {
+    pub(crate) fn new(
+        db: crate::db::Database,
+        file_id: String,
+        arbiter: Arc<FetchArbiter>,
+        prefetch_byte: Option<u64>,
+        prefetch_file_end: bool,
+    ) -> Self {
+        Self {
+            db,
+            file_id,
+            arbiter,
+            prefetch_byte,
+            prefetch_file_end,
+        }
+    }
+}
+
 impl AudioDataReader for CovenBlobReader {
     fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler) {
         let CovenBlobReader {
-            handle,
             db,
             file_id,
             arbiter,
@@ -321,7 +325,7 @@ impl AudioDataReader for CovenBlobReader {
             // `release_files` row; the stream opened from it is bound to that exact
             // row version, so a later row replacement can't redirect a read. A missing
             // row surfaces through the fill like any other read failure.
-            let blob = match handle
+            let blob = match db
                 .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, &file_id)
                 .await
             {
@@ -343,7 +347,7 @@ impl AudioDataReader for CovenBlobReader {
             // unavailable cloud home surfaces, so its failure takes the same
             // classification as a failed range read: that is what carries "reconnect
             // sync" and "still uploading" to the UI.
-            let stream = match handle.open_blob_stream(&blob).await {
+            let stream = match db.open_blob_stream(&blob).await {
                 Ok(stream) => Arc::new(stream),
                 Err(e) => {
                     let error = playback_error_for_blob_read(&db, blob.row_id(), e).await;
@@ -391,8 +395,6 @@ impl AudioDataReader for CovenBlobReader {
                 );
             }
 
-            let (wake, buffer) = prepare_fill(buffer);
-
             info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
             // This reader's running fetch total and the wall-clock origin, so each
             // window's log shows how many bytes have been read off the stream and how
@@ -400,7 +402,8 @@ impl AudioDataReader for CovenBlobReader {
             // competing with the playing track.
             let fetched = AtomicU64::new(0);
             let started = Instant::now();
-            let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
+            let weak_buffer = Arc::downgrade(&buffer);
+            let result = buffer.fill_on_demand(|src_off, len| {
                 let fut = stream.read_at(src_off, len);
                 let arbiter = &arbiter;
                 let fetched = &fetched;
@@ -441,7 +444,7 @@ impl AudioDataReader for CovenBlobReader {
             .await;
 
             if let Err(e) = result {
-                report_fill_failure(on_error, &buffer, e);
+                report_fill_failure(on_error, &weak_buffer, e);
             }
         });
     }
@@ -452,7 +455,7 @@ impl AudioDataReader for CovenBlobReader {
 // own bytes and nothing more, and the window size is purely a
 // readahead-vs-memory choice rather than a way to amortize per-call overhead.
 // 4 MiB keeps both modest.
-const CLOUD_STREAM_READ_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
+const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 
 /// The minimum the fill keeps buffered ahead of a reader whose track ceiling
 /// isn't set yet -- the brief probe phase before the decoder reads the header
@@ -463,13 +466,6 @@ const CLOUD_STREAM_READ_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 /// every track that doesn't start at byte 0. Once the decoder
 /// seeks and sets its real ceiling (the track's end byte), read-ahead is bounded
 /// by that instead and reaches the rest of the track.
-const MIN_READAHEAD: u64 = CLOUD_STREAM_READ_SIZE;
-
-/// How far behind a reader's position buffered bytes are retained before being
-/// evicted. A margin for the decoder's brief backward reads; everything older is
-/// dropped so memory stays bounded to a window around the playhead.
-const KEEP_BEHIND: u64 = CLOUD_STREAM_READ_SIZE;
-
 /// Fetch one window starting at `off` up front, in parallel with the demuxer's
 /// header probe, and append it to `buffer` so a later read finds it buffered
 /// instead of waiting for the fill to notice a demand there. Arbiter-gated exactly
@@ -508,135 +504,6 @@ fn spawn_window_prefetch(
             Err(e) => debug!("prefetch buffer={buffer_id} {what} off={off} failed: {e}"),
         }
     });
-}
-
-/// The next region to fetch, given each live reader's demand ascending by
-/// position: serve the lowest-position reader first so the playing track stays
-/// fed before a further-ahead reader (e.g. a gapless preload). With a track
-/// ceiling set, the reader is fetched up to it -- the rest of the current track,
-/// and no further, so a short track doesn't over-fetch into the next one. Without
-/// one (during probe, before the decoder positions the reader), the fill keeps
-/// `MIN_READAHEAD` ahead so the ring can't underrun. Returns `None` when every
-/// reader is buffered up to its target -- the fill then idles.
-///
-/// The ceiling caps read-AHEAD, never the demanded byte itself: a reader
-/// demanding at or past its ceiling is not done -- raw-FLAC frame parsing needs
-/// lookahead past a segment's end (CUE boundaries aren't frame-aligned), so a
-/// segment's decoder blocks reading right at its ceiling. Treating the ceiling
-/// as a hard stop would starve that read forever and deadlock the decode, so
-/// such a demand falls back to the `MIN_READAHEAD` window from its position.
-///
-/// There is no backfill: the buffer only holds the current track(s) around the
-/// live readers, never the whole album. A backward seek into an evicted region
-/// re-publishes a demand there and the fill re-fetches that window.
-fn pick_window_gap(
-    buffer: &SharedSparseBuffer,
-    windows: &[ReaderDemand],
-    total: u64,
-) -> Option<(u64, u64)> {
-    for demand in windows {
-        let ceil = match demand.ceiling {
-            Some(c) if demand.pos < c => c.min(total),
-            _ => (demand.pos + MIN_READAHEAD).min(total),
-        };
-        if let Some(gap) = buffer.next_gap(demand.pos, ceil) {
-            return Some(gap);
-        }
-    }
-    None
-}
-
-/// Fill the buffer from the source, following the readers: fetch the window each
-/// reader needs next (read-ahead), evict what they have passed, and idle when
-/// every read-ahead window is full -- resuming when a reader advances or seeks.
-/// The buffer addresses the file directly (buffer offset == source byte offset)
-/// and `fetch(off, len)` returns exactly `len` plaintext source bytes.
-///
-/// Holds only a `Weak`: the fill follows the buffer's real users (the decoder's
-/// readers and the service's shared-buffer cache) and never keeps an abandoned
-/// buffer alive. When the last user drops it, the upgrade fails (or the buffer's
-/// `Drop` wakes a parked fill) and the loop exits. Until then: playback starts
-/// after the first window, memory stays bounded to a window around the playhead,
-/// and a seek into an evicted region re-fetches just that window. The strong ref
-/// is released before every `await` so the buffer can be freed while we wait; no
-/// lock is held across `fetch().await`.
-async fn fill_buffer_on_demand<F, Fut>(
-    buffer: Weak<SparseStreamingBuffer>,
-    wake: Arc<Notify>,
-    fetch: F,
-) -> Result<(), PlaybackError>
-where
-    F: Fn(u64, u64) -> Fut,
-    Fut: std::future::Future<Output = Result<Vec<u8>, PlaybackError>>,
-{
-    // The file size is fixed at the buffer's construction.
-    let total = match buffer.upgrade() {
-        Some(buf) => buf.get_total_size(),
-        None => {
-            debug!("fill_buffer_on_demand: buffer dropped before start, nothing to fill");
-            return Ok(());
-        }
-    };
-
-    loop {
-        // Acquire a strong ref for this iteration's synchronous work only.
-        let Some(buf) = buffer.upgrade() else {
-            // The buffer's last real user is gone: nothing left to fill for.
-            debug!("fill_buffer_on_demand: buffer dropped, stopping");
-            return Ok(());
-        };
-
-        // Full cancel = track change / stop: the writer abandons the buffer.
-        if buf.is_cancelled() {
-            debug!("fill_buffer_on_demand: buffer cancelled, stopping");
-            return Ok(());
-        }
-
-        // Each live reader's demand, ascending by position. `first()` is the
-        // eviction floor (the most-behind reader); the whole set drives
-        // read-ahead. One query serves both.
-        let windows = buf.demand_windows();
-
-        // Free bytes every reader has already passed so memory stays bounded to
-        // the current track(s) around the playhead.
-        if let Some(floor) = windows.first() {
-            buf.evict_before(floor.pos.saturating_sub(KEEP_BEHIND));
-        }
-
-        let gap = pick_window_gap(&buf, &windows, total);
-        // Release the strong ref before any await so the buffer can be freed
-        // (and this fill woken via its `Drop`) while we wait.
-        drop(buf);
-
-        let Some((gap_start, gap_end)) = gap else {
-            // Every reader's read-ahead window is full: park until a reader
-            // advances, seeks, the buffer is cancelled, or it is dropped. The
-            // wake stores a permit, so a signal during this check isn't lost.
-            wake.notified().await;
-            continue;
-        };
-
-        let window = CLOUD_STREAM_READ_SIZE.min(gap_end - gap_start);
-        let data = fetch(gap_start, window).await?;
-
-        if data.len() != window as usize {
-            return Err(PlaybackError::internal(format!(
-                "Source read returned {} bytes for requested {window} at {gap_start}",
-                data.len()
-            )));
-        }
-
-        // Re-acquire to store the window; if the buffer vanished during the
-        // fetch, drop the bytes and exit.
-        let Some(buf) = buffer.upgrade() else {
-            debug!(
-                "fill_buffer_on_demand: buffer dropped during fetch, \
-                 discarding {window} bytes at {gap_start}"
-            );
-            return Ok(());
-        };
-        buf.append_at(gap_start, &data);
-    }
 }
 
 #[cfg(test)]
@@ -768,7 +635,7 @@ mod tests {
             .expect("waiter task");
     }
 
-    /// Spawn the production `fill_buffer_on_demand` loop over an in-memory
+    /// Spawn the production `fill_on_demand` loop over an in-memory
     /// `blob`, filling `buffer`. The fetch serves `blob[start..end]` directly —
     /// source offsets map identity into the buffer — so the seek-ordering and
     /// eviction assertions read against plaintext offsets. Records every
@@ -783,28 +650,29 @@ mod tests {
     ) -> ReadLog {
         let read_log: ReadLog = Arc::new(Mutex::new(Vec::new()));
         let blob = Arc::new(blob);
-        let (wake, weak) = prepare_fill(buffer.clone());
+        let fill_buffer = buffer.clone();
         let log = read_log.clone();
         tokio::spawn(async move {
             // Normal teardown (the buffer cancelled or its weak ref dropped)
             // returns `Ok(())`; only a real fetch failure or short read returns
             // `Err`. So `expect` here fails the test on a genuine fill error
             // without firing on clean teardown.
-            fill_buffer_on_demand(weak, wake, move |start, len| {
-                let blob = blob.clone();
-                let log = log.clone();
-                let gate = gate.clone();
-                async move {
-                    let end = start + len;
-                    log.lock().unwrap().push((start, end));
-                    if let Some(gate) = &gate {
-                        gate.wait_for(start).await;
+            fill_buffer
+                .fill_on_demand(move |start, len| {
+                    let blob = blob.clone();
+                    let log = log.clone();
+                    let gate = gate.clone();
+                    async move {
+                        let end = start + len;
+                        log.lock().unwrap().push((start, end));
+                        if let Some(gate) = &gate {
+                            gate.wait_for(start).await;
+                        }
+                        Ok(blob[start as usize..end as usize].to_vec())
                     }
-                    Ok(blob[start as usize..end as usize].to_vec())
-                }
-            })
-            .await
-            .expect("recording fill failed");
+                })
+                .await
+                .expect("recording fill failed");
         });
         read_log
     }
@@ -1097,29 +965,19 @@ mod tests {
         );
     }
 
-    /// Spawned through the production `start_reading` path, the fill holds only
-    /// a `Weak` (it never keeps the buffer alive) and parks when no reader has a
-    /// demand. Dropping the buffer's last strong ref frees it, and the buffer's
-    /// `Drop` wakes the parked fill so the task exits — releasing its clone of
-    /// the wake handle. Sabotage either half — `start_reading` keeping a strong
-    /// ref, or removing the `Drop` wake — and an assertion fails.
+    /// The production fill holds only a `Weak` while parked. Dropping the
+    /// buffer's last strong ref frees it, and `Drop` wakes the parked fill so
+    /// its task exits. Removing either release makes this test time out.
     #[tokio::test]
-    async fn start_reading_fill_follows_the_buffer_and_exits_when_it_is_dropped() {
+    async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
         let source_size = 4 * WINDOW;
         let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
-        let mut temp_file = NamedTempFile::new().unwrap();
-        temp_file.write_all(&blob).unwrap();
-        temp_file.flush().unwrap();
-
         let buffer = create_sparse_buffer(source_size);
-        // Our own clone of the wake handle; the fill takes another via
-        // `start_reading`, and the buffer holds the third.
-        let wake = buffer.fill_wake_handle();
-        let reader = Box::new(LocalReader::new(
-            temp_file.path().to_str().expect("temp path is UTF-8"),
-        ));
-        reader.start_reading(buffer.clone(), Box::new(|_| {}));
         let weak = Arc::downgrade(&buffer);
+        let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, len| {
+            let bytes = blob[start as usize..(start + len) as usize].to_vec();
+            async move { Ok(bytes) }
+        }));
 
         // Let the spawned fill run to its park. With no reader it fetches nothing
         // and holds only a weak ref, leaving the test as the buffer's sole owner.
@@ -1133,16 +991,14 @@ mod tests {
         );
 
         // Drop the last strong ref: the buffer frees and its Drop wakes the
-        // parked fill, which upgrades to None and exits, dropping its wake clone.
+        // parked fill, which upgrades to None and exits.
         drop(buffer);
         assert!(weak.upgrade().is_none(), "the buffer must be freed");
-        timeout(Duration::from_secs(5), async {
-            while Arc::strong_count(&wake) != 1 {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .expect("the parked fill task must exit when the buffer is dropped, not leak");
+        timeout(Duration::from_secs(5), fill)
+            .await
+            .expect("the parked fill task must exit when the buffer is dropped, not leak")
+            .expect("the fill task must not panic")
+            .expect("dropping the buffer is a normal fill exit");
     }
 
     /// A reader blocked at the seek target unblocks as soon as that target's

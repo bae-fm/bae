@@ -125,6 +125,9 @@ final class LibraryBrowseSession {
             },
             onError: { uiStore.showError($0) }
         )
+    }
+
+    func start() {
         albums.startLoad()
     }
 

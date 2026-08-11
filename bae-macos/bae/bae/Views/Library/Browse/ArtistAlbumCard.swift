@@ -34,6 +34,6 @@ struct ArtistAlbumCard: View {
         ArtistAlbumCard(album: PreviewData.albums[0], onTap: {})
             .frame(width: 160)
             .padding()
-            .environment(ImageStore.stub)
+            .environment(ImageStore.stub())
     }
 #endif

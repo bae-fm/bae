@@ -3,19 +3,7 @@ import Foundation
 /// Cloud sync connection management and sync-config writes plus the
 /// restore-code generator used by the settings UI.
 public final class Sync: Sendable, Observable {
-    public let signInCloudProvider:
-        @Sendable (
-            _ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage
-        )
-            async throws -> Void
     public let disconnectCloudProvider: @Sendable () throws -> Void
-    /// Set up iCloud (CloudKit) as the sync provider: validate the iCloud
-    /// account is usable, register the CloudKit driver with the bridge, then
-    /// persist the provider. Throws before persisting when iCloud is
-    /// unavailable, so a signed-out account never lands `provider: CloudKit`
-    /// in the config.
-    public let connectCloudkit:
-        @Sendable (_ storage: BridgeHomeStorage) async throws -> Void
     public let saveSyncConfig:
         @Sendable (_ configData: BridgeSaveSyncConfig) async throws -> Void
     public let generateRestoreCode: @Sendable () async throws -> String
@@ -67,16 +55,7 @@ public final class Sync: Sendable, Observable {
     public let setMaxConcurrentUploads: @Sendable (_ n: UInt32) throws -> Void
 
     public init(
-        signInCloudProvider:
-            @escaping @Sendable (BridgeCloudProvider, BridgeHomeStorage)
-            async throws ->
-            Void = { _, _ in
-            },
         disconnectCloudProvider: @escaping @Sendable () throws -> Void = {},
-        connectCloudkit:
-            @escaping @Sendable (BridgeHomeStorage) async throws -> Void = {
-                _ in
-            },
         saveSyncConfig:
             @escaping @Sendable (BridgeSaveSyncConfig) async throws -> Void = {
                 _ in
@@ -118,9 +97,7 @@ public final class Sync: Sendable, Observable {
             _ in
         }
     ) {
-        self.signInCloudProvider = signInCloudProvider
         self.disconnectCloudProvider = disconnectCloudProvider
-        self.connectCloudkit = connectCloudkit
         self.saveSyncConfig = saveSyncConfig
         self.generateRestoreCode = generateRestoreCode
         self.getMembers = getMembers
@@ -138,31 +115,7 @@ public final class Sync: Sendable, Observable {
 
     public convenience init(handle: any AppHandleProtocol) {
         self.init(
-            // `signInCloudProvider` (OAuth) and `connectCloudkit` (iCloud) bind
-            // to bridge methods that exist only when their feature is compiled
-            // in. The UI that calls these is compiled out of baeium builds, so
-            // there the closures are unreachable stubs.
-            signInCloudProvider: { provider, storage in
-                #if BAE_OAUTH_PROVIDERS
-                    try await handle.signInCloudProvider(
-                        provider: provider,
-                        storage: storage
-                    )
-                #else
-                    throw StubError.notImplemented
-                #endif
-            },
             disconnectCloudProvider: { try handle.disconnectCloudProvider() },
-            connectCloudkit: { storage in
-                #if BAE_CLOUDKIT
-                    // The driver is installed once at app startup; here we only
-                    // pre-flight the iCloud account before persisting CloudKit.
-                    try await CloudKitService.bae().checkAccountAvailable()
-                    try await handle.useCloudkit(storage: storage)
-                #else
-                    throw StubError.notImplemented
-                #endif
-            },
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
             generateRestoreCode: { try await handle.generateRestoreCode() },
             getMembers: { try await handle.getMembers() },
@@ -194,7 +147,7 @@ public final class Sync: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        public static let stub = Sync()
+        public static func stub() -> Sync { Sync() }
     #endif
 
     /// Generate a fresh restore code and persist it to iCloud Keychain

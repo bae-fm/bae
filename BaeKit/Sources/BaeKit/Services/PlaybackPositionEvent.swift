@@ -1,6 +1,6 @@
 import Foundation
 
-/// Playback position broadcast on `PlaybackStore.playbackPositionSubject`.
+/// Playback position broadcast by `PlaybackStore.playbackPositionPublisher`.
 ///
 /// Position ticks arrive at display rate during playback — far too frequent
 /// for `@Observable` to drive without thrashing the view tree. The store

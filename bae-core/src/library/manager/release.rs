@@ -739,7 +739,7 @@ impl LibraryManager {
         // reached the cloud. Doing it first means the delete never races the
         // drain for rows it is about to remove.
         if delete_plan.cancel_make_remote {
-            self.cancel_release_make_remote(release_id).await;
+            self.coven_cancel_make_remote(release_id).await?;
         }
         let album_deleted = self
             .database
@@ -881,14 +881,13 @@ pub(crate) async fn cover_ref_for(
 }
 
 /// Free-function variant of `LibraryManager::find_release_detail`, so the upload
-/// observer — which holds a `Database` and a `CovenHandle` but no manager — can
+/// observer — which holds a `Database` but no manager — can
 /// emit `ReleaseUpdated` when coven completes a transition. Pin state is answered
-/// through `handle`, the same door the manager uses. The caller supplies
+/// through the database owner, the same door the manager uses. The caller supplies
 /// `has_cloud_home` and `sync_ready`; the observer fires inside a running sync
 /// cycle, so it passes `true` for both.
 pub(crate) async fn find_release_detail_with(
     database: &Database,
-    handle: &CovenHandle,
     has_cloud_home: bool,
     sync_ready: bool,
     release_id: &str,
@@ -908,7 +907,7 @@ pub(crate) async fn find_release_detail_with(
     // caller is where a bad id ships the `blob_id_invalid` anomaly.
     let pinned = match raw.files.first() {
         Some(file) => matches!(
-            release_file_pin_state(handle, &file.id).await?,
+            release_file_pin_state(database, &file.id).await?,
             ReleasePinState::Pinned
         ),
         None => false,

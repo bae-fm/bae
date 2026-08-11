@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use super::{apply_identity_choice, apply_user_edit_to_seed, ImportService, PreparedMetadata};
-use crate::import::handle::{fetch_artist_images, remap_links};
+use crate::import::handle::remap_links;
 use crate::import::ParsedWorkGraph;
 
 impl ImportService {
@@ -82,8 +82,8 @@ impl ImportService {
                 &mut artists,
                 &mut album_artists,
                 &mut track_artists,
-                library_manager.clock().as_ref(),
-                library_manager.ids().as_ref(),
+                self.clock.as_ref(),
+                self.ids.as_ref(),
             )?;
         }
 
@@ -205,12 +205,9 @@ impl ImportService {
             |link, work_id| link.work_id = work_id,
         )?;
 
-        let discogs_client = library_manager.discogs_client()?;
-        let artist_images = if let Some(ref discogs_client) = discogs_client {
-            fetch_artist_images(library_manager, discogs_client, &artists, &artist_id_map).await
-        } else {
-            Vec::new()
-        };
+        let artist_images = library_manager
+            .fetch_discogs_artist_images(&artists, &artist_id_map)
+            .await;
 
         let artist_inserts = resolved.inserts;
         let artist_external_id_updates = resolved.external_id_updates;

@@ -272,7 +272,7 @@ struct QueueView: View {
     // MARK: - Previews
 
     /// Renders the pane with the queue state read from a store in the
-    /// environment (the two lanes) and commands sent to `Queue.stub`; the
+    /// environment (the two lanes) and commands sent to `Queue.stub()`; the
     /// prop callbacks are no-ops, so drags and clicks settle back rather than
     /// mutating anything.
     @MainActor
@@ -296,8 +296,8 @@ struct QueueView: View {
         .frame(width: 420, height: 720)
         .background(Theme.surface)
         .environment(store)
-        .environment(Queue.stub)
-        .environment(ImageStore.stub)
+        .environment(Queue.stub())
+        .environment(ImageStore.stub())
     }
 
     #Preview("With items") {

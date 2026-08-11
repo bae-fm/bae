@@ -123,7 +123,7 @@ public final class LibrarySessionOpener<
             }
             let service = makeService(handle, config, initialOutbox)
             if handle.isSyncReady() {
-                service.sync.storeRestoreCodeInKeychain(
+                service.storeRestoreCodeInKeychain(
                     libraryId: config.libraryId,
                     onError: { [weak service] message in
                         Task { @MainActor in

@@ -281,7 +281,7 @@
         /// re-apply a fresh snapshot (revision bumped) — the preview stand-in
         /// for core's `QueueUpdated` echo. Echo-driven view behavior (the
         /// post-reorder hold clearing, the removal unmount, the shuffle flip)
-        /// only works in a preview against this; against `Queue.stub` the echo
+        /// only works in a preview against this; against `Queue.stub()` the echo
         /// never lands and a second drag starts from a stale display order.
         @MainActor
         static func echoingQueue(
@@ -1012,27 +1012,24 @@
 
         // MARK: - Config and edit-metadata fixtures
 
-        /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
-        /// so it needs `@MainActor` isolation to hold as a static. The explicit
-        /// type keeps the static preview analyzer able to see that
-        /// `.environment(PreviewData.configStore)` provides a `ConfigStore`.
+        /// A new preview ConfigStore for each preview scene.
         @MainActor
-        static let configStore: ConfigStore = makeConfigStore(
-            libraryFullWidth: false
-        )
+        static func configStore() -> ConfigStore {
+            makeConfigStore(libraryFullWidth: false)
+        }
 
         /// A preview CastStore mid-session, so the casting settings preview shows
         /// the state that asks before the feature is turned off.
         @MainActor
-        static let castStore: CastStore = {
+        static func castStore() -> CastStore {
             let store = CastStore()
             store.applyStatus(deviceName: "Living Room Speaker")
             return store
-        }()
+        }
 
         /// A preview ConfigStore with the given library-width and casting
         /// settings — the previews that vary them build their own; everything
-        /// else shares the `configStore` static above.
+        /// else creates the default through `configStore()` above.
         @MainActor
         static func makeConfigStore(
             libraryFullWidth: Bool,

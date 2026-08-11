@@ -3,6 +3,55 @@
 use super::*;
 
 impl LibraryManager {
+    pub fn start_playback_service(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+    ) -> crate::playback::PlaybackHandle {
+        crate::playback::PlaybackService::start(
+            self.clone(),
+            self.ids.clone(),
+            runtime_handle,
+            position_update_interval_ms,
+            restore_playback,
+        )
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn start_playback_service_with_output(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+        audio_output: Box<dyn crate::playback::audio_output::AudioOutput>,
+    ) -> crate::playback::PlaybackHandle {
+        crate::playback::PlaybackService::start_with_output(
+            self.clone(),
+            self.ids.clone(),
+            runtime_handle,
+            position_update_interval_ms,
+            restore_playback,
+            audio_output,
+        )
+    }
+
+    pub(crate) fn create_audio_reader(
+        &self,
+        file_id: &str,
+        arbiter: Arc<crate::playback::data_source::FetchArbiter>,
+        prefetch_byte: Option<u64>,
+        prefetch_file_end: bool,
+    ) -> Box<dyn crate::playback::data_source::AudioDataReader> {
+        Box::new(crate::playback::data_source::CovenBlobReader::new(
+            self.database.clone(),
+            file_id.to_string(),
+            arbiter,
+            prefetch_byte,
+            prefetch_file_end,
+        ))
+    }
+
     /// Write the device-local playback-state row. Propagates the DB error so the
     /// caller can distinguish a write failure from a stored absence; the resume
     /// row is a device-local cache, so the call site logs and continues rather

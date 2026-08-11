@@ -64,7 +64,7 @@ impl Database {
         let bytes = bytes.to_vec();
         self.inner
             .handle
-            .write(
+            .write_with_blobs(
                 move |w| {
                     w.put_blob(new_blob.namespace.clone(), new_blob.id.clone(), bytes);
                     if let Some(old) = replaced {

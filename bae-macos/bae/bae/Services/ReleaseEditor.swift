@@ -125,6 +125,8 @@ final class ReleaseEditor: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        static let stub = ReleaseEditor()
+        static func stub() -> ReleaseEditor {
+            ReleaseEditor()
+        }
     #endif
 }

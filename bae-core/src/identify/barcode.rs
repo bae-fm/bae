@@ -2,8 +2,9 @@
 //! *detection* (artwork OCR and the CUE `CATALOG` field) lives in the
 //! signal-extraction service; identify only looks the codes up.
 
-use crate::discogs::client::{DiscogsClient, DiscogsSearchParams};
-use crate::import::search::{search_discogs, search_mb, MetadataResult};
+use crate::discogs::client::DiscogsSearchParams;
+use crate::import::search::{search_mb, MetadataResult};
+use crate::library::LibraryManager;
 use crate::musicbrainz::ReleaseSearchParams;
 use crate::util::rate_limiter::CallPriority;
 
@@ -12,7 +13,7 @@ use crate::util::rate_limiter::CallPriority;
 /// the phase.
 pub async fn lookup_barcode(
     barcode: &str,
-    discogs_client: Option<&DiscogsClient>,
+    library_manager: &LibraryManager,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, String> {
     let mb = search_mb(
@@ -25,7 +26,7 @@ pub async fn lookup_barcode(
     .await
     .map_err(|e| e.to_string())?;
 
-    let discogs = discogs_barcode_lookup(discogs_client, barcode, priority).await;
+    let discogs = discogs_barcode_lookup(library_manager, barcode, priority).await;
 
     Ok(merge_barcode_results(mb, discogs))
 }
@@ -35,20 +36,19 @@ pub async fn lookup_barcode(
 /// MB matches — but dropping a whole source from a user-facing lookup is abnormal
 /// enough to warn about.
 async fn discogs_barcode_lookup(
-    discogs_client: Option<&DiscogsClient>,
+    library_manager: &LibraryManager,
     barcode: &str,
     priority: CallPriority,
 ) -> Option<Vec<MetadataResult>> {
-    let client = discogs_client?;
-    match search_discogs(
-        client,
-        DiscogsSearchParams {
-            barcode: Some(barcode.to_string()),
-            ..Default::default()
-        },
-        priority,
-    )
-    .await
+    match library_manager
+        .search_discogs(
+            DiscogsSearchParams {
+                barcode: Some(barcode.to_string()),
+                ..Default::default()
+            },
+            priority,
+        )
+        .await
     {
         Ok(results) => Some(results),
         Err(e) => {
@@ -75,7 +75,6 @@ fn merge_barcode_results(
 mod tests {
     use super::*;
     use crate::import::MetadataSource;
-    use serial_test::serial;
 
     fn result(source: MetadataSource, release_id: &str) -> MetadataResult {
         MetadataResult {
@@ -133,44 +132,5 @@ mod tests {
         let merged = merge_barcode_results(mb, Some(vec![]));
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].release_id, "mb-1");
-    }
-
-    /// A real Discogs failure is skipped, not propagated: `None` plus a warning.
-    #[tokio::test]
-    #[serial(discogs_rate_limiter)]
-    async fn discogs_lookup_failure_is_logged_and_skipped() {
-        // Port 1 refuses immediately, so the search fails without a live dependency.
-        let client = DiscogsClient::with_base_url(
-            "test-token".to_string(),
-            "http://127.0.0.1:1".to_string(),
-        );
-
-        let mut outcome = None;
-        let logs = crate::test_logs::capture_warn_logs_async(|| async {
-            outcome = Some(
-                discogs_barcode_lookup(Some(&client), "0123456789", CallPriority::Interactive)
-                    .await,
-            );
-        })
-        .await;
-
-        assert!(
-            outcome.expect("closure ran").is_none(),
-            "a failed Discogs lookup is skipped (None)"
-        );
-        assert!(
-            logs.contains("Discogs barcode search failed"),
-            "the skip should be logged at warn, got: {logs}"
-        );
-    }
-
-    /// No Discogs client → `None`, no lookup attempted, no warning.
-    #[tokio::test]
-    async fn discogs_lookup_without_client_is_none() {
-        assert!(
-            discogs_barcode_lookup(None, "0123456789", CallPriority::Interactive)
-                .await
-                .is_none()
-        );
     }
 }

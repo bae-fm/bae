@@ -500,8 +500,7 @@ impl CueApeTestFixture {
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
 
         let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
-        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            library_manager.clone(),
+        let playback_handle = library_manager.start_playback_service_with_output(
             runtime_handle,
             100,
             true,

@@ -75,15 +75,14 @@ private let providerOptions: [ProviderOption] = availableCloudProviders()
 
 struct SyncSetupWizard: View {
     let onConnectS3: (BridgeSaveSyncConfig) async throws -> Void
-    /// Awaits the OAuth browser round-trip; cancellation aborts the listener.
-    /// The OAuth provider UI that invokes this is compiled out of baeium builds,
-    /// where the closure is an unused stub.
-    let onConnectOAuth:
-        (_ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage)
-            async throws -> Void
-    /// The iCloud UI that invokes this is compiled out of baeium builds, where
-    /// the closure is an unused stub.
-    let onConnectCloudKit: (_ storage: BridgeHomeStorage) async throws -> Void
+    #if BAE_OAUTH_PROVIDERS
+        /// Awaits the OAuth browser round-trip; cancellation aborts the listener.
+        let onConnectOAuth:
+            (_ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage)
+                async throws -> Void
+        let onConnectCloudKit:
+            (_ storage: BridgeHomeStorage) async throws -> Void
+    #endif
     let onDone: () -> Void
 
     @State
@@ -446,11 +445,18 @@ extension SyncSetupWizard {
     // MARK: - Previews
 
     #Preview("Provider Selection") {
-        SyncSetupWizard(
-            onConnectS3: { _ in },
-            onConnectOAuth: { _, _ in },
-            onConnectCloudKit: { _ in },
-            onDone: {},
-        )
+        #if BAE_OAUTH_PROVIDERS
+            SyncSetupWizard(
+                onConnectS3: { _ in },
+                onConnectOAuth: { _, _ in },
+                onConnectCloudKit: { _ in },
+                onDone: {}
+            )
+        #else
+            SyncSetupWizard(
+                onConnectS3: { _ in },
+                onDone: {}
+            )
+        #endif
     }
 #endif

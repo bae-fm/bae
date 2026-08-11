@@ -56,6 +56,6 @@ where Row.ID: Sendable {
         }
         .frame(width: 340, height: 600)
         .environment(libraryStore)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

@@ -113,7 +113,7 @@ private struct LibraryContentPreview: View {
             artistList: nil,
             searchResults: nil,
             searchError: nil,
-            sync: .stub,
+            sync: .stub(),
             onSelectAlbum: { _ in },
             onSelectComposer: { _ in },
             onSelectArtist: { _ in },

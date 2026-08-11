@@ -43,7 +43,7 @@ final class AppSessionHolder {
     /// Id of the currently-open library, derived from the open service so there
     /// is a single source of truth (the open library's config), letting the
     /// switcher mark the active row.
-    var activeLibraryId: String? { appService?.configStore.config.libraryId }
+    var activeLibraryId: String? { appService?.libraryId }
 
     /// Whether to offer the library switcher (more than one local library).
     var hasMultipleLibraries: Bool { libraries.count > 1 }
@@ -147,7 +147,7 @@ final class AppSessionHolder {
             return
         }
         do {
-            try service.appHandle.forgetLibrary()
+            try service.forgetLibrary()
         }
         catch {
             // No line means a cancellation; leave the screen for the retry.
@@ -186,5 +186,9 @@ final class AppSessionHolder {
                 self.screen = .failed(message: message)
             }
         }
+    }
+
+    func reportScreen(_ screen: BridgeScreen) {
+        appService?.reportScreen(screen)
     }
 }

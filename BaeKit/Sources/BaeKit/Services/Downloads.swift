@@ -67,6 +67,6 @@ public final class Downloads: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        public static let stub = Downloads()
+        public static func stub() -> Downloads { Downloads() }
     #endif
 }

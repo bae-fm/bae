@@ -104,26 +104,6 @@ impl TrackPhase {
     }
 }
 
-/// The decoder feeding the persistent output's current track: the thread and its
-/// AVIO cancel token. The stream, source, and audio-events receiver are not here
-/// — they live in `PlaybackService::output`, shared across tracks. A track
-/// transition cancels this token (stops the outgoing AVIO reads) and installs the
-/// incoming decoder; the source-side swap happens via `PlaybackSource::replace`.
-pub(super) struct TrackDecoder {
-    pub(super) handle: std::thread::JoinHandle<()>,
-    pub(super) cancel_token: Arc<std::sync::atomic::AtomicBool>,
-}
-
-/// Everything that exists exactly when a track is current, held as one
-/// always-consistent whole: the prepared track, its decoder, and its phase. The
-/// output stream / source / audio-events receiver are not per-track — they live
-/// in `PlaybackService::output` and persist across track transitions.
-pub(super) struct CurrentTrack {
-    pub(super) prepared: PlaybackPreparedTrack,
-    pub(super) decoder: TrackDecoder,
-    pub(super) phase: TrackPhase,
-}
-
 pub(super) enum PlaybackSlot {
     Stopped,
     /// `play_track` has torn down the old track and is resolving the new one.

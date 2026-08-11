@@ -43,14 +43,69 @@ impl Renderer {
         matches!(self, Renderer::AirPlay(_))
     }
 
-    /// The live AirPlay stream's control handle, if AirPlay is the active
-    /// renderer and its stream has started.
-    pub(super) fn airplay_control(
-        &self,
-    ) -> Option<std::sync::Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>> {
+    pub(super) fn seek_remote(&self, position: Duration) {
+        if let Self::Remote(remote) = self {
+            remote.session.seek(position);
+        }
+    }
+
+    pub(super) fn set_remote_volume(&self, volume: f32) {
+        if let Self::Remote(remote) = self {
+            remote.session.set_volume(volume);
+        }
+    }
+
+    pub(super) fn pause_remote(&self) {
+        if let Self::Remote(remote) = self {
+            remote.session.pause();
+        }
+    }
+
+    pub(super) fn play_remote(&self) {
+        if let Self::Remote(remote) = self {
+            remote.session.play();
+        }
+    }
+
+    pub(super) fn flush_airplay(&self) {
+        if let Self::AirPlay(airplay) = self {
+            airplay.control.flush();
+        }
+    }
+
+    pub(super) fn reanchor_airplay(&self) {
+        if let Self::AirPlay(airplay) = self {
+            airplay.control.reanchor();
+        }
+    }
+
+    pub(super) fn airplay_failed(&self) -> bool {
+        matches!(self, Self::AirPlay(airplay) if airplay.control.has_failed())
+    }
+
+    pub(super) fn airplay_latency(&self) -> Option<Duration> {
         match self {
-            Renderer::AirPlay(r) => r.control(),
-            _ => None,
+            Self::AirPlay(airplay) => Some(Duration::from_secs_f64(
+                f64::from(airplay.latency_frames) / f64::from(crate::airplay::session::SAMPLE_RATE),
+            )),
+            Self::Local | Self::Remote(_) => None,
+        }
+    }
+
+    pub(super) fn return_to_local_for_stop(
+        &mut self,
+        audio_output: &mut Box<dyn crate::playback::audio_output::AudioOutput>,
+    ) -> bool {
+        match std::mem::replace(self, Self::Local) {
+            Self::Local => false,
+            Self::Remote(remote) => {
+                remote.session.stop();
+                true
+            }
+            Self::AirPlay(airplay) => {
+                *audio_output = airplay.saved_output;
+                true
+            }
         }
     }
 }
@@ -60,21 +115,25 @@ impl Renderer {
 /// pause/resume/seek through, the local output to restore when AirPlay ends, and
 /// the receiver latency the audible position is offset by.
 pub(super) struct AirPlayRenderer {
-    /// The live stream's control, published by the output on `create_stream`.
-    pub(super) control_slot: crate::playback::airplay_output::ControlSlot,
+    control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
     /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
-    pub(super) saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
+    saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
     /// The receiver's audio latency in frames — the offset between what has been
     /// sent and what is audible, for the position the UI shows.
-    pub(super) latency_frames: u32,
+    latency_frames: u32,
 }
 
 impl AirPlayRenderer {
-    /// The live stream's control handle, once `create_stream` has published it.
-    pub(super) fn control(
-        &self,
-    ) -> Option<std::sync::Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>> {
-        self.control_slot.lock().unwrap().clone()
+    pub(super) fn new(
+        control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
+        saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
+        latency_frames: u32,
+    ) -> Self {
+        Self {
+            control,
+            saved_output,
+            latency_frames,
+        }
     }
 }
 
@@ -83,9 +142,23 @@ impl AirPlayRenderer {
 /// address, encryption, and latency), the device's display name, and the
 /// receiver latency. A manual `Debug` keeps `PlaybackCommand`'s derive working.
 pub(crate) struct AirPlayConnect {
-    pub(crate) sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
-    pub(crate) device_name: String,
-    pub(crate) latency_frames: u32,
+    sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
+    device_name: String,
+    latency_frames: u32,
+}
+
+impl AirPlayConnect {
+    pub(super) fn new(
+        sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
+        device_name: String,
+        latency_frames: u32,
+    ) -> Self {
+        Self {
+            sink,
+            device_name,
+            latency_frames,
+        }
+    }
 }
 
 impl std::fmt::Debug for AirPlayConnect {
@@ -104,14 +177,14 @@ impl std::fmt::Debug for AirPlayConnect {
 /// remote playback stops). The device name isn't held here — it rides the
 /// `RemoteStatusChanged` event out to the UI, which caches it.
 pub(super) struct RemoteRenderer {
-    pub(super) session: RendererSession,
-    pub(super) stream_url_provider: crate::renderer::MediaUrlProvider,
-    pub(super) cover_url_provider: crate::renderer::CoverUrlProvider,
+    session: RendererSession,
+    stream_url_provider: crate::renderer::MediaUrlProvider,
+    cover_url_provider: crate::renderer::CoverUrlProvider,
     /// The flavor-specific safe-set gate (Cast vs. DLNA differ on Opus).
-    pub(super) stream_format: StreamFormatFn,
+    stream_format: StreamFormatFn,
     /// The device's most recent playback position, updated from each status.
     /// Local playback resumes here when remote playback ends.
-    pub(super) last_position: Duration,
+    last_position: Duration,
 }
 
 /// Everything a `PlayOn` command carries to start remote playback: the connected
@@ -120,11 +193,29 @@ pub(super) struct RemoteRenderer {
 /// manual `Debug` keeps `PlaybackCommand`'s derive working without the un-`Debug`
 /// channel/closures.
 pub(crate) struct RemoteConnect {
-    pub(crate) channel: Box<dyn crate::renderer::RendererChannel>,
-    pub(crate) device_name: String,
-    pub(crate) stream_url_provider: crate::renderer::MediaUrlProvider,
-    pub(crate) cover_url_provider: crate::renderer::CoverUrlProvider,
-    pub(crate) stream_format: StreamFormatFn,
+    channel: Box<dyn crate::renderer::RendererChannel>,
+    device_name: String,
+    stream_url_provider: crate::renderer::MediaUrlProvider,
+    cover_url_provider: crate::renderer::CoverUrlProvider,
+    stream_format: StreamFormatFn,
+}
+
+impl RemoteConnect {
+    pub(super) fn new(
+        channel: Box<dyn crate::renderer::RendererChannel>,
+        device_name: String,
+        stream_url_provider: crate::renderer::MediaUrlProvider,
+        cover_url_provider: crate::renderer::CoverUrlProvider,
+        stream_format: StreamFormatFn,
+    ) -> Self {
+        Self {
+            channel,
+            device_name,
+            stream_url_provider,
+            cover_url_provider,
+            stream_format,
+        }
+    }
 }
 
 impl std::fmt::Debug for RemoteConnect {
@@ -361,7 +452,7 @@ impl PlaybackService {
     ) {
         // Tear the previous remote track's slot down (stub decoder, empty
         // segments — nothing to release).
-        self.teardown_current_track();
+        self.discard_current_track();
 
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.to_string(),
@@ -480,14 +571,12 @@ impl PlaybackService {
         // this time feeding the AirPlay sink.
         self.teardown_local_playback();
 
-        let (airplay_output, control_slot) =
-            crate::playback::airplay_output::AirPlayOutput::new(sink, volume);
+        let control = Arc::new(crate::playback::airplay_output::AirPlayControl::new());
+        let airplay_output =
+            crate::playback::airplay_output::AirPlayOutput::new(sink, volume, control.clone());
         let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
-        self.renderer = Renderer::AirPlay(AirPlayRenderer {
-            control_slot,
-            saved_output,
-            latency_frames,
-        });
+        self.renderer =
+            Renderer::AirPlay(AirPlayRenderer::new(control, saved_output, latency_frames));
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RemoteStatusChanged {
@@ -564,7 +653,7 @@ impl PlaybackService {
     /// installs the remote track).
     pub(super) fn teardown_local_playback(&mut self) {
         self.stop_preview_for_main_playback();
-        self.teardown_current_track();
+        self.discard_current_track();
         self.clear_next_track_state();
         if let Some(out) = self.output.take() {
             out.source.lock().unwrap().cancel();

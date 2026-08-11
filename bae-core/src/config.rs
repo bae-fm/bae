@@ -264,14 +264,20 @@ impl Config {
 
     /// Wrap coven's config, filling bae-only fields with defaults. Used after a
     /// restore where coven produced the synced/cloud config.
-    pub fn from_coven(c: coven::Config) -> Self {
+    pub fn from_coven(
+        c: coven::Config,
+        library_path: PathBuf,
+        encryption_key_fingerprint: Option<String>,
+    ) -> Self {
         let mut cfg = Self::with_defaults(
             c.store_id.clone(),
             c.device_id.clone(),
-            c.store_dir.clone(),
+            library_path,
             c.store_name.clone(),
         );
         cfg.inner = c;
+        cfg.encryption_key_stored = encryption_key_fingerprint.is_some();
+        cfg.encryption_key_fingerprint = encryption_key_fingerprint;
         cfg.mcp = McpConfig::disabled_default();
         cfg
     }
@@ -346,7 +352,7 @@ pub struct ConfigYaml {
     pub discogs: Option<DiscogsValidation>,
     /// Whether an encryption key is stored in the keyring (hint flag, avoids keyring read)
     pub encryption_key_stored: bool,
-    /// SHA-256 fingerprint of the encryption key (first 8 bytes, hex).
+    /// SHA-256 fingerprint of the encryption key (32 bytes, lowercase hex).
     /// Used to detect wrong key without attempting decryption.
     #[serde(deserialize_with = "deserialize_some")]
     pub encryption_key_fingerprint: Option<String>,
@@ -394,19 +400,19 @@ pub struct ConfigYaml {
 impl ConfigYaml {
     /// Convert to a runtime Config. The caller resolves device_id (auto-generating
     /// if missing from YAML) and provides the library_dir.
-    fn into_config(self, device_id: String, library_dir: StoreDir) -> Config {
+    fn into_config(self, device_id: String, library_path: PathBuf) -> Config {
         // `version` describes the file, not the running config: it is re-stamped
         // from CONFIG_VERSION on every write, so it does not ride on `Config`.
         Config {
             inner: coven::Config {
                 store_id: self.library_id,
                 device_id,
-                store_dir: library_dir,
                 store_name: self.library_name,
-                encryption_key_stored: self.encryption_key_stored,
-                encryption_key_fingerprint: self.encryption_key_fingerprint,
                 cloud_home: self.cloud_home,
             },
+            library_path,
+            encryption_key_stored: self.encryption_key_stored,
+            encryption_key_fingerprint: self.encryption_key_fingerprint,
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
             save_presets: self.save_presets,
@@ -481,6 +487,15 @@ pub struct LibraryInfo {
 pub struct Config {
     /// Sync/cloud config coven owns — embedded, not re-declared.
     pub inner: coven::Config,
+    /// Runtime location of this library. It is host context rather than synced
+    /// configuration, so it stays outside `coven::Config` and off the wire.
+    library_path: PathBuf,
+    /// Whether an encryption key has been established for this library. This is
+    /// bae's persisted unlock hint; coven derives storage behavior from
+    /// `cloud_home.storage` and does not retain host UI state.
+    pub encryption_key_stored: bool,
+    /// Fingerprint used to reject a wrong key before importing it into custody.
+    pub encryption_key_fingerprint: Option<String>,
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
@@ -542,6 +557,12 @@ impl std::ops::DerefMut for Config {
 }
 
 impl Config {
+    /// The local library path for host UI and host-owned files. Callers receive
+    /// the path value, not Coven's store owner.
+    pub fn library_path(&self) -> &std::path::Path {
+        &self.library_path
+    }
+
     pub fn load_registered_library(
         library_id: &str,
         ids: &dyn coven::IdProvider,
@@ -554,7 +575,7 @@ impl Config {
         library_path: PathBuf,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        Self::load_from_library_dir(StoreDir::new(library_path), ids)
+        Self::load_from_library_dir(library_path, ids)
     }
 
     pub(crate) fn load_registered_library_from_bae_dir(
@@ -562,25 +583,25 @@ impl Config {
         library_id: &str,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        let library_dir = registered_library_dir(bae_dir, library_id);
+        let library_dir = registered_library_path(bae_dir, library_id);
         Self::load_from_registered_library_dir(library_dir, library_id, ids)
     }
 
     fn load_from_library_dir(
-        library_dir: StoreDir,
+        library_dir: PathBuf,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        let config_path = library_dir.config_path();
+        let config_path = library_dir.join("config.yaml");
         let (yaml_config, migrated) = Self::load_config_yaml(&config_path)?;
         Self::config_from_yaml(yaml_config, migrated, library_dir, &config_path, ids)
     }
 
     fn load_from_registered_library_dir(
-        library_dir: StoreDir,
+        library_dir: PathBuf,
         expected_library_id: &str,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        let config_path = library_dir.config_path();
+        let config_path = library_dir.join("config.yaml");
         let (yaml_config, migrated) =
             load_registered_config_yaml(&library_dir, expected_library_id)?;
         Self::config_from_yaml(yaml_config, migrated, library_dir, &config_path, ids)
@@ -600,7 +621,7 @@ impl Config {
     fn config_from_yaml(
         mut yaml_config: ConfigYaml,
         migrated: bool,
-        library_dir: StoreDir,
+        library_dir: PathBuf,
         config_path: &std::path::Path,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
@@ -641,24 +662,30 @@ impl Config {
     }
 
     fn write_config_yaml(&self) -> Result<(), WriteError<ConfigError>> {
-        std::fs::create_dir_all(&*self.store_dir)
+        std::fs::create_dir_all(&self.library_path)
             .map_err(|e| WriteError::BeforeCommit(ConfigError::from(e)))?;
         let yaml: ConfigYaml = self.into();
         let serialized = serde_yaml::to_string(&yaml)
             .map_err(|e| WriteError::BeforeCommit(ConfigError::Serialization(e.to_string())))?;
-        write_atomic(&self.store_dir.config_path(), serialized.as_bytes())
-            .map_err(|e| e.map(ConfigError::from))
+        write_atomic(
+            &self.library_path.join("config.yaml"),
+            serialized.as_bytes(),
+        )
+        .map_err(|e| e.map(ConfigError::from))
     }
 
     /// Construct a Config with defaults for a new library.
     pub fn with_defaults(
         library_id: String,
         device_id: String,
-        library_dir: StoreDir,
+        library_path: impl AsRef<std::path::Path>,
         library_name: String,
     ) -> Self {
         Self {
-            inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
+            inner: coven::Config::with_defaults(library_id, device_id, library_name),
+            library_path: library_path.as_ref().to_path_buf(),
+            encryption_key_stored: false,
+            encryption_key_fingerprint: None,
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
             save_presets: default_save_presets(),
@@ -749,12 +776,14 @@ fn discover_libraries_from_bae_dir(
 /// without polling, re-reading, or a restart.
 pub struct ConfigHandle {
     state: watch::Sender<Config>,
+    store_dir: StoreDir,
 }
 
 impl ConfigHandle {
     pub fn new(config: Config) -> Self {
+        let store_dir = StoreDir::new(config.library_path.clone());
         let (state, _) = watch::channel(config);
-        Self { state }
+        Self { state, store_dir }
     }
 
     /// Borrow the current config.
@@ -766,6 +795,27 @@ impl ConfigHandle {
     /// `Config`; the channel coalesces to the most recent value.
     pub fn subscribe(&self) -> watch::Receiver<Config> {
         self.state.subscribe()
+    }
+
+    /// Begin constructing Coven over this config's retained library directory
+    /// and live config stream. The directory itself never leaves this owner.
+    pub(crate) fn coven_builder(self: &std::sync::Arc<Self>) -> coven::CovenBuilder {
+        let config_handle = std::sync::Arc::clone(self);
+        coven::Coven::builder(self.store_dir.clone(), move || {
+            config_handle.config().to_coven()
+        })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn local_blob_exists_for_test(
+        &self,
+        namespace: &str,
+        blob_id: &str,
+    ) -> Result<bool, String> {
+        self.store_dir
+            .local_blob_path(namespace, blob_id)
+            .map(|path| path.exists())
+            .map_err(|error| error.to_string())
     }
 
     /// Edit the config, persist it to disk, and publish the new state to
@@ -833,7 +883,7 @@ pub fn rename_inactive_library(
 ) -> Result<(), ConfigError> {
     let library_dir = find_library_by_id(bae_dir, library_id)
         .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
-    let config_path = library_dir.config_path();
+    let config_path = library_dir.join("config.yaml");
     let content = std::fs::read_to_string(&config_path)?;
     let mut yaml: ConfigYaml =
         serde_yaml::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
@@ -848,15 +898,11 @@ pub(crate) fn registered_library_path(bae_dir: &std::path::Path, library_id: &st
     bae_dir.join("libraries").join(library_id)
 }
 
-fn registered_library_dir(bae_dir: &std::path::Path, library_id: &str) -> StoreDir {
-    StoreDir::new(registered_library_path(bae_dir, library_id))
-}
-
 fn load_registered_config_yaml(
-    library_dir: &StoreDir,
+    library_dir: &std::path::Path,
     expected_library_id: &str,
 ) -> Result<(ConfigYaml, bool), ConfigError> {
-    let (yaml_config, migrated) = Config::load_config_yaml(&library_dir.config_path())?;
+    let (yaml_config, migrated) = Config::load_config_yaml(&library_dir.join("config.yaml"))?;
     if yaml_config.library_id != expected_library_id {
         return Err(ConfigError::Config(format!(
             "registered library directory {} contains library_id {}",
@@ -884,12 +930,12 @@ fn read_active_library_id(bae_dir: &std::path::Path) -> Result<Option<String>, C
 }
 
 /// Find a library's directory by its UUID, scanning `~/.bae/libraries/` subdirectories.
-fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<StoreDir> {
+fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<PathBuf> {
     for (path, yaml) in discover_all_library_paths(bae_dir) {
         // A library whose config will not parse cannot be addressed by id — its id
         // is precisely what we could not read.
         if yaml.is_ok_and(|yaml| yaml.library_id == uuid) {
-            return Some(StoreDir::new(path));
+            return Some(path);
         }
     }
     None
@@ -990,12 +1036,8 @@ fn read_config_yaml(path: &std::path::Path) -> Result<Option<ConfigYaml>, Config
 /// handed an invented identity. `device_id` is stripped too — it has its own
 /// generate-and-write-back path in [`Config::config_from_yaml`].
 fn config_yaml_defaults() -> serde_yaml::Mapping {
-    let template = Config::with_defaults(
-        String::new(),
-        String::new(),
-        StoreDir::new(PathBuf::new()),
-        String::new(),
-    );
+    let template =
+        Config::with_defaults(String::new(), String::new(), PathBuf::new(), String::new());
     let value = serde_yaml::to_value(ConfigYaml::from(&template))
         .expect("a default ConfigYaml always serializes");
     let mut map = match value {
@@ -1114,7 +1156,7 @@ mod tests {
         Config::with_defaults(
             library_id.to_string(),
             "test-device-id".to_string(),
-            StoreDir::new(library_path),
+            library_path,
             "Test Library".to_string(),
         )
     }
@@ -1723,7 +1765,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(loaded.store_id, "external-lib-id");
-        assert_eq!(&*loaded.store_dir, library_path.as_path());
+        assert_eq!(loaded.library_path(), library_path.as_path());
     }
 
     #[test]
@@ -1735,7 +1777,7 @@ mod tests {
             .unwrap();
 
         let result = Config::load_from_registered_library_dir(
-            StoreDir::new(library_path),
+            library_path,
             "expected-lib-id",
             &coven::SequentialIdProvider::new("device"),
         );
@@ -1988,13 +2030,12 @@ mod tests {
         let mut coven_config = coven::Config::with_defaults(
             library_id.to_string(),
             "restored-device".to_string(),
-            StoreDir::new(library_path.clone()),
             "Test Library".to_string(),
         );
         coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
         coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
         coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
-        let config = Config::from_coven(coven_config);
+        let config = Config::from_coven(coven_config, library_path.clone(), None);
 
         assert_eq!(config.store_id, library_id);
         assert_eq!(config.store_name, "Test Library");

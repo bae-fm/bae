@@ -8,24 +8,53 @@ use super::release::cover_ref_for;
 use super::*;
 
 impl LibraryManager {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn release_blob_ref_for_test(
+        &self,
+        file_id: &str,
+    ) -> Result<coven::RowBlobRef, LibraryError> {
+        self.release_file_row_blob_ref(file_id).await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn materialize_release_blob_for_test(
+        &self,
+        file_id: &str,
+    ) -> Result<coven::RowBlobRef, LibraryError> {
+        let blob = self.release_file_row_blob_ref(file_id).await?;
+        self.database
+            .read_blob(&blob)
+            .await
+            .map_err(|error| LibraryError::Storage(error.to_string()))?;
+        Ok(blob)
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn evict_blob_for_test(&self, blob: &coven::RowBlobRef) -> Result<(), LibraryError> {
+        self.database
+            .evict_blob(blob)
+            .await
+            .map_err(|error| LibraryError::Storage(error.to_string()))
+    }
+
     /// Configure coven's per-namespace cache budgets for this device: the bulk for
     /// `release_files` (audio), a small reserved slice each for `covers` and
     /// `artist_images`, so each namespace evicts against its own budget and audio
     /// pressure never wipes the cover cache. Device-local; set once at startup.
     pub(crate) async fn configure_cache_budgets(&self) -> Result<(), LibraryError> {
-        self.handle()
+        self.database
             .set_cache_budget(
                 crate::sync::RELEASE_FILES_NAMESPACE,
                 crate::sync::RELEASE_FILES_CACHE_BUDGET,
             )
             .await?;
-        self.handle()
+        self.database
             .set_cache_budget(
                 crate::sync::COVERS_NAMESPACE,
                 crate::sync::COVERS_CACHE_BUDGET,
             )
             .await?;
-        self.handle()
+        self.database
             .set_cache_budget(
                 crate::sync::ARTIST_IMAGES_NAMESPACE,
                 crate::sync::ARTIST_IMAGES_CACHE_BUDGET,
@@ -42,7 +71,7 @@ impl LibraryManager {
         &self,
         file_id: &str,
     ) -> Result<coven::RowBlobRef, LibraryError> {
-        self.handle()
+        self.database
             .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
             .await
             .map_err(|e| LibraryError::Storage(format!("blob ref for release file {file_id}: {e}")))
@@ -55,7 +84,7 @@ impl LibraryManager {
         table: &str,
         row_id: &str,
     ) -> Result<coven::RowBlobRef, LibraryError> {
-        self.handle()
+        self.database
             .row_blob_ref(table, row_id)
             .await
             .map_err(|e| LibraryError::Storage(format!("blob ref for {table} {row_id}: {e}")))
@@ -70,7 +99,7 @@ impl LibraryManager {
     /// storage error so the caller surfaces a "files missing / moved" state.
     pub(crate) async fn read_release_blob(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         let blob = self.release_file_row_blob_ref(&file.id).await?;
-        self.handle()
+        self.database
             .read_blob(&blob)
             .await
             .map_err(|e| LibraryError::Storage(format!("read of {}: {e}", file.id)))
@@ -141,7 +170,7 @@ impl LibraryManager {
         }
         let blob = self.image_row_blob_ref(image_type.namespace(), id).await?;
         let bytes = self
-            .handle()
+            .database
             .read_blob(&blob)
             .await
             .map_err(|e| LibraryError::Storage(format!("read image {id}: {e}")))?;
@@ -161,11 +190,11 @@ impl LibraryManager {
         let Some(file_id) = any_file_id else {
             return Ok(false);
         };
-        match release_file_pin_state(self.handle(), file_id).await? {
+        match release_file_pin_state(&self.database, file_id).await? {
             ReleasePinState::Pinned => Ok(true),
             ReleasePinState::NotPinned => Ok(false),
             ReleasePinState::RejectedBadId => {
-                self.diagnostics().event(TelemetryEvent::Anomaly {
+                self.diagnostics.event(TelemetryEvent::Anomaly {
                     kind: crate::diagnostics::AnomalyKind::BlobIdInvalid,
                 });
                 Ok(false)
@@ -204,7 +233,7 @@ impl LibraryManager {
         let mut bytes_done = 0u64;
         for (file, size) in files.iter().zip(&sizes) {
             let blob = self.release_file_row_blob_ref(&file.id).await?;
-            self.handle()
+            self.database
                 .pin(std::slice::from_ref(&blob))
                 .await
                 .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
@@ -238,7 +267,7 @@ impl LibraryManager {
         for file in &files {
             blobs.push(self.release_file_row_blob_ref(&file.id).await?);
         }
-        self.handle()
+        self.database
             .unpin(&blobs)
             .await
             .map_err(|e| LibraryError::Storage(format!("unpin release {release_id}: {e}")))

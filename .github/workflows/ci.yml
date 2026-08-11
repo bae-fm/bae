@@ -62,7 +62,8 @@ jobs:
     - name: Check Swift formatting
       if: ${{ !cancelled() }}
       run: |
-        find bae-macos/bae/bae BaeKit/Sources/BaeKit -name "*.swift" \
+        find bae-macos/bae/bae BaeKit/Sources/BaeKit \
+          BaeKit/Sources/AppleHost -name "*.swift" \
           -not -name 'bae_bridge_*.swift' -print0 \
           | xargs -0 xcrun swift-format lint -s
 
@@ -71,7 +72,7 @@ jobs:
       run: |
         brew install swiftlint
         swiftlint lint --strict --config .swiftlint.yml \
-          bae-macos/bae/bae BaeKit/Sources/BaeKit
+          bae-macos/bae/bae BaeKit/Sources/BaeKit BaeKit/Sources/AppleHost
 
     - name: Dead code check (periphery)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}

@@ -78,18 +78,16 @@ impl PlaybackService {
         // adopts this decoder. LogOnly: a preload decode failure is logged, never
         // surfaced as a PlaybackError — the promotion path re-decodes through
         // play_track if the preload turns out unusable.
-        let DecoderStart {
-            track_stream,
-            handle: decoder_handle,
-            cancel_token,
-            // No Loading state observes a preload; the ready signal goes unused.
-            ready: _,
-        } = spawn_decoder(
+        let (track_stream, decoder_handle, cancel_token) = spawn_decoder(
             decode,
             prepared.sample_rate,
             prepared.channels,
             "Preload streaming decode",
             DecodeFailureReport::LogOnly,
+            // No Loading state observes a preload; the ready signal goes unused.
+            |track_stream, decoder_handle, cancel_token, _ready| {
+                (track_stream, decoder_handle, cancel_token)
+            },
         );
 
         // Same format as the live stream: stage it into the `PlaybackSource` so
@@ -361,33 +359,22 @@ impl PlaybackService {
         }
     }
 
-    /// The persistent output's playback source, present whenever a stream is
-    /// attached (which is exactly whenever a track is current).
-    pub(super) fn current_source(&self) -> Option<&Arc<Mutex<source::PlaybackSource>>> {
-        self.output.as_ref().map(|o| &o.source)
-    }
-
-    /// Discard the preloaded decoder and hand back its prepared track without
-    /// releasing its file buffers — for callers that release them later, once
-    /// the retained files are known (`play_track`).
-    pub(super) fn take_preloaded_prepared(&mut self) -> Option<PlaybackPreparedTrack> {
-        // Clone the Arc so the borrow of the slot ends before we mutate
-        // `preloaded_next` (both are fields of self).
-        let current_source = self.current_source().cloned();
-        discard_preloaded_next(&mut self.preloaded_next, current_source.as_ref())
-    }
-
     pub(super) fn clear_next_track_state(&mut self) {
-        let Some(prepared) = self.take_preloaded_prepared() else {
+        if !self.retire_preloaded_track() {
             return;
-        };
+        }
         // Release the preload's buffers; files the current track still plays
         // stay cached and alive.
         let retained_file_ids = match &self.slot {
-            PlaybackSlot::Active(cur) => cur.prepared.file_ids(),
+            PlaybackSlot::Active(cur) => cur
+                .prepared
+                .file_ids()
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
             _ => HashSet::new(),
         };
-        prepared.release_buffers(&retained_file_ids, &mut self.shared_file_buffers);
+        self.release_retired_tracks(retained_file_ids);
     }
 
     /// Whether a preloaded next-track source is available.
@@ -398,8 +385,9 @@ impl PlaybackService {
         match &preloaded.source {
             PreloadedNextSource::Held(_) => true,
             PreloadedNextSource::Staged => self
-                .current_source()
-                .is_some_and(|gapless| gapless.lock().unwrap().has_next()),
+                .output
+                .as_ref()
+                .is_some_and(|output| output.source.lock().unwrap().has_next()),
         }
     }
 
@@ -418,7 +406,7 @@ impl PlaybackService {
             "Track completed (gapless): {} ({} decode errors, {} samples)",
             crossing.finished_fmt.track_id, crossing.decode_error_count, crossing.samples_decoded
         );
-        self.telemetry().event(TelemetryEvent::TrackCompleted {
+        self.record_telemetry(TelemetryEvent::TrackCompleted {
             track_id: LocalId(crossing.finished_fmt.track_id.clone()),
             decode_errors: crossing.decode_error_count as u64,
         });
@@ -585,8 +573,8 @@ impl PlaybackService {
         // decoder and re-decode through play_track, which seeks past the pregap.
         if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
             info!("Pregap skip needed for preloaded track - falling back to play_track");
-            let detached = detach_preloaded_source(self.current_source(), preloaded_source);
-            discard_preloaded_decoder(&next_prepared, detached, &cancel_token);
+            self.discard_preloaded_source(preloaded_source);
+            discard_preloaded_decoder(&next_prepared, &cancel_token);
             self.play_track(
                 &track_id,
                 TrackStart::from_natural_transition(is_natural_transition),
@@ -605,25 +593,25 @@ impl PlaybackService {
             self.telemetry_track_started(&track_id, transition);
         }
 
-        // Recover the incoming stream BEFORE attaching it: in the staged case it
-        // lives inside the current source until this `take_next` pulls it out.
-        let track_stream = detach_preloaded_source(self.current_source(), preloaded_source)
-            .expect("Preloaded track has no streaming source");
-
-        // The preload always decoded from INDEX 00, so this stream starts at 0.
-        let fmt = next_prepared.track_fmt(std::time::Duration::ZERO);
         let sample_rate = next_prepared.sample_rate;
         let channels = next_prepared.channels;
 
-        // Attach the preloaded stream to the persistent output: same format swaps
-        // the callback's source in place; a format change rebuilds the stream. On
-        // a rebuild-build failure the incoming decoder is left with no consumer —
-        // cancel it and hard-fail, mirroring play_track when audio can't start.
-        if self
-            .attach_track(track_stream, fmt, sample_rate, channels)
-            .await
-            .is_err()
-        {
+        // A staged stream stays inside the live source and is promoted there.
+        // A held stream is attached through the format-aware output path.
+        let attached = match preloaded_source {
+            PreloadedNextSource::Staged => self.promote_staged_track(),
+            PreloadedNextSource::Held(track_stream) => self
+                .attach_track(
+                    track_stream,
+                    next_prepared.track_fmt(std::time::Duration::ZERO),
+                    sample_rate,
+                    channels,
+                    StagedNextOnReplace::Discard,
+                )
+                .await
+                .is_ok(),
+        };
+        if !attached {
             cancel_token.store(true, std::sync::atomic::Ordering::Release);
             for segment in &next_prepared.segments {
                 segment.buffer.wake_readers();
@@ -645,9 +633,14 @@ impl PlaybackService {
         // its buffers now that the incoming track's files are known — files they
         // share stay cached and alive. The incoming decoder's own token
         // (`cancel_token`) is untouched by that teardown.
-        if let Some(outgoing) = self.teardown_current_track() {
-            outgoing.release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
-        }
+        self.retire_current_track();
+        self.release_retired_tracks(
+            next_prepared
+                .file_ids()
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+        );
 
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 

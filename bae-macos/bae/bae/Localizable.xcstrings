@@ -21949,6 +21949,197 @@
         }
       }
     },
+    "Couldn't add folder" : {
+      "comment" : "Error context when adding a watched folder fails",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّرت إضافة المجلد"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папката не може да бъде добавена"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ফোল্ডার যোগ করা যায়নি"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nelze přidat složku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner konnte nicht hinzugefügt werden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't add folder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo añadir la carpeta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'ajouter le dossier"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ફોલ્ડર ઉમેરી શકાયું નહીં"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן להוסיף תיקייה"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फोल्डर नहीं जोड़ा जा सका"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće dodati mapu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile aggiungere la cartella"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダを追加できませんでした"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಫೋಲ್ಡರ್ ಸೇರಿಸಲಾಗಲಿಲ್ಲ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더를 추가할 수 없음"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഫോൾഡർ ചേർക്കാനായില്ല"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फोल्डर जोडता आला नाही"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan map niet toevoegen"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਫੋਲਡਰ ਸ਼ਾਮਲ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się dodać folderu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível adicionar a pasta"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "கோப்புறையைச் சேர்க்க முடியவில்லை"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఫోల్డర్‌ను జోడించలేకపోయింది"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพิ่มโฟลเดอร์ไม่ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klasör eklenemedi"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося додати теку"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "پوشہ شامل نہیں ہو سکا"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể thêm thư mục"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法添加文件夹"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法加入資料夾"
+          }
+        }
+      }
+    },
     "Couldn't add folder: %@" : {
       "comment" : "Error when adding a watched folder fails; %@ is the error description",
       "extractionState" : "stale",
@@ -23292,194 +23483,193 @@
         }
       }
     },
-    "Couldn't remove library: %@" : {
-      "comment" : "Error shown when removing the active library from this Mac fails",
-      "extractionState" : "stale",
+    "Couldn't remove library" : {
+      "comment" : "Error context shown when removing the active library from this Mac fails",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّر إزالة المكتبة: %@"
+            "value" : "تعذّر إزالة المكتبة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Библиотеката не можа да бъде премахната: %@"
+            "value" : "Библиотеката не можа да бъде премахната"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "লাইব্রেরি সরানো যায়নি: %@"
+            "value" : "লাইব্রেরি সরানো যায়নি"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knihovnu se nepodařilo odebrat: %@"
+            "value" : "Knihovnu se nepodařilo odebrat"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliothek konnte nicht entfernt werden: %@"
+            "value" : "Bibliothek konnte nicht entfernt werden"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't remove library: %@"
+            "value" : "Couldn't remove library"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo quitar la biblioteca: %@"
+            "value" : "No se pudo quitar la biblioteca"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de retirer la bibliothèque : %@"
+            "value" : "Impossible de retirer la bibliothèque"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "લાઇબ્રેરી દૂર કરી શકાઈ નથી: %@"
+            "value" : "લાઇબ્રેરી દૂર કરી શકાઈ નથી"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן היה להסיר את הספרייה: %@"
+            "value" : "לא ניתן היה להסיר את הספרייה"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लाइब्रेरी हटाई नहीं जा सकी: %@"
+            "value" : "लाइब्रेरी हटाई नहीं जा सकी"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije moguće ukloniti fonoteku: %@"
+            "value" : "Nije moguće ukloniti fonoteku"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile rimuovere la libreria: %@"
+            "value" : "Impossibile rimuovere la libreria"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリを削除できませんでした: %@"
+            "value" : "ライブラリを削除できませんでした"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಲಾಗಲಿಲ್ಲ: %@"
+            "value" : "ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಲಾಗಲಿಲ್ಲ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리를 제거할 수 없습니다: %@"
+            "value" : "라이브러리를 제거할 수 없습니다"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ലൈബ്രറി നീക്കംചെയ്യാനായില്ല: %@"
+            "value" : "ലൈബ്രറി നീക്കംചെയ്യാനായില്ല"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लायब्ररी काढता आली नाही: %@"
+            "value" : "लायब्ररी काढता आली नाही"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan bibliotheek niet verwijderen: %@"
+            "value" : "Kan bibliotheek niet verwijderen"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ: %@"
+            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie udało się usunąć biblioteki: %@"
+            "value" : "Nie udało się usunąć biblioteki"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível remover a biblioteca: %@"
+            "value" : "Não foi possível remover a biblioteca"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "நூலகத்தை அகற்ற முடியவில்லை: %@"
+            "value" : "நூலகத்தை அகற்ற முடியவில்லை"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "లైబ్రరీని తీసివేయడం సాధ్యం కాలేదు: %@"
+            "value" : "లైబ్రరీని తీసివేయడం సాధ్యం కాలేదు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ไม่สามารถนำคลังออกได้: %@"
+            "value" : "ไม่สามารถนำคลังออกได้"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplık kaldırılamadı: %@"
+            "value" : "Kitaplık kaldırılamadı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося вилучити бібліотеку: %@"
+            "value" : "Не вдалося вилучити бібліотеку"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لائبریری کو ہٹایا نہیں جا سکا: %@"
+            "value" : "لائبریری کو ہٹایا نہیں جا سکا"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không thể gỡ thư viện: %@"
+            "value" : "Không thể gỡ thư viện"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法移除库：%@"
+            "value" : "无法移除库"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法移除資料庫：%@"
+            "value" : "無法移除資料庫"
           }
         }
       }

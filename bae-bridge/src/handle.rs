@@ -1,7 +1,3 @@
-#[cfg(feature = "desktop")]
-use std::ops::Deref;
-
-#[cfg(not(feature = "desktop"))]
 use bae_core::library::AppServices;
 use bae_core::playback::QueueEntryId;
 #[cfg(feature = "desktop")]
@@ -37,31 +33,43 @@ use crate::types::{
 };
 
 #[derive(uniffi::Object)]
-#[cfg(feature = "desktop")]
 pub struct AppHandle {
-    pub(crate) app: bae_desktop::DesktopApp,
+    services: AppServices,
+    ui_event_bus: bae_core::ui::UiEventBus,
+    #[cfg(feature = "desktop")]
+    desktop: bae_desktop::DesktopServices,
     #[cfg(feature = "cast")]
-    pub(crate) cast: std::sync::Arc<bae_cast::CastController>,
+    cast: std::sync::Arc<bae_cast::CastController>,
+    /// Last so every retained service is dropped while its tasks can still run.
+    runtime: tokio::runtime::Runtime,
 }
 
-#[derive(uniffi::Object)]
-#[cfg(not(feature = "desktop"))]
-pub struct AppHandle {
-    pub(crate) services: AppServices,
-    pub(crate) ui_event_bus: bae_core::ui::UiEventBus,
-    #[cfg(feature = "cast")]
-    pub(crate) cast: std::sync::Arc<bae_cast::CastController>,
-    /// Last, so it outlives the services that run on it — see
-    /// `bae_core::app::RunningApp`.
-    pub(crate) runtime: tokio::runtime::Runtime,
-}
+impl AppHandle {
+    pub(crate) fn start(
+        services: AppServices,
+        ui_event_bus: bae_core::ui::UiEventBus,
+        runtime: tokio::runtime::Runtime,
+    ) -> Self {
+        #[cfg(feature = "desktop")]
+        let desktop =
+            bae_desktop::DesktopServices::start(services.clone(), runtime.handle().clone());
+        #[cfg(feature = "cast")]
+        let cast = bae_cast::CastController::start(
+            services.clone(),
+            ui_event_bus.clone(),
+            runtime.handle().clone(),
+            bae_core::renderer::RendererDiscovery::for_host(),
+        );
 
-#[cfg(feature = "desktop")]
-impl Deref for AppHandle {
-    type Target = bae_desktop::DesktopApp;
-
-    fn deref(&self) -> &Self::Target {
-        &self.app
+        Self {
+            services,
+            ui_event_bus,
+            #[cfg(feature = "desktop")]
+            desktop,
+            #[cfg(feature = "cast")]
+            cast,
+            runtime,
+        }
     }
 }
 
@@ -83,7 +91,6 @@ impl AppHandle {
             .collect();
         let albums = self
             .services
-            .library_manager()
             .get_album_page(&sort, offset, limit)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -105,7 +112,6 @@ impl AppHandle {
             .map(BridgeSortCriterion::into_core)
             .collect();
         self.services
-            .library_manager()
             .get_album_index(&sort, &album_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -113,7 +119,6 @@ impl AppHandle {
 
     pub async fn get_album_count(&self) -> Result<u64, BridgeError> {
         self.services
-            .library_manager()
             .get_album_count()
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -121,7 +126,6 @@ impl AppHandle {
 
     pub async fn get_composer_count(&self) -> Result<u64, BridgeError> {
         self.services
-            .library_manager()
             .get_composer_count()
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -139,7 +143,6 @@ impl AppHandle {
             .collect();
         let composers = self
             .services
-            .library_manager()
             .get_composer_page(&sort, offset, limit)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -155,7 +158,6 @@ impl AppHandle {
     ) -> Result<Option<BridgeComposerDetail>, BridgeError> {
         let detail = self
             .services
-            .library_manager()
             .get_composer_detail(&artist_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -168,7 +170,6 @@ impl AppHandle {
     ) -> Result<Option<BridgeWorkDetail>, BridgeError> {
         let detail = self
             .services
-            .library_manager()
             .get_work_detail(&work_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -177,7 +178,6 @@ impl AppHandle {
 
     pub async fn get_artist_count(&self) -> Result<u64, BridgeError> {
         self.services
-            .library_manager()
             .get_artist_count()
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -195,7 +195,6 @@ impl AppHandle {
             .collect();
         let artists = self
             .services
-            .library_manager()
             .get_artist_page(&sort, offset, limit)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -211,7 +210,6 @@ impl AppHandle {
     ) -> Result<Option<BridgeArtistDetail>, BridgeError> {
         let detail = self
             .services
-            .library_manager()
             .get_artist_detail(&artist_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -226,7 +224,6 @@ impl AppHandle {
     pub async fn file_path(&self, file_id: String) -> Result<Option<String>, BridgeError> {
         let path = self
             .services
-            .library_manager()
             .file_local_path(&file_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -239,7 +236,6 @@ impl AppHandle {
     ) -> Result<BridgeAlbumDetail, BridgeError> {
         let detail = self
             .services
-            .library_manager()
             .find_album_detail(&album_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?
@@ -259,7 +255,6 @@ impl AppHandle {
     ) -> Result<Option<BridgeRelease>, BridgeError> {
         let detail = self
             .services
-            .library_manager()
             .find_release_detail(&release_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -280,7 +275,6 @@ impl AppHandle {
         let core_filter = filter.into_core();
         let page = self
             .services
-            .library_manager()
             .get_storage_page(&core_sort, core_filter, offset, limit)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
@@ -293,7 +287,6 @@ impl AppHandle {
     pub async fn storage_count(&self, filter: BridgeStorageFilter) -> Result<u64, BridgeError> {
         let core_filter = filter.into_core();
         self.services
-            .library_manager()
             .get_storage_count(core_filter)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -308,7 +301,6 @@ impl AppHandle {
     ) -> Result<u64, BridgeError> {
         let core_filter = filter.into_core();
         self.services
-            .library_manager()
             .get_storage_total_size(core_filter)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -320,7 +312,6 @@ impl AppHandle {
         let results = match bae_core::library::LibrarySearchQuery::parse(&query) {
             Some(query) => self
                 .services
-                .library_manager()
                 .search_library(&query)
                 .await
                 .map_err(|e| BridgeError::database(format!("{e}")))?,
@@ -360,7 +351,7 @@ impl AppHandle {
     // =========================================================================
 
     pub fn play_release(&self, release_id: String, start_track_index: Option<u32>, shuffle: bool) {
-        self.services.playback().play_release(
+        self.services.playback_play_release(
             release_id,
             start_track_index.map(|i| i as usize),
             shuffle,
@@ -368,72 +359,72 @@ impl AppHandle {
     }
 
     pub fn play_releases(&self, release_ids: Vec<String>) {
-        self.services.playback().play_releases(release_ids);
+        self.services.playback_play_releases(release_ids);
     }
 
     pub fn play_library_shuffled(&self) {
-        self.services.playback().play_library_shuffled();
+        self.services.playback_play_library_shuffled();
     }
 
     pub fn pause(&self) {
-        self.services.playback().pause();
+        self.services.playback_pause();
     }
 
     pub fn resume(&self) {
-        self.services.playback().resume();
+        self.services.playback_resume();
     }
 
     pub fn stop(&self) {
-        self.services.playback().stop();
+        self.services.playback_stop();
     }
 
     pub fn next_track(&self) {
-        self.services.playback().next();
+        self.services.playback_next();
     }
 
     pub fn previous_track(&self) {
-        self.services.playback().previous();
+        self.services.playback_previous();
     }
 
     pub fn seek_by_ratio(&self, ratio: f64) {
-        self.services.playback().seek_by_ratio(ratio);
+        self.services.playback_seek_by_ratio(ratio);
     }
 
     pub fn set_volume(&self, volume: f32) {
-        self.services.playback().set_volume(volume);
+        self.services.playback_set_volume(volume);
     }
 
     pub async fn get_volume(&self) -> f32 {
-        self.services.playback().get_volume().await
+        self.services.playback_get_volume().await
     }
 
     pub fn set_muted(&self, muted: bool) {
-        self.services.playback().set_muted(muted);
+        self.services.playback_set_muted(muted);
     }
 
     pub fn preview_play(&self, path: String) {
-        self.services.playback().preview_play(path);
+        self.services.playback_preview_play(path);
     }
 
     pub fn preview_stop(&self) {
-        self.services.playback().preview_stop();
+        self.services.playback_preview_stop();
     }
 
     pub fn preview_toggle_pause(&self) {
-        self.services.playback().preview_toggle_pause();
+        self.services.playback_preview_toggle_pause();
     }
 
     pub fn preview_seek_by_ratio(&self, ratio: f64) {
-        self.services.playback().preview_seek_by_ratio(ratio);
+        self.services.playback_preview_seek_by_ratio(ratio);
     }
 
     pub fn set_repeat_mode(&self, mode: BridgeRepeatMode) {
         let core_mode = mode.into_core();
-        self.services.playback().set_repeat_mode(core_mode);
+        self.services.playback_set_repeat_mode(core_mode);
     }
 
     pub fn set_shuffle(&self, on: bool) {
-        self.services.playback().set_shuffle(on);
+        self.services.playback_set_shuffle(on);
     }
 
     // =========================================================================
@@ -441,19 +432,19 @@ impl AppHandle {
     // =========================================================================
 
     pub fn add_to_queue(&self, track_ids: Vec<String>) {
-        self.services.playback().add_to_queue(track_ids);
+        self.services.playback_add_to_queue(track_ids);
     }
 
     pub fn add_next(&self, track_ids: Vec<String>) {
-        self.services.playback().add_next(track_ids);
+        self.services.playback_add_next(track_ids);
     }
 
     pub fn add_release_to_queue(&self, release_id: String) {
-        self.services.playback().add_release_to_queue(release_id);
+        self.services.playback_add_release_to_queue(release_id);
     }
 
     pub fn add_release_next(&self, release_id: String) {
-        self.services.playback().add_release_next(release_id);
+        self.services.playback_add_release_next(release_id);
     }
 
     pub async fn get_queue_snapshot(&self) -> Result<BridgeQueueSnapshot, BridgeError> {
@@ -488,7 +479,6 @@ impl AppHandle {
     /// Album IDs are expanded to the primary release's tracks.
     pub async fn resolve_to_track_ids(&self, ids: Vec<String>) -> Result<Vec<String>, BridgeError> {
         self.services
-            .library_manager()
             .resolve_to_track_ids(&ids)
             .await
             .map_err(BridgeError::database)
@@ -496,36 +486,30 @@ impl AppHandle {
 
     pub fn insert_in_queue(&self, track_ids: Vec<String>, index: u32) {
         self.services
-            .playback()
-            .insert_in_queue(track_ids, index as usize);
+            .playback_insert_in_queue(track_ids, index as usize);
     }
 
     pub fn remove_entry(&self, entry_id: String) {
-        self.services
-            .playback()
-            .remove_entry(QueueEntryId(entry_id));
+        self.services.playback_remove_entry(QueueEntryId(entry_id));
     }
 
     /// Move the entry `entry_id` to sit immediately before `before_entry_id`.
     /// `before_entry_id == None` moves it to the end of the queue.
     pub fn reorder_entry(&self, entry_id: String, before_entry_id: Option<String>) {
         self.services
-            .playback()
-            .reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
+            .playback_reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
     }
 
     pub fn clear_up_next(&self) {
-        self.services.playback().clear_up_next();
+        self.services.playback_clear_up_next();
     }
 
     pub fn clear_playing_from(&self) {
-        self.services.playback().clear_playing_from();
+        self.services.playback_clear_playing_from();
     }
 
     pub fn skip_to_entry(&self, entry_id: String) {
-        self.services
-            .playback()
-            .skip_to_entry(QueueEntryId(entry_id));
+        self.services.playback_skip_to_entry(QueueEntryId(entry_id));
     }
 
     // =========================================================================
@@ -533,7 +517,7 @@ impl AppHandle {
     // =========================================================================
 
     pub fn get_config(&self) -> BridgeConfig {
-        BridgeConfig::from_core(&self.services.library_manager().get_config())
+        BridgeConfig::from_core(&self.services.get_config())
     }
 
     pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), BridgeError> {
@@ -546,7 +530,6 @@ impl AppHandle {
     /// next time the library's coven handle opens.
     pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_max_concurrent_uploads(n)
             .map_err(BridgeError::config)
     }
@@ -555,7 +538,6 @@ impl AppHandle {
     /// Takes effect the next time the library's coven handle opens.
     pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_max_concurrent_downloads(n)
             .map_err(BridgeError::config)
     }
@@ -565,7 +547,6 @@ impl AppHandle {
     /// invalidation, which is what re-renders the bar — no app keeps its own copy.
     pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_show_remaining_time(enabled)
             .map_err(BridgeError::config)
     }
@@ -576,7 +557,6 @@ impl AppHandle {
     /// copy.
     pub fn set_library_full_width(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_library_full_width(enabled)
             .map_err(BridgeError::config)
     }
@@ -586,7 +566,6 @@ impl AppHandle {
         presets: Vec<crate::types::BridgeSavePreset>,
     ) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_save_presets(
                 presets
                     .into_iter()
@@ -598,14 +577,12 @@ impl AppHandle {
 
     pub fn set_default_track_save_preset(&self, preset_id: String) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_default_track_save_preset(preset_id)
             .map_err(BridgeError::config)
     }
 
     pub fn set_default_release_save_preset(&self, preset_id: String) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_default_release_save_preset(preset_id)
             .map_err(BridgeError::config)
     }
@@ -616,26 +593,24 @@ impl AppHandle {
     /// `encryption_key_stored` library means the keyring got wiped and the
     /// user needs to enter the key again.
     pub fn has_encryption_key(&self) -> bool {
-        self.services.library_manager().has_encryption()
+        self.services.has_encryption()
     }
 
     pub fn rename_library(&self, library_id: String, name: String) -> Result<(), BridgeError> {
         // Trim + non-blank is core policy, applied here rather than in each app.
         let name = bae_core::library_name::LibraryName::parse(&name)
             .map_err(|e| BridgeError::config(e.to_string()))?;
-        self.services
-            .library_manager()
-            .rename_library(&library_id, &name)?;
+        self.services.rename_library(&library_id, &name)?;
         Ok(())
     }
 
     pub fn lock_active_library(&self) -> Result<(), BridgeError> {
-        self.services.library_manager().forget_encryption_key()?;
+        self.services.forget_encryption_key()?;
         Ok(())
     }
 
     pub fn get_discogs_token(&self) -> Result<Option<String>, BridgeError> {
-        Ok(self.services.library_manager().get_discogs_token()?)
+        Ok(self.services.get_discogs_token()?)
     }
 
     // Discogs token writes live on the desktop-only import service (see the
@@ -664,7 +639,6 @@ impl AppHandle {
         };
 
         self.services
-            .library_manager()
             .change_cover(&album_id, &release_id, core_selection)
             .await
             .map_err(|e| BridgeError::internal(format!("{e}")))
@@ -676,7 +650,6 @@ impl AppHandle {
         release_id: String,
     ) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_album_primary_release(&album_id, &release_id)
             .await
             .map_err(|e| BridgeError::internal(format!("{e}")))
@@ -687,10 +660,7 @@ impl AppHandle {
     // =========================================================================
 
     pub async fn unpin_release(&self, release_id: String) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .unpin_release(&release_id)
-            .await?;
+        self.services.unpin_release(&release_id).await?;
         Ok(())
     }
 
@@ -699,10 +669,7 @@ impl AppHandle {
         release_id: String,
         pin: bool,
     ) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .make_release_remote(&release_id, pin)
-            .await?;
+        self.services.make_release_remote(&release_id, pin).await?;
         Ok(())
     }
 
@@ -712,17 +679,13 @@ impl AppHandle {
         new_path: String,
     ) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .make_release_local(&release_id, &new_path)
             .await?;
         Ok(())
     }
 
     pub async fn delete_release(&self, release_id: String) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .delete_release(&release_id)
-            .await?;
+        self.services.delete_release(&release_id).await?;
         Ok(())
     }
 
@@ -736,7 +699,6 @@ impl AppHandle {
     ) -> Result<(), BridgeError> {
         use bae_core::sync::S3ConfigData;
         self.services
-            .library_manager()
             .save_s3_config(S3ConfigData {
                 bucket: config_data.bucket,
                 region: config_data.region,
@@ -751,9 +713,7 @@ impl AppHandle {
     }
 
     pub fn disconnect_cloud_provider(&self) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .disconnect_cloud_provider()?;
+        self.services.disconnect_cloud_provider()?;
         Ok(())
     }
 
@@ -762,26 +722,18 @@ impl AppHandle {
     /// warning sentence itself, from `core.sync.cloud_only_releases` and its own
     /// locale's plural rules.
     pub async fn cloud_only_release_count(&self) -> Result<u64, BridgeError> {
-        Ok(self
-            .services
-            .library_manager()
-            .cloud_only_release_count()
-            .await?)
+        Ok(self.services.cloud_only_release_count().await?)
     }
 
     pub async fn generate_restore_code(&self) -> Result<String, BridgeError> {
-        Ok(self
-            .services
-            .library_manager()
-            .generate_restore_code()
-            .await?)
+        Ok(self.services.generate_restore_code().await?)
     }
 
     /// The library's membership (devices, with this device flagged, and whether
     /// the running device is an owner). Reads the membership chain from cloud
     /// storage.
     pub async fn get_members(&self) -> Result<crate::types::BridgeMembership, BridgeError> {
-        let membership = self.services.library_manager().get_members().await?;
+        let membership = self.services.get_members().await?;
         Ok(crate::types::BridgeMembership::from_core(membership))
     }
 
@@ -794,7 +746,6 @@ impl AppHandle {
     ) -> Result<String, BridgeError> {
         Ok(self
             .services
-            .library_manager()
             .invite_member(&public_key_hex, provider_account_email.as_deref())
             .await?)
     }
@@ -814,7 +765,6 @@ impl AppHandle {
     ) -> Result<Vec<u8>, BridgeError> {
         Ok(self
             .services
-            .library_manager()
             .begin_device_invite(&join_request_code)
             .await?)
     }
@@ -826,10 +776,7 @@ impl AppHandle {
     pub async fn drive_device_join(&self, invite: Vec<u8>) -> Result<bool, BridgeError> {
         use bae_core::library::DeviceJoinOutcome;
         Ok(matches!(
-            self.services
-                .library_manager()
-                .drive_device_join(invite)
-                .await?,
+            self.services.drive_device_join(invite).await?,
             DeviceJoinOutcome::Joined
         ))
     }
@@ -837,19 +784,12 @@ impl AppHandle {
     /// Withdraw an invite this device minted, so a joining device that already
     /// scanned it is told to stop.
     pub async fn cancel_device_invite(&self, invite: Vec<u8>) -> Result<(), BridgeError> {
-        Ok(self
-            .services
-            .library_manager()
-            .cancel_device_invite(invite)
-            .await?)
+        Ok(self.services.cancel_device_invite(invite).await?)
     }
 
     /// Remove a device from the library and rotate the library key.
     pub async fn remove_member(&self, public_key_hex: String) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .remove_member(&public_key_hex)
-            .await?;
+        self.services.remove_member(&public_key_hex).await?;
         Ok(())
     }
 
@@ -858,18 +798,18 @@ impl AppHandle {
     /// untouched). The caller must drop this handle right after — the database
     /// lives in the removed directory — and re-open / onboard from scratch.
     pub fn forget_library(&self) -> Result<(), BridgeError> {
-        self.services.library_manager().forget_library()?;
+        self.services.forget_library()?;
 
         info!("Forgot local library");
         Ok(())
     }
 
     pub fn trigger_sync(&self) {
-        self.services.library_manager().trigger_sync();
+        self.services.trigger_sync();
     }
 
     pub fn is_sync_ready(&self) -> bool {
-        self.services.library_manager().is_sync_ready()
+        self.services.is_sync_ready()
     }
 
     pub fn get_sync_status(&self) -> BridgeSyncStatusSnapshot {
@@ -883,7 +823,6 @@ impl AppHandle {
     ) -> Result<crate::types::BridgeOutboxSnapshot, BridgeError> {
         let snapshot = self
             .services
-            .library_manager()
             .outbox_snapshot()
             .await
             .map_err(BridgeError::internal)?;
@@ -894,7 +833,6 @@ impl AppHandle {
     /// of waiting for the next sync cycle.
     pub async fn retry_outbox(&self) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .retry_outbox_now()
             .await
             .map_err(BridgeError::internal)
@@ -906,7 +844,6 @@ impl AppHandle {
     /// is running; a no-op if nothing is in progress.
     pub async fn cancel_release_transition(&self, release_id: String) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .cancel_release_transition(&release_id)
             .await
             .map_err(BridgeError::internal)
@@ -916,10 +853,7 @@ impl AppHandle {
     /// still land in the outbox but the sync cycle won't drain them; the
     /// snapshot's `paused` field flips so the UI can render the toggle.
     pub async fn set_sync_paused(&self, paused: bool) {
-        self.services
-            .library_manager()
-            .set_sync_paused(paused)
-            .await;
+        self.services.set_sync_paused(paused).await;
     }
 
     // ── Download (pin) queue ─────────────────────────────────────────
@@ -927,9 +861,7 @@ impl AppHandle {
     /// The current download-queue snapshot. Download invalidations tell the
     /// Downloads pane to read it again.
     pub fn get_download_snapshot(&self) -> crate::types::BridgeDownloadSnapshot {
-        crate::types::BridgeDownloadSnapshot::from_core(
-            self.services.library_manager().download_snapshot(),
-        )
+        crate::types::BridgeDownloadSnapshot::from_core(self.services.download_snapshot())
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial
@@ -937,29 +869,26 @@ impl AppHandle {
     /// (resolving each release's title/size for its pane row) happen here; the
     /// deep cloud download runs on the queue worker.
     pub async fn queue_pin_releases(&self, release_ids: Vec<String>) {
-        self.services
-            .library_manager()
-            .enqueue_pins(release_ids)
-            .await;
+        self.services.enqueue_pins(release_ids).await;
     }
 
     /// Pause or resume the download queue. In-flight downloads finish; the queue
     /// stops starting new ones until resumed.
     pub fn set_downloads_paused(&self, paused: bool) {
-        self.services.library_manager().set_downloads_paused(paused);
+        self.services.set_downloads_paused(paused);
     }
 
     /// Cancel a release's download — drops a queued/failed entry or aborts the
     /// in-flight one (a partial download never lands, so the release stays
     /// cloud-only).
     pub fn cancel_download(&self, release_id: String) {
-        self.services.library_manager().cancel_download(&release_id);
+        self.services.cancel_download(&release_id);
     }
 
     /// Retry every failed download now (flips them back to queued and wakes the
     /// worker).
     pub fn retry_downloads(&self) {
-        self.services.library_manager().retry_downloads();
+        self.services.retry_downloads();
     }
 }
 
@@ -975,12 +904,12 @@ impl AppHandle {
     pub async fn shutdown(&self) {
         #[cfg(feature = "desktop")]
         {
-            self.app.shutdown_mcp();
-            self.app.shutdown_subsonic();
-            self.services.playback().shutdown().await;
+            self.desktop.shutdown_mcp();
+            self.desktop.shutdown_subsonic();
+            self.services.playback_shutdown().await;
         }
         #[cfg(not(feature = "desktop"))]
-        self.services.playback().shutdown().await;
+        self.services.playback_shutdown().await;
     }
 
     /// Persist the current playback state without stopping playback. Mobile
@@ -988,7 +917,7 @@ impl AppHandle {
     /// position survive a later cold launch — it can't call `shutdown`, which
     /// would stop the background audio.
     pub async fn save_playback_state(&self) {
-        self.services.playback().save_state().await;
+        self.services.playback_save_state().await;
     }
 }
 
@@ -1094,7 +1023,6 @@ impl AppHandle {
         image: crate::types::BridgeImageRef,
     ) -> Result<Option<Vec<u8>>, BridgeError> {
         self.services
-            .library_manager()
             .read_image_blob(&image.into_core())
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -1111,7 +1039,6 @@ impl AppHandle {
         source: BridgeGallerySource,
     ) -> Result<Vec<u8>, BridgeError> {
         self.services
-            .library_manager()
             .read_gallery_bytes(&release_id, &source.into_core())
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
@@ -1127,10 +1054,7 @@ impl AppHandle {
 impl AppHandle {
     pub async fn use_cloudkit(&self, storage: BridgeHomeStorage) -> Result<(), BridgeError> {
         let storage = crate::types::BridgeHomeStorage::into_core(storage);
-        self.services
-            .library_manager()
-            .use_cloudkit(storage)
-            .await?;
+        self.services.use_cloudkit(storage).await?;
         Ok(())
     }
 }
@@ -1153,7 +1077,6 @@ impl AppHandle {
         let core_provider = crate::types::BridgeCloudProvider::into_core(provider);
         let storage = crate::types::BridgeHomeStorage::into_core(storage);
         self.services
-            .library_manager()
             .sign_in_cloud_provider(core_provider, storage)
             .await?;
         Ok(())
@@ -1172,7 +1095,6 @@ impl AppHandle {
     /// which is what hides the Cast control — no app keeps its own copy.
     pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_cast_enabled(enabled)
             .map_err(BridgeError::config)
     }
@@ -1260,17 +1182,17 @@ impl AppHandle {
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     pub fn set_mcp_server_config(&self, enabled: bool, port: u16) -> Result<(), BridgeError> {
-        self.app
+        self.desktop
             .set_mcp_config(bae_core::config::McpConfig { enabled, port })
             .map_err(BridgeError::config)
     }
 
     pub fn get_mcp_server_status(&self) -> BridgeMcpServerStatus {
-        BridgeMcpServerStatus::from_core(self.app.mcp_server_status())
+        BridgeMcpServerStatus::from_core(self.desktop.mcp_server_status())
     }
 
     pub fn get_mcp_token(&self) -> Result<String, BridgeError> {
-        Ok(self.services.library_manager().ensure_mcp_token()?)
+        Ok(self.services.ensure_mcp_token()?)
     }
 
     pub fn generate_mcp_token(&self) -> String {
@@ -1278,7 +1200,7 @@ impl AppHandle {
     }
 
     pub fn set_mcp_token(&self, token: String) -> Result<(), BridgeError> {
-        self.services.library_manager().set_mcp_token(token)?;
+        self.services.set_mcp_token(token)?;
         Ok(())
     }
 
@@ -1289,7 +1211,7 @@ impl AppHandle {
         username: String,
         bind_address: String,
     ) -> Result<(), BridgeError> {
-        self.app
+        self.desktop
             .set_subsonic_config(bae_core::config::SubsonicConfig {
                 enabled,
                 port,
@@ -1300,11 +1222,11 @@ impl AppHandle {
     }
 
     pub fn get_subsonic_server_status(&self) -> BridgeSubsonicServerStatus {
-        BridgeSubsonicServerStatus::from_core(self.app.subsonic_server_status())
+        BridgeSubsonicServerStatus::from_core(self.desktop.subsonic_server_status())
     }
 
     pub fn set_subsonic_password(&self, password: String) -> Result<(), BridgeError> {
-        self.app
+        self.desktop
             .set_subsonic_password(&password)
             .map_err(BridgeError::config)
     }
@@ -1319,8 +1241,7 @@ impl AppHandle {
         token: String,
     ) -> Result<BridgeDiscogsSaveOutcome, BridgeError> {
         self.services
-            .import()
-            .save_discogs_token(&token)
+            .import_save_discogs_token(&token)
             .await
             .map(BridgeDiscogsSaveOutcome::from_core)
             .map_err(BridgeError::config)
@@ -1331,16 +1252,14 @@ impl AppHandle {
     /// open for the offline-saved case.
     pub async fn revalidate_discogs_token(&self) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .revalidate_discogs_token()
+            .import_revalidate_discogs_token()
             .await
             .map_err(BridgeError::config)
     }
 
     pub fn remove_discogs_token(&self) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .remove_discogs_token()
+            .import_remove_discogs_token()
             .map_err(BridgeError::config)
     }
 
@@ -1355,7 +1274,7 @@ impl AppHandle {
         analyzer: Box<dyn crate::types::ArtworkAnalyzerCallback>,
     ) {
         let adapter = std::sync::Arc::new(crate::signals::ArtworkAnalyzerAdapter::new(analyzer));
-        self.services.extraction().register_analyzer(adapter);
+        self.services.extraction_register_analyzer(adapter);
     }
 
     /// Start identifying a folder candidate. Identify subscribes first, then
@@ -1374,9 +1293,8 @@ impl AppHandle {
     /// key the same way it does for folder imports.
     pub fn auto_identify_release(&self, candidate_key: String, release_id: String) {
         self.services
-            .identify()
-            .start(candidate_key.clone(), CallPriority::Interactive);
-        self.services.extraction().start(
+            .identify_start(candidate_key.clone(), CallPriority::Interactive);
+        self.services.extraction_start(
             candidate_key,
             ExtractionSource::Release { release_id },
             CallPriority::Interactive,
@@ -1389,8 +1307,8 @@ impl AppHandle {
     /// a key with nothing running. Called when the UI tears the candidate down
     /// (the re-identify sheet closing).
     pub fn cancel_auto_identify(&self, candidate_key: String) {
-        self.services.identify().cancel(&candidate_key);
-        self.services.extraction().cancel(&candidate_key);
+        self.services.identify_cancel(&candidate_key);
+        self.services.extraction_cancel(&candidate_key);
     }
 
     /// Toggle a signal in a candidate's toolbar — include or exclude it from
@@ -1404,8 +1322,7 @@ impl AppHandle {
         signal: crate::types::BridgeExcludedSignal,
     ) {
         self.services
-            .identify()
-            .toggle_signal(&candidate_key, signal.into_core());
+            .identify_toggle_signal(&candidate_key, signal.into_core());
     }
 
     /// Re-run a candidate's lookups from the toolbar. A live driver resets to
@@ -1430,8 +1347,7 @@ impl AppHandle {
     ) -> Result<crate::types::BridgeDecidedIdentity, BridgeError> {
         let answer = self
             .services
-            .import()
-            .pick_candidate_identity(candidate_key, pick.into_core())
+            .import_pick_candidate_identity(candidate_key, pick.into_core())
             .await
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeDecidedIdentity::from_core(answer))
@@ -1446,8 +1362,7 @@ impl AppHandle {
     ) -> Result<Option<crate::types::BridgeDecidedIdentity>, BridgeError> {
         let answer = self
             .services
-            .import()
-            .candidate_answer(candidate_key)
+            .import_candidate_answer(candidate_key)
             .await
             .map_err(BridgeError::import)?;
         Ok(answer.map(crate::types::BridgeDecidedIdentity::from_core))
@@ -1468,12 +1383,11 @@ impl AppHandle {
         identity_choice: crate::types::BridgeIdentityChoice,
     ) -> Result<String, BridgeError> {
         let core_choice = identity_choice.into_core();
-        let library_manager = self.services.library_manager();
-        library_manager
+        self.services
             .re_identify_release(&release_id, core_choice)
             .await
             .map_err(BridgeError::import)?;
-        library_manager
+        self.services
             .get_album_id_for_release(&release_id)
             .await
             .map_err(BridgeError::database)
@@ -1483,8 +1397,7 @@ impl AppHandle {
     /// view appears to render the group headers.
     pub fn watched_folders(&self) -> Vec<crate::types::BridgeWatchedFolder> {
         self.services
-            .import()
-            .watched_folders()
+            .import_watched_folders()
             .into_iter()
             .map(crate::types::BridgeWatchedFolder::from_core)
             .collect()
@@ -1518,24 +1431,21 @@ impl AppHandle {
 
     pub async fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .add_watched_folder(path)
+            .import_add_watched_folder(path)
             .await
             .map_err(BridgeError::import)
     }
 
     pub async fn remove_watched_folder(&self, path: String) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .remove_watched_folder(path)
+            .import_remove_watched_folder(path)
             .await
             .map_err(BridgeError::import)
     }
 
     pub async fn refresh_watched_folder(&self, path: String) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .refresh_watched_folder(path)
+            .import_refresh_watched_folder(path)
             .await
             .map_err(BridgeError::import)
     }
@@ -1546,8 +1456,7 @@ impl AppHandle {
         decision: crate::types::BridgeFolderReleaseDecision,
     ) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .set_folder_release_decision(key.into_core(), decision.into_core())
+            .import_set_folder_release_decision(key.into_core(), decision.into_core())
             .await
             .map_err(BridgeError::import)
     }
@@ -1560,8 +1469,7 @@ impl AppHandle {
         skipped: bool,
     ) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .set_candidate_skipped(path, skipped)
+            .import_set_candidate_skipped(path, skipped)
             .await
             .map_err(BridgeError::import)
     }
@@ -1581,8 +1489,7 @@ impl AppHandle {
     ) -> Result<Vec<crate::types::BridgeSheetBindingOption>, BridgeError> {
         Ok(self
             .services
-            .import()
-            .sheet_binding_options(candidate_key, sheet_file_id)
+            .import_sheet_binding_options(candidate_key, sheet_file_id)
             .await
             .map_err(BridgeError::import)?
             .into_iter()
@@ -1608,8 +1515,7 @@ impl AppHandle {
         audio_file_id: Option<String>,
     ) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
+            .import_set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
             .await
             .map_err(BridgeError::import)
     }
@@ -1631,8 +1537,7 @@ impl AppHandle {
         disc: crate::types::BridgeSheetDisc,
     ) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
+            .import_set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
             .await
             .map_err(BridgeError::import)
     }
@@ -1656,8 +1561,7 @@ impl AppHandle {
         choice: crate::types::BridgeFileRoleChoice,
     ) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .set_file_role(candidate_key, file_id, choice.into_core())
+            .import_set_file_role(candidate_key, file_id, choice.into_core())
             .await
             .map_err(BridgeError::import)
     }
@@ -1666,8 +1570,7 @@ impl AppHandle {
     /// current candidate list.
     pub fn scan_watched_folders(&self) -> Result<(), BridgeError> {
         self.services
-            .import()
-            .scan_watched_folders()
+            .import_scan_watched_folders()
             .map_err(BridgeError::import)
     }
 
@@ -1718,8 +1621,7 @@ impl AppHandle {
 
         let grouped = self
             .services
-            .import()
-            .search_with_status(core_query)
+            .import_search_with_status(core_query)
             .await
             .map_err(BridgeError::import)?;
 
@@ -1757,7 +1659,7 @@ impl AppHandle {
             // metadata-from line could tell the user by repeating it.
             track_count: None,
         };
-        crate::types::BridgeClaimLine::from_core(self.services.import().claim_for_pick(
+        crate::types::BridgeClaimLine::from_core(self.services.import_claim_for_pick(
             &candidate_key,
             &release,
             level.into_core(),
@@ -1781,8 +1683,7 @@ impl AppHandle {
         let user_edit = user_edit.map(crate::types::BridgeReleaseUserEdit::into_core);
 
         self.services
-            .import()
-            .start_import(
+            .import_start_import(
                 &candidate_key,
                 cover,
                 storage_mode.into_core(),
@@ -1806,8 +1707,7 @@ impl AppHandle {
     ) -> Result<crate::types::BridgeReleaseUserEdit, BridgeError> {
         let edit = self
             .services
-            .import()
-            .preview_file_tags_for_folder(candidate_key)
+            .import_preview_file_tags_for_folder(candidate_key)
             .await
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
@@ -1821,8 +1721,7 @@ impl AppHandle {
     ) -> Result<crate::types::BridgeMappingTable, BridgeError> {
         let mapping = self
             .services
-            .import()
-            .candidate_mapping(&candidate_key)
+            .import_candidate_mapping(&candidate_key)
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeMappingTable::from_core(mapping))
     }
@@ -1837,7 +1736,6 @@ impl AppHandle {
     ) -> Result<(), BridgeError> {
         let core_edit = crate::types::BridgeReleaseUserEdit::into_core(edit);
         self.services
-            .library_manager()
             .apply_release_metadata_user_edit(&release_id, &core_edit)
             .await
             .map_err(BridgeError::import)
@@ -1852,7 +1750,6 @@ impl AppHandle {
     ) -> Result<crate::types::BridgeRawReleaseEdit, BridgeError> {
         let raw = self
             .services
-            .library_manager()
             .release_edit_seed(&release_id)
             .await
             .map_err(BridgeError::import)?;
@@ -1871,7 +1768,6 @@ impl AppHandle {
     ) -> Result<crate::types::BridgeReleaseUserEdit, BridgeError> {
         let edit = self
             .services
-            .library_manager()
             .reset_metadata_to_source(&release_id)
             .await
             .map_err(BridgeError::import)?;
@@ -1884,8 +1780,7 @@ impl AppHandle {
     ) -> Result<Vec<BridgeRemoteCover>, BridgeError> {
         let covers = self
             .services
-            .import()
-            .fetch_remote_covers(&release_id)
+            .import_fetch_remote_covers(&release_id)
             .await
             .map_err(BridgeError::import)?;
         Ok(covers
@@ -1909,8 +1804,7 @@ impl AppHandle {
         url: String,
     ) -> Result<Option<crate::types::BridgeRemoteImage>, BridgeError> {
         self.services
-            .import()
-            .fetch_remote_image_bytes(url)
+            .import_fetch_remote_image_bytes(url)
             .await
             .map(|image| image.map(crate::types::BridgeRemoteImage::from_core))
             .map_err(BridgeError::import)
@@ -1932,9 +1826,7 @@ impl AppHandle {
     /// The current export-queue snapshot. Export invalidations tell the
     /// Exporting pane to read it again.
     pub fn get_output_snapshot(&self) -> crate::types::BridgeOutputSnapshot {
-        crate::types::BridgeOutputSnapshot::from_core(
-            self.services.library_manager().output_snapshot(),
-        )
+        crate::types::BridgeOutputSnapshot::from_core(self.services.output_snapshot())
     }
 
     /// Enqueue a verbatim release export to `target_dir`. It joins the in-memory
@@ -1947,7 +1839,6 @@ impl AppHandle {
         target_dir: String,
     ) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .enqueue_export(&release_id, std::path::PathBuf::from(target_dir))
             .await
             .map_err(BridgeError::export)
@@ -1963,7 +1854,6 @@ impl AppHandle {
         preset_id: String,
     ) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .enqueue_release_save(
                 &release_id,
                 std::path::PathBuf::from(target_dir),
@@ -1976,19 +1866,19 @@ impl AppHandle {
     /// Pause or resume the export queue. The in-flight export finishes; the queue
     /// stops starting new ones until resumed.
     pub fn set_outputs_paused(&self, paused: bool) {
-        self.services.library_manager().set_outputs_paused(paused);
+        self.services.set_outputs_paused(paused);
     }
 
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
     pub fn cancel_output(&self, release_id: String) {
-        self.services.library_manager().cancel_output(&release_id);
+        self.services.cancel_output(&release_id);
     }
 
     /// Retry every failed export now (flips them back to queued and wakes the
     /// worker).
     pub fn retry_outputs(&self) {
-        self.services.library_manager().retry_outputs();
+        self.services.retry_outputs();
     }
 
     // ── Track save ───────────────────────────────────────────────────
@@ -2003,7 +1893,6 @@ impl AppHandle {
         preset_id: String,
     ) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .save_track(&track_id, std::path::Path::new(&output_path), &preset_id)
             .await
             .map_err(|e| BridgeError::save(format!("{e}")))
@@ -2019,7 +1908,6 @@ impl AppHandle {
         preset_id: String,
     ) -> Result<String, BridgeError> {
         self.services
-            .library_manager()
             .save_track_suggested_name(&track_id, &preset_id)
             .await
             .map_err(|e| BridgeError::save(format!("{e}")))
@@ -4178,61 +4066,31 @@ mod tests {
         key_service
             .set_discogs_key("test-discogs-token")
             .expect("seed test Discogs key");
-        // One id source for the whole test app: the database mints the ids it
-        // owns (identity rows, copied album artists) from the same provider the
-        // manager mints everything else from.
+        // One id source for the whole test app: the library owner mints every
+        // database and domain id from this provider.
         let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(test_name));
-        let database = bae_core::db::Database::open(
-            config.to_coven(),
-            Arc::new(coven::SystemClock),
-            Arc::clone(&ids),
-            bae_core::sync::synced_tables(),
-            None,
-        )
-        .expect("open test database");
         let runtime = tokio::runtime::Runtime::new().expect("create test runtime");
         let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
-        let manager = bae_core::library::LibraryManager::new(
-            database,
+        let manager = bae_core::library::LibraryManager::open(
             config_handle,
             key_service,
             Arc::new(coven::SystemClock),
             ids,
             bae_core::diagnostics::Diagnostics::noop(),
             runtime.handle().clone(),
+            None,
             bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
-        let playback = bae_core::playback::PlaybackService::start(
-            manager.clone(),
-            runtime.handle().clone(),
-            50,
-            true,
-        );
-        // Gated on the target, not on `desktop`: `AppServices::new`'s arity is
-        // itself target-gated in bae-core, so a non-mobile build takes the
-        // five-argument form whether or not this crate's `desktop` feature is on.
+        )
+        .expect("open test library");
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let services = {
-            let import = runtime
-                .block_on(bae_core::import::ImportService::start(
-                    runtime.handle().clone(),
-                    manager.clone(),
-                ))
-                .expect("start import service");
-            let identify = bae_core::identify::IdentifyServiceHandle::new(
-                manager.clone(),
-                runtime.handle().clone(),
-                import.event_sender_for_test(),
-            );
-            let extraction = bae_core::signals::ExtractionService::start(
-                runtime.handle().clone(),
-                import.event_sender_for_test(),
-                manager.clone(),
-            );
-            bae_core::library::AppServices::new(manager, playback, import, identify, extraction)
-        };
+        let services = runtime
+            .block_on(bae_core::library::AppServices::for_test(manager))
+            .expect("start test app services");
         #[cfg(any(target_os = "ios", target_os = "android"))]
-        let services = bae_core::library::AppServices::new(manager, playback);
+        let services = {
+            let playback = manager.start_playback_service(runtime.handle().clone(), 50, true);
+            bae_core::library::AppServices::new(manager, playback)
+        };
         let handle = super::AppHandle {
             runtime,
             services,

@@ -25,9 +25,14 @@ pub(super) struct CancellationRegistry {
 }
 
 impl CancellationRegistry {
-    /// A fresh generation and token for `key`, cancelling and replacing any prior
-    /// one. The task carries both back.
-    pub(super) fn register(&self, key: String) -> (CancellationToken, u64) {
+    /// Register a fresh generation for `key`, cancelling and replacing any
+    /// prior one, then inject its token and generation into the task being
+    /// constructed. The registry never returns the token it retains.
+    pub(super) fn register<T>(
+        &self,
+        key: String,
+        construct: impl FnOnce(CancellationToken, u64) -> T,
+    ) -> T {
         let token = CancellationToken::new();
 
         // The generation and the map entry advance under one lock hold, so two
@@ -43,7 +48,7 @@ impl CancellationRegistry {
             prior_token.cancel();
         }
 
-        (token, generation)
+        construct(token, generation)
     }
 
     pub(super) fn cancel(&self, key: &str) {
@@ -73,8 +78,10 @@ mod tests {
     fn re_registering_a_key_advances_the_generation_and_replaces_the_token() {
         let registry = CancellationRegistry::default();
 
-        let (first_token, first_gen) = registry.register("cand".to_string());
-        let (second_token, second_gen) = registry.register("cand".to_string());
+        let (first_token, first_gen) =
+            registry.register("cand".to_string(), |token, generation| (token, generation));
+        let (second_token, second_gen) =
+            registry.register("cand".to_string(), |token, generation| (token, generation));
 
         assert!(second_gen > first_gen);
         assert!(first_token.is_cancelled());
@@ -85,8 +92,8 @@ mod tests {
     fn generations_are_unique_across_keys() {
         let registry = CancellationRegistry::default();
 
-        let (_, a_gen) = registry.register("a".to_string());
-        let (_, b_gen) = registry.register("b".to_string());
+        let a_gen = registry.register("a".to_string(), |_, generation| generation);
+        let b_gen = registry.register("b".to_string(), |_, generation| generation);
 
         assert_ne!(a_gen, b_gen);
     }
@@ -95,8 +102,9 @@ mod tests {
     fn release_if_current_only_removes_the_matching_generation() {
         let registry = CancellationRegistry::default();
 
-        let (_, stale_gen) = registry.register("cand".to_string());
-        let (live_token, live_gen) = registry.register("cand".to_string());
+        let stale_gen = registry.register("cand".to_string(), |_, generation| generation);
+        let (live_token, live_gen) =
+            registry.register("cand".to_string(), |token, generation| (token, generation));
 
         // A teardown carrying the older generation must not evict the newer entry
         // that already overwrote it.
@@ -106,7 +114,7 @@ mod tests {
         // The live generation's own teardown removes its entry, after which a repeat
         // release is a no-op rather than a hit on some later entry.
         registry.release_if_current("cand", live_gen);
-        let (_, post_gen) = registry.register("cand".to_string());
+        let post_gen = registry.register("cand".to_string(), |_, generation| generation);
         registry.release_if_current("cand", live_gen);
         assert!(post_gen > live_gen);
         registry.cancel("cand");

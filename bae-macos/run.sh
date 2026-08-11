@@ -68,11 +68,13 @@ case "$EDITION" in
         ;;
 esac
 
+export BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE"
+
 if [[ "$SKIP_RUST" == false ]]; then
     if [[ "$RELEASE" == true ]]; then
-        BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE" ./bae-bridge/build-macos.sh --release
+        ./bae-bridge/build-macos.sh --release
     else
-        BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE" ./bae-bridge/build-macos.sh
+        ./bae-bridge/build-macos.sh
     fi
     ./bae-bridge/install-swift-bindings.sh macos
 fi

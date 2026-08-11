@@ -41,6 +41,6 @@ struct SyncErrorBanner: View {
         }
         .formStyle(.grouped)
         .frame(width: 500)
-        .environment(PreviewData.syncErrorConfigStore)
+        .environment(PreviewData.syncErrorConfigStore())
     }
 #endif

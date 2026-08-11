@@ -6,7 +6,7 @@
 //! format, artists, and backing file each `Child` requires.
 
 use bae_core::db::{DbFile, DbRelease, DbTrack, LibraryImageType, ReleaseMetadataSource};
-use bae_core::library::{LibraryError, LibraryManager};
+use bae_core::library::{AppServices, LibraryError};
 
 use crate::error::SubError;
 use crate::model::{album_wire_id, artist_wire_id, track_wire_id, AlbumId3, ArtistId3, Child};
@@ -28,8 +28,8 @@ fn release_mb_id(release: &DbRelease) -> Option<String> {
 
 /// Whether this release has stored cover art. Only then is a `coverArt` id
 /// advertised, so a client never fetches art that resolves to "not found".
-async fn has_cover(manager: &LibraryManager, release_id: &str) -> Result<bool, SubError> {
-    Ok(manager
+async fn has_cover(services: &AppServices, release_id: &str) -> Result<bool, SubError> {
+    Ok(services
         .get_library_image(release_id, &LibraryImageType::Cover)
         .await
         .map_err(lib_err)?
@@ -48,32 +48,32 @@ fn total_duration_secs(tracks: &[DbTrack]) -> i64 {
 /// The `AlbumID3` for a release: its album's title/artist, this release's year
 /// and cover, and the release's song count and total duration.
 pub(crate) async fn release_album_id3(
-    manager: &LibraryManager,
+    services: &AppServices,
     release_id: &str,
 ) -> Result<AlbumId3, SubError> {
-    let release = manager
+    let release = services
         .get_release_by_id(release_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    release_album_id3_with(manager, &release).await
+    release_album_id3_with(services, &release).await
 }
 
 /// [`release_album_id3`] when the caller already holds the release row.
 pub(crate) async fn release_album_id3_with(
-    manager: &LibraryManager,
+    services: &AppServices,
     release: &DbRelease,
 ) -> Result<AlbumId3, SubError> {
-    let album = manager
+    let album = services
         .find_album_detail(&release.album_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let tracks = manager
+    let tracks = services
         .get_tracks_for_release(&release.id)
         .await
         .map_err(lib_err)?;
-    let cover_art = has_cover(manager, &release.id)
+    let cover_art = has_cover(services, &release.id)
         .await?
         .then(|| album_wire_id(&release.id));
 
@@ -109,11 +109,11 @@ struct AudioFields {
 /// determine. `files` is the release's file rows when the caller already holds
 /// them (whole-album builds); otherwise they are fetched.
 async fn resolve_audio_fields(
-    manager: &LibraryManager,
+    services: &AppServices,
     track_id: &str,
     files: Option<&[DbFile]>,
 ) -> Result<AudioFields, SubError> {
-    let audio = manager
+    let audio = services
         .resolve_track_audio(track_id)
         .await
         .map_err(lib_err)?;
@@ -122,7 +122,7 @@ async fn resolve_audio_fields(
     let files = match files {
         Some(files) => files,
         None => {
-            owned_files = manager
+            owned_files = services
                 .get_files_for_release(&audio.release_id)
                 .await
                 .map_err(lib_err)?;
@@ -154,16 +154,16 @@ async fn resolve_audio_fields(
 /// files, and the cover flag are passed in so a whole-album build resolves them
 /// once rather than per track.
 pub(crate) async fn track_child(
-    manager: &LibraryManager,
+    services: &AppServices,
     track: &DbTrack,
     release: &DbRelease,
     album_title: &str,
     files: &[DbFile],
     has_cover_art: bool,
 ) -> Result<Child, SubError> {
-    let audio = resolve_audio_fields(manager, &track.id, Some(files)).await?;
+    let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
-    let artists = manager
+    let artists = services
         .get_artists_for_track(&track.id)
         .await
         .map_err(lib_err)?;
@@ -207,19 +207,19 @@ pub(crate) async fn track_child(
 /// per-track fields a search result lacks (track number, disc, created) are
 /// omitted, which the spec allows.
 pub(crate) async fn search_track_child(
-    manager: &LibraryManager,
+    services: &AppServices,
     track_id: &str,
     title: &str,
     album_title: &str,
     artist_name: &str,
 ) -> Result<Child, SubError> {
-    let audio = resolve_audio_fields(manager, track_id, None).await?;
-    let release = manager
+    let audio = resolve_audio_fields(services, track_id, None).await?;
+    let release = services
         .get_release_by_id(&audio.release_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let has_cover_art = has_cover(manager, &audio.release_id).await?;
+    let has_cover_art = has_cover(services, &audio.release_id).await?;
 
     Ok(Child {
         id: track_wire_id(track_id),
@@ -249,10 +249,10 @@ pub(crate) async fn search_track_child(
 /// The number of releases (Subsonic albums) an artist has, summed over their
 /// bae albums. `0` for an unknown artist.
 pub(crate) async fn artist_release_count(
-    manager: &LibraryManager,
+    services: &AppServices,
     artist_id: &str,
 ) -> Result<i64, SubError> {
-    let detail = manager
+    let detail = services
         .get_artist_detail(artist_id)
         .await
         .map_err(lib_err)?;

@@ -41,6 +41,9 @@ jobs:
     - name: Check Rust formatting
       run: cargo fmt --all -- --check
 
+    - name: Check owner dependency boundaries
+      run: scripts/owner-dependency-boundary.sh
+
     - name: Check for unused Rust dependencies
       run: |
         cargo binstall cargo-machete --no-confirm

@@ -49,7 +49,6 @@ plants/
 # outputs, the SPM compilation-conditions file, and swift build's local scratch.
 BaeKit/Sources/BaeBridge/bae_bridge_*.swift
 BaeKit/Frameworks/
-BaeKit/Features.json
 BaeKit/.build/
 BaeKit/.swiftpm/
 BaeKit/Package.resolved

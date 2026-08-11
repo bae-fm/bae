@@ -12,7 +12,7 @@
         /// driving the real `loadInitial()` → `totalCount == 0` path so the
         /// previews below hit the actual empty-state branches in
         /// `albumContent`/`composerContent` rather than a hand-built stand-in.
-        static var emptyLibrary: Library {
+        static func emptyLibrary() -> Library {
             Library(
                 getAlbumCount: { 0 },
                 getAlbumPage: { _, _, _ in [] },
@@ -31,7 +31,7 @@
             uiStore: UiStore,
             libraryStore: LibraryStore
         ) -> (library: Library, session: LibraryBrowseSession) {
-            let library = emptyLibrary
+            let library = emptyLibrary()
             let session = LibraryBrowseSession(
                 library: library,
                 projectionRegistry: ProjectionRegistry(),

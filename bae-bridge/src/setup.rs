@@ -65,7 +65,7 @@ impl BridgeLibrary {
         local_library(
             config.store_id.clone(),
             config.store_name.clone(),
-            std::path::PathBuf::from(&*config.store_dir),
+            config.library_path().to_path_buf(),
             config.cloud_home.provider.as_ref(),
             true,
             // A Config in hand is a config that loaded. There is nothing broken
@@ -189,7 +189,7 @@ pub fn set_ca_cert_dir(dirs: String) {
 /// it just replaces the store.
 #[uniffi::export]
 pub fn init_keyring(diagnostics: Arc<crate::init::BridgeDiagnostics>) {
-    bae_core::config::init_keyring(diagnostics.core());
+    diagnostics.init_keyring();
 }
 
 /// Discover local libraries in ~/.bae/libraries/, returning each as a

@@ -44,6 +44,31 @@ pub use tokio_util::sync::CancellationToken;
 pub type DownloadQueue = ReleaseQueue<(), DownloadTransferProgress>;
 pub type OutputQueue = ReleaseQueue<output_snapshot::OutputRequest, u8>;
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub struct SaveTrackPlan {
+    audio_buffers: Vec<SaveAudioBuffer>,
+    resolved: manager::ResolvedSaveTags,
+    cover_image_bytes: Option<Vec<u8>>,
+    decode: crate::playback::stream_pipeline::StreamDecodeParams,
+    audio_meta: manager::TrackAudioMeta,
+}
+
+#[cfg(all(
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
+impl SaveTrackPlan {
+    pub fn has_cover_image_for_test(&self) -> bool {
+        self.cover_image_bytes.is_some()
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) struct SaveAudioBuffer {
+    file_id: String,
+    buffer: crate::playback::SharedSparseBuffer,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
     #[error("restore cancelled")]
@@ -95,7 +120,7 @@ pub fn create_library(
     ));
     std::fs::create_dir_all(&*library_dir)?;
     let device_id = ids.new_id();
-    let config = Config::with_defaults(library_id, device_id, library_dir, name.into_string());
+    let config = Config::with_defaults(library_id, device_id, &library_dir, name.into_string());
     config.save_to_config_yaml()?;
     config.save_active_library()?;
     Ok(config)
@@ -103,8 +128,27 @@ pub fn create_library(
 
 /// coven's restore/join returns the recovered Config; wrap it in bae's Config
 /// (which adds Discogs fields) and persist it.
-fn save_coven_library(coven_config: coven::Config) -> Result<Config, String> {
-    let config = Config::from_coven(coven_config);
+fn save_coven_library(coven_config: coven::Config, store_dir: StoreDir) -> Result<Config, String> {
+    let encryption_key_fingerprint = if coven_config.cloud_home.storage.is_opaque() {
+        let serialized = StoreKeys::bind(coven_config.store_id.clone())
+            .get_encryption_key()
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| {
+                "coven completed an opaque restore without establishing its master key".to_string()
+            })?;
+        Some(
+            MasterKeyring::from_serialized(&serialized)
+                .map_err(|error| error.to_string())?
+                .fingerprint(),
+        )
+    } else {
+        None
+    };
+    let config = Config::from_coven(
+        coven_config,
+        store_dir.to_path_buf(),
+        encryption_key_fingerprint,
+    );
     config.save_to_config_yaml().map_err(|e| e.to_string())?;
     Ok(config)
 }
@@ -160,6 +204,7 @@ fn cancel_receiver(
 /// any other error is `Failed`; success persists bae's wrapped `Config`.
 fn finish_code_operation(
     result: Result<coven::Config, coven::BootstrapError>,
+    layout: &coven::StoreLayout,
     bridge: Option<tokio::task::JoinHandle<()>>,
 ) -> Result<Config, LibraryCodeOperationError> {
     if let Some(handle) = bridge {
@@ -167,7 +212,8 @@ fn finish_code_operation(
     }
     match result {
         Ok(coven_config) => {
-            save_coven_library(coven_config).map_err(LibraryCodeOperationError::Failed)
+            let store_dir = layout.store_dir(&coven_config.store_id);
+            save_coven_library(coven_config, store_dir).map_err(LibraryCodeOperationError::Failed)
         }
         Err(coven::BootstrapError::Cancelled) => Err(LibraryCodeOperationError::Cancelled),
         Err(e) => Err(LibraryCodeOperationError::Failed(e.to_string())),
@@ -294,27 +340,27 @@ async fn restore_from_code_inner(
     // The default custody for both the master key and this device's identity —
     // the OS keyring, mirroring what `Coven::builder` itself defaults to for a
     // library opened the ordinary way (bae never overrides either).
+    let layout = library_layout(app_dir);
     let result = crate::sync::restore_from_code(
         code,
         &crate::sync::synced_tables(),
         &crate::migrations::all(),
-        // No custom-S3 exact-slot assertion: the provider comes from the restore
-        // code, and bae exposes no operator toggle asserting a non-AWS endpoint
-        // supports conditional requests.
-        None,
+        // Upload verification is local host policy and does not come from the
+        // restore code.
+        coven::ExactUploadVerification::MetadataHash,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
         crate::oauth::clients(),
         oauth_tokens,
         cloudkit_ops,
-        &library_layout(app_dir),
+        &layout,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         on_status,
         &rx,
     )
     .await;
-    finish_code_operation(result, bridge)
+    finish_code_operation(result, &layout, bridge)
 }
 
 async fn join_from_scanned_bundle_inner(
@@ -328,15 +374,16 @@ async fn join_from_scanned_bundle_inner(
     let app_dir = crate::config::bae_dir().map_err(|e| JoinFromCodeError::Join(e.to_string()))?;
     let (rx, bridge) = cancel_receiver(cancel);
     // Same default custody choice as `restore_from_code_inner` above.
+    let layout = library_layout(app_dir);
     let result = crate::sync::join_with_scanned_invite(
         scanned,
         join_request_code,
-        library_layout(app_dir),
+        layout.clone(),
         crate::sync::synced_tables(),
         crate::migrations::all(),
-        // No custom-S3 exact-slot assertion, as on the restore path: the provider
-        // comes from the scanned invite and bae exposes no operator toggle.
-        None,
+        // Upload verification is local host policy and does not come from the
+        // scanned invite.
+        coven::ExactUploadVerification::MetadataHash,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
         crate::oauth::clients(),
@@ -353,7 +400,8 @@ async fn join_from_scanned_bundle_inner(
     }
     match result {
         Ok(coven::DeviceJoinTransportOutcome::Joined(coven_config)) => {
-            save_coven_library(coven_config).map_err(JoinFromCodeError::Join)
+            let store_dir = layout.store_dir(&coven_config.store_id);
+            save_coven_library(coven_config, store_dir).map_err(JoinFromCodeError::Join)
         }
         // The owner gave up on this attempt before it completed. Not a failure of
         // this device — a distinct end the UI reports as such.

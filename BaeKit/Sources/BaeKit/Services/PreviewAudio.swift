@@ -35,7 +35,7 @@ import Foundation
 
         #if DEBUG
             // periphery:ignore
-            public static let stub = PreviewAudio()
+            public static func stub() -> PreviewAudio { PreviewAudio() }
         #endif
     }
 #endif

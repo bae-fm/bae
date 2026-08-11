@@ -594,7 +594,7 @@ extension BridgeMatchedSignal {
         .padding()
         .frame(width: 340)
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(PreviewData.artImageStore)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 #endif

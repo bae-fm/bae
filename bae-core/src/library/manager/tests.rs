@@ -227,12 +227,9 @@ async fn enqueue_release_save_captures_the_preset() {
 async fn has_queued_delete(manager: &LibraryManager, namespace: &str, blob_id: &str) -> bool {
     manager
         .database
-        .handle()
-        .queued_deletes()
+        .has_queued_delete_for_test(namespace, blob_id)
         .await
         .unwrap()
-        .iter()
-        .any(|delete| delete.namespace == namespace && delete.blob_id == blob_id)
 }
 
 /// Break one of bae's own tables so the next read or write against it fails,
@@ -241,16 +238,24 @@ async fn has_queued_delete(manager: &LibraryManager, namespace: &str, blob_id: &
 /// of its reserved tables, so a cleanup step coven owns is failed by handing it
 /// input it refuses instead (see the rollback tests below).
 async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
-    let statement = format!("ALTER TABLE {from} RENAME TO {to}");
-    manager
-        .database
-        .handle()
-        .sql(move |sql| {
-            sql.execute(&statement, [])?;
-            Ok::<(), coven::CovenError>(())
-        })
-        .await
-        .unwrap();
+    match (from, to) {
+        ("release_files", "release_files_unavailable") => manager
+            .database
+            .rename_release_files_table_for_test()
+            .await
+            .unwrap(),
+        ("tracks", "tracks_unavailable") => manager
+            .database
+            .rename_tracks_table_for_test()
+            .await
+            .unwrap(),
+        ("covers", "covers_unavailable") => manager
+            .database
+            .rename_covers_table_for_test()
+            .await
+            .unwrap(),
+        _ => panic!("unsupported table sabotage: {from} -> {to}"),
+    }
 }
 
 async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
@@ -811,11 +816,10 @@ async fn delete_release_cancels_in_flight_make_remote() {
     assert!(
         manager
             .database
-            .handle()
-            .queued_uploads()
+            .queued_upload_count_for_test()
             .await
             .unwrap()
-            .is_empty(),
+            == 0,
         "deleting the release cancels unresolved make-Remote uploads"
     );
     assert!(manager
@@ -834,13 +838,33 @@ async fn delete_release_cancels_in_flight_make_remote() {
     assert!(
         manager
             .database
-            .handle()
-            .queued_deletes()
+            .queued_delete_count_for_test()
             .await
             .unwrap()
-            .is_empty(),
+            == 0,
         "an unpublished object needs no tombstone"
     );
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn delete_release_keeps_rows_when_make_remote_cleanup_fails() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+    home.fail_exact_delete_on_call(1);
+
+    manager
+        .delete_release(&release.id)
+        .await
+        .expect_err("failed cloud cleanup must stop the release delete");
+
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
 }
 
 #[cfg(feature = "test-utils")]
@@ -862,11 +886,10 @@ async fn delete_album_cancels_in_flight_make_remote() {
     assert!(
         manager
             .database
-            .handle()
-            .queued_uploads()
+            .queued_upload_count_for_test()
             .await
             .unwrap()
-            .is_empty(),
+            == 0,
         "deleting the album cancels unresolved make-Remote uploads"
     );
     assert!(manager
@@ -885,13 +908,33 @@ async fn delete_album_cancels_in_flight_make_remote() {
     assert!(
         manager
             .database
-            .handle()
-            .queued_deletes()
+            .queued_delete_count_for_test()
             .await
             .unwrap()
-            .is_empty(),
+            == 0,
         "an unpublished object needs no tombstone"
     );
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn delete_album_keeps_rows_when_make_remote_cleanup_fails() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+    home.fail_exact_delete_on_call(1);
+
+    manager
+        .delete_album(&release.album_id)
+        .await
+        .expect_err("failed cloud cleanup must stop the album delete");
+
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
 }
 
 #[tokio::test]
@@ -986,7 +1029,7 @@ async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
     store_test_cover_image(&manager, &release.id).await;
 
     let cover_blob = manager
-        .handle()
+        .database
         .row_blob_ref(crate::sync::COVERS_NAMESPACE, &release.id)
         .await
         .unwrap();
@@ -1993,10 +2036,8 @@ async fn change_cover_twice_replaces_the_cover_blob() {
     // tombstone; the Remote case is `delete_release_removes_its_cover_image`.
     assert!(
         !manager
-            .library_dir()
-            .local_blob_path(crate::sync::COVERS_NAMESPACE, &first.blob_id)
-            .expect("a valid blob path")
-            .exists(),
+            .local_blob_exists_for_test(crate::sync::COVERS_NAMESPACE, &first.blob_id)
+            .expect("a valid blob path"),
         "the replaced cover blob's bytes must be reclaimed"
     );
 }
@@ -2092,8 +2133,8 @@ async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys()
         &second.blob_id,
         second.cloud_path.clone(),
     );
-    let old_key = manager.handle().blob_cloud_key(&old_blob).unwrap();
-    let new_key = manager.handle().blob_cloud_key(&new_blob).unwrap();
+    let old_key = manager.database.blob_cloud_key(&old_blob).unwrap();
+    let new_key = manager.database.blob_cloud_key(&new_blob).unwrap();
     assert_ne!(old_key, new_key);
 }
 
@@ -2246,7 +2287,6 @@ async fn find_release_detail_with_returns_none_for_deleted_release() {
 
     let detail = crate::library::manager::find_release_detail_with(
         &manager.database,
-        manager.handle(),
         true,
         true,
         &release.id,
@@ -2259,8 +2299,6 @@ async fn find_release_detail_with_returns_none_for_deleted_release() {
 
 #[tokio::test]
 async fn upload_observer_processes_transition_after_deleted_release() {
-    use coven::BlobTransitionObserver;
-
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let deleted_release = create_test_release(&album.id);
@@ -2280,21 +2318,11 @@ async fn upload_observer_processes_transition_after_deleted_release() {
     manager.delete_release(&deleted_release.id).await.unwrap();
     let mut events = manager.subscribe_events();
 
-    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-        manager.sync.outbox_in_flight(),
-        manager.sync.upload_sessions(),
-        manager.sync.upload_throughput(),
-        manager.sync.sync_paused(),
-        manager.event_tx.clone(),
-    );
-    observer.set_database(Arc::new(manager.database.clone()));
-    observer.set_handle(manager.handle().clone());
-
-    observer
-        .on_root_made_local("releases", &deleted_release.id)
+    manager
+        .observe_root_made_local_for_test("releases", &deleted_release.id)
         .await;
-    observer
-        .on_root_made_local("releases", &remaining_release.id)
+    manager
+        .observe_root_made_local_for_test("releases", &remaining_release.id)
         .await;
 
     let mut saw_remaining_update = false;
@@ -2324,21 +2352,12 @@ async fn upload_observer_processes_transition_after_deleted_release() {
 /// snapshot instead of clearing.
 #[tokio::test]
 async fn non_release_root_completion_emits_outbox_changed() {
-    use coven::BlobTransitionObserver;
-
     let (manager, _temp_dir) = setup_test_manager().await;
     let mut events = manager.subscribe_events();
 
-    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-        manager.sync.outbox_in_flight(),
-        manager.sync.upload_sessions(),
-        manager.sync.upload_throughput(),
-        manager.sync.sync_paused(),
-        manager.event_tx.clone(),
-    );
-    observer.set_database(Arc::new(manager.database.clone()));
-
-    observer.on_root_made_remote("covers", COVER_1).await;
+    manager
+        .observe_root_made_remote_for_test("covers", COVER_1)
+        .await;
 
     let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
         .await
@@ -2867,11 +2886,9 @@ async fn insert_release_with_queued_uploads(
     assert_eq!(
         manager
             .database
-            .handle()
-            .queued_uploads_for_root("releases", &release.id)
+            .queued_upload_count_for_root_for_test("releases", &release.id)
             .await
-            .unwrap()
-            .len(),
+            .unwrap(),
         files.len(),
         "every file must be queued before the drain runs"
     );
@@ -2914,10 +2931,10 @@ async fn wait_for_published_blob(manager: &LibraryManager, namespace: &str, row_
         // Re-kick periodically: a cycle already in flight ignores the nudge, and
         // the write only activates on a cycle that starts after it was queued.
         if tick % 50 == 0 {
-            manager.handle().sync_now();
+            manager.database.sync_now();
         }
         let blob = manager
-            .handle()
+            .database
             .row_blob_ref(namespace, row_id)
             .await
             .expect("the blob-bearing row exists");
@@ -2926,10 +2943,13 @@ async fn wait_for_published_blob(manager: &LibraryManager, namespace: &str, row_
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
+    let (pending, blocked) = manager
+        .database
+        .pending_and_blocked_writes_for_test()
+        .await
+        .unwrap();
     panic!(
-        "blob {namespace}/{row_id} never reached the cloud; pending={:?} blocked={:?}",
-        manager.handle().pending_writes().await.unwrap(),
-        manager.handle().blocked_writes().await.unwrap(),
+        "blob {namespace}/{row_id} never reached the cloud; pending={pending} blocked={blocked}"
     );
 }
 
@@ -3033,11 +3053,9 @@ async fn insert_partially_uploaded_make_remote_release(
     assert_eq!(
         manager
             .database
-            .handle()
-            .queued_uploads()
+            .queued_upload_count_for_test()
             .await
-            .unwrap()
-            .len(),
+            .unwrap(),
         2
     );
 
@@ -3057,11 +3075,9 @@ async fn insert_partially_uploaded_make_remote_release(
     assert_eq!(
         manager
             .database
-            .handle()
-            .queued_deletes()
+            .queued_delete_count_for_test()
             .await
-            .unwrap()
-            .len(),
+            .unwrap(),
         0
     );
     release
@@ -3593,12 +3609,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
 
     // In flight now: the in-memory map flips it to active, starting at zero
     // bytes done.
-    manager
-        .sync
-        .outbox_in_flight()
-        .lock()
-        .unwrap()
-        .insert(file_id.clone(), 0);
+    manager.sync.set_upload_progress_for_test(&file_id, 0);
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 1);
     assert_eq!(snap.total.queued, 0);
@@ -3607,23 +3618,13 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
 
     // Mid-upload progress advances the live byte count: the snapshot's
     // per-release and aggregate bytes_done climb without the file completing.
-    manager
-        .sync
-        .outbox_in_flight()
-        .lock()
-        .unwrap()
-        .insert(file_id.clone(), 400);
+    manager.sync.set_upload_progress_for_test(&file_id, 400);
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.upload_groups[0].progress.bytes_done, 400);
     assert_eq!(snap.total.bytes_done, 400);
     assert_eq!(snap.total.bytes_total, 1000);
-    manager
-        .sync
-        .outbox_in_flight()
-        .lock()
-        .unwrap()
-        .remove(&file_id);
+    manager.sync.clear_upload_progress_for_test(&file_id);
 
     // A real failure: the user's file is gone, so the drain cannot seal it. The
     // entry stays queued with coven's own attempt count and error on it.
@@ -3637,12 +3638,14 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.failed, 1);
     assert_eq!(snap.total.queued, 0);
     assert_eq!(snap.upload_groups[0].progress.failed, 1);
-    let queued = manager.database.handle().queued_uploads().await.unwrap();
-    assert_eq!(queued[0].attempt_count, 1);
-    assert!(
-        queued[0].last_error.is_some(),
-        "coven records why the attempt failed"
-    );
+    let failure = manager
+        .database
+        .first_queued_upload_failure_for_test()
+        .await
+        .unwrap()
+        .expect("the failed upload remains queued");
+    assert_eq!(failure.0, 1);
+    assert!(failure.1, "coven records why the attempt failed");
 
     // Cancelling the release's make-Remote clears the queue; the snapshot empties.
     manager.cancel_release_upload(&release.id).await.unwrap();
@@ -3657,8 +3660,6 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn observer_progress_advances_snapshot_bytes_done() {
-    use coven::BlobTransitionObserver;
-
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_release_with_queued_uploads(
@@ -3678,16 +3679,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
 
     // The observer shares the manager's in-flight map and throughput tracker,
     // exactly as production wires it in `build_sync_manager`.
-    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-        manager.sync.outbox_in_flight(),
-        manager.sync.upload_sessions(),
-        manager.sync.upload_throughput(),
-        manager.sync.sync_paused(),
-        manager.event_tx.clone(),
-    );
-    observer.set_database(Arc::new(manager.database.clone()));
-
-    observer.on_blob_upload_started(&file_id).await;
+    manager.observe_blob_upload_started_for_test(&file_id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.upload_groups[0].progress.bytes_done, 0);
@@ -3695,20 +3687,22 @@ async fn observer_progress_advances_snapshot_bytes_done() {
 
     // A mid-upload progress report advances the live count without the file
     // completing.
-    observer.on_blob_upload_progress(&file_id, 600, 1000).await;
+    manager
+        .observe_blob_upload_progress_for_test(&file_id, 600, 1000)
+        .await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.upload_groups[0].progress.bytes_done, 600);
     assert_eq!(snap.total.bytes_done, 600);
     // The rolling-window tracker saw the 600-byte delta, so the rate is
     // non-zero before the file even finishes.
-    assert!(manager.sync.upload_throughput().bytes_per_sec() > 0);
+    assert!(manager.sync.upload_bytes_per_second_for_test() > 0);
 
     // Completion clears the in-flight entry and tallies the file as done; the
     // queue entry is still there (this test drives only the observer, not
     // coven's drain), but with its only file shipped the release has nothing
     // left to render — the group leaves the snapshot.
-    observer.on_blob_uploaded(&file_id).await;
+    manager.observe_blob_uploaded_for_test(&file_id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 0);
     assert_eq!(snap.total.queued, 0);
@@ -3723,8 +3717,6 @@ async fn observer_progress_advances_snapshot_bytes_done() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn completed_upload_with_lingering_entry_is_not_queued() {
-    use coven::BlobTransitionObserver;
-
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_release_with_queued_uploads(
@@ -3742,18 +3734,11 @@ async fn completed_upload_with_lingering_entry_is_not_queued() {
         .id
         .clone();
 
-    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-        manager.sync.outbox_in_flight(),
-        manager.sync.upload_sessions(),
-        manager.sync.upload_throughput(),
-        manager.sync.sync_paused(),
-        manager.event_tx.clone(),
-    );
-    observer.set_database(Arc::new(manager.database.clone()));
-
-    observer.on_blob_upload_started(&file_id).await;
-    observer.on_blob_upload_progress(&file_id, 1000, 1000).await;
-    observer.on_blob_uploaded(&file_id).await;
+    manager.observe_blob_upload_started_for_test(&file_id).await;
+    manager
+        .observe_blob_upload_progress_for_test(&file_id, 1000, 1000)
+        .await;
+    manager.observe_blob_uploaded_for_test(&file_id).await;
 
     // The queue entry is still present — only coven's commit consumes it — but
     // the upload finished: nothing pending anywhere, and the release (its only
@@ -4029,7 +4014,7 @@ async fn make_exportable_release(
 async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
     for tick in 0..2_000 {
         if tick % 50 == 0 {
-            manager.handle().sync_now();
+            manager.database.sync_now();
         }
         if !manager
             .database
@@ -5983,7 +5968,7 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
 }
 
 #[tokio::test]
-async fn discogs_client_withheld_when_rejected() {
+async fn discogs_operations_withheld_when_rejected() {
     use crate::config::DiscogsValidation;
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-withheld-test").await;
     manager
@@ -5994,7 +5979,7 @@ async fn discogs_client_withheld_when_rejected() {
         .unwrap();
 
     assert!(
-        manager.discogs_client().unwrap().is_some(),
+        manager.discogs_available_for_test().unwrap(),
         "a Valid key is served"
     );
 
@@ -6002,7 +5987,7 @@ async fn discogs_client_withheld_when_rejected() {
         .set_discogs_validation(DiscogsValidation::Unvalidated)
         .unwrap();
     assert!(
-        manager.discogs_client().unwrap().is_some(),
+        manager.discogs_available_for_test().unwrap(),
         "an Unvalidated key is served optimistically"
     );
 
@@ -6010,7 +5995,7 @@ async fn discogs_client_withheld_when_rejected() {
         .set_discogs_validation(DiscogsValidation::Rejected)
         .unwrap();
     assert!(
-        manager.discogs_client().unwrap().is_none(),
+        !manager.discogs_available_for_test().unwrap(),
         "a Rejected key is withheld"
     );
 }
@@ -6019,7 +6004,7 @@ async fn discogs_client_withheld_when_rejected() {
 /// or external keyring tampering can leave) is not served: a usable key requires
 /// both stores to agree it exists.
 #[tokio::test]
-async fn discogs_client_withheld_when_config_has_no_key() {
+async fn discogs_operations_withheld_when_config_has_no_key() {
     use crate::keys::BaeStoreKeysExt;
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-orphan-key").await;
 
@@ -6028,7 +6013,7 @@ async fn discogs_client_withheld_when_config_has_no_key() {
 
     assert_eq!(manager.discogs_validation(), None);
     assert!(
-        manager.discogs_client().unwrap().is_none(),
+        !manager.discogs_available_for_test().unwrap(),
         "a keyring key with no config hint is not served",
     );
 }
@@ -6048,12 +6033,12 @@ async fn set_and_clear_discogs_key_move_both_stores() {
         manager.key_service.get_discogs_key().unwrap().as_deref(),
         Some("the-key"),
     );
-    assert!(manager.discogs_client().unwrap().is_some());
+    assert!(manager.discogs_available_for_test().unwrap());
 
     manager.clear_discogs_key().unwrap();
     assert_eq!(manager.discogs_validation(), None);
     assert_eq!(manager.key_service.get_discogs_key().unwrap(), None);
-    assert!(manager.discogs_client().unwrap().is_none());
+    assert!(!manager.discogs_available_for_test().unwrap());
 }
 
 /// Revalidation surfaces the config-says-stored/keyring-empty mismatch as an
@@ -6070,10 +6055,10 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
         .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
         .unwrap();
 
-    let handle =
-        crate::import::ImportService::start(tokio::runtime::Handle::current(), manager.clone())
-            .await
-            .unwrap();
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
 
     assert!(
         handle.revalidate_discogs_token().await.is_err(),
@@ -6082,29 +6067,27 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 }
 
 #[tokio::test]
-async fn discogs_validation_observer_confirms_and_rejects() {
+async fn discogs_validation_signals_confirm_and_reject() {
     use crate::config::DiscogsValidation;
     use crate::discogs::client::DiscogsKeySignal;
     let (manager, _temp_dir) = setup_test_manager().await;
-    let observe = manager.discogs_validation_observer();
-
     // A success confirms a stored Unvalidated key.
     manager
         .config_handle
         .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
         .unwrap();
-    observe(DiscogsKeySignal::Accepted);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
 
     // A 401 rejects, from any prior state.
-    observe(DiscogsKeySignal::Rejected);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Rejected);
     assert_eq!(
         manager.discogs_validation(),
         Some(DiscogsValidation::Rejected)
     );
 
     // A success does NOT flip an already-Rejected key back to Valid.
-    observe(DiscogsKeySignal::Accepted);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
     assert_eq!(
         manager.discogs_validation(),
         Some(DiscogsValidation::Rejected)
@@ -6114,7 +6097,7 @@ async fn discogs_validation_observer_confirms_and_rejects() {
     manager
         .set_discogs_validation(DiscogsValidation::Valid)
         .unwrap();
-    observe(DiscogsKeySignal::Accepted);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
 }
 
@@ -6644,11 +6627,10 @@ async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
     assert!(
         manager
             .database
-            .handle()
-            .queued_uploads()
+            .queued_upload_count_for_test()
             .await
             .unwrap()
-            .is_empty(),
+            == 0,
         "no upload is left queued, so nothing reads as still importing"
     );
     let after = manager

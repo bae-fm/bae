@@ -40,11 +40,29 @@ pub(super) unsafe fn free_format_and_custom_avio(
 /// The sparse-buffer reader a streaming decode reads from. Its `read` blocks
 /// until the fill delivers the bytes.
 pub(crate) struct StreamingAvioContext {
-    pub(super) reader: std::sync::Mutex<crate::playback::sparse_buffer::BufferReader>,
-    pub(super) buffer: SharedSparseBuffer, // kept for total_size queries
+    reader: std::sync::Mutex<crate::playback::sparse_buffer::BufferReader>,
+    buffer: SharedSparseBuffer, // kept for total_size queries
     /// Set by the playback service to stop this decoder alone, leaving the others
     /// on the same buffer running.
-    pub(super) cancel_token: Arc<std::sync::atomic::AtomicBool>,
+    cancel_token: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl StreamingAvioContext {
+    pub(super) fn new(
+        buffer: SharedSparseBuffer,
+        cancel_token: Arc<std::sync::atomic::AtomicBool>,
+    ) -> Self {
+        let reader = buffer.new_reader_with_cancel(cancel_token.clone());
+        Self {
+            reader: std::sync::Mutex::new(reader),
+            buffer,
+            cancel_token,
+        }
+    }
+
+    pub(super) fn set_readahead_ceiling(&self, ceiling: u64) {
+        self.reader.lock().unwrap().set_readahead_ceiling(ceiling);
+    }
 }
 
 pub(crate) unsafe extern "C" fn streaming_avio_read_callback(

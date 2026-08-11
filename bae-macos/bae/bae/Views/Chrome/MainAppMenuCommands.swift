@@ -188,13 +188,20 @@ struct RepeatModeMenuItems: View {
 }
 
 struct MainAppMenuCommands: Commands {
-    let playback: Playback
-    let importer: Importer
-    let library: Library
-    let libraryStore: LibraryStore
-    let playbackStore: PlaybackStore
-    let uiStore: UiStore
-    let configStore: ConfigStore
+    @Environment(Playback.self)
+    private var playback
+    @Environment(Importer.self)
+    private var importer
+    @Environment(Library.self)
+    private var library
+    @Environment(LibraryStore.self)
+    private var libraryStore
+    @Environment(PlaybackStore.self)
+    private var playbackStore
+    @Environment(UiStore.self)
+    private var uiStore
+    @Environment(ConfigStore.self)
+    private var configStore
     /// Every library on this device, for the Open Library submenu. The active
     /// one is marked; the rest are switch targets.
     let libraries: [BridgeLibrary]

@@ -213,7 +213,7 @@ fn playback_service_over(
     PlaybackService,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let queue_ids = library_manager.ids().clone();
+    let queue_ids = Arc::new(coven::SequentialIdProvider::new("queue-entry"));
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
@@ -235,6 +235,7 @@ fn playback_service_over(
         pre_mute_volume: 1.0,
         position_update_interval_ms: 50,
         shared_file_buffers: HashMap::new(),
+        retired_tracks: Vec::new(),
         fetch_arbiter: FetchArbiter::new(),
         starvation_episode: None,
         last_position_persist: None,
@@ -370,22 +371,26 @@ fn test_track_fmt(track_id: &str) -> TrackFmt {
     }
 }
 
-#[test]
-fn discard_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
+#[tokio::test]
+async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
+    let (_home, mut service, _progress) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
     let cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let mut preloaded = Some(PreloadedNext {
+    service.preloaded_next = Some(PreloadedNext {
         prepared: test_prepared_track("next-track", buffer.clone()),
         decoder_handle: finished_decoder_handle(),
         cancel_token: cancel_token.clone(),
         source: PreloadedNextSource::Held(source),
     });
 
-    let prepared = discard_preloaded_next(&mut preloaded, None);
+    assert!(service.retire_preloaded_track());
 
-    assert!(preloaded.is_none());
-    let prepared = prepared.expect("the prepared track is handed back for buffer release");
+    assert!(service.preloaded_next.is_none());
+    let prepared = service
+        .retired_tracks
+        .first()
+        .expect("the prepared track is retained until buffer release");
     assert_eq!(prepared.track_info.track_id, "next-track");
     assert!(cancel_token.load(std::sync::atomic::Ordering::Acquire));
     // The buffer stays alive: whether it survives is the caller's release
@@ -393,8 +398,9 @@ fn discard_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     assert!(!buffer.is_cancelled());
 }
 
-#[test]
-fn discard_preloaded_next_removes_staged_source() {
+#[tokio::test]
+async fn retiring_preloaded_next_removes_staged_source() {
+    let (_home, mut service, _progress) = test_playback_service().await;
     let (_current_sink, current_source, _current_ready) = create_track_stream_pair(44_100, 2);
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
@@ -407,17 +413,19 @@ fn discard_preloaded_next_removes_staged_source() {
         .stage_next(next_source, test_track_fmt("next-track"));
 
     let buffer = create_sparse_buffer(1_024);
-    let mut preloaded = Some(PreloadedNext {
+    service.preloaded_next = Some(PreloadedNext {
         prepared: test_prepared_track("next-track", buffer.clone()),
         decoder_handle: finished_decoder_handle(),
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
     });
 
-    let prepared = discard_preloaded_next(&mut preloaded, Some(&gapless));
+    let (_audio_tx, audio_events) = audio_event_channel();
+    service.output = Some(test_output(gapless.clone(), audio_events));
+    assert!(service.retire_preloaded_track());
 
-    assert!(preloaded.is_none());
-    assert!(prepared.is_some());
+    assert!(service.preloaded_next.is_none());
+    assert_eq!(service.retired_tracks.len(), 1);
     assert!(!gapless.lock().unwrap().has_next());
     assert!(!buffer.is_cancelled());
 }
@@ -1241,14 +1249,11 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
 
     let decode = prepared.decode_params(0, false);
 
-    assert_eq!(decode.leading_silence_frames, 0);
-    assert_eq!(decode.segments.len(), 1);
-    assert_eq!(decode.segments[0].buffer.id(), main_buffer.id());
-    assert_eq!(decode.segments[0].target_sample(), 44_100);
-    assert_eq!(
-        decode.segments[0].seek_to_byte(decode.byte_seekable),
-        Some(2_000)
-    );
+    assert_eq!(decode.leading_silence_frames(), 0);
+    assert_eq!(decode.segment_count(), 1);
+    assert_eq!(decode.segment_buffer_id(0), main_buffer.id());
+    assert_eq!(decode.segment_target_sample(0), 44_100);
+    assert_eq!(decode.segment_seek_to_byte(0), Some(2_000));
 }
 
 #[test]
@@ -1286,14 +1291,11 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
 
     let decode = prepared.decode_params(0, true);
 
-    assert_eq!(decode.leading_silence_frames, 441);
-    assert_eq!(decode.segments.len(), 2);
-    assert_eq!(decode.segments[0].buffer.id(), pregap_buffer.id());
-    assert_eq!(decode.segments[0].target_sample(), 1_000);
-    assert_eq!(
-        decode.segments[0].seek_to_byte(decode.byte_seekable),
-        Some(100)
-    );
+    assert_eq!(decode.leading_silence_frames(), 441);
+    assert_eq!(decode.segment_count(), 2);
+    assert_eq!(decode.segment_buffer_id(0), pregap_buffer.id());
+    assert_eq!(decode.segment_target_sample(0), 1_000);
+    assert_eq!(decode.segment_seek_to_byte(0), Some(100));
 }
 
 #[test]
@@ -1507,6 +1509,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
             test_track_fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
             44_100,
             2,
+            StagedNextOnReplace::Discard,
         )
         .await
         .expect("the first attach builds a stream");
@@ -1529,6 +1532,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
             test_track_fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
             44_100,
             2,
+            StagedNextOnReplace::Discard,
         )
         .await
         .expect("a same-format attach replaces in place");
@@ -1546,7 +1550,13 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     // Format change: drop the old stream and build a fresh one.
     let (_s3, ts3, _r3) = create_track_stream_pair(96_000, 2);
     service
-        .attach_track(ts3, test_track_fmt("t3"), 96_000, 2)
+        .attach_track(
+            ts3,
+            test_track_fmt("t3"),
+            96_000,
+            2,
+            StagedNextOnReplace::Discard,
+        )
         .await
         .expect("a format-change attach rebuilds the stream");
     assert_eq!(
@@ -1588,6 +1598,7 @@ async fn output_device_changed_rebuilds_over_the_same_source() {
             test_track_fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
             44_100,
             2,
+            StagedNextOnReplace::Discard,
         )
         .await
         .expect("the first attach builds a stream");
@@ -1735,6 +1746,7 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
             test_track_fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
             96_000,
             2,
+            StagedNextOnReplace::Discard,
         )
         .await
         .expect("the format-change attach rebuilds the stream");
@@ -1788,7 +1800,13 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     // A same-format switch to B swaps the source in place.
     let (_sink_b, stream_b, _r_b) = create_track_stream_pair(44_100, 2);
     service
-        .attach_track(stream_b, test_track_fmt("B"), 44_100, 2)
+        .attach_track(
+            stream_b,
+            test_track_fmt("B"),
+            44_100,
+            2,
+            StagedNextOnReplace::Discard,
+        )
         .await
         .expect("a same-format attach replaces in place");
 
@@ -2177,7 +2195,11 @@ fn wait_until(predicate: impl Fn() -> bool) -> bool {
 /// Seed the audio format, segment, and backing file that make `track_id`
 /// resolvable, so the remote path can turn it into media. No real bytes on disk —
 /// the device, not bae, fetches the audio, so the remote path never decodes it.
-async fn seed_playable_track(database: &crate::db::Database, release_id: &str, track_id: &str) {
+async fn seed_playable_track(
+    library_manager: &crate::library::LibraryManager,
+    release_id: &str,
+    track_id: &str,
+) {
     use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
     use crate::util::content_type::ContentType;
     let now = chrono::Utc::now();
@@ -2191,7 +2213,7 @@ async fn seed_playable_track(database: &crate::db::Database, release_id: &str, t
         now,
         crate::util::fs::hash_bytes(b"fixture"),
     );
-    database.insert_file(&file).await.unwrap();
+    library_manager.add_file(&file).await.unwrap();
     let audio_format_id = bae_test_support::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
         track_id,
@@ -2214,7 +2236,7 @@ async fn seed_playable_track(database: &crate::db::Database, release_id: &str, t
         end_byte: None,
         created_at: now,
     };
-    database
+    library_manager
         .insert_audio_format_with_segments_for_test(&audio_format, &[segment])
         .await
         .unwrap();
@@ -2230,10 +2252,9 @@ async fn remote_service(
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
     let (home, service, rx) = seeded_playback_service(releases).await;
-    let database = service.library_manager.database_for_test();
     for (release_id, tracks) in releases {
         for track_id in *tracks {
-            seed_playable_track(&database, release_id, track_id).await;
+            seed_playable_track(&service.library_manager, release_id, track_id).await;
         }
     }
     (home, service, rx)
@@ -2244,13 +2265,13 @@ fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
 }
 
 fn remote_connect(channel: FakeRendererChannel) -> RemoteConnect {
-    RemoteConnect {
-        channel: Box::new(channel),
-        device_name: "Living Room".to_string(),
-        stream_url_provider: test_stream_provider(),
-        cover_url_provider: Arc::new(|_| None),
-        stream_format: cast_stream_format,
-    }
+    RemoteConnect::new(
+        Box::new(channel),
+        "Living Room".to_string(),
+        test_stream_provider(),
+        Arc::new(|_| None),
+        cast_stream_format,
+    )
 }
 
 /// `play_on` mid-track keeps the current track and queue position, switches the
@@ -2646,15 +2667,13 @@ fn install_airplay(
     let state = Arc::new(FakeAirPlayControlState::default());
     let control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl> =
         Arc::new(FakeAirPlayControl(state.clone()));
-    let control_slot: crate::playback::airplay_output::ControlSlot =
-        Arc::new(std::sync::Mutex::new(Some(control)));
     let saved = TestAudioOutput::new();
     saved.set_volume(saved_tag);
-    service.renderer = Renderer::AirPlay(renderer::AirPlayRenderer {
-        control_slot,
-        saved_output: Box::new(saved),
+    service.renderer = Renderer::AirPlay(renderer::AirPlayRenderer::new(
+        control,
+        Box::new(saved),
         latency_frames,
-    });
+    ));
     state
 }
 
@@ -2834,15 +2853,10 @@ impl crate::playback::airplay_output::AirPlaySink for NoopAirPlaySink {
     fn start(
         &self,
         _source: Box<dyn crate::airplay::stream::PcmSource>,
-    ) -> Result<crate::playback::airplay_output::StartedStream, AudioError> {
-        struct Guard;
-        impl crate::playback::airplay_output::AirPlayStreamGuard for Guard {}
-        Ok((
-            Box::new(Guard),
-            Arc::new(FakeAirPlayControl(Arc::new(
-                FakeAirPlayControlState::default(),
-            ))),
-        ))
+    ) -> Result<Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>, AudioError> {
+        Ok(Arc::new(FakeAirPlayControl(Arc::new(
+            FakeAirPlayControlState::default(),
+        ))))
     }
 }
 
@@ -2859,11 +2873,11 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
     service.slot = PlaybackSlot::Stopped;
 
     service
-        .handle_play_on_airplay(renderer::AirPlayConnect {
-            sink: Box::new(NoopAirPlaySink),
-            device_name: "Living Room".to_string(),
-            latency_frames: 88_200,
-        })
+        .handle_play_on_airplay(renderer::AirPlayConnect::new(
+            Box::new(NoopAirPlaySink),
+            "Living Room".to_string(),
+            88_200,
+        ))
         .await;
 
     assert!(

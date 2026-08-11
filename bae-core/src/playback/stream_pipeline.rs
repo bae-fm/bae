@@ -47,15 +47,6 @@ pub(crate) enum DecodeFailureReport {
     LogOnly,
 }
 
-/// The assembled pipeline plus the audio-events receiver its owner consumes
-/// (preview moves it into its listener task). The decoder's ready signal is
-/// dropped inside `start_stream_pipeline` — preview has no Loading state, so it
-/// never arms a `TrackReady` watcher.
-pub(crate) struct StreamPipelineStart {
-    pub(crate) pipeline: StreamPipeline,
-    pub(crate) audio_events: AudioEventReceiver,
-}
-
 /// One track's decode window — the one shape both playback and the save
 /// re-encoder run: its segments in play order, preceded by
 /// `leading_silence_frames` of generated silence (a CUE `PREGAP` directive) and
@@ -63,13 +54,13 @@ pub(crate) struct StreamPipelineStart {
 /// generated pregap; always 0 for playback).
 #[derive(Clone)]
 pub(crate) struct StreamDecodeParams {
-    pub(crate) segments: Vec<SegmentDecodeParams>,
+    segments: Vec<SegmentDecodeParams>,
     /// Whether the demuxer may jump by byte to a segment's recorded start_byte.
     /// False for APE, which has no per-frame byte positions and sample-seeks
     /// its mandatory index instead.
-    pub(crate) byte_seekable: bool,
-    pub(crate) leading_silence_frames: u64,
-    pub(crate) trailing_silence_frames: u64,
+    byte_seekable: bool,
+    leading_silence_frames: u64,
+    trailing_silence_frames: u64,
 }
 
 /// One decoder window: the segment's span within its backing file, the buffer
@@ -79,12 +70,24 @@ pub(crate) struct StreamDecodeParams {
 /// via [`Self::target_sample`] and [`Self::seek_to_byte`].
 #[derive(Clone)]
 pub(crate) struct SegmentDecodeParams {
-    pub(crate) buffer: SharedSparseBuffer,
-    pub(crate) span: crate::db::SegmentSpan,
-    pub(crate) start_offset: u64,
+    buffer: SharedSparseBuffer,
+    span: crate::db::SegmentSpan,
+    start_offset: u64,
 }
 
 impl SegmentDecodeParams {
+    pub(crate) fn new(
+        buffer: SharedSparseBuffer,
+        span: crate::db::SegmentSpan,
+        start_offset: u64,
+    ) -> Self {
+        Self {
+            buffer,
+            span,
+            start_offset,
+        }
+    }
+
     /// First sample to emit: the segment's start plus the seek offset. FFmpeg
     /// trims the lead-in the seek lands before this (a frame may begin before
     /// it), so the first output sample is exact.
@@ -105,6 +108,50 @@ impl SegmentDecodeParams {
 }
 
 impl StreamDecodeParams {
+    pub(crate) fn new(
+        segments: Vec<SegmentDecodeParams>,
+        byte_seekable: bool,
+        leading_silence_frames: u64,
+        trailing_silence_frames: u64,
+    ) -> Self {
+        Self {
+            segments,
+            byte_seekable,
+            leading_silence_frames,
+            trailing_silence_frames,
+        }
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn set_leading_silence_frames(&mut self, frames: u64) {
+        self.leading_silence_frames = frames;
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn leading_silence_frames(&self) -> u64 {
+        self.leading_silence_frames
+    }
+
+    #[cfg(test)]
+    pub(crate) fn segment_count(&self) -> usize {
+        self.segments.len()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn segment_buffer_id(&self, index: usize) -> u64 {
+        self.segments[index].buffer.id()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn segment_target_sample(&self, index: usize) -> u64 {
+        self.segments[index].target_sample()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn segment_seek_to_byte(&self, index: usize) -> Option<u64> {
+        self.segments[index].seek_to_byte(self.byte_seekable)
+    }
+
     /// Run the streaming decoder for each segment in turn: FFmpeg seeks (by byte
     /// or by sample), trims lead-in at the segment's target sample, and stops at
     /// the segment's end sample. Shared by the play/seek, preload, and preview
@@ -221,32 +268,23 @@ fn push_silence_to_sink(
     Ok(())
 }
 
-/// A just-spawned decoder thread: the consumer `TrackStream` it fills, the
-/// thread handle, its AVIO cancel token, and the ready signal that fires when the
-/// ring reaches the play threshold (or EOF). No output stream is built — the
-/// caller either wraps it in a fresh `PlaybackSource` + output stream (preview,
-/// or the main player's format-change rebuild) or swaps it into the main player's
-/// persistent source via `PlaybackSource::replace`.
-pub(crate) struct DecoderStart {
-    pub(crate) track_stream: TrackStream,
-    pub(crate) handle: std::thread::JoinHandle<()>,
-    pub(crate) cancel_token: Arc<AtomicBool>,
-    pub(crate) ready: ReadyReceiver,
-}
-
 /// Spawn the streaming decoder for `decode`: mint its AVIO cancel token, create
 /// the sink/stream pair, and run `run_decoder` on a thread. A genuine decode
 /// failure surfaces via `on_decode_failure` (the main player emits a
 /// `PlaybackError`; preview only logs); normal teardown (seek / stop / track
 /// change cancels the token first) stays silent. Builds no output stream — that
 /// is the caller's next step.
-pub(crate) fn spawn_decoder(
+pub(crate) fn spawn_decoder<T, F>(
     decode: StreamDecodeParams,
     sample_rate: u32,
     channels: u32,
     log_context: &'static str,
     on_decode_failure: DecodeFailureReport,
-) -> DecoderStart {
+    compose: F,
+) -> T
+where
+    F: FnOnce(TrackStream, std::thread::JoinHandle<()>, Arc<AtomicBool>, ReadyReceiver) -> T,
+{
     let cancel_token = Arc::new(AtomicBool::new(false));
     let (mut sink, track_stream, ready) = create_track_stream_pair(sample_rate, channels);
 
@@ -277,12 +315,7 @@ pub(crate) fn spawn_decoder(
         })
     };
 
-    DecoderStart {
-        track_stream,
-        handle,
-        cancel_token,
-        ready,
-    }
+    compose(track_stream, handle, cancel_token, ready)
 }
 
 /// Spawn the decoder for `decode`, build the audio stream on `audio_output`,
@@ -291,7 +324,7 @@ pub(crate) fn spawn_decoder(
 /// dropped before returning `Err`, so no half-built pipeline escapes. Cancelling
 /// the source's byte buffers (stopping the data reader) stays with the buffer's
 /// owner — this cancels only the decoder it spawned. Used by the preview player.
-pub(crate) async fn start_stream_pipeline(
+pub(crate) async fn start_stream_pipeline<T, F>(
     audio_output: &mut dyn AudioOutput,
     decode: StreamDecodeParams,
     fmt: TrackFmt,
@@ -300,19 +333,19 @@ pub(crate) async fn start_stream_pipeline(
     position_update_interval_ms: u32,
     log_context: &'static str,
     on_decode_failure: DecodeFailureReport,
-) -> Result<StreamPipelineStart, PlaybackError> {
-    let DecoderStart {
-        track_stream,
-        handle,
-        cancel_token,
-        // Preview has no Loading state; the ready signal goes unused (dropped here).
-        ready: _,
-    } = spawn_decoder(
+    compose: F,
+) -> Result<T, PlaybackError>
+where
+    F: FnOnce(StreamPipeline, AudioEventReceiver) -> T,
+{
+    let (track_stream, handle, cancel_token) = spawn_decoder(
         decode,
         sample_rate,
         channels,
         log_context,
         on_decode_failure,
+        // Preview has no Loading state; the ready signal goes unused.
+        |track_stream, handle, cancel_token, _ready| (track_stream, handle, cancel_token),
     );
 
     let (stream, source, audio_events) =
@@ -333,15 +366,15 @@ pub(crate) async fn start_stream_pipeline(
             }
         };
 
-    Ok(StreamPipelineStart {
-        pipeline: StreamPipeline {
+    Ok(compose(
+        StreamPipeline {
             stream,
             source,
             decoder_handle: handle,
             cancel_token,
         },
         audio_events,
-    })
+    ))
 }
 
 /// Wrap `track_source` in a `PlaybackSource`, build the output stream over it,
@@ -578,16 +611,16 @@ mod tests {
     use crate::playback::sparse_buffer::create_sparse_buffer;
 
     fn one_segment_decode(buffer: SharedSparseBuffer) -> StreamDecodeParams {
-        StreamDecodeParams {
-            segments: vec![SegmentDecodeParams {
+        StreamDecodeParams::new(
+            vec![SegmentDecodeParams::new(
                 buffer,
-                span: crate::db::SegmentSpan::whole_file(),
-                start_offset: 0,
-            }],
-            byte_seekable: true,
-            leading_silence_frames: 0,
-            trailing_silence_frames: 0,
-        }
+                crate::db::SegmentSpan::whole_file(),
+                0,
+            )],
+            true,
+            0,
+            0,
+        )
     }
 
     fn test_fmt() -> TrackFmt {
@@ -617,6 +650,7 @@ mod tests {
             50,
             "unit decode",
             DecodeFailureReport::LogOnly,
+            |pipeline, _audio_events| pipeline,
         )
         .await;
 
@@ -644,11 +678,12 @@ mod tests {
             50,
             "unit decode",
             DecodeFailureReport::LogOnly,
+            |pipeline, _audio_events| pipeline,
         )
         .await
         .expect("stream builds over a working output");
 
         // Teardown drops the stream and detaches the decoder; nothing left to poll.
-        start.pipeline.cancel();
+        start.cancel();
     }
 }

@@ -2,8 +2,8 @@ import Foundation
 import Sentry
 
 public enum BaeCrashReporting {
-    public static func configure() {
-        guard let config = config() else { return }
+    public static func configure(edition: AppEdition) {
+        guard let config = config(edition: edition) else { return }
         SentrySDK.start { options in
             options.dsn = config.dsn
             options.environment = config.environment
@@ -17,8 +17,8 @@ public enum BaeCrashReporting {
         }
     }
 
-    private static func config() -> CrashReportingConfig? {
-        guard BuildInfo.edition == "bae",
+    private static func config(edition: AppEdition) -> CrashReportingConfig? {
+        guard edition == .bae,
             let dsn = BuildInfo.infoString("BaeSentryDsn"),
             let environment = BuildInfo.infoString("BaeEnvironment"),
             let appVersion = BuildInfo.infoString("CFBundleShortVersionString"),
@@ -30,7 +30,7 @@ public enum BaeCrashReporting {
             dsn: dsn,
             environment: environment,
             releaseName: "bae@\(appVersion)+\(gitCommit)",
-            edition: BuildInfo.edition,
+            edition: edition.rawValue,
             gitCommit: gitCommit
         )
     }

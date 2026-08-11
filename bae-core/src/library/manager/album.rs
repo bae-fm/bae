@@ -120,7 +120,7 @@ impl LibraryManager {
             // See `delete_release`: a make-remote caught mid-flight is coven's to
             // unwind, before the rows it covers are removed.
             if delete_plan.cancel_make_remote {
-                self.cancel_release_make_remote(&release.id).await;
+                self.coven_cancel_make_remote(&release.id).await?;
             }
             db_cleanups.push(delete_plan.db_cleanup);
             evict_blobs.extend(delete_plan.evict_blobs);

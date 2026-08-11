@@ -131,8 +131,8 @@
                 .background(Theme.background)
                 .environment(UiStore())
                 .environment(store)
-                .environment(MediaPaths.stub)
-                .environment(ImageStore.stub)
+                .environment(MediaPaths.stub())
+                .environment(ImageStore.stub())
         }
 
         /// The primary release's fat detail for a seeded preview album — tracks,
@@ -266,23 +266,23 @@
         @MainActor
         func albumDetailPreviewEnvironment(store: LibraryStore) -> some View {
             self
-                .environment(MediaPaths.stub)
-                .environment(ImageStore.stub)
-                .environment(Playback.stub)
-                .environment(Queue.stub)
-                .environment(Library.stub)
-                .environment(ReleaseEditor.stub)
-                .environment(Sync.stub)
-                .environment(Downloads.stub)
-                .environment(TrackSave.stub)
-                .environment(Outputs.stub)
-                .environment(Importer.stub)
+                .environment(MediaPaths.stub())
+                .environment(ImageStore.stub())
+                .environment(Playback.stub())
+                .environment(Queue.stub())
+                .environment(Library.stub())
+                .environment(ReleaseEditor.stub())
+                .environment(Sync.stub())
+                .environment(Downloads.stub())
+                .environment(TrackSave.stub())
+                .environment(Outputs.stub())
+                .environment(Importer.stub())
                 .environment(store)
                 .environment(PlaybackStore())
                 .environment(UiStore())
                 .environment(ImportStore())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-                .environment(PreviewData.configStore)
+                .environment(PreviewData.configStore())
         }
     }
 #endif

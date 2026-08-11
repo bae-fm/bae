@@ -70,8 +70,7 @@ struct NowPlayingBarContainer: View {
                     uiStore.navigateToAlbum(albumId)
                 }
             },
-            queueAddPublisher: playbackStore.queueItemsAddedSubject
-                .eraseToAnyPublisher(),
+            queueAddPublisher: playbackStore.queueItemsAddedPublisher,
             // Casting is opt-in, and while it is off core browses nothing and
             // refuses every session — so the bar simply has no Cast control.
             castControl: configStore.config.castEnabled
@@ -102,13 +101,13 @@ struct NowPlayingBarContainer: View {
         return NowPlayingBarContainer(onDropToQueue: { _ in })
             .frame(width: 1100)
             .background(Theme.background)
-            .environment(Playback.stub)
-            .environment(Queue.stub)
+            .environment(Playback.stub())
+            .environment(Queue.stub())
             .environment(store)
             .environment(UiStore())
-            .environment(PreviewData.configStore)
-            .environment(ImageStore.stub)
-            .environment(Cast.stub)
+            .environment(PreviewData.configStore())
+            .environment(ImageStore.stub())
+            .environment(Cast.stub())
             .environment(CastStore())
     }
 #endif

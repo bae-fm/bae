@@ -21,9 +21,9 @@ use bae_core::airplay::AirPlayCapabilities;
 use bae_core::cast::RustCastChannel;
 use bae_core::config::SubsonicCredential;
 use bae_core::dlna::DlnaChannel;
-use bae_core::library::LibraryManager;
+use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
-use bae_core::playback::{PlaybackHandle, PlaybackProgress};
+use bae_core::playback::PlaybackProgress;
 use bae_core::renderer::{
     cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
     RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType,
@@ -157,7 +157,7 @@ impl EphemeralServer {
     /// Bind the router on `0.0.0.0:0` (an OS-assigned port), read the port back,
     /// and serve until cancelled. The base URL names the machine's LAN address so
     /// the receiver can reach it.
-    async fn start(manager: LibraryManager) -> Result<Self, String> {
+    async fn start(services: AppServices) -> Result<Self, String> {
         let credential = SubsonicCredential {
             username: random_hex(8),
             password: random_hex(32),
@@ -173,7 +173,7 @@ impl EphemeralServer {
             .map_err(|e| format!("no LAN IP address available: {e}"))?;
         let base_url = format!("http://{lan_ip}:{port}");
 
-        let router = bae_subsonic::router(manager, credential.clone());
+        let router = bae_subsonic::router(services, credential.clone());
         let cancel = CancellationToken::new();
         let server_cancel = cancel.clone();
         let task = tokio::spawn(async move {
@@ -213,8 +213,7 @@ impl EphemeralServer {
 /// watcher applies a change to that setting to the running machinery.
 pub struct CastController {
     runtime: Handle,
-    manager: LibraryManager,
-    playback: PlaybackHandle,
+    services: AppServices,
     /// Where the picker's devices come from: bae's own browsing, or the services
     /// a host's browser reports in. Chosen once, per host.
     discovery: Mutex<RendererDiscovery>,
@@ -232,8 +231,7 @@ impl CastController {
     /// the follower that tracks the playback service's session status, and the
     /// watcher that applies the `cast_enabled` setting.
     pub fn start(
-        manager: LibraryManager,
-        playback: PlaybackHandle,
+        services: AppServices,
         ui_event_bus: UiEventBus,
         runtime: Handle,
         discovery: RendererDiscovery,
@@ -245,8 +243,7 @@ impl CastController {
         }
         let controller = Arc::new(Self {
             runtime: runtime.clone(),
-            manager,
-            playback,
+            services,
             discovery: Mutex::new(discovery),
             inner: Arc::new(Mutex::new(Inner {
                 server: None,
@@ -275,7 +272,7 @@ impl CastController {
     /// than merely hidden; turning it on starts nothing by itself, since browsing
     /// follows the picker.
     fn spawn_setting_watcher(self: &Arc<Self>) {
-        let mut config_rx = self.manager.subscribe_config_changes();
+        let mut config_rx = self.services.subscribe_config_changes();
         let controller = self.clone();
         self.runtime.spawn(async move {
             loop {
@@ -300,7 +297,7 @@ impl CastController {
     /// status, and stop the ephemeral server once casting ends (a user stop or a
     /// receiver-side end the service surfaced on its own).
     fn spawn_status_follower(&self) {
-        let mut progress = self.playback.subscribe_progress();
+        let mut progress = self.services.subscribe_playback_progress();
         let inner = self.inner.clone();
         self.runtime.spawn(async move {
             while let Some(event) = progress.recv().await {
@@ -332,7 +329,7 @@ impl CastController {
     /// config is the one authority, so there is no copy here to fall out of step
     /// with a change made on this device or synced from another.
     fn enabled(&self) -> bool {
-        self.manager.get_config().cast_enabled
+        self.services.get_config().cast_enabled
     }
 
     /// Start browsing for devices (the picker opened). Idempotent, and a no-op
@@ -406,41 +403,22 @@ impl CastController {
             self.inner.lock().unwrap().status = CastStatus::Casting {
                 device_name: device.name.clone(),
             };
-            self.playback
-                .play_on_airplay(sink, device.name, AIRPLAY_LATENCY_FRAMES);
+            self.services
+                .playback_play_on_airplay(sink, device.name, AIRPLAY_LATENCY_FRAMES);
             return Ok(());
         }
 
-        let (channel, stream_format) = self.build_channel(&device.connection)?;
-
-        let (base_url, credential) = self.ensure_server()?;
-        let stream_provider = stream_url_provider(base_url.clone(), credential.clone());
-        let cover_provider = cover_url_provider(base_url, credential);
-
-        // Optimistically reflect the target device; the service's event confirms
-        // it (and drives the device-side-end transition back).
-        self.inner.lock().unwrap().status = CastStatus::Casting {
-            device_name: device.name.clone(),
-        };
-        self.playback.play_on(
-            channel,
-            device.name,
-            stream_provider,
-            cover_provider,
-            stream_format,
-        );
-        Ok(())
+        self.start_fetch_renderer(device)
     }
 
     /// Build the control channel for a device, and the stream-format gate its
     /// flavor uses. Cast connects over the network (run off the runtime so it
     /// never stalls a runtime thread); UPnP has no handshake — each SOAP action
     /// is its own request.
-    fn build_channel(
-        &self,
-        connection: &RendererConnection,
-    ) -> Result<(Box<dyn RendererChannel>, StreamFormatFn), CastError> {
-        match connection {
+    fn start_fetch_renderer(&self, device: RendererDevice) -> Result<(), CastError> {
+        let (channel, stream_format): (Box<dyn RendererChannel>, StreamFormatFn) = match &device
+            .connection
+        {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
                 let channel = self
@@ -451,7 +429,7 @@ impl CastController {
                     })
                     .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
                     .map_err(|e| CastError::Connect(e.to_string()))?;
-                Ok((Box::new(channel), cast_stream_format))
+                (Box::new(channel), cast_stream_format)
             }
             RendererConnection::Dlna {
                 av_transport_url,
@@ -460,42 +438,59 @@ impl CastController {
                 let channel =
                     DlnaChannel::connect(av_transport_url.clone(), rendering_control_url.clone())
                         .map_err(|e| CastError::Connect(e.to_string()))?;
-                Ok((Box::new(channel), dlna_stream_format))
+                (Box::new(channel), dlna_stream_format)
             }
             // AirPlay is handled in `cast_to` before it reaches here — it has no
             // fetch-a-URL channel.
-            RendererConnection::AirPlay { .. } => Err(CastError::Connect(
-                "AirPlay does not use a control channel".to_string(),
-            )),
-        }
+            RendererConnection::AirPlay { .. } => {
+                return Err(CastError::Connect(
+                    "AirPlay does not use a control channel".to_string(),
+                ));
+            }
+        };
+
+        self.ensure_server()?;
+        let (stream_provider, cover_provider) = {
+            let inner = self.inner.lock().unwrap();
+            let server = inner
+                .server
+                .as_ref()
+                .expect("ensure_server installed the ephemeral server");
+            (
+                stream_url_provider(server.base_url.clone(), server.credential.clone()),
+                cover_url_provider(server.base_url.clone(), server.credential.clone()),
+            )
+        };
+
+        self.inner.lock().unwrap().status = CastStatus::Casting {
+            device_name: device.name.clone(),
+        };
+        self.services.playback_play_on(
+            channel,
+            device.name,
+            stream_provider,
+            cover_provider,
+            stream_format,
+        );
+        Ok(())
     }
 
     /// Stop casting: tell the playback service, which ends the session and
     /// announces the return to local; the status follower then stops the server.
     pub fn stop_casting(&self) {
-        self.playback.stop_remote();
+        self.services.playback_stop_remote();
     }
 
-    /// The ephemeral server's base URL and credential, starting it if it isn't
-    /// already serving.
-    fn ensure_server(&self) -> Result<(String, SubsonicCredential), CastError> {
-        if let Some(info) = self
-            .inner
-            .lock()
-            .unwrap()
-            .server
-            .as_ref()
-            .map(|server| (server.base_url.clone(), server.credential.clone()))
-        {
-            return Ok(info);
+    fn ensure_server(&self) -> Result<(), CastError> {
+        if self.inner.lock().unwrap().server.is_some() {
+            return Ok(());
         }
         let server = self
             .runtime
-            .block_on(EphemeralServer::start(self.manager.clone()))
+            .block_on(EphemeralServer::start(self.services.clone()))
             .map_err(CastError::Serving)?;
-        let info = (server.base_url.clone(), server.credential.clone());
         self.inner.lock().unwrap().server = Some(server);
-        Ok(info)
+        Ok(())
     }
 }
 
@@ -586,24 +581,20 @@ mod tests {
     fn test_controller(
         runtime: &tokio::runtime::Runtime,
         discovery: RendererDiscovery,
-    ) -> (Arc<CastController>, LibraryManager, tempfile::TempDir) {
+    ) -> (Arc<CastController>, AppServices, tempfile::TempDir) {
         use bae_test_support as support;
 
         let (manager, tmp) = support::setup_fresh_library(runtime);
-        let playback = bae_core::playback::PlaybackService::start(
-            manager.clone(),
-            runtime.handle().clone(),
-            1000,
-            false,
-        );
+        let services = runtime
+            .block_on(AppServices::for_test(manager))
+            .expect("app services");
         let controller = CastController::start(
-            manager.clone(),
-            playback,
+            services.clone(),
             UiEventBus::new(),
             runtime.handle().clone(),
             discovery,
         );
-        (controller, manager, tmp)
+        (controller, services, tmp)
     }
 
     fn reported_cast_service(instance: &str, id: &str) -> ReportedRenderer {
@@ -629,9 +620,9 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let (controller, manager, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
+        let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
 
-        assert!(!manager.get_config().cast_enabled, "casting is opt-in");
+        assert!(!services.get_config().cast_enabled, "casting is opt-in");
         controller.start_discovery();
         assert!(!browsing(&controller), "casting is off: nothing may browse");
         assert!(
@@ -639,7 +630,7 @@ mod tests {
             "casting is off: a session must be refused"
         );
 
-        manager.set_cast_enabled(true).unwrap();
+        services.set_cast_enabled(true).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller), "casting is on: browsing may run");
         // The device is not on this test's network, so the request reaches the
@@ -661,13 +652,13 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let (controller, manager, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
+        let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
 
-        manager.set_cast_enabled(true).unwrap();
+        services.set_cast_enabled(true).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller));
 
-        manager.set_cast_enabled(false).unwrap();
+        services.set_cast_enabled(false).unwrap();
         wait_until("browsing to stop after casting is turned off", || {
             !browsing(&controller)
         });
@@ -683,7 +674,7 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let (controller, manager, _tmp) = test_controller(&runtime, RendererDiscovery::reported());
+        let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::reported());
 
         controller.start_discovery();
         controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
@@ -692,7 +683,7 @@ mod tests {
             "casting is off: nothing browses and no report is taken"
         );
 
-        manager.set_cast_enabled(true).unwrap();
+        services.set_cast_enabled(true).unwrap();
         controller.start_discovery();
         controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
         controller.renderer_found(reported_cast_service("Study", "cast-2"));
@@ -793,9 +784,12 @@ mod tests {
             .build()
             .unwrap();
         let (manager, _tmp) = support::setup_fresh_library(&runtime);
+        let services = runtime
+            .block_on(AppServices::for_test(manager))
+            .expect("app services");
 
         runtime.block_on(async move {
-            let server = EphemeralServer::start(manager)
+            let server = EphemeralServer::start(services)
                 .await
                 .expect("the ephemeral server binds a real port");
 

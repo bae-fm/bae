@@ -560,7 +560,7 @@ extension ImportCandidateListContent {
     // MARK: - Previews
 
     #Preview("Candidate List") {
-        let store = PreviewData.triageImportStore
+        let store = PreviewData.triageImportStore()
         return ImportCandidateListContent(
             importStore: store,
             selectedKey: .constant(
@@ -580,13 +580,13 @@ extension ImportCandidateListContent {
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(UiStore())
-        .environment(PreviewData.artImageStore)
+        .environment(PreviewData.artImageStore())
         .frame(width: 340, height: 560)
         .windowBackground()
     }
 
     #Preview("Candidate List Narrow") {
-        let store = PreviewData.triageImportStore
+        let store = PreviewData.triageImportStore()
         let uiStore = UiStore()
         uiStore.setReleaseGroupExpanded(
             releaseGroupDisclosureID(
@@ -610,7 +610,7 @@ extension ImportCandidateListContent {
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
-        .environment(PreviewData.artImageStore)
+        .environment(PreviewData.artImageStore())
         .frame(width: 280, height: 560)
         .windowBackground()
     }

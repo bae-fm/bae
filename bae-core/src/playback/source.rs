@@ -114,6 +114,15 @@ impl PlaybackSource {
         if let Some((staged, _)) = self.next.take() {
             staged.cancel();
         }
+        self.install_current(next, next_fmt);
+    }
+
+    pub fn replace_preserving_staged_next(&mut self, next: TrackStream, next_fmt: TrackFmt) {
+        self.current.cancel();
+        self.install_current(next, next_fmt);
+    }
+
+    fn install_current(&mut self, next: TrackStream, next_fmt: TrackFmt) {
         self.current = next;
         self.current_fmt = Arc::new(next_fmt);
         self.completion_reported = false;
@@ -125,10 +134,25 @@ impl PlaybackSource {
         self.next.is_some()
     }
 
-    /// Remove and return the staged next track, used to invalidate the chain
-    /// on user actions (Next/Previous/Seek) and queue mutations.
-    pub fn take_next(&mut self) -> Option<(TrackStream, Arc<TrackFmt>)> {
-        self.next.take()
+    pub fn cancel_staged_next(&mut self) {
+        if let Some((next, _)) = self.next.take() {
+            next.cancel();
+        }
+    }
+
+    /// Promote the staged successor before the current track drains, as for a
+    /// manual Next command. The source keeps ownership of both streams across
+    /// the swap; callers only learn whether a successor was present.
+    pub fn promote_staged_next(&mut self) -> bool {
+        let Some((next, next_fmt)) = self.next.take() else {
+            return false;
+        };
+        self.current.cancel();
+        self.current = next;
+        self.current_fmt = next_fmt;
+        self.completion_reported = false;
+        self.starvation = None;
+        true
     }
 
     /// A position-tick event tagged with the current track's fmt. Built here
@@ -396,11 +420,11 @@ mod tests {
         );
     }
 
-    /// `take_next` un-stages the successor (used to invalidate the chain on
+    /// Cancelling the staged successor invalidates the chain on
     /// user actions); the source then finishes at the current track's end with
     /// no boundary.
     #[test]
-    fn take_next_unstages_the_successor() {
+    fn cancel_staged_next_unstages_the_successor() {
         let (mut sink1, src1, _r1) = create_track_stream_pair(44100, 1);
         let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
         assert_eq!(sink1.push_samples(&[1.0]), 1);
@@ -411,16 +435,37 @@ mod tests {
         let (mut audio_tx, mut audio_rx) = audio_event_channel();
         let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
         source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
-        let taken = source.take_next();
-        assert!(taken.is_some());
-        let (_taken_src, taken_fmt) = taken.unwrap();
-        assert_eq!(taken_fmt.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
+        source.cancel_staged_next();
+        assert!(sink2.is_cancelled());
         assert!(!source.has_next());
 
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);
         assert!(source.is_finished());
         assert!(audio_rx.pop().is_none());
+    }
+
+    #[test]
+    fn promote_staged_next_swaps_without_returning_the_stream() {
+        let (current_sink, current, _current_ready) = create_track_stream_pair(44100, 1);
+        let (mut next_sink, next, _next_ready) = create_track_stream_pair(44100, 1);
+        assert_eq!(next_sink.push_samples(&[4.0, 5.0]), 2);
+        next_sink.mark_finished();
+
+        let (mut audio_tx, _audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(current, fmt("current"));
+        source.stage_next(next, fmt("next"));
+
+        assert!(source.promote_staged_next());
+        assert!(current_sink.is_cancelled());
+        assert!(!next_sink.is_cancelled());
+        assert!(!source.has_next());
+        assert_eq!(source.position_event().0.track_id, "next");
+
+        let mut out = [0.0; 4];
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
+        assert_eq!(&out[..2], &[4.0, 5.0]);
+        assert!(!source.promote_staged_next());
     }
 
     /// Replay gain is per-track, so crossing into the staged next track swaps in

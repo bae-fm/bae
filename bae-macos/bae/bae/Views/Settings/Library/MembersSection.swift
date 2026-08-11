@@ -217,6 +217,6 @@ private struct RoleBadge: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 320)
-        .environment(PreviewData.previewSync)
+        .environment(PreviewData.previewSync())
     }
 #endif

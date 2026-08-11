@@ -601,12 +601,11 @@ impl AudioOutput for CaptureAudioOutput {
 /// Two uses — exercising the stream-build failure path shared by both players,
 /// and standing in for a real (cpal) output in actor-level tests that drive the
 /// playback service for its queue/command behavior and never actually play, so
-/// they need no hardware. Gated on `test` alone (not `test-utils`) so the plain
-/// `cargo test --lib` build the latter tests run under still has it.
-#[cfg(test)]
+/// they need no hardware.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) struct FailingAudioOutput;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl AudioOutput for FailingAudioOutput {
     fn create_stream(
         &mut self,

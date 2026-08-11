@@ -4,12 +4,16 @@ use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-use coven::rusqlite::{named_params, params, OptionalExtension, Params, Row};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use coven::rusqlite::named_params;
+use coven::rusqlite::{params, OptionalExtension, Params, Row};
 // bae holds no production connection — coven owns them all. Only the cloud-path
 // resolvers' unit tests seed a bare one to run against.
 #[cfg(test)]
 use coven::rusqlite::Connection;
-use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, IdRef, SqlContext, SqlReadContext};
+#[cfg(any(test, feature = "test-utils"))]
+use coven::Coven;
+use coven::{ClockRef, CovenError, CovenHandle, DbError, IdRef, SqlContext, SqlReadContext};
 use std::collections::{BTreeSet, HashMap};
 // Only the test-only external-ref helper names a path type here; production
 // paths live on the types that carry them.
@@ -22,6 +26,7 @@ use tracing::warn;
 mod album;
 mod artist;
 mod blobs;
+mod coven_capabilities;
 mod identity;
 // Watched folders, folder scans and the import candidate queue. Reads
 // `import::folder_registry` and `import::FolderScanStatus`, both desktop-only,
@@ -32,6 +37,8 @@ mod import_state;
 mod payloads;
 mod playback;
 mod release;
+#[cfg(any(test, feature = "test-utils"))]
+mod test_capabilities;
 mod track;
 
 #[cfg(test)]
@@ -798,11 +805,6 @@ impl Database {
     //    rather than a raw ID string so it can't be called with a caller-provided
     //    ID. A missing row surfaces as `QueryReturnedNoRows`.
 
-    /// The one coven handle backing bae's SQL, blob, and sync operations.
-    pub fn handle(&self) -> &CovenHandle {
-        &self.inner.handle
-    }
-
     fn coven_error(error: CovenError) -> DbError {
         match error {
             CovenError::Database(error) => error,
@@ -838,7 +840,7 @@ impl Database {
     {
         self.inner
             .handle
-            .sql_read(move |sql| f(sql).map_err(CovenError::from))
+            .read(move |sql| f(sql).map_err(CovenError::from))
             .await
             .map_err(Self::coven_error)
     }
@@ -866,7 +868,7 @@ impl Database {
     {
         self.inner
             .handle
-            .sql(move |sql| f(sql).map_err(CovenError::from))
+            .write(move |sql| f(sql).map_err(CovenError::from))
             .await
             .map(|receipt| receipt.value)
             .map_err(Self::coven_error)
@@ -880,14 +882,16 @@ impl Database {
 
     /// Open the database through coven's top-level builder, running coven's
     /// bookkeeping migration plus bae's schema.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn open(
+        store_dir: coven::StoreDir,
         config: impl Into<coven::CovenConfig>,
         clock: ClockRef,
         ids: IdRef,
         synced_tables: Vec<coven::SyncedTable>,
         observer: Option<Arc<dyn coven::BlobTransitionObserver>>,
     ) -> Result<Self, DbError> {
-        let mut builder = Coven::builder(config)
+        let mut builder = Coven::builder(store_dir, config)
             .synced_tables(synced_tables)
             .clock(clock.clone())
             .oauth_clients(crate::oauth::clients());
@@ -921,34 +925,19 @@ impl Database {
         let config = coven::Config::with_defaults(
             "test-library".to_string(),
             "test-device".to_string(),
-            library_dir,
             "Test Library".to_string(),
         );
-        // Opaque-home blob-key derivation shards by the uploading device's
-        // public key, so establish this fixed test store's identity up front
-        // — get-or-create (never mint over one already established), so the
-        // many parallel tests sharing this hardcoded store id under the
-        // process-global mock keyring converge on one identity rather than
-        // each minting and overwriting the last one's. Installs the mock
-        // keyring defensively (idempotent) rather than requiring every caller
-        // to have already called `install_test_keyring` — the many callers of
-        // this test helper that never touch identity never called it before.
+        // StoreKeys captures the registered keyring service when the builder
+        // opens, so install the process-wide test service before constructing it.
         crate::config::install_test_keyring();
-        let identity_custody = coven::IdentityCustody::Keyring.resolve(
-            &coven::StoreKeys::bind(config.store_id.clone()),
-            &config.store_dir,
-        );
-        if identity_custody
-            .unlock()
-            .map_err(|e| DbError::Message(e.to_string()))?
-            .is_none()
-        {
-            identity_custody
-                .persist(&coven::UserKeypair::generate())
-                .map_err(|e| DbError::Message(e.to_string()))?;
-        }
-
-        Self::open(config, clock, ids, crate::sync::synced_tables(), None)
+        Self::open(
+            library_dir,
+            config,
+            clock,
+            ids,
+            crate::sync::synced_tables(),
+            None,
+        )
     }
 }
 

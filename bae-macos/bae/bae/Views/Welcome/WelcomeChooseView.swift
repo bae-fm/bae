@@ -398,7 +398,7 @@ private struct WelcomeLoadErrorCallout: View {
                 onRestore: {},
             )
         }
-        .environment(LibrarySetup.stub)
+        .environment(LibrarySetup.stub())
     }
 
     #Preview("Libraries and restore codes") {
@@ -410,7 +410,7 @@ private struct WelcomeLoadErrorCallout: View {
                 onRestore: {},
             )
         }
-        .environment(PreviewData.welcomeSetup)
+        .environment(PreviewData.welcomeSetup())
     }
 
     #Preview("Library failed to open") {
@@ -422,6 +422,6 @@ private struct WelcomeLoadErrorCallout: View {
                 onRestore: {},
             )
         }
-        .environment(PreviewData.welcomeSetup)
+        .environment(PreviewData.welcomeSetup())
     }
 #endif

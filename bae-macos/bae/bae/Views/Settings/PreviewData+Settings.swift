@@ -70,12 +70,14 @@
         /// A `Sync` whose reads serve the membership fixtures above, so the
         /// members and library-settings previews never touch a real membership
         /// chain or cloud storage.
-        static let previewSync = Sync(
-            generateRestoreCode: { "recovery-code-preview" },
-            getMembers: { membership },
-            inviteMember: { _, _ in "invite-code-preview" },
-            cloudOnlyReleaseCount: { 0 },
-        )
+        static func previewSync() -> Sync {
+            Sync(
+                generateRestoreCode: { "recovery-code-preview" },
+                getMembers: { membership },
+                inviteMember: { _, _ in "invite-code-preview" },
+                cloudOnlyReleaseCount: { 0 },
+            )
+        }
 
         // MARK: - Connected / erroring config
 
@@ -92,22 +94,24 @@
         /// configured and the loop is up), so the Library settings preview shows
         /// the connected controls, the devices list, and the recovery section.
         @MainActor
-        static let connectedConfigStore = ConfigStore(
-            config: Config(bridge: connectedBridgeConfig),
-            syncReady: true,
-        )
+        static func connectedConfigStore() -> ConfigStore {
+            ConfigStore(
+                config: Config(bridge: connectedBridgeConfig),
+                syncReady: true,
+            )
+        }
 
         /// A `ConfigStore` whose sync loop has reported an error — the Sync
         /// section's reconnect banner reads `syncError` directly.
         @MainActor
-        static let syncErrorConfigStore: ConfigStore = {
+        static func syncErrorConfigStore() -> ConfigStore {
             let store = makeConfigStore(libraryFullWidth: false)
             store.syncError = DisplayError(
                 line:
                     "The cloud provider rejected the request (403 Forbidden)."
             )
             return store
-        }()
+        }
 
         private static let connectedBridgeConfig = BridgeConfig(
             libraryId: "lib-preview",

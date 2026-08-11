@@ -5,7 +5,7 @@ use bae_automation::{
     FolderInput, LibrarySearchInput, PathInput, ReleaseExportInput, ReleaseIdInput,
     ReleasePrefetchInput, ScanWait,
 };
-use bae_core::app::{bootstrap, bootstrap_library_path, BootstrapError, RunningApp};
+use bae_core::app::{bootstrap, bootstrap_library_path, BootstrapError};
 use bae_core::config::{init_keyring, Config};
 use bae_core::import::MetadataSource;
 use bae_core::keys::{BaeStoreKeysExt, StoreKeys};
@@ -571,6 +571,26 @@ struct ActiveMcpEndpoint {
     token: String,
 }
 
+struct HeadlessApp {
+    services: bae_core::library::AppServices,
+    _ui_event_bus: bae_core::ui::UiEventBus,
+    runtime: tokio::runtime::Runtime,
+}
+
+impl HeadlessApp {
+    fn start(
+        services: bae_core::library::AppServices,
+        ui_event_bus: bae_core::ui::UiEventBus,
+        runtime: tokio::runtime::Runtime,
+    ) -> Self {
+        Self {
+            services,
+            _ui_event_bus: ui_event_bus,
+            runtime,
+        }
+    }
+}
+
 fn active_mcp_endpoint() -> Result<ActiveMcpEndpoint, CliError> {
     let config = active_config()?;
     let token = key_service_token(&config.store_id)?;
@@ -597,7 +617,6 @@ fn mcp_token_generate() -> Result<Value, CliError> {
 fn mcp_token_set(selector: &LibrarySelector, token: String) -> Result<Value, CliError> {
     let app = bootstrap_for_selector(selector)?;
     app.services
-        .library_manager()
         .set_mcp_token(token.clone())
         .map_err(|e| CliError::Unavailable(e.to_string()))?;
     drop(app);
@@ -610,7 +629,7 @@ fn active_config() -> Result<Config, CliError> {
         .map_err(|e| CliError::Config(e.to_string()))
 }
 
-fn bootstrap_for_selector(selector: &LibrarySelector) -> Result<RunningApp, CliError> {
+fn bootstrap_for_selector(selector: &LibrarySelector) -> Result<HeadlessApp, CliError> {
     match selector {
         LibrarySelector::Id(id) => bootstrap_registered_library(id.clone()),
         LibrarySelector::Path(path) => {
@@ -622,6 +641,7 @@ fn bootstrap_for_selector(selector: &LibrarySelector) -> Result<RunningApp, CliE
                 1000,
                 false,
                 bae_core::diagnostics::Diagnostics::noop(),
+                HeadlessApp::start,
             )
             .map_err(bootstrap_error)
         }
@@ -632,7 +652,7 @@ fn bootstrap_for_selector(selector: &LibrarySelector) -> Result<RunningApp, CliE
     }
 }
 
-fn bootstrap_registered_library(id: String) -> Result<RunningApp, CliError> {
+fn bootstrap_registered_library(id: String) -> Result<HeadlessApp, CliError> {
     let config = Config::load_registered_library(&id, &coven::UuidProvider)
         .map_err(|e| CliError::Config(e.to_string()))?;
     require_unlocked_for_headless(&config)?;
@@ -642,6 +662,7 @@ fn bootstrap_registered_library(id: String) -> Result<RunningApp, CliError> {
         false,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        HeadlessApp::start,
     )
     .map_err(bootstrap_error)
 }

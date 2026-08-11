@@ -5,9 +5,7 @@ impl PlaybackService {
         // While playing remotely, the device owns the timeline: seek it, refresh
         // the position display, and skip the whole local decoder-rebuild path.
         if self.renderer.is_remote() {
-            if let Renderer::Remote(remote) = &self.renderer {
-                remote.session.seek(position);
-            }
+            self.renderer.seek_remote(position);
             *self.current_position_shared.lock().unwrap() = Some(position);
             if let Some(track_id) = self.current_track_id().map(str::to_string) {
                 self.emit_position_display(position.as_millis() as u64, track_id);
@@ -56,10 +54,7 @@ impl PlaybackService {
         // On AirPlay, decode is local so the rebuild below re-fills the sink at the
         // new position; FLUSH the receiver's stale buffer now and re-anchor once
         // the rebuilt stream is installed.
-        let airplay = self.renderer.airplay_control();
-        if let Some(control) = &airplay {
-            control.flush();
-        }
+        self.renderer.flush_airplay();
 
         // Time the rebuild: from here to the rebuilt stream being installed.
         let seek_started_at = std::time::Instant::now();
@@ -85,16 +80,6 @@ impl PlaybackService {
             .map(|segment| segment.buffer.clone())
             .collect();
 
-        // Preserve any staged gapless next track across the rebuild so playback
-        // stays gapless after the seek. Taking it out of the persistent source now
-        // keeps the `replace` below from cancelling its (still-running) decoder;
-        // its source + fmt are re-staged after the new decoder attaches.
-        let staged_next: Option<(TrackStream, TrackFmt)> = self
-            .output
-            .as_ref()
-            .and_then(|o| o.source.lock().unwrap().take_next())
-            .map(|(s, fmt)| (s, (*fmt).clone()));
-
         // The same Loading→ready arc the play path uses: the bar jumps to the seek
         // position via the `Seeked` below, Loading covers the wait for the demanded
         // window, and the ready-watcher confirms the target once audio flows.
@@ -117,25 +102,20 @@ impl PlaybackService {
         // still running against the same buffers; two readers on one sparse buffer
         // is supported, and the new decoder is spawned before the old is joined to
         // minimize the silent window.
-        let new_decoder = match self
-            .start_decoder_and_watch(&prepared, decode, fmt, generation)
+        match self
+            .start_decoder_and_install(
+                prepared,
+                decode,
+                fmt,
+                generation,
+                StagedNextOnReplace::Preserve,
+                TrackPhase::Loading { generation, target },
+                Some((old_decoder, old_buffers)),
+            )
             .await
         {
-            Ok(decoder) => decoder,
+            Ok(()) => {}
             Err(_) => {
-                // Only reachable on a format-change build, which a same-track seek
-                // never hits — but handle it anyway. The preserved next track is
-                // out of the source, so `stop()`'s teardown can't reach it: cancel
-                // it, and the old decoder, here.
-                if let Some((next_source, _next_fmt)) = staged_next {
-                    next_source.cancel();
-                }
-                old_decoder
-                    .cancel_token
-                    .store(true, std::sync::atomic::Ordering::Release);
-                for buffer in &old_buffers {
-                    buffer.wake_readers();
-                }
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
@@ -147,36 +127,9 @@ impl PlaybackService {
                 self.stop().await;
                 return;
             }
-        };
-
-        // Re-stage the preserved next track into the persistent source (the same
-        // one, replaced in place above), so post-seek auto-advance stays gapless
-        // without re-decoding it.
-        if let Some((next_source, next_fmt)) = staged_next {
-            if let Some(out) = &self.output {
-                out.source.lock().unwrap().stage_next(next_source, next_fmt);
-            }
         }
 
-        // Now cancel + join the old decoder so the reused byte buffers are free and
-        // the old thread is gone. `replace` already cancelled its sink, so
-        // `cancel_and_join_decoder`'s token + buffer wake reaches it wherever it is
-        // parked.
-        let TrackDecoder {
-            handle: old_handle,
-            cancel_token: old_cancel_token,
-        } = old_decoder;
-        cancel_and_join_decoder(&old_cancel_token, &old_buffers, old_handle).await;
-
-        // Reassemble the current track. The phase stays Loading (with this seek's
-        // generation and target) until the ready-watcher's TrackReady resolves it.
-        self.install_active_track(
-            prepared,
-            new_decoder,
-            TrackPhase::Loading { generation, target },
-        );
-
-        self.telemetry().event(TelemetryEvent::SeekCompleted {
+        self.record_telemetry(TelemetryEvent::SeekCompleted {
             track_id: LocalId(track_id.clone()),
             wait: seek_started_at.elapsed(),
         });
@@ -184,8 +137,6 @@ impl PlaybackService {
         let raw_pos_ms = position.as_millis() as u64;
         self.emit_position_display(raw_pos_ms, track_id);
 
-        if let Some(control) = &airplay {
-            control.reanchor();
-        }
+        self.renderer.reanchor_airplay();
     }
 }

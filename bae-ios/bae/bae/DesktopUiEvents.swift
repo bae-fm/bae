@@ -9,7 +9,7 @@ import BaeKit
 /// trap instead of silently dropping.
 enum DesktopUiEvents {
     @MainActor
-    static func ignore(_ event: BridgeUiEvent, _: AppService) {
+    static func ignore(_ event: BridgeUiEvent) {
         switch event {
         case .previewIdle, .previewPlaying, .previewPaused, .previewProgress,
             .candidateImportLoudnessProgress, .importQueueIdentifyProgress:

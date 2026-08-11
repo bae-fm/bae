@@ -45,7 +45,7 @@ use crate::diagnostics::{
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
-use crate::playback::audio_output::{AudioEvent, AudioEventReceiver, AudioOutput};
+use crate::playback::audio_output::{AudioEvent, AudioEventReceiver, AudioOutput, AudioStream};
 use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
@@ -79,18 +79,31 @@ mod state;
 
 use crate::playback::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
-    DecodeFailureReport, DecoderStart, SegmentDecodeParams, StreamDecodeParams,
+    DecodeFailureReport, SegmentDecodeParams, StreamDecodeParams,
 };
-use output::OutputStream;
 use renderer::{RemoteConnect, Renderer};
-use slot::{
-    CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackDecoder,
-    TrackPhase,
-};
+use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
 
 #[cfg(test)]
 mod tests;
+
+struct TrackDecoder {
+    handle: std::thread::JoinHandle<()>,
+    cancel_token: Arc<std::sync::atomic::AtomicBool>,
+}
+
+struct CurrentTrack {
+    prepared: PlaybackPreparedTrack,
+    decoder: TrackDecoder,
+    phase: TrackPhase,
+}
+
+#[derive(Clone, Copy)]
+enum StagedNextOnReplace {
+    Discard,
+    Preserve,
+}
 
 pub(crate) fn log_streaming_decode_failure(
     context: &str,
@@ -444,13 +457,13 @@ impl PlaybackHandle {
     ) {
         dispatch_command(
             &self.command_tx,
-            PlaybackCommand::PlayOn(Box::new(RemoteConnect {
+            PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
                 channel,
                 device_name,
                 stream_url_provider,
                 cover_url_provider,
                 stream_format,
-            })),
+            ))),
         );
     }
     /// Switch playback to an AirPlay receiver via `sink` (built off the service
@@ -464,11 +477,11 @@ impl PlaybackHandle {
     ) {
         dispatch_command(
             &self.command_tx,
-            PlaybackCommand::PlayOnAirPlay(Box::new(renderer::AirPlayConnect {
+            PlaybackCommand::PlayOnAirPlay(Box::new(renderer::AirPlayConnect::new(
                 sink,
                 device_name,
                 latency_frames,
-            })),
+            ))),
         );
     }
     /// Stop remote or AirPlay playback and resume local playback, paused at the
@@ -676,20 +689,20 @@ impl PlaybackPreparedTrack {
                     continue;
                 }
             }
-            segments.push(SegmentDecodeParams {
-                buffer: segment.buffer.clone(),
-                span: segment.span,
-                start_offset: remaining_offset,
-            });
+            segments.push(SegmentDecodeParams::new(
+                segment.buffer.clone(),
+                segment.span,
+                remaining_offset,
+            ));
             remaining_offset = 0;
         }
 
-        StreamDecodeParams {
+        StreamDecodeParams::new(
             segments,
-            byte_seekable: self.content_type != ContentType::Ape,
+            self.content_type != ContentType::Ape,
             leading_silence_frames,
-            trailing_silence_frames: 0,
-        }
+            0,
+        )
     }
 
     fn total_pregap_ms(&self) -> Option<i64> {
@@ -844,27 +857,6 @@ impl PreloadedNext {
     }
 }
 
-/// Discard the preloaded next track's decoder and hand back its prepared track,
-/// so the caller decides which of its file buffers survive (`release_buffers`
-/// with whatever files the pipeline still plays, or nothing on a full stop).
-fn discard_preloaded_next(
-    preloaded_next: &mut Option<PreloadedNext>,
-    current_playback_source: Option<&Arc<Mutex<source::PlaybackSource>>>,
-) -> Option<PlaybackPreparedTrack> {
-    let preloaded = preloaded_next.take()?;
-
-    let PreloadedNext {
-        prepared,
-        source,
-        cancel_token,
-        ..
-    } = preloaded;
-
-    let detached = detach_preloaded_source(current_playback_source, source);
-    discard_preloaded_decoder(&prepared, detached, &cancel_token);
-    Some(prepared)
-}
-
 /// Stop a preloaded (not-yet-promoted) decoder. Three mechanisms, one per place
 /// the decoder can be blocked:
 /// - cancel the output source: sets the sink's cancel flag and unparks the
@@ -876,31 +868,11 @@ fn discard_preloaded_next(
 ///   files.
 fn discard_preloaded_decoder(
     prepared: &PlaybackPreparedTrack,
-    detached_source: Option<TrackStream>,
     cancel_token: &Arc<std::sync::atomic::AtomicBool>,
 ) {
-    if let Some(source) = detached_source {
-        source.cancel();
-    }
     cancel_token.store(true, std::sync::atomic::Ordering::Release);
     for segment in &prepared.segments {
         segment.buffer.wake_readers();
-    }
-}
-
-fn detach_preloaded_source(
-    current_playback_source: Option<&Arc<Mutex<source::PlaybackSource>>>,
-    source: PreloadedNextSource,
-) -> Option<TrackStream> {
-    match source {
-        PreloadedNextSource::Held(source) => Some(source),
-        PreloadedNextSource::Staged => current_playback_source.and_then(|gapless| {
-            gapless
-                .lock()
-                .unwrap()
-                .take_next()
-                .map(|(source, _)| source)
-        }),
     }
 }
 
@@ -1027,6 +999,14 @@ async fn prepare_track_for_playback(
     ))
 }
 
+struct OutputStream {
+    _stream: Box<dyn AudioStream>,
+    source: Arc<Mutex<source::PlaybackSource>>,
+    audio_events: AudioEventReceiver,
+    sample_rate: u32,
+    channels: u32,
+}
+
 pub struct PlaybackService {
     library_manager: LibraryManager,
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
@@ -1066,6 +1046,9 @@ pub struct PlaybackService {
     position_update_interval_ms: u32,
     /// Cached full-file buffers keyed by release file id.
     shared_file_buffers: HashMap<String, SharedSparseBuffer>,
+    /// Tracks removed from the live slot whose buffers remain available until
+    /// the successor is prepared and reveals which files it reuses.
+    retired_tracks: Vec<PlaybackPreparedTrack>,
     /// Prioritizes byte fetches across tracks: the current track's reader fetches
     /// immediately, a next-track preload's reader yields to it. Shared into every
     /// reader; the current track is designated foreground via
@@ -1118,6 +1101,137 @@ impl PlaybackService {
         let generation = LoadGeneration(self.load_generation_counter);
         self.load_generation_counter += 1;
         generation
+    }
+
+    fn discard_preloaded_source(&mut self, source: PreloadedNextSource) {
+        match source {
+            PreloadedNextSource::Held(source) => source.cancel(),
+            PreloadedNextSource::Staged => {
+                if let Some(output) = &self.output {
+                    output.source.lock().unwrap().cancel_staged_next();
+                }
+            }
+        }
+    }
+
+    fn retire_preloaded_track(&mut self) -> bool {
+        let Some(preloaded) = self.preloaded_next.take() else {
+            return false;
+        };
+        let PreloadedNext {
+            prepared,
+            source,
+            cancel_token,
+            ..
+        } = preloaded;
+        self.discard_preloaded_source(source);
+        discard_preloaded_decoder(&prepared, &cancel_token);
+        self.retired_tracks.push(prepared);
+        true
+    }
+
+    fn retire_current_track(&mut self) -> bool {
+        if let PlaybackSlot::Active(current) =
+            std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
+        {
+            current
+                .decoder
+                .cancel_token
+                .store(true, std::sync::atomic::Ordering::Release);
+            self.retired_tracks.push(current.prepared);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn release_retired_tracks(&mut self, retained_file_ids: HashSet<String>) {
+        let retained_file_ids = retained_file_ids
+            .iter()
+            .map(String::as_str)
+            .collect::<HashSet<_>>();
+        for prepared in self.retired_tracks.drain(..) {
+            prepared.release_buffers(&retained_file_ids, &mut self.shared_file_buffers);
+        }
+    }
+
+    fn discard_current_track(&mut self) {
+        self.retire_current_track();
+        self.release_retired_tracks(HashSet::new());
+    }
+
+    async fn start_decoder_and_install(
+        &mut self,
+        prepared: PlaybackPreparedTrack,
+        decode: StreamDecodeParams,
+        fmt: TrackFmt,
+        generation: LoadGeneration,
+        staged_next: StagedNextOnReplace,
+        phase: TrackPhase,
+        outgoing_decoder: Option<(TrackDecoder, Vec<SharedSparseBuffer>)>,
+    ) -> Result<(), PlaybackError> {
+        let position_offset = fmt.position_offset;
+        let track_id = prepared.track_info.track_id.clone();
+        let sample_rate = prepared.sample_rate;
+        let channels = prepared.channels;
+
+        let (track_stream, handle, cancel_token, ready) = spawn_decoder(
+            decode,
+            sample_rate,
+            channels,
+            "Streaming decode",
+            DecodeFailureReport::EmitPlaybackError {
+                progress_tx: self.progress_tx.clone(),
+            },
+            |track_stream, handle, cancel_token, ready| (track_stream, handle, cancel_token, ready),
+        );
+
+        if let Err(error) = self
+            .attach_track(track_stream, fmt, sample_rate, channels, staged_next)
+            .await
+        {
+            cancel_token.store(true, std::sync::atomic::Ordering::Release);
+            for segment in &prepared.segments {
+                segment.buffer.wake_readers();
+            }
+            drop(handle);
+            if let Some((decoder, buffers)) = outgoing_decoder {
+                cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
+            }
+            return Err(error);
+        }
+
+        *self.current_position_shared.lock().unwrap() = Some(position_offset);
+
+        let command_tx = self.command_tx.clone();
+        tokio::spawn(async move {
+            match ready.await {
+                Ok(()) => dispatch_command(
+                    &command_tx,
+                    PlaybackCommand::TrackReady {
+                        track_id,
+                        generation,
+                    },
+                ),
+                Err(_) => {
+                    debug!("ready watcher dropped before signal for track {track_id}")
+                }
+            }
+        });
+
+        if let Some((decoder, buffers)) = outgoing_decoder {
+            cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
+        }
+
+        self.install_active_track(
+            prepared,
+            TrackDecoder {
+                handle,
+                cancel_token,
+            },
+            phase,
+        );
+        Ok(())
     }
 
     /// Drive playback down to Stopped after a mid-flight read/decode failure
@@ -1186,9 +1300,8 @@ impl PlaybackService {
         debug!("ignoring read failure on a buffer that left the pipeline: {error}");
     }
 
-    /// Telemetry sink, read off the library manager this service already holds.
-    fn telemetry(&self) -> &crate::diagnostics::Diagnostics {
-        self.library_manager.diagnostics()
+    fn record_telemetry(&self, event: TelemetryEvent) {
+        self.library_manager.record_telemetry(event);
     }
 
     /// Restore playback from the device-local resume cache at startup, unless
@@ -1232,7 +1345,7 @@ impl PlaybackService {
 
     /// A play command established a new playing context.
     fn telemetry_playback_started(&self, source: PlaybackStartSource, track_count: usize) {
-        self.telemetry().event(TelemetryEvent::PlaybackStarted {
+        self.record_telemetry(TelemetryEvent::PlaybackStarted {
             source,
             track_count: track_count as u32,
         });
@@ -1240,7 +1353,7 @@ impl PlaybackService {
 
     /// A track start was initiated (context established, playback requested).
     fn telemetry_track_started(&self, track_id: &str, transition: TrackTransition) {
-        self.telemetry().event(TelemetryEvent::TrackStarted {
+        self.record_telemetry(TelemetryEvent::TrackStarted {
             track_id: LocalId(track_id.to_string()),
             transition,
         });
@@ -1249,14 +1362,13 @@ impl PlaybackService {
     /// A playback operation failed. The free-text cause stays in the local
     /// `error!` next to the call; only the coarse operation ships.
     fn telemetry_playback_failed(&self, operation: PlaybackOperation) {
-        self.telemetry()
-            .event(TelemetryEvent::PlaybackFailed { operation });
+        self.record_telemetry(TelemetryEvent::PlaybackFailed { operation });
     }
 
     /// An impossible-state site fired. The free-text detail stays in the local
     /// `warn!`/`error!` next to the call; only the kind (a count) ships.
     fn telemetry_anomaly(&self, kind: AnomalyKind) {
-        self.telemetry().event(TelemetryEvent::Anomaly { kind });
+        self.record_telemetry(TelemetryEvent::Anomaly { kind });
     }
 
     /// Direct selection of `track_id`: its release becomes the playing context,
@@ -1456,11 +1568,7 @@ impl PlaybackService {
         // A dead AirPlay receiver surfaces here — the audio thread keeps ticking
         // while its sends fail, so this regular path catches the failure and ends
         // AirPlay, resuming local paused (the shape a Cast/DLNA `ended` status has).
-        if self
-            .renderer
-            .airplay_control()
-            .is_some_and(|c| c.has_failed())
-        {
+        if self.renderer.airplay_failed() {
             info!("airplay receiver unreachable; ending AirPlay and resuming local");
             self.end_airplay_and_resume_local().await;
             return;
@@ -1473,10 +1581,7 @@ impl PlaybackService {
         // has not yet played — the ~2 s buffer ahead. Offset the position back by
         // the receiver latency so the bar matches what is audible, not what has
         // been transmitted.
-        if let Renderer::AirPlay(airplay) = &self.renderer {
-            let latency = std::time::Duration::from_secs_f64(
-                f64::from(airplay.latency_frames) / f64::from(crate::airplay::session::SAMPLE_RATE),
-            );
+        if let Some(latency) = self.renderer.airplay_latency() {
             actual_pos = actual_pos.saturating_sub(latency);
         }
         *self.current_position_shared.lock().unwrap() = Some(actual_pos);
@@ -1525,7 +1630,7 @@ impl PlaybackService {
             "Track completed: {} ({} decode errors, {} samples)",
             fmt.track_id, error_count, samples_decoded
         );
-        self.telemetry().event(TelemetryEvent::TrackCompleted {
+        self.record_telemetry(TelemetryEvent::TrackCompleted {
             track_id: LocalId(fmt.track_id.clone()),
             decode_errors: error_count as u64,
         });
@@ -1612,73 +1717,6 @@ impl PlaybackService {
             self.stop().await;
         }
     }
-}
-
-fn side_pause_prompt_between(
-    current: &PlaybackTrackInfo,
-    next: &PlaybackTrackInfo,
-) -> Option<PlaybackSidePausePrompt> {
-    if current.release_id != next.release_id {
-        return None;
-    }
-    let current_side = current.side.as_ref()?;
-    let next_side = next.side.as_ref()?;
-    if current_side.side_letter == next_side.side_letter {
-        return None;
-    }
-    let message_key = match current_side.medium {
-        PhysicalSideMedium::Vinyl => SIDE_PAUSE_VINYL_MESSAGE_KEY,
-        PhysicalSideMedium::Cassette => SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
-    };
-    Some(PlaybackSidePausePrompt {
-        id: format!(
-            "{}:{}:{:?}",
-            next.track_id, current_side.side_letter, current_side.medium
-        ),
-        title_key: SIDE_PAUSE_TITLE_KEY,
-        side_letter: current_side.side_letter.clone(),
-        message_key,
-    })
-}
-
-/// The platform's audio output, with no default-device change listener. Called on
-/// the service's dedicated thread so the sink owns any thread-bound device handle
-/// it opens there (cpal builds lazily per stream; AAudio binds its writer thread).
-/// This is the preview player's output, and the main player's on every platform
-/// but macOS, which uses `default_audio_output_with_device_listener`.
-#[cfg(not(target_os = "android"))]
-pub(crate) fn default_audio_output(
-) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-    Ok(Box::new(
-        crate::playback::cpal_output::CpalAudioOutput::new()?,
-    ))
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn default_audio_output(
-) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-    Ok(Box::new(
-        crate::playback::aaudio_output::AAudioOutput::new()?
-    ))
-}
-
-/// The main player's macOS output, which additionally registers a CoreAudio
-/// listener that dispatches `OutputDeviceChanged` through `command_tx` when the
-/// system default output device changes — so the persistent stream rebuilds onto
-/// the new default. The preview player never gets a listener (it uses
-/// `default_audio_output`), so exactly one listener exists at a time.
-#[cfg(target_os = "macos")]
-pub(crate) fn default_audio_output_with_device_listener(
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-    Ok(Box::new(
-        crate::playback::cpal_output::CpalAudioOutput::with_device_listener(move || {
-            dispatch_command(&command_tx, PlaybackCommand::OutputDeviceChanged)
-        })?,
-    ))
-}
-
-impl PlaybackService {
     /// `restore_playback` is the platform's "Restore on launch" preference:
     /// `true` restores the saved queue/track/position from the `playback_state`
     /// row at startup; `false` starts with nothing in playback. The row itself
@@ -1687,14 +1725,16 @@ impl PlaybackService {
     /// actually playing `handle_position_event` additionally writes it at
     /// most once a second, so `position_ms` never goes stale for longer than
     /// that — so flipping the preference on takes effect at the next launch.
-    pub fn start(
+    pub(crate) fn start(
         library_manager: LibraryManager,
+        queue_ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
+            queue_ids,
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -1703,8 +1743,10 @@ impl PlaybackService {
     }
 
     /// Start over a caller-supplied audio output, for tests that capture samples.
-    pub fn start_with_output(
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn start_with_output(
         library_manager: LibraryManager,
+        queue_ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -1712,6 +1754,7 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
+            queue_ids,
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -1721,6 +1764,7 @@ impl PlaybackService {
 
     fn start_inner(
         library_manager: LibraryManager,
+        queue_ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -1785,7 +1829,6 @@ impl PlaybackService {
                         }
                     }
                 };
-                let queue_ids = library_manager.ids().clone();
                 let preview = PreviewPlayer::new(
                     progress_tx.clone(),
                     command_tx.clone(),
@@ -1809,6 +1852,7 @@ impl PlaybackService {
                     pre_mute_volume: 1.0,
                     position_update_interval_ms,
                     shared_file_buffers: HashMap::new(),
+                    retired_tracks: Vec::new(),
                     fetch_arbiter: FetchArbiter::new(),
                     starvation_episode: None,
                     last_position_persist: None,
@@ -1852,7 +1896,7 @@ impl PlaybackService {
             // up. Internal/system commands, queries, and continuous inputs map to
             // `None` and ship nothing.
             if let Some(kind) = playback_command_kind(&command) {
-                self.telemetry().event(TelemetryEvent::PlaybackCommand { command: kind });
+                self.record_telemetry(TelemetryEvent::PlaybackCommand { command: kind });
             }
             match command {
                 PlaybackCommand::Play(track_id) => {
@@ -2042,9 +2086,7 @@ impl PlaybackService {
                         // Receiver mute is flaky across devices, so muting maps
                         // to receiver volume 0; the pre-mute level is remembered
                         // above and restored on unmute.
-                        if let Renderer::Remote(remote) = &self.renderer {
-                            remote.session.set_volume(0.0);
-                        }
+                        self.renderer.set_remote_volume(0.0);
                         emit_progress(
                             &self.progress_tx,
                             PlaybackProgress::VolumeChanged { volume: 0.0 },
@@ -2057,9 +2099,7 @@ impl PlaybackService {
                         self.is_muted = false;
                         let vol = self.pre_mute_volume;
                         self.audio_output.set_volume(vol);
-                        if let Renderer::Remote(remote) = &self.renderer {
-                            remote.session.set_volume(vol);
-                        }
+                        self.renderer.set_remote_volume(vol);
                         emit_progress(
                             &self.progress_tx,
                             PlaybackProgress::VolumeChanged { volume: vol },
@@ -2241,6 +2281,70 @@ impl PlaybackService {
         }
         info!("PlaybackService stopped");
     }
+}
+
+fn side_pause_prompt_between(
+    current: &PlaybackTrackInfo,
+    next: &PlaybackTrackInfo,
+) -> Option<PlaybackSidePausePrompt> {
+    if current.release_id != next.release_id {
+        return None;
+    }
+    let current_side = current.side.as_ref()?;
+    let next_side = next.side.as_ref()?;
+    if current_side.side_letter == next_side.side_letter {
+        return None;
+    }
+    let message_key = match current_side.medium {
+        PhysicalSideMedium::Vinyl => SIDE_PAUSE_VINYL_MESSAGE_KEY,
+        PhysicalSideMedium::Cassette => SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+    };
+    Some(PlaybackSidePausePrompt {
+        id: format!(
+            "{}:{}:{:?}",
+            next.track_id, current_side.side_letter, current_side.medium
+        ),
+        title_key: SIDE_PAUSE_TITLE_KEY,
+        side_letter: current_side.side_letter.clone(),
+        message_key,
+    })
+}
+
+/// The platform's audio output, with no default-device change listener. Called on
+/// the service's dedicated thread so the sink owns any thread-bound device handle
+/// it opens there (cpal builds lazily per stream; AAudio binds its writer thread).
+/// This is the preview player's output, and the main player's on every platform
+/// but macOS, which uses `default_audio_output_with_device_listener`.
+#[cfg(not(target_os = "android"))]
+pub(crate) fn default_audio_output(
+) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
+    Ok(Box::new(
+        crate::playback::cpal_output::CpalAudioOutput::new()?,
+    ))
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn default_audio_output(
+) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
+    Ok(Box::new(
+        crate::playback::aaudio_output::AAudioOutput::new()?
+    ))
+}
+
+/// The main player's macOS output, which additionally registers a CoreAudio
+/// listener that dispatches `OutputDeviceChanged` through `command_tx` when the
+/// system default output device changes — so the persistent stream rebuilds onto
+/// the new default. The preview player never gets a listener (it uses
+/// `default_audio_output`), so exactly one listener exists at a time.
+#[cfg(target_os = "macos")]
+pub(crate) fn default_audio_output_with_device_listener(
+    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
+    Ok(Box::new(
+        crate::playback::cpal_output::CpalAudioOutput::with_device_listener(move || {
+            dispatch_command(&command_tx, PlaybackCommand::OutputDeviceChanged)
+        })?,
+    ))
 }
 
 /// Map a command to its telemetry kind, or `None` for commands that don't ship:

@@ -477,14 +477,14 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
+            .environment(Playback.stub())
+            .environment(Queue.stub())
+            .environment(Downloads.stub())
             .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
-            .environment(PreviewData.configStore)
+            .environment(PreviewData.configStore())
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -500,14 +500,14 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
+            .environment(Playback.stub())
+            .environment(Queue.stub())
+            .environment(Downloads.stub())
             .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
-            .environment(PreviewData.configStore)
+            .environment(PreviewData.configStore())
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -523,15 +523,15 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(ImageStore.stub)
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
+            .environment(ImageStore.stub())
+            .environment(Playback.stub())
+            .environment(Queue.stub())
+            .environment(Downloads.stub())
             .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
-            .environment(PreviewData.configStore)
+            .environment(PreviewData.configStore())
             .frame(width: 1200, height: 760)
             .windowBackground()
     }
@@ -553,10 +553,10 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(ImageStore.stub)
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
+            .environment(ImageStore.stub())
+            .environment(Playback.stub())
+            .environment(Queue.stub())
+            .environment(Downloads.stub())
             .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
@@ -577,14 +577,14 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
+            .environment(Playback.stub())
+            .environment(Queue.stub())
+            .environment(Downloads.stub())
             .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
-            .environment(PreviewData.configStore)
+            .environment(PreviewData.configStore())
             .frame(width: 1100, height: 700)
             .windowBackground()
     }

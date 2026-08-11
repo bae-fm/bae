@@ -29,20 +29,17 @@ public enum UiEventDispatcher {
     ) -> Outcome {
         switch event {
         case .invalidated(let invalidation):
-            appService.projectionRegistry.invalidate(invalidation)
+            appService.invalidateProjection(invalidation)
 
         case .playbackPlaying, .playbackPaused, .playbackLoading,
-            .playbackStopped, .playbackError, .playbackProgress,
+            .playbackStopped, .playbackProgress,
             .playbackSeeked, .volumeChanged, .muteChanged,
-            .repeatModeChanged, .queueItemsAdded:
-            dispatchPlayback(event, appService: appService)
+            .repeatModeChanged, .queueItemsAdded, .queueUpdated,
+            .castStatusChanged:
+            appService.applyPlaybackEvent(event)
 
-        case .queueUpdated(let snapshot):
-            // Core resolves the full queue projection before emitting, so the
-            // carried snapshot is the queue's update path — direct apply, the
-            // same as every other platform. `hasNext`/`hasPrevious` drive
-            // Control Center's next/previous availability.
-            appService.applyQueueSnapshot(snapshot)
+        case .playbackError(let reason):
+            appService.showError(reason)
 
         case .error(let error):
             appService.showError(error)
@@ -52,11 +49,6 @@ public enum UiEventDispatcher {
             // the event here rather than leaving it for the platform tail.
             break
 
-        case .castStatusChanged(let deviceName):
-            // Which device playback is on, including a receiver-side end core
-            // noticed on its own. Every Apple platform casts, so this is shared.
-            appService.castStore.applyStatus(deviceName: deviceName)
-
         case .previewPlaying, .previewPaused, .previewIdle, .previewProgress,
             .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
             // Preview, import-loudness, and the import queue's identify progress
@@ -64,129 +56,6 @@ public enum UiEventDispatcher {
             return .unhandled
         }
         return .handled
-    }
-
-    // `dispatchPlayback` and its helpers handle only the variants routed to
-    // them by `dispatch`; the trailing `default` in each is unreachable in
-    // practice and present only for switch exhaustiveness.
-
-    @MainActor
-    private static func dispatchPlayback(
-        _ event: BridgeUiEvent,
-        appService: AppService
-    ) {
-        switch event {
-        case .playbackPlaying, .playbackPaused, .playbackLoading,
-            .playbackStopped:
-            dispatchNowPlaying(event, appService: appService)
-
-        case .playbackError, .playbackProgress, .playbackSeeked,
-            .volumeChanged, .muteChanged, .repeatModeChanged,
-            .queueItemsAdded:
-            dispatchPlaybackStateAndControls(event, appService: appService)
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func dispatchNowPlaying(
-        _ event: BridgeUiEvent,
-        appService: AppService
-    ) {
-        switch event {
-        case .playbackPlaying:
-            if let fields = NowPlayingFields(event: event) {
-                applyNowPlaying(fields, appService: appService)
-            }
-
-        case .playbackPaused(_, _, _, _, _, _, _, _, let reason):
-            if let fields = NowPlayingFields(event: event) {
-                applyPausedNowPlaying(
-                    fields,
-                    reason: reason,
-                    appService: appService
-                )
-            }
-
-        case .playbackLoading(let trackId, let track):
-            applyLoading(trackId: trackId, track: track, appService: appService)
-
-        case .playbackStopped:
-            appService.playbackStore.nowPlaying = .stopped
-            appService.playbackStore.resetPlaybackPosition()
-            appService.mediaControlService.updateNowPlaying(
-                state: .stopped,
-                appHandle: appService.appHandle
-            )
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func dispatchPlaybackStateAndControls(
-        _ event: BridgeUiEvent,
-        appService: AppService
-    ) {
-        let playbackStore = appService.playbackStore
-        switch event {
-        case .playbackError(let reason):
-            // A track couldn't be played (cloud-only not downloaded, decode
-            // failure); core has already fallen back to stopped. Surface why —
-            // the actionable cloud cases get their keyed line, everything else
-            // the generic category line plus copyable detail.
-            appService.showError(reason)
-
-        case .playbackProgress(
-            let trackId,
-            let positionMs,
-            let durationMs,
-            let progress
-        ):
-            updatePlaybackPosition(
-                playbackStore.updatePlaybackProgress(
-                    trackId: trackId,
-                    positionMs: positionMs,
-                    durationMs: durationMs,
-                    progress: progress
-                ),
-                appService: appService
-            )
-
-        case .playbackSeeked(
-            let trackId,
-            let positionMs,
-            let durationMs,
-            let progress
-        ):
-            updatePlaybackPosition(
-                playbackStore.updatePlaybackSeeked(
-                    trackId: trackId,
-                    positionMs: positionMs,
-                    durationMs: durationMs,
-                    progress: progress
-                ),
-                appService: appService
-            )
-
-        case .volumeChanged(let volume):
-            playbackStore.volume = volume
-
-        case .muteChanged(let isMuted):
-            playbackStore.isMuted = isMuted
-
-        case .repeatModeChanged(let mode):
-            playbackStore.repeatMode = mode
-
-        case .queueItemsAdded(let count):
-            playbackStore.queueItemsAddedSubject.send(Int(count))
-
-        default:
-            break
-        }
     }
 
     /// Builds the sink a `UiEventPump` drains on the main actor: weak
@@ -212,170 +81,5 @@ public enum UiEventDispatcher {
                 onUnhandled(event, appService)
             }
         }
-    }
-}
-
-extension UiEventDispatcher {
-    @MainActor
-    private static func applyNowPlaying(
-        _ fields: NowPlayingFields,
-        appService: AppService
-    ) {
-        appService.playbackStore.play(track: fields.nowPlayingTrack())
-        appService.mediaControlService.updateNowPlaying(
-            state: fields.bridgeState(isPlaying: true),
-            appHandle: appService.appHandle
-        )
-    }
-
-    @MainActor
-    private static func applyPausedNowPlaying(
-        _ fields: NowPlayingFields,
-        reason: BridgePlaybackPauseReason,
-        appService: AppService
-    ) {
-        appService.playbackStore.pause(
-            track: fields.nowPlayingTrack(),
-            reason: reason
-        )
-        appService.mediaControlService.updateNowPlaying(
-            state: fields.bridgeState(isPlaying: false),
-            appHandle: appService.appHandle
-        )
-    }
-
-    @MainActor
-    private static func applyLoading(
-        trackId: String,
-        track: BridgeLoadingTrackInfo?,
-        appService: AppService
-    ) {
-        let playbackStore = appService.playbackStore
-        // Bare event (track == nil): enter loading, keep the prior track on
-        // screen, and clear the frozen position bar. Detailed event: swap to
-        // the resolved target so the bar updates while audio still loads.
-        if let track {
-            playbackStore.setLoadingTarget(
-                trackId: trackId,
-                target: NowPlayingTrack(
-                    trackId: trackId,
-                    trackTitle: track.trackTitle,
-                    artistNames: track.artistNames,
-                    albumId: track.albumId,
-                    coverImage: track.coverImage,
-                    durationMs: track.durationMs
-                )
-            )
-        }
-        else {
-            playbackStore.beginLoading(trackId: trackId)
-        }
-        appService.mediaControlService.updateNowPlaying(
-            state: .loading(trackId: trackId, track: track),
-            appHandle: appService.appHandle
-        )
-    }
-
-    @MainActor
-    private static func updatePlaybackPosition(
-        _ snapshot: PlaybackPositionSnapshot?,
-        appService: AppService
-    ) {
-        guard let snapshot else {
-            return
-        }
-        appService.mediaControlService.updatePosition(
-            positionMs: snapshot.positionMs,
-            durationMs: snapshot.durationMs
-        )
-    }
-}
-
-/// The fields carried by the `playbackPlaying` and `playbackPaused` events,
-/// bundled so the two cases route to one `applyNowPlaying` helper.
-struct NowPlayingFields {
-    let trackId: String
-    let trackTitle: String
-    let artistNames: String
-    let artistId: String
-    let albumId: String
-    let albumTitle: String
-    let coverImage: BridgeImageRef?
-    let durationMs: UInt64
-
-    /// Unpacks the track fields from a `playbackPlaying` or `playbackPaused`
-    /// event; `nil` for any other variant.
-    init?(event: BridgeUiEvent) {
-        switch event {
-        case .playbackPlaying(
-            let trackId,
-            let trackTitle,
-            let artistNames,
-            let artistId,
-            let albumId,
-            let albumTitle,
-            let coverImage,
-            let durationMs
-        ),
-            .playbackPaused(
-                let trackId,
-                let trackTitle,
-                let artistNames,
-                let artistId,
-                let albumId,
-                let albumTitle,
-                let coverImage,
-                let durationMs,
-                _
-            ):
-            self.trackId = trackId
-            self.trackTitle = trackTitle
-            self.artistNames = artistNames
-            self.artistId = artistId
-            self.albumId = albumId
-            self.albumTitle = albumTitle
-            self.coverImage = coverImage
-            self.durationMs = durationMs
-
-        default:
-            return nil
-        }
-    }
-
-    /// The matching `BridgePlaybackState` for Control Center: `.playing` when
-    /// `isPlaying`, otherwise `.paused`. Both constructors take these fields.
-    func bridgeState(isPlaying: Bool) -> BridgePlaybackState {
-        isPlaying
-            ? .playing(
-                trackId: trackId,
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                artistId: artistId,
-                albumId: albumId,
-                albumTitle: albumTitle,
-                coverImage: coverImage,
-                durationMs: durationMs
-            )
-            : .paused(
-                trackId: trackId,
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                artistId: artistId,
-                albumId: albumId,
-                albumTitle: albumTitle,
-                coverImage: coverImage,
-                durationMs: durationMs
-            )
-    }
-
-    func nowPlayingTrack() -> NowPlayingTrack {
-        NowPlayingTrack(
-            trackId: trackId,
-            trackTitle: trackTitle,
-            artistNames: artistNames,
-            albumId: albumId,
-            coverImage: coverImage,
-            durationMs: durationMs
-        )
     }
 }

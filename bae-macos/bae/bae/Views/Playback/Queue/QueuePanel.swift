@@ -77,7 +77,7 @@ struct QueuePanel: View {
         })
         .environment(store)
         .environment(queue)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
         .environment(
             \.playbackPositionPublisher,
             Just(

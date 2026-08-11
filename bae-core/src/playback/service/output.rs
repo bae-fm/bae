@@ -9,21 +9,7 @@
 //! place and never touches this.
 
 use super::*;
-use crate::playback::audio_output::{audio_event_channel, AudioStream};
-
-/// The persistent output stream shared across tracks in one format: the device
-/// stream, the `PlaybackSource` its callback pulls from, and the audio-events
-/// receiver the command loop drains. The `sample_rate`/`channels` are what the
-/// stream was built for; a track in a different format forces a rebuild.
-pub(super) struct OutputStream {
-    /// Held only for its `Drop`, which releases the device / stops the capture
-    /// thread. Never read after construction, hence the underscore.
-    pub(super) _stream: Box<dyn AudioStream>,
-    pub(super) source: Arc<Mutex<source::PlaybackSource>>,
-    pub(super) audio_events: AudioEventReceiver,
-    pub(super) sample_rate: u32,
-    pub(super) channels: u32,
-}
+use crate::playback::audio_output::audio_event_channel;
 
 impl PlaybackService {
     /// Attach `track_stream` to the output: if a stream for this format is already
@@ -39,6 +25,7 @@ impl PlaybackService {
         fmt: TrackFmt,
         sample_rate: u32,
         channels: u32,
+        staged_next: StagedNextOnReplace,
     ) -> Result<(), PlaybackError> {
         if let Some(out) = &mut self.output {
             if out.sample_rate == sample_rate && out.channels == channels {
@@ -50,7 +37,12 @@ impl PlaybackService {
                 // the new one.
                 {
                     let mut source = out.source.lock().unwrap();
-                    source.replace(track_stream, fmt);
+                    match staged_next {
+                        StagedNextOnReplace::Discard => source.replace(track_stream, fmt),
+                        StagedNextOnReplace::Preserve => {
+                            source.replace_preserving_staged_next(track_stream, fmt)
+                        }
+                    }
                     while out.audio_events.pop().is_some() {}
                 }
                 // A same-format swap keeps the one device stream; tell the sink so
@@ -66,6 +58,24 @@ impl PlaybackService {
         // carry — an outgoing track's would be stale — so carry none.
         let source = Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, fmt)));
         self.build_output_over(source, sample_rate, channels, Vec::new())
+    }
+
+    /// Promote the stream already staged inside the live source. The source
+    /// performs the ownership-preserving swap; this owner synchronizes it with
+    /// event draining and output notification exactly like `attach_track`.
+    pub(super) fn promote_staged_track(&mut self) -> bool {
+        let Some(out) = &mut self.output else {
+            return false;
+        };
+        {
+            let mut source = out.source.lock().unwrap();
+            if !source.promote_staged_next() {
+                return false;
+            }
+            while out.audio_events.pop().is_some() {}
+        }
+        self.audio_output.on_source_replaced();
+        true
     }
 
     /// Drop the current output stream (if any) and build a fresh one over

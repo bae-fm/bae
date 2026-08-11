@@ -56,7 +56,7 @@ public final class Cast: Sendable, Observable {
     }
 
     #if DEBUG
-        public static let stub = Cast()
+        public static func stub() -> Cast { Cast() }
     #endif
 }
 

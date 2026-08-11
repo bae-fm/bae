@@ -9,7 +9,7 @@ private let logger = Logger.bae("LibraryStore")
 /// Page source backed by the `Library` domain service for the full
 /// library grid.
 public struct LibraryAlbumPageSource: PageSource {
-    public let library: Library
+    private let library: Library
     public let sort: [BridgeSortCriterion]
 
     public init(library: Library, sort: [BridgeSortCriterion]) {
@@ -47,7 +47,7 @@ public struct AlbumPreviewPageSource: PageSource {
 }
 
 public struct LibraryComposerPageSource: PageSource {
-    public let library: Library
+    private let library: Library
     public let sort: [BridgeComposerSortCriterion]
 
     public init(library: Library, sort: [BridgeComposerSortCriterion]) {
@@ -71,7 +71,7 @@ extension BridgeComposerSummary: Identifiable {
 }
 
 public struct LibraryArtistPageSource: PageSource {
-    public let library: Library
+    private let library: Library
     public let sort: [BridgeArtistSortCriterion]
 
     public init(library: Library, sort: [BridgeArtistSortCriterion]) {
@@ -103,7 +103,7 @@ extension BridgeArtistSummary: Identifiable {
 /// the view renders by iterating `ids` (release ids) and resolving via
 /// both slices at render time.
 public struct StoragePageSource: PageSource {
-    public let library: Library
+    private let library: Library
     public let sort: BridgeStorageSort
     public let filter: BridgeStorageFilter
 

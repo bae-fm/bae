@@ -62,6 +62,6 @@ struct StorageReleaseCell: View {
                 PreviewData.outboxSnapshot(uploadGroups: [], deletes: [])
             )
         )
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

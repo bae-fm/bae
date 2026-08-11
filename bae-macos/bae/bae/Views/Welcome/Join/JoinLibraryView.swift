@@ -284,6 +284,6 @@ struct JoinLibraryView: View {
                 onBack: {},
             )
         }
-        .environment(LibrarySetup.stub)
+        .environment(LibrarySetup.stub())
     }
 #endif

@@ -200,7 +200,7 @@ private struct SectionSegmentedControl: View {
     // closure's modifier chain, can see it.
     #Preview("Title bar") {
         TitleBarPreview()
-            .environment(Library.stub)
+            .environment(Library.stub())
             .environment(UiStore())
     }
 #endif

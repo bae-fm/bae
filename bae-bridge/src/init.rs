@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use bae_core::app::BootstrapError;
-#[cfg(not(feature = "desktop"))]
-use bae_core::app::{bootstrap, RunningApp};
+use bae_core::app::{bootstrap, BootstrapError};
 use bae_core::diagnostics::{
     AppDiagnosticMetadata, AppStartFailureKind, DatadogDiagnosticsConfig, Diagnostics,
     DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
@@ -63,9 +61,8 @@ pub struct BridgeDiagnostics {
 }
 
 impl BridgeDiagnostics {
-    /// The wrapped core handle, cloned into bootstrap / keyring init.
-    pub(crate) fn core(&self) -> &Diagnostics {
-        &self.inner
+    pub(crate) fn init_keyring(&self) {
+        bae_core::config::init_keyring(&self.inner);
     }
 
     fn emit_app_start_failed(&self, error: &BootstrapError) {
@@ -134,76 +131,21 @@ pub fn init_app(
     restore_playback: bool,
     diagnostics: Arc<BridgeDiagnostics>,
 ) -> Result<Arc<AppHandle>, BridgeError> {
-    let core = diagnostics.core().clone();
+    let core = diagnostics.inner.clone();
 
-    #[cfg(feature = "desktop")]
-    {
-        let app = bae_desktop::bootstrap(
-            library_id,
-            position_update_interval_ms,
-            restore_playback,
-            core,
-            get_cloudkit_ops(),
-        )
-        .map_err(|e| {
-            diagnostics.emit_app_start_failed(&e);
-            bootstrap_error_to_bridge(e)
-        })?;
-        #[cfg(feature = "cast")]
-        let cast = start_cast(&app.services, &app.ui_event_bus, app.runtime.handle());
-        Ok(Arc::new(AppHandle {
-            app,
-            #[cfg(feature = "cast")]
-            cast,
-        }))
-    }
-
-    #[cfg(not(feature = "desktop"))]
-    {
-        let RunningApp {
-            runtime,
-            services,
-            ui_event_bus,
-        } = bootstrap(
-            library_id,
-            position_update_interval_ms,
-            restore_playback,
-            core,
-            get_cloudkit_ops(),
-        )
-        .map_err(|e| {
-            diagnostics.emit_app_start_failed(&e);
-            bootstrap_error_to_bridge(e)
-        })?;
-
-        #[cfg(feature = "cast")]
-        let cast = start_cast(&services, &ui_event_bus, runtime.handle());
-        Ok(Arc::new(AppHandle {
-            runtime,
-            services,
-            ui_event_bus,
-            #[cfg(feature = "cast")]
-            cast,
-        }))
-    }
-}
-
-/// Build the cast controller over the device source this host can run, and start
-/// the background tasks that keep it in step with playback and the `cast_enabled`
-/// setting. Every host that casts builds the same one.
-#[cfg(feature = "cast")]
-fn start_cast(
-    services: &bae_core::library::AppServices,
-    ui_event_bus: &bae_core::ui::UiEventBus,
-    runtime: &tokio::runtime::Handle,
-) -> Arc<bae_cast::CastController> {
-    bae_cast::CastController::start(
-        services.library_manager().clone(),
-        services.playback().clone(),
-        ui_event_bus.clone(),
-        runtime.clone(),
-        bae_core::renderer::RendererDiscovery::for_host(),
+    bootstrap(
+        library_id,
+        position_update_interval_ms,
+        restore_playback,
+        core,
+        get_cloudkit_ops(),
+        AppHandle::start,
     )
+    .map(Arc::new)
+    .map_err(|error| {
+        diagnostics.emit_app_start_failed(&error);
+        bootstrap_error_to_bridge(error)
+    })
 }
 
 fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {

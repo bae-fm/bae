@@ -85,8 +85,8 @@ struct CastingSettingsTab: View {
 #if DEBUG
     #Preview("Casting Settings") {
         CastingSettingsTab()
-            .environment(Cast.stub)
-            .environment(PreviewData.castStore)
+            .environment(Cast.stub())
+            .environment(PreviewData.castStore())
             .environment(
                 PreviewData.makeConfigStore(
                     libraryFullWidth: false,

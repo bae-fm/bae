@@ -280,7 +280,7 @@ public final class Library: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        public static let stub = Library()
+        public static func stub() -> Library { Library() }
     #endif
 }
 // swiftlint:enable type_body_length

@@ -58,9 +58,9 @@ struct TransferConcurrencyBar: View {
 #if DEBUG
     #Preview("Concurrency bar") {
         TransferConcurrencyBar()
-            .environment(PreviewData.configStore)
-            .environment(Downloads.stub)
-            .environment(Sync.stub)
+            .environment(PreviewData.configStore())
+            .environment(Downloads.stub())
+            .environment(Sync.stub())
             .environment(UiStore())
             .frame(width: 700)
     }

@@ -225,6 +225,6 @@ struct RestoreFromCloudView: View {
                 onBack: {},
             )
         }
-        .environment(LibrarySetup.stub)
+        .environment(LibrarySetup.stub())
     }
 #endif

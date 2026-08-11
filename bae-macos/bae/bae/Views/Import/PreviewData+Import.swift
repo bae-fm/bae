@@ -97,16 +97,18 @@
         /// ImageStore for previews whose fixtures carry image addresses: a
         /// remote "URL" in fixture data is a path to generated placeholder
         /// art, served straight from disk. The library and release reads stay
-        /// unwired exactly like `ImageStore.stub` — previews have no live
+        /// unwired exactly like `ImageStore.stub()` — previews have no live
         /// library to read from.
-        static let artImageStore = ImageStore(
-            fetchRemoteImage: { url in
-                RemoteImageBytes(
-                    bytes: try Data(contentsOf: URL(fileURLWithPath: url)),
-                    validator: url
-                )
-            }
-        )
+        static func artImageStore() -> ImageStore {
+            ImageStore(
+                fetchRemoteImage: { url in
+                    RemoteImageBytes(
+                        bytes: try Data(contentsOf: URL(fileURLWithPath: url)),
+                        validator: url
+                    )
+                }
+            )
+        }
 
         private static func candidateEntry(
             _ row: BridgeTriageRow
@@ -137,21 +139,7 @@
             )
         }
 
-        /// Seeded ImportStore for the ImportView whole-view preview — the
-        /// watched folder, every folder candidate, and a triage queue keyed to
-        /// the same five so the sidebar and the detail pane agree. ImportStore
-        /// is a non-Sendable `@Observable`, so it needs `@MainActor` isolation
-        /// to hold as a static.
-        @MainActor
-        static let folderImportStore: ImportStore = {
-            let s = ImportStore()
-            s.watchedFolders = [importWatchedFolder]
-            for candidate in folderCandidates {
-                s.folderCandidates[candidate.key] = candidate
-            }
-            // The row the preview selects is the settled one, so the pane
-            // behind the sidebar is the pane a picked release draws.
-            s.folderCandidates[importTabCandidate.key] = importTabCandidate
+        private static let folderImportQueue: BridgeTriageQueue = {
             let rows = [
                 triageRow(
                     for: folderCandidates[0],
@@ -245,7 +233,7 @@
                     selectable: true
                 ),
             ]
-            s.triageQueue = BridgeTriageQueue(
+            return BridgeTriageQueue(
                 sections: [
                     // Two of the three Ready rows sit under a folder the scan
                     // read as one release's worth of subfolders; the third is
@@ -295,11 +283,28 @@
                 ),
                 folderScanStatuses: []
             )
+        }()
+
+        /// Seeded ImportStore for the ImportView whole-view preview — the
+        /// watched folder, every folder candidate, and a triage queue keyed to
+        /// the same five so the sidebar and the detail pane agree. ImportStore
+        /// is a non-Sendable `@Observable`, so construction is `@MainActor`.
+        @MainActor
+        static func folderImportStore() -> ImportStore {
+            let s = ImportStore()
+            s.watchedFolders = [importWatchedFolder]
+            for candidate in folderCandidates {
+                s.folderCandidates[candidate.key] = candidate
+            }
+            // The row the preview selects is the settled one, so the pane
+            // behind the sidebar is the pane a picked release draws.
+            s.folderCandidates[importTabCandidate.key] = importTabCandidate
+            s.triageQueue = folderImportQueue
             // Mid-sweep, so the header's progress line is drawn rather than
             // being the nothing-left-to-say state that hides it.
             s.queueIdentifyProgress = (identified: 112, total: 130)
             return s
-        }()
+        }
 
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
@@ -680,11 +685,11 @@
         static let releaseQueueImportStore = releaseQueueStore(releaseQueue)
 
         @MainActor
-        static let releaseQueueScanningImportStore: ImportStore = {
+        static func releaseQueueScanningImportStore() -> ImportStore {
             let store = releaseQueueStore(releaseQueueScanning)
             store.queueIdentifyProgress = (identified: 27, total: 40)
             return store
-        }()
+        }
 
         @MainActor
         static let releaseQueueResolvedImportStore = releaseQueueStore(
@@ -715,7 +720,7 @@
                     trackCount: trackCount
                 ),
                 // In fixtures the "URL" is a path to generated placeholder
-                // art; `PreviewData.artImageStore` serves it from disk.
+                // art; `PreviewData.artImageStore()` serves it from disk.
                 coverThumbnailUrl: previewArtPath(title),
                 evidence: BridgeMatchEvidence(source: source, signal: signal)
             )
@@ -959,17 +964,8 @@
             claim: nil
         )
 
-        /// Seeded ImportStore for the standalone sidebar preview
-        /// (`ImportCandidateListContent`) — one row per state the row view
-        /// renders differently, so the preview exercises every tab and every
-        /// Needs-you group. Independent of `folderImportStore`'s roster; no
-        /// detail pane sits behind this preview, so the keys don't need to
-        /// match a `Candidate`.
-        @MainActor
-        static let triageImportStore: ImportStore = {
-            let s = ImportStore()
-            s.watchedFolders = [importWatchedFolder]
-            s.triageQueue = BridgeTriageQueue(
+        private static let triageImportQueue: BridgeTriageQueue = {
+            BridgeTriageQueue(
                 sections: [
                     BridgeTriageSection(
                         tab: .ready,
@@ -1029,9 +1025,22 @@
                 ),
                 folderScanStatuses: []
             )
+        }()
+
+        /// Seeded ImportStore for the standalone sidebar preview
+        /// (`ImportCandidateListContent`) — one row per state the row view
+        /// renders differently, so the preview exercises every tab and every
+        /// Needs-you group. Independent of `folderImportStore`'s roster; no
+        /// detail pane sits behind this preview, so the keys don't need to
+        /// match a `Candidate`.
+        @MainActor
+        static func triageImportStore() -> ImportStore {
+            let s = ImportStore()
+            s.watchedFolders = [importWatchedFolder]
+            s.triageQueue = triageImportQueue
             s.queueIdentifyProgress = (identified: 112, total: 130)
             return s
-        }()
+        }
 
         private static func previewFile(
             name: String,

@@ -78,7 +78,7 @@ impl QueueSweepHandle {
     ///
     /// This has to run *before* the tokio runtime is dropped, or every task it
     /// would cancel is already gone — see the field ordering on
-    /// [`crate::app::RunningApp`].
+    /// [`crate::library::AppServices`].
     pub fn stop(&self) {
         self.token.cancel();
         self.tasks.close();
@@ -831,7 +831,7 @@ async fn run_pass(
                     // durable was written, so replaying them whole is the only
                     // shape that cannot leave a wrong answer behind.
                     warn!("sweep: import bus lagged by {n} events; replaying {} in-flight candidates", in_flight.len());
-                    context.library_manager.diagnostics().event(
+                    context.library_manager.record_telemetry(
                         crate::diagnostics::TelemetryEvent::Anomaly {
                             kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                         },
@@ -1150,12 +1150,9 @@ async fn save(
         );
         return false;
     }
-    super::handle::send_event(
-        &context.import.event_tx,
-        ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
-            candidate_key: candidate_key.to_string(),
-        }),
-    );
+    context
+        .import
+        .announce_candidate_verdict_stored(candidate_key.to_string());
     true
 }
 
@@ -1407,10 +1404,9 @@ fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandid
 /// the sweep is responsible for, which is a domain fact about the queue and not
 /// something a view can infer from the rows it happens to be holding.
 fn emit_progress(context: &SweepContext, identified: u32, total: u32) {
-    super::handle::send_event(
-        &context.import.event_tx,
-        ImportEvent::QueueIdentifyProgress { identified, total },
-    );
+    context
+        .import
+        .announce_queue_identify_progress(identified, total);
 }
 
 #[cfg(test)]

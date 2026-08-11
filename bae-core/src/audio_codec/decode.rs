@@ -411,12 +411,7 @@ unsafe fn open_buffer_input(
 ) -> Result<BufferInput, BufferInputError> {
     use ffmpeg_sys_next::*;
 
-    let reader = buffer.new_reader_with_cancel(cancel_token.clone());
-    let avio_ctx = Box::new(StreamingAvioContext {
-        reader: std::sync::Mutex::new(reader),
-        buffer: buffer.clone(),
-        cancel_token,
-    });
+    let avio_ctx = Box::new(StreamingAvioContext::new(buffer.clone(), cancel_token));
     let avio_ctx_ptr = Box::into_raw(avio_ctx);
 
     // FFmpeg takes ownership of this buffer.
@@ -1353,11 +1348,7 @@ unsafe fn decode_audio_streaming_impl(
         Some(end) => end,
         None => buffer.get_total_size(),
     };
-    (*avio_ctx_ptr)
-        .reader
-        .lock()
-        .unwrap()
-        .set_readahead_ceiling(ceiling);
+    (*avio_ctx_ptr).set_readahead_ceiling(ceiling);
 
     let mut frame = av_frame_alloc();
     let mut packet = av_packet_alloc();

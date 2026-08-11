@@ -14,7 +14,6 @@
 
 use std::io::{BufReader, Read, Write};
 use std::net::{IpAddr, TcpStream, UdpSocket};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use super::airplay2::{Ap2AudioCipher, PairVerify};
@@ -24,7 +23,9 @@ use super::pairing::{PairingError, TransientPairing};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::session::{CHANNELS, SAMPLE_RATE};
-use super::stream::{MonotonicClock, PayloadCrypto, PcmSource, RaopStream, StreamEndpoints};
+use super::stream::{
+    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, StreamEndpoints,
+};
 
 /// The AirPlay 2 audio latency in frames when a receiver doesn't report one.
 const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
@@ -467,41 +468,39 @@ fn pair_post(conn: &mut RtspConnection, path: &str, body: Vec<u8>) -> Result<Vec
 /// SETRATEANCHORTIME, teardown to an encrypted TEARDOWN. The encrypted control
 /// connection is behind a mutex because only these methods touch it.
 #[derive(Clone)]
-pub struct Ap2SessionControl {
+struct Ap2SessionControl {
     control: Arc<Mutex<Ap2Control>>,
-    reanchor: Arc<AtomicU64>,
-    frames_sent: Arc<AtomicU64>,
-    failed: Arc<std::sync::atomic::AtomicBool>,
+    stream: RaopStreamControl,
     latency_frames: u32,
 }
 
 impl Ap2SessionControl {
     /// Pause the receiver's rendering (rate 0) — AirPlay 2's FLUSH.
-    pub fn flush(&self) -> Result<(), Ap2Error> {
+    fn flush(&self) -> Result<(), Ap2Error> {
         self.control.lock().unwrap().set_rate(0)
     }
 
     /// Resume rendering (rate 1) and re-anchor the sender's pacing.
-    pub fn reanchor(&self) -> Result<(), Ap2Error> {
-        self.reanchor.fetch_add(1, Ordering::Release);
+    fn reanchor(&self) -> Result<(), Ap2Error> {
+        self.stream.reanchor();
         self.control.lock().unwrap().set_rate(1)
     }
 
     /// TEARDOWN the session on the receiver.
-    pub fn teardown(&self) -> Result<(), Ap2Error> {
+    fn teardown(&self) -> Result<(), Ap2Error> {
         self.control.lock().unwrap().teardown()
     }
 
-    pub fn frames_sent(&self) -> u64 {
-        self.frames_sent.load(Ordering::Relaxed)
+    fn frames_sent(&self) -> u64 {
+        self.stream.frames_sent()
     }
 
     /// Whether the audio flow to the receiver has failed persistently.
-    pub fn has_failed(&self) -> bool {
-        self.failed.load(Ordering::Relaxed)
+    fn has_failed(&self) -> bool {
+        self.stream.has_failed()
     }
 
-    pub fn latency_frames(&self) -> u32 {
+    fn latency_frames(&self) -> u32 {
         self.latency_frames
     }
 }
@@ -585,6 +584,7 @@ impl Ap2Session {
             latency_frames: latency,
         };
         let cipher = Ap2AudioCipher::from_shared_secret(&shared);
+        let stream_control = RaopStreamControl::new();
         let stream = RaopStream::spawn(
             source,
             PayloadCrypto::Ap2(cipher),
@@ -597,13 +597,12 @@ impl Ap2Session {
             control_socket,
             clock,
             false, // AirPlay 2 anchors with SETRATEANCHORTIME, not RAOP sync packets
+            stream_control.clone(),
         )?;
 
         let session_control = Ap2SessionControl {
             control: Arc::new(Mutex::new(control)),
-            reanchor: stream.reanchor_handle(),
-            frames_sent: stream.frames_sent_handle(),
-            failed: stream.failed_handle(),
+            stream: stream_control,
             latency_frames: latency,
         };
         Ok(Ap2Session {
@@ -612,9 +611,24 @@ impl Ap2Session {
         })
     }
 
-    /// A cloneable handle to this session's controls, for the output layer.
-    pub fn control(&self) -> Ap2SessionControl {
-        self.control.clone()
+    pub fn flush(&self) -> Result<(), Ap2Error> {
+        self.control.flush()
+    }
+
+    pub fn reanchor(&self) -> Result<(), Ap2Error> {
+        self.control.reanchor()
+    }
+
+    pub fn has_failed(&self) -> bool {
+        self.control.has_failed()
+    }
+
+    pub fn frames_sent(&self) -> u64 {
+        self.control.frames_sent()
+    }
+
+    pub fn latency_frames(&self) -> u32 {
+        self.control.latency_frames()
     }
 }
 

@@ -50,7 +50,7 @@ struct DownloadsSection: View {
     #Preview("Populated") {
         DownloadsSection()
             .environment(PreviewData.downloadStore())
-            .environment(Downloads.stub)
+            .environment(Downloads.stub())
             .frame(width: 680)
     }
 
@@ -61,7 +61,7 @@ struct DownloadsSection: View {
                     PreviewData.downloadSnapshot(paused: true)
                 )
             )
-            .environment(Downloads.stub)
+            .environment(Downloads.stub())
             .frame(width: 680)
     }
 #endif

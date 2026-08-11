@@ -270,7 +270,7 @@ struct SubsonicSettingsContent: View {
                 },
                 setPassword: { _ in }
             ),
-            configStore: PreviewData.configStore
+            configStore: PreviewData.configStore()
         )
         .frame(width: 500, height: 300)
     }

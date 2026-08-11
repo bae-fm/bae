@@ -1,6 +1,6 @@
 //! Composition root: builds and starts the whole application for a library and
-//! hands back a [`RunningApp`]. The frontends reach it through the uniffi bridge
-//! (`bae-bridge`, via its `AppHandle`). One place opens the DB, unlocks
+//! injects its running services into the frontend's final owner. Frontends reach
+//! it through the uniffi bridge (`bae-bridge`, via its `AppHandle`). One place opens the DB, unlocks
 //! encryption, starts sync, playback, and (on desktop) the import/identify/
 //! extraction services, and wires the UI event bus — no per-frontend copy to
 //! drift.
@@ -14,25 +14,9 @@ use crate::config::{Config, ConfigHandle};
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::AppServices;
-use crate::playback::PlaybackService;
 use crate::ui::UiEventBus;
 use coven::{ClockRef, SystemClock};
 use coven::{IdRef, UuidProvider};
-
-/// A fully constructed, running application: the tokio runtime that owns all
-/// background work, the composed service layer, and the UI event bus already
-/// wired to every service channel. Each frontend wraps this in its own handle.
-/// Field order is drop order: the tokio runtime is declared **last** so
-/// everything that runs on it — `AppServices`' background tasks above all — is
-/// torn down while the runtime is still alive to run their shutdown. Declared
-/// first, as it was, the runtime is destroyed before `AppServicesInner::drop`
-/// gets to stop anything, and every task it would have cancelled is already
-/// gone.
-pub struct RunningApp {
-    pub services: AppServices,
-    pub ui_event_bus: UiEventBus,
-    pub runtime: tokio::runtime::Runtime,
-}
 
 /// Why [`bootstrap`] could not bring the application up. Frontends map these
 /// onto their own error surface (the bridge onto `BridgeError`, the desktop app
@@ -59,44 +43,61 @@ pub enum BootstrapError {
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
 /// a locked or failed open leaves the pointer unchanged.
-pub fn bootstrap(
+pub fn bootstrap<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
-) -> Result<RunningApp, BootstrapError> {
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    T: Send + 'static,
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
+{
     bootstrap_on_thread(
         BootstrapTarget::RegisteredId(library_id),
         position_update_interval_ms,
         restore_playback,
         diagnostics,
         cloudkit_ops,
+        compose,
     )
 }
 
-pub fn bootstrap_library_path(
+pub fn bootstrap_library_path<T, F>(
     library_path: PathBuf,
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
-) -> Result<RunningApp, BootstrapError> {
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    T: Send + 'static,
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
+{
     bootstrap_on_thread(
         BootstrapTarget::LibraryPath(library_path),
         position_update_interval_ms,
         restore_playback,
         diagnostics,
         None,
+        compose,
     )
 }
 
-fn bootstrap_on_thread(
+fn bootstrap_on_thread<T, F>(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
-) -> Result<RunningApp, BootstrapError> {
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    T: Send + 'static,
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
+{
     // Building the sync manager and `block_on`-ing the async setup uses a deep
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
@@ -111,6 +112,7 @@ fn bootstrap_on_thread(
                 restore_playback,
                 diagnostics,
                 cloudkit_ops,
+                compose,
             )
         })
         .expect("spawn bae-bootstrap thread")
@@ -123,13 +125,17 @@ enum BootstrapTarget {
     LibraryPath(PathBuf),
 }
 
-fn bootstrap_inner(
+fn bootstrap_inner<T, F>(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
-) -> Result<RunningApp, BootstrapError> {
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T,
+{
     // The injected wall clock + id source, built before `load_bootstrap_config` so
     // the device-id auto-generation draws from the injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
@@ -225,7 +231,7 @@ fn bootstrap_inner(
         cloudkit_ops,
         crate::import::cover_art::RemoteImageCache::new(
             Arc::clone(&clock),
-            &config_handle.config().store_dir,
+            config_handle.config().library_path(),
         ),
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
@@ -259,8 +265,7 @@ fn bootstrap_inner(
 
     // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
     // iOS, AAudio on Android.
-    let playback_handle = PlaybackService::start(
-        library_manager.clone(),
+    let playback_handle = library_manager.start_playback_service(
         runtime.handle().clone(),
         position_update_interval_ms,
         restore_playback,
@@ -272,45 +277,23 @@ fn bootstrap_inner(
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let app_services = {
         let import_handle = runtime
-            .block_on(crate::import::ImportService::start(
-                runtime.handle().clone(),
-                library_manager.clone(),
-            ))
+            .block_on(library_manager.start_import_service(runtime.handle().clone()))
             .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
-        let identify_handle = crate::identify::IdentifyServiceHandle::new(
-            library_manager.clone(),
-            runtime.handle().clone(),
-            import_handle.event_tx.clone(),
-        );
-
-        let extraction_handle = crate::signals::ExtractionService::start(
-            runtime.handle().clone(),
-            import_handle.event_tx.clone(),
-            library_manager.clone(),
-        );
-
-        AppServices::new(
-            library_manager,
-            playback_handle,
-            import_handle,
-            identify_handle,
-            extraction_handle,
-        )
+        AppServices::new(library_manager, playback_handle, import_handle)
     };
 
     #[cfg(any(target_os = "ios", target_os = "android"))]
     let app_services = AppServices::new(library_manager, playback_handle);
 
-    info!("RunningApp initialized for library '{library_id}'");
+    info!("Application services initialized for library '{library_id}'");
     diagnostics.event(TelemetryEvent::AppStarted {});
 
     let ui_event_bus = UiEventBus::new();
     ui_event_bus.wire(&app_services, runtime.handle());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     app_services
-        .import()
-        .scan_watched_folders()
+        .import_scan_watched_folders()
         .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
     // The durable active-library pointer names the library the user last actually
@@ -328,11 +311,7 @@ fn bootstrap_inner(
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }
 
-    Ok(RunningApp {
-        runtime,
-        services: app_services,
-        ui_event_bus,
-    })
+    Ok(compose(app_services, ui_event_bus, runtime))
 }
 
 /// Load the config for a bootstrap target. The returned bool is whether this

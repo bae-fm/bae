@@ -36,22 +36,18 @@ struct ExportFixture {
 /// slot, then drop the cache copy the read just populated so the next read has
 /// to go back to the (now empty) cloud.
 async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
-    let db = mgr.database_for_test();
-    let blob = db
-        .handle()
-        .row_blob_ref("release_files", file_id)
+    let blob = mgr
+        .release_blob_ref_for_test(file_id)
         .await
         .expect("the release_files row");
     cloud.clear_exact_reads();
-    db.handle()
-        .read_blob(&blob)
+    mgr.materialize_release_blob_for_test(file_id)
         .await
         .expect("the blob is readable before it is removed");
     let slots = cloud.exact_reads();
     assert_eq!(slots.len(), 1, "one exact read for one blob");
     cloud.remove_exact_object(&slots[0]);
-    db.handle()
-        .evict_blob(&blob)
+    mgr.evict_blob_for_test(&blob)
         .await
         .expect("drop the cache copy the probe read populated");
 }
@@ -89,10 +85,10 @@ impl ExportFixture {
         .await
         .unwrap();
 
-        let handle =
-            bae_core::import::ImportService::start(tokio::runtime::Handle::current(), mgr.clone())
-                .await
-                .expect("import service starts");
+        let handle = mgr
+            .start_import_service(tokio::runtime::Handle::current())
+            .await
+            .expect("import service starts");
 
         Self {
             mgr,
@@ -283,7 +279,7 @@ async fn get_save_track_plan_skips_cover_read_when_not_embedding() {
         .await
         .expect("plan with embedding");
     assert!(
-        with_cover.cover_image_bytes.is_some(),
+        with_cover.has_cover_image_for_test(),
         "embedding reads the release's cover"
     );
 
@@ -293,7 +289,7 @@ async fn get_save_track_plan_skips_cover_read_when_not_embedding() {
         .await
         .expect("plan without embedding");
     assert!(
-        without_cover.cover_image_bytes.is_none(),
+        !without_cover.has_cover_image_for_test(),
         "not embedding skips the cover read"
     );
 }

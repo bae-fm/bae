@@ -45,7 +45,7 @@ impl LibraryManager {
     pub fn forget_library(&self) -> Result<(), LibraryError> {
         let config = self.config_handle.config();
         let library_id = config.store_id.clone();
-        let bae_dir = registered_bae_dir(config.store_dir.as_ref(), &library_id)?;
+        let bae_dir = registered_bae_dir(config.library_path(), &library_id)?;
         let library_dir = crate::config::registered_library_path(&bae_dir, &library_id);
         let active_pointer = bae_dir.join("active-library");
         let remove_active_pointer = active_pointer_matches_library(&active_pointer, &library_id)?;

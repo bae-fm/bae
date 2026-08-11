@@ -283,12 +283,8 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let track1 = &tracks[0];
     let expected_duration_ms: i64 = 8000; // Track 1 is 0:00 to 0:08
 
-    let playback_handle = bae_core::playback::PlaybackService::start(
-        library_manager.clone(),
-        tokio::runtime::Handle::current(),
-        100,
-        true,
-    );
+    let playback_handle =
+        library_manager.start_playback_service(tokio::runtime::Handle::current(), 100, true);
     playback_handle.set_volume(0.0);
     let mut progress_rx = playback_handle.subscribe_progress();
     playback_handle.play(track1.id.clone());
@@ -501,8 +497,7 @@ impl CueFlacCaptureFixture {
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
         let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
-        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            library_manager.clone(),
+        let playback_handle = library_manager.start_playback_service_with_output(
             runtime_handle,
             100,
             true,

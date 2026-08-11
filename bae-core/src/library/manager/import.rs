@@ -4,6 +4,95 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn start_import_service(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+    ) -> Result<crate::import::ImportServiceHandle, crate::import::ImportError> {
+        crate::import::ImportService::start(
+            runtime_handle,
+            self.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
+        )
+        .await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn register_release_external_refs_for_test(
+        &self,
+        release_id: &str,
+        source_dir: &str,
+    ) -> Result<(), LibraryError> {
+        self.database
+            .register_release_external_refs_for_test(release_id, source_dir)
+            .await?;
+        Ok(())
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_audio_format_with_segments_for_test(
+        &self,
+        audio_format: &DbAudioFormat,
+        segments: &[DbAudioSegment],
+    ) -> Result<(), LibraryError> {
+        self.database
+            .insert_audio_format_with_segments_for_test(audio_format, segments)
+            .await?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn source_release_payload_for_test(
+        &self,
+        source: crate::import::PayloadSource,
+        release_id: &str,
+    ) -> Result<Option<String>, LibraryError> {
+        Ok(self
+            .database
+            .load_source_release_payloads(&[(source, release_id.to_string())])
+            .await?
+            .remove(&(source, release_id.to_string())))
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn save_source_release_payloads_for_test(
+        &self,
+        rows: &[crate::db::DbSourceReleasePayload],
+    ) -> Result<(), LibraryError> {
+        self.database.save_source_release_payloads(rows).await?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn rename_artist_images_table_for_test(&self) -> Result<(), LibraryError> {
+        self.database.rename_artist_images_table_for_test().await?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn artist_and_image_counts_for_test(
+        &self,
+    ) -> Result<(i64, i64), LibraryError> {
+        Ok(self.database.artist_and_image_counts_for_test().await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn load_release_payloads(
+        &self,
+        release: &crate::import::MetadataRef,
+    ) -> Result<Option<crate::import::payloads::ReleasePayloads>, crate::import::ImportError> {
+        crate::import::payloads::load(&self.database, release).await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn store_release_payloads(
+        &self,
+        payloads: &crate::import::payloads::ReleasePayloads,
+    ) -> Result<(), LibraryError> {
+        crate::import::payloads::store(&self.database, payloads, self.clock.now()).await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_import_folder_registry(
         &self,
     ) -> Result<crate::import::ImportFolderRegistry, LibraryError> {

@@ -74,24 +74,10 @@ struct ContentView: View {
                     )
 
                 case .library(let service):
-                    LibraryView()
-                        .environment(holder)
-                        .environment(service)
-                        .environment(service.libraryStore)
-                        .environment(service.configStore)
-                        .environment(service.playbackStore)
-                        .environment(service.downloadStore)
-                        .environment(service.outboxStore)
-                        .environment(service.downloads)
-                        .environment(service.projectionRegistry)
-                        .environment(service.imageStore)
-                        .environment(service.library)
-                        .environment(service.playback)
-                        .environment(service.queue)
-                        .environment(service.sync)
-                        .environment(service.cast)
-                        .environment(service.castStore)
-                        .environment(service.renderers)
+                    service.installEnvironment(
+                        LibraryView()
+                            .environment(holder)
+                    )
 
                 case .failed(let message):
                     errorView(message)
@@ -118,10 +104,10 @@ struct ContentView: View {
             // finishes backgrounding, which can cut this await off before
             // savePlaybackState returns.
             if phase == .background {
-                Task { [handle = holder.appService?.appHandle] in
+                Task { [service = holder.appService] in
                     let task = BackgroundSaveTask(name: "SavePlaybackState")
                     defer { task.end() }
-                    await handle?.savePlaybackState()
+                    await service?.savePlaybackState()
                 }
             }
         }

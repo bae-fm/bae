@@ -87,7 +87,7 @@ impl LibraryManager {
         // which holds the diagnostics sink, counts them.
         let dropped = entries.len().saturating_sub(items.len());
         for _ in 0..dropped {
-            self.diagnostics().event(TelemetryEvent::Anomaly {
+            self.diagnostics.event(TelemetryEvent::Anomaly {
                 kind: crate::diagnostics::AnomalyKind::QueueTrackNoMetadata,
             });
         }

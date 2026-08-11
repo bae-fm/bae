@@ -1,5 +1,7 @@
 import AppKit
 import BaeKit
+import Combine
+import SwiftUI
 import os.log
 
 private let logger = Logger.bae("AppService")
@@ -13,47 +15,49 @@ private let logger = Logger.bae("AppService")
 /// One `AppService` per unlocked library: when the user switches libraries, a
 /// fresh instance (with fresh stores and `uiStore`) is built.
 @MainActor
-final class AppService: BaeKit.AppService {
+final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Import-flow session state — folder candidates and the preview audio
     /// state. Mixed-writer: core drives event-driven fields (scan/identify state
     /// via the projection registry, preview state via the shared event
     /// dispatcher); views drive user-set fields (mode, coverPick).
-    let importStore: ImportStore
+    private let importStore: ImportStore
 
     /// Navigation and selection state — which album is expanded, which release
     /// is selected within each album, scroll-to-album commands. A new library
     /// gets a new `UiStore`.
-    let uiStore: UiStore
+    private let uiStore: UiStore
 
     /// In-memory export queue mirror — per-release state and summary. The export
     /// projection is the sole writer; the Storage Manager's Exporting pane reads
     /// it.
-    let outputStore: OutputStore
+    private let outputStore: OutputStore
+
+    /// Owns the desktop projection registrations and their query/apply wiring.
+    private let desktopProjections: DesktopProjections
+    private let desktopEvents: DesktopEventHandler
 
     /// The library browser's session state (lists, selections, sort criteria).
-    /// `lazy` because its constructor needs `library`/`projectionRegistry`/
-    /// `libraryStore` from the `BaeKit.AppService` base, which aren't set until
-    /// `super.init()` returns — deferring to first access (from `BaeApp`'s
-    /// environment injection) sidesteps that ordering, the same way
-    /// `AppDelegate.opener` defers on `self`.
-    lazy var libraryBrowseSession = LibraryBrowseSession(
-        library: library,
-        projectionRegistry: projectionRegistry,
-        libraryStore: libraryStore,
-        uiStore: uiStore
-    )
+    /// Construction wires its projections; `wireUp()` starts the initial read
+    /// after the complete application service has been initialized.
+    private let libraryBrowseSession: LibraryBrowseSession
 
     // MARK: - Desktop-only domain services
 
-    let previewAudio: PreviewAudio
-    let releaseEditor: ReleaseEditor
-    let importer: Importer
-    let outputs: Outputs
-    let discogs: Discogs
-    let automation: Automation
-    let subsonic: SubsonicServer
-    let export: TrackSave
+    private let previewAudio: PreviewAudio
+    private let releaseEditor: ReleaseEditor
+    private let importer: Importer
+    private let outputs: Outputs
+    private let discogs: Discogs
+    private let automation: Automation
+    private let subsonic: SubsonicServer
+    private let export: TrackSave
+    #if BAE_OAUTH_PROVIDERS
+        private let cloudSyncSetup: CloudSyncSetup
+    #endif
 
+    // This is the composition root: every retained capability is constructed
+    // here and assigned directly to its owner before the superclass starts.
+    // swiftlint:disable:next function_body_length
     init(
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
@@ -62,6 +66,26 @@ final class AppService: BaeKit.AppService {
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
     ) {
+        let playbackStore = PlaybackStore()
+        let configStore = ConfigStore(
+            config: Config(bridge: config),
+            syncReady: appHandle.isSyncReady()
+        )
+        let libraryStore = LibraryStore()
+        let downloadStore = DownloadStore(
+            snapshot: appHandle.getDownloadSnapshot()
+        )
+        let castStore = CastStore()
+        let outboxStore = OutboxStore(snapshot: initialOutbox)
+        let projectionRegistry = ProjectionRegistry()
+        let library = Library(handle: appHandle)
+        let playback = Playback(handle: appHandle)
+        let queue = Queue(handle: appHandle)
+        let mediaPaths = MediaPaths(handle: appHandle)
+        let imageStore = ImageStore(handle: appHandle)
+        let sync = Sync(handle: appHandle)
+        let downloads = Downloads(handle: appHandle)
+        let cast = Cast(handle: appHandle)
         self.uiStore = uiStore
         importStore = ImportStore()
         importStore.applyImportCandidatesSnapshot(
@@ -78,13 +102,51 @@ final class AppService: BaeKit.AppService {
         automation = Automation(handle: appHandle)
         subsonic = SubsonicServer(handle: appHandle)
         export = TrackSave(handle: appHandle)
+        #if BAE_OAUTH_PROVIDERS
+            cloudSyncSetup = CloudSyncSetup(handle: appHandle)
+        #endif
+        libraryBrowseSession = LibraryBrowseSession(
+            library: library,
+            projectionRegistry: projectionRegistry,
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        desktopProjections = DesktopProjections(
+            registry: projectionRegistry,
+            outputs: outputs,
+            outputStore: outputStore,
+            importer: importer,
+            importStore: importStore,
+            uiStore: uiStore
+        )
+        desktopEvents = DesktopEventHandler(
+            importStore: importStore,
+            projectionRegistry: projectionRegistry,
+            mediaControlService: mediaControlService
+        )
+        let components = AppServiceComponents(
+            playbackStore: playbackStore,
+            configStore: configStore,
+            libraryStore: libraryStore,
+            downloadStore: downloadStore,
+            castStore: castStore,
+            outboxStore: outboxStore,
+            projectionRegistry: projectionRegistry,
+            library: library,
+            playback: playback,
+            queue: queue,
+            mediaPaths: mediaPaths,
+            imageStore: imageStore,
+            sync: sync,
+            downloads: downloads,
+            cast: cast
+        )
         super
             .init(
                 appHandle: appHandle,
                 mediaControlService: mediaControlService,
                 diagnostics: diagnostics,
-                config: config,
-                initialOutbox: initialOutbox
+                components: components
             )
     }
 
@@ -98,28 +160,106 @@ final class AppService: BaeKit.AppService {
     /// deferred Discogs token.
     /// Called once after construction; previews skip it.
     func wireUp() {
+        libraryBrowseSession.start()
         registerCommonProjections()
-        registerProjection(makeExportProjection())
-        registerProjection(makeImportCandidatesProjection())
-        registerProjection(makeImportCandidateProjection())
-        registerProjection(makeImportTriageQueueProjection())
-        registerProjection(makeImportLibraryStatusProjection())
-        appHandle.subscribeUiEvents(
-            callback: UiEventPump(
-                sink: UiEventDispatcher.makeSink(
-                    appService: self,
-                    onUnhandled: DesktopUiEvents.apply
-                )
-            )
-        )
-        appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())
-        mediaControlService.activate(
-            playback: playback,
-            previewAudio: previewAudio,
-            playbackStore: playbackStore
-        )
+        desktopProjections.start()
+        subscribeUIEvents { [weak self] event in
+            guard let self else { return }
+            DesktopUiEvents.apply(event, appService: self)
+        }
+        registerArtworkAnalyzer(VisionArtworkAnalyzer())
+        activateMediaControls(previewAudio: previewAudio)
         revalidateDiscogsToken()
     }
+
+    func installEnvironment<Content: View>(_ content: Content) -> some View {
+        installSharedEnvironment(content)
+            .environment(importStore)
+            .environment(libraryBrowseSession)
+            .environment(previewAudio)
+            .environment(releaseEditor)
+            .environment(importer)
+            .environment(outputs)
+            .environment(discogs)
+            .environment(automation)
+            .environment(subsonic)
+            .environment(export)
+            .environment(outputStore)
+            .environment(uiStore)
+            .environment(
+                \.playbackPositionPublisher,
+                playbackPositionPublisher
+            )
+            .environment(\.previewProgressPublisher, previewProgressPublisher)
+            .environment(\.importLoudnessPublisher, importLoudnessPublisher)
+            #if BAE_OAUTH_PROVIDERS
+                .environment(cloudSyncSetup)
+            #endif
+    }
+
+    static func installEnvironment<Content: Scene>(
+        _ content: Content,
+        from service: AppService?
+    ) -> some Scene {
+        BaeKit.AppService.installSharedEnvironment(content, from: service)
+            .environment(service?.importStore)
+            .environment(service?.libraryBrowseSession)
+            .environment(service?.previewAudio)
+            .environment(service?.releaseEditor)
+            .environment(service?.importer)
+            .environment(service?.outputs)
+            .environment(service?.discogs)
+            .environment(service?.automation)
+            .environment(service?.subsonic)
+            .environment(service?.export)
+            .environment(service?.outputStore)
+            .environment(service?.uiStore)
+            .environment(
+                \.playbackPositionPublisher,
+                service?.playbackPositionPublisher
+                    ?? Empty().eraseToAnyPublisher()
+            )
+            .environment(
+                \.previewProgressPublisher,
+                service?.previewProgressPublisher
+                    ?? Empty().eraseToAnyPublisher()
+            )
+            .environment(
+                \.importLoudnessPublisher,
+                service?.importLoudnessPublisher
+                    ?? Empty().eraseToAnyPublisher()
+            )
+            #if BAE_OAUTH_PROVIDERS
+                .environment(service?.cloudSyncSetup)
+            #endif
+    }
+
+    private var previewProgressPublisher:
+        AnyPublisher<PreviewProgressEvent, Never>
+    {
+        importStore.previewProgressSubject.eraseToAnyPublisher()
+    }
+
+    private var importLoudnessPublisher:
+        AnyPublisher<ImportLoudnessProgressEvent?, Never>
+    {
+        importStore.importLoudnessSubject.eraseToAnyPublisher()
+    }
+
+    func addWatchedFolder(path: String) async throws {
+        try await importer.addWatchedFolder(path)
+    }
+
+    func applyDesktopUIEvent(_ event: BridgeUiEvent) {
+        desktopEvents.apply(event)
+    }
+
+    #if DEBUG
+        // periphery:ignore
+        var hasDisplayedErrorForTesting: Bool {
+            uiStore.lastError != nil
+        }
+    #endif
 
     /// Re-check a Discogs key that was saved while offline. App-launch half of
     /// the deferred validation (the settings tab covers tab-open, a real search
@@ -133,126 +273,5 @@ final class AppService: BaeKit.AppService {
                 logger.error("Discogs revalidation on launch failed: \(error)")
             }
         }
-    }
-}
-
-extension AppService {
-    private func makeExportProjection() -> Projection<BridgeOutputSnapshot> {
-        Projection(
-            domain: .outputQueue,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getOutputSnapshot()
-                }
-            },
-            apply: { [outputStore] snapshot in
-                outputStore.applySnapshot(snapshot)
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
-    }
-
-    private func makeImportCandidatesProjection()
-        -> Projection<BridgeImportCandidatesSnapshot>
-    {
-        Projection(
-            domains: [.importCandidateList, .watchedFolders],
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getImportCandidates()
-                }
-            },
-            apply: { [importStore, uiStore] snapshot in
-                importStore.applyImportCandidatesSnapshot(snapshot)
-                uiStore.retainFolderCandidateSelection(
-                    in: Set(importStore.folderCandidates.keys)
-                )
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
-    }
-
-    /// The sidebar's sections and tab counts. `getImportTriageQueue` is itself
-    /// async (it reads stored verdicts and does a live library check), so unlike
-    /// the plain candidate snapshot there is no synchronous value to seed
-    /// `ImportStore.triageQueue` with at init — it starts empty and this
-    /// projection replaces it on each progressive `.importCandidateList`
-    /// invalidation.
-    ///
-    /// `.release` rides along: another import elsewhere landing a release a
-    /// Ready row matches has to flip that row to "already in library" without
-    /// its own verdict changing, and this is the only projection that re-runs
-    /// the live library check.
-    private func makeImportTriageQueueProjection() -> Projection<
-        BridgeTriageQueue
-    > {
-        Projection(
-            domains: [
-                .importCandidateList, .importCandidate, .watchedFolders,
-                .release,
-            ],
-            query: { [appHandle] _ in
-                try await appHandle.getImportTriageQueue()
-            },
-            apply: { [importStore] queue in
-                importStore.triageQueue = queue
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
-    }
-
-    private struct ImportCandidateProjectionValue: Sendable {
-        let key: String
-        let snapshot: BridgeImportCandidateSnapshot?
-    }
-
-    private func makeImportCandidateProjection()
-        -> Projection<ImportCandidateProjectionValue>
-    {
-        Projection(
-            domain: .importCandidate,
-            query: { [appHandle] invalidation in
-                guard case .importCandidate(let key) = invalidation else {
-                    preconditionFailure(
-                        "Import candidate projection received \(invalidation)"
-                    )
-                }
-                let snapshot = try await DetachedWork.run {
-                    appHandle.getCandidate(key: key)
-                }
-                return ImportCandidateProjectionValue(
-                    key: key,
-                    snapshot: snapshot
-                )
-            },
-            apply: { [importStore, uiStore] value in
-                importStore.applyImportCandidateSnapshot(
-                    key: value.key,
-                    snapshot: value.snapshot
-                )
-                uiStore.retainFolderCandidateSelection(
-                    in: Set(importStore.folderCandidates.keys)
-                )
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
-    }
-
-    private func makeImportLibraryStatusProjection() -> Projection<String> {
-        Projection(
-            domain: .release,
-            query: { invalidation in
-                guard case .release(let releaseId) = invalidation else {
-                    preconditionFailure(
-                        "Import library-status projection received \(invalidation)"
-                    )
-                }
-                return releaseId
-            },
-            apply: { [importStore] releaseId in
-                importStore.removeLibraryStatus(releaseId: releaseId)
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
     }
 }

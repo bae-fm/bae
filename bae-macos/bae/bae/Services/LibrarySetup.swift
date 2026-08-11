@@ -165,36 +165,40 @@ final class LibrarySetup: Sendable, Observable {
     /// The production wiring: the bridge's free functions plus the keychain.
     /// The OAuth closures are wired in every build — the bridge always exports
     /// them — while the `BAE_OAUTH_PROVIDERS` flag gates the UI that calls.
-    static let live = LibrarySetup(
-        discoverLibraries: bridgeDiscoverLibraries,
-        createLibrary: { try bridgeCreateLibrary(nil) },
-        decodeRestoreCode: bridgeDecodeRestoreCode,
-        decodeInviteCode: {
-            try bridgeDecodeScannedInvite(inviteBytes(pasted: $0))
-        },
-        restoreFromCode: bridgeRestoreFromCode,
-        generateJoinRequest: bridgeGenerateJoinRequest,
-        joinFromCode: { pasted, joinRequestCode, oauthTokenJson in
-            let operation = try bridgeJoinFromScannedInviteOperation(
-                inviteBytes(pasted: pasted),
-                joinRequestCode,
-                oauthTokenJson
-            )
-            return JoinOperation(
-                join: { try operation.join() },
-                cancel: { operation.cancel() }
-            )
-        },
-        fetchRestoreCodes: KeychainService.fetchAllRestoreCodes,
-        deleteRestoreCode: KeychainService.deleteRestoreCode(libraryId:),
-        oauthAuthorize: bridgeOauthAuthorize,
-        oauthCancel: bridgeOauthCancel,
-        fetchAccountEmail: bridgeFetchAccountEmail,
-        revealInFinder: { SystemActions.revealInFinder(path: $0) }
-    )
+    static func live() -> LibrarySetup {
+        LibrarySetup(
+            discoverLibraries: bridgeDiscoverLibraries,
+            createLibrary: { try bridgeCreateLibrary(nil) },
+            decodeRestoreCode: bridgeDecodeRestoreCode,
+            decodeInviteCode: {
+                try bridgeDecodeScannedInvite(inviteBytes(pasted: $0))
+            },
+            restoreFromCode: bridgeRestoreFromCode,
+            generateJoinRequest: bridgeGenerateJoinRequest,
+            joinFromCode: { pasted, joinRequestCode, oauthTokenJson in
+                let operation = try bridgeJoinFromScannedInviteOperation(
+                    inviteBytes(pasted: pasted),
+                    joinRequestCode,
+                    oauthTokenJson
+                )
+                return JoinOperation(
+                    join: { try operation.join() },
+                    cancel: { operation.cancel() }
+                )
+            },
+            fetchRestoreCodes: KeychainService.fetchAllRestoreCodes,
+            deleteRestoreCode: KeychainService.deleteRestoreCode(libraryId:),
+            oauthAuthorize: bridgeOauthAuthorize,
+            oauthCancel: bridgeOauthCancel,
+            fetchAccountEmail: bridgeFetchAccountEmail,
+            revealInFinder: { SystemActions.revealInFinder(path: $0) }
+        )
+    }
 
     #if DEBUG
         // periphery:ignore
-        static let stub = LibrarySetup()
+        static func stub() -> LibrarySetup {
+            LibrarySetup()
+        }
     #endif
 }

@@ -38,23 +38,24 @@ struct PlaybackSettingsTab: View {
 
 #if DEBUG
     #Preview("Playback Settings") {
-        let appService = PlaybackSettingsPreviewAppService.make()
+        let uiStore = UiStore()
+        let appService = PlaybackSettingsPreviewAppService.make(
+            uiStore: uiStore
+        )
 
-        PlaybackSettingsTab()
-            .environment(appService.playback)
-            .environment(appService.configStore)
-            .environment(appService.uiStore)
+        appService.installSharedEnvironment(PlaybackSettingsTab())
+            .environment(uiStore)
             .frame(width: 500, height: 300)
     }
 
     @MainActor
     private enum PlaybackSettingsPreviewAppService {
-        static func make() -> AppService {
+        static func make(uiStore: UiStore) -> AppService {
             AppService(
                 appHandle: PlaybackSettingsPreviewAppHandle(),
                 mediaControlService: MediaControlService(),
                 diagnostics: configureDiagnostics(config: .disabled),
-                uiStore: UiStore(),
+                uiStore: uiStore,
                 config: BridgeConfig(
                     libraryId: "lib-preview",
                     libraryName: "Preview Library",

@@ -22,7 +22,9 @@ it	Disc ID
 it	DiscID
 it	Endpoint
 it	File
+it	Follower
 it	OK
+it	Password
 it	Provider
 it	S3-compatible
 it	Secret Key
@@ -67,6 +69,12 @@ vi	DiscID
 vi	Endpoint
 vi	OK
 vi	S3-compatible
+
+# Product/service names remain unchanged in every locale.
+it	Subsonic
+tr	Subsonic
+vi	Subsonic
+nl	Subsonic
 
 # Audio-format / bit-depth technical tokens — not translated in any locale.
 it	16-bit

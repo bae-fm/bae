@@ -77,13 +77,12 @@ rtrb = "0.3.2"
 # stored cover blob is uniform regardless of which device imported it. jpeg+png
 # only, no default features (no rayon), so it builds on mobile and wasm.
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
-futures = "0.3.31"
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"
 # Embedded-tag reads and writes: the Unknown-import file-tag projection and the
 # library exporter both run on every platform, so this is not a desktop dep.
 lofty = "0.24"
-lru = "0.17"
+lru = "0.18.2"
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # Staging a coven-held cover blob to a real file for the barcode-OCR reader,

@@ -89,13 +89,7 @@ impl ImportServiceHandle {
         &self,
         url: String,
     ) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError> {
-        self.library_manager.remote_images().fetch(&url).await
-    }
-
-    fn discogs_client(&self) -> Result<DiscogsClient, crate::import::ImportError> {
-        self.library_manager
-            .discogs_client()?
-            .ok_or(crate::import::ImportError::DiscogsNotConfigured)
+        self.library_manager.fetch_remote_image(&url).await
     }
 
     /// Search for releases, check library status, and bundle the results into
@@ -111,8 +105,8 @@ impl ImportServiceHandle {
                 crate::import::search::search_mb(params, CallPriority::Interactive).await?
             }
             ProviderSearchParams::Discogs(params) => {
-                let client = self.discogs_client()?;
-                crate::import::search::search_discogs(&client, params, CallPriority::Interactive)
+                self.library_manager
+                    .search_discogs(params, CallPriority::Interactive)
                     .await?
             }
         };
@@ -197,37 +191,24 @@ impl ImportServiceHandle {
                         );
                         continue;
                     };
-                    let client = match self.library_manager.discogs_client() {
-                        Ok(Some(c)) => c,
+                    match self
+                        .library_manager
+                        .fetch_discogs_release_cover(rid, CallPriority::Interactive)
+                        .await
+                    {
+                        Ok(Some(cover)) => covers.push(cover),
                         Ok(None) => {
                             debug!(
                                 release_id,
                                 source_release_id = %rid,
-                                "skipping Discogs cover fetch: Discogs client not configured"
+                                "skipping Discogs cover fetch: Discogs is not configured"
                             );
-                            continue;
                         }
-                        Err(e) => {
+                        Err(error) => {
                             warn!(
                                 release_id,
                                 source_release_id = %rid,
-                                "skipping Discogs cover fetch: {e}"
-                            );
-                            continue;
-                        }
-                    };
-                    match client.get_release(rid, CallPriority::Interactive).await {
-                        Ok((discogs_release, _raw_json)) => {
-                            if let Some(cover) = discogs_release.remote_cover() {
-                                covers.push(cover);
-                            }
-                        }
-                        Err(ref e) => {
-                            warn!(
-                                release_id,
-                                source_release_id = %rid,
-                                err = %e,
-                                "Discogs cover fetch failed; skipping this source"
+                                "Discogs cover fetch failed; skipping this source: {error}"
                             );
                         }
                     }
@@ -265,10 +246,7 @@ impl ImportServiceHandle {
         let release = crate::import::MetadataRef::new(release_id, source);
         let payloads = self.payloads_for_pick(candidate_key, &release).await?;
         let detail = payloads.detail()?;
-        let parsed = payloads.parsed(
-            self.library_manager.clock().as_ref(),
-            self.library_manager.ids().as_ref(),
-        )?;
+        let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
 
         // The evidence behind the claim survives a restart through the stored
         // verdict: with no live run the resumed state carries the same
@@ -355,7 +333,9 @@ impl ImportServiceHandle {
         release: &crate::import::MetadataRef,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
-            return crate::import::payloads::load(self.library_manager.database(), release)
+            return self
+                .library_manager
+                .load_release_payloads(release)
                 .await?
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!(

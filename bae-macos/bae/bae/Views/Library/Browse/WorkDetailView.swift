@@ -86,6 +86,6 @@ struct WorkDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: 560, height: 640)
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

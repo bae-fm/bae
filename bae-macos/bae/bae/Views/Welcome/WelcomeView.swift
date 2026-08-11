@@ -84,6 +84,6 @@ struct WelcomeView: View {
         WelcomeWindowChrome {
             WelcomeView(onLibraryReady: { _ in }, initialMode: .join)
         }
-        .environment(PreviewData.welcomeSetup)
+        .environment(PreviewData.welcomeSetup())
     }
 #endif

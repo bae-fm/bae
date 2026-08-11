@@ -297,7 +297,8 @@ pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: bae_core::library::LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
-    bae_core::import::ImportService::start(runtime_handle.clone(), library_manager)
+    library_manager
+        .start_import_service(runtime_handle.clone())
         .await
         .expect("test import service starts")
 }
@@ -456,18 +457,10 @@ fn start_cover_art_archive() -> &'static CoverArtArchive {
 }
 
 pub async fn read_cover_image_blob(
-    db: &bae_core::db::Database,
     mgr: &bae_core::library::LibraryManager,
     release_id: &str,
 ) -> Option<Vec<u8>> {
-    let version = db.cover_version(release_id).await.unwrap()?;
-    mgr.read_image_blob(&bae_core::album_detail::ImageRef {
-        id: release_id.to_string(),
-        version,
-        image_type: bae_core::db::LibraryImageType::Cover,
-    })
-    .await
-    .unwrap()
+    mgr.read_cover_image_blob(release_id).await.unwrap()
 }
 
 pub fn tracing_init() {
@@ -504,7 +497,7 @@ pub fn test_config_and_keys(
     let mut config = bae_core::config::Config::with_defaults(
         library_id.clone(),
         "test-device".to_string(),
-        library_dir.clone(),
+        library_dir,
         "Test Library".to_string(),
     );
     // Seed both stores the way production's `set_discogs_key` does: the keyring
@@ -535,20 +528,11 @@ pub fn setup_fresh_library(
     let config = bae_core::config::Config::with_defaults(
         library_id.clone(),
         device_id,
-        library_dir,
+        &library_dir,
         "Test Library".to_string(),
     );
     config.save_to_config_yaml().expect("save config");
     config.save_active_library().expect("save active library");
-
-    let db_path = config.store_dir.db_path();
-    let database = runtime
-        .block_on(bae_core::db::Database::new_test(
-            db_path.to_str().unwrap(),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        ))
-        .expect("create database");
 
     // coven's StoreKeys reads the keyring; seed the encryption key there so the
     // sync codepaths these tests exercise find it (instead of the OS keyring).
@@ -561,16 +545,17 @@ pub fn setup_fresh_library(
         .set_encryption_key(&enc_key_hex)
         .expect("seed encryption key into test keyring");
     let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
-    let lm = bae_core::library::LibraryManager::new(
-        database,
+    let lm = bae_core::library::LibraryManager::open(
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
+        None,
         bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    )
+    .expect("open library manager");
 
     (lm, tmp)
 }

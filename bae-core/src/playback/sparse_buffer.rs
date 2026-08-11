@@ -8,12 +8,17 @@
 //! every track that plays from the same file, and each decoder gets its own
 //! `BufferReader` with an independent position. Readers never conflict.
 
+use crate::playback::PlaybackError;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::Notify;
 use tracing::debug;
+
+pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
+pub(crate) const MIN_READAHEAD: u64 = FILL_WINDOW_SIZE;
+pub(crate) const KEEP_BEHIND: u64 = FILL_WINDOW_SIZE;
 
 /// Hands each buffer a small process-unique id so the fill's per-window fetch
 /// logs and the decoder's first-sample log can be tied to one track's stream.
@@ -63,6 +68,23 @@ fn publish_demand_pos(demands: &mut HashMap<u64, ReaderDemand>, id: u64, pos: u6
         .entry(id)
         .and_modify(|d| d.pos = pos)
         .or_insert(ReaderDemand { pos, ceiling: None });
+}
+
+fn pick_window_gap(
+    buffer: &SparseStreamingBuffer,
+    windows: &[ReaderDemand],
+    total: u64,
+) -> Option<(u64, u64)> {
+    for demand in windows {
+        let ceil = match demand.ceiling {
+            Some(ceiling) if demand.pos < ceiling => ceiling.min(total),
+            _ => (demand.pos + MIN_READAHEAD).min(total),
+        };
+        if let Some(gap) = buffer.next_gap(demand.pos, ceil) {
+            return Some(gap);
+        }
+    }
+    None
 }
 
 /// Internal state protected by mutex.
@@ -376,12 +398,65 @@ impl SparseStreamingBuffer {
         self.fill_wake.notify_one();
     }
 
-    /// A handle to the fill-wake signal the fill loop parks on. Handed to the
-    /// fill at spawn so it can wait for work while holding only a `Weak` to the
-    /// buffer -- the signal outlives the buffer, so the buffer's `Drop` wake
-    /// still reaches a parked fill.
-    pub fn fill_wake_handle(&self) -> Arc<Notify> {
-        self.fill_wake.clone()
+    /// Fetch on demand until the buffer is cancelled or its last real user is
+    /// dropped. The wake signal remains private: this owner clones it for the
+    /// loop, then releases its own strong reference before every await.
+    pub async fn fill_on_demand<F, Fut>(self: Arc<Self>, fetch: F) -> Result<(), PlaybackError>
+    where
+        F: Fn(u64, u64) -> Fut,
+        Fut: std::future::Future<Output = Result<Vec<u8>, PlaybackError>>,
+    {
+        let wake = self.fill_wake.clone();
+        let weak_buffer = Arc::downgrade(&self);
+        drop(self);
+
+        let total = match weak_buffer.upgrade() {
+            Some(buffer) => buffer.get_total_size(),
+            None => {
+                debug!("fill_on_demand: buffer dropped before start, nothing to fill");
+                return Ok(());
+            }
+        };
+
+        loop {
+            let Some(buffer) = weak_buffer.upgrade() else {
+                debug!("fill_on_demand: buffer dropped, stopping");
+                return Ok(());
+            };
+            if buffer.is_cancelled() {
+                debug!("fill_on_demand: buffer cancelled, stopping");
+                return Ok(());
+            }
+
+            let windows = buffer.demand_windows();
+            if let Some(floor) = windows.first() {
+                buffer.evict_before(floor.pos.saturating_sub(KEEP_BEHIND));
+            }
+            let gap = pick_window_gap(&buffer, &windows, total);
+            drop(buffer);
+
+            let Some((gap_start, gap_end)) = gap else {
+                wake.notified().await;
+                continue;
+            };
+
+            let window = FILL_WINDOW_SIZE.min(gap_end - gap_start);
+            let data = fetch(gap_start, window).await?;
+            if data.len() != window as usize {
+                return Err(PlaybackError::internal(format!(
+                    "Source read returned {} bytes for requested {window} at {gap_start}",
+                    data.len()
+                )));
+            }
+
+            let Some(buffer) = weak_buffer.upgrade() else {
+                debug!(
+                    "fill_on_demand: buffer dropped during fetch, discarding {window} bytes at {gap_start}"
+                );
+                return Ok(());
+            };
+            buffer.append_at(gap_start, &data);
+        }
     }
 
     /// Full cancel, for stopping playback entirely: `read()` returns `None`,

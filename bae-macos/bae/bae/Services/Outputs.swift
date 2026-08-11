@@ -7,6 +7,7 @@ import Foundation
 /// methods. The queue itself lives in bae-core; the Exporting pane reads its
 /// state from `OutputStore` (the export projection is the sole writer).
 final class Outputs: Sendable, Observable {
+    let outputSnapshot: @Sendable () async throws -> BridgeOutputSnapshot
     /// Enqueue a verbatim release export to `targetDir`. It joins the serial
     /// output queue; the worker drains it one release at a time. Fire-and-forget
     /// — progress and queue state arrive via `outputQueueChanged` events.
@@ -34,6 +35,10 @@ final class Outputs: Sendable, Observable {
         @Sendable (_ presetId: String) throws -> Void
 
     init(
+        outputSnapshot:
+            @escaping @Sendable () async throws -> BridgeOutputSnapshot = {
+                throw StubError.notImplemented
+            },
         enqueueExport:
             @escaping @Sendable (String, String)
             async throws -> Void =
@@ -57,6 +62,7 @@ final class Outputs: Sendable, Observable {
             @escaping @Sendable (String) throws -> Void = { _ in
             }
     ) {
+        self.outputSnapshot = outputSnapshot
         self.enqueueExport = enqueueExport
         self.enqueueReleaseSave = enqueueReleaseSave
         self.setOutputsPaused = setOutputsPaused
@@ -69,6 +75,7 @@ final class Outputs: Sendable, Observable {
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
+            outputSnapshot: { handle.getOutputSnapshot() },
             enqueueExport: {
                 try await handle.enqueueExport(releaseId: $0, targetDir: $1)
             },
@@ -94,6 +101,8 @@ final class Outputs: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        static let stub = Outputs()
+        static func stub() -> Outputs {
+            Outputs()
+        }
     #endif
 }

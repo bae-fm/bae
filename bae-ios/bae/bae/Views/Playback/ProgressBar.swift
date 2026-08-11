@@ -4,10 +4,10 @@ import SwiftUI
 import UIKit
 
 /// UIKit-backed playback progress leaf. The compact and expanded players pass
-/// the high-frequency position subject here so ticks mutate UIKit controls
+/// the high-frequency position publisher here so ticks mutate UIKit controls
 /// directly instead of invalidating SwiftUI view state.
 struct ProgressBar: UIViewRepresentable {
-    let positionSubject: CurrentValueSubject<PlaybackPositionEvent, Never>
+    let positionPublisher: AnyPublisher<PlaybackPositionEvent, Never>
     /// The user's elapsed-vs-remaining choice, from the config. Tapping the
     /// leading label writes the config; the invalidation lands the new value
     /// back here, which is what re-renders the bar.
@@ -18,13 +18,13 @@ struct ProgressBar: UIViewRepresentable {
     func makeUIView(context _: Context) -> PlaybackProgressUIView {
         let view = PlaybackProgressUIView()
         apply(to: view)
-        view.subscribe(to: positionSubject)
+        view.subscribe(to: positionPublisher)
         return view
     }
 
     func updateUIView(_ view: PlaybackProgressUIView, context _: Context) {
         apply(to: view)
-        view.subscribe(to: positionSubject)
+        view.subscribe(to: positionPublisher)
     }
 
     private func apply(to view: PlaybackProgressUIView) {
@@ -54,7 +54,6 @@ final class PlaybackProgressUIView: UIView {
     private var isDragging = false
     private var positionMs: UInt64 = 0
     private var durationMs: UInt64 = 0
-    private var subject: CurrentValueSubject<PlaybackPositionEvent, Never>?
     private var cancellable: AnyCancellable?
 
     override init(frame: CGRect) {
@@ -119,13 +118,9 @@ final class PlaybackProgressUIView: UIView {
         label.widthAnchor.constraint(equalToConstant: 48).isActive = true
     }
 
-    func subscribe(to subject: CurrentValueSubject<PlaybackPositionEvent, Never>) {
-        if self.subject === subject {
-            return
-        }
-        self.subject = subject
+    func subscribe(to publisher: AnyPublisher<PlaybackPositionEvent, Never>) {
         cancellable =
-            subject
+            publisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.apply(event)
@@ -184,7 +179,8 @@ final class PlaybackProgressUIView: UIView {
 #if DEBUG
 #Preview {
     ProgressBar(
-        positionSubject: PreviewData.playbackStore().playbackPositionSubject,
+        positionPublisher: PreviewData.playbackStore()
+            .playbackPositionPublisher,
         showRemainingTime: false,
         onSeek: { _ in },
         onToggleRemainingTime: {}

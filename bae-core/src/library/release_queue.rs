@@ -256,8 +256,21 @@ impl<Extra: Clone, Progress: Clone> Default for ReleaseQueue<Extra, Progress> {
 /// A queued operation that has been started: the handle a cancel aborts, and the
 /// future that yields the operation's outcome.
 pub struct RunningOp<Fut> {
-    pub abort: tokio::task::AbortHandle,
-    pub outcome: Fut,
+    abort: tokio::task::AbortHandle,
+    outcome: Fut,
+}
+
+impl<Fut> RunningOp<Fut> {
+    pub(crate) fn new(abort: tokio::task::AbortHandle, outcome: Fut) -> Self {
+        Self { abort, outcome }
+    }
+
+    pub async fn finish(self) -> Fut::Output
+    where
+        Fut: Future,
+    {
+        self.outcome.await
+    }
 }
 
 /// Drain a queue serially, one release at a time, forever. The caller supplies
@@ -513,7 +526,7 @@ mod tests {
                             ))),
                         }
                     };
-                    Ok((0, RunningOp { abort, outcome }))
+                    Ok((0, RunningOp::new(abort, outcome)))
                 },
                 || {},
                 |_, _| {},

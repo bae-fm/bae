@@ -131,6 +131,7 @@ pub fn musicbrainz_covers(response: &crate::musicbrainz::MbReleaseResponse) -> V
 /// Append `cover` unless the list already offers the same image. Two identity
 /// rows on one release can name the same archive entity, and the picker should
 /// show that image once.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
     if !covers.iter().any(|existing| existing.url == cover.url) {
         covers.push(cover);
@@ -559,8 +560,8 @@ pub struct RemoteImageCache {
 impl RemoteImageCache {
     /// The cache for a library, keeping its images under that library's store
     /// directory so they are deleted with it.
-    pub fn new(clock: ClockRef, store_dir: &coven::StoreDir) -> Self {
-        Self::under(clock, store_dir.join("cache").join("remote-images"))
+    pub fn new(clock: ClockRef, library_path: &std::path::Path) -> Self {
+        Self::under(clock, library_path.join("cache").join("remote-images"))
     }
 
     /// A cache in a directory of its own, whose downloads retry immediately so
@@ -600,8 +601,8 @@ impl RemoteImageCache {
     ///
     /// `Ok(None)` is the host answering that it serves no image at this address
     /// — the reply a derived cover address gets when the archive holds nothing
-    /// for that entity. A caller that requires the bytes says so itself with
-    /// [`Self::fetch_required`].
+    /// for that entity. A caller that requires the bytes uses the corresponding
+    /// required-fetch operation.
     pub async fn fetch(&self, url: &str) -> Result<Option<RemoteImage>, ImportError> {
         let base_delay = self.retry_base_delay;
         let now = self.clock.now();
@@ -674,6 +675,7 @@ impl RemoteImageCache {
 
 /// Download an image with no caching in front — the artist-image path, whose
 /// bytes are stored in the library on first fetch and never re-read from the URL.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) async fn download_image_bytes(
     image_url: &str,
     operation: &str,

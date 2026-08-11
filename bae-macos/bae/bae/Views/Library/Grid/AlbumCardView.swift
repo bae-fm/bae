@@ -112,6 +112,6 @@ struct AlbumCardView: View {
             )
         }
         .padding()
-        .environment(ImageStore.stub)
+        .environment(ImageStore.stub())
     }
 #endif

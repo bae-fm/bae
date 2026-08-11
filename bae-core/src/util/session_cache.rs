@@ -30,23 +30,25 @@ impl<V> SessionCache<V> {
     where
         V: Clone,
     {
-        self.lock().get(key).cloned()
+        self.inner
+            .get_or_init(|| new_cache(self.name, self.capacity))
+            .lock()
+            .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
+            .get(key)
+            .cloned()
     }
 
     pub fn put(&self, key: impl Into<String>, value: V) {
-        self.lock().put(key.into(), value);
-    }
-
-    fn lock(&self) -> std::sync::MutexGuard<'_, LruCache<String, V>> {
         self.inner
-            .get_or_init(|| {
-                Mutex::new(LruCache::new(
-                    NonZeroUsize::new(self.capacity).unwrap_or_else(|| {
-                        panic!("{} capacity must be greater than zero", self.name)
-                    }),
-                ))
-            })
+            .get_or_init(|| new_cache(self.name, self.capacity))
             .lock()
             .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
+            .put(key.into(), value);
     }
+}
+
+fn new_cache<V>(name: &str, capacity: usize) -> Mutex<LruCache<String, V>> {
+    Mutex::new(LruCache::new(NonZeroUsize::new(capacity).unwrap_or_else(
+        || panic!("{name} capacity must be greater than zero"),
+    )))
 }

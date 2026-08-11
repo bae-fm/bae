@@ -113,6 +113,26 @@ fn active_pointer() -> Option<String> {
     Config::active_library_id().unwrap()
 }
 
+struct TestApp {
+    services: bae_core::library::AppServices,
+    _ui_event_bus: bae_core::ui::UiEventBus,
+    _runtime: tokio::runtime::Runtime,
+}
+
+impl TestApp {
+    fn start(
+        services: bae_core::library::AppServices,
+        ui_event_bus: bae_core::ui::UiEventBus,
+        runtime: tokio::runtime::Runtime,
+    ) -> Self {
+        Self {
+            services,
+            _ui_event_bus: ui_event_bus,
+            _runtime: runtime,
+        }
+    }
+}
+
 /// Bootstrapping a locked library succeeds with sync deferred, but leaves the
 /// active pointer naming the library the user last actually opened.
 #[test]
@@ -133,11 +153,12 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
     .expect("a locked open completes with sync deferred");
 
     assert!(
-        !app.services.library_manager().has_encryption(),
+        !app.services.has_encryption(),
         "the locked library must have taken the sync-deferred branch"
     );
     assert_eq!(
@@ -167,6 +188,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
     .expect("a plain local open completes");
 
@@ -202,6 +224,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     );
     assert!(
         result.is_err(),
@@ -214,13 +237,13 @@ fn bootstrap_that_fails_leaves_active_pointer() {
     );
 }
 
-/// Dropping a `RunningApp` releases coven's exclusive store-open lock, so the same
+/// Dropping the frontend's app owner releases coven's exclusive store-open lock, so the same
 /// library can be reopened in-process — even when the caller never ran the
 /// graceful `shutdown`. The lock is held by every `LibraryManager` clone through
 /// the shared coven handle; the playback and import services each run on their
 /// own thread holding one such clone and only stop on an explicit command, so
 /// without a teardown join on drop those threads — and the lock — outlive the
-/// `RunningApp`, and the reopen fails with "store is already open" (the import
+/// owner, and the reopen fails with "store is already open" (the import
 /// worker's exit raced the reopen before it was joined, so this passed only
 /// most of the time).
 #[test]
@@ -240,6 +263,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
     .expect("first open succeeds");
     drop(app);
@@ -251,8 +275,9 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
-    .expect("reopening the store after dropping the RunningApp must succeed");
+    .expect("reopening the store after dropping the app owner must succeed");
 }
 
 /// The full locked-then-unlocked transition in one process: opening B while it is
@@ -290,9 +315,10 @@ fn unlock_then_reopen_advances_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
     .expect("locked open of B completes");
-    assert!(!locked.services.library_manager().has_encryption());
+    assert!(!locked.services.has_encryption());
     assert_eq!(active_pointer().as_deref(), Some(a_id.as_str()));
     drop(locked);
 
@@ -307,9 +333,10 @@ fn unlock_then_reopen_advances_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
     .expect("unlocked reopen of B succeeds");
-    assert!(unlocked.services.library_manager().has_encryption());
+    assert!(unlocked.services.has_encryption());
     assert_eq!(
         active_pointer().as_deref(),
         Some(b_id.as_str()),
@@ -344,16 +371,16 @@ fn bootstrapping_offline_opens_the_library_and_reports_not_connected() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        TestApp::start,
     )
     .expect("launching offline must open the library, not abort bootstrap");
 
-    let manager = app.services.library_manager();
     assert!(
-        !manager.has_cloud_home(),
+        !app.services.has_cloud_home(),
         "the failed connect installs no cloud home — sync reports not connected"
     );
     assert!(
-        manager.is_sync_configured(),
+        app.services.is_sync_configured(),
         "the provider is still configured, so the state reads as connect-pending, \
          not as an un-configured local library"
     );
