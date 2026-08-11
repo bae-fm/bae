@@ -145,10 +145,12 @@ jobs:
           SWIFT_EMIT_LOC_STRINGS=YES \
           -derivedDataPath .build/derivedData build
 
-    # The baeium flavor compiles the other side of every BAE_* #if; the same
-    # catalog must cover both.
+    # The baeium flavor compiles the other side of every BAE_* #if. Its compiled
+    # strings must exist and be translated, but the catalog also contains the
+    # full edition's OAuth and CloudKit strings; the full build above owns the
+    # orphan check for that superset.
     - name: Check localizable strings against the catalog (baeium)
-      run: python3 scripts/check_localizable_strings.py
+      run: python3 scripts/check_localizable_strings.py --allow-unreferenced-catalog-keys
 
     - name: Guard — baeium bridge exports no OAuth/CloudKit binding
       run: |

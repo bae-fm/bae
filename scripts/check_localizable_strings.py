@@ -7,7 +7,8 @@ script unions that ground truth for the app target and holds it against
 bae-macos/bae/bae/Localizable.xcstrings:
 
   1. every extracted key has a catalog entry;
-  2. every catalog entry is extracted from compiled code (no orphans);
+  2. every catalog entry is extracted from compiled code (no orphans), unless
+     the build intentionally contains only a subset of the product's features;
   3. every catalog entry carries a "translated"-state value for every locale
      the generated Core.xcstrings ships (the locale set single-sourced from
      the bridge catalog).
@@ -113,6 +114,14 @@ def main() -> int:
         default=DERIVED_DATA,
         help="derived-data path of a completed bae-scheme build",
     )
+    parser.add_argument(
+        "--allow-unreferenced-catalog-keys",
+        action="store_true",
+        help=(
+            "check compiled keys and translations without treating catalog keys "
+            "from a feature-rich build as orphans"
+        ),
+    )
     args = parser.parse_args()
 
     extracted = extracted_keys(args.derived_data)
@@ -120,7 +129,11 @@ def main() -> int:
     locales = locale_set()
 
     missing = sorted(extracted - catalog.keys())
-    orphans = sorted(catalog.keys() - extracted)
+    orphans = (
+        []
+        if args.allow_unreferenced_catalog_keys
+        else sorted(catalog.keys() - extracted)
+    )
     gaps = {
         key: locs
         for key in sorted(catalog)
@@ -146,10 +159,12 @@ def main() -> int:
             print(f"   ~ {key!r}: {', '.join(locs)}")
     if not ok:
         return 1
-    print(
-        f"✓ {len(extracted)} strings, {len(locales)} locales — "
-        "catalog and code agree"
+    relationship = (
+        "compiled strings are present in the catalog"
+        if args.allow_unreferenced_catalog_keys
+        else "catalog and code agree"
     )
+    print(f"✓ {len(extracted)} strings, {len(locales)} locales — {relationship}")
     return 0
 
 
