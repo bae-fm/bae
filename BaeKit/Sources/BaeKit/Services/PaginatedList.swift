@@ -112,6 +112,8 @@ where Row.ID: Sendable {
     @ObservationIgnored
     private let ingest: ([Row]) -> Void
     @ObservationIgnored
+    private let onSnapshot: (([Row.ID], Int) -> Void)?
+    @ObservationIgnored
     /// The failure sink. It takes the error, not a rendered `DisplayError`:
     /// whether a failure is worth showing at all is core's answer (a cancellation
     /// is not), and `showError` is the one place that drops it.
@@ -127,11 +129,13 @@ where Row.ID: Sendable {
     public init(
         pageSource: any PageSource<Row>,
         ingest: @escaping ([Row]) -> Void,
-        onError: @escaping (any Error) -> Void
+        onError: @escaping (any Error) -> Void,
+        onSnapshot: (([Row.ID], Int) -> Void)? = nil
     ) {
         self.pageSource = pageSource
         self.ingest = ingest
         self.onError = onError
+        self.onSnapshot = onSnapshot
     }
 
     // MARK: - Queries
@@ -223,6 +227,7 @@ where Row.ID: Sendable {
                     let upper = min(offset + rows.count, totalCount)
                     guard offset < upper else {
                         self.segments.removeAll { $0.range.contains(offset) }
+                        self.onSnapshot?(self.allLoadedIds, totalCount)
                         waiter.resume()
                         return
                     }
@@ -232,6 +237,7 @@ where Row.ID: Sendable {
                             ids: rows.prefix(upper - offset).map(\.id)
                         )
                     )
+                    self.onSnapshot?(self.allLoadedIds, totalCount)
                     waiter.resume()
                 },
                 onError: { [weak self] error in

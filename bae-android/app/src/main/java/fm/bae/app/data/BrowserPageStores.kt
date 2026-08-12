@@ -32,6 +32,11 @@ internal fun interface PageSubscription {
     fun cancel()
 }
 
+private data class ActivePageSubscription(
+    val identity: Long,
+    val subscription: PageSubscription,
+)
+
 internal class PageError(
     val message: String,
     val onRetry: () -> Unit,
@@ -52,7 +57,8 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     private var parameter: Parameter? = null
     private var active = false
     private var generation = 0
-    private val subscriptions = mutableMapOf<Int, PageSubscription>()
+    private var nextSubscriptionIdentity = 0L
+    private val subscriptions = mutableMapOf<Int, ActivePageSubscription>()
 
     fun activate(parameter: Parameter) {
         if (active && this.parameter == parameter) return
@@ -89,7 +95,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
                 .toSet()
 
         subscriptions.keys.filter { it !in wanted }.forEach { offset ->
-            subscriptions.remove(offset)?.cancel()
+            subscriptions.remove(offset)?.subscription?.cancel()
             removePage(offset)
         }
         wanted.forEach { offset -> subscribe(offset, generation) }
@@ -104,11 +110,16 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     protected fun deliver(
         offset: Int,
         deliveredGeneration: Int,
+        deliveredIdentity: Long,
         deliveredRows: List<Row>,
         total: Int,
     ) {
         scope.launch(Dispatchers.Main.immediate) {
-            if (!active || deliveredGeneration != generation || !subscriptions.containsKey(offset)) {
+            if (
+                !active ||
+                deliveredGeneration != generation ||
+                subscriptions[offset]?.identity != deliveredIdentity
+            ) {
                 return@launch
             }
             removePage(offset)
@@ -123,13 +134,18 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     protected fun fail(
         offset: Int,
         deliveredGeneration: Int,
+        deliveredIdentity: Long,
         value: BridgeException,
     ) {
-        logger.error("browser page subscription failed at offset $offset", value)
         scope.launch(Dispatchers.Main.immediate) {
-            if (!active || deliveredGeneration != generation || !subscriptions.containsKey(offset)) {
+            if (
+                !active ||
+                deliveredGeneration != generation ||
+                subscriptions[offset]?.identity != deliveredIdentity
+            ) {
                 return@launch
             }
+            logger.error("browser page subscription failed at offset $offset", value)
             loading = false
             error =
                 PageError(
@@ -148,14 +164,21 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     ) {
         val current = parameter ?: return
         if (subscriptions.containsKey(offset)) return
-        subscriptions[offset] = PageSubscription {}
-        subscriptions[offset] = subscribe(current, offset, generation)
+        val identity = ++nextSubscriptionIdentity
+        subscriptions[offset] = ActivePageSubscription(identity, PageSubscription {})
+        val subscription = subscribe(current, offset, generation, identity)
+        if (subscriptions[offset]?.identity == identity) {
+            subscriptions[offset] = ActivePageSubscription(identity, subscription)
+        } else {
+            subscription.cancel()
+        }
     }
 
     protected abstract fun subscribe(
         parameter: Parameter,
         offset: Int,
         generation: Int,
+        identity: Long,
     ): PageSubscription
 
     private fun removePage(offset: Int) {
@@ -163,7 +186,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     }
 
     private fun cancelSubscriptions() {
-        subscriptions.values.forEach(PageSubscription::cancel)
+        subscriptions.values.forEach { it.subscription.cancel() }
         subscriptions.clear()
     }
 }
@@ -177,6 +200,7 @@ internal class AlbumPageStore(
         parameter: BridgeSortCriterion,
         offset: Int,
         generation: Int,
+        identity: Long,
     ): PageSubscription {
         val subscription =
             library.subscribeAlbumPage(
@@ -184,9 +208,11 @@ internal class AlbumPageStore(
                 offset.toULong(),
                 BROWSER_PAGE_SIZE.toULong(),
                 object : AlbumPageCallback {
-                    override fun onValue(value: BridgeAlbumPage) = deliver(offset, generation, value.rows, value.totalCount.toInt())
+                    override fun onValue(value: BridgeAlbumPage) =
+                        deliver(offset, generation, identity, value.rows, value.totalCount.toInt())
 
-                    override fun onError(errorValue: BridgeException) = fail(offset, generation, errorValue)
+                    override fun onError(errorValue: BridgeException) =
+                        fail(offset, generation, identity, errorValue)
                 },
             )
         return PageSubscription(subscription::cancel)
@@ -202,6 +228,7 @@ internal class ArtistPageStore(
         parameter: BridgeArtistSortCriterion,
         offset: Int,
         generation: Int,
+        identity: Long,
     ): PageSubscription {
         val subscription =
             library.subscribeArtistPage(
@@ -209,9 +236,11 @@ internal class ArtistPageStore(
                 offset.toULong(),
                 BROWSER_PAGE_SIZE.toULong(),
                 object : ArtistPageCallback {
-                    override fun onValue(value: BridgeArtistPage) = deliver(offset, generation, value.rows, value.totalCount.toInt())
+                    override fun onValue(value: BridgeArtistPage) =
+                        deliver(offset, generation, identity, value.rows, value.totalCount.toInt())
 
-                    override fun onError(errorValue: BridgeException) = fail(offset, generation, errorValue)
+                    override fun onError(errorValue: BridgeException) =
+                        fail(offset, generation, identity, errorValue)
                 },
             )
         return PageSubscription(subscription::cancel)
@@ -227,6 +256,7 @@ internal class ComposerPageStore(
         parameter: BridgeComposerSortCriterion,
         offset: Int,
         generation: Int,
+        identity: Long,
     ): PageSubscription {
         val subscription =
             library.subscribeComposerPage(
@@ -234,9 +264,11 @@ internal class ComposerPageStore(
                 offset.toULong(),
                 BROWSER_PAGE_SIZE.toULong(),
                 object : ComposerPageCallback {
-                    override fun onValue(value: BridgeComposerPage) = deliver(offset, generation, value.rows, value.totalCount.toInt())
+                    override fun onValue(value: BridgeComposerPage) =
+                        deliver(offset, generation, identity, value.rows, value.totalCount.toInt())
 
-                    override fun onError(errorValue: BridgeException) = fail(offset, generation, errorValue)
+                    override fun onError(errorValue: BridgeException) =
+                        fail(offset, generation, identity, errorValue)
                 },
             )
         return PageSubscription(subscription::cancel)

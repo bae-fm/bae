@@ -114,24 +114,6 @@ struct LibraryView: View {
                 session.albumSelection.clear()
             }
         }
-        // After a subscribed album-list change, prune any selected album that
-        // no longer resolves —
-        // e.g. one deleted on another device. The selection is small; one
-        // authoritative index lookup per id, cancellable between ids.
-        .task(id: session.albums.list?.loadEpoch) {
-            await pruneDeletedSelection()
-        }
-        // Mirror the library-wide album count into the store: the menu bar's
-        // Shuffle Library item (MainAppMenuCommands) disables at zero, and the
-        // menu has no album list of its own to ask. `initial: true` publishes
-        // a count that was already loaded when this view (re)mounts.
-        .onChange(of: session.albums.list?.totalCount, initial: true) {
-            _,
-            count in
-            if let count {
-                libraryStore.setAlbumTotal(count)
-            }
-        }
     }
 }
 
@@ -146,40 +128,6 @@ extension LibraryView {
     private func primaryReleaseIds(for albumIds: [String]) -> [String] {
         albumIds.compactMap {
             libraryStore.albumSummaries[$0]?.primaryReleaseId
-        }
-    }
-
-    /// Drop any selected album that no longer resolves under the current sort —
-    /// the authoritative `getAlbumIndex` returning nil means it was deleted. Runs
-    /// off the album-list epoch; checks cancellation between ids so a newer epoch
-    /// supersedes it cleanly.
-    private func pruneDeletedSelection() async {
-        guard !session.albumSelection.isEmpty else {
-            return
-        }
-        var missing: [String] = []
-        for id in session.albumSelection.selectedIds {
-            if Task.isCancelled {
-                return
-            }
-            do {
-                if try await library.getAlbumIndex(
-                    session.albums.sortCriteria,
-                    id
-                )
-                    == nil
-                {
-                    missing.append(id)
-                }
-            }
-            catch {
-                // A lookup failure isn't evidence the album is gone; leave the
-                // selection untouched rather than prune on a transient error.
-                return
-            }
-        }
-        if !missing.isEmpty {
-            session.albumSelection.remove(missing)
         }
     }
 

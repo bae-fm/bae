@@ -2,8 +2,8 @@ import Observation
 
 /// Multi-selection state for the album grid: which albums are selected and the
 /// anchor a shift-click extends from. Pure logic — no SwiftUI, no bridge — so it
-/// is fully unit-testable. Owned by `LibraryView` as `@State` (a browsing-session
-/// concern, not app-global `UiStore` state) and passed down to the grid.
+/// is fully unit-testable. Owned by `LibraryBrowseSession` and passed down to
+/// the grid.
 ///
 /// "Selection" here is distinct from `UiStore.selectedAlbumId`, which is the one
 /// album whose detail expansion is open. Multi-select is modifier-driven
@@ -78,6 +78,15 @@ final class AlbumGridSelection {
         if let anchorId, ids.contains(anchorId) {
             self.anchorId = nil
         }
+    }
+
+    /// Keep only albums present in the current delivered list snapshot. Album
+    /// page subscriptions call this after replacing their loaded segments, so
+    /// a remote deletion cannot leave a selected id behind.
+    func retainAvailable(_ ids: [String]) {
+        let available = Set(ids)
+        let missing = selectedIds.subtracting(available)
+        remove(Array(missing))
     }
 
     /// The menu/drag target rule: a card that is part of a multi-selection targets

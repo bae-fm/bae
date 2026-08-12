@@ -92,7 +92,7 @@ private func makeBridgeReleaseSummary(
     )
 }
 
-private func makeBridgeAlbumDetail(
+func makeBridgeAlbumDetail(
     albumId: String = "album-1",
     title: String = "Album Title",
     releases: [BridgeRelease] = []
@@ -166,11 +166,13 @@ final class CountingAlbumPageSource: PageSource, @unchecked Sendable {
     ) -> any PageSubscription {
         pageCallCount += 1
         let albums = albums
-        return TestPageSubscription(Task { @MainActor in
-            let start = min(offset, albums.count)
-            let end = min(start + limit, albums.count)
-            onValue(Array(albums[start..<end]), albums.count)
-        })
+        return TestPageSubscription(
+            Task { @MainActor in
+                let start = min(offset, albums.count)
+                let end = min(start + limit, albums.count)
+                onValue(Array(albums[start..<end]), albums.count)
+            }
+        )
     }
 }
 
@@ -203,15 +205,17 @@ final class ThrowingAlbumPageSource: PageSource, @unchecked Sendable {
     ) -> any PageSubscription {
         let albums = albums
         let error = offset == 0 && limit == 50 ? countError : pageError
-        return TestPageSubscription(Task { @MainActor in
-            if let error {
-                onError(error)
-                return
+        return TestPageSubscription(
+            Task { @MainActor in
+                if let error {
+                    onError(error)
+                    return
+                }
+                let start = min(offset, albums.count)
+                let end = min(start + limit, albums.count)
+                onValue(Array(albums[start..<end]), albums.count)
             }
-            let start = min(offset, albums.count)
-            let end = min(start + limit, albums.count)
-            onValue(Array(albums[start..<end]), albums.count)
-        })
+        )
     }
 }
 
@@ -639,12 +643,13 @@ private final class ContinuingDetailSubscriptionProbe: @unchecked Sendable {
         let callback: (any ReleaseDetailCallback)? = lock.withLock {
             self.callback
         }
-        callback?.onError(
-            error: BridgeError.Diagnostic(
-                category: BridgeErrorCategory.internal,
-                detail: "detail load failed"
+        callback?
+            .onError(
+                error: BridgeError.Diagnostic(
+                    category: BridgeErrorCategory.internal,
+                    detail: "detail load failed"
+                )
             )
-        )
     }
 
     func emitValue(_ value: BridgeRelease?) {
@@ -656,7 +661,7 @@ private final class ContinuingDetailSubscriptionProbe: @unchecked Sendable {
 }
 
 @MainActor
-private func waitForStoreUpdate(_ condition: () -> Bool) async {
+func waitForStoreUpdate(_ condition: () -> Bool) async {
     for _ in 0..<100 where !condition() {
         await Task.yield()
     }

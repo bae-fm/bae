@@ -10,11 +10,11 @@ private struct UpcomingPageKey: Hashable {
     let revision: UInt64
 }
 
-/// Mirror of core's playback state. The event dispatcher is the sole writer:
+/// Mirror of core's playback state. Retained value subscriptions are the writer:
 /// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
 /// `queueContext` are driven by retained playback and queue values. Views read
 /// fields at the leaf and never write back — they invoke `appHandle` actions
-/// instead, and the resulting events flow back through the dispatcher.
+/// instead, and the resulting values flow back through their stores.
 ///
 /// Not `@MainActor` on the whole type: `MediaControlService.handleScrub` calls
 /// `projectSeek` from a nonisolated remote-command callback. Only
@@ -52,6 +52,8 @@ public class PlaybackStore {
     private var upcomingSubscriptions:
         [UpcomingPageKey: any LiveSubscriptionProtocol] =
             [:]
+    @ObservationIgnored
+    private var upcomingSubscriptionIdentities: [UpcomingPageKey: UUID] = [:]
 
     /// Current playback position. Updates at display rate during playback —
     /// far too frequent for `@Observable`; published as a Combine signal so
@@ -284,6 +286,7 @@ extension PlaybackStore {
                 subscription.cancel()
             }
             upcomingSubscriptions = [:]
+            upcomingSubscriptionIdentities = [:]
             pagedUpcoming = [:]
         }
     }
@@ -321,12 +324,15 @@ extension PlaybackStore {
             return
         }
         makeRoomForUpcomingPage(near: key.range)
+        let identity = UUID()
+        upcomingSubscriptionIdentities[key] = identity
         upcomingSubscriptions[key] = queue.subscribeUpcomingPage(
             UInt32(offset),
             UInt32(end - offset),
             { [weak self] page in
                 guard let self else { return }
-                guard self.upcomingSubscriptions[key] != nil else {
+                guard self.upcomingSubscriptionIdentities[key] == identity
+                else {
                     return
                 }
                 guard page.revision == self.revision else {
@@ -339,7 +345,9 @@ extension PlaybackStore {
                     self.pagedUpcoming[offset + i] = QueueItem(bridge: entry)
                 }
             },
-            { error in
+            { [weak self] error in
+                guard self?.upcomingSubscriptionIdentities[key] == identity
+                else { return }
                 logger.warning(
                     "upcoming range [\(offset), \(end)) subscription failed: \(error.localizedDescription)"
                 )
@@ -364,6 +372,7 @@ extension PlaybackStore {
                 return
             }
             subscription.cancel()
+            upcomingSubscriptionIdentities.removeValue(forKey: key)
             for index in key.range
             where index >= (queueContext?.upcoming.count ?? 0) {
                 pagedUpcoming.removeValue(forKey: index)

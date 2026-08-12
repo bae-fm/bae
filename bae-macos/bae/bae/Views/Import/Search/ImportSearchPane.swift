@@ -29,9 +29,8 @@ struct ImportSearchPane: View {
     let onAddAsUnknown: (() -> Void)?
     /// Toggle a signal in the toolbar — include / exclude it from
     /// triangulation. Drops the signal from the in-memory combine step (no
-    /// re-fetch) and re-derives the state; the resulting event flows back
-    /// through the same channel. The conflict surface's per-signal "Ignore"
-    /// links route through here too.
+    /// re-fetch) and re-derives the state delivered by the import projection.
+    /// The conflict surface's per-signal "Ignore" links route through here too.
     let onToggleSignal: (BridgeExcludedSignal) -> Void
     /// Re-run the lookups from the toolbar's `Re-run` action.
     let onRerun: () -> Void

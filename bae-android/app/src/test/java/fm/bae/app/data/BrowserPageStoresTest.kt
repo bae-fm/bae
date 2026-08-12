@@ -38,11 +38,38 @@ class BrowserPageStoresTest {
         assertFalse(store.rows.containsKey(0))
     }
 
+    @Test
+    fun oldSameOffsetSubscriptionCannotMutateReplacement() {
+        val store =
+            RecordingPageStore(
+                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            )
+
+        store.activate("all")
+        for (offset in listOf(60, 120, 180, 240, 0)) {
+            store.reportVisibleRange(offset, offset + 59)
+        }
+        shadowOf(Looper.getMainLooper()).idle()
+
+        store.emit(offset = 0, subscription = 0, row = "old")
+        shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(store.rows[0] == "old")
+
+        store.emit(offset = 0, subscription = 1, row = "new")
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(store.rows[0] == "new")
+
+        store.fail(offset = 0, subscription = 0)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(store.error == null)
+    }
+
     private class RecordingPageStore(
         scope: CoroutineScope,
     ) : WindowedBrowserPageStore<String, String>(RuntimeEnvironment.getApplication(), scope) {
         val cancellations = mutableMapOf<Int, Cancellation>()
-        private val generations = mutableMapOf<Int, Int>()
+        private val emitters = mutableMapOf<Int, MutableList<(String) -> Unit>>()
+        private val failures = mutableMapOf<Int, MutableList<() -> Unit>>()
         var maximumActive = 0
             private set
 
@@ -50,20 +77,48 @@ class BrowserPageStoresTest {
             parameter: String,
             offset: Int,
             generation: Int,
+            identity: Long,
         ): PageSubscription {
             val cancellation = Cancellation(::recordActive)
             cancellations[offset] = cancellation
-            generations[offset] = generation
+            emitters.getOrPut(offset, ::mutableListOf).add { row ->
+                deliver(offset, generation, identity, listOf(row), total = 500)
+            }
+            failures.getOrPut(offset, ::mutableListOf).add {
+                fail(
+                    offset,
+                    generation,
+                    identity,
+                    uniffi.bae_bridge.BridgeException.Diagnostic(
+                        uniffi.bae_bridge.BridgeErrorCategory.INTERNAL,
+                        "old failure",
+                    ),
+                )
+            }
             recordActive()
-            deliver(offset, generation, listOf("row-$offset"), total = 500)
+            deliver(
+                offset,
+                generation,
+                identity,
+                listOf("row-$offset"),
+                total = 500,
+            )
             return cancellation
         }
 
         fun emit(
             offset: Int,
+            subscription: Int = 0,
             row: String,
         ) {
-            deliver(offset, generations.getValue(offset), listOf(row), total = 500)
+            emitters.getValue(offset)[subscription](row)
+        }
+
+        fun fail(
+            offset: Int,
+            subscription: Int,
+        ) {
+            failures.getValue(offset)[subscription]()
         }
 
         private fun recordActive() {

@@ -231,11 +231,21 @@ class ImportStore {
                 candidate(forKey: key)?
                     .libraryStatusSubscriptions[statusKey] == nil
             else { continue }
+            let observation = ReleaseLibraryStatusObservation()
+            let identity = observation.identity
+            mutateCandidate(forKey: key) {
+                $0.libraryStatusSubscriptions[statusKey] = observation
+            }
             let subscription = importer.subscribeReleaseLibraryStatus(
                 source: statusKey.source,
                 releaseId: statusKey.releaseId,
                 sourceGroupId: statusKey.sourceGroupId,
                 onValue: { [weak self] status in
+                    guard
+                        self?.candidate(forKey: key)?
+                            .libraryStatusSubscriptions[statusKey]?
+                            .identity == identity
+                    else { return }
                     self?
                         .mutateCandidate(forKey: key) {
                             $0.libraryStatuses[status.releaseId] = status
@@ -243,16 +253,18 @@ class ImportStore {
                 },
                 onError: { [weak self] error in
                     guard let line = error.displayLine else { return }
+                    guard
+                        self?.candidate(forKey: key)?
+                            .libraryStatusSubscriptions[statusKey]?
+                            .identity == identity
+                    else { return }
                     self?
                         .mutateCandidate(forKey: key) {
                             $0.error = line
                         }
                 }
             )
-            mutateCandidate(forKey: key) {
-                $0.libraryStatusSubscriptions[statusKey] =
-                    CancelOnDeinit(subscription)
-            }
+            observation.install(subscription)
         }
     }
 }

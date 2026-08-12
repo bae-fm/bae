@@ -4,9 +4,31 @@ import androidx.media3.common.Player
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.QueueUpcomingCallback
 
+internal const val MAX_UPCOMING_PAGE_SUBSCRIPTIONS = 3
+
 fun interface QueuePageSubscription {
     fun cancel()
 }
+
+internal data class UpcomingPageKey(
+    val range: IntRange,
+    val revision: ULong,
+)
+
+internal data class ActiveQueuePageSubscription(
+    val identity: Long,
+    val subscription: QueuePageSubscription,
+)
+
+internal fun queuePageDistance(
+    range: IntRange,
+    index: Int,
+): Int =
+    when {
+        index < range.first -> range.first - index
+        index > range.last -> index - range.last
+        else -> 0
+    }
 
 class QueuePageSource(
     val subscribe: (offset: UInt, limit: UInt, callback: QueueUpcomingCallback) -> QueuePageSubscription,

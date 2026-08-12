@@ -196,7 +196,9 @@ struct ImportSearchFlowPickedResumeTests {
 @MainActor
 @Suite("ImportSearchFlow live library status")
 struct ImportSearchFlowLibraryStatusTests {
-    @Test("a search result keeps its library status live until the candidate closes")
+    @Test(
+        "a search result keeps its library status live until the candidate closes"
+    )
     func resultStatusUpdatesAndCancels() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
@@ -227,11 +229,101 @@ struct ImportSearchFlowLibraryStatusTests {
             )
         await waitUntil {
             store.candidate(forKey: candidate.key)?
-                .libraryStatuses["rel-live"]?.albumId == "album-live"
+                .libraryStatuses["rel-live"]?
+                .albumId == "album-live"
         }
 
         store.folderCandidates.removeValue(forKey: candidate.key)
         #expect(harness.subscription(releaseId: "rel-live")?.cancelled == true)
+    }
+
+    @Test("an old same-key status subscription cannot update its replacement")
+    func sameKeyReplacementRejectsOldCallbacks() async throws {
+        let store = ImportStore()
+        var candidate = PreviewData.folderCandidates[0]
+        let statusKey = ReleaseLibraryStatusSubscriptionKey(
+            source: .musicBrainz,
+            releaseId: "rel-live",
+            sourceGroupId: "group-live"
+        )
+        var results = candidate.search.activeResults()
+        results.libraryStatusSubscriptionKeys = [statusKey]
+        candidate.search.setResults(
+            results,
+            forTab: candidate.search.activeTab,
+            source: candidate.search.activeSource
+        )
+        store.folderCandidates[candidate.key] = candidate
+        let harness = ReleaseStatusHarness()
+        let importer = Importer(
+            subscribeReleaseLibraryStatus: harness.subscribe
+        )
+
+        store.refreshLibraryStatusSubscriptions(
+            importer: importer,
+            key: candidate.key
+        )
+        await waitUntil { harness.callbackCount(releaseId: "rel-live") == 1 }
+
+        store.mutateCandidate(forKey: candidate.key) { current in
+            var empty = current.search.activeResults()
+            empty.libraryStatusSubscriptionKeys = []
+            current.search.setResults(
+                empty,
+                forTab: current.search.activeTab,
+                source: current.search.activeSource
+            )
+        }
+        store.refreshLibraryStatusSubscriptions(
+            importer: importer,
+            key: candidate.key
+        )
+        store.mutateCandidate(forKey: candidate.key) { current in
+            var restored = current.search.activeResults()
+            restored.libraryStatusSubscriptionKeys = [statusKey]
+            current.search.setResults(
+                restored,
+                forTab: current.search.activeTab,
+                source: current.search.activeSource
+            )
+        }
+        store.refreshLibraryStatusSubscriptions(
+            importer: importer,
+            key: candidate.key
+        )
+        await waitUntil { harness.callbackCount(releaseId: "rel-live") == 2 }
+
+        try #require(harness.callback(releaseId: "rel-live", index: 0))
+            .onValue(
+                value: BridgeLibraryStatus(
+                    releaseId: "rel-live",
+                    releaseInLibrary: true,
+                    albumInLibrary: true,
+                    albumTitle: "Old Title",
+                    albumId: "album-old"
+                )
+            )
+        await Task.yield()
+        #expect(
+            store.candidate(forKey: candidate.key)?
+                .libraryStatuses["rel-live"] == nil
+        )
+
+        try #require(harness.callback(releaseId: "rel-live", index: 1))
+            .onValue(
+                value: BridgeLibraryStatus(
+                    releaseId: "rel-live",
+                    releaseInLibrary: true,
+                    albumInLibrary: true,
+                    albumTitle: "New Title",
+                    albumId: "album-new"
+                )
+            )
+        await waitUntil {
+            store.candidate(forKey: candidate.key)?
+                .libraryStatuses["rel-live"]?
+                .albumId == "album-new"
+        }
     }
 
     private func searchResponse() -> BridgeCandidateSearchResults {
@@ -276,8 +368,8 @@ struct ImportSearchFlowLibraryStatusTests {
 
 private final class ReleaseStatusHarness: @unchecked Sendable {
     private let lock = NSLock()
-    private var callbacks: [String: ReleaseLibraryStatusCallback] = [:]
-    private var subscriptions: [String: TestReleaseStatusSubscription] = [:]
+    private var callbacks: [String: [ReleaseLibraryStatusCallback]] = [:]
+    private var subscriptions: [String: [TestReleaseStatusSubscription]] = [:]
 
     func subscribe(
         _ source: BridgeMetadataSource,
@@ -287,18 +379,29 @@ private final class ReleaseStatusHarness: @unchecked Sendable {
     ) -> any LiveSubscriptionProtocol {
         let subscription = TestReleaseStatusSubscription()
         lock.withLock {
-            callbacks[releaseId] = callback
-            subscriptions[releaseId] = subscription
+            callbacks[releaseId, default: []].append(callback)
+            subscriptions[releaseId, default: []].append(subscription)
         }
         return subscription
     }
 
     func callback(releaseId: String) -> ReleaseLibraryStatusCallback? {
-        lock.withLock { callbacks[releaseId] }
+        callback(releaseId: releaseId, index: 0)
+    }
+
+    func callback(
+        releaseId: String,
+        index: Int
+    ) -> ReleaseLibraryStatusCallback? {
+        lock.withLock { callbacks[releaseId]?[index] }
+    }
+
+    func callbackCount(releaseId: String) -> Int {
+        lock.withLock { callbacks[releaseId]?.count ?? 0 }
     }
 
     func subscription(releaseId: String) -> TestReleaseStatusSubscription? {
-        lock.withLock { subscriptions[releaseId] }
+        lock.withLock { subscriptions[releaseId]?.first }
     }
 }
 

@@ -38,13 +38,7 @@ import uniffi.bae_bridge.QueueUpcomingCallback
 
 /** Now-playing snapshot the [fm.bae.app.ui.playback.NowPlayingBar] renders. */
 private const val TAG = "bae.BaeCorePlayer"
-private const val MAX_UPCOMING_PAGE_SUBSCRIPTIONS = 3
 private val logger = BaeLogger(TAG)
-
-private data class UpcomingPageKey(
-    val range: IntRange,
-    val revision: ULong,
-)
 
 /**
  * Media3 [Player] that is a pure projection of bae-core's playback state.
@@ -264,7 +258,9 @@ class BaeCorePlayer(
 
     /** Live pages around the reported visible window. Moving the window evicts
      *  both subscriptions and their rows. */
-    private val upcomingSubscriptions = mutableMapOf<UpcomingPageKey, QueuePageSubscription>()
+    private var nextUpcomingSubscriptionIdentity = 0L
+    private val upcomingSubscriptions =
+        mutableMapOf<UpcomingPageKey, ActiveQueuePageSubscription>()
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -674,7 +670,7 @@ class BaeCorePlayer(
         manualEntries = manualMetas
         contextLane = lane
         if (replacesPages) {
-            upcomingSubscriptions.values.forEach(QueuePageSubscription::cancel)
+            upcomingSubscriptions.values.forEach { it.subscription.cancel() }
             upcomingSubscriptions.clear()
             pagedUpcoming = emptyMap()
         }
@@ -702,15 +698,17 @@ class BaeCorePlayer(
         val key = UpcomingPageKey(offset until end, queueRevision)
         if (upcomingSubscriptions.containsKey(key)) return
         makeRoomForUpcomingPageNear(key.range)
-        upcomingSubscriptions[key] = QueuePageSubscription {}
+        val identity = ++nextUpcomingSubscriptionIdentity
         upcomingSubscriptions[key] =
+            ActiveQueuePageSubscription(identity, QueuePageSubscription {})
+        val subscription =
             queuePageSource.subscribe(
                 offset.toUInt(),
                 (end - offset).toUInt(),
                 object : QueueUpcomingCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgeQueueUpcomingPage) {
                         scope.launch {
-                            if (!upcomingSubscriptions.containsKey(key)) return@launch
+                            if (upcomingSubscriptions[key]?.identity != identity) return@launch
                             if (value.revision != queueRevision) {
                                 logger.warning(
                                     "dropping upcoming page for [$offset, $end): delivered for a since-superseded revision",
@@ -728,10 +726,21 @@ class BaeCorePlayer(
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        logger.error("upcoming range [$offset, $end) subscription failed", error)
+                        scope.launch {
+                            if (upcomingSubscriptions[key]?.identity != identity) return@launch
+                            logger.error(
+                                "upcoming range [$offset, $end) subscription failed",
+                                error,
+                            )
+                        }
                     }
                 },
             )
+        if (upcomingSubscriptions[key]?.identity == identity) {
+            upcomingSubscriptions[key] = ActiveQueuePageSubscription(identity, subscription)
+        } else {
+            subscription.cancel()
+        }
     }
 
     private fun makeRoomForUpcomingPageNear(visibleRange: IntRange) {
@@ -739,23 +748,13 @@ class BaeCorePlayer(
             val visibleMidpoint = visibleRange.first + visibleRange.count() / 2
             val key =
                 upcomingSubscriptions.keys.maxBy { candidate ->
-                    distance(candidate.range, visibleMidpoint)
+                    queuePageDistance(candidate.range, visibleMidpoint)
                 }
-            upcomingSubscriptions.remove(key)?.cancel()
+            upcomingSubscriptions.remove(key)?.subscription?.cancel()
             val initialCount = contextLane?.entries?.size ?: 0
             pagedUpcoming = pagedUpcoming.filterKeys { it !in key.range || it < initialCount }
         }
     }
-
-    private fun distance(
-        range: IntRange,
-        index: Int,
-    ): Int =
-        when {
-            index < range.first -> range.first - index
-            index > range.last -> index - range.last
-            else -> 0
-        }
 
     /**
      * Push the rebuilt projection: refresh the Media3 [State] for the session,
@@ -992,7 +991,7 @@ class BaeCorePlayer(
     }
 
     fun cancelQueuePageSubscriptions() {
-        upcomingSubscriptions.values.forEach(QueuePageSubscription::cancel)
+        upcomingSubscriptions.values.forEach { it.subscription.cancel() }
         upcomingSubscriptions.clear()
     }
 }

@@ -90,16 +90,56 @@ struct PlaybackStoreQueuePageWindowTests {
 
         #expect(store.upcomingItem(at: 0) == nil)
     }
+
+    @MainActor
+    @Test("an evicted queue page cannot overwrite a same-range replacement")
+    func sameRangeReplacementRejectsOldValue() async {
+        let recorder = QueuePageSubscriptionRecorder()
+        let queue = Queue(
+            subscribeUpcomingPage: { offset, _, onValue, onError in
+                recorder.make(
+                    offset: Int(offset),
+                    onValue: onValue,
+                    onError: onError
+                )
+            }
+        )
+        let store = PlaybackStore()
+        store.queueContext = QueuePlaybackContext(
+            kind: .library,
+            sourceTitle: nil,
+            shuffled: false,
+            upcoming: [],
+            upcomingTotal: 500
+        )
+
+        for offset in [0, 100, 200, 300, 0] {
+            await store.loadUpcomingRange(
+                offset: offset,
+                limit: 60,
+                queue: queue
+            )
+        }
+
+        recorder.deliver(offset: 0, subscription: 0, entryId: "old")
+        #expect(store.upcomingItem(at: 0) == nil)
+
+        recorder.deliver(offset: 0, subscription: 1, entryId: "new")
+        #expect(store.upcomingItem(at: 0)?.entryId == "new")
+    }
 }
 
 private final class QueuePageSubscriptionRecorder: @unchecked Sendable {
     private let lock = NSLock()
-    private var recordedSubscriptions: [Int: QueuePageTestSubscription] = [:]
-    private var callbacks: [Int: @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void] = [:]
+    private var recordedSubscriptions: [Int: [QueuePageTestSubscription]] = [:]
+    private var callbacks:
+        [Int: [@MainActor @Sendable (BridgeQueueUpcomingPage) -> Void]] = [:]
     private var recordedMaximumActive = 0
 
     var subscriptions: [Int: QueuePageTestSubscription] {
-        lock.withLock { recordedSubscriptions }
+        lock.withLock {
+            recordedSubscriptions.compactMapValues(\.last)
+        }
     }
 
     var maximumActive: Int {
@@ -108,15 +148,20 @@ private final class QueuePageSubscriptionRecorder: @unchecked Sendable {
 
     func make(
         offset: Int,
-        onValue: @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void
+        onValue:
+            @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
+        onError _: @escaping @MainActor @Sendable (any Error) -> Void = { _ in }
     ) -> QueuePageTestSubscription {
         let subscription = QueuePageTestSubscription()
         lock.withLock {
-            recordedSubscriptions[offset] = subscription
-            callbacks[offset] = onValue
+            recordedSubscriptions[offset, default: []].append(subscription)
+            callbacks[offset, default: []].append(onValue)
             recordedMaximumActive = max(
                 recordedMaximumActive,
-                recordedSubscriptions.values.count { !$0.cancelled }
+                recordedSubscriptions.values.flatMap { $0 }
+                    .count {
+                        !$0.cancelled
+                    }
             )
         }
         return subscription
@@ -124,14 +169,19 @@ private final class QueuePageSubscriptionRecorder: @unchecked Sendable {
 
     @MainActor
     func deliver(offset: Int) {
-        let callback = lock.withLock { callbacks[offset] }
+        deliver(offset: offset, subscription: 0, entryId: "evicted")
+    }
+
+    @MainActor
+    func deliver(offset: Int, subscription: Int, entryId: String) {
+        let callback = lock.withLock { callbacks[offset]?[subscription] }
         callback?(
             BridgeQueueUpcomingPage(
                 revision: 0,
                 entries: [
                     BridgeQueueEntry(
-                        entryId: "evicted",
-                        trackId: "track-evicted",
+                        entryId: entryId,
+                        trackId: "track-\(entryId)",
                         title: "Track Title",
                         artistNames: "Artist Name",
                         durationClock: nil,

@@ -50,6 +50,27 @@ struct ReleaseLibraryStatusSubscriptionKey: Hashable {
     let sourceGroupId: String?
 }
 
+final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
+    let identity = UUID()
+    private var subscription: (any LiveSubscriptionProtocol)?
+
+    func install(_ subscription: any LiveSubscriptionProtocol) {
+        precondition(self.subscription == nil)
+        self.subscription = subscription
+    }
+
+    deinit {
+        subscription?.cancel()
+    }
+
+    static func == (
+        lhs: ReleaseLibraryStatusObservation,
+        rhs: ReleaseLibraryStatusObservation
+    ) -> Bool {
+        lhs === rhs
+    }
+}
+
 // MARK: - CandidateSearchState
 
 /// Per-tab search state plus form fields and active tab/source.
@@ -139,7 +160,8 @@ struct Candidate: Equatable, Identifiable {
     var pick: CandidatePick?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var libraryStatusSubscriptions:
-        [ReleaseLibraryStatusSubscriptionKey: CancelOnDeinit] = [:]
+        [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
+            [:]
     /// What the folder is being read as, set the moment the user says so —
     /// before the pick or the tag read it starts has come back.
     var identity: ImportIdentity = .release

@@ -56,7 +56,7 @@ final class LibraryBrowseSession {
 
     /// Album-grid multi-selection, a browsing-session concern owned here (the
     /// Storage Manager precedent) and passed down to the grid.
-    let albumSelection = AlbumGridSelection()
+    let albumSelection: AlbumGridSelection
     /// The composers browser's detail-pane target. Views read it and call the
     /// `select…` methods below to change it — they never assign it directly.
     private(set) var detailSelection: ComposerPaneSelection = .none
@@ -69,6 +69,8 @@ final class LibraryBrowseSession {
         libraryStore: LibraryStore,
         uiStore: UiStore
     ) {
+        let albumSelection = AlbumGridSelection()
+        self.albumSelection = albumSelection
         albums = BrowseListSlot(
             defaultsKey: "librarySortCriteria",
             defaultCriteria: [
@@ -81,6 +83,10 @@ final class LibraryBrowseSession {
                 for row in rows {
                     _ = libraryStore.internAlbumSummary(row)
                 }
+            },
+            onSnapshot: { ids, total in
+                libraryStore.setAlbumTotal(total)
+                albumSelection.retainAvailable(ids)
             },
             onError: { uiStore.showError($0) }
         )

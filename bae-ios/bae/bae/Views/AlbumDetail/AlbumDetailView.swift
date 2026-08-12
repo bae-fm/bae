@@ -77,11 +77,17 @@ struct AlbumDetailView: View {
         .safeAreaInset(edge: .bottom) {
             NowPlayingBar()
         }
-        .task(id: albumId) {
-            await libraryStore.observeAlbumDetail(
-                albumId: albumId,
+        .onChange(of: albumId, initial: true) { oldId, newId in
+            if oldId != newId {
+                libraryStore.deactivateAlbumDetail(albumId: oldId)
+            }
+            libraryStore.activateAlbumDetail(
+                albumId: newId,
                 library: library
             )
+        }
+        .onDisappear {
+            libraryStore.deactivateAlbumDetail(albumId: albumId)
         }
     }
 
@@ -92,12 +98,10 @@ struct AlbumDetailView: View {
     private func detailPlaceholder(releaseId: String?) -> some View {
         if let error = libraryStore.albumDetailErrors[albumId] {
             LoadFailureView(line: error.line) {
-                Task {
-                    await libraryStore.observeAlbumDetail(
-                        albumId: albumId,
-                        library: library
-                    )
-                }
+                libraryStore.retryAlbumDetail(
+                    albumId: albumId,
+                    library: library
+                )
             }
         }
         else {

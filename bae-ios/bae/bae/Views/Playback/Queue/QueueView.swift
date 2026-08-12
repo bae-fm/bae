@@ -5,12 +5,11 @@ import SwiftUI
 /// reorderable "Up Next" list. Reads the authoritative now-playing and queue
 /// off the shared `PlaybackStore`; mutations go straight to the `Queue` service
 /// (`clearUpNext` / `clearPlayingFrom` / `removeEntry` / `reorderEntry` /
-/// `skipToEntry`) and reflect back through the queue subscription, which repopulates
-/// `queueItems`.
+/// `skipToEntry`) and reflect back through the retained queue value.
 ///
 /// The view iterates and renders only — `durationLabel` is pre-formatted and the
-/// queue arrives pre-ordered. The current track is never in `queueItems`; it
-/// lives in `nowPlaying`.
+/// queue arrives pre-ordered. The current track is separate from the queued
+/// lanes and lives in `nowPlaying`.
 struct QueueView: View {
     @Environment(Queue.self)
     private var queue

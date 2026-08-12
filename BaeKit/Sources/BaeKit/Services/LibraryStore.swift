@@ -367,6 +367,11 @@ extension BridgeAlbum: Identifiable {}
 @MainActor
 @Observable
 public final class LibraryStore {
+    private struct AlbumDetailObservation {
+        let identity: UUID
+        let task: Task<Void, Never>
+    }
+
     // ── Entity storage ────────────────────────────────────────────────
 
     /// Album summaries. Read by the library grid and any row renderer
@@ -411,12 +416,15 @@ public final class LibraryStore {
     public private(set) var releaseDetailErrors: [String: DisplayError] = [:]
     public private(set) var albumDetailErrors: [String: DisplayError] = [:]
 
+    @ObservationIgnored
+    private var albumDetailObservations: [String: AlbumDetailObservation] = [:]
+
     /// Total albums in the open library, or `nil` before any album list has
-    /// reported a count. Written by the macOS library browser whenever its
-    /// album list's count loads or changes; read by menu chrome that has no
-    /// list of its own (the Playback menu's Shuffle Library item disables at
-    /// zero). Albums are the proxy the UI owns for "anything to play": core's
-    /// shuffle no-ops on zero *tracks*, but the UI never loads a track count.
+    /// reported a count. Written by the app-owned album page subscription and
+    /// read by menu chrome that has no list of its own (the Playback menu's
+    /// Shuffle Library item disables at zero). Albums are the proxy the UI owns
+    /// for "anything to play": core's shuffle no-ops on zero *tracks*, but the
+    /// UI never loads a track count.
     public private(set) var albumTotal: Int?
 
     public nonisolated init() {}
@@ -546,9 +554,49 @@ public final class LibraryStore {
 
     // MARK: - Detail subscriptions
 
-    public func observeAlbumDetail(albumId: String, library: Library) async {
+    public func activateAlbumDetail(albumId: String, library: Library) {
+        guard albumDetailObservations[albumId] == nil else { return }
+        replaceAlbumDetailObservation(albumId: albumId, library: library)
+    }
+
+    public func retryAlbumDetail(albumId: String, library: Library) {
+        replaceAlbumDetailObservation(albumId: albumId, library: library)
+    }
+
+    public func deactivateAlbumDetail(albumId: String) {
+        albumDetailObservations.removeValue(forKey: albumId)?.task.cancel()
+    }
+
+    private func replaceAlbumDetailObservation(
+        albumId: String,
+        library: Library
+    ) {
+        albumDetailObservations.removeValue(forKey: albumId)?.task.cancel()
+        albumDetailErrors.removeValue(forKey: albumId)
+        let identity = UUID()
+        let task = Task { [weak self, library] in
+            guard let self else { return }
+            await self.consumeAlbumDetail(
+                albumId: albumId,
+                identity: identity,
+                library: library
+            )
+        }
+        albumDetailObservations[albumId] = AlbumDetailObservation(
+            identity: identity,
+            task: task
+        )
+    }
+
+    private func consumeAlbumDetail(
+        albumId: String,
+        identity: UUID,
+        library: Library
+    ) async {
         for await result in library.albumDetails(albumId) {
-            if Task.isCancelled {
+            guard !Task.isCancelled,
+                albumDetailObservations[albumId]?.identity == identity
+            else {
                 return
             }
             switch result {
@@ -558,6 +606,9 @@ public final class LibraryStore {
             case .failure(let error):
                 albumDetailErrors[albumId] = DisplayError(error)
             }
+        }
+        if albumDetailObservations[albumId]?.identity == identity {
+            albumDetailObservations.removeValue(forKey: albumId)
         }
     }
 
