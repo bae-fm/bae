@@ -19,14 +19,16 @@ namespace Bae.Desktop;
 internal sealed class ImportService
 {
     public Func<BridgeFolderCandidate, BridgeCandidateRuntimeSnapshot, ImportCandidate>
-        ProjectFolderCandidate { get; init; }
+        ProjectFolderCandidate
+    { get; init; }
         = (_, _) => throw new InvalidOperationException(
             "ImportService stub: ProjectFolderCandidate not wired");
 
     public Func<BridgeCandidateRuntimeSnapshot, (
         ImportCandidateRowStatus RowStatus,
         List<ReleaseCandidateChoice> Matches,
-        List<SignalBadge> Signals)> ProjectRuntimeCandidate { get; init; }
+        List<SignalBadge> Signals)> ProjectRuntimeCandidate
+    { get; init; }
         = _ => throw new InvalidOperationException(
             "ImportService stub: ProjectRuntimeCandidate not wired");
 

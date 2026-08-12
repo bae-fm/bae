@@ -45,7 +45,8 @@ internal sealed class LibraryService
     /// Synchronous, run off the UI thread by the page source (like the browse
     /// counts).</summary>
     public Func<StorageTab, StorageSortField, SortDirection, ulong, ulong,
-        Action<IReadOnlyList<BridgeStorageRow>, int, long>, Action<Exception>, IDisposable?> SubscribeStorage { get; init; }
+        Action<IReadOnlyList<BridgeStorageRow>, int, long>, Action<Exception>, IDisposable?> SubscribeStorage
+    { get; init; }
         = (_, _, _, _, _, _, _) => throw new InvalidOperationException("LibraryService stub: SubscribeStorage not wired");
 
     /// <summary>Expand album/track ids to flat track-id lists (album ids resolve to

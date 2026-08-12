@@ -17,7 +17,8 @@ internal sealed class DecidedEdit
         BridgeMetadataSource Source,
         string ReleaseId,
         string? SourceGroupId,
-        BridgeClaimLevel Claim)? Release { get; set; }
+        BridgeClaimLevel Claim)? Release
+    { get; set; }
 
     /// <summary>The seeded edit either identity stands for.</summary>
     public PrefetchedEdit Edit { get; set; } = new();
