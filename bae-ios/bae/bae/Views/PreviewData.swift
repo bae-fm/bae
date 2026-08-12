@@ -249,9 +249,31 @@ enum PreviewData {
 
 }
 
+private final class PreviewLibrarySubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    func cancel() {}
+}
+
 // MARK: - Seeded stores
 
 extension PreviewData {
+    static func library() -> Library {
+        Library(
+            subscribeAlbumDetail: { albumId, callback in
+                let detail = albums.first { $0.id == albumId }
+                    .map {
+                        BridgeAlbumDetail(
+                            album: $0,
+                            releases: [release(albumId: albumId)]
+                        )
+                    }
+                callback.onValue(value: detail)
+                return PreviewLibrarySubscription()
+            }
+        )
+    }
+
     /// A `LibraryStore` holding the fixture album summaries and one seeded
     /// release detail, so the grid and album screen render content.
     @MainActor
@@ -315,7 +337,7 @@ extension View {
         playbackStore: PlaybackStore? = nil,
         downloadStore: DownloadStore? = nil
     ) -> some View {
-        let library = Library.stub()
+        let library = PreviewData.library()
         let resolvedLibraryStore = libraryStore ?? PreviewData.libraryStore()
         return environment(PreviewData.configStore())
             .environment(SyncStatusStore())
