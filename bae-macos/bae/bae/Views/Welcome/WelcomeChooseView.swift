@@ -12,7 +12,8 @@ struct WelcomeChooseView: View {
     /// A failed library open, surfaced inline as a callout under the subtitle.
     /// Prop-drilled from the app (the welcome window's chrome no longer carries
     /// it); nil when nothing failed.
-    let loadError: String?
+    let loadError: DisplayError?
+    let canDeleteActiveLibrary: Bool
     let onLibraryReady: (BridgeLibrary) -> Void
     let onJoin: () -> Void
     let onRestore: () -> Void
@@ -23,7 +24,12 @@ struct WelcomeChooseView: View {
     @State
     private var isCreating = false
     @State
-    private var error: String?
+    private var error: DisplayError?
+
+    @State
+    private var libraryPendingRemoval: BridgeLibrary?
+    @State
+    private var removingLibraryId: String?
 
     /// The in-flight keychain-row restore, owned so a superseding restore and
     /// the view's disappear can cancel it.
@@ -84,6 +90,21 @@ struct WelcomeChooseView: View {
             await checkKeychainForRestoreCodes()
         }
         .onDisappear { restoreTask?.cancel() }
+        .alert(
+            "Remove this library from this Mac?",
+            isPresented: Binding(
+                get: { libraryPendingRemoval != nil },
+                set: { if !$0 { libraryPendingRemoval = nil } }
+            ),
+            presenting: libraryPendingRemoval
+        ) { library in
+            Button("Delete", role: .destructive) {
+                removeLocalLibrary(library)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { library in
+            Text(LibraryRemovalConfirmation.message(for: library))
+        }
     }
 
     private var content: some View {
@@ -95,14 +116,18 @@ struct WelcomeChooseView: View {
                 .font(.title3)
                 .foregroundStyle(.secondary)
             if let loadError {
-                WelcomeLoadErrorCallout(message: loadError)
+                WelcomeLoadErrorCallout(error: loadError)
             }
             if !localLibraries.isEmpty {
                 LocalLibrariesSection(
                     libraries: localLibraries,
-                    disabled: isCreating || isRestoring,
+                    disabled: isCreating || isRestoring
+                        || removingLibraryId != nil,
+                    canDeleteActiveLibrary: canDeleteActiveLibrary,
+                    removingLibraryId: removingLibraryId,
                     onOpen: onLibraryReady,
                     onShowInFinder: { setup.revealInFinder($0.path) },
+                    onRemove: { libraryPendingRemoval = $0 },
                 )
             }
             if !restorableEntries.isEmpty {
@@ -133,9 +158,7 @@ struct WelcomeChooseView: View {
                 firstRunActions
             }
             if let error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.callout)
+                ErrorDetailDisclosure(error: error)
             }
             Spacer()
         }
@@ -215,6 +238,27 @@ extension WelcomeChooseView {
         keychainEntries.removeAll { $0.code == code }
     }
 
+    private func removeLocalLibrary(_ library: BridgeLibrary) {
+        removingLibraryId = library.id
+        error = nil
+        let remove = setup.removeLocalLibrary
+        Task.detached {
+            do {
+                try remove(library.id)
+                await MainActor.run {
+                    localLibraries.removeAll { $0.id == library.id }
+                    removingLibraryId = nil
+                }
+            }
+            catch {
+                await MainActor.run {
+                    removingLibraryId = nil
+                    self.error = DisplayError(error)
+                }
+            }
+        }
+    }
+
     private func loadLocalLibraries() async {
         do {
             let discover = setup.discoverLibraries
@@ -283,7 +327,7 @@ extension WelcomeChooseView {
             catch {
                 await MainActor.run {
                     isCreating = false
-                    self.error = error.displayLine
+                    self.error = DisplayError(error)
                 }
             }
         }
@@ -315,7 +359,7 @@ extension WelcomeChooseView {
             }
             catch {
                 isRestoring = false
-                self.error = error.displayLine
+                self.error = DisplayError(error)
             }
         }
     }
@@ -339,7 +383,7 @@ extension WelcomeChooseView {
                 catch {
                     await MainActor.run {
                         isAuthorizing = false
-                        self.error = error.displayLine
+                        self.error = DisplayError(error)
                     }
                 }
             }
@@ -359,7 +403,7 @@ enum WelcomeLayout {
 /// A tinted rounded rect (native red opacities, not the mockup's hex colors)
 /// sitting under the subtitle, column-width.
 private struct WelcomeLoadErrorCallout: View {
-    let message: String
+    let error: DisplayError
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -368,9 +412,7 @@ private struct WelcomeLoadErrorCallout: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Library failed to open")
                     .font(.headline)
-                Text(message)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                ErrorDetailDisclosure(error: error, showIcon: false)
                 Text("Choose another library or restore from cloud.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -393,6 +435,7 @@ private struct WelcomeLoadErrorCallout: View {
         WelcomeWindowChrome {
             WelcomeChooseView(
                 loadError: nil,
+                canDeleteActiveLibrary: true,
                 onLibraryReady: { _ in },
                 onJoin: {},
                 onRestore: {},
@@ -405,6 +448,7 @@ private struct WelcomeLoadErrorCallout: View {
         WelcomeWindowChrome {
             WelcomeChooseView(
                 loadError: nil,
+                canDeleteActiveLibrary: true,
                 onLibraryReady: { _ in },
                 onJoin: {},
                 onRestore: {},
@@ -416,7 +460,8 @@ private struct WelcomeLoadErrorCallout: View {
     #Preview("Library failed to open") {
         WelcomeWindowChrome {
             WelcomeChooseView(
-                loadError: "The library's settings could not be read.",
+                loadError: PreviewData.displayErrorWithDetail,
+                canDeleteActiveLibrary: true,
                 onLibraryReady: { _ in },
                 onJoin: {},
                 onRestore: {},

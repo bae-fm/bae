@@ -100,7 +100,7 @@ struct LibrarySettingsTab: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                Self.forgetConfirmationMessage(
+                LibraryRemovalConfirmation.message(
                     hasCloudHome: configStore.config.hasCloudHome,
                     hasPendingCloudWork: outboxStore.hasPendingCloudWork
                 )
@@ -168,34 +168,6 @@ struct LibrarySettingsTab: View {
             localized:
                 "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted."
         )
-    }
-
-    /// Body text for the remove-library confirmation. A synced library's cloud
-    /// copy survives and can be restored later; queued cloud writes that
-    /// haven't landed are called out because they are lost with the local
-    /// data. A never-synced library's catalog is gone for good — though the
-    /// audio files bae indexed in place stay in the user's folders. The
-    /// pending-work flag is ignored without a cloud home (no outbox exists).
-    static func forgetConfirmationMessage(
-        hasCloudHome: Bool,
-        hasPendingCloudWork: Bool
-    ) -> String {
-        guard hasCloudHome else {
-            return String(
-                localized:
-                    "This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted."
-            )
-        }
-        let base = String(
-            localized:
-                "Your library in the cloud is untouched — you can restore it from the welcome screen later."
-        )
-        guard hasPendingCloudWork else { return base }
-        let extra = String(
-            localized:
-                "Some changes haven't finished uploading and will be lost."
-        )
-        return "\(base) \(extra)"
     }
 
     private func storeRestoreCode() {

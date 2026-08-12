@@ -118,18 +118,20 @@ struct BaeApp: App {
     /// delegate's (a failed open belongs on the chooser), while the shell's
     /// Add Library sheet passes nil — a failed *switch* is the shell
     /// chrome's story, not the sheet's.
-    private func welcomeView(loadError: String?) -> some View {
+    private func welcomeView(loadError: DisplayError?) -> some View {
         Group {
             if let mode = appDelegate.welcomeInitialMode {
                 WelcomeView(
                     onLibraryReady: { lib in appDelegate.openLibrary(lib) },
                     initialMode: mode,
+                    canDeleteActiveLibrary: !appDelegate.hasShell,
                 )
             }
             else {
                 WelcomeView(
                     onLibraryReady: { lib in appDelegate.openLibrary(lib) },
                     loadError: loadError,
+                    canDeleteActiveLibrary: !appDelegate.hasShell,
                 )
             }
         }
@@ -444,7 +446,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         : BaeDiagnostics.configure(source: "macos", edition: appEdition)
     var uiStore = UiStore()
     var screen: AppScreen = .loading
-    var loadError: String?
+    var loadError: DisplayError?
     /// When a menu item deep-links into a specific welcome flow (Restore
     /// from Code), this holds the requested initial mode for the welcome
     /// view about to be presented. `nil` lands on the default chooser.
@@ -556,7 +558,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openLibrary(openable)
         }
         catch {
-            loadError = error.displayLine
+            loadError = DisplayError(error)
         }
     }
 
@@ -590,7 +592,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     "Library open superseded before it could land; skipping"
                 )
             case .failed(let error):
-                self.loadError = error.displayLine
+                self.loadError = DisplayError(error)
                 // A bootstrap open (first launch, or reopening from the welcome
                 // chooser after a close) that fails must return to the welcome
                 // so the user can retry or pick another, rather than strand on
@@ -719,7 +721,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 logger.error(
                     "Failed to lock library: \($0.localizedDescription)"
                 )
-                self.loadError = $0.localizedDescription
+                self.loadError = DisplayError($0)
             }
         )
     }

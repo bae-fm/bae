@@ -12,7 +12,10 @@
         /// fixed 900x600 chrome, over the populated `LibrarySetup` fixture.
         static func welcome() -> some View {
             WelcomeWindowChrome {
-                WelcomeView(onLibraryReady: { _ in })
+                WelcomeView(
+                    onLibraryReady: { _ in },
+                    canDeleteActiveLibrary: true
+                )
             }
             .environment(PreviewData.welcomeSetup())
         }
@@ -20,7 +23,11 @@
         /// The restore-from-cloud flow, entered directly, in the welcome chrome.
         static func welcomeRestore() -> some View {
             WelcomeWindowChrome {
-                WelcomeView(onLibraryReady: { _ in }, initialMode: .restore)
+                WelcomeView(
+                    onLibraryReady: { _ in },
+                    initialMode: .restore,
+                    canDeleteActiveLibrary: true
+                )
             }
             .environment(PreviewData.welcomeSetup())
         }

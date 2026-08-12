@@ -22,7 +22,7 @@ enum WelcomeWindow {
 /// the bottom line for a library load error. BaeApp renders it live; any
 /// preview of shell screens should render the same composition.
 struct MainWindowChrome<Content: View>: View {
-    let loadError: String?
+    let loadError: DisplayError?
     @ViewBuilder
     let content: Content
 
@@ -62,12 +62,11 @@ struct WelcomeWindowChrome<Content: View>: View {
 
 /// The bottom-of-window line reporting a failed library switch under the shell.
 private struct LoadErrorLine: View {
-    let loadError: String?
+    let loadError: DisplayError?
 
     var body: some View {
         if let loadError {
-            Text(loadError)
-                .foregroundStyle(.red)
+            ErrorDetailDisclosure(error: loadError)
                 .padding()
         }
     }
@@ -101,7 +100,7 @@ private struct LoadErrorLine: View {
 
     #Preview("Main window — load error") {
         MainWindowChrome(
-            loadError: "The library's settings could not be read."
+            loadError: PreviewData.displayErrorWithDetail
         ) {
             ChromeSampleContent()
         }

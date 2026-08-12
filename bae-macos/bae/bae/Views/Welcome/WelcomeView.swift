@@ -10,7 +10,8 @@ struct WelcomeView: View {
     /// A failed library open, shown as the chooser's inline callout. Only the
     /// first-run bootstrap carries it; the deep-link initializer (restore-from-
     /// code) lands on a flow with its own error line, so it stays nil there.
-    let loadError: String?
+    let loadError: DisplayError?
+    let canDeleteActiveLibrary: Bool
 
     enum Mode {
         case choose
@@ -24,10 +25,12 @@ struct WelcomeView: View {
     /// Default initializer used by first-run flow. Lands on `.choose`.
     init(
         onLibraryReady: @escaping (BridgeLibrary) -> Void,
-        loadError: String? = nil
+        loadError: DisplayError? = nil,
+        canDeleteActiveLibrary: Bool
     ) {
         self.onLibraryReady = onLibraryReady
         self.loadError = loadError
+        self.canDeleteActiveLibrary = canDeleteActiveLibrary
         self._mode = State(initialValue: .choose)
     }
 
@@ -36,10 +39,12 @@ struct WelcomeView: View {
     /// chooser and lands directly on the requested mode.
     init(
         onLibraryReady: @escaping (BridgeLibrary) -> Void,
-        initialMode: Mode
+        initialMode: Mode,
+        canDeleteActiveLibrary: Bool
     ) {
         self.onLibraryReady = onLibraryReady
         self.loadError = nil
+        self.canDeleteActiveLibrary = canDeleteActiveLibrary
         self._mode = State(initialValue: initialMode)
     }
 
@@ -48,6 +53,7 @@ struct WelcomeView: View {
         case .choose:
             WelcomeChooseView(
                 loadError: loadError,
+                canDeleteActiveLibrary: canDeleteActiveLibrary,
                 onLibraryReady: onLibraryReady,
                 onJoin: { mode = .join },
                 onRestore: { mode = .restore },
@@ -82,7 +88,11 @@ struct WelcomeView: View {
 
     #Preview("Join") {
         WelcomeWindowChrome {
-            WelcomeView(onLibraryReady: { _ in }, initialMode: .join)
+            WelcomeView(
+                onLibraryReady: { _ in },
+                initialMode: .join,
+                canDeleteActiveLibrary: true
+            )
         }
         .environment(PreviewData.welcomeSetup())
     }

@@ -12,6 +12,7 @@ struct JoinOperation: Sendable {
 // The bridge's free functions, bound at file scope where their names are
 // unambiguous — inside `LibrarySetup` the field names shadow them.
 private let bridgeDiscoverLibraries = discoverLibraries
+private let bridgeRemoveLocalLibrary = removeLocalLibrary(libraryId:)
 private let bridgeCreateLibrary = createLibrary(name:)
 private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
 private let bridgeDecodeScannedInvite = decodeScannedInvite(scanned:)
@@ -73,6 +74,7 @@ private func inviteBytes(pasted: String) throws -> Data {
 /// touches no state.
 final class LibrarySetup: Sendable, Observable {
     let discoverLibraries: @Sendable () throws -> [BridgeLibrary]
+    let removeLocalLibrary: @Sendable (_ libraryId: String) throws -> Void
     /// Create a library named by core's default generator.
     let createLibrary: @Sendable () throws -> BridgeLibrary
     let decodeRestoreCode:
@@ -109,6 +111,9 @@ final class LibrarySetup: Sendable, Observable {
     init(
         discoverLibraries: @escaping @Sendable () throws -> [BridgeLibrary] =
             { [] },
+        removeLocalLibrary: @escaping @Sendable (String) throws -> Void = {
+            _ in throw StubError.notImplemented
+        },
         createLibrary: @escaping @Sendable () throws -> BridgeLibrary = {
             throw StubError.notImplemented
         },
@@ -148,6 +153,7 @@ final class LibrarySetup: Sendable, Observable {
         revealInFinder: @escaping @Sendable (String) -> Void = { _ in }
     ) {
         self.discoverLibraries = discoverLibraries
+        self.removeLocalLibrary = removeLocalLibrary
         self.createLibrary = createLibrary
         self.decodeRestoreCode = decodeRestoreCode
         self.decodeInviteCode = decodeInviteCode
@@ -168,6 +174,7 @@ final class LibrarySetup: Sendable, Observable {
     static func live() -> LibrarySetup {
         LibrarySetup(
             discoverLibraries: bridgeDiscoverLibraries,
+            removeLocalLibrary: bridgeRemoveLocalLibrary,
             createLibrary: { try bridgeCreateLibrary(nil) },
             decodeRestoreCode: bridgeDecodeRestoreCode,
             decodeInviteCode: {

@@ -205,6 +205,13 @@ pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
         .collect()
 }
 
+/// Remove one library's local data without opening its database. Its cloud
+/// copy and restore code, if any, are not changed.
+#[uniffi::export]
+pub fn remove_local_library(library_id: String) -> Result<(), BridgeError> {
+    bae_core::library::remove_local_library(&library_id).map_err(BridgeError::from)
+}
+
 /// Create a new library. The library is set as the active library.
 #[uniffi::export]
 pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError> {

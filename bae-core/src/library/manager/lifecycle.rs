@@ -46,58 +46,13 @@ impl LibraryManager {
         let config = self.config_handle.config();
         let library_id = config.store_id.clone();
         let bae_dir = registered_bae_dir(config.library_path(), &library_id)?;
-        let library_dir = crate::config::registered_library_path(&bae_dir, &library_id);
-        let active_pointer = bae_dir.join("active-library");
-        let remove_active_pointer = active_pointer_matches_library(&active_pointer, &library_id)?;
-
-        match std::fs::remove_dir_all(&library_dir) {
-            Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(e) => {
-                return Err(LibraryError::Internal(format!(
-                    "Failed to remove library data at {}: {e}",
-                    library_dir.display()
-                )));
-            }
-        }
-
-        if remove_active_pointer {
-            std::fs::remove_file(&active_pointer).map_err(|e| {
-                LibraryError::Internal(format!(
-                    "Failed to clear active-library pointer at {}: {e}",
-                    active_pointer.display()
-                ))
-            })?;
-        }
-
-        self.key_service.delete_encryption_key()?;
-
-        Ok(())
+        crate::library::local_lifecycle::remove_local_library_from_bae_dir(
+            &bae_dir,
+            &library_id,
+            &self.key_service,
+            crate::library::local_lifecycle::ActiveLibraryExpectation::MustNotNameAnotherLibrary,
+        )
     }
-}
-
-fn active_pointer_matches_library(
-    active_pointer: &std::path::Path,
-    library_id: &str,
-) -> Result<bool, LibraryError> {
-    let content = match std::fs::read_to_string(active_pointer) {
-        Ok(content) => content,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(e) => {
-            return Err(LibraryError::Internal(format!(
-                "Failed to read active-library pointer at {}: {e}",
-                active_pointer.display()
-            )));
-        }
-    };
-    let active_library_id = content.trim();
-    if active_library_id == library_id {
-        return Ok(true);
-    }
-    Err(LibraryError::Internal(format!(
-        "active-library pointer at {} points at {active_library_id}, not {library_id}",
-        active_pointer.display()
-    )))
 }
 
 fn registered_bae_dir(

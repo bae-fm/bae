@@ -3,16 +3,16 @@ import Testing
 @testable import bae
 
 @MainActor
-@Suite("LibrarySettingsTab.forgetConfirmationMessage")
+@Suite("LibraryRemovalConfirmation.message")
 struct LibrarySettingsTabForgetMessageTests {
 
     @Test("synced and never-synced messages are distinct and non-empty")
     func variantsDiffer() {
-        let synced = LibrarySettingsTab.forgetConfirmationMessage(
+        let synced = LibraryRemovalConfirmation.message(
             hasCloudHome: true,
             hasPendingCloudWork: false
         )
-        let local = LibrarySettingsTab.forgetConfirmationMessage(
+        let local = LibraryRemovalConfirmation.message(
             hasCloudHome: false,
             hasPendingCloudWork: false
         )
@@ -23,11 +23,11 @@ struct LibrarySettingsTabForgetMessageTests {
 
     @Test("pending cloud work appends to the synced base")
     func pendingAppendsToSyncedBase() {
-        let base = LibrarySettingsTab.forgetConfirmationMessage(
+        let base = LibraryRemovalConfirmation.message(
             hasCloudHome: true,
             hasPendingCloudWork: false
         )
-        let withPending = LibrarySettingsTab.forgetConfirmationMessage(
+        let withPending = LibraryRemovalConfirmation.message(
             hasCloudHome: true,
             hasPendingCloudWork: true
         )
@@ -37,11 +37,11 @@ struct LibrarySettingsTabForgetMessageTests {
 
     @Test("the pending-work flag is ignored without a cloud home")
     func pendingIgnoredWithoutCloudHome() {
-        let withoutPending = LibrarySettingsTab.forgetConfirmationMessage(
+        let withoutPending = LibraryRemovalConfirmation.message(
             hasCloudHome: false,
             hasPendingCloudWork: false
         )
-        let withPending = LibrarySettingsTab.forgetConfirmationMessage(
+        let withPending = LibraryRemovalConfirmation.message(
             hasCloudHome: false,
             hasPendingCloudWork: true
         )

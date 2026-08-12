@@ -1,5 +1,6 @@
 pub mod app_services;
 pub mod download_snapshot;
+mod local_lifecycle;
 pub mod manager;
 pub mod outbox_snapshot;
 pub mod output_snapshot;
@@ -15,6 +16,7 @@ pub use app_services::*;
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
 };
+pub use local_lifecycle::remove_local_library;
 pub use manager::*;
 pub use outbox_snapshot::{
     DeleteOp, OutboxSnapshot, UploadActivity, UploadFileOp, UploadProgress, UploadReleaseGroup,
@@ -30,6 +32,9 @@ pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
 pub use sync_controller::DeviceJoinOutcome;
 pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
+
+#[cfg(test)]
+mod local_lifecycle_tests;
 
 use crate::config::{Config, ConfigError};
 use crate::keys::StoreKeys;
