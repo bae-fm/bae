@@ -295,6 +295,105 @@ class LibraryBrowseTreeTest {
         }
 
     @Test
+    fun eachOwnerRetainsOnlyItsCurrentSearch() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val controller = Any()
+
+            repeat(12) { index -> tree.subscribeSearch(controller, "query-$index") {} }
+
+            assertEquals(1, handle.searchSubscriptions.count { !it.cancelled })
+            assertFalse(handle.searchSubscriptions.last().cancelled)
+        }
+
+    @Test
+    fun repeatedSearchForTheSameOwnerAndQueryCoalesces() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val controller = Any()
+
+            repeat(2) { tree.subscribeSearch(controller, "query") {} }
+
+            assertEquals(1, handle.searchSubscriptions.size)
+            assertFalse(handle.searchSubscriptions.single().cancelled)
+        }
+
+    @Test
+    fun replacedSearchRejectsItsLateNotification() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val controller = Any()
+            val notifications = mutableListOf<Pair<String, Int>>()
+            tree.subscribeSearch(controller, "query-a") { notifications += "query-a" to it }
+            tree.subscribeSearch(controller, "query-b") { notifications += "query-b" to it }
+            notifications.clear()
+
+            handle.emitSearchResults(
+                0,
+                BridgeFixtures.searchResults(
+                    albums = listOf(BridgeFixtures.albumSearchResult(id = "album-stale")),
+                ),
+            )
+
+            assertTrue(notifications.isEmpty())
+            assertTrue(handle.searchSubscriptions[0].cancelled)
+            assertFalse(handle.searchSubscriptions[1].cancelled)
+        }
+
+    @Test
+    fun replacingSearchWaitsForTheOldInitialRequestBeforeCancelling() =
+        runBlocking {
+            val handle = FakeAppHandle(deliverSearchResultsImmediately = false)
+            val tree = tree(handle)
+            val controller = Any()
+            val oldSearch = async { tree.subscribeSearch(controller, "query-a") {} }
+            yield()
+            val currentSearch = async { tree.subscribeSearch(controller, "query-b") {} }
+            yield()
+
+            assertFalse(handle.searchSubscriptions[0].cancelled)
+            handle.emitSearchResults(0, BridgeFixtures.searchResults())
+            oldSearch.await()
+            assertTrue(handle.searchSubscriptions[0].cancelled)
+
+            handle.emitSearchResults(1, BridgeFixtures.searchResults())
+            currentSearch.await()
+            assertFalse(handle.searchSubscriptions[1].cancelled)
+            tree.disconnect(controller)
+            assertTrue(handle.searchSubscriptions[1].cancelled)
+        }
+
+    @Test
+    fun replacingSearchDoesNotCancelAnActiveOldResultPageRequest() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val controller = Any()
+            tree.subscribeSearch(controller, "query-a") {}
+            handle.deliverSearchResultsImmediately = false
+            val oldResults = async { tree.search("query-a", page = 0, pageSize = 20) }
+            yield()
+            val replacement = async { tree.subscribeSearch(controller, "query-b") {} }
+            yield()
+
+            assertFalse(handle.searchSubscriptions[1].cancelled)
+            handle.emitSearchResults(
+                1,
+                BridgeFixtures.searchResults(
+                    albums = listOf(BridgeFixtures.albumSearchResult(id = "album-request")),
+                ),
+            )
+            assertEquals(BrowseId.Album("album-request").mediaId, oldResults.await().single().mediaId)
+
+            handle.emitSearchResults(2, BridgeFixtures.searchResults())
+            replacement.await()
+            assertFalse(handle.searchSubscriptions[2].cancelled)
+        }
+
+    @Test
     fun unobservedSearchCacheStaysBounded() =
         runBlocking {
             val handle = FakeAppHandle()

@@ -49,9 +49,11 @@ internal class BaeLibrarySessionCallback(
         page: Int,
         pageSize: Int,
         params: LibraryParams?,
-    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = getChildren(parentId, page, pageSize, params)
+    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
+        getChildren(browser, parentId, page, pageSize, params)
 
     internal fun getChildren(
+        browser: MediaSession.ControllerInfo,
         parentId: String,
         page: Int,
         pageSize: Int,
@@ -59,6 +61,9 @@ internal class BaeLibrarySessionCallback(
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
         scope.future {
             queryResult {
+                if (!tree.subscribeParent(browser, parentId)) {
+                    return@queryResult LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+                }
                 val children = tree.children(parentId, page, pageSize)
                 if (children == null) {
                     LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)

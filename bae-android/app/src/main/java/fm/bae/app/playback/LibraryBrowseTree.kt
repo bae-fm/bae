@@ -296,12 +296,16 @@ internal class LibraryBrowseTree<Owner : Any>(
         logger.error("library browse live query failed", error)
     },
 ) {
-    private data class SearchInterest(val onResultsChanged: (Int) -> Unit)
+    private data class SearchInterest(
+        val query: String,
+        val identity: Any,
+        val onResultsChanged: (Int) -> Unit,
+    )
 
     private val nodes = BrowseNodeFactory(artworkUri)
     private val interestLock = Any()
     private val parentsByOwner = mutableMapOf<Owner, MutableSet<String>>()
-    private val searchesByOwner = mutableMapOf<Owner, MutableMap<String, SearchInterest>>()
+    private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
@@ -491,26 +495,34 @@ internal class LibraryBrowseTree<Owner : Any>(
         query: String,
         onResultsChanged: (Int) -> Unit,
     ) {
-        synchronized(interestLock) {
-            searchesByOwner
-                .getOrPut(owner, ::mutableMapOf)[query] = SearchInterest(onResultsChanged)
-        }
+        val identity = Any()
+        val previousQuery =
+            synchronized(interestLock) {
+                searchesByOwner.put(owner, SearchInterest(query, identity, onResultsChanged))?.query
+            }
         searchObservers.ensure(query)
+        if (previousQuery != null && previousQuery != query && !isSearchRetained(previousQuery)) {
+            searchObservers.cancelWhenUnused(previousQuery)
+        }
         val count = searchObservers.value(query).albums.size
-        if (isSearchOwned(owner, query)) onResultsChanged(count)
+        synchronized(interestLock) {
+            searchesByOwner[owner]
+                ?.takeIf { it.identity === identity }
+                ?.onResultsChanged(count)
+        }
     }
 
     fun disconnect(owner: Owner) {
-        val (parents, queries) =
+        val (parents, query) =
             synchronized(interestLock) {
-                parentsByOwner.remove(owner).orEmpty() to searchesByOwner.remove(owner)?.keys.orEmpty()
+                parentsByOwner.remove(owner).orEmpty() to searchesByOwner.remove(owner)?.query
             }
         parents.forEach { parentId ->
             if (!isParentRetained(parentId)) {
                 parentObservationKey(parentId)?.let(parentObservers::cancelWhenUnused)
             }
         }
-        queries.forEach { query ->
+        query?.let { query ->
             if (!isSearchRetained(query)) searchObservers.cancelWhenUnused(query)
         }
     }
@@ -570,12 +582,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         synchronized(interestLock) { parentsByOwner.values.any { parentId in it } }
 
     private fun isSearchRetained(query: String): Boolean =
-        synchronized(interestLock) { searchesByOwner.values.any { query in it } }
-
-    private fun isSearchOwned(
-        owner: Owner,
-        query: String,
-    ): Boolean = synchronized(interestLock) { searchesByOwner[owner]?.containsKey(query) == true }
+        synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
 
     private fun notifySearchResults(
         query: String,
@@ -583,9 +590,17 @@ internal class LibraryBrowseTree<Owner : Any>(
     ) {
         val listeners =
             synchronized(interestLock) {
-                searchesByOwner.values.mapNotNull { it[query] }
+                searchesByOwner
+                    .filterValues { it.query == query }
+                    .map { (owner, interest) -> owner to interest.identity }
             }
-        listeners.forEach { it.onResultsChanged(count) }
+        listeners.forEach { (owner, identity) ->
+            synchronized(interestLock) {
+                searchesByOwner[owner]
+                    ?.takeIf { it.identity === identity }
+                    ?.onResultsChanged(count)
+            }
+        }
     }
 
     private fun <Key, Value> exactProjections(
