@@ -53,6 +53,12 @@ private data class ParentPageKey(
     val pageSize: Int,
 )
 
+private data class SearchPageKey(
+    val query: String,
+    val page: Int,
+    val pageSize: Int,
+)
+
 private class LiveProjection<T>(
     private val scope: CoroutineScope,
     private val flow: Flow<LiveQueryEvent<T>>,
@@ -130,6 +136,7 @@ private class LiveProjectionCache<Key, Value>(
         val identity: Any,
         val projection: LiveProjection<Value>,
         var waiters: Int = 0,
+        var cancelWhenUnused: Boolean = false,
     )
 
     private val lock = Any()
@@ -144,17 +151,36 @@ private class LiveProjectionCache<Key, Value>(
         }
     }
 
-    fun cancel(key: Key) {
-        synchronized(lock) { projections.remove(key) }?.projection?.cancel()
+    fun ensure(key: Key) {
+        var created = false
+        val entry =
+            synchronized(lock) {
+                (projections[key]
+                    ?: createEntry(key).also {
+                        projections[key] = it
+                        created = true
+                    }).also { it.cancelWhenUnused = false }
+            }
+        trimAndCancel()
+        if (created) entry.projection.start()
     }
 
-    fun cancelWhere(predicate: (Key) -> Boolean) {
+    fun cancelWhenUnused(key: Key) {
         val cancelled =
             synchronized(lock) {
-                val keys = projections.keys.filter(predicate)
-                keys.mapNotNull(projections::remove)
+                projections[key]?.let { entry ->
+                    if (isRetained(key)) {
+                        entry.cancelWhenUnused = false
+                        null
+                    } else if (entry.waiters == 0) {
+                        projections.remove(key)
+                    } else {
+                        entry.cancelWhenUnused = true
+                        null
+                    }
+                }
             }
-        cancelled.forEach { it.projection.cancel() }
+        cancelled?.projection?.cancel()
     }
 
     fun cancelAll() {
@@ -165,40 +191,47 @@ private class LiveProjectionCache<Key, Value>(
         cancelled.forEach { it.projection.cancel() }
     }
 
-    fun trim() {
-        trimAndCancel()
-    }
-
     private fun acquire(key: Key): Entry<Value> {
-        var created: LiveProjection<Value>? = null
+        var created = false
         val entry =
             synchronized(lock) {
                 (projections[key]
-                    ?: run {
-                        val identity = Any()
-                        val projection =
-                            LiveProjection(scope, flow(key)) { event, isUpdate ->
-                                apply(key, identity, event, isUpdate)
-                            }
-                        created = projection
-                        Entry(identity, projection).also { projections[key] = it }
+                    ?: createEntry(key).also {
+                        projections[key] = it
+                        created = true
                     }).also { it.waiters++ }
             }
         trimAndCancel()
-        created?.start()
+        if (created) entry.projection.start()
         return entry
+    }
+
+    private fun createEntry(key: Key): Entry<Value> {
+        val identity = Any()
+        val projection =
+            LiveProjection(scope, flow(key)) { event, isUpdate ->
+                apply(key, identity, event, isUpdate)
+            }
+        return Entry(identity, projection)
     }
 
     private fun release(
         key: Key,
         identity: Any,
     ) {
-        synchronized(lock) {
-            projections[key]?.takeIf { it.identity === identity }?.let { entry ->
-                check(entry.waiters > 0)
-                entry.waiters--
+        val cancelled =
+            synchronized(lock) {
+                projections[key]?.takeIf { it.identity === identity }?.let { entry ->
+                    check(entry.waiters > 0)
+                    entry.waiters--
+                    if (entry.waiters == 0 && entry.cancelWhenUnused && !isRetained(key)) {
+                        projections.remove(key)
+                    } else {
+                        null
+                    }
+                }
             }
-        }
+        cancelled?.projection?.cancel()
         trimAndCancel()
     }
 
@@ -274,6 +307,14 @@ internal class LibraryBrowseTree<Owner : Any>(
             scope = scope,
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
+            isRetained = { false },
+            onError = { _, error -> onQueryError(error) },
+        )
+    private val parentObservers =
+        LiveProjectionCache(
+            scope = scope,
+            maximumCount = Int.MAX_VALUE,
+            flow = ::pageFlow,
             isRetained = { key -> isParentRetained(key.parentId) },
             onChanged = { key, value -> onChildrenChanged(key.parentId, value.totalCount) },
             onError = { _, error -> onQueryError(error) },
@@ -282,15 +323,24 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val composerDetails = exactProjections(library::composerDetails)
     private val workDetails = exactProjections(library::workDetails)
     private val releaseDetails = exactProjections(library::releaseDetails)
-    private val searches =
+    private val searchPages =
         LiveProjectionCache(
             scope = scope,
             maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
+            flow = ::searchPageFlow,
+            isRetained = { false },
+            onError = { _, error -> onQueryError(error) },
+        )
+    private val searchObservers =
+        LiveProjectionCache(
+            scope = scope,
+            maximumCount = Int.MAX_VALUE,
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
             onChanged = { query, value -> notifySearchResults(query, value.albums.size) },
             onError = { _, error -> onQueryError(error) },
         )
+    private val spokenSearches = exactProjections(library::searchResults)
 
     /** The tree root. Its [children] are the top-level categories. */
     fun root(): MediaItem =
@@ -404,8 +454,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = searches.value(query).albums.map { nodes.album(it.id, it.title, it.cover) }
-        return paginate(albums, page, pageSize)
+        return searchPages.value(SearchPageKey(query, page, pageSize)).items
     }
 
     fun subscribeParent(
@@ -416,6 +465,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         synchronized(interestLock) {
             parentsByOwner.getOrPut(owner, ::mutableSetOf).add(parentId)
         }
+        parentObservationKey(parentId)?.let(parentObservers::ensure)
         return true
     }
 
@@ -431,7 +481,9 @@ internal class LibraryBrowseTree<Owner : Any>(
                 }
                 parentsByOwner.values.any { parentId in it }
             }
-        if (!retained) pageProjections.cancelWhere { it.parentId == parentId }
+        if (!retained) {
+            parentObservationKey(parentId)?.let(parentObservers::cancelWhenUnused)
+        }
     }
 
     suspend fun subscribeSearch(
@@ -443,7 +495,9 @@ internal class LibraryBrowseTree<Owner : Any>(
             searchesByOwner
                 .getOrPut(owner, ::mutableMapOf)[query] = SearchInterest(onResultsChanged)
         }
-        onResultsChanged(searches.value(query).albums.size)
+        searchObservers.ensure(query)
+        val count = searchObservers.value(query).albums.size
+        if (isSearchOwned(owner, query)) onResultsChanged(count)
     }
 
     fun disconnect(owner: Owner) {
@@ -453,14 +507,12 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
         parents.forEach { parentId ->
             if (!isParentRetained(parentId)) {
-                pageProjections.cancelWhere { it.parentId == parentId }
+                parentObservationKey(parentId)?.let(parentObservers::cancelWhenUnused)
             }
         }
         queries.forEach { query ->
-            if (!isSearchRetained(query)) searches.cancel(query)
+            if (!isSearchRetained(query)) searchObservers.cancelWhenUnused(query)
         }
-        pageProjections.trim()
-        searches.trim()
     }
 
     /**
@@ -471,7 +523,7 @@ internal class LibraryBrowseTree<Owner : Any>(
      * answer is null — the search does not then fall back to the album list.
      */
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
-        val results = searches.value(query)
+        val results = spokenSearches.value(query)
         val firstTrack = results.tracks.firstOrNull()
         val firstAlbum = results.albums.firstOrNull()
         return when {
@@ -504,11 +556,14 @@ internal class LibraryBrowseTree<Owner : Any>(
             searchesByOwner.clear()
         }
         pageProjections.cancelAll()
+        parentObservers.cancelAll()
         albumDetails.cancelAll()
         composerDetails.cancelAll()
         workDetails.cancelAll()
         releaseDetails.cancelAll()
-        searches.cancelAll()
+        searchPages.cancelAll()
+        searchObservers.cancelAll()
+        spokenSearches.cancelAll()
     }
 
     private fun isParentRetained(parentId: String): Boolean =
@@ -516,6 +571,11 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     private fun isSearchRetained(query: String): Boolean =
         synchronized(interestLock) { searchesByOwner.values.any { query in it } }
+
+    private fun isSearchOwned(
+        owner: Owner,
+        query: String,
+    ): Boolean = synchronized(interestLock) { searchesByOwner[owner]?.containsKey(query) == true }
 
     private fun notifySearchResults(
         query: String,
@@ -538,6 +598,29 @@ internal class LibraryBrowseTree<Owner : Any>(
             isRetained = { false },
             onError = { _, error -> onQueryError(error) },
         )
+
+    private fun parentObservationKey(parentId: String): ParentPageKey? =
+        when (BrowseId.parse(parentId)) {
+            BrowseId.Albums,
+            BrowseId.Composers,
+            is BrowseId.Album,
+            is BrowseId.Composer,
+            is BrowseId.Work,
+            -> ParentPageKey(parentId, page = 0, pageSize = 1)
+
+            null,
+            BrowseId.Root,
+            is BrowseId.Track,
+            -> null
+        }
+
+    private fun searchPageFlow(key: SearchPageKey): Flow<LiveQueryEvent<BrowsePage>> =
+        library.searchResults(key.query).map { event ->
+            event.mapValue { results ->
+                val albums = results.albums.map { nodes.album(it.id, it.title, it.cover) }
+                BrowsePage(paginate(albums, key.page, key.pageSize), albums.size)
+            }
+        }
 
     private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
         when (val id = checkNotNull(BrowseId.parse(key.parentId))) {

@@ -77,6 +77,96 @@ private final class AlbumProbeSubscription: LiveSubscriptionProtocol,
     }
 }
 
+private final class SearchSubscriptionProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var callbacks: [LibrarySearchCallback] = []
+
+    func subscribe(callback: LibrarySearchCallback)
+        -> any LiveSubscriptionProtocol
+    {
+        lock.withLock { callbacks.append(callback) }
+        return SearchProbeSubscription()
+    }
+
+    func emitValue(subscription: Int) {
+        let callback = lock.withLock { callbacks[subscription] }
+        callback.onValue(
+            value: BridgeSearchResults(
+                albums: [],
+                artists: [],
+                tracks: [],
+                composers: [],
+                works: []
+            )
+        )
+    }
+
+    func emitError(subscription: Int) {
+        let callback = lock.withLock { callbacks[subscription] }
+        callback.onError(
+            error: .Diagnostic(
+                category: .internal,
+                detail: "search failed"
+            )
+        )
+    }
+
+    var count: Int { lock.withLock { callbacks.count } }
+}
+
+private final class SearchProbeSubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    func cancel() {}
+}
+
+private func waitForSearchSubscription(
+    _ expectedCount: Int,
+    probe: SearchSubscriptionProbe
+) async throws -> Bool {
+    for _ in 0..<100 {
+        guard probe.count < expectedCount else { return true }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+    return false
+}
+
+@Suite("LibraryProjectionStore search")
+struct LibraryProjectionStoreSearchTests {
+    @MainActor
+    @Test("a new query clears the previous query before its first result")
+    func queryChangeClearsPreviousState() async throws {
+        let probe = SearchSubscriptionProbe()
+        let store = LibraryProjectionStore(
+            library: Library(
+                subscribeLibrarySearch: { _, callback in
+                    probe.subscribe(callback: callback)
+                }
+            )
+        )
+
+        store.activateSearch("query-a")
+        try #require(await waitForSearchSubscription(1, probe: probe))
+        probe.emitValue(subscription: 0)
+        await waitForStoreUpdate { store.search.value?.query == "query-a" }
+        #expect(store.search.delivered)
+
+        store.activateSearch("query-b")
+
+        #expect(store.search.value == nil)
+        #expect(!store.search.delivered)
+        #expect(store.search.error == nil)
+
+        try #require(await waitForSearchSubscription(2, probe: probe))
+        probe.emitError(subscription: 1)
+        await waitForStoreUpdate { store.search.error != nil }
+
+        #expect(store.search.value == nil)
+        #expect(!store.search.delivered)
+        #expect(store.search.error != nil)
+    }
+}
+
 @Suite("LibraryBrowseSession album projection")
 struct LibraryBrowseSessionAlbumProjectionTests {
     @MainActor

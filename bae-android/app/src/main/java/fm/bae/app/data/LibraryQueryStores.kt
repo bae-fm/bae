@@ -96,7 +96,7 @@ internal class SearchQueryStore(
         job?.cancel()
         generation++
         val currentGeneration = generation
-        mutableState.value = mutableState.value.copy(error = null)
+        mutableState.value = LiveQueryState()
         job =
             scope.launch {
                 delay(300)

@@ -171,6 +171,9 @@ internal class FakeAppHandle(
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
     private val initialAlbumPageError: uniffi.bae_bridge.BridgeException? = null,
+    private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
+    var deliverAlbumPagesImmediately: Boolean = true,
+    var deliverSearchResultsImmediately: Boolean = true,
 ) : AppHandle(NoHandle) {
     var pauseCount = 0
     var resumeCount = 0
@@ -183,6 +186,8 @@ internal class FakeAppHandle(
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
     val albumPageCallbacks = mutableListOf<AlbumPageCallback>()
     val searchCallbacks = mutableListOf<LibrarySearchCallback>()
+    val albumPageSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val searchSubscriptions = mutableListOf<FakeLiveSubscription>()
 
     private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
 
@@ -224,13 +229,17 @@ internal class FakeAppHandle(
     ): LiveSubscription {
         albumPageWindows.add(offset to limit)
         albumPageCallbacks += callback
+        val subscription = liveSubscription().also(albumPageSubscriptions::add)
+        if (!deliverAlbumPagesImmediately) {
+            return subscription
+        }
         if (initialAlbumPageError == null) {
             val rows = albumPages(offset, limit)
             callback.onValue(BridgeAlbumPage(rows, rows.size.toULong()))
         } else {
             callback.onError(initialAlbumPageError)
         }
-        return liveSubscription()
+        return subscription
     }
 
     fun emitAlbumPage(
@@ -307,8 +316,24 @@ internal class FakeAppHandle(
         callback: LibrarySearchCallback,
     ): LiveSubscription {
         searchCallbacks += callback
-        callback.onValue(searchResults(query))
-        return liveSubscription()
+        val subscription = liveSubscription().also(searchSubscriptions::add)
+        if (!deliverSearchResultsImmediately) {
+            return subscription
+        }
+        val error = initialSearchError(query)
+        if (error == null) {
+            callback.onValue(searchResults(query))
+        } else {
+            callback.onError(error)
+        }
+        return subscription
+    }
+
+    fun failSearchResults(
+        subscription: Int,
+        error: uniffi.bae_bridge.BridgeException,
+    ) {
+        searchCallbacks[subscription].onError(error)
     }
 
     override fun playRelease(

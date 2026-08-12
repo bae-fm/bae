@@ -26,13 +26,11 @@ class BaeLibrarySessionCallbackTest {
     @Test
     fun initialErrorReturnsMedia3ErrorThenTheLiveRequestRecovers() {
         val handle = FakeAppHandle(initialAlbumPageError = queryFailure())
-        val notifications = mutableListOf<Pair<String, Int>>()
         val tree =
             LibraryBrowseTree<MediaSession.ControllerInfo>(
                 library = Library(handle),
                 labels = { BrowseLabels(albums = "Albums", composers = "Composers") },
                 artworkUri = { Uri.parse("content://test/cover/${it.id}") },
-                onChildrenChanged = { parentId, count -> notifications += parentId to count },
             )
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val callback =
@@ -58,7 +56,6 @@ class BaeLibrarySessionCallbackTest {
                 .getChildren(BrowseId.Albums.mediaId, page = 0, pageSize = 20, params = null)
                 .get(1, TimeUnit.SECONDS)
 
-        assertEquals(BrowseId.Albums.mediaId to 1, notifications.single())
         assertEquals(SessionResult.RESULT_SUCCESS, recovered.resultCode)
         assertEquals(
             BrowseId.Album("album-recovered").mediaId,

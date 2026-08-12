@@ -135,10 +135,7 @@ public final class LibraryProjectionStore {
             searchTask = nil
             return
         }
-        search = LibraryProjectionState(
-            value: search.value,
-            delivered: search.delivered
-        )
+        search = LibraryProjectionState()
         searchTask = Task { [weak self, library] in
             do {
                 try await Task.sleep(for: .milliseconds(300))
