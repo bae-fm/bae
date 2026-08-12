@@ -1,7 +1,6 @@
 package fm.bae.app.playback
 
 import fm.bae.app.data.LiveQueryEvent
-import java.util.LinkedHashMap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -9,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import uniffi.bae_bridge.BridgeException
+import java.util.LinkedHashMap
 
 private class LiveProjection<T>(
     private val scope: CoroutineScope,
@@ -89,14 +89,20 @@ internal class LiveProjectionCache<Key, Value>(
     private val lock = Any()
     private val projections = LinkedHashMap<Key, Entry<Value>>(16, 0.75f, true)
 
-    suspend fun value(key: Key): Value {
+    suspend fun event(key: Key): LiveQueryEvent<Value> {
         val entry = acquire(key)
         return try {
-            awaitValue(entry)
+            awaitEvent(entry)
         } finally {
             release(key, entry.identity)
         }
     }
+
+    suspend fun value(key: Key): Value =
+        when (val event = event(key)) {
+            is LiveQueryEvent.Value -> event.value
+            is LiveQueryEvent.Error -> throw event.error
+        }
 
     fun ensure(key: Key) {
         var created = false
@@ -207,7 +213,7 @@ internal class LiveProjectionCache<Key, Value>(
         trimAndCancel()
     }
 
-    private suspend fun awaitValue(entry: Entry<Value>): Value {
+    private suspend fun awaitEvent(entry: Entry<Value>): LiveQueryEvent<Value> {
         while (true) {
             val awaited =
                 synchronized(lock) {
@@ -215,11 +221,7 @@ internal class LiveProjectionCache<Key, Value>(
                     Awaited(entry.latest, entry.changed)
                 }
             if (awaited.event != null) {
-                val event = checkNotNull(awaited.event)
-                return when (event) {
-                    is LiveQueryEvent.Value -> event.value
-                    is LiveQueryEvent.Error -> throw event.error
-                }
+                return checkNotNull(awaited.event)
             }
             awaited.changed.await()
         }

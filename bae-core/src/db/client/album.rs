@@ -247,10 +247,23 @@ impl Database {
     pub(crate) fn subscribe_album_parent_observation(
         &self,
     ) -> coven::LiveQuery<LibraryParentObservationProjection> {
-        let query = format!("{} FROM albums a", album_summary_select());
+        let query = format!(
+            "{},
+             a.created_at AS parent_created_at,
+             (SELECT COALESCE(parent_artist.sort_name, parent_artist.name)
+              FROM artists parent_artist
+              WHERE parent_artist.id = a.artist_id) AS parent_artist_order
+             FROM albums a",
+            album_summary_select()
+        );
         self.inner.handle.subscribe(move |sql| {
             let rows = sql
-                .query(&query, [], |row| Ok(parse_album_summary_row(row)))?
+                .query(&query, [], |row| {
+                    let summary = parse_album_summary_row(row);
+                    let _: String = row.get("parent_created_at")?;
+                    let _: Option<String> = row.get("parent_artist_order")?;
+                    Ok(summary)
+                })?
                 .into_iter()
                 .collect::<Result<Vec<_>, DbError>>()
                 .map_err(CovenError::from)?;

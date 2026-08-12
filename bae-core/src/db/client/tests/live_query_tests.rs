@@ -155,6 +155,60 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
         2
     );
 
+    db.call(|sql| {
+        sql.execute(
+            "UPDATE albums SET created_at = '2026-02-01T00:00:00Z' WHERE id = ?1",
+            params![OTHER_ALBUM_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), live.next())
+            .await
+            .expect("non-first album ordering field wakes parent observation")
+            .unwrap()
+            .child_count,
+        2
+    );
+
+    db.call(|sql| {
+        sql.execute(
+            "UPDATE albums SET _updated_at = 'unread-column-write' WHERE id = ?1",
+            params![OTHER_ALBUM_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), live.next())
+            .await
+            .is_err()
+    );
+
+    db.call(|sql| {
+        sql.execute(
+            "UPDATE artists SET sort_name = 'Name, Artist' WHERE id = ?1",
+            params![ARTIST_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), live.next())
+            .await
+            .expect("album artist ordering field wakes parent observation")
+            .unwrap()
+            .child_count,
+        2
+    );
+
     let cover_hash = crate::util::fs::hash_bytes(b"other cover fixture");
     db.call(move |sql| {
         sql.execute(

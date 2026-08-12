@@ -78,14 +78,16 @@ internal class BaeLibrarySessionCallback(
         browser: MediaSession.ControllerInfo,
         parentId: String,
         params: LibraryParams?,
-    ): ListenableFuture<LibraryResult<Void>> {
-        if (!tree.subscribeParent(browser, parentId)) {
-            return SettableFuture.create<LibraryResult<Void>>().also {
-                it.set(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
+    ): ListenableFuture<LibraryResult<Void>> =
+        scope.future {
+            queryResult {
+                if (tree.subscribeParent(browser, parentId)) {
+                    LibraryResult.ofVoid()
+                } else {
+                    LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+                }
             }
         }
-        return SettableFuture.create<LibraryResult<Void>>().also { it.set(LibraryResult.ofVoid()) }
-    }
 
     override fun onUnsubscribe(
         session: MediaLibrarySession,

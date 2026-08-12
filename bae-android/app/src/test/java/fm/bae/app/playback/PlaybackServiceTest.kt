@@ -47,8 +47,8 @@ import uniffi.bae_bridge.ComposerDetailCallback
 import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
-import uniffi.bae_bridge.LibrarySearchCallback
 import uniffi.bae_bridge.LibraryParentObservationCallback
+import uniffi.bae_bridge.LibrarySearchCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OutboxCallback
@@ -175,6 +175,7 @@ internal class FakeAppHandle(
     private val initialAlbumPageError: uniffi.bae_bridge.BridgeException? = null,
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
     var deliverAlbumPagesImmediately: Boolean = true,
+    var deliverAlbumParentObservationImmediately: Boolean = true,
     var deliverSearchResultsImmediately: Boolean = true,
 ) : AppHandle(NoHandle) {
     var pauseCount = 0
@@ -304,7 +305,9 @@ internal class FakeAppHandle(
         callback: LibraryParentObservationCallback,
     ): LiveSubscription {
         albumParentObservationCallbacks += callback
-        callback.onValue(BridgeLibraryParentObservation(0uL))
+        if (deliverAlbumParentObservationImmediately) {
+            callback.onValue(BridgeLibraryParentObservation(0uL))
+        }
         return liveSubscription().also(albumParentObservationSubscriptions::add)
     }
 

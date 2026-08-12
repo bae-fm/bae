@@ -302,37 +302,60 @@ class LibraryBrowseTreeTest {
         }
 
     @Test
-    fun implicitParentInterestsAreBoundedPerOwner() {
-        val handle = FakeAppHandle()
-        val tree = tree(handle)
-        val controller = Any()
+    fun implicitParentInterestsAreBoundedPerOwner() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val controller = Any()
 
-        repeat(13) { index ->
-            tree.retainImplicitParent(controller, BrowseId.Album("album-$index").mediaId)
+            repeat(13) { index ->
+                tree.retainImplicitParent(controller, BrowseId.Album("album-$index").mediaId)
+            }
+
+            assertEquals(12, handle.albumDetailSubscriptions.count { !it.cancelled })
+            assertTrue(handle.albumDetailSubscriptions.first().cancelled)
+            assertFalse(handle.albumDetailSubscriptions.last().cancelled)
         }
-
-        assertEquals(12, handle.albumDetailSubscriptions.count { !it.cancelled })
-        assertTrue(handle.albumDetailSubscriptions.first().cancelled)
-        assertFalse(handle.albumDetailSubscriptions.last().cancelled)
-    }
 
     @Test
-    fun explicitParentPromotionSurvivesImplicitPressure() {
-        val handle = FakeAppHandle()
-        val tree = tree(handle)
-        val controller = Any()
-        val promotedParent = BrowseId.Album("album-promoted").mediaId
-        tree.retainImplicitParent(controller, promotedParent)
-        tree.subscribeParent(controller, promotedParent)
+    fun explicitParentPromotionSurvivesImplicitPressure() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val controller = Any()
+            val promotedParent = BrowseId.Album("album-promoted").mediaId
+            tree.retainImplicitParent(controller, promotedParent)
+            tree.subscribeParent(controller, promotedParent)
 
-        repeat(13) { index ->
-            tree.retainImplicitParent(controller, BrowseId.Album("album-$index").mediaId)
+            repeat(13) { index ->
+                tree.retainImplicitParent(controller, BrowseId.Album("album-$index").mediaId)
+            }
+
+            assertFalse(handle.albumDetailSubscriptions.first().cancelled)
+            tree.unsubscribeParent(controller, promotedParent)
+            assertTrue(handle.albumDetailSubscriptions.first().cancelled)
         }
 
-        assertFalse(handle.albumDetailSubscriptions.first().cancelled)
-        tree.unsubscribeParent(controller, promotedParent)
-        assertTrue(handle.albumDetailSubscriptions.first().cancelled)
-    }
+    @Test
+    fun unsubscribeCompletesExplicitParentReadiness() =
+        runBlocking {
+            val handle = FakeAppHandle(deliverAlbumParentObservationImmediately = false)
+            val tree = tree(handle)
+            val controller = Any()
+            val readiness =
+                async {
+                    runCatching {
+                        tree.subscribeParent(controller, BrowseId.Albums.mediaId)
+                    }.exceptionOrNull()
+                }
+            yield()
+
+            tree.unsubscribeParent(controller, BrowseId.Albums.mediaId)
+
+            assertTrue(readiness.await() is BridgeException.Diagnostic)
+            assertTrue(handle.albumParentObservationSubscriptions.single().cancelled)
+            assertTrue(handle.albumPageCallbacks.isEmpty())
+        }
 
     @Test
     fun activeParentObservationDoesNotExemptRequestedPagesFromTheCacheBound() =

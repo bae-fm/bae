@@ -8,6 +8,16 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
 import fm.bae.app.data.LiveQueryEvent
 import fm.bae.app.data.mapValue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.selects.select
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
@@ -20,13 +30,10 @@ import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 import uniffi.bae_bridge.BridgeTrack
 import java.util.LinkedHashMap
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 private const val TAG = "bae.LibraryBrowseTree"
+private const val PARENT_INTEREST_MAP_INITIAL_CAPACITY = 16
+private const val PARENT_INTEREST_MAP_LOAD_FACTOR = 0.75f
 private val logger = BaeLogger(TAG)
 
 /**
@@ -50,12 +57,24 @@ private data class ParentPageKey(
     val pageSize: Int,
 )
 
+private class ParentInterest {
+    val ended = CompletableDeferred<Unit>()
+
+    fun end() {
+        ended.complete(Unit)
+    }
+}
+
 private data class ParentInterests(
-    val explicit: MutableSet<String> = mutableSetOf(),
-    val implicit: LinkedHashMap<String, Unit> = LinkedHashMap(16, 0.75f, true),
+    val explicit: MutableMap<String, ParentInterest> = mutableMapOf(),
+    val implicit: LinkedHashMap<String, ParentInterest> =
+        LinkedHashMap(PARENT_INTEREST_MAP_INITIAL_CAPACITY, PARENT_INTEREST_MAP_LOAD_FACTOR, true),
 ) {
     val parentIds: Set<String>
-        get() = explicit + implicit.keys
+        get() = explicit.keys + implicit.keys
+
+    val entries: List<Pair<String, ParentInterest>>
+        get() = explicit.toList() + implicit.toList()
 
     val isEmpty: Boolean
         get() = explicit.isEmpty() && implicit.isEmpty()
@@ -256,45 +275,55 @@ internal class LibraryBrowseTree<Owner : Any>(
         return paginate(albums, page, pageSize)
     }
 
-    fun subscribeParent(
+    suspend fun subscribeParent(
         owner: Owner,
         parentId: String,
     ): Boolean {
         if (BrowseId.parse(parentId) == null) return false
-        synchronized(interestLock) {
-            parentsByOwner.getOrPut(owner, ::ParentInterests).let { interests ->
-                interests.implicit.remove(parentId)
-                interests.explicit.add(parentId)
+        val interest =
+            synchronized(interestLock) {
+                parentsByOwner.getOrPut(owner, ::ParentInterests).let { interests ->
+                    interests.explicit[parentId]
+                        ?: interests.implicit.remove(parentId)?.also { interests.explicit[parentId] = it }
+                        ?: ParentInterest().also { interests.explicit[parentId] = it }
+                }
             }
+        if (isObservableParent(parentId)) {
+            awaitParentObservation(parentId, interest, parentObservers)
         }
-        ensureParentObserver(parentId)
         return true
     }
 
-    fun retainImplicitParent(
+    suspend fun retainImplicitParent(
         owner: Owner,
         parentId: String,
     ): Boolean {
         if (BrowseId.parse(parentId) == null) return false
-        val evicted =
+        val (interest, evicted) =
             synchronized(interestLock) {
                 val interests = parentsByOwner.getOrPut(owner, ::ParentInterests)
-                if (parentId in interests.explicit) {
-                    emptyList()
+                val retained = interests.explicit[parentId]
+                if (retained != null) {
+                    retained to emptyList()
                 } else {
-                    interests.implicit[parentId] = Unit
-                    buildList {
-                        while (interests.implicit.size > MAXIMUM_IMPLICIT_PARENT_INTERESTS) {
-                            val eldest = interests.implicit.entries.first().key
-                            interests.implicit.remove(eldest)
-                            add(eldest)
+                    val implicit = interests.implicit[parentId] ?: ParentInterest()
+                    interests.implicit[parentId] = implicit
+                    implicit to
+                        buildList {
+                            while (interests.implicit.size > MAXIMUM_IMPLICIT_PARENT_INTERESTS) {
+                                val eldest = interests.implicit.entries.first()
+                                interests.implicit.remove(eldest.key)
+                                add(eldest.key to eldest.value)
+                            }
                         }
-                    }
                 }
             }
-        ensureParentObserver(parentId)
-        evicted.forEach { evictedParent ->
+        evicted.forEach { (evictedParent, evictedInterest) ->
+            evictedInterest.end()
             if (!isParentRetained(evictedParent)) parentObservers.cancelWhenUnused(evictedParent)
+        }
+        if (isObservableParent(parentId)) {
+            awaitParentObservation(parentId, interest, parentObservers)
         }
         return true
     }
@@ -303,14 +332,17 @@ internal class LibraryBrowseTree<Owner : Any>(
         owner: Owner,
         parentId: String,
     ) {
-        val retained =
+        val (ended, retained) =
             synchronized(interestLock) {
-                parentsByOwner[owner]?.let { interests ->
-                    interests.explicit.remove(parentId)
-                    if (interests.isEmpty) parentsByOwner.remove(owner)
-                }
-                parentsByOwner.values.any { parentId in it.parentIds }
+                val ended =
+                    parentsByOwner[owner]?.let { interests ->
+                        interests.explicit.remove(parentId).also {
+                            if (interests.isEmpty) parentsByOwner.remove(owner)
+                        }
+                    }
+                ended to parentsByOwner.values.any { parentId in it.parentIds }
             }
+        ended?.end()
         if (!retained) {
             parentObservers.cancelWhenUnused(parentId)
         }
@@ -341,9 +373,10 @@ internal class LibraryBrowseTree<Owner : Any>(
     fun disconnect(owner: Owner) {
         val (parents, query) =
             synchronized(interestLock) {
-                parentsByOwner.remove(owner)?.parentIds.orEmpty() to searchesByOwner.remove(owner)?.query
+                parentsByOwner.remove(owner)?.entries.orEmpty() to searchesByOwner.remove(owner)?.query
             }
-        parents.forEach { parentId ->
+        parents.forEach { (parentId, interest) ->
+            interest.end()
             if (!isParentRetained(parentId)) {
                 parentObservers.cancelWhenUnused(parentId)
             }
@@ -389,10 +422,14 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     fun close() {
-        synchronized(interestLock) {
-            parentsByOwner.clear()
-            searchesByOwner.clear()
-        }
+        val parentInterests =
+            synchronized(interestLock) {
+                parentsByOwner.values.flatMap(ParentInterests::entries).also {
+                    parentsByOwner.clear()
+                    searchesByOwner.clear()
+                }
+            }
+        parentInterests.forEach { (_, interest) -> interest.end() }
         pageProjections.cancelAll()
         parentObservers.cancelAll()
         albumDetails.cancelAll()
@@ -422,12 +459,6 @@ internal class LibraryBrowseTree<Owner : Any>(
                 ),
         )
         onChildrenChanged(parentId, count)
-    }
-
-    private fun ensureParentObserver(parentId: String) {
-        if (!isObservableParent(parentId)) return
-        parentObservers.ensure(parentId)
-        if (!isParentRetained(parentId)) parentObservers.cancelWhenUnused(parentId)
     }
 
     private fun notifySearchResults(
@@ -630,3 +661,30 @@ private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
  *  flattening the album-detail screen taps into, so a track's position here is
  *  the start index `play_release` expects. */
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
+
+private suspend fun <Value> awaitParentObservation(
+    parentId: String,
+    interest: ParentInterest,
+    parentObservers: LiveProjectionCache<String, Value>,
+) {
+    coroutineScope {
+        val observation =
+            async(start = CoroutineStart.UNDISPATCHED) {
+                parentObservers.event(parentId)
+            }
+        select {
+            observation.onAwait {}
+            interest.ended.onAwait {
+                observation.cancel()
+                throw parentInterestEnded()
+            }
+        }
+    }
+    if (interest.ended.isCompleted) throw parentInterestEnded()
+}
+
+private fun parentInterestEnded(): BridgeException =
+    BridgeException.Diagnostic(
+        category = BridgeErrorCategory.INTERNAL,
+        detail = "browse parent interest ended before its observation became ready",
+    )
