@@ -152,8 +152,8 @@ impl AppServices {
         let query = manager.subscribe_album_browse(sort, std::collections::BTreeSet::new());
         crate::library::LibraryBrowseSubscription::new(
             query,
-            move |projection, request_revision| {
-                manager.resolve_album_browse(projection, request_revision)
+            move |projection, request_revision, cause| {
+                manager.resolve_album_browse(projection, request_revision, cause)
             },
         )
     }
@@ -443,8 +443,8 @@ impl AppServices {
         let query = manager.subscribe_composer_browse(sort, std::collections::BTreeSet::new());
         crate::library::LibraryBrowseSubscription::new(
             query,
-            move |projection, request_revision| {
-                manager.resolve_composer_browse(projection, request_revision)
+            move |projection, request_revision, cause| {
+                manager.resolve_composer_browse(projection, request_revision, cause)
             },
         )
     }

@@ -141,6 +141,7 @@ impl crate::types::BridgeAlbumBrowseSnapshot {
                 .collect(),
             total_count: snapshot.total_count,
             request_revision: snapshot.request_revision,
+            cause: crate::types::BridgeLiveQueryCause::from_core(snapshot.cause),
         }
     }
 }
@@ -164,6 +165,20 @@ impl crate::types::BridgeComposerBrowseSnapshot {
                 .collect(),
             total_count: snapshot.total_count,
             request_revision: snapshot.request_revision,
+            cause: crate::types::BridgeLiveQueryCause::from_core(snapshot.cause),
+        }
+    }
+}
+
+impl crate::types::BridgeLiveQueryCause {
+    fn from_core(cause: coven::ReconfigurableLiveQueryCause) -> Self {
+        match cause {
+            coven::ReconfigurableLiveQueryCause::Initial => Self::Initial,
+            coven::ReconfigurableLiveQueryCause::RequestChanged => Self::RequestChanged,
+            coven::ReconfigurableLiveQueryCause::DatabaseChanged => Self::DatabaseChanged,
+            coven::ReconfigurableLiveQueryCause::RequestAndDatabaseChanged => {
+                Self::RequestAndDatabaseChanged
+            }
         }
     }
 }

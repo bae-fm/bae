@@ -21,6 +21,7 @@ pub struct LibraryBrowseSnapshot<Row> {
     pub windows: Vec<LibraryBrowseWindow<Row>>,
     pub total_count: u64,
     pub request_revision: u64,
+    pub cause: coven::ReconfigurableLiveQueryCause,
 }
 
 pub type AlbumBrowseSubscription =
@@ -42,7 +43,11 @@ pub struct LibraryBrowseSubscription<Projection, Row> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<LibraryPageWindows>>>,
     query:
         tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<LibraryPageWindows, Projection>>>,
-    resolve: Arc<dyn Fn(Projection, u64) -> LibraryBrowseSnapshot<Row> + Send + Sync>,
+    resolve: Arc<
+        dyn Fn(Projection, u64, coven::ReconfigurableLiveQueryCause) -> LibraryBrowseSnapshot<Row>
+            + Send
+            + Sync,
+    >,
     cancellation: CancellationToken,
 }
 
@@ -53,7 +58,10 @@ where
 {
     pub(crate) fn new(
         query: coven::ReconfigurableLiveQuery<LibraryPageWindows, Projection>,
-        resolve: impl Fn(Projection, u64) -> LibraryBrowseSnapshot<Row> + Send + Sync + 'static,
+        resolve: impl Fn(Projection, u64, coven::ReconfigurableLiveQueryCause) -> LibraryBrowseSnapshot<Row>
+            + Send
+            + Sync
+            + 'static,
     ) -> Self {
         let requests = query.requests();
         Self {
@@ -96,8 +104,9 @@ where
             } => event?,
         };
         let revision = event.revision().get();
+        let cause = event.cause();
         let projection = event.into_result()?;
-        Ok((self.resolve)(projection, revision))
+        Ok((self.resolve)(projection, revision, cause))
     }
 
     pub async fn cancel(&self) {

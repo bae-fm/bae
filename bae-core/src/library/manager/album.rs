@@ -76,6 +76,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::AlbumBrowseProjection,
         request_revision: u64,
+        cause: coven::ReconfigurableLiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<AlbumSummary> {
         let covers = album_cover_refs(projection.cover_versions);
         crate::library::LibraryBrowseSnapshot {
@@ -89,6 +90,7 @@ impl LibraryManager {
                 .collect(),
             total_count: projection.total_count,
             request_revision,
+            cause,
         }
     }
 

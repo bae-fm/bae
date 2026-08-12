@@ -24,11 +24,20 @@ pub struct BridgeAlbumBrowseWindow {
     pub rows: Vec<BridgeAlbum>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLiveQueryCause {
+    Initial,
+    RequestChanged,
+    DatabaseChanged,
+    RequestAndDatabaseChanged,
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumBrowseSnapshot {
     pub windows: Vec<BridgeAlbumBrowseWindow>,
     pub total_count: u64,
     pub request_revision: u64,
+    pub cause: BridgeLiveQueryCause,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -42,6 +51,7 @@ pub struct BridgeComposerBrowseSnapshot {
     pub windows: Vec<BridgeComposerBrowseWindow>,
     pub total_count: u64,
     pub request_revision: u64,
+    pub cause: BridgeLiveQueryCause,
 }
 
 #[uniffi::export(callback_interface)]

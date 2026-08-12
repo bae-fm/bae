@@ -69,6 +69,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::ComposerBrowseProjection,
         request_revision: u64,
+        cause: coven::ReconfigurableLiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<ComposerSummary> {
         let images = composer_image_refs(projection.image_versions);
         crate::library::LibraryBrowseSnapshot {
@@ -82,6 +83,7 @@ impl LibraryManager {
                 .collect(),
             total_count: projection.total_count,
             request_revision,
+            cause,
         }
     }
 

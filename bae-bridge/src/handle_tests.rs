@@ -211,6 +211,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 
     assert_eq!(snapshot.total_count, 0);
     assert!(snapshot.windows.is_empty());
+    assert_eq!(snapshot.cause, crate::types::BridgeLiveQueryCause::Initial);
     assert_eq!(snapshot.request_revision, 0);
 
     subscription
@@ -223,6 +224,10 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
         .runtime
         .block_on(subscription.next())
         .expect("requested album browse snapshot");
+    assert_eq!(
+        requested.cause,
+        crate::types::BridgeLiveQueryCause::RequestChanged
+    );
     assert_eq!(requested.request_revision, 1);
     assert_eq!(requested.windows.len(), 1);
     assert_eq!(requested.windows[0].window.offset, 0);

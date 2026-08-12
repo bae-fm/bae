@@ -19,6 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLiveQueryCause
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -83,6 +84,27 @@ class LibraryBrowseTreeTest {
                 BrowseId.Album("album-new").mediaId,
                 tree.children(BrowseId.Albums.mediaId, 0, 20)!!.single().mediaId,
             )
+        }
+
+    @Test
+    fun aRequestCoalescedWithADatabaseCommitNotifiesExactlyOnce() =
+        runBlocking {
+            val handle = FakeAppHandle(albumPages = { _, _ -> listOf(BridgeFixtures.album(id = "album-row")) })
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parent, count -> notifications += parent to count }
+            tree.subscribeParent(Any(), BrowseId.Albums.mediaId)
+
+            tree.children(BrowseId.Albums.mediaId, 0, 20)
+            assertTrue(notifications.isEmpty())
+
+            handle.albumBrowseSubscriptions.single().emitRows(
+                rows = listOf(BridgeFixtures.album(id = "album-changed")),
+                totalCount = 3uL,
+                cause = BridgeLiveQueryCause.REQUEST_AND_DATABASE_CHANGED,
+            )
+
+            assertEquals(listOf(BrowseId.Albums.mediaId to 3), notifications)
+            tree.close()
         }
 
     @Test

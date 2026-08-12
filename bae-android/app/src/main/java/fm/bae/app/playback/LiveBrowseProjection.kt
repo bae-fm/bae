@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.yield
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
+import uniffi.bae_bridge.BridgeLiveQueryCause
 import java.util.LinkedHashMap
 
 private const val ACCESS_ORDER_INITIAL_CAPACITY = 16
@@ -27,7 +28,7 @@ private const val MAXIMUM_EXACT_SUBSCRIPTIONS = 24
 internal data class CollectionSnapshotReader<Row, Snapshot>(
     val windows: (Snapshot) -> Map<BridgeLibraryPageWindow, List<Row>>,
     val totalCount: (Snapshot) -> Int,
-    val requestRevision: (Snapshot) -> ULong,
+    val cause: (Snapshot) -> BridgeLiveQueryCause,
 )
 
 internal typealias ComposerCollectionProjection =
@@ -44,7 +45,7 @@ internal fun albumCollectionProjection(
     CollectionSnapshotReader(
         windows = { snapshot -> snapshot.windows.associate { it.window to it.rows } },
         totalCount = { it.totalCount.toInt() },
-        requestRevision = { it.requestRevision },
+        cause = { it.cause },
     ),
     onChanged,
     onError,
@@ -61,7 +62,7 @@ internal fun composerCollectionProjection(
     CollectionSnapshotReader(
         windows = { snapshot -> snapshot.windows.associate { it.window to it.rows } },
         totalCount = { it.totalCount.toInt() },
-        requestRevision = { it.requestRevision },
+        cause = { it.cause },
     ),
     onChanged,
     onError,
@@ -99,7 +100,6 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
     private val ready = CompletableDeferred<Unit>()
     private var delivered: Map<BridgeLibraryPageWindow, List<Row>> = emptyMap()
     private var deliveredRequest: Set<BridgeLibraryPageWindow> = emptySet()
-    private var deliveredRevision: ULong? = null
     private var lastCount: Int? = null
     private var closed = false
     private val consumer: Job =
@@ -185,8 +185,14 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                             value[waiter.window]?.let(waiter.result::complete) ?: false
                         }
                         ready.complete(Unit)
-                        val revision = snapshotReader.requestRevision(snapshot)
-                        (deliveredRevision == revision).also { deliveredRevision = revision }
+                        when (snapshotReader.cause(snapshot)) {
+                            BridgeLiveQueryCause.DATABASE_CHANGED,
+                            BridgeLiveQueryCause.REQUEST_AND_DATABASE_CHANGED,
+                            -> true
+                            BridgeLiveQueryCause.INITIAL,
+                            BridgeLiveQueryCause.REQUEST_CHANGED,
+                            -> false
+                        }
                     }
                 if (notify) onChanged(snapshotReader.totalCount(snapshot))
             } catch (error: BridgeException) {

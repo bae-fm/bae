@@ -46,6 +46,7 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryPageWindow
+import uniffi.bae_bridge.BridgeLiveQueryCause
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -380,7 +381,7 @@ internal class FakeAlbumBrowseSubscription(
         get() = windows
 
     init {
-        if (deliverBaselineImmediately) emitSnapshot(0uL)
+        if (deliverBaselineImmediately) emitSnapshot(0uL, BridgeLiveQueryCause.INITIAL)
     }
 
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
@@ -389,7 +390,11 @@ internal class FakeAlbumBrowseSubscription(
         revision++
         observedWindows += windows.map { it.offset to it.limit }
         if (deliverWindowsImmediately) {
-            if (initialError == null) emitSnapshot() else events.trySend(Result.failure(initialError))
+            if (initialError == null) {
+                emitSnapshot(cause = BridgeLiveQueryCause.REQUEST_CHANGED)
+            } else {
+                events.trySend(Result.failure(initialError))
+            }
         }
     }
 
@@ -397,12 +402,12 @@ internal class FakeAlbumBrowseSubscription(
 
     override suspend fun cancel() {
         cancelled = true
-        events.close()
     }
 
     fun emitRows(
         rows: List<BridgeAlbum>,
         totalCount: ULong = rows.size.toULong(),
+        cause: BridgeLiveQueryCause = BridgeLiveQueryCause.DATABASE_CHANGED,
     ) {
         val window = windows.lastOrNull() ?: BridgeLibraryPageWindow(0uL, rows.size.toULong().coerceAtLeast(1uL))
         events.trySend(
@@ -411,14 +416,18 @@ internal class FakeAlbumBrowseSubscription(
                     windows = listOf(BridgeAlbumBrowseWindow(window, rows)),
                     totalCount = totalCount,
                     requestRevision = revision,
+                    cause = cause,
                 ),
             ),
         )
     }
 
-    fun emitCount(totalCount: ULong) = emitSnapshot(totalCount)
+    fun emitCount(totalCount: ULong) = emitSnapshot(totalCount, BridgeLiveQueryCause.DATABASE_CHANGED)
 
-    private fun emitSnapshot(totalCount: ULong? = null) {
+    private fun emitSnapshot(
+        totalCount: ULong? = null,
+        cause: BridgeLiveQueryCause,
+    ) {
         val projected =
             windows.map { window ->
                 val values = rows(window.offset, window.limit)
@@ -430,6 +439,7 @@ internal class FakeAlbumBrowseSubscription(
                     windows = projected,
                     totalCount = totalCount ?: projected.sumOf { it.rows.size }.toULong(),
                     requestRevision = revision,
+                    cause = cause,
                 ),
             ),
         )
@@ -445,7 +455,7 @@ internal class FakeComposerBrowseSubscription(
     var cancelled = false
 
     init {
-        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), 0uL, revision))
+        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), 0uL, revision, BridgeLiveQueryCause.INITIAL))
     }
 
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
@@ -454,7 +464,12 @@ internal class FakeComposerBrowseSubscription(
         revision++
         val projected = windows.map { BridgeComposerBrowseWindow(it, rows(it.offset, it.limit)) }
         events.trySend(
-            BridgeComposerBrowseSnapshot(projected, projected.sumOf { it.rows.size }.toULong(), revision),
+            BridgeComposerBrowseSnapshot(
+                projected,
+                projected.sumOf { it.rows.size }.toULong(),
+                revision,
+                BridgeLiveQueryCause.REQUEST_CHANGED,
+            ),
         )
     }
 
@@ -462,7 +477,6 @@ internal class FakeComposerBrowseSubscription(
 
     override suspend fun cancel() {
         cancelled = true
-        events.close()
     }
 }
 
