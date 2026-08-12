@@ -69,7 +69,7 @@ class BaeLibrarySessionCallbackTest {
                 .get(1, TimeUnit.SECONDS)
         }
         handle.emitAlbumPage(
-            subscription = 0,
+            subscription = 1,
             rows = listOf(BridgeFixtures.album(id = "album-updated")),
         )
 

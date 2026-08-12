@@ -51,12 +51,6 @@ private data class ParentPageKey(
     val pageSize: Int,
 )
 
-private data class SearchPageKey(
-    val query: String,
-    val page: Int,
-    val pageSize: Int,
-)
-
 private data class ParentInterests(
     val explicit: MutableSet<String> = mutableSetOf(),
     val implicit: LinkedHashMap<String, Unit> = LinkedHashMap(16, 0.75f, true),
@@ -107,31 +101,27 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val interestLock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
-    private val parentRevisions = QueryRevisions<String>()
-    private val searchRevisions = QueryRevisions<String>()
+
+    // A requested page includes both its rows and the parent's total count, so
+    // it is authoritative for notifications while retained. The count-only
+    // observer serves interests that have not requested (or no longer retain)
+    // a page.
+    private val pageCountsByParent = mutableMapOf<String, Int>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
             isRetained = { false },
-            minimumRevision = { key -> parentRevisions.current(key.parentId) },
-            eventRevision = { key, _, previous, isUpdate ->
-                parentRevisions.pageEvent(key.parentId, previous, isUpdate)
+            onChanged = { key, page ->
+                onChildrenChanged(key.parentId, page.totalCount)
             },
-            onChanged = { key, change ->
-                val currentRevision = parentRevisions.current(key.parentId)
-                val pageOwnsChange =
-                    change.recoveredFromError ||
-                        change.previousValue?.totalCount == change.currentValue.totalCount
-                if (pageOwnsChange && change.previousRevision >= currentRevision) {
-                    parentRevisions.advanceTo(key.parentId, change.revision)
-                    onChildrenChanged(key.parentId, change.currentValue.totalCount)
-                }
+            onError = { key, previous, error ->
+                onQueryError(error)
+                onChildrenChanged(key.parentId, previous?.totalCount ?: 0)
             },
-            onError = { _, error -> onQueryError(error) },
-            onEntryCreated = { key -> parentRevisions.retain(key.parentId) },
-            onEntryRemoved = { key -> parentRevisions.release(key.parentId) },
+            onEntryCreated = { key -> changePageCount(key.parentId, 1) },
+            onEntryRemoved = { key -> changePageCount(key.parentId, -1) },
         )
     private val parentObservers =
         LiveProjectionCache(
@@ -139,57 +129,26 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = Int.MAX_VALUE,
             flow = ::parentCountFlow,
             isRetained = ::isParentRetained,
-            minimumRevision = parentRevisions::current,
-            eventRevision = { parentId, event, _, isUpdate ->
-                parentRevisions.observerEvent(parentId, event, isUpdate)
+            onChanged = { parentId, count ->
+                if (!hasPage(parentId)) onChildrenChanged(parentId, count)
             },
-            onChanged = { parentId, change -> onChildrenChanged(parentId, change.currentValue) },
-            onError = { _, error -> onQueryError(error) },
-            onEntryCreated = parentRevisions::retain,
-            onEntryRemoved = parentRevisions::release,
+            onError = { _, _, error -> onQueryError(error) },
         )
     private val albumDetails = exactProjections(library::albumDetails)
     private val composerDetails = exactProjections(library::composerDetails)
     private val workDetails = exactProjections(library::workDetails)
     private val releaseDetails = exactProjections(library::releaseDetails)
-    private val searchPages =
-        LiveProjectionCache(
-            scope = scope,
-            maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
-            flow = ::searchPageFlow,
-            isRetained = { false },
-            minimumRevision = { key -> searchRevisions.current(key.query) },
-            eventRevision = { key, _, previous, isUpdate ->
-                searchRevisions.pageEvent(key.query, previous, isUpdate)
-            },
-            onChanged = { key, change ->
-                val currentRevision = searchRevisions.current(key.query)
-                if (change.recoveredFromError &&
-                    change.previousRevision == currentRevision &&
-                    change.revision > currentRevision
-                ) {
-                    searchRevisions.advanceTo(key.query, change.revision)
-                    notifySearchResults(key.query, change.currentValue.totalCount)
-                }
-            },
-            onError = { _, error -> onQueryError(error) },
-            onEntryCreated = { key -> searchRevisions.retain(key.query) },
-            onEntryRemoved = { key -> searchRevisions.release(key.query) },
-        )
     private val searchObservers =
         LiveProjectionCache(
             scope = scope,
-            maximumCount = Int.MAX_VALUE,
+            maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
-            minimumRevision = searchRevisions::current,
-            eventRevision = { query, event, _, isUpdate ->
-                searchRevisions.observerEvent(query, event, isUpdate)
+            onChanged = { query, results -> notifySearchResults(query, results.albums.size) },
+            onError = { query, previous, error ->
+                onQueryError(error)
+                notifySearchResults(query, previous?.albums?.size ?: 0)
             },
-            onChanged = { query, change -> notifySearchResults(query, change.currentValue.albums.size) },
-            onError = { _, error -> onQueryError(error) },
-            onEntryCreated = searchRevisions::retain,
-            onEntryRemoved = searchRevisions::release,
         )
     private val spokenSearches = exactProjections(library::searchResults)
 
@@ -305,7 +264,8 @@ internal class LibraryBrowseTree<Owner : Any>(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        return searchPages.value(SearchPageKey(query, page, pageSize)).items
+        val albums = searchObservers.value(query).albums.map { nodes.album(it.id, it.title, it.cover) }
+        return paginate(albums, page, pageSize)
     }
 
     fun subscribeParent(
@@ -451,7 +411,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         composerDetails.cancelAll()
         workDetails.cancelAll()
         releaseDetails.cancelAll()
-        searchPages.cancelAll()
         searchObservers.cancelAll()
         spokenSearches.cancelAll()
     }
@@ -461,6 +420,20 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     private fun isSearchRetained(query: String): Boolean =
         synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
+
+    private fun hasPage(parentId: String): Boolean =
+        synchronized(interestLock) { pageCountsByParent[parentId]?.let { it > 0 } == true }
+
+    private fun changePageCount(
+        parentId: String,
+        delta: Int,
+    ) {
+        synchronized(interestLock) {
+            val count = (pageCountsByParent[parentId] ?: 0) + delta
+            check(count >= 0)
+            if (count == 0) pageCountsByParent.remove(parentId) else pageCountsByParent[parentId] = count
+        }
+    }
 
     private fun ensureParentObserver(parentId: String) {
         if (!isObservableParent(parentId)) return
@@ -495,7 +468,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             MAXIMUM_EXACT_SUBSCRIPTIONS,
             flow,
             isRetained = { false },
-            onError = { _, error -> onQueryError(error) },
+            onError = { _, _, error -> onQueryError(error) },
         )
 
     private fun isObservableParent(parentId: String): Boolean =
@@ -549,14 +522,6 @@ internal class LibraryBrowseTree<Owner : Any>(
             is BrowseId.Track,
             -> error("static browse id $parentId cannot create a parent observation")
         }.distinctLiveValues()
-
-    private fun searchPageFlow(key: SearchPageKey): Flow<LiveQueryEvent<BrowsePage>> =
-        library.searchResults(key.query).map { event ->
-            event.mapValue { results ->
-                val albums = results.albums.map { nodes.album(it.id, it.title, it.cover) }
-                BrowsePage(paginate(albums, key.page, key.pageSize), albums.size)
-            }
-        }
 
     private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
         when (val id = checkNotNull(BrowseId.parse(key.parentId))) {
