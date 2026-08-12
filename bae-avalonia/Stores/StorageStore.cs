@@ -13,16 +13,14 @@ namespace Bae.Desktop;
 internal sealed class StorageStore
 {
     private readonly DownloadsService _downloads;
-    private readonly SyncService _sync;
     private BridgeOutboxSnapshot? _outbox;
     private BridgeDownloadSnapshot? _downloadsSnapshot;
     private BridgeOutputSnapshot? _outputSnapshot;
     public event Action? Changed;
 
-    public StorageStore(DownloadsService downloads, SyncService sync)
+    public StorageStore(DownloadsService downloads)
     {
         _downloads = downloads;
-        _sync = sync;
     }
 
     public void ApplyOutbox(BridgeOutboxSnapshot snapshot)
