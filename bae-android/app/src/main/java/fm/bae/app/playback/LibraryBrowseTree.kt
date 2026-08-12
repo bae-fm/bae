@@ -15,6 +15,7 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 import uniffi.bae_bridge.BridgeTrack
+import kotlinx.coroutines.flow.first
 
 private const val TAG = "bae.LibraryBrowseTree"
 private val logger = BaeLogger(TAG)
@@ -150,22 +151,22 @@ internal class LibraryBrowseTree(
             }
 
             is BrowseId.Album -> {
-                val detail = library.albumDetail(id.albumId)
+                val detail = library.albumDetails(id.albumId).first() ?: return null
                 nodes.album(detail.album.id, detail.album.title, detail.album.cover)
             }
 
             is BrowseId.Composer -> {
-                val detail = library.composerDetail(id.artistId) ?: return null
+                val detail = library.composerDetails(id.artistId).first() ?: return null
                 nodes.composer(detail.composer)
             }
 
             is BrowseId.Work -> {
-                val detail = library.workDetail(id.workId) ?: return null
+                val detail = library.workDetails(id.workId).first() ?: return null
                 nodes.work(detail.work)
             }
 
             is BrowseId.Track -> {
-                val release = library.releaseDetail(id.releaseId) ?: return null
+                val release = library.releaseDetails(id.releaseId).first() ?: return null
                 val track = flatTracks(release).getOrNull(id.index) ?: return null
                 nodes.track(release, track, id.index)
             }
@@ -181,7 +182,7 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = library.search(query).albums.map { nodes.album(it.id, it.title, it.cover) }
+        val albums = library.searchResults(query).first().albums.map { nodes.album(it.id, it.title, it.cover) }
         return paginate(albums, page, pageSize)
     }
 
@@ -193,12 +194,12 @@ internal class LibraryBrowseTree(
      * answer is null — the search does not then fall back to the album list.
      */
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
-        val results = library.search(query)
+        val results = library.searchResults(query).first()
         val firstTrack = results.tracks.firstOrNull()
         val firstAlbum = results.albums.firstOrNull()
         return when {
             firstTrack != null -> {
-                primaryRelease(library.albumDetail(firstTrack.albumId))?.let { release ->
+                library.albumDetails(firstTrack.albumId).first()?.let(::primaryRelease)?.let { release ->
                     val index = flatTracks(release).indexOfFirst { it.id == firstTrack.id }
                     if (index < 0) {
                         logger.debug(
@@ -211,7 +212,7 @@ internal class LibraryBrowseTree(
             }
 
             firstAlbum != null -> {
-                primaryRelease(library.albumDetail(firstAlbum.id))?.let { BrowseId.Track(it.id, 0) }
+                library.albumDetails(firstAlbum.id).first()?.let(::primaryRelease)?.let { BrowseId.Track(it.id, 0) }
             }
 
             else -> {
@@ -224,7 +225,8 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = library.albumPage(listOf(ALBUM_SORT), offsetOf(page, pageSize), limitOf(pageSize))
+        val albums =
+            library.albumPages(listOf(ALBUM_SORT), offsetOf(page, pageSize), limitOf(pageSize)).first().rows
         return albums.map { nodes.album(it.id, it.title, it.cover) }
     }
 
@@ -232,7 +234,7 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val composers = library.composerPage(COMPOSER_SORT, offsetOf(page, pageSize), limitOf(pageSize))
+        val composers = library.composerPages(COMPOSER_SORT, offsetOf(page, pageSize), limitOf(pageSize)).first().rows
         return composers.map { nodes.composer(it) }
     }
 
@@ -241,7 +243,7 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val detail = library.albumDetail(albumId)
+        val detail = library.albumDetails(albumId).first() ?: return emptyList()
         val release = primaryRelease(detail) ?: return emptyList()
         val items = flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
         return paginate(items, page, pageSize)
@@ -252,7 +254,7 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val detail = library.composerDetail(artistId)
+        val detail = library.composerDetails(artistId).first()
         if (detail == null) {
             logger.warning("composer $artistId has no detail; no browse children")
             return emptyList()
@@ -268,7 +270,7 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val detail = library.workDetail(workId)
+        val detail = library.workDetails(workId).first()
         if (detail == null) {
             logger.warning("work $workId has no detail; no browse children")
             return emptyList()

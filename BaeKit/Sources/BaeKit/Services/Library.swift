@@ -1,5 +1,101 @@
 import Foundation
 
+public typealias LibraryLiveValue<Value: Sendable> = AsyncStream<
+    Result<Value, BridgeError>
+>
+
+private final class LibraryLiveValueSink<Value: Sendable>:
+    @unchecked Sendable
+{
+    let continuation: LibraryLiveValue<Value>.Continuation
+
+    init(continuation: LibraryLiveValue<Value>.Continuation) {
+        self.continuation = continuation
+    }
+
+    func onValue(_ value: Value) {
+        continuation.yield(.success(value))
+    }
+
+    func onError(_ error: BridgeError) {
+        continuation.yield(.failure(error))
+    }
+}
+
+private final class AlbumDetailSink: AlbumDetailCallback, @unchecked Sendable {
+    private let sink: LibraryLiveValueSink<BridgeAlbumDetail?>
+    init(_ sink: LibraryLiveValueSink<BridgeAlbumDetail?>) { self.sink = sink }
+    func onValue(value: BridgeAlbumDetail?) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private final class ReleaseDetailSink: ReleaseDetailCallback,
+    @unchecked Sendable
+{
+    private let sink: LibraryLiveValueSink<BridgeRelease?>
+    init(_ sink: LibraryLiveValueSink<BridgeRelease?>) { self.sink = sink }
+    func onValue(value: BridgeRelease?) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private final class ComposerDetailSink: ComposerDetailCallback,
+    @unchecked Sendable
+{
+    private let sink: LibraryLiveValueSink<BridgeComposerDetail?>
+    init(_ sink: LibraryLiveValueSink<BridgeComposerDetail?>) {
+        self.sink = sink
+    }
+    func onValue(value: BridgeComposerDetail?) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private final class WorkDetailSink: WorkDetailCallback, @unchecked Sendable {
+    private let sink: LibraryLiveValueSink<BridgeWorkDetail?>
+    init(_ sink: LibraryLiveValueSink<BridgeWorkDetail?>) { self.sink = sink }
+    func onValue(value: BridgeWorkDetail?) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private final class ArtistDetailSink: ArtistDetailCallback, @unchecked Sendable
+{
+    private let sink: LibraryLiveValueSink<BridgeArtistDetail?>
+    init(_ sink: LibraryLiveValueSink<BridgeArtistDetail?>) { self.sink = sink }
+    func onValue(value: BridgeArtistDetail?) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private final class LibrarySearchSink: LibrarySearchCallback,
+    @unchecked Sendable
+{
+    private let sink: LibraryLiveValueSink<BridgeSearchResults>
+    init(_ sink: LibraryLiveValueSink<BridgeSearchResults>) { self.sink = sink }
+    func onValue(value: BridgeSearchResults) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private final class StorageProjectionSink: StorageProjectionCallback,
+    @unchecked Sendable
+{
+    private let sink: LibraryLiveValueSink<BridgeStorageProjection>
+    init(_ sink: LibraryLiveValueSink<BridgeStorageProjection>) {
+        self.sink = sink
+    }
+    func onValue(value: BridgeStorageProjection) { sink.onValue(value) }
+    func onError(error: BridgeError) { sink.onError(error) }
+}
+
+private func libraryLiveValue<Value: Sendable, Callback: Sendable>(
+    callback: (LibraryLiveValueSink<Value>) -> Callback,
+    subscribe: (Callback) -> any LiveSubscriptionProtocol
+) -> LibraryLiveValue<Value> {
+    let (stream, continuation) = LibraryLiveValue<Value>.makeStream()
+    let subscription = subscribe(
+        callback(LibraryLiveValueSink(continuation: continuation))
+    )
+    continuation.onTermination = { _ in subscription.cancel() }
+    return stream
+}
+
 // One stored closure per read, each with a matching designated-init
 // parameter and assignment; its length tracks the number of Library reads,
 // not logical complexity — the same shape the `handle:` convenience init
@@ -11,123 +107,123 @@ import Foundation
 /// catalog, narrow to what view layers ask for — plus the library page's
 /// own display-preference write (`setLibraryFullWidth`).
 public final class Library: Sendable, Observable {
-    public let getAlbumCount: @Sendable () async throws -> UInt64
-    public let getAlbumPage:
+    public let subscribeAlbumPage:
         @Sendable (
             _ sortCriteria: [BridgeSortCriterion], _ offset: UInt64,
-            _ limit: UInt64
-        ) async throws -> [BridgeAlbum]
+            _ limit: UInt64, _ callback: AlbumPageCallback
+        ) -> any LiveSubscriptionProtocol
     public let getAlbumIndex:
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ albumId: String)
             async throws -> UInt64?
-    public let getComposerCount: @Sendable () async throws -> UInt64
-    public let getComposerPage:
+    public let subscribeComposerPage:
         @Sendable (
             _ sortCriteria: [BridgeComposerSortCriterion], _ offset: UInt64,
-            _ limit: UInt64
-        ) async throws -> [BridgeComposerSummary]
-    public let getComposerDetail:
-        @Sendable (_ artistId: String) async throws -> BridgeComposerDetail?
-    public let getWorkDetail:
-        @Sendable (_ workId: String) async throws -> BridgeWorkDetail?
-    public let getArtistCount: @Sendable () async throws -> UInt64
-    public let getArtistPage:
+            _ limit: UInt64, _ callback: ComposerPageCallback
+        ) -> any LiveSubscriptionProtocol
+    private let subscribeAlbumDetail:
+        @Sendable (_ albumId: String, _ callback: AlbumDetailCallback)
+            -> any LiveSubscriptionProtocol
+    private let subscribeComposerDetail:
+        @Sendable (_ artistId: String, _ callback: ComposerDetailCallback)
+            -> any LiveSubscriptionProtocol
+    private let subscribeWorkDetail:
+        @Sendable (_ workId: String, _ callback: WorkDetailCallback)
+            -> any LiveSubscriptionProtocol
+    public let subscribeArtistPage:
         @Sendable (
             _ sortCriteria: [BridgeArtistSortCriterion], _ offset: UInt64,
-            _ limit: UInt64
-        ) async throws -> [BridgeArtistSummary]
-    public let getArtistDetail:
-        @Sendable (_ artistId: String) async throws -> BridgeArtistDetail?
-    public let searchLibrary:
-        @Sendable (_ query: String) async throws -> BridgeSearchResults
-    public let storageCount:
-        @Sendable (_ filter: BridgeStorageFilter) async throws -> UInt64
-    public let storageTotalSize:
-        @Sendable (_ filter: BridgeStorageFilter) async throws -> UInt64
-    public let storagePage:
+            _ limit: UInt64, _ callback: ArtistPageCallback
+        ) -> any LiveSubscriptionProtocol
+    private let subscribeArtistDetail:
+        @Sendable (_ artistId: String, _ callback: ArtistDetailCallback)
+            -> any LiveSubscriptionProtocol
+    private let subscribeLibrarySearch:
+        @Sendable (_ query: String, _ callback: LibrarySearchCallback)
+            -> any LiveSubscriptionProtocol
+    private let subscribeStorageProjection:
         @Sendable (
             _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
-            _ offset: UInt64, _ limit: UInt64
-        ) async throws -> BridgeStoragePage
-    public let findReleaseDetail:
-        @Sendable (_ releaseId: String) async throws -> BridgeRelease?
+            _ offset: UInt64, _ limit: UInt64,
+            _ callback: StorageProjectionCallback
+        ) -> any LiveSubscriptionProtocol
+    private let subscribeReleaseDetail:
+        @Sendable (_ releaseId: String, _ callback: ReleaseDetailCallback)
+            -> any LiveSubscriptionProtocol
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
     /// Whether the library page spans the window's full width instead of
     /// centering its content in a width-capped column. The write's config
-    /// invalidation re-renders the page through `ConfigStore`.
+    /// config subscription re-renders the page through `ConfigStore`.
     public let setLibraryFullWidth: @Sendable (_ enabled: Bool) throws -> Void
 
     public init(
-        getAlbumCount: @escaping @Sendable () async throws -> UInt64 = {
-            throw StubError.notImplemented
-        },
-        getAlbumPage:
-            @escaping @Sendable ([BridgeSortCriterion], UInt64, UInt64)
-            async throws
-            -> [BridgeAlbum] = { _, _, _ in
-                throw StubError.notImplemented
+        subscribeAlbumPage:
+            @escaping @Sendable (
+                [BridgeSortCriterion], UInt64, UInt64, AlbumPageCallback
+            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
+                fatalError("Library album-page subscription is not installed")
             },
         getAlbumIndex:
             @escaping @Sendable ([BridgeSortCriterion], String) async throws
             -> UInt64? = { _, _ in throw StubError.notImplemented },
-        getComposerCount: @escaping @Sendable () async throws -> UInt64 = {
-            throw StubError.notImplemented
-        },
-        getComposerPage:
-            @escaping @Sendable ([BridgeComposerSortCriterion], UInt64, UInt64)
-            async throws
-            -> [BridgeComposerSummary] = { _, _, _ in
-                throw StubError.notImplemented
-            },
-        getComposerDetail:
-            @escaping @Sendable (String) async throws -> BridgeComposerDetail? =
-            {
-                _ in throw StubError.notImplemented
-            },
-        getWorkDetail:
-            @escaping @Sendable (String) async throws -> BridgeWorkDetail? = {
-                _ in
-                throw StubError.notImplemented
-            },
-        getArtistCount: @escaping @Sendable () async throws -> UInt64 = {
-            throw StubError.notImplemented
-        },
-        getArtistPage:
-            @escaping @Sendable ([BridgeArtistSortCriterion], UInt64, UInt64)
-            async throws
-            -> [BridgeArtistSummary] = { _, _, _ in
-                throw StubError.notImplemented
-            },
-        getArtistDetail:
-            @escaping @Sendable (String) async throws -> BridgeArtistDetail? =
-            {
-                _ in throw StubError.notImplemented
-            },
-        searchLibrary:
-            @escaping @Sendable (String) async throws -> BridgeSearchResults = {
-                _ in
-                throw StubError.notImplemented
-            },
-        storageCount:
-            @escaping @Sendable (BridgeStorageFilter) async throws -> UInt64 = {
-                _ in
-                throw StubError.notImplemented
-            },
-        storageTotalSize:
-            @escaping @Sendable (BridgeStorageFilter) async throws -> UInt64 = {
-                _ in
-                throw StubError.notImplemented
-            },
-        storagePage:
+        subscribeComposerPage:
             @escaping @Sendable (
-                BridgeStorageSort, BridgeStorageFilter, UInt64, UInt64
-            ) async throws -> BridgeStoragePage = { _, _, _, _ in
-                throw StubError.notImplemented
+                [BridgeComposerSortCriterion], UInt64, UInt64,
+                ComposerPageCallback
+            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
+                fatalError(
+                    "Library composer-page subscription is not installed"
+                )
             },
-        findReleaseDetail:
-            @escaping @Sendable (String) async throws -> BridgeRelease? = { _ in
-                throw StubError.notImplemented
+        subscribeAlbumDetail:
+            @escaping @Sendable (String, AlbumDetailCallback)
+            -> any LiveSubscriptionProtocol = { _, _ in
+                fatalError("Library album-detail subscription is not installed")
+            },
+        subscribeComposerDetail:
+            @escaping @Sendable (String, ComposerDetailCallback)
+            -> any LiveSubscriptionProtocol = { _, _ in
+                fatalError(
+                    "Library composer-detail subscription is not installed"
+                )
+            },
+        subscribeWorkDetail:
+            @escaping @Sendable (String, WorkDetailCallback)
+            -> any LiveSubscriptionProtocol = { _, _ in
+                fatalError("Library work-detail subscription is not installed")
+            },
+        subscribeArtistPage:
+            @escaping @Sendable (
+                [BridgeArtistSortCriterion], UInt64, UInt64,
+                ArtistPageCallback
+            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
+                fatalError("Library artist-page subscription is not installed")
+            },
+        subscribeArtistDetail:
+            @escaping @Sendable (String, ArtistDetailCallback)
+            -> any LiveSubscriptionProtocol = { _, _ in
+                fatalError(
+                    "Library artist-detail subscription is not installed"
+                )
+            },
+        subscribeLibrarySearch:
+            @escaping @Sendable (String, LibrarySearchCallback)
+            -> any LiveSubscriptionProtocol = { _, _ in
+                fatalError("Library search subscription is not installed")
+            },
+        subscribeStorageProjection:
+            @escaping @Sendable (
+                BridgeStorageSort, BridgeStorageFilter, UInt64, UInt64,
+                StorageProjectionCallback
+            ) -> any LiveSubscriptionProtocol = { _, _, _, _, _ in
+                fatalError("Library storage subscription is not installed")
+            },
+        subscribeReleaseDetail:
+            @escaping @Sendable (String, ReleaseDetailCallback)
+            -> any LiveSubscriptionProtocol = { _, _ in
+                fatalError(
+                    "Library release-detail subscription is not installed"
+                )
             },
         resolveToTrackIds:
             @escaping @Sendable ([String]) async throws -> [String] = {
@@ -137,23 +233,87 @@ public final class Library: Sendable, Observable {
             _ in throw StubError.notImplemented
         }
     ) {
-        self.getAlbumCount = getAlbumCount
-        self.getAlbumPage = getAlbumPage
+        self.subscribeAlbumPage = subscribeAlbumPage
         self.getAlbumIndex = getAlbumIndex
-        self.getComposerCount = getComposerCount
-        self.getComposerPage = getComposerPage
-        self.getComposerDetail = getComposerDetail
-        self.getWorkDetail = getWorkDetail
-        self.getArtistCount = getArtistCount
-        self.getArtistPage = getArtistPage
-        self.getArtistDetail = getArtistDetail
-        self.searchLibrary = searchLibrary
-        self.storageCount = storageCount
-        self.storageTotalSize = storageTotalSize
-        self.storagePage = storagePage
-        self.findReleaseDetail = findReleaseDetail
+        self.subscribeComposerPage = subscribeComposerPage
+        self.subscribeAlbumDetail = subscribeAlbumDetail
+        self.subscribeComposerDetail = subscribeComposerDetail
+        self.subscribeWorkDetail = subscribeWorkDetail
+        self.subscribeArtistPage = subscribeArtistPage
+        self.subscribeArtistDetail = subscribeArtistDetail
+        self.subscribeLibrarySearch = subscribeLibrarySearch
+        self.subscribeStorageProjection = subscribeStorageProjection
+        self.subscribeReleaseDetail = subscribeReleaseDetail
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
+    }
+
+    public func albumDetails(_ albumId: String)
+        -> LibraryLiveValue<BridgeAlbumDetail?>
+    {
+        libraryLiveValue(
+            callback: AlbumDetailSink.init,
+            subscribe: { subscribeAlbumDetail(albumId, $0) }
+        )
+    }
+
+    public func composerDetails(_ artistId: String)
+        -> LibraryLiveValue<BridgeComposerDetail?>
+    {
+        libraryLiveValue(
+            callback: ComposerDetailSink.init,
+            subscribe: { subscribeComposerDetail(artistId, $0) }
+        )
+    }
+
+    public func workDetails(_ workId: String)
+        -> LibraryLiveValue<BridgeWorkDetail?>
+    {
+        libraryLiveValue(
+            callback: WorkDetailSink.init,
+            subscribe: { subscribeWorkDetail(workId, $0) }
+        )
+    }
+
+    public func artistDetails(_ artistId: String)
+        -> LibraryLiveValue<BridgeArtistDetail?>
+    {
+        libraryLiveValue(
+            callback: ArtistDetailSink.init,
+            subscribe: { subscribeArtistDetail(artistId, $0) }
+        )
+    }
+
+    public func searchResults(_ query: String)
+        -> LibraryLiveValue<BridgeSearchResults>
+    {
+        libraryLiveValue(
+            callback: LibrarySearchSink.init,
+            subscribe: { subscribeLibrarySearch(query, $0) }
+        )
+    }
+
+    public func storageProjections(
+        sort: BridgeStorageSort,
+        filter: BridgeStorageFilter,
+        offset: UInt64,
+        limit: UInt64
+    ) -> LibraryLiveValue<BridgeStorageProjection> {
+        libraryLiveValue(
+            callback: StorageProjectionSink.init,
+            subscribe: {
+                subscribeStorageProjection(sort, filter, offset, limit, $0)
+            }
+        )
+    }
+
+    public func releaseDetails(_ releaseId: String)
+        -> LibraryLiveValue<BridgeRelease?>
+    {
+        libraryLiveValue(
+            callback: ReleaseDetailSink.init,
+            subscribe: { subscribeReleaseDetail(releaseId, $0) }
+        )
     }
 
     // The desktop import surfaces reach the import service through `Importer`,
@@ -167,12 +327,12 @@ public final class Library: Sendable, Observable {
         // swiftlint:disable:next function_body_length
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                getAlbumCount: { try await handle.getAlbumCount() },
-                getAlbumPage: {
-                    try await handle.getAlbumPage(
+                subscribeAlbumPage: {
+                    handle.subscribeAlbumPage(
                         sortCriteria: $0,
                         offset: $1,
-                        limit: $2
+                        limit: $2,
+                        callback: $3
                     )
                 },
                 getAlbumIndex: {
@@ -181,44 +341,48 @@ public final class Library: Sendable, Observable {
                         albumId: $1
                     )
                 },
-                getComposerCount: { try await handle.getComposerCount() },
-                getComposerPage: {
-                    try await handle.getComposerPage(
+                subscribeComposerPage: {
+                    handle.subscribeComposerPage(
                         sortCriteria: $0,
                         offset: $1,
-                        limit: $2
+                        limit: $2,
+                        callback: $3
                     )
                 },
-                getComposerDetail: {
-                    try await handle.getComposerDetail(artistId: $0)
+                subscribeAlbumDetail: {
+                    handle.subscribeAlbumDetail(albumId: $0, callback: $1)
                 },
-                getWorkDetail: { try await handle.getWorkDetail(workId: $0) },
-                getArtistCount: { try await handle.getArtistCount() },
-                getArtistPage: {
-                    try await handle.getArtistPage(
+                subscribeComposerDetail: {
+                    handle.subscribeComposerDetail(artistId: $0, callback: $1)
+                },
+                subscribeWorkDetail: {
+                    handle.subscribeWorkDetail(workId: $0, callback: $1)
+                },
+                subscribeArtistPage: {
+                    handle.subscribeArtistPage(
                         sortCriteria: $0,
                         offset: $1,
-                        limit: $2
+                        limit: $2,
+                        callback: $3
                     )
                 },
-                getArtistDetail: {
-                    try await handle.getArtistDetail(artistId: $0)
+                subscribeArtistDetail: {
+                    handle.subscribeArtistDetail(artistId: $0, callback: $1)
                 },
-                searchLibrary: { try await handle.searchLibrary(query: $0) },
-                storageCount: { try await handle.storageCount(filter: $0) },
-                storageTotalSize: {
-                    try await handle.storageTotalSize(filter: $0)
+                subscribeLibrarySearch: {
+                    handle.subscribeLibrarySearch(query: $0, callback: $1)
                 },
-                storagePage: {
-                    try await handle.storagePage(
+                subscribeStorageProjection: {
+                    handle.subscribeStorageProjection(
                         sort: $0,
                         filter: $1,
                         offset: $2,
-                        limit: $3
+                        limit: $3,
+                        callback: $4
                     )
                 },
-                findReleaseDetail: {
-                    try await handle.findReleaseDetail(releaseId: $0)
+                subscribeReleaseDetail: {
+                    handle.subscribeReleaseDetail(releaseId: $0, callback: $1)
                 },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)
@@ -229,47 +393,54 @@ public final class Library: Sendable, Observable {
             )
         }
     #else
-        // `getAlbumIndex`, `storageCount`, `storageTotalSize`, and
-        // `storagePage` back desktop-only surfaces (album-index scrolling,
-        // the Storage Manager) and go unused here.
+        // `getAlbumIndex` and `subscribeStorageProjection` back desktop-only
+        // surfaces (album-index scrolling and the Storage Manager) and go
+        // unused here.
         // This wires only the reads iOS actually makes; the rest keep their
         // throwing stub defaults.
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                getAlbumCount: { try await handle.getAlbumCount() },
-                getAlbumPage: {
-                    try await handle.getAlbumPage(
+                subscribeAlbumPage: {
+                    handle.subscribeAlbumPage(
                         sortCriteria: $0,
                         offset: $1,
-                        limit: $2
+                        limit: $2,
+                        callback: $3
                     )
                 },
-                getComposerCount: { try await handle.getComposerCount() },
-                getComposerPage: {
-                    try await handle.getComposerPage(
+                subscribeComposerPage: {
+                    handle.subscribeComposerPage(
                         sortCriteria: $0,
                         offset: $1,
-                        limit: $2
+                        limit: $2,
+                        callback: $3
                     )
                 },
-                getComposerDetail: {
-                    try await handle.getComposerDetail(artistId: $0)
+                subscribeAlbumDetail: {
+                    handle.subscribeAlbumDetail(albumId: $0, callback: $1)
                 },
-                getWorkDetail: { try await handle.getWorkDetail(workId: $0) },
-                getArtistCount: { try await handle.getArtistCount() },
-                getArtistPage: {
-                    try await handle.getArtistPage(
+                subscribeComposerDetail: {
+                    handle.subscribeComposerDetail(artistId: $0, callback: $1)
+                },
+                subscribeWorkDetail: {
+                    handle.subscribeWorkDetail(workId: $0, callback: $1)
+                },
+                subscribeArtistPage: {
+                    handle.subscribeArtistPage(
                         sortCriteria: $0,
                         offset: $1,
-                        limit: $2
+                        limit: $2,
+                        callback: $3
                     )
                 },
-                getArtistDetail: {
-                    try await handle.getArtistDetail(artistId: $0)
+                subscribeArtistDetail: {
+                    handle.subscribeArtistDetail(artistId: $0, callback: $1)
                 },
-                searchLibrary: { try await handle.searchLibrary(query: $0) },
-                findReleaseDetail: {
-                    try await handle.findReleaseDetail(releaseId: $0)
+                subscribeLibrarySearch: {
+                    handle.subscribeLibrarySearch(query: $0, callback: $1)
+                },
+                subscribeReleaseDetail: {
+                    handle.subscribeReleaseDetail(releaseId: $0, callback: $1)
                 },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)

@@ -15,12 +15,11 @@ enum DesktopUiEvents {
             .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
             break
 
-        case .castStatusChanged, .invalidated, .playbackStopped, .playbackError,
+        case .castStatusChanged, .playbackStopped, .playbackError,
             .playbackLoading,
             .playbackPlaying, .playbackPaused, .playbackProgress,
             .playbackSeeked, .volumeChanged, .muteChanged, .repeatModeChanged,
-            .queueUpdated, .queueItemsAdded, .releaseTransferProgress,
-            .releaseTransferEnded, .error:
+            .queueItemsAdded, .error:
             preconditionFailure("Unhandled UI event \(event)")
         }
     }

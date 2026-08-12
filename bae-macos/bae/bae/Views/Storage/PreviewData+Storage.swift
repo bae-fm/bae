@@ -2,6 +2,12 @@
     import BaeKit
     import SwiftUI
 
+    private final class PreviewStorageSubscription: LiveSubscriptionProtocol,
+        @unchecked Sendable
+    {
+        func cancel() {}
+    }
+
     // Preview fixtures for the Storage Manager: its transfer/sync queue rows
     // (downloads, exports, cloud-outbox uploads and deletes) and its release /
     // file table cells, plus a seeded `Library` + stores so the whole screen
@@ -458,17 +464,23 @@
             rows: [BridgeStorageRow] = storageRows
         ) -> Library {
             Library(
-                storageCount: { _ in UInt64(rows.count) },
-                storageTotalSize: { _ in
-                    UInt64(rows.reduce(0) { $0 + $1.release.totalSize })
-                },
-                storagePage: { _, _, offset, limit in
+                subscribeStorageProjection: { _, _, offset, limit, callback in
                     let start = min(Int(offset), rows.count)
                     let end = min(start + Int(limit), rows.count)
-                    return BridgeStoragePage(
-                        rows: Array(rows[start..<end]),
-                        totalCount: UInt64(rows.count)
+                    callback.onValue(
+                        value: BridgeStorageProjection(
+                            page: BridgeStoragePage(
+                                rows: Array(rows[start..<end]),
+                                totalCount: UInt64(rows.count)
+                            ),
+                            totalSize: UInt64(
+                                rows.reduce(0) {
+                                    $0 + $1.release.totalSize
+                                }
+                            )
+                        )
                     )
+                    return PreviewStorageSubscription()
                 }
             )
         }
@@ -484,7 +496,8 @@
                     field: .albumTitle,
                     direction: .ascending
                 ),
-                filter: .all
+                filter: .all,
+                onTotalSize: { _ in }
             )
         }
     }

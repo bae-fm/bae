@@ -125,8 +125,8 @@ internal sealed class ReleaseActionDialogs
     public async Task ShowReidentify(string releaseId, string seedArtist, string seedAlbum)
     {
         var key = "reidentify:" + releaseId;
-        IDisposable? registration = null;
         var confirmed = false;
+        Action? refreshFromPipeline = null;
 
         await _host.Show(close =>
         {
@@ -207,8 +207,7 @@ internal sealed class ReleaseActionDialogs
 
             void RefreshFromPipeline()
             {
-                var (current, snapshot) = _app.Import.ReidentifyPipeline(key);
-                if (!current || snapshot is not { } snap)
+                if (_app.ImportStore.ReidentifyPipeline(key) is not { } snap)
                 {
                     return;
                 }
@@ -225,6 +224,7 @@ internal sealed class ReleaseActionDialogs
                     resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
                 }
             }
+            refreshFromPipeline = RefreshFromPipeline;
 
             searchButton.Click += async (_, _) =>
             {
@@ -312,14 +312,17 @@ internal sealed class ReleaseActionDialogs
             column.Children.Add(status);
             column.Children.Add(DialogUi.Actions(cancel, skip, exact, confirm));
 
-            // Start the pipeline against the release's own files; its events flow
-            // through the candidate invalidation the registration reads.
+            // Start the pipeline against the release's own files; candidate values
+            // update the import store while it runs.
             _app.Import.AutoIdentifyRelease(key, releaseId);
-            registration = _app.ProjectionRegistry.Register(typeof(BridgeInvalidation.ImportCandidate), RefreshFromPipeline);
+            _app.ImportStore.Changed += RefreshFromPipeline;
             return new ScrollViewer { Content = column, MaxHeight = 560 };
         });
 
-        registration?.Dispose();
+        if (refreshFromPipeline is not null)
+        {
+            _app.ImportStore.Changed -= refreshFromPipeline;
+        }
         _app.Import.CancelAutoIdentify(key);
         if (confirmed)
         {
@@ -375,17 +378,17 @@ internal sealed class ReleaseActionDialogs
 
     // Pick a new cover for the release — the release's own image files plus remote
     // candidates fetched from MusicBrainz / Discogs. Selecting one writes it; the
-    // grid refreshes via the invalidation the change emits. Errors surface inside
+    // open album subscription delivers the new cover. Errors surface inside
     // the dialog, since the window banner is occluded by the modal. Remote sources
     // lead (with a Refresh), then the release files, matching the macOS sheet.
-    public Task ShowChangeCover(string albumId, string releaseId) =>
-        _host.Show(close => BuildChangeCover(albumId, releaseId, close));
+    public Task ShowChangeCover(string releaseId, IReadOnlyList<BridgeFile> releaseImages) =>
+        _host.Show(close => BuildChangeCover(releaseId, releaseImages, close));
 
-    private Control BuildChangeCover(string albumId, string releaseId, Action close)
+    private Control BuildChangeCover(
+        string releaseId,
+        IReadOnlyList<BridgeFile> releaseImages,
+        Action close)
     {
-        var (imagesCurrent, imagesResult) = _app.ReleaseEditor.GetReleaseImages(releaseId);
-        var releaseImages = imagesCurrent ? imagesResult.Images : null;
-
         var column = DialogUi.Column();
         column.MinWidth = 460;
         column.Children.Add(DialogUi.Title(Loc.Chrome("cover.change_title")));
@@ -402,7 +405,7 @@ internal sealed class ReleaseActionDialogs
         async Task Apply(BridgeCoverSelection selection)
         {
             error.IsVisible = false;
-            var (current, changeError) = await _app.ReleaseEditor.ChangeCover(albumId, releaseId, selection);
+            var (current, changeError) = await _app.ReleaseEditor.ChangeCover(releaseId, selection);
             if (!current)
             {
                 return;
@@ -470,7 +473,7 @@ internal sealed class ReleaseActionDialogs
         _ = LoadRemote();
 
         // ── Release files ───────────────────────────────────────────────────────
-        if (releaseImages is { Length: > 0 })
+        if (releaseImages.Count > 0)
         {
             column.Children.Add(DialogUi.SectionLabel(Loc.Chrome("cover.release_files")));
             var fileGrid = new WrapPanel { Orientation = Orientation.Horizontal };

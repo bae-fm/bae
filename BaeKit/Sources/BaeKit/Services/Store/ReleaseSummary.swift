@@ -16,11 +16,10 @@ import Observation
 /// and storage-action gates read `outboxStore.progress(forRelease:)`.
 ///
 /// Per-release TRANSFER progress (the synchronous pin/unpin/manage/unmanage
-/// transition the user triggers) IS a field here: `transfer`. Core pushes
-/// `ReleaseTransferProgress` events while a transition runs and a terminal
-/// `ReleaseTransferEnded` to clear it. The two concerns are distinct — uploads
-/// are background queue work, a transfer is a foregrounded action with its own
-/// determinate bar.
+/// transition the user triggers) IS a field here: `transfer`. Core includes the
+/// current action in subscribed release values. The two concerns are distinct —
+/// uploads are background queue work, a transfer is a foregrounded action with
+/// its own determinate bar.
 
 /// An in-flight storage transition for a release.
 public struct TransferState: Equatable {
@@ -51,8 +50,8 @@ public final class ReleaseSummary: Identifiable {
     /// decoded image under the version.
     public var cover: BridgeImageRef?
     /// Non-nil while a pin/unpin/manage/unmanage transition runs. Core includes
-    /// the current action in release queries, so invalidations refresh this the
-    /// same way they refresh storage state.
+    /// the current action in release subscriptions, so later values refresh this
+    /// the same way they refresh storage state.
     public var transfer: TransferState?
 
     /// Total release size formatted for the current locale, e.g. "350 MB".

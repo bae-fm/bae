@@ -19,30 +19,6 @@ impl UiEventBus {
         let _ = self.tx.send(event);
     }
 
-    fn invalidate(&self, invalidation: Invalidation) {
-        self.emit(UiBusEvent::Invalidated(invalidation));
-    }
-
-    fn invalidate_library_lag(&self) {
-        for invalidation in [
-            Invalidation::AlbumList,
-            Invalidation::ComposerList,
-            Invalidation::ArtistList,
-            Invalidation::SyncStatus,
-            Invalidation::Outbox,
-            Invalidation::DownloadQueue,
-            Invalidation::OutputQueue,
-        ] {
-            self.invalidate(invalidation);
-        }
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    fn invalidate_import_lag(&self) {
-        self.invalidate(Invalidation::WatchedFolders);
-        self.invalidate(Invalidation::ImportCandidateList);
-    }
-
     pub fn subscribe(&self) -> broadcast::Receiver<UiBusEvent> {
         self.tx.subscribe()
     }
@@ -55,33 +31,9 @@ impl UiEventBus {
         runtime_handle: &tokio::runtime::Handle,
     ) {
         self.wire_playback(app_services, runtime_handle);
-        self.wire_library(app_services, runtime_handle);
         // Import/scan/identify events come from the desktop-only import service.
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.wire_import(app_services, runtime_handle);
-        self.wire_config_changes(app_services.subscribe_config_changes(), runtime_handle);
-    }
-
-    /// Forward config changes to the bus as a scoped invalidation — the UI reads
-    /// the new value back through the config query, not off the event.
-    fn wire_config_changes(
-        &self,
-        mut config_rx: tokio::sync::watch::Receiver<crate::config::Config>,
-        runtime_handle: &tokio::runtime::Handle,
-    ) {
-        let bus = self.clone();
-
-        runtime_handle.spawn(async move {
-            loop {
-                if config_rx.changed().await.is_err() {
-                    tracing::debug!("config watch closed; stopping config→UI forwarder");
-                    break;
-                }
-                config_rx.borrow_and_update();
-                bus.invalidate(Invalidation::Config);
-                bus.invalidate(Invalidation::SyncStatus);
-            }
-        });
     }
 
     fn wire_playback(
@@ -91,8 +43,6 @@ impl UiEventBus {
     ) {
         let mut rx = app_services.subscribe_playback_progress();
         let bus = self.clone();
-        let services = app_services.clone();
-
         runtime_handle.spawn(async move {
             use crate::playback::PlaybackProgress;
 
@@ -163,30 +113,6 @@ impl UiEventBus {
                             duration_ms,
                             progress,
                         });
-                    }
-                    PlaybackProgress::QueueUpdated(projection) => {
-                        let entry_ids: Vec<_> = projection
-                            .manual
-                            .iter()
-                            .chain(
-                                projection
-                                    .context
-                                    .iter()
-                                    .flat_map(|context| context.upcoming.iter()),
-                            )
-                            .map(|entry| entry.id.0.clone())
-                            .collect();
-                        match services.resolve_queue_projection(projection).await {
-                            Ok(snapshot) => {
-                                bus.emit(UiBusEvent::QueueUpdated(snapshot));
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "skipping QueueUpdated for entries {:?}: failed to resolve queue projection: {e}",
-                                    entry_ids
-                                );
-                            }
-                        }
                     }
                     PlaybackProgress::QueueItemsAdded { count } => {
                         bus.emit(UiBusEvent::QueueItemsAdded { count });
@@ -264,73 +190,12 @@ impl UiEventBus {
         let bus = self.clone();
 
         runtime_handle.spawn(async move {
-            use crate::import::{ImportEvent, ImportProgress, ScanEvent};
+            use crate::import::ImportEvent;
 
             loop {
                 match rx.recv().await {
                     Ok(event) => {
-                        services.record_import_candidate_event(&event);
                         match event {
-                            ImportEvent::Scan(scan_event) => match scan_event {
-                                ScanEvent::WatchedFoldersChanged { .. } => {
-                                    bus.invalidate(Invalidation::WatchedFolders);
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                                ScanEvent::FolderCandidate { candidate: c, .. }
-                                | ScanEvent::CandidateDiscovered { candidate: c, .. }
-                                | ScanEvent::CandidateBindingChanged { candidate: c } => {
-                                    bus.invalidate(Invalidation::ImportCandidate {
-                                        key: c.path.to_string_lossy().to_string(),
-                                    });
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                                ScanEvent::InvalidCandidate(c) => {
-                                    bus.invalidate(Invalidation::ImportCandidate {
-                                        key: c.path.to_string_lossy().to_string(),
-                                    });
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                                ScanEvent::FolderReleaseBoundary(_) => {
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                                ScanEvent::CandidateRemoved { candidate_key }
-                                | ScanEvent::CandidateSkipChanged { candidate_key, .. }
-                                | ScanEvent::CandidateVerdictStored { candidate_key }
-                                | ScanEvent::CandidateIdentityPicked { candidate_key } => {
-                                    bus.invalidate(Invalidation::ImportCandidate {
-                                        key: candidate_key.clone(),
-                                    });
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                                ScanEvent::Finished => {
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                                ScanEvent::FolderScanStatusChanged { .. } => {
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                }
-                            },
-                            ImportEvent::ImportProgress {
-                                candidate_key,
-                                progress,
-                            } => {
-                                match progress {
-                                    ImportProgress::Preparing { .. }
-                                    | ImportProgress::Started { .. }
-                                    | ImportProgress::Progress { .. }
-                                    | ImportProgress::Failed { .. } => {
-                                        bus.invalidate(Invalidation::ImportCandidate {
-                                            key: candidate_key.clone(),
-                                        });
-                                    }
-                                    ImportProgress::Complete { .. }
-                                    | ImportProgress::RemoteUploadQueued { .. } => {
-                                        bus.invalidate(Invalidation::ImportCandidate {
-                                            key: candidate_key.clone(),
-                                        });
-                                        bus.invalidate(Invalidation::ImportCandidateList);
-                                    }
-                                };
-                            }
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
                             ImportEvent::ImportLoudnessProgress {
                                 candidate_key,
@@ -345,36 +210,8 @@ impl UiEventBus {
                                     fraction,
                                 });
                             }
-                            // Only a run someone is watching re-renders their
-                            // row. The background sweep drives the whole queue
-                            // through these two events on every launch — a
-                            // thousand-plus invalidations, each making both UIs
-                            // re-query a candidate nobody has open — and the
-                            // sidebar reads its aggregate progress line
-                            // instead. `record_candidate_event` above still
-                            // records every one of them, so a later read of the
-                            // candidate is accurate; what is suppressed is the
-                            // push, not the state.
-                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::IdentifyStateChanged {
-                                candidate_key,
-                                priority,
-                                ..
-                            }
-                            | ImportEvent::SignalsUpdated {
-                                candidate_key,
-                                priority,
-                                ..
-                            } => {
-                                if priority == crate::util::rate_limiter::CallPriority::Interactive
-                                {
-                                    bus.invalidate(Invalidation::ImportCandidate {
-                                        key: candidate_key.clone(),
-                                    });
-                                }
-                            }
                             // The sidebar header's line and bar. It crosses as
-                            // its own event rather than as an invalidation:
+                            // its own event rather than as a catalog value:
                             // it is two numbers, it changes once per candidate
                             // answered, and nothing about the row list changes
                             // with it.
@@ -385,6 +222,7 @@ impl UiEventBus {
                                     total,
                                 });
                             }
+                            _ => {}
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
@@ -392,451 +230,11 @@ impl UiEventBus {
                         services.record_telemetry(crate::diagnostics::TelemetryEvent::Anomaly {
                             kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                         });
-                        bus.invalidate_import_lag();
                         continue;
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
         });
-    }
-
-    fn wire_library(
-        &self,
-        app_services: &crate::library::AppServices,
-        runtime_handle: &tokio::runtime::Handle,
-    ) {
-        self.wire_library_events(
-            app_services.subscribe_library_events(),
-            app_services.clone(),
-            runtime_handle,
-        );
-        self.wire_album_count(app_services.subscribe_album_count(), runtime_handle);
-    }
-
-    fn wire_album_count(
-        &self,
-        mut count: coven::LiveQuery<u64>,
-        runtime_handle: &tokio::runtime::Handle,
-    ) {
-        let bus = self.clone();
-        runtime_handle.spawn(async move {
-            let mut previous = None;
-            loop {
-                match count.next().await {
-                    Ok(current) if previous != Some(current) => {
-                        previous = Some(current);
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
-                    }
-                    Ok(_) => {}
-                    Err(error) => {
-                        tracing::warn!("album-count live query failed: {error}");
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
-                    }
-                }
-            }
-        });
-    }
-
-    fn wire_library_events(
-        &self,
-        mut rx: broadcast::Receiver<crate::library::LibraryEvent>,
-        services: crate::library::AppServices,
-        runtime_handle: &tokio::runtime::Handle,
-    ) {
-        let bus = self.clone();
-
-        runtime_handle.spawn(async move {
-            use crate::library::LibraryEvent;
-            loop {
-                match rx.recv().await {
-                    Ok(LibraryEvent::AlbumAdded { album }) => {
-                        let album_id = album.album.id.clone();
-                        bus.invalidate(Invalidation::Album { album_id });
-                    }
-                    Ok(LibraryEvent::AlbumUpdated { album }) => {
-                        let album_id = album.album.id.clone();
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
-                        bus.invalidate(Invalidation::Album { album_id });
-                    }
-                    Ok(LibraryEvent::AlbumRemoved {
-                        album_id,
-                        release_ids,
-                    }) => {
-                        bus.invalidate(Invalidation::Album {
-                            album_id: album_id.clone(),
-                        });
-                        for release_id in &release_ids {
-                            bus.invalidate(Invalidation::Release {
-                                release_id: release_id.clone(),
-                            });
-                        }
-                    }
-                    Ok(LibraryEvent::ReleaseAdded { album, release }) => {
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
-                        bus.invalidate(Invalidation::Album {
-                            album_id: album.id.clone(),
-                        });
-                        bus.invalidate(Invalidation::Release {
-                            release_id: release.summary.id.clone(),
-                        });
-                    }
-                    Ok(LibraryEvent::ReleaseUpdated { album_id, release }) => {
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
-                        bus.invalidate(Invalidation::Album {
-                            album_id: album_id.clone(),
-                        });
-                        bus.invalidate(Invalidation::Release {
-                            release_id: release.summary.id.clone(),
-                        });
-                    }
-                    Ok(LibraryEvent::ReleaseRemoved {
-                        album_id,
-                        release_id,
-                        ..
-                    }) => {
-                        bus.invalidate(Invalidation::AlbumList);
-                        bus.invalidate(Invalidation::ComposerList);
-                        bus.invalidate(Invalidation::ArtistList);
-                        bus.invalidate(Invalidation::Album {
-                            album_id: album_id.clone(),
-                        });
-                        bus.invalidate(Invalidation::Release {
-                            release_id: release_id.clone(),
-                        });
-                    }
-                    Ok(LibraryEvent::TracksDeleted { .. }) => {
-                        // Handled by playback service directly, not the UI bus
-                    }
-                    Ok(LibraryEvent::SyncError { .. })
-                    | Ok(LibraryEvent::SyncTimeChanged { .. })
-                    | Ok(LibraryEvent::SyncingChanged { .. }) => {
-                        bus.invalidate(Invalidation::SyncStatus);
-                    }
-                    Ok(LibraryEvent::OutboxChanged { .. }) => {
-                        bus.invalidate(Invalidation::Outbox);
-                    }
-                    Ok(LibraryEvent::ReleaseTransferProgress { release_id, action }) => {
-                        bus.invalidate(Invalidation::Release {
-                            release_id: release_id.clone(),
-                        });
-                        bus.emit(UiBusEvent::ReleaseTransferProgress { release_id, action });
-                    }
-                    Ok(LibraryEvent::ReleaseTransferEnded { release_id }) => {
-                        bus.invalidate(Invalidation::Release {
-                            release_id: release_id.clone(),
-                        });
-                        bus.emit(UiBusEvent::ReleaseTransferEnded { release_id });
-                    }
-                    Ok(LibraryEvent::DownloadQueueChanged { .. }) => {
-                        bus.invalidate(Invalidation::DownloadQueue);
-                    }
-                    Ok(LibraryEvent::OutputQueueChanged { .. }) => {
-                        bus.invalidate(Invalidation::OutputQueue);
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!("Library event bus lagged by {n} events");
-                        services.record_telemetry(crate::diagnostics::TelemetryEvent::Anomaly {
-                            kind: crate::diagnostics::AnomalyKind::EventBusLagged,
-                        });
-                        bus.invalidate_library_lag();
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-                }
-            }
-        });
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::{Config, ConfigHandle};
-    use crate::db::{Database, DbAlbum, DbArtist};
-    use crate::library::LibraryEvent;
-    use coven::StoreDir;
-    use std::sync::Arc;
-    use std::time::Duration;
-    use tempfile::TempDir;
-
-    fn recv_ui_event(
-        runtime: &tokio::runtime::Runtime,
-        rx: &mut broadcast::Receiver<UiBusEvent>,
-    ) -> UiBusEvent {
-        runtime.block_on(async {
-            tokio::time::timeout(Duration::from_secs(2), rx.recv())
-                .await
-                .expect("timed out waiting for UI event")
-                .expect("event bus closed")
-        })
-    }
-
-    fn make_test_app_services(
-        runtime: &tokio::runtime::Runtime,
-    ) -> (crate::library::AppServices, Database, TempDir) {
-        let tmp = TempDir::new().unwrap();
-        let library_dir = StoreDir::new(tmp.path().join("lib"));
-        let database = runtime
-            .block_on(Database::new_test(
-                tmp.path().join("test.db").to_str().unwrap(),
-                Arc::new(coven::SystemClock),
-                std::sync::Arc::new(coven::UuidProvider),
-            ))
-            .unwrap();
-        let library_id = format!("test-{}", uuid::Uuid::new_v4());
-        let config = Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            library_dir.clone(),
-            "Test Library".to_string(),
-        );
-        crate::config::install_test_keyring();
-        let manager = crate::library::LibraryManager::new(
-            database.clone(),
-            Arc::new(ConfigHandle::new(config)),
-            crate::keys::StoreKeys::bind(library_id),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
-            crate::diagnostics::Diagnostics::noop(),
-            runtime.handle().clone(),
-            crate::import::cover_art::RemoteImageCache::for_test(),
-        );
-        let playback = manager.start_playback_service_with_output(
-            runtime.handle().clone(),
-            50,
-            false,
-            Box::new(crate::playback::audio_output::FailingAudioOutput),
-        );
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let services = {
-            let import = runtime
-                .block_on(manager.start_import_service(runtime.handle().clone()))
-                .unwrap();
-            crate::library::AppServices::new(manager, playback, import)
-        };
-        #[cfg(any(target_os = "ios", target_os = "android"))]
-        let services = crate::library::AppServices::new(manager, playback);
-        (services, database, tmp)
-    }
-
-    fn recv_browse_list_invalidations(
-        runtime: &tokio::runtime::Runtime,
-        rx: &mut broadcast::Receiver<UiBusEvent>,
-    ) {
-        for expected in [
-            Invalidation::AlbumList,
-            Invalidation::ComposerList,
-            Invalidation::ArtistList,
-        ] {
-            match recv_ui_event(runtime, rx) {
-                UiBusEvent::Invalidated(actual) => assert_eq!(actual, expected),
-                other => panic!("expected browse-list invalidation, got {other:?}"),
-            }
-        }
-    }
-
-    /// A config change published by the handle is forwarded to the bus as a
-    /// scoped invalidation so projections can re-read the authoritative value.
-    #[test]
-    fn config_change_invalidates_and_forwards_to_the_ui_bus() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let tmp = TempDir::new().unwrap();
-        let config = Config::with_defaults(
-            "lib-1".to_string(),
-            "device-1".to_string(),
-            StoreDir::new(tmp.path().join("lib")),
-            "Test Library".to_string(),
-        );
-        config.save_to_config_yaml().expect("save config.yaml");
-        let handle = ConfigHandle::new(config);
-
-        let bus = UiEventBus::new();
-        bus.wire_config_changes(handle.subscribe(), runtime.handle());
-        let mut rx = bus.subscribe();
-
-        handle
-            .update(|c| c.discogs = Some(crate::config::DiscogsValidation::Valid))
-            .unwrap();
-
-        match recv_ui_event(&runtime, &mut rx) {
-            UiBusEvent::Invalidated(Invalidation::Config) => {}
-            other => panic!("expected config invalidation, got {other:?}"),
-        }
-
-        match recv_ui_event(&runtime, &mut rx) {
-            UiBusEvent::Invalidated(Invalidation::SyncStatus) => {}
-            other => panic!("expected sync-status invalidation, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn library_lag_emits_coarse_invalidations() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let bus = UiEventBus::new();
-        let mut ui_rx = bus.subscribe();
-        let (library_tx, library_rx) = broadcast::channel(1);
-
-        // Overflow the capacity-1 channel before wiring the consumer, so the
-        // receiver is already lagged when the forward task takes its first
-        // recv. Wiring first would race: a promptly-scheduled task can drain
-        // the first send before the second lands, and no lag ever happens.
-        library_tx
-            .send(LibraryEvent::TracksDeleted {
-                track_ids: vec!["track-1".to_string()],
-            })
-            .unwrap();
-        library_tx
-            .send(LibraryEvent::TracksDeleted {
-                track_ids: vec!["track-2".to_string()],
-            })
-            .unwrap();
-        drop(library_tx);
-
-        let (services, _database, _tmp) = make_test_app_services(&runtime);
-        bus.wire_library_events(library_rx, services, runtime.handle());
-
-        let expected = [
-            Invalidation::AlbumList,
-            Invalidation::ComposerList,
-            Invalidation::ArtistList,
-            Invalidation::SyncStatus,
-            Invalidation::Outbox,
-            Invalidation::DownloadQueue,
-            Invalidation::OutputQueue,
-        ];
-
-        for invalidation in expected {
-            match recv_ui_event(&runtime, &mut ui_rx) {
-                UiBusEvent::Invalidated(actual) => assert_eq!(actual, invalidation),
-                other => panic!("expected invalidation, got {other:?}"),
-            }
-        }
-    }
-
-    #[test]
-    fn library_event_emits_scoped_invalidation() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let bus = UiEventBus::new();
-        let mut ui_rx = bus.subscribe();
-        let (library_tx, library_rx) = broadcast::channel(16);
-        let (services, _database, _tmp) = make_test_app_services(&runtime);
-        bus.wire_library_events(library_rx, services, runtime.handle());
-
-        library_tx
-            .send(LibraryEvent::SyncingChanged { syncing: true })
-            .unwrap();
-
-        match recv_ui_event(&runtime, &mut ui_rx) {
-            UiBusEvent::Invalidated(Invalidation::SyncStatus) => {}
-            other => panic!("expected sync-status invalidation, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn release_removal_invalidates_scoped_keys() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let bus = UiEventBus::new();
-        let mut ui_rx = bus.subscribe();
-        let (library_tx, library_rx) = broadcast::channel(16);
-        let (services, _database, _tmp) = make_test_app_services(&runtime);
-        bus.wire_library_events(library_rx, services, runtime.handle());
-
-        library_tx
-            .send(LibraryEvent::ReleaseRemoved {
-                album_id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
-                release_id: "release-1".to_string(),
-                album: None,
-            })
-            .unwrap();
-
-        let expected = [
-            Invalidation::AlbumList,
-            Invalidation::ComposerList,
-            Invalidation::ArtistList,
-            Invalidation::Album {
-                album_id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
-            },
-            Invalidation::Release {
-                release_id: "release-1".to_string(),
-            },
-        ];
-
-        for invalidation in expected {
-            match recv_ui_event(&runtime, &mut ui_rx) {
-                UiBusEvent::Invalidated(actual) => assert_eq!(actual, invalidation),
-                other => panic!("expected invalidation, got {other:?}"),
-            }
-        }
-    }
-
-    #[test]
-    fn album_count_live_query_invalidates_browse_lists_after_database_insert() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let (services, database, _tmp) = make_test_app_services(&runtime);
-        let artist = DbArtist {
-            id: bae_test_support::test_uuid("album-count-artist"),
-            name: "Artist Name".to_string(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: chrono::Utc::now(),
-        };
-        runtime
-            .block_on(database.insert_artist(&artist))
-            .expect("insert artist");
-
-        let bus = UiEventBus::new();
-        let mut ui_rx = bus.subscribe();
-        bus.wire_library(&services, runtime.handle());
-        recv_browse_list_invalidations(&runtime, &mut ui_rx);
-
-        let album = DbAlbum::new_test("Album Title", &artist.id);
-        runtime
-            .block_on(database.insert_album(&album))
-            .expect("insert album directly through the database");
-
-        recv_browse_list_invalidations(&runtime, &mut ui_rx);
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[test]
-    fn import_lag_emits_coarse_invalidations() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let bus = UiEventBus::new();
-        let mut ui_rx = bus.subscribe();
-        let (services, _database, _tmp) = make_test_app_services(&runtime);
-        let (import_tx, import_rx) = broadcast::channel(1);
-
-        import_tx
-            .send(crate::import::ImportEvent::Scan(
-                crate::import::ScanEvent::Finished,
-            ))
-            .unwrap();
-        import_tx
-            .send(crate::import::ImportEvent::Scan(
-                crate::import::ScanEvent::Finished,
-            ))
-            .unwrap();
-        drop(import_tx);
-        bus.wire_import_events(import_rx, services, runtime.handle());
-
-        match recv_ui_event(&runtime, &mut ui_rx) {
-            UiBusEvent::Invalidated(Invalidation::WatchedFolders) => {}
-            other => panic!("expected watched-folders invalidation, got {other:?}"),
-        }
-        match recv_ui_event(&runtime, &mut ui_rx) {
-            UiBusEvent::Invalidated(Invalidation::ImportCandidateList) => {}
-            other => panic!("expected import-candidate-list invalidation, got {other:?}"),
-        }
     }
 }

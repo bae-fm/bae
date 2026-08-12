@@ -7,9 +7,16 @@ mod tests;
 pub struct ImportCandidatesSnapshot {
     pub watched_folders: Vec<WatchedFolder>,
     pub folder_candidates: Vec<FolderImportCandidateSnapshot>,
+    pub runtime_candidates: Vec<RuntimeImportCandidateSnapshot>,
     pub invalid_candidates: Vec<InvalidCandidate>,
     pub boundaries: Vec<FolderReleaseBoundary>,
     pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeImportCandidateSnapshot {
+    pub key: String,
+    pub runtime: CandidateRuntimeSnapshot,
 }
 
 #[derive(Debug, Clone)]
@@ -818,6 +825,16 @@ impl CandidateState {
                 .cmp(&order_for(&right.watched_folder_path))
                 .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path))
         });
+        let mut runtime_candidates: Vec<_> = self
+            .runtime
+            .iter()
+            .filter(|(key, _)| key.starts_with(Self::REIDENTIFY_PREFIX))
+            .map(|(key, runtime)| RuntimeImportCandidateSnapshot {
+                key: key.clone(),
+                runtime: runtime.clone(),
+            })
+            .collect();
+        runtime_candidates.sort_by(|left, right| left.key.cmp(&right.key));
 
         ImportCandidatesSnapshot {
             watched_folders,
@@ -825,6 +842,7 @@ impl CandidateState {
                 .into_iter()
                 .map(|(_, candidate)| candidate)
                 .collect(),
+            runtime_candidates,
             invalid_candidates: invalid_candidates
                 .into_iter()
                 .map(|(_, candidate)| candidate)

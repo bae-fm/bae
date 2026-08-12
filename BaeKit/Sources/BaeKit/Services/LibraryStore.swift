@@ -1,8 +1,102 @@
 import Foundation
 import Observation
-import os.log
 
-private let logger = Logger.bae("LibraryStore")
+private final class TaskPageSubscription: PageSubscription,
+    @unchecked Sendable
+{
+    private let task: Task<Void, Never>
+
+    init(_ task: Task<Void, Never>) {
+        self.task = task
+    }
+
+    func cancel() {
+        task.cancel()
+    }
+}
+
+private final class LivePageSubscription: PageSubscription,
+    @unchecked Sendable
+{
+    private let subscription: any LiveSubscriptionProtocol
+
+    init(_ subscription: any LiveSubscriptionProtocol) {
+        self.subscription = subscription
+    }
+
+    func cancel() {
+        subscription.cancel()
+    }
+}
+
+private final class AlbumPageSink: AlbumPageCallback, @unchecked Sendable {
+    private let value: @MainActor @Sendable ([BridgeAlbum], Int) -> Void
+    private let error: @MainActor @Sendable (any Error) -> Void
+
+    init(
+        value: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        error: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.value = value
+        self.error = error
+    }
+
+    func onValue(value page: BridgeAlbumPage) {
+        Task { @MainActor in value(page.rows, Int(page.totalCount)) }
+    }
+
+    func onError(error bridgeError: BridgeError) {
+        Task { @MainActor in error(bridgeError) }
+    }
+}
+
+private final class ComposerPageSink: ComposerPageCallback,
+    @unchecked Sendable
+{
+    private let value:
+        @MainActor @Sendable ([BridgeComposerSummary], Int) -> Void
+    private let error: @MainActor @Sendable (any Error) -> Void
+
+    init(
+        value:
+            @escaping @MainActor @Sendable ([BridgeComposerSummary], Int)
+            -> Void,
+        error: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.value = value
+        self.error = error
+    }
+
+    func onValue(value page: BridgeComposerPage) {
+        Task { @MainActor in value(page.rows, Int(page.totalCount)) }
+    }
+
+    func onError(error bridgeError: BridgeError) {
+        Task { @MainActor in error(bridgeError) }
+    }
+}
+
+private final class ArtistPageSink: ArtistPageCallback, @unchecked Sendable {
+    private let value: @MainActor @Sendable ([BridgeArtistSummary], Int) -> Void
+    private let error: @MainActor @Sendable (any Error) -> Void
+
+    init(
+        value:
+            @escaping @MainActor @Sendable ([BridgeArtistSummary], Int) -> Void,
+        error: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.value = value
+        self.error = error
+    }
+
+    func onValue(value page: BridgeArtistPage) {
+        Task { @MainActor in value(page.rows, Int(page.totalCount)) }
+    }
+
+    func onError(error bridgeError: BridgeError) {
+        Task { @MainActor in error(bridgeError) }
+    }
+}
 
 // MARK: - Album page sources
 
@@ -17,12 +111,20 @@ public struct LibraryAlbumPageSource: PageSource {
         self.sort = sort
     }
 
-    public func count() async throws -> Int {
-        Int(try await library.getAlbumCount())
-    }
-
-    public func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
-        try await library.getAlbumPage(sort, UInt64(offset), UInt64(limit))
+    public func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        LivePageSubscription(
+            library.subscribeAlbumPage(
+                sort,
+                UInt64(offset),
+                UInt64(limit),
+                AlbumPageSink(value: onValue, error: onError)
+            )
+        )
     }
 }
 
@@ -35,14 +137,20 @@ public struct AlbumPreviewPageSource: PageSource {
         self.albums = albums
     }
 
-    public func count() async throws -> Int {
-        albums.count
-    }
-
-    public func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
-        let start = min(offset, albums.count)
-        let end = min(start + limit, albums.count)
-        return Array(albums[start..<end])
+    public func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        onError _: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        let albums = albums
+        return TaskPageSubscription(
+            Task { @MainActor in
+                let start = min(offset, albums.count)
+                let end = min(start + limit, albums.count)
+                onValue(Array(albums[start..<end]), albums.count)
+            }
+        )
     }
 }
 
@@ -55,14 +163,22 @@ public struct LibraryComposerPageSource: PageSource {
         self.sort = sort
     }
 
-    public func count() async throws -> Int {
-        Int(try await library.getComposerCount())
-    }
-
-    public func page(offset: Int, limit: Int) async throws
-        -> [BridgeComposerSummary]
-    {
-        try await library.getComposerPage(sort, UInt64(offset), UInt64(limit))
+    public func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue:
+            @escaping @MainActor @Sendable ([BridgeComposerSummary], Int)
+            -> Void,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        LivePageSubscription(
+            library.subscribeComposerPage(
+                sort,
+                UInt64(offset),
+                UInt64(limit),
+                ComposerPageSink(value: onValue, error: onError)
+            )
+        )
     }
 }
 
@@ -79,14 +195,21 @@ public struct LibraryArtistPageSource: PageSource {
         self.sort = sort
     }
 
-    public func count() async throws -> Int {
-        Int(try await library.getArtistCount())
-    }
-
-    public func page(offset: Int, limit: Int) async throws
-        -> [BridgeArtistSummary]
-    {
-        try await library.getArtistPage(sort, UInt64(offset), UInt64(limit))
+    public func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue:
+            @escaping @MainActor @Sendable ([BridgeArtistSummary], Int) -> Void,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        LivePageSubscription(
+            library.subscribeArtistPage(
+                sort,
+                UInt64(offset),
+                UInt64(limit),
+                ArtistPageSink(value: onValue, error: onError)
+            )
+        )
     }
 }
 
@@ -104,32 +227,54 @@ extension BridgeArtistSummary: Identifiable {
 /// both slices at render time.
 public struct StoragePageSource: PageSource {
     private let library: Library
+    private let onTotalSize: @MainActor @Sendable (UInt64) -> Void
     public let sort: BridgeStorageSort
     public let filter: BridgeStorageFilter
 
     public init(
         library: Library,
         sort: BridgeStorageSort,
-        filter: BridgeStorageFilter
+        filter: BridgeStorageFilter,
+        onTotalSize: @escaping @MainActor @Sendable (UInt64) -> Void
     ) {
         self.library = library
         self.sort = sort
         self.filter = filter
+        self.onTotalSize = onTotalSize
     }
 
-    public func count() async throws -> Int {
-        Int(try await library.storageCount(filter))
-    }
-
-    public func page(offset: Int, limit: Int) async throws -> [BridgeStorageRow]
-    {
-        let page = try await library.storagePage(
-            sort,
-            filter,
-            UInt64(offset),
-            UInt64(limit)
+    public func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue:
+            @escaping @MainActor @Sendable ([BridgeStorageRow], Int) -> Void,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        let library = library
+        let sort = sort
+        let filter = filter
+        let onTotalSize = onTotalSize
+        return TaskPageSubscription(
+            Task {
+                for await result in library.storageProjections(
+                    sort: sort,
+                    filter: filter,
+                    offset: UInt64(offset),
+                    limit: UInt64(limit)
+                ) {
+                    switch result {
+                    case .success(let projection):
+                        await onTotalSize(projection.totalSize)
+                        await onValue(
+                            projection.page.rows,
+                            Int(projection.page.totalCount)
+                        )
+                    case .failure(let error):
+                        await onError(error)
+                    }
+                }
+            }
         )
-        return page.rows
     }
 }
 
@@ -215,11 +360,10 @@ extension BridgeAlbum: Identifiable {}
 ///   in the `releaseSummaries` slice; interning a detail interns its
 ///   summary.
 ///
-/// ## Queries write slices; lists are projections
+/// ## Queries write slices
 ///
-/// Page-source ingest and release-detail projections write one or more slices
-/// from core query results. Scoped invalidations refresh visible lists through
-/// `ProjectionRegistry`; the store does not fold library event deltas.
+/// Page subscriptions and detail subscriptions write one or more slices from
+/// core query results. The store does not fold catalog event deltas.
 @MainActor
 @Observable
 public final class LibraryStore {
@@ -265,6 +409,7 @@ public final class LibraryStore {
     /// view can show an error + Retry rather than spinning on the placeholder.
     /// Cleared when a load for that release starts again or succeeds.
     public private(set) var releaseDetailErrors: [String: DisplayError] = [:]
+    public private(set) var albumDetailErrors: [String: DisplayError] = [:]
 
     /// Total albums in the open library, or `nil` before any album list has
     /// reported a count. Written by the macOS library browser whenever its
@@ -370,6 +515,23 @@ public final class LibraryStore {
         }
     }
 
+    public func applyAlbumDetailSnapshot(
+        albumId: String,
+        bridge: BridgeAlbumDetail?
+    ) {
+        guard let bridge else {
+            if let summary = albumSummaries.removeValue(forKey: albumId) {
+                for releaseId in summary.releaseIds {
+                    releaseSummaries.removeValue(forKey: releaseId)
+                    releaseDetails.removeValue(forKey: releaseId)
+                    releaseDetailErrors.removeValue(forKey: releaseId)
+                }
+            }
+            return
+        }
+        internAlbumDetail(bridge)
+    }
+
     public func applyReleaseDetailSnapshot(
         releaseId: String,
         bridge: BridgeRelease?
@@ -377,84 +539,47 @@ public final class LibraryStore {
         guard let bridge else {
             releaseSummaries.removeValue(forKey: releaseId)
             releaseDetails.removeValue(forKey: releaseId)
-            composerSummaries.removeAll()
-            artistSummaries.removeAll()
             return
         }
         _ = internReleaseDetail(bridge)
     }
 
-    // MARK: - Detail loading
+    // MARK: - Detail subscriptions
 
-    /// Load fat detail for one release from the bridge. Called when the
-    /// album detail view opens and no detail is yet cached for the
-    /// selected release, or when the user switches to a release whose
-    /// detail hasn't been loaded yet. Populates both `releaseDetails`
-    /// and `releaseSummaries` (via `internReleaseDetail`).
-    ///
-    /// Callers loop over the releases of the currently-selected album.
-    /// When the user switches albums the outer `.task(id: albumId)` is
-    /// cancelled; we check cancellation before writing so we don't
-    /// populate `releaseDetails` for the album the user just left.
-    public func loadReleaseDetail(releaseId: String, library: Library) async {
-        guard releaseDetails[releaseId] == nil else {
-            return
-        }
-        // Clear any prior failure for this release: this call is the retry.
-        releaseDetailErrors[releaseId] = nil
-
-        do {
-            let findReleaseDetail = library.findReleaseDetail
-            let bridge =
-                try await Task.detached {
-                    try await findReleaseDetail(releaseId)
-                }
-                .value
+    public func observeAlbumDetail(albumId: String, library: Library) async {
+        for await result in library.albumDetails(albumId) {
             if Task.isCancelled {
                 return
             }
-            guard let bridge else {
-                releaseDetailErrors[releaseId] = DisplayError(
-                    line: String(localized: "Release detail not found")
-                )
+            switch result {
+            case .success(let detail):
+                albumDetailErrors.removeValue(forKey: albumId)
+                applyAlbumDetailSnapshot(albumId: albumId, bridge: detail)
+            case .failure(let error):
+                albumDetailErrors[albumId] = DisplayError(error)
                 return
             }
-            _ = internReleaseDetail(bridge)
-        }
-        catch {
-            if Task.isCancelled {
-                return
-            }
-            releaseDetailErrors[releaseId] = DisplayError(error)
         }
     }
 
-    /// Force-reload detail for a release. Used after operations that
-    /// mutate data outside the event flow (cover change, pin/unpin).
-    /// Checks cancellation before writing so a cancelled reload
-    /// (e.g. the view navigated away mid-fetch) doesn't populate
-    /// `releaseDetails` for a release no longer in scope.
-    public func reloadReleaseDetail(releaseId: String, library: Library) async {
-        do {
-            let findReleaseDetail = library.findReleaseDetail
-            let bridge =
-                try await Task.detached {
-                    try await findReleaseDetail(releaseId)
-                }
-                .value
+    public func observeReleaseDetail(
+        releaseId: String,
+        library: Library,
+        onValue: @escaping @MainActor @Sendable () -> Void
+    ) async {
+        for await result in library.releaseDetails(releaseId) {
             if Task.isCancelled {
                 return
             }
-            guard let bridge else {
-                logger.error("Release detail not found for \(releaseId)")
+            switch result {
+            case .success(let detail):
+                releaseDetailErrors.removeValue(forKey: releaseId)
+                applyReleaseDetailSnapshot(releaseId: releaseId, bridge: detail)
+                onValue()
+            case .failure(let error):
+                releaseDetailErrors[releaseId] = DisplayError(error)
                 return
             }
-            _ = internReleaseDetail(bridge)
-        }
-        catch {
-            logger.error(
-                "Failed to reload release detail for \(releaseId): \(error.localizedDescription)"
-            )
         }
     }
 

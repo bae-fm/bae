@@ -145,7 +145,7 @@ internal sealed class StorageTableView : UserControl
 // One realized storage row: the six-column grid (album / artist / format / storage
 // / files / size), tap-to-select, and a right-tap menu. Resolves its position
 // through IdAt then the side store, triggers LoadRange for a batch window around
-// itself, and re-renders when it lands or the list's generation changes.
+// itself, and re-renders when it lands or the subscribed page changes.
 internal sealed class StorageRowControl : ContentControl
 {
     private readonly StorageTableView _table;
@@ -219,7 +219,7 @@ internal sealed class StorageRowControl : ContentControl
 
     private void OnListChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(PaginatedList<BridgeStorageRow, string>.Generation))
+        if (e.PropertyName == nameof(PaginatedList<BridgeStorageRow, string>.Epoch))
         {
             KickLoad();
         }

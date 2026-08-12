@@ -36,7 +36,7 @@ enum ComposerPaneSelection: Equatable {
 // MARK: - LibraryBrowseSession
 
 /// The library browser's session state: the album/composer/artist list slots,
-/// each holding its live `PaginatedList`, invalidation registration, and sort
+/// each holding its live `PaginatedList`, subscription, and sort
 /// criteria (see `BrowseListSlot`), plus the current selections. Constructed
 /// once at the app root, alongside `UiStore` — so unmounting `LibraryView` on
 /// a tab switch loses none of it. The lists stay warm (no reload flash on
@@ -67,7 +67,6 @@ final class LibraryBrowseSession {
 
     init(
         library: Library,
-        projectionRegistry: ProjectionRegistry,
         libraryStore: LibraryStore,
         uiStore: UiStore
     ) {
@@ -76,8 +75,6 @@ final class LibraryBrowseSession {
             defaultCriteria: [
                 BridgeSortCriterion(field: .dateAdded, direction: .descending)
             ],
-            domain: .albumList,
-            projectionRegistry: projectionRegistry,
             makePageSource: {
                 LibraryAlbumPageSource(library: library, sort: $0)
             },
@@ -96,8 +93,6 @@ final class LibraryBrowseSession {
                     direction: .ascending
                 )
             ],
-            domain: .composerList,
-            projectionRegistry: projectionRegistry,
             makePageSource: {
                 LibraryComposerPageSource(library: library, sort: $0)
             },
@@ -113,8 +108,6 @@ final class LibraryBrowseSession {
             defaultCriteria: [
                 BridgeArtistSortCriterion(field: .name, direction: .ascending)
             ],
-            domain: .artistList,
-            projectionRegistry: projectionRegistry,
             makePageSource: {
                 LibraryArtistPageSource(library: library, sort: $0)
             },

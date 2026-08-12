@@ -47,9 +47,8 @@ internal sealed class PlaybackStore
     public string? NowPlayingAlbumId => _nowPlaying?.AlbumId;
     public string? NowPlayingTrackId => _nowPlaying?.TrackId;
 
-    // The queue revision the current lanes were resolved from. Stamped onto
-    // every QueueUpcomingPage fetch so a reply computed under a
-    // since-superseded revision is dropped rather than merged.
+    // The queue revision the current lanes were resolved from. Page subscription
+    // values are accepted only while they carry this revision.
     public ulong Revision { get; private set; }
 
     // What the transport currently is, for the play/pause button that must
@@ -175,8 +174,12 @@ internal sealed class PlaybackStore
         RepeatChanged?.Invoke(mode);
     }
 
-    public void ApplyQueueUpdated(BridgeQueueSnapshot snapshot)
+    public void ApplyQueueValue(BridgeQueueSnapshot snapshot)
     {
+        if (snapshot.Revision < Revision)
+        {
+            return;
+        }
         _queueManual = snapshot.Manual.ToList();
         _queueContext = snapshot.Context;
         Revision = snapshot.Revision;

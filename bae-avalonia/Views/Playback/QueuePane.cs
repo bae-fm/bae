@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -23,7 +24,7 @@ namespace Bae.Desktop;
 // scrolls, revision-checked so a reply for a superseded queue state is dropped.
 // Reorder and external album/folder drops land with the drag-drop area; this is the
 // display and the direct actions.
-internal sealed class QueuePane
+internal sealed class QueuePane : IDisposable
 {
     private const double Width = 420;
 
@@ -48,7 +49,8 @@ internal sealed class QueuePane
     private ulong _revision;
     private ulong _contextTotal;
     private ulong _contextLoaded;
-    private bool _contextLoading;
+    private readonly SortedDictionary<ulong, BridgeQueueEntry[]> _contextPages = new();
+    private readonly Dictionary<ulong, IDisposable> _contextSubscriptions = new();
 
     public QueuePane(AppService app, Border host)
     {
@@ -143,6 +145,7 @@ internal sealed class QueuePane
             return;
         }
         _app.PlaybackStore.QueueChanged -= Rebuild;
+        CancelContextSubscription();
         _host.Child = null;
         _listSlot = null;
         _card = null;
@@ -335,6 +338,7 @@ internal sealed class QueuePane
     // ── List ──────────────────────────────────────────────────────────────────
     private void Rebuild()
     {
+        CancelContextSubscription();
         var manual = _app.PlaybackStore.ManualQueue;
         var context = _app.PlaybackStore.Context;
         _revision = _app.PlaybackStore.Revision;
@@ -355,15 +359,12 @@ internal sealed class QueuePane
 
         _contextTotal = 0;
         _contextLoaded = 0;
+        _contextPages.Clear();
         if (context is { UpcomingTotal: > 0 } ctx)
         {
-            rows.Add(new SectionHeaderRow(QueueLane.Context, ContextSectionTitle(ctx), ctx.Shuffled));
-            foreach (var entry in ctx.Upcoming)
-            {
-                rows.Add(new EntryRow(QueueLane.Context, entry));
-            }
             _contextTotal = ctx.UpcomingTotal;
-            _contextLoaded = (ulong)ctx.Upcoming.Length;
+            _contextPages[0] = ctx.Upcoming;
+            AddContextRows(rows, ctx);
         }
 
         _rows = rows;
@@ -407,34 +408,117 @@ internal sealed class QueuePane
         return scroller;
     }
 
-    private async Task LoadMoreContext(ObservableCollection<object> rows)
+    private void AddContextRows(
+        ObservableCollection<object> rows,
+        BridgePlaybackContext context)
     {
-        if (_contextLoading || _contextLoaded >= _contextTotal || !ReferenceEquals(rows, _rows))
+        rows.Add(new SectionHeaderRow(
+            QueueLane.Context,
+            ContextSectionTitle(context),
+            context.Shuffled));
+        var expectedOffset = 0UL;
+        foreach (var (offset, entries) in _contextPages)
         {
-            return;
-        }
-        _contextLoading = true;
-        try
-        {
-            var (current, result) = await _app.Queue.GetUpcomingPage(checked((uint)_contextLoaded), 100);
-            if (!current || !ReferenceEquals(rows, _rows))
+            if (offset != expectedOffset)
             {
-                return;
+                break;
             }
-            if (result.Page is not { } page || page.Revision != _revision)
-            {
-                return;
-            }
-            foreach (var entry in page.Entries)
+            foreach (var entry in entries)
             {
                 rows.Add(new EntryRow(QueueLane.Context, entry));
             }
-            _contextLoaded += (ulong)page.Entries.Length;
+            expectedOffset += (ulong)entries.Length;
         }
-        finally
+        _contextLoaded = expectedOffset;
+    }
+
+    private Task LoadMoreContext(ObservableCollection<object> rows)
+    {
+        if (_contextLoaded >= _contextTotal ||
+            _contextSubscriptions.ContainsKey(_contextLoaded) ||
+            !ReferenceEquals(rows, _rows))
         {
-            _contextLoading = false;
+            return Task.CompletedTask;
         }
+        var offset = _contextLoaded;
+        var subscription = _app.Queue.SubscribeUpcomingPage(
+            checked((uint)offset),
+            100,
+            page => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyUpcomingPage(rows, offset, page)),
+            error => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                _app.ShowError(Loc.Chrome("error.title"), error.Message)));
+        if (subscription is not null)
+        {
+            _contextSubscriptions[offset] = subscription;
+        }
+        return Task.CompletedTask;
+    }
+
+    private void ApplyUpcomingPage(
+        ObservableCollection<object> rows,
+        ulong offset,
+        BridgeQueueUpcomingPage page)
+    {
+        if (!ReferenceEquals(rows, _rows) || page.Revision != _revision)
+        {
+            return;
+        }
+
+        var oldLength = _contextPages.TryGetValue(offset, out var oldPage)
+            ? oldPage.Length
+            : -1;
+        _contextPages[offset] = page.Entries;
+        if (oldLength >= 0 && oldLength != page.Entries.Length)
+        {
+            foreach (var laterOffset in _contextSubscriptions.Keys.Where(key => key > offset).ToArray())
+            {
+                _contextSubscriptions[laterOffset].Dispose();
+                _contextSubscriptions.Remove(laterOffset);
+                _contextPages.Remove(laterOffset);
+            }
+        }
+        RebuildRowsFromCurrentValues(rows);
+    }
+
+    private void RebuildRowsFromCurrentValues(ObservableCollection<object> rows)
+    {
+        var manual = _app.PlaybackStore.ManualQueue;
+        var context = _app.PlaybackStore.Context;
+        rows.Clear();
+        if (manual.Count == 0)
+        {
+            rows.Add(new EmptyManualRow());
+        }
+        else
+        {
+            rows.Add(new SectionHeaderRow(QueueLane.Manual, Loc.Chrome("queue.section.up_next"), null));
+            foreach (var entry in manual)
+            {
+                rows.Add(new EntryRow(QueueLane.Manual, entry));
+            }
+        }
+        if (context is { UpcomingTotal: > 0 })
+        {
+            AddContextRows(rows, context);
+        }
+    }
+
+    private void CancelContextSubscription()
+    {
+        foreach (var subscription in _contextSubscriptions.Values)
+        {
+            subscription.Dispose();
+        }
+        _contextSubscriptions.Clear();
+        _contextPages.Clear();
+    }
+
+    public void Dispose()
+    {
+        Hide();
+        _app.PlaybackStore.NowPlayingChanged -= OnNowPlayingChanged;
+        _app.PlaybackStore.PlaybackStopped -= OnPlaybackStopped;
+        _app.PlaybackStore.PositionChanged -= OnPositionChanged;
     }
 
     private Control BuildRowVisual(object? row) => row switch

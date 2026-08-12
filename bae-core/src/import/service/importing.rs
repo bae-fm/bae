@@ -781,14 +781,6 @@ impl ImportService {
             }
         }
 
-        if new_album.is_some() {
-            library_manager.emit_album_added(album_id).await;
-        } else {
-            library_manager
-                .emit_release_added(album_id, &db_release.id)
-                .await;
-        }
-
         let progress = if remote_intent {
             ImportProgress::RemoteUploadQueued {
                 id: db_release.id.to_string(),

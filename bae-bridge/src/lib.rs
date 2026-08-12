@@ -7,6 +7,7 @@ mod bridge_utils;
 mod cloudkit;
 mod handle;
 mod init;
+mod live_subscription;
 mod setup;
 #[cfg(feature = "desktop")]
 mod signals;
@@ -17,6 +18,7 @@ mod utils;
 pub use cloudkit::*;
 pub use handle::*;
 pub use init::*;
+pub use live_subscription::*;
 pub use setup::*;
 pub use types::*;
 pub use utils::*;

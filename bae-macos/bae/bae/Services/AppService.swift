@@ -18,7 +18,7 @@ private let logger = Logger.bae("AppService")
 final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Import-flow session state — folder candidates and the preview audio
     /// state. Mixed-writer: core drives event-driven fields (scan/identify state
-    /// via the projection registry, preview state via the shared event
+    /// via live values, preview state via the shared event
     /// dispatcher); views drive user-set fields (mode, coverPick).
     private let importStore: ImportStore
 
@@ -28,16 +28,16 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     private let uiStore: UiStore
 
     /// In-memory export queue mirror — per-release state and summary. The export
-    /// projection is the sole writer; the Storage Manager's Exporting pane reads
+    /// value stream is the sole writer; the Storage Manager's Exporting pane reads
     /// it.
     private let outputStore: OutputStore
 
-    /// Owns the desktop projection registrations and their query/apply wiring.
-    private let desktopProjections: DesktopProjections
+    /// Owns the desktop value subscriptions and their apply wiring.
+    private let desktopSubscriptions: DesktopSubscriptions
     private let desktopEvents: DesktopEventHandler
 
     /// The library browser's session state (lists, selections, sort criteria).
-    /// Construction wires its projections; `wireUp()` starts the initial read
+    /// Construction wires its subscriptions; `wireUp()` starts delivery
     /// after the complete application service has been initialized.
     private let libraryBrowseSession: LibraryBrowseSession
 
@@ -77,7 +77,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         let castStore = CastStore()
         let outboxStore = OutboxStore(snapshot: initialOutbox)
-        let projectionRegistry = ProjectionRegistry()
         let library = Library(handle: appHandle)
         let playback = Playback(handle: appHandle)
         let queue = Queue(handle: appHandle)
@@ -88,9 +87,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let cast = Cast(handle: appHandle)
         self.uiStore = uiStore
         importStore = ImportStore()
-        importStore.applyImportCandidatesSnapshot(
-            appHandle.getImportCandidates()
-        )
         // Seed the Exporting pane from the in-memory export queue.
         // `getOutputSnapshot` is infallible — no fallback.
         outputStore = OutputStore(snapshot: appHandle.getOutputSnapshot())
@@ -107,21 +103,17 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         #endif
         libraryBrowseSession = LibraryBrowseSession(
             library: library,
-            projectionRegistry: projectionRegistry,
             libraryStore: libraryStore,
             uiStore: uiStore
         )
-        desktopProjections = DesktopProjections(
-            registry: projectionRegistry,
-            outputs: outputs,
-            outputStore: outputStore,
-            importer: importer,
+        desktopSubscriptions = DesktopSubscriptions(
+            appHandle: appHandle,
             importStore: importStore,
+            outputStore: outputStore,
             uiStore: uiStore
         )
         desktopEvents = DesktopEventHandler(
             importStore: importStore,
-            projectionRegistry: projectionRegistry,
             mediaControlService: mediaControlService
         )
         let components = AppServiceComponents(
@@ -131,7 +123,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             downloadStore: downloadStore,
             castStore: castStore,
             outboxStore: outboxStore,
-            projectionRegistry: projectionRegistry,
             library: library,
             playback: playback,
             queue: queue,
@@ -154,15 +145,15 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         uiStore.showError(error)
     }
 
-    /// Wire the live `AppHandle` into the stores: register the common and
-    /// desktop projections, subscribe to Rust UI events, register the artwork
+    /// Wire the live `AppHandle` into the stores: start the common and desktop
+    /// value subscriptions, subscribe to Rust UI events, register the artwork
     /// analyzer, set up macOS media remote-control bindings, and re-check a
     /// deferred Discogs token.
     /// Called once after construction; previews skip it.
     func wireUp() {
         libraryBrowseSession.start()
-        registerCommonProjections()
-        desktopProjections.start()
+        startCommonSubscriptions()
+        desktopSubscriptions.start()
         subscribeUIEvents { [weak self] event in
             guard let self else { return }
             DesktopUiEvents.apply(event, appService: self)

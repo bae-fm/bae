@@ -302,70 +302,6 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     pass.await.expect("sweep pass joins");
 }
 
-/// The sweep drives the whole queue through `IdentifyStateChanged` and
-/// `SignalsUpdated`, and every one of those would otherwise invalidate a
-/// candidate in both UIs. A run a person started still does.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn only_a_watched_run_invalidates_the_ui() {
-    let fixture = Fixture::new("ui-invalidation").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-ui-1", "rg-ui-1", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-ui-1?",
-        200,
-        release_json("mb-ui-1", "rg-ui-1", &[probed, 0]),
-    );
-    fixture.scan(1).await;
-
-    let mut events = fixture.import.subscribe_events();
-    fixture.sweep_once().await;
-    let (swept_candidate_events, swept_watched) = count_candidate_events(&mut events);
-    assert!(
-        swept_candidate_events > 0,
-        "the sweep does emit per-candidate events — otherwise this proves nothing"
-    );
-    assert_eq!(
-        swept_watched, 0,
-        "but none of them claims a person is watching, so the UI bus renders nothing"
-    );
-
-    // The same pipeline, opened by a person.
-    let mut events = fixture.import.subscribe_events();
-    fixture.select(&dir);
-    tokio::time::sleep(Duration::from_millis(500)).await;
-    let (_, selected_watched) = count_candidate_events(&mut events);
-    assert!(
-        selected_watched > 0,
-        "an opened candidate keeps re-rendering exactly as it does today"
-    );
-}
-
-/// `(per-candidate events, of which watched)` — the two the UI bus branches on.
-fn count_candidate_events(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
-) -> (usize, usize) {
-    let mut total = 0;
-    let mut watched = 0;
-    for event in drain_events(events) {
-        let priority = match event {
-            ImportEvent::IdentifyStateChanged { priority, .. }
-            | ImportEvent::SignalsUpdated { priority, .. } => priority,
-            _ => continue,
-        };
-        total += 1;
-        if priority == CallPriority::Interactive {
-            watched += 1;
-        }
-    }
-    (total, watched)
-}
-
 fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> Vec<ImportEvent> {
     let mut drained = Vec::new();
     loop {
@@ -498,15 +434,7 @@ async fn a_candidate_the_sweep_failed_then_the_user_opened_is_left_alone() {
     assert!(fixture.identify.is_running(&key), "their run is in flight");
 
     let lookups_before = fixture.provider.count_containing("/discid/");
-    let mut events = fixture.import.subscribe_events();
     fixture.sweep_once().await;
-    let (candidate_events, watched) = count_candidate_events(&mut events);
-
-    assert_eq!(
-        candidate_events - watched,
-        0,
-        "the sweep started no background run for a candidate the user has open"
-    );
     assert!(
         fixture.context().ours.lock().unwrap().is_empty(),
         "and claimed no ownership of it: it did not take the candidate back"

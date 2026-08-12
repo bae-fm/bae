@@ -12,14 +12,13 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use tokio::sync::broadcast;
 use tracing::{info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::keys::StoreKeys;
-use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
+use crate::library::{LibraryError, OutboxSnapshot, UploadThroughput};
 use crate::sync::upload_observer::UploadObserverEvent;
 use crate::sync::S3ConfigData;
 use coven::ClockRef;
@@ -85,7 +84,7 @@ pub(crate) struct SyncController {
     /// homes take it for the OAuth sessions that refresh their own tokens.
     #[cfg(feature = "oauth-providers")]
     clock: ClockRef,
-    event_tx: broadcast::Sender<LibraryEvent>,
+    outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
     database: Database,
     /// `file_id`s whose upload is in flight right now, mapped to the live count
     /// of encrypted bytes that have reached the cloud for that file. Shared with
@@ -112,7 +111,7 @@ impl SyncController {
         config_handle: Arc<ConfigHandle>,
         key_service: StoreKeys,
         clock: ClockRef,
-        event_tx: broadcast::Sender<LibraryEvent>,
+        outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
         database: Database,
         outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
         upload_sessions: Arc<crate::library::UploadSessions>,
@@ -128,7 +127,7 @@ impl SyncController {
             key_service,
             #[cfg(feature = "oauth-providers")]
             clock,
-            event_tx,
+            outbox_values,
             database,
             outbox_in_flight,
             upload_sessions,
@@ -136,14 +135,6 @@ impl SyncController {
             sync_paused,
             cloudkit_ops,
             diagnostics,
-        }
-    }
-
-    /// Emit a library event to all subscribers. Mirrors `LibraryManager::emit` so
-    /// the controller's outbox-snapshot push reaches the same bus.
-    fn emit(&self, event: LibraryEvent) {
-        if let Err(err) = self.event_tx.send(event) {
-            warn!("library event broadcast had no subscribers: {err}");
         }
     }
 
@@ -208,19 +199,21 @@ impl SyncController {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    /// Build the current outbox snapshot and emit it as `OutboxChanged`. Called
-    /// at every outbox mutation, once per sync cycle, and on each upload
-    /// lifecycle callback so the Storage Manager's queue panel stays current.
+    /// Build and publish the current outbox snapshot. Called at every outbox
+    /// mutation, once per sync cycle, and on each upload lifecycle callback.
     pub(crate) async fn emit_outbox_changed(&self) {
-        match self.build_outbox_snapshot().await {
-            Ok(snapshot) => self.emit(LibraryEvent::OutboxChanged { snapshot }),
-            Err(e) => warn!("Failed to build outbox snapshot: {e}"),
+        let value = self
+            .build_outbox_snapshot()
+            .await
+            .map_err(|error| error.to_string());
+        if let Err(error) = &value {
+            warn!("Failed to build outbox snapshot: {error}");
         }
+        self.outbox_values.send_replace(Some(value));
     }
 
     /// The current outbox processing snapshot — queue depth, per-item state, and
-    /// a pre-formatted summary. Seeds the Storage Manager panel before the first
-    /// `OutboxChanged` event arrives.
+    /// a pre-formatted summary.
     pub(crate) async fn outbox_snapshot(
         &self,
     ) -> Result<crate::library::OutboxSnapshot, LibraryError> {
@@ -248,12 +241,9 @@ impl SyncController {
                 already_counted,
             } => self.record_uploaded_blob(&file_id, already_counted).await,
             UploadObserverEvent::ReleaseMadeRemote { release_id } => {
-                self.emit_release_updated(&release_id).await;
                 self.upload_sessions.clear_group(Some(&release_id));
             }
-            UploadObserverEvent::ReleaseMadeLocal { release_id } => {
-                self.emit_release_updated(&release_id).await;
-            }
+            UploadObserverEvent::ReleaseMadeLocal => {}
         }
         self.emit_outbox_changed().await;
     }
@@ -286,32 +276,6 @@ impl SyncController {
                 );
             }
             Err(error) => warn!("on_blob_uploaded: looking up {file_id}: {error}"),
-        }
-    }
-
-    async fn emit_release_updated(&self, release_id: &str) {
-        let album_id = match self.database.find_release_by_id(release_id).await {
-            Ok(Some(release)) => release.album_id,
-            Ok(None) => {
-                warn!("emit_release_updated: release {release_id} not found");
-                return;
-            }
-            Err(error) => {
-                warn!("emit_release_updated: {error}");
-                return;
-            }
-        };
-        match crate::library::manager::find_release_detail_with(
-            &self.database,
-            true,
-            true,
-            release_id,
-        )
-        .await
-        {
-            Ok(Some(release)) => self.emit(LibraryEvent::ReleaseUpdated { album_id, release }),
-            Ok(None) => warn!("emit_release_updated: release {release_id} not found"),
-            Err(error) => warn!("emit_release_updated: {error}"),
         }
     }
 

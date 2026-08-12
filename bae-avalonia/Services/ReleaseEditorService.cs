@@ -20,20 +20,15 @@ internal sealed class ReleaseEditorService
     public Func<string, string, Task<(bool Current, string? Error)>> SetPrimaryRelease { get; init; }
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: SetPrimaryRelease not wired");
 
-    /// <summary>The release's own image files, the change-cover picker's first
-    /// section. Synchronous (a local read) to open the dialog immediately.</summary>
-    public Func<string, (bool Current, (BridgeFile[]? Images, string? Error) Result)> GetReleaseImages { get; init; }
-        = _ => throw new InvalidOperationException("ReleaseEditorService stub: GetReleaseImages not wired");
-
     /// <summary>Remote cover candidates from MusicBrainz / Discogs — a network read,
     /// so async; the picker fills its remote section in when this lands.</summary>
     public Func<string, Task<(bool Current, (BridgeRemoteCover[]? Covers, string? Error) Result)>> FetchRemoteCovers { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: FetchRemoteCovers not wired");
 
-    /// <summary>Write the chosen cover (a release image or a downloaded remote one);
-    /// the grid refreshes via the invalidation the change emits.</summary>
-    public Func<string, string, BridgeCoverSelection, Task<(bool Current, string? Error)>> ChangeCover { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("ReleaseEditorService stub: ChangeCover not wired");
+    /// <summary>Write the chosen cover (a release image or a downloaded remote one).
+    /// Open album subscriptions deliver the updated cover version.</summary>
+    public Func<string, BridgeCoverSelection, Task<(bool Current, string? Error)>> ChangeCover { get; init; }
+        = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ChangeCover not wired");
 
     /// <summary>The editable metadata seed for a release — album/pressing fields and
     /// the per-track table — the edit form populates from. Synchronous (a local
@@ -53,8 +48,8 @@ internal sealed class ReleaseEditorService
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetMetadataToSource not wired");
 
     /// <summary>Commit a re-identify: point the release at a chosen source pressing
-    /// (exact or metadata-only) or clear its identity. On success the grid refreshes
-    /// via the invalidation.</summary>
+    /// (exact or metadata-only) or clear its identity. Open subscriptions deliver
+    /// the updated release.</summary>
     public Func<string, BridgeIdentityChoice, Task<(bool Current, string? Error)>> ReidentifyRelease { get; init; }
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ReidentifyRelease not wired");
 
@@ -76,12 +71,10 @@ internal sealed class ReleaseEditorService
     {
         SetPrimaryRelease = (albumId, releaseId) =>
             session.RunForCurrentHandle(handle => NativeBae.SetPrimaryRelease(handle, albumId, releaseId)),
-        GetReleaseImages = releaseId =>
-            session.WithCurrentHandle(handle => NativeBae.GetReleaseImages(handle, releaseId)),
         FetchRemoteCovers = releaseId =>
             session.RunForCurrentHandle(handle => NativeBae.FetchRemoteCovers(handle, releaseId)),
-        ChangeCover = (albumId, releaseId, selection) =>
-            session.RunForCurrentHandle(handle => NativeBae.ChangeCover(handle, albumId, releaseId, selection)),
+        ChangeCover = (releaseId, selection) =>
+            session.RunForCurrentHandle(handle => NativeBae.ChangeCover(handle, releaseId, selection)),
         ReleaseEditSeed = releaseId =>
             session.WithCurrentHandle(handle => NativeBae.ReleaseEditSeed(handle, releaseId)),
         ApplyReleaseEdit = (releaseId, edit) =>

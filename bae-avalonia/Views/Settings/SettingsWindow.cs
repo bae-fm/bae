@@ -17,7 +17,7 @@ namespace Bae.Desktop;
 // window, like macOS's Settings scene; its own modal host presents the sub-dialogs
 // (the preset editor, delete confirm, the approve flow) directly over it. Every read
 // and write goes through the app services, never NativeBae. Reads the settings
-// through the settings mirror and re-renders when a config invalidation — or an
+// through the settings mirror and re-renders when a config value — or an
 // in-window connect/disconnect — reloads them; those registrations live only
 // while the window is open.
 internal sealed partial class SettingsWindow
@@ -133,7 +133,7 @@ internal sealed partial class SettingsWindow
         };
         _window = window;
 
-        // Re-read the settings into the live controls so a config invalidation — or
+        // Re-read the settings into the live controls so a config value — or
         // a connect/disconnect in this window — updates them in place.
         void Refresh()
         {
@@ -147,8 +147,6 @@ internal sealed partial class SettingsWindow
             }
         }
         _app.SettingsStore.Changed += Refresh;
-        var configRegistration = _app.ProjectionRegistry.Register(
-            typeof(BridgeInvalidation.Config), () => _app.SettingsStore.Reload());
 
         // A key saved while offline lands "unvalidated"; opening settings is a
         // chance to settle it now that there may be connectivity. The core no-ops
@@ -158,7 +156,6 @@ internal sealed partial class SettingsWindow
         window.Closed += (_, _) =>
         {
             _app.SettingsStore.Changed -= Refresh;
-            configRegistration.Dispose();
             unsubscribeUpdates?.Invoke();
             _window = null;
         };
@@ -202,7 +199,7 @@ internal sealed partial class SettingsWindow
 
         // Whether quitting performs the graceful shutdown that saves the current
         // track, position, queue, and volume for the next launch to restore.
-        // Device-local, so no error snap-back and no config-invalidation involvement.
+        // Device-local, so no error snap-back and no config subscription involvement.
         var restoreOnLaunch = new CheckBox
         {
             Content = Loc.Chrome("settings.playback.restore_on_launch"),

@@ -211,6 +211,7 @@ pub struct DbAlbumDetail {
 /// artists (the per-track artist fallback), this release's index among the
 /// album's releases, and whether the album is a compilation (which decides each
 /// track's display artist). Returned by `find_release_detail_context`.
+#[derive(Debug, Clone)]
 pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
     pub album_artists: Vec<DbArtist>,

@@ -4,8 +4,7 @@ using Xunit;
 namespace Bae.Desktop.Tests;
 
 // The storage list model: the column-header click semantics (Toggle), the
-// persisted sort-token round-trip and its degrade-to-default, and the transfer
-// overlay's apply/overwrite/clear/no-op behavior. Tab membership and row
+// persisted sort-token round-trip and its degrade-to-default. Tab membership and row
 // ordering are server-side now (NativeBae.StoragePage/StorageCount take the
 // tab/sort directly) — see StorageDialog — so there is no client-side
 // filter/sort matrix left to test here.
@@ -62,35 +61,4 @@ public sealed class StorageListModelTests
         Assert.Equal(expected, StorageListModel.ParseSort("nope:ascending"));
     }
 
-    // ── Progress overlay ─────────────────────────────────────────────────────
-
-    [Fact]
-    public void Overlay_ApplyTokenForOverwriteAndClear()
-    {
-        var overlay = new StorageTransferOverlay();
-        overlay.Apply("r1", "pin");
-        Assert.Equal("pin", overlay.TokenFor("r1"));
-
-        // A second apply for the same id overwrites.
-        overlay.Apply("r1", "unpin");
-        Assert.Equal("unpin", overlay.TokenFor("r1"));
-
-        Assert.Contains("r1", overlay.ActiveReleaseIds);
-
-        // Clear removes and returns true.
-        Assert.True(overlay.Clear("r1"));
-        Assert.Null(overlay.TokenFor("r1"));
-        Assert.DoesNotContain("r1", overlay.ActiveReleaseIds);
-    }
-
-    [Fact]
-    public void Overlay_ClearOfUnknownIdIsNoOpReturningFalse()
-    {
-        var overlay = new StorageTransferOverlay();
-        // A release id never applied — including one absent from every row of the
-        // current filter — clears to false and throws nothing.
-        Assert.False(overlay.Clear("never-applied"));
-        Assert.Null(overlay.TokenFor("never-applied"));
-        Assert.Empty(overlay.ActiveReleaseIds);
-    }
 }

@@ -19,8 +19,8 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 
 /**
- * The two-lane queue projection ([BaeCorePlayer.onQueueUpdated] → [BaeCorePlayer.queue]).
- * A `QueueUpdated` event carries a manual lane ("Up Next") and an optional
+ * The two-lane queue projection ([BaeCorePlayer.onQueueValue] → [BaeCorePlayer.queue]).
+ * A queue value carries a manual lane ("Up Next") and an optional
  * context lane (what the queue plays from). The projection keeps the two apart,
  * mapping each [BridgeQueueEntry] to a [QueueItem], and carries the context's
  * source kind and shuffle flag so the UI can label and mark the section.
@@ -66,7 +66,7 @@ class QueueProjectionTest {
     fun manualLaneProjectsEntriesInOrder() {
         val player = player()
 
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = listOf(entry("a"), entry("b")),
             context = null,
             hasNext = true,
@@ -82,7 +82,7 @@ class QueueProjectionTest {
     fun contextLaneIsSplitFromTheManualLane() {
         val player = player()
 
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = listOf(entry("m")),
             context =
                 BridgePlaybackContext(
@@ -108,7 +108,7 @@ class QueueProjectionTest {
     fun contextShuffledFlagPropagates() {
         val player = player()
 
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = emptyList(),
             context =
                 BridgePlaybackContext(
@@ -131,7 +131,7 @@ class QueueProjectionTest {
     fun contextKindLibraryPropagates() {
         val player = player()
 
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = emptyList(),
             context =
                 BridgePlaybackContext(
@@ -154,7 +154,7 @@ class QueueProjectionTest {
     fun entryWithNoDurationProjectsNoDuration() {
         val player = player()
 
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = listOf(entry("a", durationClock = null, coverImage = null)),
             context = null,
             hasNext = false,
@@ -171,7 +171,7 @@ class QueueProjectionTest {
     @Test
     fun emptyUpdateClearsBothLanes() {
         val player = player()
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = listOf(entry("a")),
             context =
                 BridgePlaybackContext(
@@ -186,15 +186,17 @@ class QueueProjectionTest {
             revision = 1uL,
         )
 
-        player.onQueueUpdated(
+        player.onQueueValue(
             manual = emptyList(),
             context = null,
             hasNext = false,
             hasPrevious = false,
-            revision = 0uL,
+            revision = 2uL,
         )
 
-        assertEquals(QueueProjection.EMPTY, player.queue.value)
+        assertEquals(emptyList<QueueItem>(), player.queue.value.manual)
+        assertNull(player.queue.value.context)
+        assertEquals(2uL, player.queue.value.revision)
     }
 
     private fun player(): BaeCorePlayer {

@@ -20,69 +20,33 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class LibraryService
 {
-    public Func<ulong, ulong, IReadOnlyList<SortCriterion<AlbumSortField>>, (bool Current, (List<Album>? Albums, string? Error) Page)> AlbumPage { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("LibraryService stub: AlbumPage not wired");
-
-    public Func<(bool Current, long Count)> AlbumCount { get; init; }
-        = () => throw new InvalidOperationException("LibraryService stub: AlbumCount not wired");
+    public Func<ulong, ulong, IReadOnlyList<SortCriterion<AlbumSortField>>, Action<IReadOnlyList<Album>, int>, Action<Exception>, IDisposable?> SubscribeAlbumPage { get; init; }
+        = (_, _, _, _, _) => throw new InvalidOperationException("LibraryService stub: SubscribeAlbumPage not wired");
 
     /// <summary>One album's full detail — every release with its tracks — for the
     /// inline album expansion. Async: the Windows consumer opened it off the UI
     /// thread. The C# mirror of BaeKit's <c>Library.getAlbumDetail</c>.</summary>
-    public Func<string, Task<(bool Current, (AlbumDetail? Detail, string? Error) Response)>> AlbumDetail { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: AlbumDetail not wired");
+    public Func<string, Action<AlbumDetail?>, Action<Exception>, IDisposable?> SubscribeAlbumDetail { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("LibraryService stub: SubscribeAlbumDetail not wired");
 
     /// <summary>The 0-based position of an album under the active sort, or null
     /// when it isn't present — lets a reveal page in and scroll to it.</summary>
     public Func<IReadOnlyList<SortCriterion<AlbumSortField>>, string, Task<(bool Current, (long? Index, string? Error) Result)>> AlbumIndex { get; init; }
         = (_, _) => throw new InvalidOperationException("LibraryService stub: AlbumIndex not wired");
 
-    public Func<ulong, ulong, IReadOnlyList<SortCriterion<ComposerSortField>>, (bool Current, (List<ComposerSummary>? Composers, string? Error) Page)> ComposerPage { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("LibraryService stub: ComposerPage not wired");
+    public Func<ulong, ulong, IReadOnlyList<SortCriterion<ComposerSortField>>, Action<IReadOnlyList<ComposerSummary>, int>, Action<Exception>, IDisposable?> SubscribeComposerPage { get; init; }
+        = (_, _, _, _, _) => throw new InvalidOperationException("LibraryService stub: SubscribeComposerPage not wired");
 
-    public Func<(bool Current, long Count)> ComposerCount { get; init; }
-        = () => throw new InvalidOperationException("LibraryService stub: ComposerCount not wired");
-
-    public Func<string, Task<(bool Current, (ComposerDetail? Detail, string? Error) Response)>> ComposerDetail { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: ComposerDetail not wired");
-
-    public Func<string, Task<(bool Current, (WorkDetail? Detail, string? Error) Response)>> WorkDetail { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: WorkDetail not wired");
-
-    public Func<ulong, ulong, IReadOnlyList<SortCriterion<ArtistSortField>>, (bool Current, (List<ArtistSummary>? Artists, string? Error) Page)> ArtistPage { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("LibraryService stub: ArtistPage not wired");
-
-    public Func<(bool Current, long Count)> ArtistCount { get; init; }
-        = () => throw new InvalidOperationException("LibraryService stub: ArtistCount not wired");
-
-    public Func<string, Task<(bool Current, (ArtistDetail? Detail, string? Error) Response)>> ArtistDetail { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: ArtistDetail not wired");
-
-    public Func<string, (bool Current, (LibrarySearchResults? Results, string? Error) Result)> Search { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: Search not wired");
+    public Func<ulong, ulong, IReadOnlyList<SortCriterion<ArtistSortField>>, Action<IReadOnlyList<ArtistSummary>, int>, Action<Exception>, IDisposable?> SubscribeArtistPage { get; init; }
+        = (_, _, _, _, _) => throw new InvalidOperationException("LibraryService stub: SubscribeArtistPage not wired");
 
     /// <summary>Total releases matching a storage tab — the storage dialog's page
     /// source count, so the incremental list knows the row total up front.
     /// Synchronous, run off the UI thread by the page source (like the browse
     /// counts).</summary>
-    public Func<StorageTab, (bool Current, long Count)> StorageCount { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: StorageCount not wired");
-
-    /// <summary>Sum of file sizes over every release matching a storage tab — the
-    /// dialog footer's total, independent of how many pages have loaded.</summary>
-    public Func<StorageTab, Task<(bool Current, long Bytes)>> StorageTotalSize { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: StorageTotalSize not wired");
-
-    /// <summary>One page of storage rows for a tab, sorted server-side. Synchronous
-    /// to back the incremental collection's paging callback.</summary>
-    public Func<StorageTab, StorageSortField, SortDirection, ulong, ulong, (bool Current, (BridgeStoragePage? Page, string? Error) Result)> StoragePage { get; init; }
-        = (_, _, _, _, _) => throw new InvalidOperationException("LibraryService stub: StoragePage not wired");
-
-    /// <summary>A single release's live storage fields (state, pin, actions,
-    /// in-flight transfer), for refreshing the album-detail storage band. Null when
-    /// the release is gone.</summary>
-    public Func<string, Task<(bool Current, (Release? Release, string? Error) Result)>> ReleaseStorage { get; init; }
-        = _ => throw new InvalidOperationException("LibraryService stub: ReleaseStorage not wired");
+    public Func<StorageTab, StorageSortField, SortDirection, ulong, ulong,
+        Action<IReadOnlyList<BridgeStorageRow>, int, long>, Action<Exception>, IDisposable?> SubscribeStorage { get; init; }
+        = (_, _, _, _, _, _, _) => throw new InvalidOperationException("LibraryService stub: SubscribeStorage not wired");
 
     /// <summary>Expand album/track ids to flat track-id lists (album ids resolve to
     /// their primary release's tracks), for a queue insert carrying a drag
@@ -91,39 +55,45 @@ internal sealed class LibraryService
         = _ => throw new InvalidOperationException("LibraryService stub: ResolveToTrackIds not wired");
 
     /// <summary>Whether the library page spans the window's full width instead of a
-    /// width-capped column. The write's config invalidation re-renders the page.</summary>
+    /// width-capped column. The config subscription re-renders the page.</summary>
     public Func<bool, (bool Current, string? Error)> SetLibraryFullWidth { get; init; }
         = _ => throw new InvalidOperationException("LibraryService stub: SetLibraryFullWidth not wired");
 
     /// <summary>Wire every read through the open session's current handle.</summary>
     public static LibraryService FromSession(SessionStore session) => new()
     {
-        AlbumPage = (offset, limit, criteria) =>
-            session.WithCurrentHandle(handle => NativeBae.AlbumPage(handle, offset, limit, criteria)),
-        AlbumCount = () => session.WithCurrentHandle(NativeBae.AlbumCount),
-        AlbumDetail = albumId =>
-            session.RunForCurrentHandle(handle => NativeBae.GetAlbumDetail(handle, albumId)),
+        SubscribeAlbumPage = (offset, limit, criteria, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeAlbumPage(handle, offset, limit, criteria, onValue, onError));
+            return current ? subscription : null;
+        },
+        SubscribeAlbumDetail = (albumId, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeAlbumDetail(handle, albumId, onValue, onError));
+            return current ? subscription : null;
+        },
         AlbumIndex = (criteria, albumId) =>
             session.RunForCurrentHandle(handle => NativeBae.AlbumIndex(handle, criteria, albumId)),
-        ComposerPage = (offset, limit, criteria) =>
-            session.WithCurrentHandle(handle => NativeBae.ComposerPage(handle, offset, limit, criteria)),
-        ComposerCount = () => session.WithCurrentHandle(NativeBae.ComposerCount),
-        ComposerDetail = artistId =>
-            session.RunForCurrentHandle(handle => NativeBae.GetComposerDetail(handle, artistId)),
-        WorkDetail = workId =>
-            session.RunForCurrentHandle(handle => NativeBae.GetWorkDetail(handle, workId)),
-        ArtistPage = (offset, limit, criteria) =>
-            session.WithCurrentHandle(handle => NativeBae.ArtistPage(handle, offset, limit, criteria)),
-        ArtistCount = () => session.WithCurrentHandle(NativeBae.ArtistCount),
-        ArtistDetail = artistId =>
-            session.RunForCurrentHandle(handle => NativeBae.GetArtistDetail(handle, artistId)),
-        Search = query => session.WithCurrentHandle(handle => NativeBae.Search(handle, query)),
-        StorageCount = tab => session.WithCurrentHandle(handle => NativeBae.StorageCount(handle, tab)),
-        StorageTotalSize = tab => session.RunForCurrentHandle(handle => NativeBae.StorageTotalSize(handle, tab)),
-        StoragePage = (tab, field, direction, offset, limit) =>
-            session.WithCurrentHandle(handle => NativeBae.StoragePage(handle, tab, field, direction, offset, limit)),
-        ReleaseStorage = releaseId =>
-            session.RunForCurrentHandle(handle => NativeBae.ReleaseStorage(handle, releaseId)),
+        SubscribeComposerPage = (offset, limit, criteria, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeComposerPage(handle, offset, limit, criteria, onValue, onError));
+            return current ? subscription : null;
+        },
+        SubscribeArtistPage = (offset, limit, criteria, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeArtistPage(handle, offset, limit, criteria, onValue, onError));
+            return current ? subscription : null;
+        },
+        SubscribeStorage = (tab, field, direction, offset, limit, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeStorage(handle, tab, field, direction, offset, limit, onValue, onError));
+            return current ? subscription : null;
+        },
         ResolveToTrackIds = ids =>
             session.WithCurrentHandle(handle => NativeBae.ResolveToTrackIds(handle, ids)),
         SetLibraryFullWidth = enabled =>

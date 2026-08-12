@@ -5,7 +5,7 @@ import SwiftUI
 /// reorderable "Up Next" list. Reads the authoritative now-playing and queue
 /// off the shared `PlaybackStore`; mutations go straight to the `Queue` service
 /// (`clearUpNext` / `clearPlayingFrom` / `removeEntry` / `reorderEntry` /
-/// `skipToEntry`) and reflect back as a `QueueUpdated` event that re-populates
+/// `skipToEntry`) and reflect back through the queue subscription, which repopulates
 /// `queueItems`.
 ///
 /// The view iterates and renders only — `durationLabel` is pre-formatted and the

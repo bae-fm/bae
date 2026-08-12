@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Bae.Desktop;
 
@@ -37,38 +36,21 @@ internal sealed class PageLoadException : Exception
 /// </summary>
 internal sealed class LibraryPageSource<TRow> : IPageSource<TRow>
 {
-    private readonly Func<(bool Current, long Count)> _count;
-    private readonly Func<ulong, ulong, (bool Current, IReadOnlyList<TRow>? Rows, string? Error)> _page;
+    private readonly Func<ulong, ulong, Action<IReadOnlyList<TRow>, int>, Action<Exception>, IDisposable?> _subscribe;
 
     public LibraryPageSource(
-        Func<(bool Current, long Count)> count,
-        Func<ulong, ulong, (bool Current, IReadOnlyList<TRow>? Rows, string? Error)> page)
+        Func<ulong, ulong, Action<IReadOnlyList<TRow>, int>, Action<Exception>, IDisposable?> subscribe)
     {
-        _count = count;
-        _page = page;
+        _subscribe = subscribe;
     }
 
-    public async Task<int> CountAsync()
+    public IDisposable Subscribe(
+        int offset,
+        int limit,
+        Action<IReadOnlyList<TRow>, int> onValue,
+        Action<Exception> onError)
     {
-        var (current, count) = await Task.Run(_count);
-        if (!current)
-        {
-            throw new OperationCanceledException();
-        }
-        return checked((int)count);
-    }
-
-    public async Task<IReadOnlyList<TRow>> PageAsync(int offset, int limit)
-    {
-        var (current, rows, error) = await Task.Run(() => _page((ulong)offset, (ulong)limit));
-        if (!current)
-        {
-            throw new OperationCanceledException();
-        }
-        if (error is not null || rows is null)
-        {
-            throw new PageLoadException(error);
-        }
-        return rows;
+        return _subscribe((ulong)offset, (ulong)limit, onValue, onError)
+            ?? throw new OperationCanceledException();
     }
 }

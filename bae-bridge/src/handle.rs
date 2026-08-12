@@ -27,10 +27,7 @@ use crate::types::{
     BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
-use crate::types::{
-    BridgeImportCandidateSnapshot, BridgeImportCandidatesSnapshot, BridgeMcpServerStatus,
-    BridgeStorageMode, BridgeSubsonicServerStatus,
-};
+use crate::types::{BridgeMcpServerStatus, BridgeStorageMode, BridgeSubsonicServerStatus};
 
 #[derive(uniffi::Object)]
 pub struct AppHandle {
@@ -51,6 +48,7 @@ mod editing_projection;
 mod import_projection;
 mod library_projection;
 mod queue_projection;
+mod service_status;
 use import_projection::convert_ui_event;
 use queue_projection::pump_ui_events;
 

@@ -60,6 +60,10 @@ class ConfigStore(
         _config.value = config
     }
 
+    fun setSyncReady(syncReady: Boolean) {
+        _syncReady.value = syncReady
+    }
+
     fun setSyncStatus(
         status: BridgeSyncStatusSnapshot,
         errors: ErrorLines,

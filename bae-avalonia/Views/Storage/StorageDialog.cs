@@ -16,7 +16,7 @@ namespace Bae.Desktop;
 // table (select rows, right-click for the transitions they allow), the cloud
 // outbox, the pin-download queue, the export queue, and the transfer-concurrency
 // pickers. The table pages incrementally; the panels and rows refresh live while
-// open through projection registrations disposed on close. Every read/write runs
+// open through value subscriptions disposed on close. Every read/write runs
 // through a domain service — no view here touches NativeBae.
 internal sealed partial class StorageDialog
 {
@@ -43,11 +43,12 @@ internal sealed partial class StorageDialog
         var selected = new HashSet<string>();
         // Per-release outbox progress the Storage cell reads for its upload badge —
         // bounded to releases with active outbox activity, refreshed by
-        // LoadStorageRows and read without a refetch by StorageCellText.
+        // LoadStorageRows and read without another database call by StorageCellText.
         var outboxProgress = new Dictionary<string, BridgeUploadProgress>();
         // The loaded storage rows by release id — the incremental list's side store,
         // the id → row resolution the table and the row menu read.
         var rowsById = new Dictionary<string, BridgeStorageRow>();
+        long? totalSize = null;
 
         // The filter tab resets to All each open (macOS parity); the sort persists.
         // Both are server-side (the row set is paged), so changing either rebuilds
@@ -59,13 +60,14 @@ internal sealed partial class StorageDialog
         var footer = Secondary(string.Empty);
 
         // The storage cell's precedence mirrors macOS: an in-flight transfer verb
-        // (from the overlay or the row's own transfer action) wins over the outbox
+        // from the row wins over the outbox
         // upload badge, which wins over the resting state.
         string StorageCellText(BridgeStorageRow row)
         {
             var releaseId = row.Release.Id;
-            var token = _app.TransferProgressStore.TokenFor(releaseId)
-                ?? (row.Release.TransferAction is { } action ? BridgeDisplay.TransferActionToken(action) : null);
+            var token = row.Release.TransferAction is { } action
+                ? BridgeDisplay.TransferActionToken(action)
+                : null;
             if (token is not null && BridgeDisplay.TransferVerbKey(token) is { } verbKey)
             {
                 return Loc.Core(verbKey);
@@ -104,12 +106,20 @@ internal sealed partial class StorageDialog
             var field = sortField;
             var direction = sortDirection;
             var source = new LibraryPageSource<BridgeStorageRow>(
-                () => _app.Library.StorageCount(tab),
-                (offset, limit) =>
-                {
-                    var (current, result) = _app.Library.StoragePage(tab, field, direction, offset, limit);
-                    return (current, result.Page?.Rows, result.Error);
-                });
+                (offset, limit, onValue, onError) =>
+                    _app.Library.SubscribeStorage(
+                        tab,
+                        field,
+                        direction,
+                        offset,
+                        limit,
+                        (rows, count, size) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            totalSize = size;
+                            onValue(rows, count);
+                            RenderFooter(count);
+                        }),
+                        error => Avalonia.Threading.Dispatcher.UIThread.Post(() => onError(error))));
             return new PaginatedList<BridgeStorageRow, string>(source, row => row.Release.Id, Ingest, OnListError);
         }
 
@@ -195,9 +205,8 @@ internal sealed partial class StorageDialog
         }
 
         // Rebuild the list for the current tab/sort, fetch its first page and the
-        // outbox snapshot, and refresh the header/footer. A wholesale reload: there
-        // is no whole-library cache to re-render from, so tab/sort/invalidation all
-        // route here.
+        // outbox snapshot, and refresh the header/footer. Tab and sort changes
+        // replace the subscribed query with one carrying the new parameters.
         async Task LoadStorageRows()
         {
             // The per-release outbox progress drives the Storage cell's upload badge;
@@ -205,12 +214,7 @@ internal sealed partial class StorageDialog
             // A failed read leaves the rows without the badge rather than failing the
             // whole list.
             outboxProgress.Clear();
-            var (outboxCurrent, outbox) = await _app.Sync.OutboxSnapshot();
-            if (!outboxCurrent)
-            {
-                return;
-            }
-            if (outbox.Snapshot is { } snapshot)
+            if (_app.StorageStore.Outbox is { } snapshot)
             {
                 foreach (var entry in snapshot.PerRelease)
                 {
@@ -219,6 +223,8 @@ internal sealed partial class StorageDialog
             }
 
             rowsById.Clear();
+            totalSize = null;
+            list.Cancel();
             list = BuildList();
             table.Rebind();
             await list.LoadInitialAsync();
@@ -238,36 +244,24 @@ internal sealed partial class StorageDialog
 
             RenderTabs();
             RenderHeader();
-            var releasesText = Loc.Chrome("storage.footer.releases", "count", (long)list.TotalCount);
-            // The core aggregate sums file sizes over every release matching the tab,
-            // independent of how many pages have loaded. Shown only once fetched —
-            // absence, not a zero/partial stand-in, while a stale session drops it.
-            var (sizeCurrent, totalSize) = await _app.Library.StorageTotalSize(activeTab);
-            footer.Text = sizeCurrent
-                ? $"{releasesText} · {Loc.Chrome("storage.footer.total", "size", Loc.Bytes(totalSize))}"
+            RenderFooter(list.TotalCount);
+        }
+
+        void RenderFooter(int releaseCount)
+        {
+            var releasesText = Loc.Chrome("storage.footer.releases", "count", (long)releaseCount);
+            footer.Text = totalSize is { } size
+                ? $"{releasesText} · {Loc.Chrome("storage.footer.total", "size", Loc.Bytes(size))}"
                 : releasesText;
         }
 
         // ── Pin-download queue ────────────────────────────────────────────────────
         var downloadsPanel = new StackPanel { Spacing = 4 };
-        async Task LoadDownloads()
+        void LoadDownloads()
         {
             downloadsPanel.Children.Clear();
-            var (current, result) = await _app.Downloads.DownloadSnapshot();
-            if (!current)
+            if (_app.StorageStore.Downloads is not { } snapshot)
             {
-                return;
-            }
-            if (result.Error is not null)
-            {
-                status.Text = result.Error;
-                status.IsVisible = true;
-                return;
-            }
-            if (result.Snapshot is not { } snapshot)
-            {
-                status.Text = Loc.Chrome("storage.read_failed");
-                status.IsVisible = true;
                 return;
             }
             if (snapshot.Downloads.Length == 0)
@@ -306,20 +300,18 @@ internal sealed partial class StorageDialog
             var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             band.Children.Add(Primary(snapshot.Paused ? Loc.Chrome("download.paused") : Loc.Chrome("download.title")));
             var retry = new Button { Content = Loc.Chrome("outbox.retry_now"), IsEnabled = snapshot.Total.Failed > 0 };
-            retry.Click += async (_, _) =>
+            retry.Click += (_, _) =>
             {
                 retry.IsEnabled = false;
                 _app.Downloads.RetryDownloads();
-                await LoadDownloads();
             };
             band.Children.Add(retry);
             var paused = snapshot.Paused;
             var pause = new Button { Content = paused ? Loc.Chrome("outbox.resume") : Loc.Chrome("outbox.pause") };
-            pause.Click += async (_, _) =>
+            pause.Click += (_, _) =>
             {
                 pause.IsEnabled = false;
                 _app.Downloads.SetDownloadsPaused(!paused);
-                await LoadDownloads();
             };
             band.Children.Add(pause);
             downloadsPanel.Children.Add(band);
@@ -355,7 +347,6 @@ internal sealed partial class StorageDialog
                         cancel.IsEnabled = true;
                         return;
                     }
-                    await LoadDownloads();
                 };
                 Grid.SetColumn(cancel, 1);
                 itemGrid.Children.Add(cancel);
@@ -365,11 +356,10 @@ internal sealed partial class StorageDialog
 
         // ── Export (save/export) queue ────────────────────────────────────────────
         var exportsPanel = new StackPanel { Spacing = 4 };
-        async Task LoadExports()
+        void LoadExports()
         {
             exportsPanel.Children.Clear();
-            var (current, snapshot) = await _app.Downloads.OutputSnapshot();
-            if (!current)
+            if (_app.StorageStore.Outputs is not { } snapshot)
             {
                 return;
             }
@@ -405,19 +395,17 @@ internal sealed partial class StorageDialog
                 Content = Loc.Chrome("outbox.retry_now"),
                 IsEnabled = OutputQueueModel.RetryEnabled(snapshot.Total.Failed),
             };
-            retry.Click += async (_, _) =>
+            retry.Click += (_, _) =>
             {
                 retry.IsEnabled = false;
                 _app.Downloads.RetryOutputs();
-                await LoadExports();
             };
             band.Children.Add(retry);
             var pause = new Button { Content = Loc.Chrome(OutputQueueModel.PauseToggleKey(paused)) };
-            pause.Click += async (_, _) =>
+            pause.Click += (_, _) =>
             {
                 pause.IsEnabled = false;
                 _app.Downloads.SetOutputsPaused(!paused);
-                await LoadExports();
             };
             band.Children.Add(pause);
             exportsPanel.Children.Add(band);
@@ -449,11 +437,10 @@ internal sealed partial class StorageDialog
 
                 var releaseId = op.ReleaseId;
                 var cancel = new Button { Content = Loc.Chrome("action.cancel") };
-                cancel.Click += async (_, _) =>
+                cancel.Click += (_, _) =>
                 {
                     cancel.IsEnabled = false;
                     _app.Downloads.CancelOutput(releaseId);
-                    await LoadExports();
                 };
                 Grid.SetColumn(cancel, 1);
                 itemGrid.Children.Add(cancel);
@@ -463,24 +450,11 @@ internal sealed partial class StorageDialog
 
         // ── Cloud outbox (upload/delete queue) ────────────────────────────────────
         var outboxPanel = new StackPanel { Spacing = 4 };
-        async Task LoadOutbox()
+        void LoadOutbox()
         {
             outboxPanel.Children.Clear();
-            var (current, result) = await _app.Sync.OutboxSnapshot();
-            if (!current)
+            if (_app.StorageStore.Outbox is not { } snapshot)
             {
-                return;
-            }
-            if (result.Error is not null)
-            {
-                status.Text = result.Error;
-                status.IsVisible = true;
-                return;
-            }
-            if (result.Snapshot is not { } snapshot)
-            {
-                status.Text = Loc.Chrome("outbox.load_failed");
-                status.IsVisible = true;
                 return;
             }
             if (snapshot.UploadGroups.Length == 0 && snapshot.Deletes.Length == 0)
@@ -507,7 +481,6 @@ internal sealed partial class StorageDialog
                     retry.IsEnabled = true;
                     return;
                 }
-                await LoadOutbox();
             };
             band.Children.Add(retry);
             var paused = snapshot.Paused;
@@ -516,7 +489,6 @@ internal sealed partial class StorageDialog
             {
                 pause.IsEnabled = false;
                 await _app.Sync.SetSyncPaused(!paused);
-                await LoadOutbox();
             };
             band.Children.Add(pause);
             outboxPanel.Children.Add(band);
@@ -560,7 +532,6 @@ internal sealed partial class StorageDialog
                     status.IsVisible = true;
                     return;
                 }
-                await LoadOutbox();
             }
 
             MenuFlyout CancelFlyout(Func<Task<(bool Current, string? Error)>> action)
@@ -709,7 +680,7 @@ internal sealed partial class StorageDialog
             // A release with a transition in flight offers only "Cancel" — the storage
             // actions would race it. Core dispatches the cancel to whichever queue is
             // running.
-            var (transitioning, uploadError) = await _app.StorageStore.TransitioningReleases(releaseIds);
+            var (transitioning, uploadError) = await _app.StorageStore.TransitioningReleases(releaseIds, rowsById);
             if (uploadError is not null)
             {
                 status.Text = uploadError;
@@ -734,7 +705,6 @@ internal sealed partial class StorageDialog
                             return;
                         }
                     }
-                    await LoadStorageRows();
                 };
                 menu.Items.Add(cancel);
                 return menu;
@@ -753,10 +723,6 @@ internal sealed partial class StorageDialog
                         status.Text = error;
                         status.IsVisible = true;
                     }
-                    else
-                    {
-                        await LoadStorageRows();
-                    }
                 };
                 menu.Items.Add(item);
             }
@@ -769,9 +735,22 @@ internal sealed partial class StorageDialog
         table.MenuCallback = ShowRowMenu;
 
         // ── Assemble, present, and refresh live ───────────────────────────────────
-        var registrations = new List<IDisposable>();
-        void OnTransfersChanged() => table.RefreshCells();
-        _app.TransferProgressStore.Changed += OnTransfersChanged;
+        void OnStorageChanged()
+        {
+            LoadDownloads();
+            LoadExports();
+            LoadOutbox();
+            outboxProgress.Clear();
+            if (_app.StorageStore.Outbox is { } snapshot)
+            {
+                foreach (var entry in snapshot.PerRelease)
+                {
+                    outboxProgress[entry.Key] = entry.Value;
+                }
+            }
+            table.RefreshCells();
+        }
+        _app.StorageStore.Changed += OnStorageChanged;
         try
         {
             await _host.Show(close =>
@@ -795,39 +774,19 @@ internal sealed partial class StorageDialog
                 closeButton.Click += (_, _) => close();
                 column.Children.Add(DialogUi.Actions(closeButton));
 
-                // Refresh the panels live while open as uploads/deletes/pins/exports
-                // progress; an album/release invalidation that isn't an outbox change
-                // can still alter a release's storage state, so it refreshes the rows.
-                registrations.Add(_app.ProjectionRegistry.Register(typeof(BridgeInvalidation.Outbox), () =>
-                {
-                    _ = LoadOutbox();
-                    _ = LoadStorageRows();
-                }));
-                registrations.Add(_app.ProjectionRegistry.Register(typeof(BridgeInvalidation.DownloadQueue), () =>
-                {
-                    _ = LoadDownloads();
-                    _ = LoadStorageRows();
-                }));
-                registrations.Add(_app.ProjectionRegistry.Register(typeof(BridgeInvalidation.OutputQueue), () => _ = LoadExports()));
-                registrations.Add(_app.ProjectionRegistry.Register(typeof(BridgeInvalidation.Album), () => _ = LoadStorageRows()));
-                registrations.Add(_app.ProjectionRegistry.Register(typeof(BridgeInvalidation.Release), () => _ = LoadStorageRows()));
-
                 LoadTransferConfig();
                 _ = LoadStorageRows();
-                _ = LoadDownloads();
-                _ = LoadExports();
-                _ = LoadOutbox();
+                LoadDownloads();
+                LoadExports();
+                LoadOutbox();
 
                 return column;
             });
         }
         finally
         {
-            _app.TransferProgressStore.Changed -= OnTransfersChanged;
-            foreach (var registration in registrations)
-            {
-                registration.Dispose();
-            }
+            _app.StorageStore.Changed -= OnStorageChanged;
+            list.Cancel();
         }
     }
 

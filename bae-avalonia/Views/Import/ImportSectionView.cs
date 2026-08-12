@@ -89,14 +89,6 @@ internal sealed partial class ImportSectionView : UserControl
 
         _import.Changed += Render;
 
-        // Re-read on every import-domain invalidation the triage queue reads
-        // from. Registered once for the window's lifetime, matching how
-        // LibraryBrowserView registers its own store's projections.
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshTriageQueue);
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshTriageQueue);
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.WatchedFolders), _import.RefreshTriageQueue);
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.Release), _import.RefreshTriageQueue);
-
         Render();
     }
 
@@ -110,7 +102,6 @@ internal sealed partial class ImportSectionView : UserControl
             return;
         }
         _import.SetActiveTab(BridgeTriageTab.NeedsYou);
-        _import.RefreshTriageQueue();
     }
 
     // ── Shell ─────────────────────────────────────────────────────────────────
@@ -629,7 +620,13 @@ internal sealed partial class ImportSectionView : UserControl
             // A Ready row's decision is already stored — its settled single
             // match — so the commit reads the same answer opening the pane
             // would, from the archive.
-            var (decidedCurrent, decidedResult) = await _app.Import.CandidateDecidedIdentity(key);
+            if (_import.Candidate(key) is not { } candidate)
+            {
+                failureCount++;
+                continue;
+            }
+            var (decidedCurrent, decidedResult) = await _app.Import.CandidateDecidedIdentity(
+                key, candidate.LocalArtwork);
             if (!decidedCurrent)
             {
                 return;

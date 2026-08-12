@@ -3,8 +3,8 @@
 //! transitions: the make-Remote outbox-snapshot visibility, the host-provided
 //! cover blob through coven's local store, the pin/unpin guards and successes
 //! (the `TransferProgress` events through coven's cache), the
-//! missing-external-source read error `read_release_file_bytes` surfaces, and the
-//! `ReleaseUpdated` events coven's completions emit. coven's own suite owns the
+//! missing-external-source read error `read_release_file_bytes` surfaces, and
+//! live storage values after transition completions. coven's own suite owns the
 //! transition semantics themselves.
 //!
 //! coven owns the transitions; tests drive them through the manager's coven
@@ -15,8 +15,11 @@ use bae_test_support as support;
 use support::tracing_init;
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
-use bae_core::library::{CancellationToken, LibraryEvent, LibraryManager};
+use bae_core::db::{
+    DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource, SortDirection, StorageFilter,
+    StorageSortCriterion, StorageSortField,
+};
+use bae_core::library::{AppServices, CancellationToken, LibraryManager, StorageProjectionValue};
 use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
@@ -197,24 +200,28 @@ fn completed(events: &[TransferProgress]) -> bool {
         .any(|e| matches!(e, TransferProgress::Complete { .. }))
 }
 
-/// Wait for a `ReleaseUpdated` for `release_id` on the manager's event channel,
-/// or fail after a bounded number of events.
-async fn expect_release_updated(
-    rx: &mut tokio::sync::broadcast::Receiver<LibraryEvent>,
+async fn expect_storage_state(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<
+        Result<StorageProjectionValue, bae_core::library::LibraryError>,
+    >,
     release_id: &str,
+    expected: ReleaseStorageState,
 ) {
-    for _ in 0..50 {
-        match tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await {
-            Ok(Ok(LibraryEvent::ReleaseUpdated { release, .. }))
-                if release.summary.id == release_id =>
-            {
-                return;
-            }
-            Ok(Ok(_)) => continue,
-            Ok(Err(_)) | Err(_) => break,
+    loop {
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), rx.recv())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage subscription remains open")
+            .expect("storage projection resolves");
+        if value
+            .page
+            .rows
+            .iter()
+            .any(|row| row.release.id == release_id && row.release.storage_state == expected)
+        {
+            return;
         }
     }
-    panic!("expected a ReleaseUpdated for {release_id}");
 }
 
 // ---------------------------------------------------------------------------
@@ -465,30 +472,36 @@ async fn test_missing_external_source_maps_to_error() {
 }
 
 // ---------------------------------------------------------------------------
-// Transition completions emit ReleaseUpdated
+// Transition completions deliver new storage values
 // ---------------------------------------------------------------------------
 
-/// Each coven transition completion re-emits the release to bae's subscribers:
-/// a drained make-Remote (via coven's `on_root_made_remote` callback) and a
-/// make-Local both fire a `LibraryEvent::ReleaseUpdated`, so cached UI details
-/// refresh when a release's storage changes. The transitions themselves are
-/// coven's; this asserts only the bae-layer event that rides their completion.
+/// A drained make-Remote and make-Local both change the subscribed Storage
+/// Manager value without a separate library event or another read from the UI.
 #[tokio::test]
-async fn transition_completions_emit_release_updated() {
+async fn transition_completions_deliver_storage_values() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
-    let mut events = mgr.subscribe_events();
+    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let mut values = services.subscribe_storage_values(
+        &tokio::runtime::Handle::current(),
+        StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        },
+        StorageFilter::All,
+        0,
+        50,
+    );
+    expect_storage_state(&mut values, &release_id, ReleaseStorageState::Local).await;
 
-    // A drained make-Remote completion emits ReleaseUpdated.
     mgr.coven_make_remote(&release_id, false).await.unwrap();
     mgr.drain_uploads_expecting_work().await.unwrap();
-    expect_release_updated(&mut events, &release_id).await;
+    expect_storage_state(&mut values, &release_id, ReleaseStorageState::Remote).await;
 
-    // A make-Local completion emits ReleaseUpdated.
     let dest = tmp.path().join("brought-back");
     mgr.coven_make_local(
         &release_id,
@@ -497,5 +510,5 @@ async fn transition_completions_emit_release_updated() {
     )
     .await
     .unwrap();
-    expect_release_updated(&mut events, &release_id).await;
+    expect_storage_state(&mut values, &release_id, ReleaseStorageState::Local).await;
 }

@@ -37,9 +37,9 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
 ///
 /// `upcoming` is only the initial window core resolved eagerly — not the whole
 /// tail, which is library-scaled. Indices at or past `upcoming.count` (and below
-/// `upcomingTotal`) are unloaded until `PlaybackStore.loadUpcomingRange` fetches
-/// them; read them via `PlaybackStore.upcomingItem(at:)`, not this array
-/// directly.
+/// `upcomingTotal`) are unloaded until `PlaybackStore.loadUpcomingRange`
+/// subscribes to them; read them via `PlaybackStore.upcomingItem(at:)`, not this
+/// array directly.
 public struct QueuePlaybackContext: Equatable, Sendable {
     public let kind: BridgePlaybackSourceKind
     /// The display title of what the context plays from — the album title when

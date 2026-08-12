@@ -31,62 +31,10 @@ pub trait ArtworkAnalyzerCallback: Send + Sync {
     fn analyze(&self, path: String) -> BridgeArtworkAnalysis;
 }
 
-/// A scoped state key the UI should requery from core. Mirrors
-/// `bae_core::ui::Invalidation`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeInvalidation {
-    AlbumList,
-    Album { album_id: String },
-    Release { release_id: String },
-    ComposerList,
-    Composer { composer_id: String },
-    ArtistList,
-    Queue,
-    Config,
-    SyncStatus,
-    Outbox,
-    DownloadQueue,
-    OutputQueue,
-    ImportCandidateList,
-    ImportCandidate { key: String },
-    WatchedFolders,
-    CastDevices,
-}
-
-impl BridgeInvalidation {
-    pub(crate) fn from_core(invalidation: bae_core::ui::Invalidation) -> Self {
-        use bae_core::ui::Invalidation as CoreInvalidation;
-
-        match invalidation {
-            CoreInvalidation::AlbumList => Self::AlbumList,
-            CoreInvalidation::Album { album_id } => Self::Album { album_id },
-            CoreInvalidation::Release { release_id } => Self::Release { release_id },
-            CoreInvalidation::ComposerList => Self::ComposerList,
-            CoreInvalidation::Composer { composer_id } => Self::Composer { composer_id },
-            CoreInvalidation::ArtistList => Self::ArtistList,
-            CoreInvalidation::Queue => Self::Queue,
-            CoreInvalidation::Config => Self::Config,
-            CoreInvalidation::SyncStatus => Self::SyncStatus,
-            CoreInvalidation::Outbox => Self::Outbox,
-            CoreInvalidation::DownloadQueue => Self::DownloadQueue,
-            CoreInvalidation::OutputQueue => Self::OutputQueue,
-            CoreInvalidation::ImportCandidateList => Self::ImportCandidateList,
-            CoreInvalidation::ImportCandidate { key } => Self::ImportCandidate { key },
-            CoreInvalidation::WatchedFolders => Self::WatchedFolders,
-            CoreInvalidation::CastDevices => Self::CastDevices,
-        }
-    }
-}
-
 /// Top-level UI event. Every distinct state is a top-level variant with
-/// fields inlined, except query-backed state changes which carry a scoped
-/// invalidation key.
+/// fields inlined. Database-backed state uses live-result subscriptions.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUiEvent {
-    Invalidated {
-        invalidation: BridgeInvalidation,
-    },
-
     // ── Playback ───────────────────────────────────────────────────
     PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
@@ -151,9 +99,6 @@ pub enum BridgeUiEvent {
     RepeatModeChanged {
         mode: BridgeRepeatMode,
     },
-    QueueUpdated {
-        snapshot: BridgeQueueSnapshot,
-    },
     /// Tracks were appended/inserted into the queue. Carries the count for
     /// a transient "+N" badge in the UI. Suppressed when count is zero.
     QueueItemsAdded {
@@ -192,20 +137,6 @@ pub enum BridgeUiEvent {
     ImportQueueIdentifyProgress {
         identified: u32,
         total: u32,
-    },
-
-    // ── Release transfer ───────────────────────────────────────────
-    /// A pin/unpin/manage/unmanage transition started. The UI composes the
-    /// localized line and shows an in-flight indicator on the release row until
-    /// `ReleaseTransferEnded`.
-    ReleaseTransferProgress {
-        release_id: String,
-        action: BridgeReleaseStorageAction,
-    },
-    /// A transition finished (success or failure) — the UI clears its transfer
-    /// indicator. Failure text still arrives via the thrown error.
-    ReleaseTransferEnded {
-        release_id: String,
     },
 
     // ── Cast ───────────────────────────────────────────────────────

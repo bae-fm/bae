@@ -32,6 +32,7 @@
         static let searchGroupExact = ReleaseGroup(
             bridge: BridgeReleaseGroup(
                 id: "group-preview",
+                sourceGroupId: "group-preview",
                 title: "Album Title",
                 artist: "Artist Name",
                 coverArt: nil,
@@ -62,6 +63,7 @@
             ReleaseGroup(
                 bridge: BridgeReleaseGroup(
                     id: "grp-1",
+                    sourceGroupId: "grp-1",
                     title: "Album Title One",
                     artist: "Artist Name",
                     coverArt: nil,
@@ -94,6 +96,7 @@
             ReleaseGroup(
                 bridge: BridgeReleaseGroup(
                     id: "grp-2",
+                    sourceGroupId: "grp-2",
                     title: "Album Title One (Remaster)",
                     artist: "Artist Name",
                     coverArt: nil,

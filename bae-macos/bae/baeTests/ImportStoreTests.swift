@@ -209,151 +209,6 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
     )
 }
 
-@Suite("ImportStore library-removal invalidation")
-struct ImportStoreRemovalTests {
-    @MainActor
-    @Test("release invalidation clears a matching importStatus")
-    func releaseInvalidationClearsImportStatus() throws {
-        let store = ImportStore()
-        var candidate = makeCandidate("c1")
-        candidate.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
-        store.folderCandidates["c1"] = candidate
-
-        store.removeLibraryStatus(releaseId: "rel-1")
-
-        let survived = try #require(store.folderCandidates["c1"])
-        #expect(survived.importStatus == nil)
-    }
-
-    @MainActor
-    @Test("release invalidation leaves an unrelated importStatus alone")
-    func releaseInvalidationKeepsUnrelatedImportStatus() {
-        let store = ImportStore()
-        var candidate = makeCandidate("c1")
-        candidate.importStatus = .complete(releaseId: "rel-2", albumId: "al-2")
-        store.folderCandidates["c1"] = candidate
-
-        store.removeLibraryStatus(releaseId: "rel-1")
-
-        #expect(
-            store.folderCandidates["c1"]?.importStatus
-                == .complete(releaseId: "rel-2", albumId: "al-2")
-        )
-    }
-
-    @MainActor
-    @Test("release invalidation clears the candidate that imported it")
-    func releaseInvalidationClearsByReleaseId() throws {
-        let store = ImportStore()
-        var imported = makeCandidate("c1")
-        imported.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
-        store.folderCandidates["c1"] = imported
-        var sibling = makeCandidate("c2")
-        sibling.importStatus = .complete(releaseId: "rel-2", albumId: "al-1")
-        store.folderCandidates["c2"] = sibling
-
-        store.removeLibraryStatus(releaseId: "rel-1")
-
-        let cleared = try #require(store.folderCandidates["c1"])
-        #expect(cleared.importStatus == nil)
-        let unaffected = try #require(store.folderCandidates["c2"])
-        #expect(
-            unaffected.importStatus
-                == .complete(releaseId: "rel-2", albumId: "al-1")
-        )
-    }
-
-    @MainActor
-    @Test("album deletion invalidates each removed release status")
-    func albumDeletionInvalidatesEachRemovedReleaseStatus() throws {
-        let store = ImportStore()
-        var candidate = makeCandidate("c1")
-        candidate.libraryStatuses = [
-            "rel-1": makeStatus(albumId: "al-1"),
-            "rel-sibling": makeStatus(albumId: "al-1"),
-            "rel-other": makeStatus(albumId: "al-other"),
-        ]
-        store.folderCandidates["c1"] = candidate
-
-        store.removeLibraryStatus(releaseId: "rel-1")
-        store.removeLibraryStatus(releaseId: "rel-sibling")
-
-        let survived = try #require(store.folderCandidates["c1"])
-        #expect(survived.libraryStatuses["rel-1"] == nil)
-        #expect(survived.libraryStatuses["rel-sibling"] == nil)
-        #expect(survived.libraryStatuses["rel-other"] != nil)
-    }
-
-    @MainActor
-    @Test("release removal drops statuses embedded in a found identify state")
-    func releaseRemovalSweepsIdentifyState() {
-        let store = ImportStore()
-        var candidate = makeCandidate("c1")
-        candidate.identifyState = .found(
-            group: ReleaseGroup(
-                bridge: BridgeReleaseGroup(
-                    id: "group-1",
-                    title: "Album Title",
-                    artist: "Artist Name",
-                    coverArt: nil,
-                    sourceLabel: "MusicBrainz",
-                    groupUrl: nil,
-                    yearMin: nil,
-                    yearMax: nil,
-                    pressings: []
-                )
-            ),
-            libraryStatuses: [
-                "rel-1": makeStatus(albumId: "al-1"),
-                "rel-other": makeStatus(albumId: "al-other"),
-            ],
-            trackCount: 10,
-            provenance: [:]
-        )
-        store.reIdentifyCandidates["c1"] = candidate
-
-        store.removeLibraryStatus(releaseId: "rel-1")
-
-        guard
-            case .found(_, let statuses, _, _) =
-                store.reIdentifyCandidates["c1"]?.identifyState
-        else {
-            Issue.record("identify state should remain .found")
-            return
-        }
-        #expect(statuses["rel-1"] == nil)
-        #expect(statuses["rel-other"] != nil)
-    }
-
-    @MainActor
-    @Test("release removal sweeps both sides of a conflict identify state")
-    func releaseRemovalSweepsConflictState() {
-        let store = ImportStore()
-        var candidate = makeCandidate("c1")
-        candidate.identifyState = .conflict(
-            discidResults: [],
-            discidLibraryStatuses: ["rel-1": makeStatus(albumId: "al-1")],
-            barcodeResults: [],
-            barcodeLibraryStatuses: ["rel-1": makeStatus(albumId: "al-1")],
-            matchedBarcode: nil,
-            trackCount: 10
-        )
-        store.reIdentifyCandidates["c1"] = candidate
-
-        store.removeLibraryStatus(releaseId: "rel-1")
-
-        guard
-            case .conflict(_, let discid, _, let barcode, _, _) =
-                store.reIdentifyCandidates["c1"]?.identifyState
-        else {
-            Issue.record("identify state should remain .conflict")
-            return
-        }
-        #expect(discid.isEmpty)
-        #expect(barcode.isEmpty)
-    }
-}
-
 @Suite("ImportStore.applyImportCandidatesSnapshot")
 struct ImportStoreBatchSnapshotTests {
     @MainActor
@@ -380,6 +235,7 @@ struct ImportStoreBatchSnapshotTests {
                         actionable: true
                     )
                 ],
+                runtimeCandidates: [],
                 invalidCandidates: [
                     bridgeInvalid(
                         folderPath: "/w1/bad",
@@ -432,6 +288,7 @@ struct ImportStoreBatchSnapshotTests {
                         actionable: true
                     )
                 ],
+                runtimeCandidates: [],
                 invalidCandidates: [],
                 boundaries: [],
                 folderScanStatuses: []
@@ -480,6 +337,7 @@ struct ImportStoreBatchSnapshotTests {
                         actionable: true
                     )
                 ],
+                runtimeCandidates: [],
                 invalidCandidates: [],
                 boundaries: [],
                 folderScanStatuses: []
@@ -491,145 +349,33 @@ struct ImportStoreBatchSnapshotTests {
     }
 }
 
-@Suite("ImportStore.applyImportCandidateSnapshot")
-struct ImportStoreSingleSnapshotTests {
+@Suite("ImportStore runtime candidates")
+struct ImportStoreRuntimeCandidateTests {
     @MainActor
-    @Test("a nil snapshot removes the key")
-    func nilRemoves() {
-        let store = ImportStore()
-        store.folderCandidates["/w1/a"] = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
-
-        store.applyImportCandidateSnapshot(key: "/w1/a", snapshot: nil)
-
-        #expect(store.folderCandidates["/w1/a"] == nil)
-    }
-
-    @MainActor
-    @Test(".folder merges session state and applies the runtime")
-    func folderMergesAndAppliesRuntime() throws {
-        let store = ImportStore()
-        var existing = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
-        existing.identity = .unknown
-        existing.importStatus = .complete(
-            releaseId: "rel-old",
-            albumId: "al-old"
-        )
-        store.folderCandidates["/w1/a"] = existing
-
-        store.applyImportCandidateSnapshot(
-            key: "/w1/a",
-            snapshot: .folder(
-                candidate: bridgeFolder(
-                    folderPath: "/w1/a",
-                    watchedFolderPath: "/w1",
-                    name: "A"
-                ),
-                runtimeSnapshot: idleRuntime(
-                    importStatus: .complete(
-                        releaseId: "rel-new",
-                        albumId: "al-new"
-                    )
-                ),
-                actionable: true
-            )
-        )
-
-        let merged = try #require(store.folderCandidates["/w1/a"])
-        // Session field carried from the existing candidate...
-        #expect(merged.identity == .unknown)
-        // ...while the single-candidate path applies the fresh runtime on top,
-        // so the runtime's import status wins over the carried one.
-        #expect(
-            merged.importStatus
-                == .complete(releaseId: "rel-new", albumId: "al-new")
-        )
-    }
-
-    @MainActor
-    @Test(".invalid drops the key from folderCandidates")
-    func invalidDropsFolderCandidate() {
-        let store = ImportStore()
-        store.folderCandidates["/w1/a"] = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
-
-        store.applyImportCandidateSnapshot(
-            key: "/w1/a",
-            snapshot: .invalid(
-                candidate: bridgeInvalid(
-                    folderPath: "/w1/a",
-                    watchedFolderPath: "/w1",
-                    name: "A"
-                )
-            )
-        )
-
-        // The sidebar reads invalid folders from Skipped queue sections; this
-        // path only has to stop treating the key as an addressable candidate.
-        #expect(store.folderCandidates["/w1/a"] == nil)
-    }
-
-    @MainActor
-    @Test(".runtime routes to a folder candidate and copies its fields")
-    func runtimeRoutesToFolder() throws {
-        let store = ImportStore()
-        store.folderCandidates["/w1/a"] = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
-
-        store.applyImportCandidateSnapshot(
-            key: "/w1/a",
-            snapshot: .runtime(
-                key: "/w1/a",
-                runtimeSnapshot: BridgeCandidateRuntimeSnapshot(
-                    identifyState: .triangulating(
-                        discid: .computing,
-                        barcode: .scanning
-                    ),
-                    signalsToolbar: BridgeSignalsToolbar(signals: []),
-                    signals: nil,
-                    importStatus: .complete(releaseId: "rel-1", albumId: "al-1")
-                )
-            )
-        )
-
-        let candidate = try #require(store.folderCandidates["/w1/a"])
-        #expect(
-            candidate.identifyState
-                == .triangulating(discid: .computing, barcode: .scanning)
-        )
-        #expect(
-            candidate.importStatus
-                == .complete(releaseId: "rel-1", albumId: "al-1")
-        )
-    }
-
-    @MainActor
-    @Test(".runtime with a reidentify: key routes to a re-identify candidate")
-    func runtimeRoutesToReIdentify() throws {
+    @Test("a batch snapshot updates a re-identify session")
+    func batchSnapshotUpdatesReIdentifySession() {
         let store = ImportStore()
         store.reIdentifyCandidates["reidentify:r1"] =
             makeCandidate("reidentify:r1")
 
-        store.applyImportCandidateSnapshot(
-            key: "reidentify:r1",
-            snapshot: .runtime(
-                key: "reidentify:r1",
-                runtimeSnapshot: idleRuntime(
-                    importStatus: .complete(releaseId: "rel-1", albumId: "al-1")
-                )
+        store.applyImportCandidatesSnapshot(
+            BridgeImportCandidatesSnapshot(
+                watchedFolders: [],
+                folderCandidates: [],
+                runtimeCandidates: [
+                    BridgeRuntimeImportCandidateSnapshot(
+                        key: "reidentify:r1",
+                        runtime: idleRuntime(
+                            importStatus: .complete(
+                                releaseId: "rel-1",
+                                albumId: "al-1"
+                            )
+                        )
+                    )
+                ],
+                invalidCandidates: [],
+                boundaries: [],
+                folderScanStatuses: []
             )
         )
 
@@ -637,7 +383,6 @@ struct ImportStoreSingleSnapshotTests {
             store.reIdentifyCandidates["reidentify:r1"]?.importStatus
                 == .complete(releaseId: "rel-1", albumId: "al-1")
         )
-        #expect(store.folderCandidates["reidentify:r1"] == nil)
     }
 }
 

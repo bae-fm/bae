@@ -115,9 +115,8 @@ impl ReleaseDetail {
     /// file's audio format, groups tracks by side, builds the gallery, derives
     /// `display_name`, and composes the slim [`ReleaseSummary`].
     ///
-    /// Both the manager and the upload observer route through here, so the resolve
-    /// logic stays in one place. (The observer holds the same `Database` and a
-    /// `CovenHandle`, so it can emit `ReleaseUpdated` without owning a manager.)
+    /// Both ordinary reads and subscriptions route through here, so the resolve
+    /// logic stays in one place.
     /// Resolve a raw release-detail row into the projection, plus a count of
     /// audio-format orphans found (a segment naming a missing format, a format
     /// naming an absent track, an audio file with no format row). This pure layer

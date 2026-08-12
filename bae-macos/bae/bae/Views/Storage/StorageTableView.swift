@@ -131,8 +131,8 @@ struct StorageTableView: NSViewRepresentable {
         }
         let coordinator = context.coordinator
         // Reading these `@Observable` fields here is what makes SwiftUI
-        // re-invoke `updateNSView` when the list grows, is invalidated, or is
-        // swapped for a fresh instance on a sort/filter change.
+        // re-invoke `updateNSView` when the list grows, changes, or is swapped
+        // for a fresh instance on a sort/filter change.
         let totalCount = list.totalCount
         let epoch = list.loadEpoch
 
@@ -186,6 +186,7 @@ extension StorageTableView {
         /// from a release's loaded files; dropped when its detail reloads (on
         /// expand) or the root list changes.
         private var fileItemsByRelease: [String: [StorageFileItem]] = [:]
+        private var detailTasksByRelease: [String: Task<Void, Never>] = [:]
 
         /// True while we push selection into the outline view, so the
         /// resulting `selectionDidChange` delegate callback doesn't write the
@@ -217,6 +218,9 @@ extension StorageTableView {
             imageStore: ImageStore,
             outboxStore: OutboxStore,
         ) {
+            if self.list !== list {
+                cancelDetailSubscriptions()
+            }
             self.list = list
             self.imageStore = imageStore
             self.outboxStore = outboxStore
@@ -234,7 +238,15 @@ extension StorageTableView {
             // Positions (and which release sits at each) may have moved, so the
             // cached file items no longer belong to these rows.
             fileItemsByRelease.removeAll()
+            cancelDetailSubscriptions()
             return true
+        }
+
+        private func cancelDetailSubscriptions() {
+            for task in detailTasksByRelease.values {
+                task.cancel()
+            }
+            detailTasksByRelease.removeAll()
         }
 
         /// Stable file-row items for a release, cached so the outline view sees
@@ -374,40 +386,40 @@ extension StorageTableView {
                 )
                 return
             }
-            // `reloadItem(_:reloadChildren:)` below re-fires this notification
-            // while AppKit rebuilds the expanded row's children. Once the detail
-            // is loaded the children resolve directly, so bail on that re-entrant
-            // call — otherwise the load + reload repeats forever, re-hosting the
-            // row's cells (the cover's load task restarts every pass, so its
-            // spinner never resolves) and collapsing/re-expanding the children
-            // (the rows jump).
-            guard libraryStore.releaseDetails[id] == nil else {
+            guard detailTasksByRelease[id] == nil else {
                 return
             }
             let currentList = list
-            Task { @MainActor in
-                await self.libraryStore.loadReleaseDetail(
+            detailTasksByRelease[id] = Task { @MainActor in
+                await self.libraryStore.observeReleaseDetail(
                     releaseId: id,
-                    library: self.library
+                    library: self.library,
+                    onValue: {
+                        guard currentList === self.list else {
+                            return
+                        }
+                        self.fileItemsByRelease[id] = nil
+                        self.outlineView?
+                            .reloadItem(
+                                release,
+                                reloadChildren: true
+                            )
+                    }
                 )
-                guard currentList === self.list else {
-                    return
-                }
-                // Only refresh children once the detail actually loaded. If it
-                // didn't, there are no file rows to show and reloading would
-                // re-enter this handler with the detail still absent — the same
-                // loop, never breaking because the guard above never trips.
-                guard libraryStore.releaseDetails[id] != nil else {
-                    logger.warning(
-                        "Detail failed to load for expanded release \(id); leaving it without file rows"
-                    )
-                    return
-                }
-                // Rebuild this release's stable file items from the freshly
-                // loaded detail, then let the outline view pick them up once.
-                self.fileItemsByRelease[id] = nil
-                self.outlineView?.reloadItem(release, reloadChildren: true)
+                self.detailTasksByRelease[id] = nil
             }
+        }
+
+        func outlineViewItemDidCollapse(_ notification: Notification) {
+            guard
+                let release = notification.userInfo?["NSObject"]
+                    as? StorageReleaseItem,
+                let id = list.idAt(release.index)
+            else {
+                return
+            }
+            detailTasksByRelease.removeValue(forKey: id)?.cancel()
+            fileItemsByRelease.removeValue(forKey: id)
         }
     }
 }
@@ -507,9 +519,8 @@ extension StorageTableView.Coordinator {
         var rows = IndexSet()
         for id in ids {
             // `position(of:)` reads loaded segments, which can briefly hold
-            // a position past the freshly-rebuilt `rootItems` right after an
-            // `invalidate()` shrinks the count (stale segments outlive the
-            // rebuild). A selected id whose row isn't currently loaded can't
+            // a position past freshly-rebuilt `rootItems` while a new live page
+            // is being installed. A selected id whose row isn't loaded can't
             // be highlighted yet; skip it.
             guard let position = list.position(of: id),
                 position < rootItems.count

@@ -131,7 +131,7 @@ internal static partial class NativeBae
         BridgeConfig config,
         BridgeMcpServerStatus mcpStatus,
         BridgeSubsonicServerStatus subsonicStatus,
-        BridgeSyncStatusSnapshot syncStatus) =>
+        bool syncReady) =>
         new()
         {
             LibraryName = config.LibraryName,
@@ -140,7 +140,7 @@ internal static partial class NativeBae
             DiscogsUsable = config.DiscogsUsable,
             SyncProvider = config.Sync is null ? null : SyncProviderTag(config.Sync.Provider),
             SyncAccount = config.Sync?.CloudAccountDisplay,
-            SyncReady = syncStatus.SyncReady,
+            SyncReady = syncReady,
             PauseBetweenSides = config.PauseBetweenSides,
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
@@ -163,10 +163,8 @@ internal static partial class NativeBae
             .SelectMany(group => group.Pressings.Select(pressing => new ReleaseCandidateChoice(group, pressing)))
             .ToList();
 
-    private static List<LocalArtwork> LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
-        snapshot is BridgeImportCandidateSnapshot.Folder folder
-            ? folder.Candidate.Files.Files.Select(LocalArtwork).OfType<LocalArtwork>().ToList()
-            : [];
+    private static List<LocalArtwork> LocalArtwork(BridgeCandidateFiles files) =>
+        files.Files.Select(LocalArtwork).OfType<LocalArtwork>().ToList();
 
     // The candidate's images, as cover choices. A file that is not an image has
     // no choice to offer, so it drops out.
@@ -191,7 +189,7 @@ internal static partial class NativeBae
         };
     }
 
-    private static ImportCandidate ImportCandidateRow(
+    internal static ImportCandidate ImportCandidateRow(
         BridgeFolderCandidate candidate,
         BridgeCandidateRuntimeSnapshot runtime) =>
         new()
@@ -204,10 +202,21 @@ internal static partial class NativeBae
             Matches = ImportMatches(runtime.IdentifyState),
             Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
             Files = candidate.Files,
+            LocalArtwork = LocalArtwork(candidate.Files),
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
             IsAdded = candidate.IsAdded,
         };
+
+    internal static (
+        ImportCandidateRowStatus RowStatus,
+        List<ReleaseCandidateChoice> Matches,
+        List<SignalBadge> Signals) ImportPipeline(BridgeCandidateRuntimeSnapshot runtime) =>
+        (
+            ImportRowStatus(runtime),
+            ImportMatches(runtime.IdentifyState),
+            runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList()
+        );
 
     private static ImportCandidateRowStatus ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)
     {

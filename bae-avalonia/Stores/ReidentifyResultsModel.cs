@@ -4,8 +4,8 @@ using System.Linq;
 namespace Bae.Desktop;
 
 // Arbitrates the re-identify dialog's results list between its two producers:
-// the auto-identify pipeline (live — it replays on every candidate
-// invalidation, including badge-only updates) and a manual search the user
+// the auto-identify pipeline (live — it follows every candidate-stream value,
+// including badge-only updates) and a manual search the user
 // ran. A successful manual search takes the list over; pipeline refreshes
 // keep updating the status line and signal badges but leave the results
 // alone until a pipeline interaction (signal toggle, re-run) hands it back.

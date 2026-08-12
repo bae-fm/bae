@@ -256,11 +256,15 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         state,
         priority: CallPriority::Background,
     };
+    let mut values = fixture.import.subscribe_import_candidates();
+    values.borrow_and_update();
 
-    fixture.import.record_candidate_event(&changed(found));
+    fixture.import.emit_event_for_test(changed(found));
+    values.changed().await.expect("candidate stream stays open");
     fixture
         .import
-        .record_candidate_event(&changed(IdentifyState::Idle));
+        .emit_event_for_test(changed(IdentifyState::Idle));
+    values.changed().await.expect("candidate stream stays open");
     let Some(ImportCandidateSnapshot::Folder { runtime, .. }) = fixture.import.get_candidate(&key)
     else {
         panic!("the scanned candidate is readable");
@@ -292,12 +296,12 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
             track_count: 0,
         },
     };
+    fixture.import.emit_event_for_test(changed(triangulating));
+    values.changed().await.expect("candidate stream stays open");
     fixture
         .import
-        .record_candidate_event(&changed(triangulating));
-    fixture
-        .import
-        .record_candidate_event(&changed(IdentifyState::Idle));
+        .emit_event_for_test(changed(IdentifyState::Idle));
+    values.changed().await.expect("candidate stream stays open");
     let Some(ImportCandidateSnapshot::Folder { runtime, .. }) = fixture.import.get_candidate(&key)
     else {
         panic!("the scanned candidate is readable");

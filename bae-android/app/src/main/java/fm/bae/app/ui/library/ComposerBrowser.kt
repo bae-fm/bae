@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -52,12 +53,16 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import uniffi.bae_bridge.ComposerPageCallback
+import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.BridgeSortDirection
 
 private const val TAG = "bae.ComposerBrowser"
@@ -67,6 +72,7 @@ internal class ComposerPage(
     private val session: OpenLibrary,
     private val sortCriterion: BridgeComposerSortCriterion,
     private val appContext: Context,
+    private val scope: CoroutineScope,
     private val onRetry: () -> Unit,
 ) {
     val composers = mutableStateMapOf<String, BridgeComposerSummary>()
@@ -77,70 +83,77 @@ internal class ComposerPage(
         private set
     var error by mutableStateOf<PageError?>(null)
         private set
-    private var loadedOffset = 0
+    private val pages = mutableMapOf<Int, List<String>>()
+    private val subscriptions = mutableMapOf<Int, LiveSubscription>()
 
-    private fun ingest(page: List<BridgeComposerSummary>) {
-        page.forEach { composer ->
-            if (!composers.containsKey(composer.artistId)) order.add(composer.artistId)
+    private fun ingest(offset: Int, page: BridgeComposerPage) {
+        page.rows.forEach { composer ->
             composers[composer.artistId] = composer
         }
+        pages[offset] = page.rows.map { it.artistId }
+        order.clear()
+        order.addAll(pages.toSortedMap().values.flatten().distinct())
+        totalCount = page.totalCount.toInt()
+        loading = false
+        error = null
     }
 
-    suspend fun loadFirst() {
+    fun start() {
         loading = true
         error = null
-        try {
-            val (count, page) =
-                withContext(Dispatchers.IO) {
-                    val c = session.library.composerCount().toInt()
-                    val p = session.library.composerPage(sortCriterion, 0u, PAGE_SIZE.toULong())
-                    c to p
-                }
-            totalCount = count
-            ingest(page)
-            loadedOffset = PAGE_SIZE
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to load first composer page", e)
-            error = PageError(appContext.getString(R.string.library_load_failed), onRetry)
-        } finally {
-            loading = false
-        }
+        subscribe(0)
     }
 
-    suspend fun loadMore() {
+    fun loadMore() {
         if (order.size >= totalCount) return
-        val offset = loadedOffset
-        try {
-            val more =
-                withContext(Dispatchers.IO) {
-                    session.library.composerPage(sortCriterion, offset.toULong(), PAGE_SIZE.toULong())
-                }
-            ingest(more)
-            loadedOffset = offset + PAGE_SIZE
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to load composer page at offset $offset", e)
-            error = PageError(appContext.getString(R.string.library_load_more_failed), onRetry)
-        }
+        subscribe((pages.keys.maxOrNull() ?: -PAGE_SIZE) + PAGE_SIZE)
+    }
+
+    private fun subscribe(offset: Int) {
+        if (subscriptions.containsKey(offset)) return
+        subscriptions[offset] =
+            session.library.subscribeComposerPage(
+                sortCriterion,
+                offset.toULong(),
+                PAGE_SIZE.toULong(),
+                object : ComposerPageCallback {
+                    override fun onValue(value: BridgeComposerPage) {
+                        scope.launch(Dispatchers.Main.immediate) { ingest(offset, value) }
+                    }
+
+                    override fun onError(errorValue: BridgeException) {
+                        logger.error("Composer page subscription failed at offset $offset", errorValue)
+                        scope.launch(Dispatchers.Main.immediate) {
+                            loading = false
+                            error = PageError(errorValue.message ?: appContext.getString(R.string.library_load_failed), onRetry)
+                        }
+                    }
+                },
+            )
+    }
+
+    fun cancel() {
+        subscriptions.values.forEach(LiveSubscription::cancel)
+        subscriptions.clear()
     }
 }
 
 @Composable
 internal fun rememberComposerPage(
     session: OpenLibrary,
-    generation: Long,
     sortCriterion: BridgeComposerSortCriterion,
     appContext: Context,
 ): ComposerPage {
-    var retryToken by remember(generation, sortCriterion) { mutableStateOf(0) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var retryToken by remember(sortCriterion) { mutableStateOf(0) }
     val page =
-        remember(generation, sortCriterion, retryToken) {
-            ComposerPage(session, sortCriterion, appContext) { retryToken++ }
+        remember(sortCriterion, retryToken) {
+            ComposerPage(session, sortCriterion, appContext, scope) { retryToken++ }
         }
-    LaunchedEffect(page) { page.loadFirst() }
+    DisposableEffect(page) {
+        page.start()
+        onDispose(page::cancel)
+    }
     return page
 }
 

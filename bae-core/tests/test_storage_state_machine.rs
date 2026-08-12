@@ -22,8 +22,11 @@
 use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
-use bae_core::library::{CancellationToken, LibraryManager};
+use bae_core::db::{
+    Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource, SortDirection,
+    StorageFilter, StorageSortCriterion, StorageSortField,
+};
+use bae_core::library::{AppServices, CancellationToken, LibraryManager, StorageProjectionValue};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
@@ -31,7 +34,6 @@ use coven::EncryptionService;
 use coven::InMemoryCloudHome;
 use coven::StoreDir;
 use std::sync::Arc;
-use support::collect_library_events;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -523,15 +525,36 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
 }
 
 // ---------------------------------------------------------------------------
-// Cloud-home reactivity: a release's available storage actions are baked in from
-// whether a cloud home exists. Adding one must re-emit every album so cached UI
-// details refresh without a restart.
+// Cloud-home reactivity: the storage value joins the database row with the
+// current sync state, so connecting a home delivers the changed actions.
 // ---------------------------------------------------------------------------
 
+async fn next_storage_release(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<
+        Result<StorageProjectionValue, bae_core::library::LibraryError>,
+    >,
+    release_id: &str,
+) -> bae_core::album_detail::ReleaseSummary {
+    loop {
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), rx.recv())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage subscription remains open")
+            .expect("storage projection resolves");
+        if let Some(row) = value
+            .page
+            .rows
+            .into_iter()
+            .find(|row| row.release.id == release_id)
+        {
+            return row.release;
+        }
+    }
+}
+
 #[tokio::test]
-async fn emit_all_albums_updated_flips_storage_actions_on_cloud_home_transition() {
+async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     use bae_core::album_detail::ReleaseStorageAction;
-    use bae_core::library::LibraryEvent;
 
     let tmp = TempDir::new().unwrap();
     let (db, mgr, cloud, enc) = setup_manager(&tmp).await;
@@ -539,35 +562,31 @@ async fn emit_all_albums_updated_flips_storage_actions_on_cloud_home_transition(
     let (release_id, _files) =
         create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"a")]).await;
 
-    let actions_for = |events: &[LibraryEvent], rel: &str| -> Vec<ReleaseStorageAction> {
-        events
-            .iter()
-            .find_map(|e| match e {
-                LibraryEvent::AlbumUpdated { album } => album
-                    .releases
-                    .iter()
-                    .find(|r| r.summary.id == rel)
-                    .map(|r| r.summary.storage_actions.clone()),
-                _ => None,
-            })
-            .expect("expected an AlbumUpdated carrying the release")
-    };
-
-    let mut rx = mgr.subscribe_events();
-    mgr.emit_all_albums_updated().await;
-    let before = collect_library_events(&mut rx, std::time::Duration::from_millis(200)).await;
+    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let mut values = services.subscribe_storage_values(
+        &tokio::runtime::Handle::current(),
+        StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        },
+        StorageFilter::All,
+        0,
+        50,
+    );
+    let before = next_storage_release(&mut values, &release_id).await;
     assert!(
-        actions_for(&before, &release_id).is_empty(),
+        before.storage_actions.is_empty(),
         "no cloud home → no storage actions"
     );
 
     mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
         .await
         .unwrap();
-    mgr.emit_all_albums_updated().await;
-    let after = collect_library_events(&mut rx, std::time::Duration::from_millis(200)).await;
+    let after = next_storage_release(&mut values, &release_id).await;
     assert!(
-        actions_for(&after, &release_id).contains(&ReleaseStorageAction::MakeRemote),
+        after
+            .storage_actions
+            .contains(&ReleaseStorageAction::MakeRemote),
         "cloud home present → make-Remote available"
     );
 }

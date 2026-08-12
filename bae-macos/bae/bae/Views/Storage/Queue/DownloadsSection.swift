@@ -6,8 +6,8 @@ import SwiftUI
 /// one row per release (title, file count, size, a Queued/Active/Failed
 /// badge, and a cancel button). Hidden when the queue is idle. Reads
 /// `DownloadStore` at the leaf; the download projection is the sole writer, so
-/// actions don't optimistically mutate — a `.downloadQueue` invalidation
-/// refetches and refreshes the section.
+/// actions don't optimistically mutate — the download subscription delivers
+/// each queue change.
 struct DownloadsSection: View {
     @Environment(DownloadStore.self)
     private var downloadStore

@@ -15,7 +15,7 @@ namespace Bae.Desktop;
 // now-playing bar along the bottom. Every color reads a theme brush, so the shell
 // renders in either OS appearance. The live now-playing transport arrives with a
 // later step; this is the shell the story checks.
-internal sealed class MainShellView : UserControl
+internal sealed class MainShellView : UserControl, System.IDisposable
 {
     private readonly AppService _app;
     private readonly StorageDialog _storageDialog;
@@ -76,8 +76,6 @@ internal sealed class MainShellView : UserControl
         // The now-playing bar reads persisted preferences, so the shell — not just
         // the settings window — keeps the settings mirror current for the window's
         // life. Seeded before the bar is built so its controls start correct.
-        _app.ProjectionRegistry.Register(
-            typeof(uniffi.bae_bridge.BridgeInvalidation.Config), _app.SettingsStore.Reload);
         _app.SettingsStore.Reload();
 
         var bar = BuildNowPlayingBar();
@@ -92,13 +90,9 @@ internal sealed class MainShellView : UserControl
             _queuePane.AttachToggle(_queueButton);
         }
 
-        // The cast picker requeries its device list on a castDevices invalidation
-        // (discovery only runs while the picker is open, but the projection stays
-        // registered for the window's life).
-        _app.ProjectionRegistry.Register(
-            typeof(uniffi.bae_bridge.BridgeInvalidation.CastDevices), _app.CastStore.RefreshDevices);
-
     }
+
+    public void Dispose() => _queuePane.Dispose();
 
     // Switch to the import section and land it on a fresh Ready tab — the
     // switcher click, and the folder-drop / activation flows that route here.

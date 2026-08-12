@@ -2,21 +2,13 @@ use super::*;
 
 /// Forward bus events to the platform callback until the bus closes.
 ///
-/// Falling behind (`Lagged`) drops events but must not kill the subscription —
-/// this loop is the UI's only event feed for the whole library session, and the
-/// callback is a synchronous FFI call, so a slow consumer during a burst is
-/// exactly when lag happens. Dropped events can't be replayed, so the pump
-/// synthesizes every coarse invalidation instead and the UI re-reads each domain
-/// rather than freezing on the last delivered snapshot. (Mirrors the core bus's
-/// own lag recovery in `UiEventBus::wire_library_events`.) Dropped playback
-/// pushes aren't recoverable by invalidation, but the next progress tick
-/// refreshes them within a second.
+/// Falling behind (`Lagged`) drops transient events but must not kill the
+/// subscription. Persistent state is delivered by independent live-result
+/// subscriptions and is unaffected by this bus.
 pub(super) async fn pump_ui_events(
     mut rx: tokio::sync::broadcast::Receiver<bae_core::ui::UiBusEvent>,
     callback: Box<dyn crate::types::UiEventCallback>,
 ) {
-    use crate::types::{BridgeInvalidation, BridgeUiEvent};
-
     loop {
         match rx.recv().await {
             Ok(event) => {
@@ -25,24 +17,7 @@ pub(super) async fn pump_ui_events(
                 }
             }
             Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!(
-                    "UI event subscription lagged; dropped {n} events; re-invalidating all domains"
-                );
-                for invalidation in [
-                    BridgeInvalidation::AlbumList,
-                    BridgeInvalidation::ComposerList,
-                    BridgeInvalidation::ArtistList,
-                    BridgeInvalidation::Queue,
-                    BridgeInvalidation::Config,
-                    BridgeInvalidation::SyncStatus,
-                    BridgeInvalidation::Outbox,
-                    BridgeInvalidation::DownloadQueue,
-                    BridgeInvalidation::OutputQueue,
-                    BridgeInvalidation::ImportCandidateList,
-                    BridgeInvalidation::WatchedFolders,
-                ] {
-                    callback.on_event(BridgeUiEvent::Invalidated { invalidation });
-                }
+                tracing::warn!("UI event subscription lagged; dropped {n} transient events");
             }
             Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
         }

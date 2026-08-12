@@ -3,6 +3,7 @@ package fm.bae.app.ui.library
 import android.content.Context
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -15,10 +16,15 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import uniffi.bae_bridge.AlbumPageCallback
 import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumPage
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSortCriterion
+import uniffi.bae_bridge.LiveSubscription
 
 private const val TAG = "bae.LibraryPage"
 private val logger = BaeLogger(TAG)
@@ -47,6 +53,7 @@ internal class LibraryPage(
     private val session: OpenLibrary,
     private val sortCriterion: BridgeSortCriterion,
     private val appContext: Context,
+    private val scope: CoroutineScope,
     private val onRetry: () -> Unit,
 ) {
     val albums = mutableStateMapOf<String, BridgeAlbum>()
@@ -57,71 +64,88 @@ internal class LibraryPage(
         private set
     var error by mutableStateOf<PageError?>(null)
         private set
-    private var loadedOffset = 0
+    private val pages = mutableMapOf<Int, List<String>>()
+    private val subscriptions = mutableMapOf<Int, LiveSubscription>()
 
-    private fun ingest(page: List<BridgeAlbum>) {
-        page.forEach { album ->
-            if (!albums.containsKey(album.id)) order.add(album.id)
+    private fun ingest(offset: Int, page: BridgeAlbumPage) {
+        page.rows.forEach { album ->
             albums[album.id] = album
         }
+        pages[offset] = page.rows.map { it.id }
+        order.clear()
+        order.addAll(pages.toSortedMap().values.flatten().distinct())
+        totalCount = page.totalCount.toInt()
+        loading = false
+        error = null
     }
 
-    suspend fun loadFirst() {
+    fun start() {
         loading = true
         error = null
-        try {
-            val (count, page) =
-                withContext(Dispatchers.IO) {
-                    val c = session.library.albumCount().toInt()
-                    val p = session.library.albumPage(listOf(sortCriterion), 0u, PAGE_SIZE.toULong())
-                    c to p
-                }
-            totalCount = count
-            ingest(page)
-            loadedOffset = PAGE_SIZE
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to load first album page", e)
-            error = PageError(e.message ?: appContext.getString(R.string.library_load_failed), onRetry)
-        } finally {
-            loading = false
-        }
+        subscribe(0)
     }
 
-    suspend fun loadMore() {
+    fun loadMore() {
         if (order.size >= totalCount) return
-        val offset = loadedOffset
-        try {
-            val more =
-                withContext(Dispatchers.IO) {
-                    session.library.albumPage(listOf(sortCriterion), offset.toULong(), PAGE_SIZE.toULong())
-                }
-            ingest(more)
-            loadedOffset = offset + PAGE_SIZE
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to load album page at offset $offset", e)
-            error = PageError(e.message ?: appContext.getString(R.string.library_load_more_failed), onRetry)
-        }
+        val offset = ((pages.keys.maxOrNull() ?: -PAGE_SIZE) + PAGE_SIZE)
+        subscribe(offset)
+    }
+
+    private fun subscribe(offset: Int) {
+        if (subscriptions.containsKey(offset)) return
+        subscriptions[offset] =
+            session.library.subscribeAlbumPage(
+                sortCriteria = listOf(sortCriterion),
+                offset = offset.toULong(),
+                limit = PAGE_SIZE.toULong(),
+                callback =
+                    object : AlbumPageCallback {
+                        override fun onValue(value: BridgeAlbumPage) {
+                            scope.launch(Dispatchers.Main.immediate) { ingest(offset, value) }
+                        }
+
+                        override fun onError(errorValue: BridgeException) {
+                            logger.error("Album page subscription failed at offset $offset", errorValue)
+                            scope.launch(Dispatchers.Main.immediate) {
+                                loading = false
+                                error =
+                                    PageError(
+                                        errorValue.message
+                                            ?: appContext.getString(
+                                                if (offset == 0) R.string.library_load_failed
+                                                else R.string.library_load_more_failed,
+                                            ),
+                                        onRetry,
+                                    )
+                            }
+                        }
+                    },
+            )
+    }
+
+    fun cancel() {
+        subscriptions.values.forEach(LiveSubscription::cancel)
+        subscriptions.clear()
     }
 }
 
 @Composable
 internal fun rememberLibraryPage(
     session: OpenLibrary,
-    generation: Long,
     sortCriterion: BridgeSortCriterion,
     appContext: Context,
     gridState: LazyGridState,
 ): LibraryPage {
-    var retryToken by remember(generation, sortCriterion) { mutableStateOf(0) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var retryToken by remember(sortCriterion) { mutableStateOf(0) }
     val page =
-        remember(generation, sortCriterion, retryToken) {
-            LibraryPage(session, sortCriterion, appContext) { retryToken++ }
+        remember(sortCriterion, retryToken) {
+            LibraryPage(session, sortCriterion, appContext, scope) { retryToken++ }
         }
-    LaunchedEffect(page) { page.loadFirst() }
+    DisposableEffect(page) {
+        page.start()
+        onDispose(page::cancel)
+    }
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisible =

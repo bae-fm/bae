@@ -154,25 +154,10 @@ struct AlbumDetailView: View {
             }
         }
         .task(id: albumId) {
-            // Eagerly load details for every release in the album so the
-            // release picker has labels and switching between releases
-            // doesn't flash a spinner. N is typically 1-3.
-            //
-            // If the user switches albums mid-loop the outer `.task(id:)`
-            // cancels; bail before kicking off the next fetch so we don't
-            // populate `releaseDetails` for the album we just left.
-            guard let summary = libraryStore.albumSummaries[albumId] else {
-                return
-            }
-            for releaseId in summary.releaseIds {
-                if Task.isCancelled {
-                    return
-                }
-                await libraryStore.loadReleaseDetail(
-                    releaseId: releaseId,
-                    library: library
-                )
-            }
+            await libraryStore.observeAlbumDetail(
+                albumId: albumId,
+                library: library
+            )
         }
         .onDisappear {
             uiStore.dismissModal()
@@ -213,18 +198,15 @@ struct AlbumDetailView: View {
 
     // MARK: - Data helpers
 
-    /// The placeholder shown before a release's detail loads: an error + Retry
-    /// once its on-demand load has failed, otherwise a spinner. Retry re-runs
-    /// the load for that release.
+    /// The placeholder shown before the album detail subscription delivers its
+    /// first value. A failed subscription can be replaced from Retry.
     @ViewBuilder
-    private func detailPlaceholder(releaseId: String?) -> some View {
-        if let releaseId,
-            let error = libraryStore.releaseDetailErrors[releaseId]
-        {
+    private func detailPlaceholder(releaseId _: String?) -> some View {
+        if let error = libraryStore.albumDetailErrors[albumId] {
             LoadFailureView(line: error.line) {
                 Task {
-                    await libraryStore.loadReleaseDetail(
-                        releaseId: releaseId,
+                    await libraryStore.observeAlbumDetail(
+                        albumId: albumId,
                         library: library
                     )
                 }
@@ -279,13 +261,6 @@ struct AlbumDetailView: View {
                 else {
                     uiStore.selectRelease(newId, inAlbum: albumId)
                 }
-                // Lazy-load detail for newly-selected release if not cached.
-                Task {
-                    await libraryStore.loadReleaseDetail(
-                        releaseId: newId,
-                        library: library
-                    )
-                }
             },
         )
     }
@@ -325,14 +300,12 @@ extension AlbumDetailView {
                         },
                         onSelectRemote: { cover in
                             changeCover(
-                                albumId: albumId,
                                 releaseId: selectedReleaseId,
                                 selection: cover.coverChoice.selection,
                             )
                         },
                         onSelectReleaseImage: { fileId in
                             changeCover(
-                                albumId: albumId,
                                 releaseId: selectedReleaseId,
                                 selection: .releaseImage(fileId: fileId),
                             )
@@ -493,25 +466,18 @@ extension AlbumDetailView {
     // MARK: - Actions
 
     private func changeCover(
-        albumId: String,
         releaseId: String,
         selection: BridgeCoverSelection
     ) {
         let releaseEditor = releaseEditor
-        let library = library
         changeCoverTask?.cancel()
         changeCoverTask = Task {
             do {
                 try await releaseEditor.changeCover(
-                    albumId,
                     releaseId,
                     selection
                 )
                 uiStore.dismissModal()
-                await libraryStore.reloadReleaseDetail(
-                    releaseId: releaseId,
-                    library: library
-                )
             }
             catch is CancellationError {
                 // view dismissed mid-cover-change
@@ -522,34 +488,21 @@ extension AlbumDetailView {
         }
     }
 
-    /// Run one storage transition with the shared cancel-prior /
-    /// reload-then-error plumbing. `transition` is the single bridge call that
+    /// Run one storage transition with the shared cancel-prior/error plumbing.
+    /// `transition` is the single bridge call that
     /// differs per action. The bridge call is async (it descends into the cloud
-    /// future chain on a runtime worker); progress is rendered from the core
-    /// `ReleaseTransferProgress` events on the release summary, not from local
-    /// view state.
+    /// future chain on a runtime worker); progress is rendered from the
+    /// subscribed release summary, not from local view state.
     private func runStorageTransition(
-        releaseId: String,
         _ transition: @escaping @Sendable () async throws -> Void
     ) {
         transferError = nil
-        let library = library
         storageTask?.cancel()
         storageTask = Task {
             do {
                 try await transition()
-                await libraryStore.reloadReleaseDetail(
-                    releaseId: releaseId,
-                    library: library
-                )
             }
-            catch is CancellationError {
-                // View dismissed (or the action re-triggered) mid-transfer.
-                // Cancelling this task aborts the Rust transfer future; core's
-                // drop guard emits the terminal `ReleaseTransferEnded`, which
-                // clears the indicator through the normal event path. Swallow
-                // the cancellation so it doesn't surface as a transfer error.
-            }
+            catch is CancellationError {}
             catch {
                 transferError = error.displayLine
             }
@@ -559,15 +512,14 @@ extension AlbumDetailView {
     private func pinRelease(releaseId: String) {
         // Pinning enqueues on the in-memory download queue rather than awaiting
         // a per-release transition. The sheet's existing `release.summary.transfer`
-        // bar still tracks progress (driven by `ReleaseTransferProgress`); the
-        // storage state flips when the worker invalidates the release on
-        // completion, so there's no reload to await here.
+        // bar tracks the action from subscribed release values; the storage state
+        // flips when the live album detail delivers the worker's database commit.
         Task { try await downloads.queuePins([releaseId]) }
     }
 
     private func unpinRelease(releaseId: String) {
         let downloads = downloads
-        runStorageTransition(releaseId: releaseId) {
+        runStorageTransition {
             try await downloads.unpinRelease(releaseId)
         }
     }
@@ -575,7 +527,7 @@ extension AlbumDetailView {
     private func manageRelease(releaseId: String, pin: Bool) {
         uiStore.dismissModal()
         let releaseEditor = releaseEditor
-        runStorageTransition(releaseId: releaseId) {
+        runStorageTransition {
             try await releaseEditor.manageRelease(releaseId, pin)
         }
     }
@@ -587,7 +539,7 @@ extension AlbumDetailView {
             return
         }
         let releaseEditor = releaseEditor
-        runStorageTransition(releaseId: releaseId) {
+        runStorageTransition {
             try await releaseEditor.unmanageRelease(releaseId, newPath)
         }
     }

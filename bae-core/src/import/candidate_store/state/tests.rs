@@ -351,6 +351,9 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
         }
         other => panic!("expected runtime snapshot, got {other:?}"),
     }
+    let snapshot = state.snapshot(vec![]);
+    assert_eq!(snapshot.runtime_candidates.len(), 1);
+    assert_eq!(snapshot.runtime_candidates[0].key, "reidentify:rel-1");
 
     // A scanned folder key resolves to its folder candidate; an unknown key is
     // None.

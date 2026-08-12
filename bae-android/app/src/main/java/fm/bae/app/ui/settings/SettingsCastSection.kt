@@ -132,7 +132,7 @@ internal fun SettingsCastSection(
 
 /**
  * The toggle itself. Reads the persisted setting and writes through the bridge —
- * the config invalidation is what moves the switch, so a refused or cancelled
+ * the config subscription is what moves the switch, so a refused or cancelled
  * flip leaves it where it was with nothing to undo.
  */
 @Composable

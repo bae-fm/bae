@@ -91,6 +91,9 @@ public sealed class Release : INotifyPropertyChanged
     /// second call.</summary>
     internal IReadOnlyList<BridgeGalleryItem> GalleryItems => _release.GalleryItems;
 
+    /// <summary>The release's image files as cover-picker choices.</summary>
+    internal IReadOnlyList<BridgeFile> ImageFiles => _release.ImageFiles;
+
     /// <summary>The picker label.</summary>
     public override string ToString() => DisplayName;
 }

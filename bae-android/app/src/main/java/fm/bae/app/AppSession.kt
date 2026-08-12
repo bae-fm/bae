@@ -42,6 +42,13 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.BridgeUiEvent
+import uniffi.bae_bridge.CastDevicesCallback
+import uniffi.bae_bridge.ConfigCallback
+import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.LiveSubscription
+import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.QueueCallback
+import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.initApp
 
@@ -89,6 +96,7 @@ class OpenLibrary(
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
+    private val valueSubscriptions = mutableListOf<LiveSubscription>()
     private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
     /**
@@ -103,6 +111,7 @@ class OpenLibrary(
      * before the first track plays).
      */
     fun wireUp(scope: CoroutineScope) {
+        subscribeToValues(scope)
         val channel = Channel<BridgeUiEvent>(Channel.UNLIMITED)
         eventChannel = channel
         eventJob =
@@ -110,7 +119,6 @@ class OpenLibrary(
                 for (event in channel) {
                     UiEventAdapter.handle(
                         event = event,
-                        appHandle = appHandle,
                         stores = stores,
                         player = playback,
                         errors = LocaleErrorLines(appContext),
@@ -126,6 +134,85 @@ class OpenLibrary(
         )
         appHandle.triggerSync()
         observeNowPlayingForWidget(scope)
+    }
+
+    private fun subscribeToValues(scope: CoroutineScope) {
+        valueSubscriptions +=
+            appHandle.subscribeConfig(
+                object : ConfigCallback {
+                    override fun onValue(
+                        config: BridgeConfig,
+                        syncReady: Boolean,
+                    ) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.setConfig(config)
+                            stores.config.setSyncReady(syncReady)
+                        }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeSyncStatus(
+                object : SyncStatusCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeSyncStatusSnapshot) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.setSyncStatus(value, LocaleErrorLines(appContext))
+                        }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeDownloads(
+                object : DownloadCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeDownloadSnapshot) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.downloads.setSnapshot(value) }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeOutbox(
+                object : OutboxCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeOutboxSnapshot) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.outbox.setSnapshot(value) }
+                    }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                        }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeCastDevices(
+                object : CastDevicesCallback {
+                    override fun onValue(devices: List<uniffi.bae_bridge.BridgeCastDevice>) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.cast.setDevices(devices) }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeQueue(
+                object : QueueCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeQueueSnapshot) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            playback.onQueueValue(
+                                manual = value.manual,
+                                context = value.context,
+                                hasNext = value.hasNext,
+                                hasPrevious = value.hasPrevious,
+                                revision = value.revision,
+                            )
+                        }
+                    }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                        }
+                    }
+                },
+            )
     }
 
     /**
@@ -173,12 +260,15 @@ class OpenLibrary(
         // player outlives the service), so this is the only place the player's
         // system hooks come off — do it before close().
         playback.detachSystemHooks()
+        playback.cancelQueuePageSubscriptions()
         eventJob?.cancel()
         widgetJob?.cancel()
         eventChannel?.close()
         eventJob = null
         widgetJob = null
         eventChannel = null
+        valueSubscriptions.forEach(LiveSubscription::cancel)
+        valueSubscriptions.clear()
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
     }
 }

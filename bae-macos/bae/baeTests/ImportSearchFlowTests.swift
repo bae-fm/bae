@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
@@ -189,5 +190,125 @@ struct ImportSearchFlowPickedResumeTests {
             ImportSearchFlow.pickedResume(candidate: candidate, row: nil)
                 == nil
         )
+    }
+}
+
+@MainActor
+@Suite("ImportSearchFlow live library status")
+struct ImportSearchFlowLibraryStatusTests {
+    @Test("a search result keeps its library status live until the candidate closes")
+    func resultStatusUpdatesAndCancels() async throws {
+        let store = ImportStore()
+        let candidate = PreviewData.folderCandidates[0]
+        store.folderCandidates[candidate.key] = candidate
+        let harness = ReleaseStatusHarness()
+        let response = searchResponse()
+        let importer = Importer(
+            searchForCandidate: { _ in response },
+            subscribeReleaseLibraryStatus: harness.subscribe
+        )
+
+        ImportSearchFlow.dispatchSearch(
+            importer: importer,
+            importStore: store,
+            key: candidate.key
+        )
+        await waitUntil { harness.callback(releaseId: "rel-live") != nil }
+
+        try #require(harness.callback(releaseId: "rel-live"))
+            .onValue(
+                value: BridgeLibraryStatus(
+                    releaseId: "rel-live",
+                    releaseInLibrary: true,
+                    albumInLibrary: true,
+                    albumTitle: "Album Title",
+                    albumId: "album-live"
+                )
+            )
+        await waitUntil {
+            store.candidate(forKey: candidate.key)?
+                .libraryStatuses["rel-live"]?.albumId == "album-live"
+        }
+
+        store.folderCandidates.removeValue(forKey: candidate.key)
+        #expect(harness.subscription(releaseId: "rel-live")?.cancelled == true)
+    }
+
+    private func searchResponse() -> BridgeCandidateSearchResults {
+        BridgeCandidateSearchResults(
+            tab: .general,
+            source: .musicBrainz,
+            groups: [
+                BridgeReleaseGroup(
+                    id: "group-live",
+                    sourceGroupId: "group-live",
+                    title: "Album Title",
+                    artist: "Artist Name",
+                    coverArt: nil,
+                    sourceLabel: "MusicBrainz",
+                    groupUrl: "https://example.invalid/group-live",
+                    yearMin: 2000,
+                    yearMax: 2000,
+                    pressings: [
+                        BridgeMetadataResult(
+                            source: .musicBrainz,
+                            releaseId: "rel-live",
+                            year: 2000,
+                            format: "CD",
+                            label: nil,
+                            catalogNumber: nil,
+                            country: nil
+                        )
+                    ]
+                )
+            ],
+            statuses: []
+        )
+    }
+
+    private func waitUntil(_ predicate: () -> Bool) async {
+        for _ in 0..<100 where !predicate() {
+            await Task.yield()
+        }
+        #expect(predicate())
+    }
+}
+
+private final class ReleaseStatusHarness: @unchecked Sendable {
+    private let lock = NSLock()
+    private var callbacks: [String: ReleaseLibraryStatusCallback] = [:]
+    private var subscriptions: [String: TestReleaseStatusSubscription] = [:]
+
+    func subscribe(
+        _ source: BridgeMetadataSource,
+        _ releaseId: String,
+        _ sourceGroupId: String?,
+        _ callback: ReleaseLibraryStatusCallback
+    ) -> any LiveSubscriptionProtocol {
+        let subscription = TestReleaseStatusSubscription()
+        lock.withLock {
+            callbacks[releaseId] = callback
+            subscriptions[releaseId] = subscription
+        }
+        return subscription
+    }
+
+    func callback(releaseId: String) -> ReleaseLibraryStatusCallback? {
+        lock.withLock { callbacks[releaseId] }
+    }
+
+    func subscription(releaseId: String) -> TestReleaseStatusSubscription? {
+        lock.withLock { subscriptions[releaseId] }
+    }
+}
+
+private final class TestReleaseStatusSubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private(set) var cancelled = false
+
+    func cancel() {
+        lock.withLock { cancelled = true }
     }
 }

@@ -20,6 +20,9 @@ pub struct ReleaseGroup {
     /// belong to one group, otherwise the lone pressing's release id (an
     /// ungrouped result is its own single-pressing card).
     pub id: String,
+    /// The metadata source's group identity. Absent when the source returned
+    /// an ungrouped release, whose card identity is its release id instead.
+    pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,
     /// Representative cover for the card — the first pressing that surfaced one.
@@ -44,16 +47,14 @@ impl ReleaseGroup {
     /// come straight from the authoritative `GroupKey` rather than being
     /// re-derived from a pressing.
     pub fn from_group(group: GroupKey, pressings: Vec<MetadataResult>) -> Self {
-        let group_url = Some(group.source.group_url(&group.source_group_id));
-        Self::build(group.source_group_id, group.source, group_url, pressings)
+        Self::build(Some(group.source_group_id), group.source, pressings)
     }
 
     /// Assemble a group from its (non-empty) pressings, deriving the card's
     /// title, artist, representative cover, and meta label.
     fn build(
-        id: String,
+        source_group_id: Option<String>,
         source: MetadataSource,
-        group_url: Option<String>,
         pressings: Vec<MetadataResult>,
     ) -> Self {
         let first = pressings
@@ -65,8 +66,13 @@ impl ReleaseGroup {
         let years: Vec<i32> = pressings.iter().filter_map(|p| p.year).collect();
         let year_min = years.iter().min().copied();
         let year_max = years.iter().max().copied();
+        let (id, group_url) = match source_group_id.as_deref() {
+            Some(group_id) => (group_id.to_string(), Some(source.group_url(group_id))),
+            None => (first.release_id.clone(), None),
+        };
         Self {
             id,
+            source_group_id,
             title,
             artist,
             cover_art,
@@ -109,19 +115,8 @@ pub fn group_results(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
 
     buckets
         .into_iter()
-        .map(|(source, gid, pressings)| match gid {
-            Some(gid) => {
-                let group_url = Some(source.group_url(&gid));
-                ReleaseGroup::build(gid, source, group_url, pressings)
-            }
-            None => {
-                let id = pressings
-                    .first()
-                    .expect("ungrouped bucket built from its lone pressing")
-                    .release_id
-                    .clone();
-                ReleaseGroup::build(id, source, None, pressings)
-            }
+        .map(|(source, source_group_id, pressings)| {
+            ReleaseGroup::build(source_group_id, source, pressings)
         })
         .collect()
 }
@@ -171,6 +166,7 @@ mod tests {
         ]);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].id, "group-x");
+        assert_eq!(groups[0].source_group_id.as_deref(), Some("group-x"));
         assert_eq!(groups[0].pressings.len(), 2);
         assert_eq!(
             groups[0].group_url.as_deref(),
@@ -210,6 +206,7 @@ mod tests {
         )]);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].id, "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e");
+        assert_eq!(groups[0].source_group_id, None);
         assert_eq!(groups[0].group_url, None);
         assert_eq!(groups[0].year_min, Some(1999));
         assert_eq!(groups[0].year_max, Some(1999));

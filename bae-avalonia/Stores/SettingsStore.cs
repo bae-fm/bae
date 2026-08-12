@@ -4,7 +4,7 @@ namespace Bae.Desktop;
 
 // Mirror of the app's settings (Config): the current settings snapshot and a
 // re-read that notifies. The settings dialog reads Current and re-renders on
-// Changed; a config invalidation (or an in-dialog connect/disconnect) calls
+// Changed; a config subscription value (or an in-dialog connect/disconnect) calls
 // Reload while the dialog is open. Mirrors macOS's ConfigStore.
 internal sealed class SettingsStore
 {
@@ -29,6 +29,11 @@ internal sealed class SettingsStore
             return;
         }
 
+        Apply(fresh);
+    }
+
+    public void Apply(Settings fresh)
+    {
         Current = fresh;
         Changed?.Invoke();
     }

@@ -57,15 +57,6 @@ internal fun BridgeSearchResults.hasNoResults(): Boolean =
         composers.isEmpty() &&
         works.isEmpty()
 
-private suspend fun fetchSearchResults(
-    session: OpenLibrary,
-    query: String,
-): BridgeSearchResults {
-    delay(DEBOUNCE_MS)
-    // Each album carries its own cover reference; the rows fetch the bytes by id.
-    return session.library.search(query)
-}
-
 /**
  * Library search results for a non-blank query. Debounces typing, runs the
  * bridge search, and renders one section per result kind — Albums, Artists,
@@ -96,7 +87,12 @@ fun SearchResultsScreen(
         loading = true
         error = null
         try {
-            results = fetchSearchResults(session, query)
+            delay(DEBOUNCE_MS)
+            session.library.searchResults(query).collect { value ->
+                results = value
+                loading = false
+                error = null
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -111,7 +107,7 @@ fun SearchResultsScreen(
     val currentError = error
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            currentError != null -> {
+            currentError != null && current == null -> {
                 Text(
                     text = currentError,
                     color = MaterialTheme.colorScheme.error,
@@ -133,13 +129,18 @@ fun SearchResultsScreen(
             }
 
             current != null -> {
-                SearchResultsList(
-                    results = current,
-                    onSelectAlbum = onSelectAlbum,
-                    onSelectArtist = onSelectArtist,
-                    onSelectComposer = onSelectComposer,
-                    onSelectWork = onSelectWork,
-                )
+                Column {
+                    currentError?.let {
+                        Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                    }
+                    SearchResultsList(
+                        results = current,
+                        onSelectAlbum = onSelectAlbum,
+                        onSelectArtist = onSelectArtist,
+                        onSelectComposer = onSelectComposer,
+                        onSelectWork = onSelectWork,
+                    )
+                }
             }
         }
     }

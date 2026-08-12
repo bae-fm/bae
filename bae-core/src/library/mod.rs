@@ -9,7 +9,6 @@ pub mod release_queue;
 pub mod save;
 pub mod search;
 pub(crate) mod sync_controller;
-pub mod sync_events;
 pub mod upload_sessions;
 pub mod upload_throughput;
 pub use app_services::*;

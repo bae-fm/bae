@@ -14,15 +14,10 @@ namespace Bae.Desktop;
 /// through <c>list.IdAt(pos)</c> then <see cref="AlbumById"/> — the BaeKit shape
 /// (ids in the list, rows in a store slice filled by the ingest closure).
 ///
-/// Two refresh channels, matching BaeKit's BrowseListSlot:
+/// Sort changes swap the whole list for a fresh instance:
 /// - a <b>sort change</b> swaps the whole list for a fresh generation-0 instance
 ///   built over a new page source (<see cref="ListSwapped"/> tells the view to
 ///   rebind);
-/// - a <b>content invalidation</b> (add / remove / reorder) bumps the existing
-///   list's generation via <see cref="PaginatedList{TRow, TId}.Invalidate"/>, which
-///   the realized rows observe through their load epoch — the list stays put, so
-///   scroll and stale rows survive until fresh data replaces them.
-///
 /// Built once per open library and reset on teardown so nothing bleeds across a
 /// library switch. Every mutation runs on the dispatcher thread.
 /// </summary>
@@ -50,7 +45,7 @@ internal sealed class LibraryBrowserStore
 
     /// <summary>Raised when a mode's list is swapped for a fresh instance (a sort
     /// change), so the browser view rebinds the active pane to the new list. A
-    /// content invalidation does not swap and does not raise this.</summary>
+    /// new content from the same subscription does not swap or raise this.</summary>
     public event Action<BrowserMode>? ListSwapped;
 
     public LibraryBrowserStore(
@@ -116,13 +111,6 @@ internal sealed class LibraryBrowserStore
         }
     }
 
-    // ── Content invalidations (core signalled a shape change) ─────────────────
-    public void InvalidateAlbums() => Albums.Invalidate();
-
-    public void InvalidateComposers() => Composers.Invalidate();
-
-    public void InvalidateArtists() => Artists.Invalidate();
-
     // ── Reveal support ────────────────────────────────────────────────────────
 
     /// <summary>The 0-based position of an album under the active album sort, or
@@ -131,22 +119,16 @@ internal sealed class LibraryBrowserStore
     public Task<(bool Current, (long? Index, string? Error) Result)> AlbumIndex(string albumId) =>
         _library.AlbumIndex(Sort.Albums.Items, albumId);
 
-    /// <summary>Fetch one album's full detail for the inline expansion.</summary>
-    public Task<(bool Current, (AlbumDetail? Detail, string? Error) Response)> AlbumDetail(string albumId) =>
-        _library.AlbumDetail(albumId);
-
     // ── List construction / swap ──────────────────────────────────────────────
 
     private PaginatedList<Album, string> BuildAlbumList()
     {
         var criteria = Sort.Albums.Items;
         var source = new LibraryPageSource<Album>(
-            _library.AlbumCount,
-            (offset, limit) =>
-            {
-                var (current, page) = _library.AlbumPage(offset, limit, criteria);
-                return (current, page.Albums, page.Error);
-            });
+            (offset, limit, onValue, onError) =>
+                _library.SubscribeAlbumPage(offset, limit, criteria,
+                    (rows, count) => _dispatcher.Post(() => onValue(rows, count)),
+                    error => _dispatcher.Post(() => onError(error))));
         return new PaginatedList<Album, string>(source, album => album.Id, IngestAlbums, _onError);
     }
 
@@ -154,12 +136,10 @@ internal sealed class LibraryBrowserStore
     {
         var criteria = Sort.Composers.Items;
         var source = new LibraryPageSource<ComposerSummary>(
-            _library.ComposerCount,
-            (offset, limit) =>
-            {
-                var (current, page) = _library.ComposerPage(offset, limit, criteria);
-                return (current, page.Composers, page.Error);
-            });
+            (offset, limit, onValue, onError) =>
+                _library.SubscribeComposerPage(offset, limit, criteria,
+                    (rows, count) => _dispatcher.Post(() => onValue(rows, count)),
+                    error => _dispatcher.Post(() => onError(error))));
         return new PaginatedList<ComposerSummary, string>(source, composer => composer.ArtistId, IngestComposers, _onError);
     }
 
@@ -167,17 +147,16 @@ internal sealed class LibraryBrowserStore
     {
         var criteria = Sort.Artists.Items;
         var source = new LibraryPageSource<ArtistSummary>(
-            _library.ArtistCount,
-            (offset, limit) =>
-            {
-                var (current, page) = _library.ArtistPage(offset, limit, criteria);
-                return (current, page.Artists, page.Error);
-            });
+            (offset, limit, onValue, onError) =>
+                _library.SubscribeArtistPage(offset, limit, criteria,
+                    (rows, count) => _dispatcher.Post(() => onValue(rows, count)),
+                    error => _dispatcher.Post(() => onError(error))));
         return new PaginatedList<ArtistSummary, string>(source, artist => artist.ArtistId, IngestArtists, _onError);
     }
 
     private void SwapAlbums()
     {
+        Albums.Cancel();
         Albums = BuildAlbumList();
         _ = Albums.LoadInitialAsync();
         ListSwapped?.Invoke(BrowserMode.Albums);
@@ -185,6 +164,7 @@ internal sealed class LibraryBrowserStore
 
     private void SwapComposers()
     {
+        Composers.Cancel();
         Composers = BuildComposerList();
         _composersLoaded = true;
         _ = Composers.LoadInitialAsync();
@@ -193,6 +173,7 @@ internal sealed class LibraryBrowserStore
 
     private void SwapArtists()
     {
+        Artists.Cancel();
         Artists = BuildArtistList();
         _artistsLoaded = true;
         _ = Artists.LoadInitialAsync();
@@ -237,6 +218,9 @@ internal sealed class LibraryBrowserStore
     /// rebuilds its browser view around them on the next open.</summary>
     public void Reset()
     {
+        Albums.Cancel();
+        Composers.Cancel();
+        Artists.Cancel();
         _albumsById.Clear();
         _composersById.Clear();
         _artistsById.Clear();

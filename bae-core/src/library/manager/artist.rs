@@ -58,6 +58,42 @@ impl LibraryManager {
             .collect())
     }
 
+    pub(crate) fn subscribe_artist_page(
+        &self,
+        sort: &[crate::db::ArtistSortCriterion],
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::ArtistPageProjection> {
+        self.database.subscribe_artist_page(sort, offset, limit)
+    }
+
+    pub(crate) fn resolve_artist_page(
+        &self,
+        projection: crate::db::ArtistPageProjection,
+    ) -> (Vec<ArtistSummary>, u64) {
+        let images = projection
+            .image_versions
+            .into_iter()
+            .map(|(id, version)| {
+                let image = ImageRef {
+                    id: id.clone(),
+                    version,
+                    image_type: crate::db::LibraryImageType::Artist,
+                };
+                (id, image)
+            })
+            .collect::<HashMap<_, _>>();
+        let rows = projection
+            .rows
+            .into_iter()
+            .map(|row| {
+                let image = images.get(&row.artist.id).cloned();
+                ArtistSummary::from_raw(row, image)
+            })
+            .collect();
+        (rows, projection.total_count)
+    }
+
     pub async fn get_artist_detail(
         &self,
         artist_id: &str,
@@ -84,6 +120,57 @@ impl LibraryManager {
             artist: ArtistSummary::from_raw(raw.artist, image),
             albums,
         }))
+    }
+
+    pub(crate) fn subscribe_artist_detail(
+        &self,
+        artist_id: &str,
+    ) -> coven::LiveQuery<crate::db::ArtistDetailProjection> {
+        self.database.subscribe_artist_detail(artist_id)
+    }
+
+    pub(crate) fn resolve_artist_detail_projection(
+        &self,
+        projection: crate::db::ArtistDetailProjection,
+    ) -> Option<ArtistDetail> {
+        let raw = projection.detail?;
+        let images = projection
+            .image_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Artist,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Cover,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let image = images.get(&raw.artist.artist.id).cloned();
+        Some(ArtistDetail {
+            artist: ArtistSummary::from_raw(raw.artist, image),
+            albums: raw
+                .albums
+                .into_iter()
+                .map(|album| AlbumSummary::from_raw(album, |id| covers.get(id).cloned()))
+                .collect(),
+        })
     }
 
     /// Resolve each parsed artist to an existing DB row, or to a row for finalize to

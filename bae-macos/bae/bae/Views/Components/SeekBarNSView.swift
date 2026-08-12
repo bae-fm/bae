@@ -20,7 +20,7 @@ class SeekBarNSView: NSView {
 
     var onSeek: ((Double) -> Void)?
     /// Called when the user clicks the leading label. The owner writes the new
-    /// value to the config; the resulting invalidation sets `showRemainingTime`
+    /// value to the config; its subscription sets `showRemainingTime`
     /// back on this view, which is what re-renders it.
     var onToggleRemainingTime: (() -> Void)?
 

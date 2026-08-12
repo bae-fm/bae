@@ -5,8 +5,8 @@ import SwiftUI
 /// mirror and writes it through `setValue`; a failed write (an out-of-range
 /// value, a config-write error) is surfaced and the picker keeps showing the
 /// stored value. It holds no optimistic state: the selection binding reads the
-/// mirror, which only changes once the config invalidation from a successful
-/// write lands, so a rejected change snaps back on its own.
+/// mirror, which only changes once the config subscription delivers a
+/// successful write, so a rejected change snaps back on its own.
 @MainActor
 public struct TransferConcurrencyPicker: View {
     public let title: LocalizedStringKey

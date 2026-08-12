@@ -43,7 +43,7 @@ struct AlbumGrid: View {
 }
 
 /// One grid slot. Loads the page covering its position (keyed on `loadEpoch` so
-/// a list swap or invalidation re-fetches), then renders the album once its id
+/// a list swap or subscription value reloads), then renders the album once its id
 /// resolves.
 private struct AlbumCell: View {
     let list: AlbumList

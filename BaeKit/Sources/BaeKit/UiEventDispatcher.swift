@@ -4,7 +4,7 @@ private let logger = Logger.bae("UiEventDispatcher")
 
 /// Dispatches a `BridgeUiEvent` off `UiEventPump` into the shared stores and
 /// services every Apple platform writes: `PlaybackStore`, `MediaControlService`,
-/// `AppService`, `ProjectionRegistry`. Most variants apply identically on every
+/// and `AppService`. Most variants apply identically on every
 /// platform — `dispatch` handles exactly those and reports whether it did.
 /// Variants with no shared handling (preview, import-loudness) resolve to
 /// `.unhandled`; the platform sink's `onUnhandled` owns what happens to them.
@@ -28,13 +28,10 @@ public enum UiEventDispatcher {
         appService: AppService
     ) -> Outcome {
         switch event {
-        case .invalidated(let invalidation):
-            appService.invalidateProjection(invalidation)
-
         case .playbackPlaying, .playbackPaused, .playbackLoading,
             .playbackStopped, .playbackProgress,
             .playbackSeeked, .volumeChanged, .muteChanged,
-            .repeatModeChanged, .queueItemsAdded, .queueUpdated,
+            .repeatModeChanged, .queueItemsAdded,
             .castStatusChanged:
             appService.applyPlaybackEvent(event)
 
@@ -43,11 +40,6 @@ public enum UiEventDispatcher {
 
         case .error(let error):
             appService.showError(error)
-
-        case .releaseTransferProgress, .releaseTransferEnded:
-            // Neither Apple app renders a per-transfer indicator today; consume
-            // the event here rather than leaving it for the platform tail.
-            break
 
         case .previewPlaying, .previewPaused, .previewIdle, .previewProgress,
             .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
@@ -73,7 +65,7 @@ public enum UiEventDispatcher {
         { [weak appService] event in
             guard let appService else {
                 logger.warning(
-                    "Dropped UI event because the library event target was deallocated: \(String(describing: event))"
+                    "Dropped UI event because its target was deallocated: \(String(describing: event))"
                 )
                 return
             }

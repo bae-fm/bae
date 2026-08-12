@@ -424,7 +424,7 @@ impl LibraryManager {
     /// fields, and per-track titles, sides, track numbers, and artists. Resolves
     /// artist names against the library (creating rows for new names), writes the
     /// album/release/track rows and replaces the `album_artists` /
-    /// `track_artists` junctions, then emits an `AlbumUpdated` event.
+    /// `track_artists` junctions in one commit.
     ///
     /// Track edits align positionally with the release's existing tracks (the
     /// edit can't add or remove tracks — `tracks.len()` must equal the
@@ -594,8 +594,6 @@ impl LibraryManager {
             )
             .await?;
 
-        self.emit_album_updated(&album_id).await;
-
         Ok(())
     }
 
@@ -624,6 +622,74 @@ impl LibraryManager {
         )))
     }
 
+    pub(crate) fn subscribe_release_detail(
+        &self,
+        release_id: &str,
+    ) -> coven::LiveQuery<crate::db::ReleaseDetailProjection> {
+        self.database.subscribe_release_detail(release_id)
+    }
+
+    pub(crate) async fn resolve_release_detail_projection(
+        &self,
+        release_id: &str,
+        projection: crate::db::ReleaseDetailProjection,
+    ) -> Result<Option<ReleaseDetail>, LibraryError> {
+        let Some(crate::db::ReleaseDetailContext {
+            detail,
+            album_artists,
+            release_index,
+            is_compilation,
+        }) = projection.context
+        else {
+            return Ok(None);
+        };
+        let cover = projection
+            .cover_versions
+            .get(release_id)
+            .map(|version| ImageRef {
+                id: release_id.to_string(),
+                version: version.clone(),
+                image_type: LibraryImageType::Cover,
+            });
+        self.resolve_release_detail_context(
+            release_id,
+            detail,
+            album_artists,
+            release_index,
+            is_compilation,
+            cover,
+        )
+        .await
+        .map(Some)
+    }
+
+    async fn resolve_release_detail_context(
+        &self,
+        release_id: &str,
+        raw: crate::db::DbReleaseDetail,
+        album_artists: Vec<DbArtist>,
+        release_index: usize,
+        is_compilation: bool,
+        cover: Option<ImageRef>,
+    ) -> Result<ReleaseDetail, LibraryError> {
+        let has_cloud_home = self.has_cloud_home();
+        let sync_ready = self.is_sync_ready();
+        let pinned = self
+            .release_pinned(raw.files.first().map(|file| file.id.as_str()))
+            .await?;
+        let ctx = ReleaseResolveCtx {
+            has_cloud_home,
+            sync_ready,
+            pinned,
+            cover,
+            transfer_action: self.current_transfer_action(release_id),
+            is_compilation,
+        };
+        let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
+        self.report_audio_format_orphans(orphans);
+        Ok(detail)
+    }
+
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
     /// the tracks/files/gallery its SQL joins load, and the release's position
     /// within its album, so `display_name` needs no index from the caller. `None`
@@ -644,23 +710,17 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
-        let has_cloud_home = self.has_cloud_home();
-        let sync_ready = self.is_sync_ready();
-        let pinned = self
-            .release_pinned(raw.files.first().map(|f| f.id.as_str()))
-            .await?;
         let cover = self.cover_ref(release_id).await?;
-        let ctx = ReleaseResolveCtx {
-            has_cloud_home,
-            sync_ready,
-            pinned,
-            cover,
-            transfer_action: self.current_transfer_action(release_id),
+        self.resolve_release_detail_context(
+            release_id,
+            raw,
+            album_artists,
+            release_index,
             is_compilation,
-        };
-        let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
-        self.report_audio_format_orphans(orphans);
-        Ok(Some(detail))
+            cover,
+        )
+        .await
+        .map(Some)
     }
 
     pub async fn get_releases_for_album(
@@ -675,6 +735,13 @@ impl LibraryManager {
         checks: &[crate::db::LibraryCheck],
     ) -> Result<Vec<crate::db::LibraryStatus>, LibraryError> {
         Ok(self.database.check_releases_in_library(checks).await?)
+    }
+
+    pub(crate) fn subscribe_release_library_status(
+        &self,
+        check: crate::db::LibraryCheck,
+    ) -> coven::LiveQuery<crate::db::LibraryStatus> {
+        self.database.subscribe_release_library_status(check)
     }
 
     /// Every file of a release — audio files, and the metadata files (cover art,
@@ -705,8 +772,6 @@ impl LibraryManager {
         self.database
             .set_album_primary_release(album_id, primary_release_id)
             .await?;
-
-        self.emit_album_updated(album_id).await;
 
         Ok(())
     }
@@ -741,8 +806,7 @@ impl LibraryManager {
         if delete_plan.cancel_make_remote {
             self.coven_cancel_make_remote(release_id).await?;
         }
-        let album_deleted = self
-            .database
+        self.database
             .delete_release_with_cleanup(release_id, &album_id, delete_plan.db_cleanup)
             .await?;
         self.emit_outbox_changed().await;
@@ -750,14 +814,6 @@ impl LibraryManager {
 
         if !track_ids.is_empty() {
             self.emit(LibraryEvent::TracksDeleted { track_ids });
-        }
-
-        if album_deleted {
-            // This release was the album's last; it's the only child to drop.
-            self.emit_album_removed(&album_id, vec![release_id.to_string()]);
-        } else {
-            self.emit_album_updated(&album_id).await;
-            self.emit_release_removed(&album_id, release_id).await;
         }
 
         Ok(())
@@ -879,54 +935,3 @@ pub(crate) async fn cover_ref_for(
             image_type: LibraryImageType::Cover,
         }))
 }
-
-/// Free-function variant of `LibraryManager::find_release_detail`, so the upload
-/// observer — which holds a `Database` but no manager — can
-/// emit `ReleaseUpdated` when coven completes a transition. Pin state is answered
-/// through the database owner, the same door the manager uses. The caller supplies
-/// `has_cloud_home` and `sync_ready`; the observer fires inside a running sync
-/// cycle, so it passes `true` for both.
-pub(crate) async fn find_release_detail_with(
-    database: &Database,
-    has_cloud_home: bool,
-    sync_ready: bool,
-    release_id: &str,
-) -> Result<Option<ReleaseDetail>, LibraryError> {
-    let Some(crate::db::ReleaseDetailContext {
-        detail: raw,
-        album_artists,
-        release_index,
-        is_compilation,
-    }) = database.find_release_detail_context(release_id).await?
-    else {
-        return Ok(None);
-    };
-    // The upload observer resolves detail off the diagnostics-less sync path, so
-    // a rejected bad blob id here reads as not pinned and stays text-only (logged
-    // in `release_file_pin_state`); the diagnostics-holding `release_pinned`
-    // caller is where a bad id ships the `blob_id_invalid` anomaly.
-    let pinned = match raw.files.first() {
-        Some(file) => matches!(
-            release_file_pin_state(database, &file.id).await?,
-            ReleasePinState::Pinned
-        ),
-        None => false,
-    };
-    let cover = cover_ref_for(database, release_id).await?;
-    let ctx = ReleaseResolveCtx {
-        has_cloud_home,
-        sync_ready,
-        pinned,
-        cover,
-        transfer_action: None,
-        is_compilation,
-    };
-    // The upload observer resolves detail off the diagnostics-less sync path, so
-    // an audio-format orphan here stays text-only (logged in `from_raw`); the
-    // diagnostics-holding manager callers ship the `audio_format_orphaned`
-    // anomaly.
-    let (detail, _orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
-    Ok(Some(detail))
-}
-
-impl LibraryManager {}

@@ -2,6 +2,12 @@
     import BaeKit
     import SwiftUI
 
+    private final class PreviewLibrarySubscription: LiveSubscriptionProtocol,
+        @unchecked Sendable
+    {
+        func cancel() {}
+    }
+
     // Canned `Library` + `LibraryBrowseSession` backings for the `LibraryView`
     // previews (and the whole-window `MainAppView` preview, which reuses
     // `previewGridBacking`). Each drives the production body through a real
@@ -14,12 +20,24 @@
         /// `albumContent`/`composerContent` rather than a hand-built stand-in.
         static func emptyLibrary() -> Library {
             Library(
-                getAlbumCount: { 0 },
-                getAlbumPage: { _, _, _ in [] },
-                getComposerCount: { 0 },
-                getComposerPage: { _, _, _ in [] },
-                getArtistCount: { 0 },
-                getArtistPage: { _, _, _ in [] },
+                subscribeAlbumPage: { _, _, _, callback in
+                    callback.onValue(
+                        value: BridgeAlbumPage(rows: [], totalCount: 0)
+                    )
+                    return PreviewLibrarySubscription()
+                },
+                subscribeComposerPage: { _, _, _, callback in
+                    callback.onValue(
+                        value: BridgeComposerPage(rows: [], totalCount: 0)
+                    )
+                    return PreviewLibrarySubscription()
+                },
+                subscribeArtistPage: { _, _, _, callback in
+                    callback.onValue(
+                        value: BridgeArtistPage(rows: [], totalCount: 0)
+                    )
+                    return PreviewLibrarySubscription()
+                }
             )
         }
 
@@ -34,7 +52,6 @@
             let library = emptyLibrary()
             let session = LibraryBrowseSession(
                 library: library,
-                projectionRegistry: ProjectionRegistry(),
                 libraryStore: libraryStore,
                 uiStore: uiStore
             )
@@ -66,11 +83,16 @@
                     )
                 }
             let library = Library(
-                getAlbumCount: { UInt64(albums.count) },
-                getAlbumPage: { _, offset, limit in
+                subscribeAlbumPage: { _, offset, limit, callback in
                     let start = min(Int(offset), albums.count)
                     let end = min(start + Int(limit), albums.count)
-                    return Array(albums[start..<end])
+                    callback.onValue(
+                        value: BridgeAlbumPage(
+                            rows: Array(albums[start..<end]),
+                            totalCount: UInt64(albums.count)
+                        )
+                    )
+                    return PreviewLibrarySubscription()
                 },
                 getAlbumIndex: { _, albumId in
                     albums.firstIndex { $0.id == albumId }.map(UInt64.init)
@@ -78,7 +100,6 @@
             )
             let session = LibraryBrowseSession(
                 library: library,
-                projectionRegistry: ProjectionRegistry(),
                 libraryStore: libraryStore,
                 uiStore: uiStore
             )
@@ -95,20 +116,7 @@
             uiStore: UiStore,
             libraryStore: LibraryStore
         ) -> (library: Library, session: LibraryBrowseSession) {
-            let composers: [BridgeComposerSummary] = (0..<14)
-                .map { (index: Int) -> BridgeComposerSummary in
-                    let workCount = Int64(2 + index % 6)
-                    let releaseCount = Int64(3 + index % 4)
-                    return BridgeComposerSummary(
-                        artistId: "composer-\(index)",
-                        name: "Composer Name \(index + 1)",
-                        sortName: nil,
-                        workCount: workCount,
-                        linkedReleaseCount: releaseCount,
-                        unlinkedCreditCount: 0,
-                        image: nil,
-                    )
-                }
+            let composers = previewComposers()
             let works: [BridgeWorkSummary] = (0..<4)
                 .map { (index: Int) -> BridgeWorkSummary in
                     BridgeWorkSummary(
@@ -129,23 +137,48 @@
             )
             let workDetail = previewWorkDetail(work: works[0])
             let library = Library(
-                getComposerCount: { UInt64(composers.count) },
-                getComposerPage: { _, offset, limit in
+                subscribeComposerPage: { _, offset, limit, callback in
                     let start = min(Int(offset), composers.count)
                     let end = min(start + Int(limit), composers.count)
-                    return Array(composers[start..<end])
+                    callback.onValue(
+                        value: BridgeComposerPage(
+                            rows: Array(composers[start..<end]),
+                            totalCount: UInt64(composers.count)
+                        )
+                    )
+                    return PreviewLibrarySubscription()
                 },
-                getComposerDetail: { _ in composerDetail },
-                getWorkDetail: { _ in workDetail },
+                subscribeComposerDetail: { _, callback in
+                    callback.onValue(value: composerDetail)
+                    return PreviewLibrarySubscription()
+                },
+                subscribeWorkDetail: { _, callback in
+                    callback.onValue(value: workDetail)
+                    return PreviewLibrarySubscription()
+                },
             )
             let session = LibraryBrowseSession(
                 library: library,
-                projectionRegistry: ProjectionRegistry(),
                 libraryStore: libraryStore,
                 uiStore: uiStore
             )
             session.selectComposer("composer-0")
             return (library, session)
+        }
+
+        private static func previewComposers() -> [BridgeComposerSummary] {
+            (0..<14)
+                .map { (index: Int) -> BridgeComposerSummary in
+                    BridgeComposerSummary(
+                        artistId: "composer-\(index)",
+                        name: "Composer Name \(index + 1)",
+                        sortName: nil,
+                        workCount: Int64(2 + index % 6),
+                        linkedReleaseCount: Int64(3 + index % 4),
+                        unlinkedCreditCount: 0,
+                        image: nil,
+                    )
+                }
         }
 
         private static func previewComposerDetail(

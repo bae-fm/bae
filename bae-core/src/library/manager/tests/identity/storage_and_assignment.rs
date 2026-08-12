@@ -759,7 +759,7 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
         .await
         .unwrap();
 
-    let outcome = manager
+    manager
         .database
         .set_identity_atomic(
             &release_alpha.id,
@@ -772,11 +772,6 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
         )
         .await
         .unwrap();
-
-    assert!(
-        !outcome.source_album_deleted,
-        "atomic recheck must protect the late-arriving release"
-    );
 
     // Source album survives, holding only release_intruder.
     let survivors = manager

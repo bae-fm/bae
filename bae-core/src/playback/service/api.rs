@@ -185,8 +185,6 @@ pub(crate) enum PlaybackCommand {
     SetMuted(bool),
     /// Query current volume. Response sent via oneshot.
     GetVolume(oneshot::Sender<f32>),
-    /// Query the queue shape owned by the playback loop.
-    GetQueueProjection(oneshot::Sender<PlaybackQueueProjection>),
     /// Graceful shutdown: save state to disk, reply, then stop.
     Shutdown(oneshot::Sender<()>),
     /// Persist the current playback state without tearing down playback. Mobile
@@ -262,6 +260,7 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 pub struct PlaybackHandle {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
+    queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
     /// The service's dedicated OS thread. Taken and joined on the first
     /// shutdown/stop so the `LibraryManager` clone it holds — and through the
     /// shared coven handle, the store's exclusive open lock — is released before
@@ -274,11 +273,13 @@ impl PlaybackHandle {
     pub(super) fn new(
         command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
         progress_handle: PlaybackProgressHandle,
+        queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
         thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     ) -> Self {
         Self {
             command_tx,
             progress_handle,
+            queue_values,
             thread,
         }
     }
@@ -383,6 +384,15 @@ impl PlaybackHandle {
     pub fn subscribe_progress(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
         self.progress_handle.subscribe_all()
     }
+
+    pub fn subscribe_queue_values(&self) -> tokio::sync::watch::Receiver<PlaybackQueueProjection> {
+        self.queue_values.clone()
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn queue_projection(&self) -> Result<PlaybackQueueProjection, String> {
+        Ok(self.queue_values.borrow().clone())
+    }
     pub fn add_to_queue(&self, track_ids: Vec<String>) {
         dispatch_command(&self.command_tx, PlaybackCommand::AddToQueue(track_ids));
     }
@@ -437,13 +447,6 @@ impl PlaybackHandle {
             warn!("get_volume: playback loop dropped the response channel: {e}");
             1.0
         })
-    }
-
-    pub async fn queue_projection(&self) -> Result<PlaybackQueueProjection, String> {
-        let (tx, rx) = oneshot::channel();
-        dispatch_command(&self.command_tx, PlaybackCommand::GetQueueProjection(tx));
-        rx.await
-            .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))
     }
 
     /// Graceful shutdown: persist playback state, stop the service loop, and join

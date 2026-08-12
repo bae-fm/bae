@@ -16,33 +16,52 @@ private let logger = Logger.bae("PaginatedList")
 public protocol PageSource<Row>: Sendable {
     associatedtype Row: Identifiable & Sendable
 
-    /// Total row count for this query.
-    func count() async throws -> Int
+    /// Start a live page query. The initial value and every relevant committed
+    /// database change deliver the page rows and total count together.
+    func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([Row], Int) -> Void,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription
+}
 
-    /// Fetch a contiguous page of rows starting at `offset`.
-    func page(offset: Int, limit: Int) async throws -> [Row]
+public protocol PageSubscription: AnyObject, Sendable {
+    func cancel()
+}
+
+extension LiveSubscription: PageSubscription {}
+
+private final class InitialDeliveryWaiter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    init(_ continuation: CheckedContinuation<Void, Never>) {
+        self.continuation = continuation
+    }
+
+    func resume() {
+        lock.lock()
+        let continuation = continuation
+        self.continuation = nil
+        lock.unlock()
+        continuation?.resume()
+    }
 }
 
 // MARK: - Row load identity
 
 // periphery:ignore
-/// Identity a view folds into its row `.task(id:)` (via `RowLoadID`) so row
-/// loads restart in the two cases that leave rows stale: the list is
-/// *invalidated* (generation bumps) or the list instance is *swapped* for a
-/// fresh one (a new sort/filter builds a new list, starting at generation 0
-/// with no loaded segments). Keying on row position or generation alone misses
-/// the swap — a fresh instance can sit at the same generation, so the per-row
-/// task never restarts and the swapped-in rows stay stuck on placeholders. The
-/// instance identity closes that gap.
+/// Identity a view folds into its row `.task(id:)` so swapping the list for a
+/// new sort or filter restarts each visible row's load.
 public struct LoadEpoch: Hashable {
     public let instance: ObjectIdentifier
-    public let generation: Int
 }
 
 // periphery:ignore
 /// A row's load-task identity: which list epoch and which row position. Every
 /// paginated consumer keys its per-row `.task(id:)` on this, so a row's load
-/// restarts when its position changes or when the list is swapped/invalidated.
+/// restarts when its position changes or when the list is swapped.
 public struct RowLoadID: Hashable {
     public let epoch: LoadEpoch
     public let index: Int
@@ -57,21 +76,8 @@ public struct RowLoadID: Hashable {
 
 /// A paginated, ordered view over one or more store slices.
 ///
-/// Tracks loaded data as a sorted list of non-overlapping segments, each
-/// tagged with the generation at which it was fetched. No pre-allocation —
-/// only loaded positions are stored.
-///
-/// Shape changes (add / remove / reorder) are handled by `invalidate()`,
-/// which fetches the new count and bumps the generation. Visible rows
-/// restart their load tasks (task identity includes `loadEpoch`) and call
-/// `loadRange()`, which re-fetches any range whose cached segment is stale.
-/// Stale segments keep their data visible until fresh data replaces them.
-///
-/// ## Lists are views, not subscribers
-///
-/// A `PaginatedList` observes nothing. Content mutations re-render via
-/// `@Observable` on the store slices. Shape mutations (add / remove /
-/// reorder) require an explicit `invalidate()` call from the action handler.
+/// Tracks loaded data as a sorted list of non-overlapping segments. Each page
+/// subscription delivers both content and count whenever its query changes.
 @MainActor
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable>
@@ -79,28 +85,22 @@ where Row.ID: Sendable {
     private struct Segment {
         let range: Range<Int>
         let ids: [Row.ID]
-        let generation: Int
     }
 
-    /// Total row count from the most recent `loadInitial()` or `invalidate()`.
+    /// Total row count from the most recent subscription value.
     public private(set) var totalCount: Int = 0
 
     /// The cold count load (`loadInitial`) failed. The consuming grid reads this
     /// to show an error + Retry instead of the empty-library placeholder — a
     /// failed initial load is not an empty library. Only `loadInitial` sets it
-    /// (a page or invalidate failure keeps data on screen and routes to
+    /// (a later page failure keeps data on screen and routes to
     /// `onError` instead); cleared when `loadInitial` starts again or succeeds.
     public private(set) var initialLoadError: DisplayError?
 
-    /// Bumped by `invalidate()`. Folded into `loadEpoch`, the value views key
-    /// their row `.task(id:)` on so loads restart when the list is invalidated.
-    public private(set) var generation: Int = 0
-
     /// This list's `LoadEpoch`. Consumers fold it into a row's `RowLoadID`
-    /// `.task(id:)` so the row's load restarts when this list is invalidated or
-    /// swapped for a fresh instance.
+    /// `.task(id:)` so the row's load restarts when this list is swapped.
     public var loadEpoch: LoadEpoch {
-        LoadEpoch(instance: ObjectIdentifier(self), generation: generation)
+        LoadEpoch(instance: ObjectIdentifier(self))
     }
 
     /// Sorted, non-overlapping segments of loaded IDs. Only loaded positions
@@ -117,12 +117,7 @@ where Row.ID: Sendable {
     /// is not), and `showError` is the one place that drops it.
     private let onError: (any Error) -> Void
     @ObservationIgnored
-    private var reloadTask: Task<Void, Never>?
-    // In-flight `loadRange` fetches, keyed "offset:end:generation", so concurrent
-    // callers asking for the same range coalesce onto one DB query instead of
-    // each issuing a duplicate.
-    @ObservationIgnored
-    private var inFlight: [String: Task<Void, Never>] = [:]
+    private var subscriptions: [String: any PageSubscription] = [:]
 
     public init(
         pageSource: any PageSource<Row>,
@@ -136,16 +131,12 @@ where Row.ID: Sendable {
 
     // MARK: - Queries
 
-    /// Returns the ID at `position`, preferring the highest-generation segment
-    /// so fresh data wins over stale when they transiently overlap.
+    /// Returns the ID at `position`.
     public func idAt(_ position: Int) -> Row.ID? {
-        var best: Segment?
         for seg in segments where seg.range.contains(position) {
-            if best.map({ seg.generation > $0.generation }) ?? true {
-                best = seg
-            }
+            return seg.ids[position - seg.range.lowerBound]
         }
-        return best.map { $0.ids[position - $0.range.lowerBound] }
+        return nil
     }
 
     /// Returns the position of `id` in the loaded segments, or nil if not loaded.
@@ -168,32 +159,13 @@ where Row.ID: Sendable {
     /// Fetch the total count. Called once when the list is first mounted.
     public func loadInitial() async {
         initialLoadError = nil
-        let gen = generation
-        do {
-            let count =
-                try await Task.detached { [pageSource] in
-                    try await pageSource.count()
-                }
-                .value
-            guard generation == gen else {
-                return
-            }
-            totalCount = count
-            segments = []
-        }
-        catch {
-            // A cold load with nothing on screen: surface it as the list's
-            // failed state so the grid shows an error + Retry instead of the
-            // empty-library placeholder. `onError` (the banner) is reserved for
-            // page/invalidate failures, which leave existing rows visible.
-            initialLoadError = DisplayError(error)
-        }
+        await subscribeRange(offset: 0, limit: 50, initial: true)
     }
 
     /// Load a contiguous range of rows and intern them into the store.
     ///
-    /// Fast-path: skips if a current-generation segment already covers the range.
-    /// Concurrent callers asking for the same range and generation (e.g. a grid
+    /// Fast-path: skips if a subscribed segment already covers the range.
+    /// Concurrent callers asking for the same range (e.g. a grid
     /// whose visible cells all compute the same page offset on first paint)
     /// coalesce onto one in-flight fetch rather than each issuing a duplicate
     /// query — the segment fast-path can't dedupe a burst that starts before any
@@ -203,96 +175,67 @@ where Row.ID: Sendable {
         guard offset < end else {
             return
         }
-        let gen = generation
-
-        // Fast-path: a current-generation segment fully covers this range.
+        // Fast-path: an active subscription already covers this range.
         if segments.contains(where: {
-            $0.generation == gen && $0.range.lowerBound <= offset
+            $0.range.lowerBound <= offset
                 && $0.range.upperBound >= end
         }) {
             return
         }
+        await subscribeRange(offset: offset, limit: limit, initial: false)
+    }
 
-        let key = "\(offset):\(end):\(gen)"
-        if let existing = inFlight[key] {
-            await existing.value
-            return
-        }
-
-        let task = Task {
-            await self.fetchRange(
+    private func subscribeRange(offset: Int, limit: Int, initial: Bool) async {
+        let key = "\(offset):\(limit)"
+        guard subscriptions[key] == nil else { return }
+        await withCheckedContinuation { continuation in
+            let waiter = InitialDeliveryWaiter(continuation)
+            subscriptions[key] = pageSource.subscribe(
                 offset: offset,
-                end: end,
                 limit: limit,
-                gen: gen
-            )
-        }
-        inFlight[key] = task
-        await task.value
-        inFlight[key] = nil
-    }
-
-    private func fetchRange(offset: Int, end: Int, limit: Int, gen: Int) async {
-        do {
-            let rows =
-                try await Task.detached { [pageSource] in
-                    try await pageSource.page(offset: offset, limit: limit)
-                }
-                .value
-            // Drop result if generation advanced while fetching — the restarted
-            // task will re-fetch at the new generation.
-            guard generation == gen else {
-                return
-            }
-            ingest(rows)
-            insertSegment(
-                Segment(
-                    range: offset..<end,
-                    ids: rows.map(\.id),
-                    generation: gen
-                )
-            )
-        }
-        catch {
-            logger.error(
-                "Failed to load range [\(offset) ..< \(end)]: \(error.localizedDescription)"
-            )
-            onError(error)
-        }
-    }
-
-    // MARK: - Invalidation
-
-    /// Mark the list stale: fetch the new count, bump the generation.
-    ///
-    /// Visible rows restart their `.task(id:)` (which keys on `loadEpoch`) and
-    /// call `loadRange()`, which sees stale segments and re-fetches. Stale
-    /// segments remain visible until replaced, so the grid never flashes to
-    /// empty.
-    public func invalidate() {
-        reloadTask?.cancel()
-        reloadTask = Task { [weak self] in
-            guard let self else {
-                return
-            }
-            do {
-                let pageSource = pageSource
-                let newCount =
-                    try await Task.detached {
-                        try await pageSource.count()
+                onValue: { [weak self] rows, totalCount in
+                    guard let self else {
+                        waiter.resume()
+                        return
                     }
-                    .value
-                totalCount = newCount
-                generation &+= 1
-            }
-            catch is CancellationError {
-            }
-            catch {
-                logger.error(
-                    "invalidate() failed: \(error.localizedDescription)"
-                )
-                onError(error)
-            }
+                    self.totalCount = totalCount
+                    self.segments.removeAll {
+                        $0.range.lowerBound >= totalCount
+                    }
+                    self.initialLoadError = nil
+                    self.ingest(rows)
+                    let upper = min(offset + rows.count, totalCount)
+                    guard offset < upper else {
+                        self.segments.removeAll { $0.range.contains(offset) }
+                        waiter.resume()
+                        return
+                    }
+                    self.insertSegment(
+                        Segment(
+                            range: offset..<upper,
+                            ids: rows.prefix(upper - offset).map(\.id)
+                        )
+                    )
+                    waiter.resume()
+                },
+                onError: { [weak self] error in
+                    guard let self else {
+                        waiter.resume()
+                        return
+                    }
+                    if initial, self.segments.isEmpty {
+                        self.initialLoadError = DisplayError(error)
+                        self.subscriptions.removeValue(forKey: key)?.cancel()
+                    }
+                    else {
+                        logger.error(
+                            "Live page failed: \(error.localizedDescription)"
+                        )
+                        self.onError(error)
+                    }
+                    waiter.resume()
+                }
+            )
         }
     }
 
@@ -316,10 +259,8 @@ where Row.ID: Sendable {
         var remaining: [Segment] = []
 
         for seg in segments {
-            if seg.generation == new.generation, seg.range.upperBound >= lower,
-                seg.range.lowerBound <= upper
-            {
-                // Same-gen, touches or overlaps: absorb the parts that extend beyond [lower, upper].
+            if seg.range.upperBound >= lower, seg.range.lowerBound <= upper {
+                // Touches or overlaps: absorb the parts that extend beyond [lower, upper].
                 if seg.range.lowerBound < lower {
                     leftIds =
                         Array(seg.ids.prefix(lower - seg.range.lowerBound))
@@ -348,7 +289,6 @@ where Row.ID: Sendable {
             Segment(
                 range: lower..<upper,
                 ids: leftIds + new.ids + rightIds,
-                generation: new.generation
             )
         )
         segments = remaining.sorted {
@@ -358,17 +298,10 @@ where Row.ID: Sendable {
 
     // MARK: - Test/Preview support
 
-    // periphery:ignore
-    /// Await the in-flight reload task if there is one. Used by tests to
-    /// synchronize on post-`invalidate()` state without racing.
-    public func awaitReload() async {
-        await reloadTask?.value
-    }
-
     /// Seed segments synchronously for SwiftUI previews and tests.
     public func preloadForPreview(ids: [Row.ID]) {
         segments = [
-            Segment(range: 0..<ids.count, ids: ids, generation: generation)
+            Segment(range: 0..<ids.count, ids: ids)
         ]
         totalCount = ids.count
     }

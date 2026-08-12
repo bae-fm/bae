@@ -263,8 +263,8 @@ struct MainAppMenuCommands: Commands {
             Divider()
 
             // Reads the synced `libraryFullWidth` config; the write goes
-            // through the bridge, and the resulting config invalidation
-            // refreshes `configStore` — which is what re-checks this item.
+            // through the bridge, and the config subscription refreshes
+            // `configStore` — which is what re-checks this item.
             Toggle(
                 "Full-Width Library",
                 isOn: Binding(

@@ -6,8 +6,7 @@ import SwiftUI
 /// `paneDetail` holds and drives selection through the session; the parent's
 /// `.task` loaders write `paneDetail` back as detail payloads arrive.
 struct ComposerDetailPane: View {
-    @Binding
-    var paneDetail: ComposerPaneDetail
+    let paneDetail: ComposerPaneDetail
     @Environment(LibraryBrowseSession.self)
     private var session
     @Environment(UiStore.self)
@@ -30,10 +29,6 @@ struct ComposerDetailPane: View {
                                     session.selectComposerWork(
                                         artistId: artistId,
                                         workId: workId
-                                    )
-                                    paneDetail = .composer(
-                                        composerDetail,
-                                        work: nil
                                     )
                                 }
                             }
@@ -76,10 +71,6 @@ struct ComposerDetailPane: View {
                                         artistId: artistId,
                                         workId: workId
                                     )
-                                    paneDetail = .composer(
-                                        composerDetail,
-                                        work: nil
-                                    )
                                 }
                             },
                             openAlbum: { albumId, releaseId in
@@ -96,7 +87,6 @@ struct ComposerDetailPane: View {
                         detail: loadedWorkDetail,
                         openWork: { workId in
                             session.selectWork(workId)
-                            paneDetail = .empty
                         },
                         openAlbum: { albumId, releaseId in
                             uiStore.navigateToAlbum(
@@ -132,9 +122,7 @@ struct ComposerDetailPane: View {
 
 #if DEBUG
     #Preview("Composer \u{2014} Detail") {
-        @Previewable
-        @State
-        var paneDetail = ComposerPaneDetail.composer(
+        let paneDetail = ComposerPaneDetail.composer(
             PreviewData.composerDetail,
             work: PreviewData.workDetail
         )
@@ -145,7 +133,7 @@ struct ComposerDetailPane: View {
             uiStore: uiStore
         )
         session.selectComposer("composer-0")
-        return ComposerDetailPane(paneDetail: $paneDetail)
+        return ComposerDetailPane(paneDetail: paneDetail)
             .frame(width: 620, height: 720)
             .environment(session)
             .environment(uiStore)
@@ -153,16 +141,14 @@ struct ComposerDetailPane: View {
     }
 
     #Preview("Composer \u{2014} Empty") {
-        @Previewable
-        @State
-        var paneDetail = ComposerPaneDetail.empty
+        let paneDetail = ComposerPaneDetail.empty
         let uiStore = UiStore()
         let libraryStore = LibraryStore()
         let session = PreviewData.browseSession(
             libraryStore: libraryStore,
             uiStore: uiStore
         )
-        return ComposerDetailPane(paneDetail: $paneDetail)
+        return ComposerDetailPane(paneDetail: paneDetail)
             .frame(width: 620, height: 720)
             .environment(session)
             .environment(uiStore)

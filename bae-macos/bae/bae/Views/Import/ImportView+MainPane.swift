@@ -67,8 +67,8 @@ extension ImportView {
         // Keyed on the folder's files, not on the candidate: what a sheet may
         // be bound to changes when the folder's audio does, and the identify
         // phase's table changes with it for the same reason. Neither changes
-        // when a binding or a role does — those re-read what they invalidate
-        // themselves, which is also what keeps this from overwriting a table
+        // when a binding or a role does — those commands return the updated
+        // table themselves, which is also what keeps this from overwriting a table
         // the user has been editing.
         .task(id: candidate.key + fileNames(candidate)) {
             if candidate.identityChoice == nil {

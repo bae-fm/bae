@@ -473,7 +473,6 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
 
     manager
         .change_cover(
-            &album.id,
             &release.id,
             CoverSelection::ReleaseImage {
                 file_id: file.id.clone(),
@@ -554,7 +553,6 @@ async fn change_cover_twice_replaces_the_cover_blob() {
     let change_to = async |file: &DbFile| {
         manager
             .change_cover(
-                &album.id,
                 &release.id,
                 CoverSelection::ReleaseImage {
                     file_id: file.id.clone(),
@@ -852,76 +850,6 @@ async fn find_release_detail_returns_none_for_unknown_id() {
     assert!(detail.is_none());
 }
 
-#[tokio::test]
-async fn find_release_detail_with_returns_none_for_deleted_release() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-
-    manager.delete_release(&release.id).await.unwrap();
-
-    let detail = crate::library::manager::find_release_detail_with(
-        &manager.database,
-        true,
-        true,
-        &release.id,
-    )
-    .await
-    .expect("deleted release lookup must not error");
-
-    assert!(detail.is_none());
-}
-
-#[tokio::test]
-async fn upload_observer_processes_transition_after_deleted_release() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let deleted_release = create_test_release(&album.id);
-    let remaining_release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager
-        .database
-        .insert_release(&deleted_release)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&remaining_release)
-        .await
-        .unwrap();
-
-    manager.delete_release(&deleted_release.id).await.unwrap();
-    let mut events = manager.subscribe_events();
-
-    manager
-        .observe_root_made_local_for_test("releases", &deleted_release.id)
-        .await;
-    manager
-        .observe_root_made_local_for_test("releases", &remaining_release.id)
-        .await;
-
-    let mut saw_remaining_update = false;
-    for _ in 0..4 {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
-            .await
-            .expect("observer event")
-            .expect("event channel stays open");
-        if matches!(
-            &event,
-            LibraryEvent::ReleaseUpdated { release, .. } if release.summary.id == remaining_release.id
-        ) {
-            saw_remaining_update = true;
-            break;
-        }
-    }
-
-    assert!(
-        saw_remaining_update,
-        "observer must emit the later release transition"
-    );
-}
 
 /// A non-release root (covers, artist images) completing its make-remote must
 /// still push a fresh outbox snapshot: such a root often commits last in a
@@ -930,20 +858,18 @@ async fn upload_observer_processes_transition_after_deleted_release() {
 #[tokio::test]
 async fn non_release_root_completion_emits_outbox_changed() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let mut events = manager.subscribe_events();
+    let mut values = manager.subscribe_outbox_values();
+    values.borrow_and_update();
 
     manager
         .observe_root_made_remote_for_test("covers", COVER_1)
         .await;
 
-    let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
+    tokio::time::timeout(std::time::Duration::from_secs(2), values.changed())
         .await
         .expect("covers-root completion must emit an outbox snapshot")
-        .expect("event channel stays open");
-    assert!(
-        matches!(event, LibraryEvent::OutboxChanged { .. }),
-        "expected OutboxChanged, got {event:?}",
-    );
+        .expect("value stream stays open");
+    assert!(values.borrow_and_update().is_some());
 }
 
 // ── Storage page tests ───────────────────────────────────────────

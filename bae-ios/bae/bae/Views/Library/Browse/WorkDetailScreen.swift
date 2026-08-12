@@ -17,17 +17,20 @@ struct WorkDetailScreen: View {
 
     var body: some View {
         Group {
-            if let error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .padding(32)
-            }
-            else if let detail {
+            if let detail {
                 WorkDetailContent(
                     detail: detail,
                     openWork: openWork,
                     openAlbum: openAlbum
                 )
+                .overlay(alignment: .top) {
+                    if let error {
+                        Text(error).foregroundStyle(.red).padding(12)
+                    }
+                }
+            }
+            else if let error {
+                Text(error).foregroundStyle(.red).padding(32)
             }
             else {
                 ProgressView()
@@ -53,23 +56,19 @@ struct WorkDetailScreen: View {
 
     private func load() async {
         error = nil
-        do {
-            let getWorkDetail = library.getWorkDetail
-            let loaded =
-                try await Task.detached {
-                    try await getWorkDetail(workId)
+        for await result in library.workDetails(workId) {
+            guard !Task.isCancelled else { return }
+            switch result {
+            case .success(let loaded):
+                guard let loaded else {
+                    error = String(localized: "Work detail not found")
+                    continue
                 }
-                .value
-            try Task.checkCancellation()
-            guard let loaded else {
-                error = String(localized: "Work detail not found")
-                return
+                detail = loaded
+                error = nil
+            case .failure(let bridgeError):
+                error = bridgeError.displayLine
             }
-            detail = loaded
-        }
-        catch is CancellationError {}
-        catch {
-            self.error = error.displayLine
         }
     }
 }

@@ -64,7 +64,7 @@ struct QueuePanel: View {
     /// Previews render the panel — the queue's root, chrome included — with the
     /// same environment wiring production uses: now-playing and the lanes come
     /// off the `PlaybackStore`, and commands go to the echoing preview `Queue`,
-    /// whose snapshot re-application stands in for core's `QueueUpdated` echo —
+    /// whose snapshot re-application stands in for core's queue value delivery —
     /// without it, a committed drag's display order never reconciles and the
     /// next drag misbehaves.
     @MainActor

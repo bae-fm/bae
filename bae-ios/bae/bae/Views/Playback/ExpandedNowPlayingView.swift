@@ -88,7 +88,7 @@ struct ExpandedNowPlayingView: View {
                     playback.seekByRatio(ratio)
                 },
                 onToggleRemainingTime: {
-                    // Write-through: the config invalidation re-renders the bar,
+                    // Write-through: the config subscription re-renders the bar,
                     // so nothing is flipped locally.
                     try? playback.setShowRemainingTime(
                         !configStore.config.showRemainingTime

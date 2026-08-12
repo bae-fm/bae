@@ -70,6 +70,11 @@ pub struct AppServices {
     inner: Arc<AppServicesInner>,
 }
 
+pub struct StorageProjectionValue {
+    pub page: crate::album_detail::StoragePage,
+    pub total_size: u64,
+}
+
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppServices")
@@ -130,14 +135,329 @@ impl AppServices {
         self.inner.manager.subscribe_config_changes()
     }
 
-    pub(crate) fn subscribe_library_events(
+    pub fn subscribe_album_page(
         &self,
-    ) -> tokio::sync::broadcast::Receiver<crate::library::LibraryEvent> {
-        self.inner.manager.subscribe_events()
+        sort: &[crate::db::AlbumSortCriterion],
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::AlbumPageProjection> {
+        self.inner.manager.subscribe_album_page(sort, offset, limit)
     }
 
-    pub(crate) fn subscribe_album_count(&self) -> coven::LiveQuery<u64> {
-        self.inner.manager.subscribe_album_count()
+    pub fn resolve_album_page(
+        &self,
+        projection: crate::db::AlbumPageProjection,
+    ) -> (Vec<crate::album_detail::AlbumSummary>, u64) {
+        self.inner.manager.resolve_album_page(projection)
+    }
+
+    pub fn subscribe_album_detail_values(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+        album_id: String,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>,
+    > {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let services = self.clone();
+        let mut query = services.inner.manager.subscribe_album_detail(&album_id);
+        let mut config = services.subscribe_config_changes();
+        let mut sync = services.subscribe_sync_status_values();
+        let mut transfers = services.subscribe_transfer_values();
+        runtime_handle.spawn(async move {
+            let mut last = None;
+            loop {
+                tokio::select! {
+                    result = query.next() => match result {
+                        Ok(projection) => {
+                            last = Some(projection.clone());
+                            let value = services.inner.manager.resolve_album_detail_projection(projection).await;
+                            if tx.send(value).is_err() { return; }
+                        }
+                        Err(error) => {
+                            let error = match error {
+                                coven::CovenError::Database(error) => error,
+                                other => coven::DbError::Message(other.to_string()),
+                            };
+                            if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
+                        }
+                    },
+                    changed = async { tokio::select! {
+                        value = config.changed() => value,
+                        value = sync.changed() => value,
+                        value = transfers.changed() => value,
+                    }} => {
+                        if changed.is_err() { return; }
+                        config.borrow_and_update();
+                        sync.borrow_and_update();
+                        transfers.borrow_and_update();
+                        if let Some(projection) = last.clone() {
+                            let value = services.inner.manager.resolve_album_detail_projection(projection).await;
+                            if tx.send(value).is_err() { return; }
+                        }
+                    }
+                }
+            }
+        });
+        rx
+    }
+
+    pub fn subscribe_release_detail_values(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+        release_id: String,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>,
+    > {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let services = self.clone();
+        let mut query = services.inner.manager.subscribe_release_detail(&release_id);
+        let mut config = services.subscribe_config_changes();
+        let mut sync = services.subscribe_sync_status_values();
+        let mut transfers = services.subscribe_transfer_values();
+        runtime_handle.spawn(async move {
+            let mut last = None;
+            loop {
+                tokio::select! {
+                    result = query.next() => match result {
+                        Ok(projection) => {
+                            last = Some(projection.clone());
+                            let value = services.inner.manager.resolve_release_detail_projection(&release_id, projection).await;
+                            if tx.send(value).is_err() { return; }
+                        }
+                        Err(error) => {
+                            let error = match error {
+                                coven::CovenError::Database(error) => error,
+                                other => coven::DbError::Message(other.to_string()),
+                            };
+                            if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
+                        }
+                    },
+                    changed = async { tokio::select! {
+                        value = config.changed() => value,
+                        value = sync.changed() => value,
+                        value = transfers.changed() => value,
+                    }} => {
+                        if changed.is_err() { return; }
+                        config.borrow_and_update();
+                        sync.borrow_and_update();
+                        transfers.borrow_and_update();
+                        if let Some(projection) = last.clone() {
+                            let value = services.inner.manager.resolve_release_detail_projection(&release_id, projection).await;
+                            if tx.send(value).is_err() { return; }
+                        }
+                    }
+                }
+            }
+        });
+        rx
+    }
+
+    pub fn subscribe_library_search(
+        &self,
+        query: &crate::library::LibrarySearchQuery,
+    ) -> coven::LiveQuery<crate::db::LibrarySearchProjection> {
+        self.inner.manager.subscribe_library_search(query)
+    }
+
+    pub fn resolve_library_search_projection(
+        &self,
+        projection: crate::db::LibrarySearchProjection,
+    ) -> crate::album_detail::SearchResults {
+        self.inner
+            .manager
+            .resolve_library_search_projection(projection)
+    }
+
+    pub fn subscribe_release_library_status(
+        &self,
+        check: crate::db::LibraryCheck,
+    ) -> coven::LiveQuery<crate::db::LibraryStatus> {
+        self.inner.manager.subscribe_release_library_status(check)
+    }
+
+    pub fn subscribe_storage_page(
+        &self,
+        sort: &crate::db::StorageSortCriterion,
+        filter: crate::db::StorageFilter,
+        uploading_release_ids: Vec<String>,
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::StoragePageProjection> {
+        self.inner.manager.subscribe_storage_page(
+            sort,
+            filter,
+            uploading_release_ids,
+            offset,
+            limit,
+        )
+    }
+
+    pub async fn resolve_storage_page_projection(
+        &self,
+        projection: crate::db::StoragePageProjection,
+    ) -> Result<(crate::album_detail::StoragePage, u64), crate::library::LibraryError> {
+        self.inner
+            .manager
+            .resolve_storage_page_projection(projection)
+            .await
+    }
+
+    pub fn subscribe_storage_values(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+        sort: crate::db::StorageSortCriterion,
+        filter: crate::db::StorageFilter,
+        offset: u64,
+        limit: u64,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<StorageProjectionValue, crate::library::LibraryError>,
+    > {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let services = self.clone();
+        let mut outbox = services.subscribe_outbox_values();
+        let mut sync = services.subscribe_sync_status_values();
+        let mut config = services.subscribe_config_changes();
+        let mut downloads = services.subscribe_download_values();
+        let mut transfers = services.subscribe_transfer_values();
+        runtime_handle.spawn(async move {
+            let uploading = if filter == crate::db::StorageFilter::Uploading {
+                let current = { outbox.borrow_and_update().clone() };
+                match current {
+                    Some(Ok(snapshot)) => snapshot.uploading_release_ids(),
+                    Some(Err(error)) => {
+                        let _ = tx.send(Err(crate::library::LibraryError::Internal(error)));
+                        return;
+                    }
+                    None => match services.outbox_snapshot().await {
+                        Ok(snapshot) => snapshot.uploading_release_ids(),
+                        Err(error) => { let _ = tx.send(Err(error)); return; }
+                    },
+                }
+            } else { Vec::new() };
+            let mut query = services.subscribe_storage_page(&sort, filter, uploading, offset, limit);
+            let mut last = None;
+            loop {
+                tokio::select! {
+                    result = query.next() => match result {
+                        Ok(projection) => {
+                            last = Some(projection.clone());
+                            let value = services.resolve_storage_page_projection(projection).await
+                                .map(|(page, total_size)| StorageProjectionValue { page, total_size });
+                            if tx.send(value).is_err() { return; }
+                        }
+                        Err(error) => {
+                            let error = match error { coven::CovenError::Database(error) => error, other => coven::DbError::Message(other.to_string()) };
+                            if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
+                        }
+                    },
+                    changed = outbox.changed(), if filter == crate::db::StorageFilter::Uploading => {
+                        if changed.is_err() { return; }
+                        match outbox.borrow_and_update().clone() {
+                            Some(Ok(snapshot)) => query = services.subscribe_storage_page(&sort, filter, snapshot.uploading_release_ids(), offset, limit),
+                            Some(Err(error)) => match tx.send(Err(crate::library::LibraryError::Internal(error))) {
+                                Ok(()) => {}
+                                Err(_) => return,
+                            },
+                            None => {}
+                        }
+                    }
+                    _ = async { tokio::select! { value = sync.changed() => value, value = config.changed() => value, value = downloads.changed() => value, value = transfers.changed() => value } } => {
+                        sync.borrow_and_update(); config.borrow_and_update(); downloads.borrow_and_update(); transfers.borrow_and_update();
+                        if let Some(projection) = last.clone() {
+                            let value = services.resolve_storage_page_projection(projection).await
+                                .map(|(page, total_size)| StorageProjectionValue { page, total_size });
+                            if tx.send(value).is_err() { return; }
+                        }
+                    }
+                }
+            }
+        });
+        rx
+    }
+
+    pub fn subscribe_artist_page(
+        &self,
+        sort: &[crate::db::ArtistSortCriterion],
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::ArtistPageProjection> {
+        self.inner
+            .manager
+            .subscribe_artist_page(sort, offset, limit)
+    }
+
+    pub fn resolve_artist_page(
+        &self,
+        projection: crate::db::ArtistPageProjection,
+    ) -> (Vec<crate::album_detail::ArtistSummary>, u64) {
+        self.inner.manager.resolve_artist_page(projection)
+    }
+
+    pub fn subscribe_artist_detail(
+        &self,
+        artist_id: &str,
+    ) -> coven::LiveQuery<crate::db::ArtistDetailProjection> {
+        self.inner.manager.subscribe_artist_detail(artist_id)
+    }
+
+    pub fn resolve_artist_detail_projection(
+        &self,
+        projection: crate::db::ArtistDetailProjection,
+    ) -> Option<crate::album_detail::ArtistDetail> {
+        self.inner
+            .manager
+            .resolve_artist_detail_projection(projection)
+    }
+
+    pub fn subscribe_composer_page(
+        &self,
+        sort: &[crate::db::ComposerSortCriterion],
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::ComposerPageProjection> {
+        self.inner
+            .manager
+            .subscribe_composer_page(sort, offset, limit)
+    }
+
+    pub fn resolve_composer_page(
+        &self,
+        projection: crate::db::ComposerPageProjection,
+    ) -> (Vec<crate::album_detail::ComposerSummary>, u64) {
+        self.inner.manager.resolve_composer_page(projection)
+    }
+
+    pub fn subscribe_composer_detail(
+        &self,
+        artist_id: &str,
+    ) -> coven::LiveQuery<crate::db::ComposerDetailProjection> {
+        self.inner.manager.subscribe_composer_detail(artist_id)
+    }
+
+    pub fn resolve_composer_detail_projection(
+        &self,
+        projection: crate::db::ComposerDetailProjection,
+    ) -> Option<crate::album_detail::ComposerDetail> {
+        self.inner
+            .manager
+            .resolve_composer_detail_projection(projection)
+    }
+
+    pub fn subscribe_work_detail(
+        &self,
+        work_id: &str,
+    ) -> coven::LiveQuery<crate::db::WorkDetailProjection> {
+        self.inner.manager.subscribe_work_detail(work_id)
+    }
+
+    pub fn resolve_work_detail_projection(
+        &self,
+        projection: crate::db::WorkDetailProjection,
+    ) -> Option<crate::album_detail::WorkDetail> {
+        self.inner
+            .manager
+            .resolve_work_detail_projection(projection)
     }
 
     pub fn subscribe_playback_progress(
@@ -146,16 +466,95 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
-    pub(crate) async fn resolve_queue_projection(
+    pub fn subscribe_queue_values(
         &self,
-        projection: crate::playback::PlaybackQueueProjection,
-    ) -> Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError> {
-        self.inner
-            .manager
-            .resolve_queue_projection(projection)
-            .await
+        runtime_handle: &tokio::runtime::Handle,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError>,
+    > {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let services = self.clone();
+        runtime_handle.spawn(async move {
+            let mut queue_values = services.inner.playback.subscribe_queue_values();
+            let mut projection = queue_values.borrow_and_update().clone();
+            let mut catalog = services.inner.manager.subscribe_queue_catalog(&projection);
+            loop {
+                tokio::select! {
+                    result = catalog.next() => {
+                        let value = result
+                            .map(|catalog| services.inner.manager.resolve_queue_catalog(projection.clone(), catalog))
+                            .map_err(|error| match error {
+                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(error),
+                                other => crate::library::LibraryError::Database(coven::DbError::Message(other.to_string())),
+                            });
+                        if tx.send(value).is_err() {
+                            return;
+                        }
+                    }
+                    changed = queue_values.changed() => {
+                        if changed.is_err() { return; }
+                        projection = queue_values.borrow_and_update().clone();
+                        catalog = services.inner.manager.subscribe_queue_catalog(&projection);
+                    }
+                }
+            }
+        });
+        rx
     }
 
+    pub fn subscribe_queue_upcoming_values(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+        offset: u32,
+        limit: u32,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<crate::queue::ResolvedQueueUpcomingPage, crate::library::LibraryError>,
+    > {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let services = self.clone();
+        runtime_handle.spawn(async move {
+            let mut queue_values = services.inner.playback.subscribe_queue_values();
+            let mut projection = queue_values.borrow_and_update().clone();
+            let page_entries = |projection: &crate::playback::PlaybackQueueProjection| {
+                let tail = projection
+                    .context
+                    .as_ref()
+                    .map(|context| context.upcoming.as_slice())
+                    .unwrap_or(&[]);
+                crate::queue::clamp_upcoming_page(tail, offset, limit).to_vec()
+            };
+            let mut entries = page_entries(&projection);
+            let mut catalog = services
+                .inner
+                .manager
+                .subscribe_queue_entries(entries.clone());
+            loop {
+                tokio::select! {
+                    result = catalog.next() => {
+                        let value = result
+                            .map(|catalog| crate::queue::ResolvedQueueUpcomingPage {
+                                revision: projection.revision,
+                                items: services.inner.manager.resolve_queue_entries(entries.len(), catalog),
+                            })
+                            .map_err(|error| match error {
+                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(error),
+                                other => crate::library::LibraryError::Database(coven::DbError::Message(other.to_string())),
+                            });
+                        if tx.send(value).is_err() { return; }
+                    }
+                    changed = queue_values.changed() => {
+                        if changed.is_err() { return; }
+                        projection = queue_values.borrow_and_update().clone();
+                        entries = page_entries(&projection);
+                        catalog = services.inner.manager.subscribe_queue_entries(entries.clone());
+                    }
+                }
+            }
+        });
+        rx
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn record_telemetry(&self, event: crate::diagnostics::TelemetryEvent) {
         self.inner.manager.record_telemetry(event);
     }
@@ -165,11 +564,6 @@ impl AppServices {
         &self,
     ) -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent> {
         self.inner.import.subscribe_events()
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn record_import_candidate_event(&self, event: &crate::import::ImportEvent) {
-        self.inner.import.record_candidate_event(event);
     }
 
     delegate_sync!(manager, get_config => get_config() -> crate::config::Config);
@@ -231,7 +625,7 @@ impl AppServices {
     delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<crate::library::ResolvedTrackAudio, crate::library::LibraryError>);
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<crate::playback::PlaybackTrackInfo, crate::library::LibraryError>);
-    delegate_async!(manager, change_cover => change_cover(album_id: &str, release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, make_release_remote => make_release_remote(release_id: &str, pin: bool) -> Result<(), crate::library::LibraryError>);
@@ -327,7 +721,6 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(import, import_watched_folders => watched_folders() -> Vec<crate::import::WatchedFolder>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_subscribe_events => subscribe_events() -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -435,75 +828,87 @@ impl AppServices {
         }
     }
 
-    pub async fn get_queue_snapshot(
-        &self,
-    ) -> Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError> {
-        let projection = self
-            .inner
-            .playback
-            .queue_projection()
-            .await
-            .map_err(crate::library::LibraryError::Playback)?;
-        self.inner
-            .manager
-            .resolve_queue_projection(projection)
-            .await
-    }
-
-    /// Fetch one page of the context's not-yet-played tail, past the window
-    /// `get_queue_snapshot` already resolved. Offset 0 is the first
-    /// not-yet-played entry after the current track — the same coordinate
-    /// space as the snapshot's `context.upcoming` window. Clamped to the
-    /// tail's bounds; empty when nothing is playing from a context or the
-    /// offset is past its end. The page is stamped with the live
-    /// `PlaybackQueue` revision so the caller can drop it if a `QueueUpdated`
-    /// for a newer revision has since arrived.
-    pub async fn get_queue_upcoming_page(
-        &self,
-        offset: u32,
-        limit: u32,
-    ) -> Result<crate::queue::ResolvedQueueUpcomingPage, crate::library::LibraryError> {
-        let projection = self
-            .inner
-            .playback
-            .queue_projection()
-            .await
-            .map_err(crate::library::LibraryError::Playback)?;
-        let tail: &[crate::playback::QueueEntry] = projection
-            .context
-            .as_ref()
-            .map(|c| c.upcoming.as_slice())
-            .unwrap_or(&[]);
-        let page = crate::queue::clamp_upcoming_page(tail, offset, limit);
-        let items = self.inner.manager.get_queue_items(page).await?;
-        Ok(crate::queue::ResolvedQueueUpcomingPage {
-            revision: projection.revision,
-            items,
-        })
-    }
-
     pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {
         self.inner.manager.get_sync_status()
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn get_import_candidates(&self) -> crate::import::ImportCandidatesSnapshot {
-        self.inner.import.get_import_candidates()
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn get_candidate(&self, key: &str) -> Option<crate::import::ImportCandidateSnapshot> {
-        self.inner.import.get_candidate(key)
-    }
-
-    /// The import sidebar's rows and tab counts. Reads the stored verdicts and
-    /// one live library check, so it is a query the surfaces re-run on an
-    /// import invalidation rather than something pushed at them.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn import_triage_queue(
+    pub fn subscribe_sync_status_values(
         &self,
-    ) -> Result<crate::import::TriageQueue, crate::library::LibraryError> {
-        crate::import::triage::load(&self.inner.import, &self.inner.manager).await
+    ) -> tokio::sync::watch::Receiver<crate::library::SyncStatusSnapshot> {
+        self.inner.manager.subscribe_sync_status_values()
+    }
+
+    pub fn subscribe_outbox_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>> {
+        self.inner.manager.subscribe_outbox_values()
+    }
+
+    pub fn subscribe_download_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::DownloadSnapshot> {
+        self.inner.manager.subscribe_download_values()
+    }
+
+    pub fn subscribe_transfer_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<
+        std::collections::HashMap<String, crate::album_detail::ReleaseStorageAction>,
+    > {
+        self.inner.manager.subscribe_transfer_values()
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn subscribe_output_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::OutputSnapshot> {
+        self.inner.manager.subscribe_output_values()
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn subscribe_import_candidates(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::import::ImportCandidatesSnapshot> {
+        self.inner.import.subscribe_import_candidates()
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn subscribe_import_triage_values(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<crate::import::TriageQueue, crate::library::LibraryError>,
+    > {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let services = self.clone();
+        let mut candidates = services.subscribe_import_candidates();
+        runtime_handle.spawn(async move {
+            let mut snapshot = candidates.borrow().clone();
+            let mut query = services
+                .inner
+                .manager
+                .subscribe_import_triage(snapshot.clone());
+            loop {
+                tokio::select! {
+                    result = query.next() => {
+                        let value = match result {
+                            Ok(projection) => services.inner.manager.resolve_import_triage(snapshot.clone(), projection),
+                            Err(error) => Err(crate::library::LibraryError::Database(match error {
+                                coven::CovenError::Database(error) => error,
+                                other => coven::DbError::Message(other.to_string()),
+                            })),
+                        };
+                        if tx.send(value).is_err() { return; }
+                    }
+                    changed = candidates.changed() => {
+                        if changed.is_err() { return; }
+                        snapshot = candidates.borrow_and_update().clone();
+                        query = services.inner.manager.subscribe_import_triage(snapshot.clone());
+                    }
+                }
+            }
+        });
+        rx
     }
 
     /// Set whether playback pauses between vinyl/cassette sides. Turning it on
@@ -523,169 +928,5 @@ impl AppServices {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::{Config, ConfigHandle};
-    use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
-    use crate::keys::StoreKeys;
-    use coven::StoreDir;
-    use tempfile::TempDir;
-
-    /// Build a real `AppServices` — library manager, actor-backed playback,
-    /// and (natively) the import/identify/extraction trio — wired up exactly
-    /// as `bootstrap` does for desktop, seeded with one release of
-    /// `track_count` tracks. Starts playing the release from its first track,
-    /// so by the time this returns the queue's context is a real,
-    /// actor-resolved tail — not a hand-built `PlaybackQueueProjection` — for
-    /// `get_queue_upcoming_page` to page through. The seeded tracks have no
-    /// backing audio file, so preparing the first track for playback fails
-    /// fast (a DB lookup, no I/O); that failure only stops playback, it
-    /// doesn't touch the queue the `PlayRelease` command already set.
-    async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
-        let temp_dir = TempDir::new().unwrap();
-        let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(
-            db_path.to_str().unwrap(),
-            Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .unwrap();
-
-        let artist = DbArtist {
-            id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
-            name: "Test Artist".to_string(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: chrono::Utc::now(),
-        };
-        database.insert_artist(&artist).await.unwrap();
-        let album = DbAlbum::new_test("Album Title", &artist.id);
-        let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
-        database.insert_album(&album).await.unwrap();
-        database.insert_release(&release).await.unwrap();
-        let mut track_ids = Vec::with_capacity(track_count);
-        for i in 0..track_count {
-            let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
-            let track = DbTrack::new_test(
-                &release.id,
-                &track_id,
-                &format!("Track {i}"),
-                Some(i as i32),
-            );
-            database.insert_track(&track).await.unwrap();
-            track_ids.push(track_id);
-        }
-
-        let library_id = format!("app-services-test-{}", uuid::Uuid::new_v4());
-        let config = Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            StoreDir::new(temp_dir.path().to_path_buf()),
-            "Test Library".to_string(),
-        );
-        let config_handle = Arc::new(ConfigHandle::new(config));
-        crate::config::install_test_keyring();
-        let key_service = StoreKeys::bind(library_id);
-        let manager = LibraryManager::new(
-            database,
-            config_handle,
-            key_service,
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(),
-        );
-
-        // A device-less output, not the real cpal sink: this test drives the
-        // playback actor for its queue behavior and never plays audio (track
-        // prep fails before any stream is built). Building a cpal output would
-        // reach for the system audio device, and on Windows a second such build
-        // on a fresh actor thread faults — cpal's process-global WASAPI device
-        // enumerator is left dangling once the first actor thread that made it
-        // exits (the enumerator dies with that thread's COM apartment), and the
-        // test builds one player per case.
-        let playback = manager.start_playback_service_with_output(
-            tokio::runtime::Handle::current(),
-            50,
-            false,
-            Box::new(crate::playback::audio_output::FailingAudioOutput),
-        );
-
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let services = {
-            let import = manager
-                .start_import_service(tokio::runtime::Handle::current())
-                .await
-                .unwrap();
-            AppServices::new(manager, playback, import)
-        };
-        #[cfg(any(target_os = "ios", target_os = "android"))]
-        let services = AppServices::new(manager, playback);
-
-        // Dispatched here and only awaited by this function's callers'
-        // subsequent round-tripping queries on the same command channel —
-        // the actor processes commands FIFO, so `PlayRelease` (which sets
-        // the queue's context before it attempts to play the first track)
-        // is guaranteed to have run before any later `queue_projection`
-        // request this test makes.
-        services.playback_play_release(release.id.clone(), Some(0), false);
-
-        (services, track_ids, temp_dir)
-    }
-
-    /// `get_queue_upcoming_page` slices a real, actor-resolved context tail —
-    /// not a hand-built projection — in order, and stamps the page with the
-    /// same revision the live queue's own snapshot reports.
-    #[tokio::test]
-    async fn get_queue_upcoming_page_slices_and_orders_a_live_context_tail() {
-        let (services, track_ids, _temp_dir) = playing_app_services(12).await;
-
-        let snapshot = services.get_queue_snapshot().await.unwrap();
-        let page = services.get_queue_upcoming_page(2, 5).await.unwrap();
-
-        assert_eq!(
-            page.revision, snapshot.revision,
-            "the page is stamped with the same revision as the live queue's own snapshot"
-        );
-        let page_track_ids: Vec<&str> = page.items.iter().map(|i| i.track_id.as_str()).collect();
-        // track_ids[0] is the currently playing track, so the context tail
-        // is track_ids[1..]; offset 2 into that tail lands on track_ids[3].
-        let expected: Vec<&str> = track_ids[3..8].iter().map(String::as_str).collect();
-        assert_eq!(
-            page_track_ids, expected,
-            "the slice preserves the tail's order"
-        );
-    }
-
-    /// A limit reaching past the live tail's end clamps to what remains, and
-    /// an offset past the end returns no items rather than erroring — both
-    /// through the real `AppServices` -> `PlaybackHandle` -> `PlaybackQueue`
-    /// chain, not `clamp_upcoming_page` called directly.
-    #[tokio::test]
-    async fn get_queue_upcoming_page_clamps_to_the_live_tails_end() {
-        let (services, track_ids, _temp_dir) = playing_app_services(12).await;
-
-        // The tail has 11 entries (track_ids[1..12]); offset 9 has only 2
-        // left, so a limit of 100 clamps down to those 2.
-        let page = services.get_queue_upcoming_page(9, 100).await.unwrap();
-        let page_track_ids: Vec<&str> = page.items.iter().map(|i| i.track_id.as_str()).collect();
-        assert_eq!(
-            page_track_ids,
-            vec![track_ids[10].as_str(), track_ids[11].as_str()],
-            "the limit clamps to what remains instead of erroring"
-        );
-
-        let empty_page = services.get_queue_upcoming_page(50, 10).await.unwrap();
-        assert!(
-            empty_page.items.is_empty(),
-            "an offset past the tail's end yields no items"
-        );
-        assert_eq!(
-            empty_page.revision, page.revision,
-            "revision is stable across reads that don't mutate the queue"
-        );
-    }
-}
+#[path = "app_services_tests.rs"]
+mod tests;

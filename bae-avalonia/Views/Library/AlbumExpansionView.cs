@@ -27,22 +27,51 @@ internal static class AlbumExpansionView
     // mid-fetch or the album can't be opened (the caller leaves the row collapsed).
     public static async Task<Control?> BuildAsync(AppService app, ReleaseActionDialogs dialogs, Album card, Action onClose)
     {
-        var (current, response) = await app.Library.AlbumDetail(card.Id);
-        if (!current)
+        var first = new TaskCompletionSource<Control?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var host = new ContentControl();
+        var subscription = app.Library.SubscribeAlbumDetail(
+            card.Id,
+            detail => Dispatcher.UIThread.Post(() =>
+            {
+                if (detail is null)
+                {
+                    app.ShowError(Loc.Chrome("error.title"), Loc.Chrome("album.open_failed"));
+                    first.TrySetResult(null);
+                    return;
+                }
+                host.Content = BuildContent(app, dialogs, card, detail, onClose);
+                first.TrySetResult(host);
+            }),
+            error => Dispatcher.UIThread.Post(() =>
+            {
+                app.ShowError(Loc.Chrome("error.title"), error.Message);
+                first.TrySetResult(null);
+            }));
+        if (subscription is null)
         {
             return null;
         }
-        if (response.Error is not null || response.Detail is null)
+        var control = await first.Task;
+        if (control is null)
         {
-            app.ShowError(Loc.Chrome("error.title"), response.Error ?? Loc.Chrome("album.open_failed"));
+            subscription.Dispose();
             return null;
         }
+        host.DetachedFromVisualTree += (_, _) => subscription.Dispose();
+        return host;
+    }
 
-        var detail = response.Detail;
+    private static Control BuildContent(
+        AppService app,
+        ReleaseActionDialogs dialogs,
+        Album card,
+        AlbumDetail detail,
+        Action onClose)
+    {
         if (detail.Releases.Count == 0)
         {
             app.ShowError(Loc.Chrome("error.title"), Loc.Chrome("album.open_failed"));
-            return null;
+            return new Panel();
         }
 
         // Attach media paths to every release so its own cover loads off the UI
@@ -85,7 +114,9 @@ internal static class AlbumExpansionView
             }
         };
         var changeCover = new MenuItem { Header = Loc.Chrome("menu.change_cover") };
-        changeCover.Click += async (_, _) => await dialogs.ShowChangeCover(detail.Id, selectedRelease.ReleaseId);
+        changeCover.Click += async (_, _) => await dialogs.ShowChangeCover(
+            selectedRelease.ReleaseId,
+            selectedRelease.ImageFiles);
 
         var moreItems = new List<MenuItem> { playNext, addQueue };
         // Set-primary only means something when the album has more than one pressing.

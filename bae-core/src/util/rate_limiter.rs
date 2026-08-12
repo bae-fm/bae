@@ -12,11 +12,10 @@ use tokio::time::Instant;
 ///
 /// One fact, two decisions. Provider admission: interactive calls are admitted
 /// ahead of background ones, and the interval still bounds the two together.
-/// And UI invalidation: a run a person started re-renders their candidate row
-/// as it progresses, while a background sweep's does not — the sidebar reads
-/// the sweep's own aggregate progress line instead, so per-candidate
-/// invalidations from it would be pure re-render cost for a queue nobody is
-/// looking at.
+/// And UI delivery: a run a person started publishes progress for its candidate
+/// row, while a background sweep's does not — the sidebar reads the sweep's own
+/// aggregate progress line instead, so per-candidate progress from it would
+/// only re-render a queue nobody is looking at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CallPriority {
     /// A person is waiting on this call — a typed search, an opened candidate.

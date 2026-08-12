@@ -81,9 +81,6 @@ internal fun LibraryBrowser(
     onSettings: () -> Unit,
     onDownloads: () -> Unit,
 ) {
-    val generation by session.libraryStore.generation.collectAsState()
-    val composerGeneration by session.libraryStore.composerGeneration.collectAsState()
-    val artistGeneration by session.libraryStore.artistGeneration.collectAsState()
     val syncing by session.configStore.syncing.collectAsState()
     val syncError by session.configStore.syncError.collectAsState()
     val appError by session.configStore.error.collectAsState()
@@ -116,9 +113,6 @@ internal fun LibraryBrowser(
             session = session,
             searchQuery = state.searchQuery,
             mode = state.mode,
-            generation = generation,
-            composerGeneration = composerGeneration,
-            artistGeneration = artistGeneration,
             sortCriterion = state.sortCriterion,
             composerSortCriterion = state.composerSortCriterion,
             artistSortCriterion = state.artistSortCriterion,
@@ -168,9 +162,6 @@ private fun LibraryBrowserContent(
     session: OpenLibrary,
     searchQuery: String,
     mode: LibraryBrowserMode,
-    generation: Long,
-    composerGeneration: Long,
-    artistGeneration: Long,
     sortCriterion: BridgeSortCriterion,
     composerSortCriterion: BridgeComposerSortCriterion,
     artistSortCriterion: BridgeArtistSortCriterion,
@@ -198,7 +189,6 @@ private fun LibraryBrowserContent(
                 LibraryBrowserMode.ALBUMS -> {
                     AlbumBrowserContent(
                         session = session,
-                        generation = generation,
                         sortCriterion = sortCriterion,
                         appError = appError,
                         syncError = syncError,
@@ -211,7 +201,6 @@ private fun LibraryBrowserContent(
                 LibraryBrowserMode.COMPOSERS -> {
                     ComposerBrowserContent(
                         session = session,
-                        generation = composerGeneration,
                         sortCriterion = composerSortCriterion,
                         appError = appError,
                         syncError = syncError,
@@ -223,7 +212,6 @@ private fun LibraryBrowserContent(
                 LibraryBrowserMode.ARTISTS -> {
                     ArtistBrowserContent(
                         session = session,
-                        generation = artistGeneration,
                         sortCriterion = artistSortCriterion,
                         appError = appError,
                         syncError = syncError,
@@ -239,7 +227,6 @@ private fun LibraryBrowserContent(
 @Composable
 private fun AlbumBrowserContent(
     session: OpenLibrary,
-    generation: Long,
     sortCriterion: BridgeSortCriterion,
     appError: String?,
     syncError: String?,
@@ -250,7 +237,6 @@ private fun AlbumBrowserContent(
     val page =
         rememberLibraryPage(
             session = session,
-            generation = generation,
             sortCriterion = sortCriterion,
             appContext = appContext,
             gridState = gridState,
@@ -274,7 +260,6 @@ private fun AlbumBrowserContent(
 @Composable
 private fun ComposerBrowserContent(
     session: OpenLibrary,
-    generation: Long,
     sortCriterion: BridgeComposerSortCriterion,
     appError: String?,
     syncError: String?,
@@ -284,7 +269,6 @@ private fun ComposerBrowserContent(
     val page =
         rememberComposerPage(
             session = session,
-            generation = generation,
             sortCriterion = sortCriterion,
             appContext = appContext,
         )
@@ -304,7 +288,6 @@ private fun ComposerBrowserContent(
 @Composable
 private fun ArtistBrowserContent(
     session: OpenLibrary,
-    generation: Long,
     sortCriterion: BridgeArtistSortCriterion,
     appError: String?,
     syncError: String?,
@@ -314,7 +297,6 @@ private fun ArtistBrowserContent(
     val page =
         rememberArtistPage(
             session = session,
-            generation = generation,
             sortCriterion = sortCriterion,
             appContext = appContext,
         )

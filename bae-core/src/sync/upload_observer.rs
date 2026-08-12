@@ -8,8 +8,8 @@
 //!   `throughput`, then tell the database-owning sync controller which UI
 //!   projection changed;
 //! - `on_root_made_remote` / `on_root_made_local` fire when coven completes a
-//!   transition, including one resumed after a restart — so the `ReleaseUpdated`
-//!   event survives a restart rather than dying with an in-memory flag.
+//!   transition, including one resumed after a restart, so the outbox stream
+//!   reflects the completed work.
 //!
 //! `should_skip_uploads` lets the host pause the upload pipeline without touching
 //! the queue.
@@ -31,9 +31,7 @@ pub(crate) enum UploadObserverEvent {
     ReleaseMadeRemote {
         release_id: String,
     },
-    ReleaseMadeLocal {
-        release_id: String,
-    },
+    ReleaseMadeLocal,
 }
 
 impl UploadObserverEvent {
@@ -42,7 +40,7 @@ impl UploadObserverEvent {
             Self::OutboxChanged => "OutboxChanged",
             Self::BlobUploaded { .. } => "BlobUploaded",
             Self::ReleaseMadeRemote { .. } => "ReleaseMadeRemote",
-            Self::ReleaseMadeLocal { .. } => "ReleaseMadeLocal",
+            Self::ReleaseMadeLocal => "ReleaseMadeLocal",
         }
     }
 }
@@ -73,9 +71,8 @@ impl UploadObserverEvents {
     }
 }
 
-/// Reports coven's blob transitions to the UI: the outbox/throughput state while
-/// a make-Remote uploads, and a `ReleaseUpdated` whenever coven completes a
-/// transition.
+/// Reports coven's blob transitions to the outbox value stream while a
+/// make-Remote upload runs and when a transition completes.
 ///
 /// `in_flight` maps each uploading `file_id` to the encrypted bytes that have
 /// reached the cloud for it, shared with the `LibraryManager` so its outbox
@@ -211,8 +208,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     }
 
     /// coven finished making a root Remote (every blob uploaded, gate flipped,
-    /// source files dropped). For a release, emit `ReleaseUpdated` so the UI's
-    /// storage state flips, and drop its completed-upload tally — its queue rows
+    /// source files dropped). For a release, drop its completed-upload tally — its queue rows
     /// are gone, so nothing renders for it. For *every* root, refresh the outbox
     /// snapshot: a covers / artist-images root often commits last in a burst, and
     /// skipping its emission would leave the queue pane frozen on the previous
@@ -230,15 +226,11 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     }
 
     /// coven finished making a root Local (blobs materialized to local files,
-    /// gate retracted, cloud blobs queued for tombstoning): emit
-    /// `ReleaseUpdated` for a release, and refresh the outbox snapshot for
-    /// every root — the retraction changed the queue either way.
+    /// gate retracted, cloud blobs queued for tombstoning): refresh the outbox
+    /// snapshot for every root because the retraction changed the queue.
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
         if root_table == "releases" {
-            self.report(UploadObserverEvent::ReleaseMadeLocal {
-                release_id: root_id.to_string(),
-            })
-            .await;
+            self.report(UploadObserverEvent::ReleaseMadeLocal).await;
         } else {
             debug!("on_root_made_local for non-release root {root_table:?}/{root_id}");
             self.report(UploadObserverEvent::OutboxChanged).await;

@@ -3,8 +3,8 @@ import SwiftUI
 
 /// Offline control for the shown release: Download / progress + Cancel /
 /// Downloaded + Remove Download. Core joins the pin state, the storage actions
-/// it offers, and the download queue into that state; the snapshot and the
-/// release invalidations keep it live.
+/// it offers, and the download queue into that state; release and download
+/// subscriptions keep it live.
 struct ReleaseDownloadSection: View {
     let releaseId: String
     let detail: ReleaseDetail
@@ -131,10 +131,7 @@ struct ReleaseDownloadSection: View {
             do {
                 try await downloads.unpinRelease(releaseId)
             }
-            catch is CancellationError {
-                // View dismissed mid-unpin; core's drop guard emits the
-                // terminal ReleaseTransferEnded, which refreshes the release.
-            }
+            catch is CancellationError {}
             catch {
                 unpinError = error.displayLine
             }

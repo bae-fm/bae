@@ -309,9 +309,28 @@ pub async fn load(
     database: &Database,
     release: &MetadataRef,
 ) -> Result<Option<ReleasePayloads>, ImportError> {
+    let found = database
+        .load_all_source_release_payloads()
+        .await
+        .map_err(|error| ImportError::Db(crate::library::LibraryError::Database(error)))?;
+    load_from_map(release, &found)
+}
+
+pub(crate) fn load_from_map(
+    release: &MetadataRef,
+    found: &std::collections::HashMap<(PayloadSource, String), String>,
+) -> Result<Option<ReleasePayloads>, ImportError> {
+    let read = |keys: &[(PayloadSource, String)]| {
+        keys.iter()
+            .filter_map(|key| {
+                found
+                    .get(key)
+                    .map(|json| SourcePayload::new(key.0, key.1.clone(), json.clone()))
+            })
+            .collect::<Vec<_>>()
+    };
     let anchor_source = PayloadSource::release_of(release.source);
-    let mut found = read(database, &[(anchor_source, release.id.clone())]).await?;
-    let Some(anchor) = found.pop().map(|payload| payload.json) else {
+    let Some(anchor) = found.get(&(anchor_source, release.id.clone())).cloned() else {
         return Ok(None);
     };
     // Everything else is keyed by an id read out of a document already in hand,
@@ -334,7 +353,7 @@ pub async fn load(
             {
                 keys.push((PayloadSource::Discogs, xref_id));
             }
-            let documents = read(database, &keys).await?;
+            let documents = read(&keys);
             // The master is named by the cross-referenced Discogs release.
             let discogs_json = documents
                 .iter()
@@ -343,11 +362,7 @@ pub async fn load(
             (documents, discogs_json)
         }
         MetadataSource::Discogs => {
-            let documents = read(
-                database,
-                &[(PayloadSource::MusicBrainzDiscogsXref, release.id.clone())],
-            )
-            .await?;
+            let documents = read(&[(PayloadSource::MusicBrainzDiscogsXref, release.id.clone())]);
             // Here the anchor is the Discogs release, so it names the master.
             (documents, Some(anchor.clone()))
         }
@@ -361,7 +376,7 @@ pub async fn load(
             })?
             .master_id;
         if let Some(master_id) = master_id {
-            documents.extend(read(database, &[(PayloadSource::DiscogsMaster, master_id)]).await?);
+            documents.extend(read(&[(PayloadSource::DiscogsMaster, master_id)]));
         }
     }
 
@@ -370,24 +385,6 @@ pub async fn load(
         anchor,
         supporting: documents,
     }))
-}
-
-async fn read(
-    database: &Database,
-    keys: &[(PayloadSource, String)],
-) -> Result<Vec<SourcePayload>, ImportError> {
-    let found = database
-        .load_source_release_payloads(keys)
-        .await
-        .map_err(|e| ImportError::Db(crate::library::LibraryError::Database(e)))?;
-    Ok(keys
-        .iter()
-        .filter_map(|key| {
-            found
-                .get(key)
-                .map(|json| SourcePayload::new(key.0, key.1.clone(), json.clone()))
-        })
-        .collect())
 }
 
 #[cfg(test)]

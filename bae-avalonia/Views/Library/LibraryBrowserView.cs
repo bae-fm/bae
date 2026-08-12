@@ -13,7 +13,7 @@ namespace Bae.Desktop;
 // dropdown switching albums / artists / composers — with the sort controls
 // opposite, over the mode's pane. The album pane is the incremental-loading grid
 // with inline expansion; the composer and artist panes are incremental lists. Core
-// list invalidations reload the active list in place. The empty state lives inside
+// list subscriptions reload the active list in place. The empty state lives inside
 // each pane, so an empty library shows the mode's placeholder here.
 internal sealed class LibraryBrowserView : UserControl
 {
@@ -108,11 +108,6 @@ internal sealed class LibraryBrowserView : UserControl
         column.Children.Add(header);
         column.Children.Add(pane);
         Content = column;
-
-        // Reload the active list in place when core signals its shape changed.
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.AlbumList), store.InvalidateAlbums);
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.ComposerList), store.InvalidateComposers);
-        app.ProjectionRegistry.Register(typeof(BridgeInvalidation.ArtistList), store.InvalidateArtists);
 
         // A sort change swaps a list instance; rebind the affected pane.
         store.ListSwapped += mode =>

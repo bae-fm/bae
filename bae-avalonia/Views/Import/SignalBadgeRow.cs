@@ -11,7 +11,7 @@ namespace Bae.Desktop;
 // The signals-toolbar badge row used by the release re-identify dialog: one
 // badge per signal (kind label, truncated value, lookup-state visual) and a
 // trailing re-run control. Clicking a badge toggles its signal in or out of
-// triangulation; the re-derived state arrives through candidate invalidation.
+// triangulation; the re-derived state arrives through the candidate stream.
 // Every color reads a theme brush.
 internal static class SignalBadgeRow
 {

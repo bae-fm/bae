@@ -4,6 +4,23 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn subscribe_import_triage(
+        &self,
+        snapshot: crate::import::ImportCandidatesSnapshot,
+    ) -> coven::LiveQuery<crate::db::ImportTriageDbProjection> {
+        self.database.subscribe_import_triage(snapshot)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn resolve_import_triage(
+        &self,
+        snapshot: crate::import::ImportCandidatesSnapshot,
+        projection: crate::db::ImportTriageDbProjection,
+    ) -> Result<crate::import::TriageQueue, LibraryError> {
+        crate::import::triage::project_live(snapshot, projection)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn start_import_service(
         &self,
         runtime_handle: tokio::runtime::Handle,
@@ -211,8 +228,7 @@ impl LibraryManager {
             .iter()
             .map(|plan| plan.db_delete.clone())
             .collect();
-        let replacement_outcomes = self
-            .database
+        self.database
             .finalize_import_atomic(
                 album,
                 release,
@@ -242,24 +258,13 @@ impl LibraryManager {
         if !replacement_plans.is_empty() {
             self.emit_outbox_changed().await;
         }
-        for (index, plan) in replacement_plans.iter().enumerate() {
-            let outcome = replacement_outcomes
-                .get(index)
-                .expect("finalize_import_atomic returns one outcome per replacement plan");
+        for plan in replacement_plans {
             self.evict_delete_blobs(plan.evict_blobs.clone()).await;
 
             if !plan.track_ids.is_empty() {
                 self.emit(LibraryEvent::TracksDeleted {
                     track_ids: plan.track_ids.clone(),
                 });
-            }
-
-            if outcome.album_deleted {
-                self.emit_album_removed(&outcome.album_id, vec![outcome.release_id.clone()]);
-            } else {
-                self.emit_album_updated(&outcome.album_id).await;
-                self.emit_release_removed(&outcome.album_id, &outcome.release_id)
-                    .await;
             }
         }
         Ok(())

@@ -54,8 +54,6 @@ impl LibraryManager {
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
         self.sync.save_s3_config(data).await?;
-        // A cloud home now exists, so every release gains its storage actions.
-        self.emit_all_albums_updated().await;
         Ok(())
     }
 
@@ -66,8 +64,6 @@ impl LibraryManager {
         storage: crate::config::HomeStorage,
     ) -> Result<(), LibraryError> {
         self.sync.sign_in_cloud_provider(provider, storage).await?;
-        // A cloud home now exists, so every release gains its storage actions.
-        self.emit_all_albums_updated().await;
         Ok(())
     }
 
@@ -76,22 +72,11 @@ impl LibraryManager {
         storage: crate::config::HomeStorage,
     ) -> Result<(), LibraryError> {
         self.sync.use_cloudkit(storage).await?;
-        // A cloud home now exists, so every release gains its storage actions.
-        self.emit_all_albums_updated().await;
         Ok(())
     }
 
     pub fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
-        self.sync.disconnect_cloud_provider()?;
-
-        // The cloud home is gone, so releases lose their storage actions; re-emit
-        // every album so cached UI details drop the now-invalid actions. Spawned
-        // because this fn is sync and the re-emit re-resolves each album (async).
-        let manager = self.clone();
-        self.runtime_handle.spawn(async move {
-            manager.emit_all_albums_updated().await;
-        });
-        Ok(())
+        self.sync.disconnect_cloud_provider()
     }
 
     /// How many releases are reachable only through cloud sync — remote and not
@@ -141,17 +126,13 @@ impl LibraryManager {
         }
     }
 
-    /// Write a startup connect failure into the sync-status state and emit
-    /// `SyncError`, mirroring the sync loop's own failure path so the launch-time
-    /// failure and a later cycle failure surface identically.
+    /// Write a startup connect failure into the sync-status value, matching the
+    /// sync loop's own failure path.
     fn record_startup_sync_error(&self, error: &LibraryError) {
-        let ui_error = crate::ui::UiError::internal(error.to_string());
         {
             let mut state = self.sync_status.lock().unwrap();
             state.error = Some(error.to_string());
         }
-        self.emit(LibraryEvent::SyncError {
-            error: Some(ui_error),
-        });
+        self.sync_status_values.send_replace(self.get_sync_status());
     }
 }

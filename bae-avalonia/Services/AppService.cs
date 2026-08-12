@@ -11,7 +11,7 @@ namespace Bae.Desktop;
 /// directly. The session keeps its lifecycle role (open/subscribe/teardown); the
 /// AppService is the thing built around it.
 /// </summary>
-internal sealed class AppService
+internal sealed class AppService : IDisposable
 {
     // The open session — the handle lifecycle the services and stores are built
     // around. Views read it only to guard an action on "is a library open?"
@@ -54,9 +54,8 @@ internal sealed class AppService
     public SettingsStore SettingsStore { get; }
     public ImportStore ImportStore { get; }
     public StorageStore StorageStore { get; }
-    public TransferProgressStore TransferProgressStore { get; }
-    public ProjectionRegistry ProjectionRegistry { get; }
     public UiEventRouter UiEventRouter { get; }
+    private readonly ValueSubscriptions _valueSubscriptions;
 
     public AppService(SessionStore session, Dispatcher dispatcher, IMediaControl mediaControl)
         : this(
@@ -125,27 +124,22 @@ internal sealed class AppService
         // stays null until a library seeds it.
         SettingsStore = new SettingsStore(Settings);
         ImportStore = new ImportStore(Import, ShowError, MediaControl);
-        ProjectionRegistry = new ProjectionRegistry();
-        // In-flight release transfers (pin/unpin/manage/unmanage), driven by core's
-        // ReleaseTransferProgress/Ended events the router routes, read by the
-        // storage dialog rows and the album-detail storage band. Built before the
-        // router so it can route into it, and shared with the stores below.
-        TransferProgressStore = new TransferProgressStore();
         UiEventRouter = new UiEventRouter(
             PlaybackStore,
             ShowError,
-            ProjectionRegistry,
             MediaControl,
             ImportStore.HandlePreviewEvent,
-            TransferProgressStore,
             CastStore);
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
-        StorageStore = new StorageStore(Downloads, Sync, TransferProgressStore);
-        // The library browser's paginated lists. A page / invalidate failure routes
+        StorageStore = new StorageStore(Downloads, Sync);
+        // The library browser's paginated lists. A page subscription failure routes
         // to the shell banner; a session-swap mid-fetch (an OperationCanceled) is
         // the list being replaced and is dropped.
         LibraryBrowserStore = new LibraryBrowserStore(Library, Images, dispatcher, HandleBrowseError);
+        _valueSubscriptions = new ValueSubscriptions(
+            session, dispatcher, SettingsStore, SyncStatusStore, PlaybackStore,
+            StorageStore, CastStore, ImportStore, ShowError);
     }
 
     private void HandleBrowseError(Exception exception)
@@ -249,4 +243,6 @@ internal sealed class AppService
     /// event. The macOS AppService.reportScreen analog.</summary>
     public void ReportScreen(BridgeScreen screen) =>
         NativeBae.ReportScreen(BaeDiagnostics.Handle, screen);
+
+    public void Dispose() => _valueSubscriptions.Dispose();
 }

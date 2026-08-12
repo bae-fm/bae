@@ -7,8 +7,8 @@ import SwiftUI
 /// uploads and deletes. Hidden when the queue is idle. The user can drag the
 /// top edge to resize the item list (persisted) and collapse the pane to just
 /// its header. Reads `OutboxStore` at the leaf; the outbox projection is the
-/// sole writer, so actions don't optimistically mutate — an `.outbox`
-/// invalidation refetches and refreshes the panel.
+/// sole writer, so actions don't optimistically mutate — the outbox
+/// subscription delivers each queue change.
 struct OutboxSection: View {
     @Environment(OutboxStore.self)
     private var outboxStore

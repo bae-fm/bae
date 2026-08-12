@@ -24,7 +24,9 @@ struct LibraryView: View {
     /// `LibraryBrowseSession`'s doc comment): a remount re-fetches them cheaply
     /// rather than keeping them warm, while the selections themselves persist.
     @State
-    private var composerPaneDetail: ComposerPaneDetail = .empty
+    private var composerDetail: BridgeComposerDetail?
+    @State
+    private var workDetail: BridgeWorkDetail?
     @State
     private var artistDetail: BridgeArtistDetail?
     /// Collapse kinematics for the header, fed by the panes' scroll reports
@@ -94,8 +96,8 @@ struct LibraryView: View {
                 session.albumSelection.clear()
             }
         }
-        // The album-list invalidation is coarse (no per-id removal event), so
-        // after a shape change prune any selected album that no longer resolves —
+        // After a subscribed album-list change, prune any selected album that
+        // no longer resolves —
         // e.g. one deleted on another device. The selection is small; one
         // authoritative index lookup per id, cancellable between ids.
         .task(id: session.albums.list?.loadEpoch) {
@@ -270,7 +272,7 @@ extension LibraryView {
                             composerRow(at: index, list: composerList)
                         }
                         .frame(minWidth: 260, idealWidth: 320)
-                        ComposerDetailPane(paneDetail: $composerPaneDetail)
+                        ComposerDetailPane(paneDetail: composerPaneDetail)
                             .frame(minWidth: 420)
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
@@ -303,7 +305,7 @@ extension LibraryView {
                             artistRow(at: index, list: artistList)
                         }
                         .frame(minWidth: 260, idealWidth: 320)
-                        ArtistDetailPane(detail: artistDetail)
+                        ArtistDetailPane(detail: selectedArtistDetail)
                             .frame(minWidth: 420)
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
@@ -319,13 +321,10 @@ extension LibraryView {
         switch target {
         case .artist(let artistId):
             session.selectArtist(artistId)
-            artistDetail = nil
         case .composer(let artistId):
             session.selectComposer(artistId)
-            composerPaneDetail = .empty
         case .work(let workId):
             session.selectWork(workId)
-            composerPaneDetail = .empty
         }
     }
 
@@ -337,7 +336,6 @@ extension LibraryView {
             summaries: \.artistSummaries,
             select: { id in
                 session.selectArtist(id)
-                artistDetail = nil
             }
         )
     }
@@ -350,7 +348,6 @@ extension LibraryView {
             summaries: \.composerSummaries,
             select: { id in
                 session.selectComposer(id)
-                composerPaneDetail = .empty
             }
         )
     }
@@ -360,33 +357,33 @@ extension LibraryView {
         else {
             return
         }
-        do {
-            let getComposerDetail = library.getComposerDetail
-            let detail = try await getComposerDetail(selectedComposerId)
-            guard !Task.isCancelled else {
-                return
-            }
-            guard let detail else {
-                uiStore.showError(
-                    DisplayError(
-                        line: String(localized: "Composer detail not found")
+        for await result in library.composerDetails(selectedComposerId) {
+            guard !Task.isCancelled,
+                session.detailSelection.composerId == selectedComposerId
+            else { return }
+            switch result {
+            case .success(let detail):
+                guard let detail else {
+                    uiStore.showError(
+                        DisplayError(
+                            line: String(localized: "Composer detail not found")
+                        )
                     )
-                )
-                return
+                    continue
+                }
+                composerDetail = detail
+                if case .composer(let artistId, nil) = session.detailSelection,
+                    artistId == selectedComposerId,
+                    let defaultWorkId = detail.defaultWorkId
+                {
+                    session.selectComposerWork(
+                        artistId: selectedComposerId,
+                        workId: defaultWorkId
+                    )
+                }
+            case .failure(let error):
+                uiStore.showError(error)
             }
-            composerPaneDetail = .composer(detail, work: nil)
-            if case .composer(let artistId, nil) = session.detailSelection,
-                artistId == selectedComposerId,
-                let defaultWorkId = detail.defaultWorkId
-            {
-                session.selectComposerWork(
-                    artistId: selectedComposerId,
-                    workId: defaultWorkId
-                )
-            }
-        }
-        catch {
-            uiStore.showError(error)
         }
     }
 
@@ -394,27 +391,24 @@ extension LibraryView {
         guard let requestedArtistId = session.selectedArtistId else {
             return
         }
-        do {
-            let getArtistDetail = library.getArtistDetail
-            let detail = try await getArtistDetail(requestedArtistId)
-            guard !Task.isCancelled else {
-                return
-            }
-            guard session.selectedArtistId == requestedArtistId else {
-                return
-            }
-            guard let detail else {
-                uiStore.showError(
-                    DisplayError(
-                        line: String(localized: "Artist detail not found")
+        for await result in library.artistDetails(requestedArtistId) {
+            guard !Task.isCancelled,
+                session.selectedArtistId == requestedArtistId
+            else { return }
+            switch result {
+            case .success(let detail):
+                guard let detail else {
+                    uiStore.showError(
+                        DisplayError(
+                            line: String(localized: "Artist detail not found")
+                        )
                     )
-                )
-                return
+                    continue
+                }
+                artistDetail = detail
+            case .failure(let error):
+                uiStore.showError(error)
             }
-            artistDetail = detail
-        }
-        catch {
-            uiStore.showError(error)
         }
     }
 
@@ -423,46 +417,52 @@ extension LibraryView {
         guard let selectedWorkId = selectedDetail.workId else {
             return
         }
-        do {
-            let getWorkDetail = library.getWorkDetail
-            let detail = try await getWorkDetail(selectedWorkId)
-            guard !Task.isCancelled else {
-                return
-            }
-            guard session.detailSelection == selectedDetail else {
-                return
-            }
-            guard let detail else {
-                uiStore.showError(
-                    DisplayError(
-                        line: String(localized: "Work detail not found")
-                    )
-                )
-                return
-            }
-            switch selectedDetail {
-            case .composer(let artistId, .some):
-                guard
-                    case .composer(let composerDetail, _) = composerPaneDetail,
-                    composerDetail.composer.artistId == artistId
-                else {
+        for await result in library.workDetails(selectedWorkId) {
+            guard !Task.isCancelled,
+                session.detailSelection == selectedDetail
+            else { return }
+            switch result {
+            case .success(let detail):
+                guard let detail else {
                     uiStore.showError(
                         DisplayError(
-                            line: String(localized: "Composer detail not found")
+                            line: String(localized: "Work detail not found")
                         )
                     )
-                    return
+                    continue
                 }
-                composerPaneDetail = .composer(composerDetail, work: detail)
-            case .work:
-                composerPaneDetail = .work(detail)
-            case .none, .composer(_, .none):
-                return
+                workDetail = detail
+            case .failure(let error):
+                uiStore.showError(error)
             }
         }
-        catch {
-            uiStore.showError(error)
+    }
+
+    private var composerPaneDetail: ComposerPaneDetail {
+        switch session.detailSelection {
+        case .none:
+            return .empty
+        case .composer(let artistId, let workId):
+            guard composerDetail?.composer.artistId == artistId,
+                let composerDetail
+            else { return .empty }
+            let selectedWork = workId.flatMap { selectedId in
+                workDetail?.work.id == selectedId ? workDetail : nil
+            }
+            return .composer(composerDetail, work: selectedWork)
+        case .work(let workId):
+            guard workDetail?.work.id == workId, let workDetail else {
+                return .empty
+            }
+            return .work(workDetail)
         }
+    }
+
+    private var selectedArtistDetail: BridgeArtistDetail? {
+        guard artistDetail?.artist.artistId == session.selectedArtistId else {
+            return nil
+        }
+        return artistDetail
     }
 }
 

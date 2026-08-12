@@ -227,30 +227,30 @@ async fn wait_for_seeked_on(
 }
 
 /// Drain progress events up to the Playing state, returning whether Playing
-/// arrived and the entries from the most recent `QueueUpdated` seen (each
-/// carrying a per-instance id). `play` rebuilds the queue with fresh ids, so a
-/// mutation must target those — captured here, after play settles. Shared by
+/// arrived and the entries from the current queue value (each carrying a
+/// per-instance id). `play` rebuilds the queue with fresh ids, so a mutation
+/// must target those — captured here, after play settles. Shared by
 /// `PlaybackTestFixture::wait_for_playing_capturing_queue` and any fixture
 /// with only a raw progress receiver.
 async fn wait_for_playing_capturing_queue_on(
+    playback_handle: &bae_core::playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
     let deadline = Instant::now() + timeout_duration;
-    let mut entries = Vec::new();
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::QueueUpdated(projection))) => {
-                // The mutation targets entries in either lane, so flatten the
-                // two lanes into one play-order list for id lookup.
-                entries = projection.manual;
-                if let Some(ctx) = projection.context {
-                    entries.extend(ctx.upcoming);
-                }
-            }
             Ok(Some(PlaybackProgress::StateChanged {
                 state: PlaybackState::Playing { .. },
             })) => {
+                let mut projection = playback_handle
+                    .subscribe_queue_values()
+                    .borrow()
+                    .clone();
+                let mut entries = projection.manual;
+                if let Some(ctx) = projection.context.take() {
+                    entries.extend(ctx.upcoming);
+                }
                 return (true, entries);
             }
             Ok(Some(_)) => continue,
@@ -258,7 +258,7 @@ async fn wait_for_playing_capturing_queue_on(
             Err(_) => continue,
         }
     }
-    (false, entries)
+    (false, Vec::new())
 }
 
 /// Assert that audio keeps flowing: the playing position advances past its
@@ -673,14 +673,19 @@ impl PlaybackTestFixture {
         wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
     }
     /// Drain progress events up to the Playing state, returning whether Playing
-    /// arrived and the entries from the most recent QueueUpdated seen (each
-    /// carrying a per-instance id). `play` rebuilds the queue with fresh ids, so
-    /// a mutation must target those — captured here, after play settles.
+    /// arrived and the entries from the current queue value (each carrying a
+    /// per-instance id). `play` rebuilds the queue with fresh ids, so a mutation
+    /// must target those — captured here, after play settles.
     async fn wait_for_playing_capturing_queue(
         &mut self,
         timeout_duration: Duration,
     ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
-        wait_for_playing_capturing_queue_on(&mut self.progress_rx, timeout_duration).await
+        wait_for_playing_capturing_queue_on(
+            &self.playback_handle,
+            &mut self.progress_rx,
+            timeout_duration,
+        )
+        .await
     }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {

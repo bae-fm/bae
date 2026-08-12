@@ -44,6 +44,12 @@ enum SearchTab: Hashable {
     case barcode
 }
 
+struct ReleaseLibraryStatusSubscriptionKey: Hashable {
+    let source: BridgeMetadataSource
+    let releaseId: String
+    let sourceGroupId: String?
+}
+
 // MARK: - CandidateSearchState
 
 /// Per-tab search state plus form fields and active tab/source.
@@ -52,6 +58,8 @@ struct CandidateSearchState: Equatable {
     /// release-group cards by core.
     struct TabResults: Equatable {
         var groups: [ReleaseGroup] = []
+        var libraryStatusSubscriptionKeys:
+            Set<ReleaseLibraryStatusSubscriptionKey> = []
         var hasSearched: Bool = false
         var isSearching: Bool = false
     }
@@ -85,6 +93,16 @@ struct CandidateSearchState: Equatable {
         source: BridgeMetadataSource
     ) {
         resultsByTabSource[tab, default: [:]][source] = state
+    }
+
+    func libraryStatusSubscriptionKeys()
+        -> Set<ReleaseLibraryStatusSubscriptionKey>
+    {
+        resultsByTabSource.values
+            .flatMap { bySource in
+                bySource.values.flatMap(\.libraryStatusSubscriptionKeys)
+            }
+            .reduce(into: []) { $0.insert($1) }
     }
 }
 
@@ -120,6 +138,8 @@ struct Candidate: Equatable, Identifiable {
     /// re-pick of this release rather than a trip through the search.
     var pick: CandidatePick?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
+    var libraryStatusSubscriptions:
+        [ReleaseLibraryStatusSubscriptionKey: CancelOnDeinit] = [:]
     /// What the folder is being read as, set the moment the user says so —
     /// before the pick or the tag read it starts has come back.
     var identity: ImportIdentity = .release
@@ -197,6 +217,7 @@ struct Candidate: Equatable, Identifiable {
         copy.claim = existing.claim
         copy.pick = existing.pick
         copy.libraryStatuses = existing.libraryStatuses
+        copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.identity = existing.identity
         copy.error = existing.error
         copy.coverPick = existing.coverPick
@@ -259,18 +280,4 @@ struct Candidate: Equatable, Identifiable {
         return nil
     }
 
-    // MARK: - Mutating helpers
-
-    /// Drop cached library statuses matching `shouldRemove` — both the
-    /// search-merged top-level map and the copies embedded in terminal
-    /// identify states. An absent status renders as "not in your library",
-    /// so removal is the invalidation.
-    mutating func removeLibraryStatuses(
-        where shouldRemove: (String, BridgeLibraryStatus) -> Bool
-    ) {
-        libraryStatuses = libraryStatuses.filter {
-            !shouldRemove($0.key, $0.value)
-        }
-        identifyState.removeLibraryStatuses(where: shouldRemove)
-    }
 }

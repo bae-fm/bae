@@ -71,7 +71,7 @@ internal fun settingsSyncStatus(
  * row, an upload-pause toggle, and a destructive disconnect action with its
  * confirmation. Rendered only when a cloud provider is configured. After a
  * successful disconnect, core clears the sync config and re-emits sync status,
- * so this whole block falls away through the config/sync-status invalidations —
+ * so this whole block falls away through config and sync-status subscriptions —
  * no local cleanup here.
  */
 @Composable

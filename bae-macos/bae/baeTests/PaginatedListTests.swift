@@ -10,7 +10,7 @@ import Testing
 struct PaginatedListTests {
 
     @MainActor
-    @Test("loadInitial sets totalCount, no positions loaded until loadRange")
+    @Test("loadInitial delivers the first live page and total count")
     func loadInitialAllocates() async {
         let store = LibraryStore()
         let list = makeList(
@@ -25,8 +25,8 @@ struct PaginatedListTests {
         await list.loadInitial()
 
         #expect(list.totalCount == 3)
-        #expect(list.idAt(0) == nil)
-        #expect(list.idAt(2) == nil)
+        #expect(list.idAt(0) == "a1")
+        #expect(list.idAt(2) == "a3")
     }
 
     @MainActor
@@ -156,8 +156,9 @@ struct PaginatedListTests {
     @MainActor
     @Test("loadRange reports page errors")
     func loadRangeReportsPageErrors() async {
+        let albums = (0..<51).map { makeBridgeAlbum(id: "a\($0)") }
         let source = ThrowingAlbumPageSource(
-            albums: [makeBridgeAlbum(id: "a1")],
+            albums: albums,
             pageError: PaginatedListTestError(message: "page failed")
         )
         var errors: [DisplayError] = []
@@ -168,127 +169,9 @@ struct PaginatedListTests {
         )
 
         await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 1)
+        await list.loadRange(offset: 50, limit: 1)
 
         #expect(errors == [DisplayError(line: "page failed")])
-    }
-
-    @MainActor
-    @Test("invalidate reports count errors")
-    func invalidateReportsCountErrors() async {
-        let source = ThrowingAlbumPageSource(albums: [
-            makeBridgeAlbum(id: "a1")
-        ])
-        var errors: [DisplayError] = []
-        let list = AlbumList(
-            pageSource: source,
-            ingest: { _ in },
-            onError: { error in DisplayError(error).map { errors.append($0) } },
-        )
-        await list.loadInitial()
-        source.countError = PaginatedListTestError(message: "reload failed")
-
-        list.invalidate()
-        await list.awaitReload()
-
-        #expect(errors == [DisplayError(line: "reload failed")])
-    }
-
-    @MainActor
-    @Test(
-        "invalidate keeps old state visible, then atomically swaps in refreshed shape"
-    )
-    func invalidateRefetches() async {
-        let store = LibraryStore()
-        let list = makeList(
-            store: store,
-            albums: [
-                makeBridgeAlbum(id: "a1", title: "Alpha"),
-                makeBridgeAlbum(id: "a2", title: "Beta"),
-                makeBridgeAlbum(id: "a3", title: "Gamma"),
-            ]
-        )
-        await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 3)
-        #expect(list.idAt(0) == "a1")
-        #expect(list.totalCount == 3)
-
-        list.invalidate()
-
-        // Synchronous state immediately after invalidate(): old totalCount
-        // and stale segments remain visible while the count fetch runs.
-        #expect(list.totalCount == 3)
-        #expect(list.idAt(0) == "a1")
-        #expect(list.idAt(2) == "a3")
-
-        // After reload: count confirmed, generation bumped, stale segments
-        // stay in place until tasks re-fetch them.
-        await list.awaitReload()
-
-        #expect(list.totalCount == 3)
-        #expect(list.generation == 1)
-        #expect(list.idAt(0) == "a1")
-        #expect(list.idAt(2) == "a3")
-    }
-
-    @MainActor
-    @Test(
-        "invalidate re-fetches previously loaded ranges and surfaces new rows"
-    )
-    func invalidateSurfacesNewRows() async {
-        let store = LibraryStore()
-        // Start with one album; load it.
-        let source = MutablePageSource(albums: [
-            makeBridgeAlbum(id: "a1", title: "Alpha")
-        ])
-        let list = AlbumList(
-            pageSource: source,
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 1)
-        #expect(list.idAt(0) == "a1")
-
-        // Simulate an import: the page source now returns two rows.
-        source.albums = [
-            makeBridgeAlbum(id: "a1", title: "Alpha"),
-            makeBridgeAlbum(id: "a2", title: "Beta"),
-        ]
-        list.invalidate()
-        await list.awaitReload()
-
-        #expect(list.totalCount == 2)
-        // Stale gen-0 segment keeps a1 visible at position 0. Position 1
-        // is unloaded — the per-row `.task(id:)` in the consuming view drives
-        // lazy fills once the view restarts its task for the new generation.
-        #expect(list.idAt(0) == "a1")
-        #expect(list.idAt(1) == nil)
-    }
-}
-
-// MARK: - Mutable page source (for invalidate tests)
-
-/// Test-only page source whose backing array can be mutated between
-/// calls. Used to simulate a shape change (import, delete) that
-/// `invalidate()` picks up on the next reload.
-final class MutablePageSource: PageSource, @unchecked Sendable {
-    var albums: [BridgeAlbum]
-
-    init(albums: [BridgeAlbum]) {
-        self.albums = albums
-    }
-
-    func count() async throws -> Int {
-        albums.count
-    }
-
-    func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
-        let start = min(offset, albums.count)
-        let end = min(start + limit, albums.count)
-        return Array(albums[start..<end])
     }
 }
 
@@ -296,11 +179,8 @@ final class MutablePageSource: PageSource, @unchecked Sendable {
 
 /// Every paginated row keys its load `.task(id:)` on a `RowLoadID` (the list's
 /// `loadEpoch` + the row position). These exercise that id — the value the views
-/// actually key on — across the three transitions that decide whether a row
-/// refetches: a swap to a fresh list instance, an invalidation, and a plain
-/// content load. The id must change on the first two (or a swapped-in/invalidated
-/// row stays stuck on its placeholder) and must NOT change on the third (or every
-/// page fetch needlessly restarts every visible row).
+/// actually key on. A list swap changes the identity; page deliveries do not,
+/// because the active subscription updates that list in place.
 @Suite("PaginatedList row load identity")
 struct PaginatedListRowLoadIDTests {
     @MainActor
@@ -313,28 +193,12 @@ struct PaginatedListRowLoadIDTests {
         await first.loadInitial()
         await second.loadInitial()
 
-        // Both fresh lists sit at generation 0, so generation (or position)
-        // alone can't tell them apart — the instance identity in the epoch is
-        // what makes the swapped-in row's task restart.
-        #expect(first.generation == second.generation)
+        // Position alone cannot tell the lists apart. The instance identity in
+        // the epoch makes the swapped-in row's task restart.
         #expect(
             RowLoadID(epoch: first.loadEpoch, index: 0)
                 != RowLoadID(epoch: second.loadEpoch, index: 0)
         )
-    }
-
-    @MainActor
-    @Test("a row's task id changes when the list is invalidated")
-    func changesOnInvalidate() async {
-        let store = LibraryStore()
-        let list = makeList(store: store, albums: [makeBridgeAlbum(id: "a1")])
-        await list.loadInitial()
-        let before = RowLoadID(epoch: list.loadEpoch, index: 0)
-
-        list.invalidate()
-        await list.awaitReload()
-
-        #expect(RowLoadID(epoch: list.loadEpoch, index: 0) != before)
     }
 
     @MainActor
@@ -355,9 +219,8 @@ struct PaginatedListRowLoadIDTests {
 
 /// `insertSegment` is private, so these drive it through the real `loadRange`
 /// path — the only way segments enter the list — and observe the merged result
-/// through `allLoadedIds` / `idAt`. Coalescing and stale-generation discard are
-/// visible there: without them the loaded ids would carry duplicates, gaps, or
-/// stale positions.
+/// through `allLoadedIds` / `idAt`. Without coalescing the loaded ids would
+/// carry duplicates, gaps, or stale positions.
 @Suite("PaginatedList segment management")
 struct PaginatedListSegmentTests {
     @MainActor
@@ -369,7 +232,7 @@ struct PaginatedListSegmentTests {
     }
 
     @MainActor
-    @Test("overlapping same-generation ranges merge without duplicates")
+    @Test("overlapping ranges merge without duplicates")
     func overlappingMerge() async {
         let list = fiveAlbumList(LibraryStore())
         await list.loadInitial()
@@ -381,7 +244,7 @@ struct PaginatedListSegmentTests {
     }
 
     @MainActor
-    @Test("adjacent same-generation ranges coalesce into one contiguous run")
+    @Test("adjacent ranges coalesce into one contiguous run")
     func adjacentCoalesce() async {
         let list = fiveAlbumList(LibraryStore())
         await list.loadInitial()
@@ -394,7 +257,7 @@ struct PaginatedListSegmentTests {
     }
 
     @MainActor
-    @Test("a new range absorbs a same-generation segment it fully contains")
+    @Test("a new range absorbs a segment it fully contains")
     func absorbsContainedSegment() async {
         let list = fiveAlbumList(LibraryStore())
         await list.loadInitial()
@@ -419,31 +282,12 @@ struct PaginatedListSegmentTests {
     }
 
     @MainActor
-    @Test("a fresh-generation range discards the stale segment it overlaps")
-    func staleGenerationDiscard() async {
-        let list = fiveAlbumList(LibraryStore())
-        await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 4)  // generation 0: [0, 4)
-
-        list.invalidate()
-        await list.awaitReload()  // generation 1
-
-        await list.loadRange(offset: 0, limit: 2)  // generation 1: [0, 2)
-
-        // The stale generation-0 [0, 4) is dropped wholesale, not kept for its
-        // non-overlapping tail — positions 2 and 3 revert to unloaded.
-        #expect(list.allLoadedIds == ["a0", "a1"])
-        #expect(list.idAt(2) == nil)
-    }
-
-    @MainActor
     @Test("concurrent loadRange for the same range issues a single fetch")
     func concurrentLoadRangeCoalesces() async {
         let store = LibraryStore()
-        let source = GatedAlbumPageSource(albums: [
-            makeBridgeAlbum(id: "a1"),
-            makeBridgeAlbum(id: "a2"),
-        ])
+        let source = GatedAlbumPageSource(
+            albums: (0..<52).map { makeBridgeAlbum(id: "a\($0)") }
+        )
         let list = AlbumList(
             pageSource: source,
             ingest: { rows in
@@ -453,53 +297,22 @@ struct PaginatedListSegmentTests {
         )
         await list.loadInitial()
 
-        async let first: Void = list.loadRange(offset: 0, limit: 2)
-        // The first fetch's page() is now running and blocked on the gate, so
+        async let first: Void = list.loadRange(offset: 50, limit: 2)
+        // The first subscription is now blocked on the gate, so
         // loadRange has already registered its in-flight task. The second caller
         // dedupes onto it instead of issuing its own query.
         await source.waitForPageEntry()
 
-        async let second: Void = list.loadRange(offset: 0, limit: 2)
+        async let second: Void = list.loadRange(offset: 50, limit: 2)
         await Task.yield()
         await source.openGate()
 
         _ = await (first, second)
 
-        #expect(source.pageCallCount == 1)
-        #expect(list.idAt(0) == "a1")
+        #expect(source.pageCallCount == 2)
+        #expect(list.idAt(50) == "a50")
     }
 
-    @MainActor
-    @Test("a fetch whose generation is bumped mid-flight drops its result")
-    func generationDropMidFetch() async {
-        let store = LibraryStore()
-        let source = GatedAlbumPageSource(albums: [
-            makeBridgeAlbum(id: "a1"),
-            makeBridgeAlbum(id: "a2"),
-        ])
-        let list = AlbumList(
-            pageSource: source,
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
-            onError: { _ in },
-        )
-        await list.loadInitial()
-
-        async let load: Void = list.loadRange(offset: 0, limit: 2)
-        await source.waitForPageEntry()  // fetch in flight at generation 0
-
-        list.invalidate()
-        await list.awaitReload()  // generation bumps to 1
-
-        await source.openGate()
-        await load
-
-        // fetchRange sees the generation moved past its own and drops the rows —
-        // no segment is inserted.
-        #expect(list.idAt(0) == nil)
-        #expect(list.allLoadedIds.isEmpty)
-    }
 }
 
 /// One-shot async gate: `page()` awaits `wait()`; the test resumes every waiter
@@ -522,7 +335,7 @@ private actor FetchGate {
 
 /// Page source that blocks each `page()` on a gate the test opens, and signals
 /// when a fetch enters. Used to exercise the in-flight dedupe and the
-/// generation-drop guard, both of which need a fetch held mid-flight.
+/// subscription coalescing, which needs the first subscription held in flight.
 final class GatedAlbumPageSource: PageSource, @unchecked Sendable {
     let albums: [BridgeAlbum]
     var pageCallCount = 0
@@ -536,17 +349,25 @@ final class GatedAlbumPageSource: PageSource, @unchecked Sendable {
         (entries, entryContinuation) = AsyncStream.makeStream(of: Void.self)
     }
 
-    func count() async throws -> Int {
-        albums.count
-    }
-
-    func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
+    func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        onError _: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
         pageCallCount += 1
-        entryContinuation.yield(())
-        await gate.wait()
-        let start = min(offset, albums.count)
-        let end = min(start + limit, albums.count)
-        return Array(albums[start..<end])
+        let albums = albums
+        let gate = gate
+        let entryContinuation = entryContinuation
+        return TestPageSubscription(Task { @MainActor in
+            if !(offset == 0 && limit == 50) {
+                entryContinuation.yield(())
+                await gate.wait()
+            }
+            let start = min(offset, albums.count)
+            let end = min(start + limit, albums.count)
+            onValue(Array(albums[start..<end]), albums.count)
+        })
     }
 
     /// Suspend until a `page()` call has entered (and is blocked on the gate).

@@ -21,12 +21,10 @@ CAPABILITY_TYPES = {
     "CloudKitDriver",
     "CloudKitService",
     "CloudSyncSetup",
-    "CommonProjections",
     "ConfigStore",
     "CurrentValueSubject",
     "Database",
     "Discogs",
-    "DesktopProjections",
     "DesktopEventHandler",
     "DisconnectSyncFlow",
     "DownloadStore",
@@ -49,9 +47,6 @@ CAPABILITY_TYPES = {
     "PlaybackStore",
     "PassthroughSubject",
     "PreviewAudio",
-    "Projection",
-    "ProjectionRegistration",
-    "ProjectionRegistry",
     "Queue",
     "ReleaseEditor",
     "RendererBrowser",
@@ -70,10 +65,6 @@ ALLOWED_OUTPUTS = {
     (
         "BaeKit/Sources/BaeKit/BaeDiagnostics.swift",
         "public static func configure",
-    ),
-    (
-        "BaeKit/Sources/BaeKit/Services/Projection.swift",
-        "public func register",
     ),
     ("BaeKit/Sources/BaeKit/Services/Cast.swift", "public static func stub"),
     (

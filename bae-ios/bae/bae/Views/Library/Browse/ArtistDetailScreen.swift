@@ -16,13 +16,16 @@ struct ArtistDetailScreen: View {
 
     var body: some View {
         Group {
-            if let error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .padding(32)
-            }
-            else if let detail {
+            if let detail {
                 ArtistDetailContent(detail: detail, openAlbum: openAlbum)
+                    .overlay(alignment: .top) {
+                        if let error {
+                            Text(error).foregroundStyle(.red).padding(12)
+                        }
+                    }
+            }
+            else if let error {
+                Text(error).foregroundStyle(.red).padding(32)
             }
             else {
                 ProgressView()
@@ -48,23 +51,19 @@ struct ArtistDetailScreen: View {
 
     private func load() async {
         error = nil
-        do {
-            let getArtistDetail = library.getArtistDetail
-            let loaded =
-                try await Task.detached {
-                    try await getArtistDetail(artistId)
+        for await result in library.artistDetails(artistId) {
+            guard !Task.isCancelled else { return }
+            switch result {
+            case .success(let loaded):
+                guard let loaded else {
+                    error = String(localized: "Artist detail not found")
+                    continue
                 }
-                .value
-            try Task.checkCancellation()
-            guard let loaded else {
-                error = String(localized: "Artist detail not found")
-                return
+                detail = loaded
+                error = nil
+            case .failure(let bridgeError):
+                error = bridgeError.displayLine
             }
-            detail = loaded
-        }
-        catch is CancellationError {}
-        catch {
-            self.error = error.displayLine
         }
     }
 }

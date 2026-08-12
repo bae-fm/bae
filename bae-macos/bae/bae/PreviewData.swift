@@ -279,7 +279,7 @@
 
         /// A store plus a `Queue` whose commands mutate an in-memory queue and
         /// re-apply a fresh snapshot (revision bumped) — the preview stand-in
-        /// for core's `QueueUpdated` echo. Echo-driven view behavior (the
+        /// for core's queue subscription. Echo-driven view behavior (the
         /// post-reorder hold clearing, the removal unmount, the shuffle flip)
         /// only works in a preview against this; against `Queue.stub()` the echo
         /// never lands and a second drag starts from a stale display order.

@@ -10,12 +10,30 @@ struct ImportCommitRequest: Sendable {
     let userEdit: BridgeReleaseUserEdit?
 }
 
+private final class ReleaseLibraryStatusSink: ReleaseLibraryStatusCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgeLibraryStatus) -> Void
+    private let fail: @MainActor @Sendable (BridgeError) -> Void
+
+    init(
+        apply: @escaping @MainActor @Sendable (BridgeLibraryStatus) -> Void,
+        fail: @escaping @MainActor @Sendable (BridgeError) -> Void
+    ) {
+        self.apply = apply
+        self.fail = fail
+    }
+
+    func onValue(value: BridgeLibraryStatus) {
+        Task { @MainActor in apply(value) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
+    }
+}
+
 private struct ImportOperations: Sendable {
-    let importCandidates:
-        @Sendable () async throws -> BridgeImportCandidatesSnapshot
-    let importTriageQueue: @Sendable () async throws -> BridgeTriageQueue
-    let candidate:
-        @Sendable (String) async throws -> BridgeImportCandidateSnapshot?
     let addWatchedFolder: @Sendable (String) async throws -> Void
     let removeWatchedFolder: @Sendable (String) async throws -> Void
     let refreshWatchedFolder: @Sendable (String) async throws -> Void
@@ -43,6 +61,10 @@ private struct ImportOperations: Sendable {
     let searchForCandidate:
         @Sendable (BridgeSearchQuery) async throws
             -> BridgeCandidateSearchResults
+    let subscribeReleaseLibraryStatus:
+        @Sendable (
+            BridgeMetadataSource, String, String?, ReleaseLibraryStatusCallback
+        ) -> any LiveSubscriptionProtocol
     let toggleSignalForCandidate:
         @Sendable (String, BridgeExcludedSignal) -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
@@ -56,9 +78,6 @@ private struct ImportOperations: Sendable {
     // swiftlint:disable:next function_body_length
     static func live(handle: any AppHandleProtocol) -> ImportOperations {
         ImportOperations(
-            importCandidates: { handle.getImportCandidates() },
-            importTriageQueue: { try await handle.getImportTriageQueue() },
-            candidate: { handle.getCandidate(key: $0) },
             addWatchedFolder: {
                 try await handle.addWatchedFolder(path: $0)
             },
@@ -125,6 +144,14 @@ private struct ImportOperations: Sendable {
             searchForCandidate: {
                 try await handle.searchForCandidate(query: $0)
             },
+            subscribeReleaseLibraryStatus: {
+                handle.subscribeReleaseLibraryStatus(
+                    source: $0,
+                    releaseId: $1,
+                    sourceGroupId: $2,
+                    callback: $3
+                )
+            },
             toggleSignalForCandidate: {
                 handle.toggleSignalForCandidate(candidateKey: $0, signal: $1)
             },
@@ -157,20 +184,6 @@ final class Importer: Sendable, Observable {
     private let operations: ImportOperations
 
     init(
-        importCandidates:
-            @escaping @Sendable () async throws ->
-            BridgeImportCandidatesSnapshot = {
-                throw StubError.notImplemented
-            },
-        importTriageQueue:
-            @escaping @Sendable () async throws -> BridgeTriageQueue = {
-                throw StubError.notImplemented
-            },
-        candidate:
-            @escaping @Sendable (String) async throws ->
-            BridgeImportCandidateSnapshot? = { _ in
-                throw StubError.notImplemented
-            },
         addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
@@ -217,6 +230,15 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (BridgeSearchQuery) async throws ->
             BridgeCandidateSearchResults = { _ in throw StubError.notImplemented
             },
+        subscribeReleaseLibraryStatus:
+            @escaping @Sendable (
+                BridgeMetadataSource, String, String?,
+                ReleaseLibraryStatusCallback
+            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
+                fatalError(
+                    "release library status subscription not implemented"
+                )
+            },
         toggleSignalForCandidate:
             @escaping @Sendable (String, BridgeExcludedSignal) -> Void = {
                 _,
@@ -238,9 +260,6 @@ final class Importer: Sendable, Observable {
             }
     ) {
         operations = ImportOperations(
-            importCandidates: importCandidates,
-            importTriageQueue: importTriageQueue,
-            candidate: candidate,
             addWatchedFolder: addWatchedFolder,
             removeWatchedFolder: removeWatchedFolder,
             refreshWatchedFolder: refreshWatchedFolder,
@@ -256,6 +275,7 @@ final class Importer: Sendable, Observable {
             autoIdentifyRelease: autoIdentifyRelease,
             cancelAutoIdentify: cancelAutoIdentify,
             searchForCandidate: searchForCandidate,
+            subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
             toggleSignalForCandidate: toggleSignalForCandidate,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             candidateMapping: candidateMapping,
@@ -266,20 +286,6 @@ final class Importer: Sendable, Observable {
 
     private init(operations: ImportOperations) {
         self.operations = operations
-    }
-
-    func importCandidates() async throws -> BridgeImportCandidatesSnapshot {
-        try await operations.importCandidates()
-    }
-
-    func importTriageQueue() async throws -> BridgeTriageQueue {
-        try await operations.importTriageQueue()
-    }
-
-    func candidate(_ key: String) async throws
-        -> BridgeImportCandidateSnapshot?
-    {
-        try await operations.candidate(key)
     }
 
     func addWatchedFolder(_ path: String) async throws {
@@ -370,6 +376,21 @@ final class Importer: Sendable, Observable {
         -> BridgeCandidateSearchResults
     {
         try await operations.searchForCandidate(query)
+    }
+
+    func subscribeReleaseLibraryStatus(
+        source: BridgeMetadataSource,
+        releaseId: String,
+        sourceGroupId: String?,
+        onValue: @escaping @MainActor @Sendable (BridgeLibraryStatus) -> Void,
+        onError: @escaping @MainActor @Sendable (BridgeError) -> Void
+    ) -> any LiveSubscriptionProtocol {
+        operations.subscribeReleaseLibraryStatus(
+            source,
+            releaseId,
+            sourceGroupId,
+            ReleaseLibraryStatusSink(apply: onValue, fail: onError)
+        )
     }
 
     func toggleSignalForCandidate(

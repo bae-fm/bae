@@ -7,8 +7,8 @@
 //! - `make_release_remote`: `coven.make_remote` enqueues an upload per release
 //!   file from its external (in-place) source, uploads each, and on the last
 //!   flips `remote` true, drops the external refs, deletes the source files, and
-//!   re-emits the subtree (the cover rides along). Completion fires the observer's
-//!   `on_root_made_remote`, which emits `ReleaseUpdated`.
+//!   re-emits the subtree (the cover rides along). The commit wakes subscribed
+//!   release projections.
 //! - `make_release_local`: `coven.make_local` materializes every blob back to a
 //!   local file durability-first (release files to the chosen folder, the cover to
 //!   coven's local store), then flips `remote` false, registers the external refs,

@@ -4,8 +4,8 @@ import SwiftUI
 /// Pane showing the in-memory export queue: a header with the summary and
 /// pause/retry controls, and a per-release row list. Hidden when the queue is
 /// idle. Reads `OutputStore` at the leaf; the export projection is the sole
-/// writer, so actions don't optimistically mutate — an `.outputQueue`
-/// invalidation refetches and refreshes the section. Mirrors
+/// writer, so actions don't optimistically mutate — the output subscription
+/// delivers each queue change. Mirrors
 /// `DownloadsSection`.
 struct OutputSection: View {
     @Environment(OutputStore.self)

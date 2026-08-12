@@ -56,8 +56,7 @@ impl Automation {
     }
 
     pub fn watched_folders(&self) -> Vec<AutomationWatchedFolder> {
-        self.services
-            .import_watched_folders()
+        self.current_watched_folders()
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
                 path: folder.path,
@@ -93,8 +92,7 @@ impl Automation {
             ScanWait::UntilFinished { timeout_ms } => {
                 let mut rx = self.services.import_subscribe_folder_scan_events();
                 let mut pending: std::collections::HashSet<_> = self
-                    .services
-                    .import_watched_folders()
+                    .current_watched_folders()
                     .into_iter()
                     .map(|folder| folder.path)
                     .collect();
@@ -136,6 +134,12 @@ impl Automation {
             watched_folders: self.watched_folders(),
             candidates: self.list_candidates()?,
         })
+    }
+
+    fn current_watched_folders(&self) -> Vec<bae_core::import::WatchedFolder> {
+        let values = self.services.subscribe_import_candidates();
+        let folders = values.borrow().watched_folders.clone();
+        folders
     }
 
     pub fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {

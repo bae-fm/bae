@@ -78,49 +78,4 @@ enum IdentifyState: Equatable {
         }
     }
 
-    /// Drop embedded library statuses matching `shouldRemove`. Terminal
-    /// states carry the statuses computed when identify ran; after a library
-    /// removal those entries are stale and an absent entry renders as "not
-    /// in your library".
-    mutating func removeLibraryStatuses(
-        where shouldRemove: (String, BridgeLibraryStatus) -> Bool
-    ) {
-        func kept(
-            _ statuses: [String: BridgeLibraryStatus]
-        ) -> [String: BridgeLibraryStatus] {
-            statuses.filter { !shouldRemove($0.key, $0.value) }
-        }
-        switch self {
-        case .found(
-            let group,
-            let libraryStatuses,
-            let trackCount,
-            let provenance
-        ):
-            self = .found(
-                group: group,
-                libraryStatuses: kept(libraryStatuses),
-                trackCount: trackCount,
-                provenance: provenance,
-            )
-        case .conflict(
-            let discidResults,
-            let discidLibraryStatuses,
-            let barcodeResults,
-            let barcodeLibraryStatuses,
-            let matchedBarcode,
-            let trackCount
-        ):
-            self = .conflict(
-                discidResults: discidResults,
-                discidLibraryStatuses: kept(discidLibraryStatuses),
-                barcodeResults: barcodeResults,
-                barcodeLibraryStatuses: kept(barcodeLibraryStatuses),
-                matchedBarcode: matchedBarcode,
-                trackCount: trackCount,
-            )
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly:
-            break
-        }
-    }
 }

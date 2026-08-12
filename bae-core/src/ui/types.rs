@@ -99,37 +99,13 @@ impl PlaybackErrorReason {
     }
 }
 
-/// A scoped state key the UI should requery from core.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Invalidation {
-    AlbumList,
-    Album { album_id: String },
-    Release { release_id: String },
-    ComposerList,
-    Composer { composer_id: String },
-    ArtistList,
-    Queue,
-    Config,
-    SyncStatus,
-    Outbox,
-    DownloadQueue,
-    OutputQueue,
-    ImportCandidateList,
-    ImportCandidate { key: String },
-    WatchedFolders,
-    // The discovered Cast device list changed; the UI requeries it.
-    CastDevices,
-}
-
 /// Top-level UI event. One enum for everything. Events that carry a new value
-/// inline use a top-level variant; query-backed state changes use a scoped
-/// invalidation key.
+/// inline use a top-level variant; database-backed state uses live-result
+/// subscriptions instead of this transient event stream.
 /// High-frequency events (PlaybackProgress, PreviewProgress) go to NSViews on
 /// the native side. Everything else goes to the @Observable store.
 #[derive(Debug, Clone)]
 pub enum UiBusEvent {
-    Invalidated(Invalidation),
-
     // ── Playback ───────────────────────────────────────────────────
     PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
@@ -195,11 +171,6 @@ pub enum UiBusEvent {
     RepeatModeChanged {
         mode: crate::playback::RepeatMode,
     },
-    /// The queue's two lanes, kept separate so each UI renders them as distinct
-    /// sections: the manual lane ("Up Next") in order, and the context (the
-    /// release being played from) as its not-yet-played tail plus its shuffled
-    /// flag, or `None` when nothing plays from a release.
-    QueueUpdated(crate::queue::ResolvedQueueSnapshot),
     /// Tracks were just appended/inserted into the queue. Carries the count
     /// for a transient "+N" UI indicator. Fires only on add operations
     /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),
@@ -243,19 +214,6 @@ pub enum UiBusEvent {
     ImportQueueIdentifyProgress {
         identified: u32,
         total: u32,
-    },
-
-    // ── Release transfer ───────────────────────────────────────────
-    /// A pin/unpin/manage/unmanage transition started. The UI shows an
-    /// in-flight indicator on the release row until `ReleaseTransferEnded`.
-    ReleaseTransferProgress {
-        release_id: String,
-        action: crate::album_detail::ReleaseStorageAction,
-    },
-    /// A transition finished (success or failure) — the UI clears its transfer
-    /// indicator. Failure text still arrives via the thrown error.
-    ReleaseTransferEnded {
-        release_id: String,
     },
 
     // ── Cast ───────────────────────────────────────────────────────

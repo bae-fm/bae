@@ -8,7 +8,6 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using uniffi.bae_bridge;
-
 namespace Bae.Desktop;
 
 /// <summary>
@@ -58,6 +57,7 @@ internal sealed class ImportMappingPane : UserControl
     // nothing to commit.
     private PrefetchedEdit? _prefetch;
     private BridgeLibraryStatus? _libraryStatus;
+    private IDisposable? _libraryStatusSubscription;
 
     // The release the mapping was computed against, held here rather than looked
     // up again: putting a file back or binding a sheet clears the candidate's
@@ -230,6 +230,7 @@ internal sealed class ImportMappingPane : UserControl
 
     private void ResetEdit()
     {
+        CancelLibraryStatusSubscription();
         _identity = ImportIdentity.Release;
         _mapping = null;
         _prefetch = null;
@@ -280,9 +281,10 @@ internal sealed class ImportMappingPane : UserControl
     /// returns the same seeded edit a later selection's query serves, so a
     /// fresh launch renders exactly what this click rendered.</summary>
     private Task DecideIdentity(BridgeIdentityPick pick) =>
-        ApplyIdentity(async key =>
+        ApplyIdentity(async (key, localArtwork) =>
         {
-            var (current, result) = await _app.Import.PickCandidateIdentity(key, pick);
+            var (current, result) = await _app.Import.PickCandidateIdentity(
+                key, pick, localArtwork);
             return (current, result.Decided, false, result.Error);
         });
 
@@ -291,14 +293,16 @@ internal sealed class ImportMappingPane : UserControl
     /// under one. Nothing here re-persists: the decision is already stored,
     /// which is where it came from.</summary>
     private Task RefreshDecidedIdentity() =>
-        ApplyIdentity(async key =>
+        ApplyIdentity(async (key, localArtwork) =>
         {
-            var (current, result) = await _app.Import.CandidateDecidedIdentity(key);
+            var (current, result) = await _app.Import.CandidateDecidedIdentity(
+                key, localArtwork);
             return (current, result.Decided, result.Undecided, result.Error);
         });
 
     private async Task ApplyIdentity(
-        Func<string, Task<(bool Current, DecidedEdit? Decided, bool Undecided, string? Error)>> operation)
+        Func<string, IReadOnlyList<LocalArtwork>,
+            Task<(bool Current, DecidedEdit? Decided, bool Undecided, string? Error)>> operation)
     {
         if (_key is not { } key || _candidate is null)
         {
@@ -309,7 +313,8 @@ internal sealed class ImportMappingPane : UserControl
         Render();
         try
         {
-            var (current, decided, undecided, error) = await operation(key);
+            var (current, decided, undecided, error) = await operation(
+                key, _candidate.LocalArtwork);
             if (!current)
             {
                 return;
@@ -343,16 +348,11 @@ internal sealed class ImportMappingPane : UserControl
                 _searchOpen = false;
                 Render();
 
-                // Advisory, not a gate — a failed check leaves the banner absent.
-                var (statusCurrent, status) = await _app.Import.CheckReleaseInLibrary(release.ReleaseId);
-                if (statusCurrent && status.Status is { ReleaseInLibrary: true } inLibrary)
-                {
-                    _libraryStatus = inLibrary;
-                    Render();
-                }
+                SubscribeLibraryStatus(release);
             }
             else
             {
+                CancelLibraryStatusSubscription();
                 Seed(decided.Edit);
                 _identity = ImportIdentity.Unknown;
                 _libraryStatus = null;
@@ -365,6 +365,32 @@ internal sealed class ImportMappingPane : UserControl
             _prefetching = false;
             Render();
         }
+    }
+
+    private void SubscribeLibraryStatus((
+        BridgeMetadataSource Source,
+        string ReleaseId,
+        string? SourceGroupId,
+        BridgeClaimLevel Claim) release)
+    {
+        CancelLibraryStatusSubscription();
+        _libraryStatusSubscription = _app.Import.SubscribeReleaseLibraryStatus(
+            release.Source,
+            release.ReleaseId,
+            release.SourceGroupId,
+            status => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _libraryStatus = status.ReleaseInLibrary || status.AlbumInLibrary ? status : null;
+                Render();
+            }),
+            error => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                _app.ShowError(Loc.Chrome("error.title"), error.Message)));
+    }
+
+    private void CancelLibraryStatusSubscription()
+    {
+        _libraryStatusSubscription?.Dispose();
+        _libraryStatusSubscription = null;
     }
 
     private void Seed(PrefetchedEdit prefetched)

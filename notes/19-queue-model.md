@@ -116,8 +116,8 @@ edit.
 
 ## Projection
 
-Every mutation bumps a revision and pushes a `QueueUpdated` snapshot over the
-bridge: the manual rows, the context's label and shuffled flag, a windowed
+Every mutation bumps a revision and publishes a snapshot through the queue
+subscription: the manual rows, the context's label and shuffled flag, a windowed
 slice of upcoming context rows plus the total, and transport flags
 (`hasNext`/`hasPrevious`). UIs render the snapshot and send commands back;
 they hold no queue state of their own. Optimistic UI edits reconcile against

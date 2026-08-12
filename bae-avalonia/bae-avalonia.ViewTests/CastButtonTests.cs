@@ -61,7 +61,6 @@ public sealed class CastButtonTests
         settings.Reload();
         var cast = new CastStore(new CastService
         {
-            GetCastDevices = () => (true, Array.Empty<BridgeCastDevice>()),
             StartDiscovery = () => true,
             StopDiscovery = () => true,
         });

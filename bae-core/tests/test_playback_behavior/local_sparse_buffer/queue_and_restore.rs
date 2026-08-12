@@ -307,7 +307,11 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     playback.playback_handle.play(track0.to_string());
 
     let (played, entries) =
-        wait_for_playing_capturing_queue_on(&mut playback.progress_rx, Duration::from_secs(25))
+        wait_for_playing_capturing_queue_on(
+            &playback.playback_handle,
+            &mut playback.progress_rx,
+            Duration::from_secs(25),
+        )
             .await;
     assert!(played, "track0 should start playing");
 
@@ -421,7 +425,11 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
     let third = playback.track_ids[2].clone();
     playback.playback_handle.play(first.clone());
     let (played, entries) =
-        wait_for_playing_capturing_queue_on(&mut playback.progress_rx, Duration::from_secs(25))
+        wait_for_playing_capturing_queue_on(
+            &playback.playback_handle,
+            &mut playback.progress_rx,
+            Duration::from_secs(25),
+        )
             .await;
     assert!(played, "the release starts playing");
     let target = entries

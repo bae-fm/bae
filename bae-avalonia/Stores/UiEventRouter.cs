@@ -4,8 +4,7 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // Routes each BridgeUiEvent to the store that owns its field: playback events to
-// the playback store, error banners to the shell store, invalidations to the
-// projection registry. Playback events also push metadata, status, and timeline
+// the playback store and error banners to the shell store. Playback events also push metadata, status, and timeline
 // to the system media transport controls. Import-preview, candidate-loudness,
 // and the import queue's identify-progress events are handed to the import
 // store, which owns the picker's live labels (and drives the transport
@@ -14,27 +13,21 @@ internal sealed class UiEventRouter
 {
     private readonly PlaybackStore _playback;
     private readonly Action<string, string> _showError;
-    private readonly ProjectionRegistry _projections;
     private readonly IMediaControl _mediaControls;
     private readonly Action<BridgeUiEvent> _importEvents;
-    private readonly TransferProgressStore _transfers;
     private readonly CastStore _cast;
 
     public UiEventRouter(
         PlaybackStore playback,
         Action<string, string> showError,
-        ProjectionRegistry projections,
         IMediaControl mediaControls,
         Action<BridgeUiEvent> importEvents,
-        TransferProgressStore transfers,
         CastStore cast)
     {
         _playback = playback;
         _showError = showError;
-        _projections = projections;
         _mediaControls = mediaControls;
         _importEvents = importEvents;
-        _transfers = transfers;
         _cast = cast;
     }
 
@@ -91,10 +84,6 @@ internal sealed class UiEventRouter
             case BridgeUiEvent.RepeatModeChanged repeat:
                 _playback.ApplyRepeat(repeat.Mode);
                 break;
-            case BridgeUiEvent.QueueUpdated queue:
-                _playback.ApplyQueueUpdated(queue.Snapshot);
-                _mediaControls.UpdateCommandAvailability(queue.Snapshot.HasNext, queue.Snapshot.HasPrevious);
-                break;
             case BridgeUiEvent.QueueItemsAdded added:
                 _playback.ApplyQueueItemsAdded(checked((int)added.Count));
                 break;
@@ -114,9 +103,6 @@ internal sealed class UiEventRouter
                     _showError(Loc.Chrome("error.title"), errorLine);
                 }
                 break;
-            case BridgeUiEvent.Invalidated invalidated:
-                _projections.Invalidate(invalidated.Invalidation);
-                break;
             case BridgeUiEvent.PreviewProgress:
             case BridgeUiEvent.PreviewPlaying:
             case BridgeUiEvent.PreviewPaused:
@@ -124,18 +110,6 @@ internal sealed class UiEventRouter
             case BridgeUiEvent.CandidateImportLoudnessProgress:
             case BridgeUiEvent.ImportQueueIdentifyProgress:
                 _importEvents(evt);
-                break;
-            case BridgeUiEvent.ReleaseTransferProgress transfer:
-                // A pin/unpin/manage/unmanage transition started: light the
-                // in-flight indicator on the storage row and album-detail band
-                // until the matching ended event lands.
-                _transfers.Apply(transfer.ReleaseId, BridgeDisplay.TransferActionToken(transfer.Action));
-                break;
-            case BridgeUiEvent.ReleaseTransferEnded ended:
-                // The transition finished (success or failure) — clear the
-                // indicator. Core's drop guard guarantees this event even on abort,
-                // so overlay entries cannot leak.
-                _transfers.Clear(ended.ReleaseId);
                 break;
             case BridgeUiEvent.CastStatusChanged cast:
                 // The active renderer changed — casting to a device, or back to

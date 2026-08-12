@@ -143,9 +143,9 @@ telemetry_value_enum! {
 }
 
 telemetry_value_enum! {
-    /// The sync operation whose failure produced a `SyncFailed` event. Today the
-    /// only place sync errors surface as library events is the sync-loop status
-    /// listener, so `Cycle` is the only emitting site.
+    /// The sync operation whose failure produced a `SyncFailed` telemetry event.
+    /// The sync-loop status listener is the only emitting site, so `Cycle` is
+    /// the only variant.
     pub enum SyncOperation {
         Cycle => "cycle",
     }

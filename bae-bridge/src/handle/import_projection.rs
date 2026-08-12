@@ -172,40 +172,6 @@ impl crate::types::BridgeInvalidCandidate {
 }
 
 #[cfg(feature = "desktop")]
-impl crate::types::BridgeImportCandidateSnapshot {
-    pub(super) fn from_core(candidate: bae_core::import::ImportCandidateSnapshot) -> Self {
-        match candidate {
-            bae_core::import::ImportCandidateSnapshot::Folder {
-                candidate,
-                runtime,
-                actionable,
-                skipped,
-                is_added,
-            } => crate::types::BridgeImportCandidateSnapshot::Folder {
-                candidate: crate::types::BridgeFolderCandidate::from_core(
-                    candidate, skipped, is_added,
-                ),
-                runtime_snapshot: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
-                actionable,
-            },
-            bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
-                crate::types::BridgeImportCandidateSnapshot::Invalid {
-                    candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
-                }
-            }
-            bae_core::import::ImportCandidateSnapshot::Runtime { key, runtime } => {
-                crate::types::BridgeImportCandidateSnapshot::Runtime {
-                    key,
-                    runtime_snapshot: crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-                        runtime,
-                    ),
-                }
-            }
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(super) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
         let bae_core::import::CandidateRuntimeSnapshot {
@@ -271,11 +237,22 @@ impl crate::types::BridgeFolderImportCandidateSnapshot {
 }
 
 #[cfg(feature = "desktop")]
+impl crate::types::BridgeRuntimeImportCandidateSnapshot {
+    pub(super) fn from_core(snapshot: bae_core::import::RuntimeImportCandidateSnapshot) -> Self {
+        Self {
+            key: snapshot.key,
+            runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(snapshot.runtime),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl crate::types::BridgeImportCandidatesSnapshot {
     pub(super) fn from_core(snapshot: bae_core::import::ImportCandidatesSnapshot) -> Self {
         let bae_core::import::ImportCandidatesSnapshot {
             watched_folders,
             folder_candidates,
+            runtime_candidates,
             invalid_candidates,
             boundaries,
             folder_scan_statuses,
@@ -288,6 +265,10 @@ impl crate::types::BridgeImportCandidatesSnapshot {
             folder_candidates: folder_candidates
                 .into_iter()
                 .map(crate::types::BridgeFolderImportCandidateSnapshot::from_core)
+                .collect(),
+            runtime_candidates: runtime_candidates
+                .into_iter()
+                .map(crate::types::BridgeRuntimeImportCandidateSnapshot::from_core)
                 .collect(),
             invalid_candidates: invalid_candidates
                 .into_iter()
@@ -611,10 +592,6 @@ pub(super) fn convert_ui_event(
     use bae_core::ui::UiBusEvent;
 
     match event {
-        UiBusEvent::Invalidated(invalidation) => Some(BridgeUiEvent::Invalidated {
-            invalidation: BridgeInvalidation::from_core(invalidation),
-        }),
-
         // ── Playback ───────────────────────────────────────────────
         UiBusEvent::PlaybackStopped => Some(BridgeUiEvent::PlaybackStopped),
         UiBusEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
@@ -691,9 +668,6 @@ pub(super) fn convert_ui_event(
         UiBusEvent::RepeatModeChanged { mode } => Some(BridgeUiEvent::RepeatModeChanged {
             mode: BridgeRepeatMode::from_core(mode),
         }),
-        UiBusEvent::QueueUpdated(snapshot) => Some(BridgeUiEvent::QueueUpdated {
-            snapshot: BridgeQueueSnapshot::from_core(snapshot),
-        }),
         UiBusEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
 
         // ── Preview ────────────────────────────────────────────────
@@ -726,17 +700,6 @@ pub(super) fn convert_ui_event(
         }),
         UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
             Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
-        }
-
-        // ── Release transfer ───────────────────────────────────────
-        UiBusEvent::ReleaseTransferProgress { release_id, action } => {
-            Some(BridgeUiEvent::ReleaseTransferProgress {
-                release_id,
-                action: crate::types::BridgeReleaseStorageAction::from_core(action),
-            })
-        }
-        UiBusEvent::ReleaseTransferEnded { release_id } => {
-            Some(BridgeUiEvent::ReleaseTransferEnded { release_id })
         }
 
         // ── Cast ───────────────────────────────────────────────────

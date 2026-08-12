@@ -7,40 +7,59 @@ namespace Bae.Desktop;
 
 // The storage sheet's non-UI operations: which of a selection's releases have a
 // transition in flight, the transitions they all allow (intersected), and running
-// a transition across the selection. Also tracks the releases whose unmanage is
-// running right now — a blocking foreground transfer (unlike pin, which enqueues,
-// or upload, which lives in the outbox), so it has no queue snapshot to read; the
-// row offers to cancel it from this set while RunStorageActionForReleases awaits.
+// a transition across the selection. Database rows and runtime queue snapshots
+// carry the current values used for those decisions.
 // UI-thread only.
 internal sealed class StorageStore
 {
     private readonly DownloadsService _downloads;
     private readonly SyncService _sync;
-    private readonly TransferProgressStore _transfers;
-    private readonly HashSet<string> _unmanagingReleases = new();
+    private BridgeOutboxSnapshot? _outbox;
+    private BridgeDownloadSnapshot? _downloadsSnapshot;
+    private BridgeOutputSnapshot? _outputSnapshot;
+    public event Action? Changed;
 
-    public StorageStore(DownloadsService downloads, SyncService sync, TransferProgressStore transfers)
+    public StorageStore(DownloadsService downloads, SyncService sync)
     {
         _downloads = downloads;
         _sync = sync;
-        _transfers = transfers;
     }
 
-    public bool IsUnmanaging(string releaseId) => _unmanagingReleases.Contains(releaseId);
+    public void ApplyOutbox(BridgeOutboxSnapshot snapshot)
+    {
+        _outbox = snapshot;
+        Changed?.Invoke();
+    }
+
+    public void ApplyDownloads(BridgeDownloadSnapshot snapshot)
+    {
+        _downloadsSnapshot = snapshot;
+        Changed?.Invoke();
+    }
+
+    public void ApplyOutputs(BridgeOutputSnapshot snapshot)
+    {
+        _outputSnapshot = snapshot;
+        Changed?.Invoke();
+    }
+
+    public BridgeOutboxSnapshot? Outbox => _outbox;
+    public BridgeDownloadSnapshot? Downloads => _downloadsSnapshot;
+    public BridgeOutputSnapshot? Outputs => _outputSnapshot;
 
     // Of the given releases, those with a transition in flight: an outbox upload,
-    // a queued/downloading pin, a running unmanage, or an event-reported transfer
-    // in the overlay. A release in this set offers only Cancel — the storage
+    // a queued/downloading pin, or a transfer carried by the current storage row.
+    // A release in this set offers only Cancel — the storage
     // actions would race the transition. Returns the outbox read error, if any,
     // so the caller can surface it like the panel load does.
     public async System.Threading.Tasks.Task<(HashSet<string> Transitioning, string? Error)> TransitioningReleases(
-        List<string> releaseIds)
+        List<string> releaseIds, Dictionary<string, BridgeStorageRow> rowsById)
     {
         var (uploading, uploadError) = await UploadingReleases(releaseIds);
         var transitioning = new HashSet<string>(uploading);
         transitioning.UnionWith(await DownloadingReleases(releaseIds));
-        transitioning.UnionWith(releaseIds.Where(IsUnmanaging));
-        transitioning.UnionWith(releaseIds.Where(id => _transfers.TokenFor(id) is not null));
+        transitioning.UnionWith(releaseIds.Where(id =>
+            rowsById.TryGetValue(id, out var row) && row.Release.TransferAction is not null));
         return (transitioning, uploadError);
     }
 
@@ -66,16 +85,7 @@ internal sealed class StorageStore
     public async System.Threading.Tasks.Task<(List<string> Releases, string? Error)> UploadingReleases(
         List<string> releaseIds)
     {
-        var (current, result) = await _sync.OutboxSnapshot();
-        if (!current)
-        {
-            return (new List<string>(), null);
-        }
-        if (result.Error is not null)
-        {
-            return (new List<string>(), result.Error);
-        }
-        var snapshot = result.Snapshot;
+        var snapshot = _outbox;
         if (snapshot is null)
         {
             // Couldn't read the outbox; surface it like the panel load does rather
@@ -91,18 +101,7 @@ internal sealed class StorageStore
     // is an app-state fault — log it and offer no pin-cancel rather than a toast.
     public async System.Threading.Tasks.Task<List<string>> DownloadingReleases(List<string> releaseIds)
     {
-        var (current, result) = await _downloads.DownloadSnapshot();
-        if (!current)
-        {
-            return new List<string>();
-        }
-        if (result.Error is not null)
-        {
-            BaeDiagnostics.Logger.Warning(
-                $"couldn't read the download snapshot; pin-cancel unavailable: {result.Error}");
-            return new List<string>();
-        }
-        var snapshot = result.Snapshot;
+        var snapshot = _downloadsSnapshot;
         if (snapshot is null)
         {
             BaeDiagnostics.Logger.Warning(
@@ -116,9 +115,8 @@ internal sealed class StorageStore
 
     // Run a storage transition on every release in the selection off the UI thread.
     // "unmanage" asks once for a destination folder (via pickFolder), then moves
-    // each release into it, marking them as unmanaging so a right-click can cancel
-    // the blocking transfer while it runs. Returns null on success (or a cancelled
-    // picker), else the first error message.
+    // each release into it. Returns null on success (or a cancelled picker), else
+    // the first error message.
     public async System.Threading.Tasks.Task<string?> RunStorageActionForReleases(
         BridgeReleaseStorageAction action,
         List<string> releaseIds,
@@ -132,22 +130,8 @@ internal sealed class StorageStore
                 return null;
             }
 
-            foreach (var releaseId in releaseIds)
-            {
-                _unmanagingReleases.Add(releaseId);
-            }
-            try
-            {
-                return await FirstErrorAcross(
-                    releaseIds, releaseId => _downloads.MakeReleaseLocal(releaseId, path));
-            }
-            finally
-            {
-                foreach (var releaseId in releaseIds)
-                {
-                    _unmanagingReleases.Remove(releaseId);
-                }
-            }
+            return await FirstErrorAcross(
+                releaseIds, releaseId => _downloads.MakeReleaseLocal(releaseId, path));
         }
 
         switch (action)

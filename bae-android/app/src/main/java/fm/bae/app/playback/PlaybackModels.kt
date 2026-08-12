@@ -115,7 +115,7 @@ interface PlaybackEventSink {
 
     fun onRepeatModeChanged(mode: BridgeRepeatMode)
 
-    fun onQueueUpdated(
+    fun onQueueValue(
         manual: List<BridgeQueueEntry>,
         context: BridgePlaybackContext?,
         hasNext: Boolean,

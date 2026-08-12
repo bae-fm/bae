@@ -3,16 +3,13 @@ import BaeKit
 @MainActor
 final class DesktopEventHandler {
     private let importStore: ImportStore
-    private let projectionRegistry: ProjectionRegistry
     private let mediaControlService: MediaControlService
 
     init(
         importStore: ImportStore,
-        projectionRegistry: ProjectionRegistry,
         mediaControlService: MediaControlService
     ) {
         self.importStore = importStore
-        self.projectionRegistry = projectionRegistry
         self.mediaControlService = mediaControlService
     }
 
@@ -66,13 +63,11 @@ final class DesktopEventHandler {
             importStore.queueIdentifyProgress = (
                 identified: identified, total: total
             )
-            projectionRegistry.invalidate(.importCandidateList)
 
-        case .castStatusChanged, .invalidated, .playbackStopped, .playbackError,
+        case .castStatusChanged, .playbackStopped, .playbackError,
             .playbackLoading, .playbackPlaying, .playbackPaused,
             .playbackProgress, .playbackSeeked, .volumeChanged, .muteChanged,
-            .repeatModeChanged, .queueUpdated, .queueItemsAdded,
-            .releaseTransferProgress, .releaseTransferEnded, .error:
+            .repeatModeChanged, .queueItemsAdded, .error:
             preconditionFailure("Unhandled UI event \(event)")
         }
     }

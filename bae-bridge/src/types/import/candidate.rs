@@ -699,6 +699,7 @@ pub struct BridgeReleaseGroup {
     /// Stable card identity (shared group id, or the lone pressing's release
     /// id for an ungrouped result).
     pub id: String,
+    pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,
     /// Representative cover for the card.

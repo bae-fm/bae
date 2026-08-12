@@ -5,8 +5,8 @@
 /// How much of the context's not-yet-played tail `resolve_queue_projection`
 /// resolves eagerly. The tail is library-scaled (a `Library` source's tail is
 /// every remaining library track); resolving only the first window keeps
-/// `QueueUpdated` bounded regardless of library size. The rest pages in on
-/// demand via `get_queue_upcoming_page`.
+/// the queue value bounded regardless of library size. The rest is delivered
+/// through page subscriptions.
 pub const QUEUE_UPCOMING_WINDOW: usize = 100;
 
 /// Display-ready queue entry. `entry_id` is per-instance, so the UI keys each row
@@ -39,7 +39,7 @@ pub struct ResolvedContext {
     pub source_title: Option<String>,
     pub shuffled: bool,
     /// The first [`QUEUE_UPCOMING_WINDOW`] entries of the tail — not the whole
-    /// tail. Later indices are fetched on demand via `get_queue_upcoming_page`.
+    /// tail. Later indices are delivered by page subscriptions.
     pub upcoming: Vec<QueueItem>,
     /// The full length of the not-yet-played tail, including entries beyond
     /// `upcoming`. The UI renders a placeholder for every index up to this and
@@ -58,8 +58,8 @@ pub struct ResolvedQueueSnapshot {
     pub has_previous: bool,
     /// The `PlaybackQueue` revision this snapshot was resolved from. A UI
     /// stamps its fetched upcoming-pages with this and drops any page whose
-    /// revision no longer matches — the newer `QueueUpdated` snapshot that
-    /// bumped it already reset the view.
+    /// revision no longer matches — the newer queue value already reset the
+    /// view.
     pub revision: u64,
 }
 

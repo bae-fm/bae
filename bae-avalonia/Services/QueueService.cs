@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
@@ -10,8 +9,7 @@ namespace Bae.Desktop;
 /// entry, the shuffle flip, and the upcoming-tail page. The C# mirror of BaeKit's
 /// <c>Queue</c> closure-struct. Mutations carry the session-swap currency the
 /// Windows session exposes (whether a handle was current, or the error line for
-/// the appends that surface one); the upcoming-tail read is async off the UI
-/// thread. Every delegate defaults to a fail-loud stub; <see cref="FromSession"/>
+/// the appends that surface one). Every delegate defaults to a fail-loud stub; <see cref="FromSession"/>
 /// is the production wiring.
 /// </summary>
 internal sealed class QueueService
@@ -55,10 +53,10 @@ internal sealed class QueueService
     public Func<bool, bool> SetShuffle { get; init; }
         = _ => throw new InvalidOperationException("QueueService stub: SetShuffle not wired");
 
-    /// <summary>One page of the context's upcoming tail past the window a queue
-    /// snapshot already carries. Not a mutation, so no corresponding event.</summary>
-    public Func<uint, uint, Task<(bool Current, (BridgeQueueUpcomingPage? Page, string? Error) Result)>> GetUpcomingPage { get; init; }
-        = (_, _) => throw new InvalidOperationException("QueueService stub: GetUpcomingPage not wired");
+    /// <summary>Subscribe to one page of the context's upcoming tail past the
+    /// window the queue value already carries.</summary>
+    public Func<uint, uint, Action<BridgeQueueUpcomingPage>, Action<Exception>, IDisposable?> SubscribeUpcomingPage { get; init; }
+        = (_, _, _, _) => throw new InvalidOperationException("QueueService stub: SubscribeUpcomingPage not wired");
 
     /// <summary>Wire every mutation through the open session's current handle.</summary>
     public static QueueService FromSession(SessionStore session) => new()
@@ -78,7 +76,11 @@ internal sealed class QueueService
             session.WithCurrentHandle(handle => NativeBae.QueueReorder(handle, entryId, beforeEntryId)),
         SkipToEntry = entryId => session.WithCurrentHandle(handle => NativeBae.QueueSkipTo(handle, entryId)),
         SetShuffle = on => session.WithCurrentHandle(handle => NativeBae.SetShuffle(handle, on)),
-        GetUpcomingPage = (offset, limit) =>
-            session.RunForCurrentHandle(handle => NativeBae.QueueUpcomingPage(handle, offset, limit)),
+        SubscribeUpcomingPage = (offset, limit, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeQueueUpcomingPage(handle, offset, limit, onValue, onError));
+            return current ? subscription : null;
+        },
     };
 }

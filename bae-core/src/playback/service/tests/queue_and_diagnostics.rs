@@ -127,22 +127,21 @@ async fn fetch_source_tracks_concatenates_a_releases_source() {
 /// absence value to preserve a fallback for.
 ///
 /// The discriminator from the old silently-degrading behavior: the old code
-/// unconditionally called `emit_queue_update()` after the match (mutating the
+/// unconditionally changed the queue after the match (mutating it to a
 /// queue to a bogus single-track entry even on failure); the fix returns
-/// before ever touching the queue, so no `QueueUpdated` fires at all.
+/// before ever touching the queue.
 #[tokio::test]
 async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let queue_revision = service.playback_queue.revision();
 
     service.handle_play("missing-track".to_string()).await;
 
     let mut saw_error = false;
-    let mut saw_queue_update = false;
     let mut saw_playing = false;
     while let Ok(progress) = progress_rx.try_recv() {
         match progress {
             PlaybackProgress::PlaybackError { .. } => saw_error = true,
-            PlaybackProgress::QueueUpdated(_) => saw_queue_update = true,
             PlaybackProgress::StateChanged {
                 state: PlaybackState::Playing { .. },
             } => saw_playing = true,
@@ -154,7 +153,7 @@ async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
         "a failed context load must surface a PlaybackError"
     );
     assert!(
-        !saw_queue_update,
+        service.playback_queue.revision() == queue_revision,
         "a failed context load must not mutate the queue with a fallback single-track entry"
     );
     assert!(

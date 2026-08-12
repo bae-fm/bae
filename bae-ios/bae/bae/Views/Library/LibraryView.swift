@@ -79,13 +79,10 @@ private struct LibraryRouteDestination: View {
 
 /// Library browse root: a top bar with sync status, an album grid paged from
 /// the database, navigation into album detail, and a persistent now-playing
-/// bar. The grid re-queries when core invalidates the album, artist, or
-/// composer list.
+/// bar. The grid receives updated pages from its database subscriptions.
 struct LibraryView: View {
     @Environment(LibraryStore.self)
     private var libraryStore
-    @Environment(ProjectionRegistry.self)
-    private var projectionRegistry
     @Environment(Library.self)
     private var library
     @Environment(ConfigStore.self)
@@ -107,12 +104,6 @@ struct LibraryView: View {
     private var composerList: ComposerList?
     @State
     private var artistList: ArtistList?
-    @State
-    private var albumListRegistration: ProjectionRegistration?
-    @State
-    private var composerListRegistration: ProjectionRegistration?
-    @State
-    private var artistListRegistration: ProjectionRegistration?
     @State
     private var routePath: [LibraryRoute] = []
     @State
@@ -247,10 +238,6 @@ extension LibraryView {
                 configStore.showError(error)
             },
         )
-        albumListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .albumList
-        )
         await newList.loadInitial()
         guard !Task.isCancelled else {
             return
@@ -273,10 +260,6 @@ extension LibraryView {
                 configStore.showError(error)
             },
         )
-        composerListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .composerList
-        )
         await newList.loadInitial()
         guard !Task.isCancelled else {
             return
@@ -298,10 +281,6 @@ extension LibraryView {
             onError: { error in
                 configStore.showError(error)
             },
-        )
-        artistListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .artistList
         )
         await newList.loadInitial()
         guard !Task.isCancelled else {
@@ -336,9 +315,9 @@ extension LibraryView {
 
     /// Debounced library search. `.task(id: searchQuery)` cancels the prior run
     /// on each keystroke: a pending 300ms debounce unwinds, and the post-await
-    /// `Task.checkCancellation()` drops a superseded query's results before they
-    /// are assigned — so only the latest query's results land. Prior results
-    /// stay on screen while the next search runs.
+    /// cancellation drops the old subscription, so only the latest query's
+    /// live results land. Prior results stay on screen while the next search
+    /// starts.
     private func runSearch() async {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         searchError = nil
@@ -348,15 +327,18 @@ extension LibraryView {
         }
         do {
             try await Task.sleep(for: .milliseconds(300))
-            let bridge = try await library.searchLibrary(query)
-            try Task.checkCancellation()
-            searchResults = SearchResults(bridge: bridge, query: query)
+        } catch {
+            return
         }
-        catch is CancellationError {
-            // Superseded by a newer query (or cleared); leave prior results.
-        }
-        catch {
-            searchError = error.displayLine
+        for await result in library.searchResults(query) {
+            guard !Task.isCancelled else { return }
+            switch result {
+            case .success(let bridge):
+                searchResults = SearchResults(bridge: bridge, query: query)
+                searchError = nil
+            case .failure(let error):
+                searchError = error.displayLine
+            }
         }
     }
 }

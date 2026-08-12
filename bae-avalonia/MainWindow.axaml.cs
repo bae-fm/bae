@@ -89,7 +89,12 @@ internal sealed partial class MainWindow : Window
         // router when it closes — otherwise a swapped-out AppService keeps handling
         // events on the shared session.
         Opened += (_, _) => _session.Subscribe();
-        Closed += (_, _) => _session.UiEvent -= _app.UiEventRouter.Route;
+        Closed += (_, _) =>
+        {
+            _session.UiEvent -= _app.UiEventRouter.Route;
+            _shell.Dispose();
+            _app.Dispose();
+        };
 
         // Ctrl+1..9 switches to the nth library on this device; Ctrl+Shift+W closes
         // the library back to the welcome chooser.

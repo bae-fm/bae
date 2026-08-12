@@ -18,12 +18,23 @@ public class PaginatedListTests
 
     private static string[] Ids(params int[] xs) => xs.Select(Id).ToArray();
 
-    // A page source over a fixed backing list, with a count that can change to
-    // simulate a shape change, call counters, and an optional gate so a test can
-    // hold a fetch open to exercise coalescing and stale-generation drops.
+    // A live page source over a mutable backing list, with call counters and an
+    // optional gate so a test can hold the first page delivery open.
     private sealed class FakeSource : IPageSource<Row>
     {
+        private sealed record Active(
+            int Offset,
+            int Limit,
+            Action<IReadOnlyList<Row>, int> OnValue,
+            Action<Exception> OnError);
+
+        private sealed class Subscription(Action dispose) : IDisposable
+        {
+            public void Dispose() => dispose();
+        }
+
         private List<Row> _rows;
+        private readonly List<Active> _active = new();
         public int CountCalls;
         public int PageCalls;
         public TaskCompletionSource<bool>? Gate;
@@ -31,22 +42,48 @@ public class PaginatedListTests
 
         public FakeSource(int n) => _rows = Enumerable.Range(0, n).Select(i => new Row(Id(i))).ToList();
 
-        public void SetRows(int n) => _rows = Enumerable.Range(0, n).Select(i => new Row(Id(i))).ToList();
-
-        public Task<int> CountAsync()
+        public void SetRows(int n)
         {
-            CountCalls++;
-            return CountThrows is { } ex ? Task.FromException<int>(ex) : Task.FromResult(_rows.Count);
+            _rows = Enumerable.Range(0, n).Select(i => new Row(Id(i))).ToList();
+            foreach (var active in _active.ToArray())
+            {
+                Deliver(active);
+            }
         }
 
-        public async Task<IReadOnlyList<Row>> PageAsync(int offset, int limit)
+        public IDisposable Subscribe(
+            int offset,
+            int limit,
+            Action<IReadOnlyList<Row>, int> onValue,
+            Action<Exception> onError)
         {
-            PageCalls++;
-            if (Gate is { } gate)
+            if (limit == 0) CountCalls++;
+            else PageCalls++;
+            var active = new Active(offset, limit, onValue, onError);
+            _active.Add(active);
+            Deliver(active);
+            return new Subscription(() => _active.Remove(active));
+        }
+
+        private void Deliver(Active active)
+        {
+            if (active.Limit == 0 && CountThrows is { } exception)
             {
-                await gate.Task;
+                active.OnError(exception);
+                return;
             }
-            return _rows.Skip(offset).Take(limit).ToList();
+            if (Gate is { } gate && active.Limit > 0)
+            {
+                _ = DeliverAfterGate(active, gate.Task);
+                return;
+            }
+            active.OnValue(_rows.Skip(active.Offset).Take(active.Limit).ToList(), _rows.Count);
+        }
+
+        private async Task DeliverAfterGate(Active active, Task gate)
+        {
+            await gate;
+            active.OnValue(_rows.Skip(active.Offset).Take(active.Limit).ToList(), _rows.Count);
         }
     }
 
@@ -79,7 +116,7 @@ public class PaginatedListTests
         await list.LoadInitialAsync();
 
         // A failed cold load is distinct from an empty library: the initial error
-        // is set, and it does NOT route to the page/invalidate error sink.
+        // is set, and it does not route to the later-page error sink.
         Assert.NotNull(list.InitialLoadError);
         Assert.Empty(errors);
     }
@@ -110,7 +147,7 @@ public class PaginatedListTests
         await list.LoadRangeAsync(0, 10);
         Assert.Equal(1, source.PageCalls);
 
-        await list.LoadRangeAsync(2, 3); // already covered at the current generation
+        await list.LoadRangeAsync(2, 3); // already covered by a subscription
         Assert.Equal(1, source.PageCalls);
     }
 
@@ -143,7 +180,7 @@ public class PaginatedListTests
     }
 
     [Fact]
-    public async Task Adjacent_same_generation_segments_merge()
+    public async Task Adjacent_segments_merge()
     {
         var source = new FakeSource(10);
         var list = Make(source);
@@ -156,43 +193,20 @@ public class PaginatedListTests
     }
 
     [Fact]
-    public async Task Invalidate_recounts_and_bumps_generation()
+    public async Task Live_values_update_count_and_loaded_rows()
     {
         var source = new FakeSource(10);
         var list = Make(source);
         await list.LoadInitialAsync();
         await list.LoadRangeAsync(0, 5);
-        var gen0 = list.Generation;
-
         source.SetRows(20);
-        list.Invalidate();
-        await list.AwaitReloadAsync();
 
         Assert.Equal(20, list.TotalCount);
-        Assert.Equal(gen0 + 1, list.Generation);
-        Assert.Equal(Ids(0, 1, 2, 3, 4), list.AllLoadedIds); // stale segment stays visible
+        Assert.Equal(Ids(0, 1, 2, 3, 4), list.AllLoadedIds);
     }
 
     [Fact]
-    public async Task Stale_generation_fetch_result_is_dropped()
-    {
-        var source = new FakeSource(10) { Gate = new TaskCompletionSource<bool>() };
-        var ingested = new List<Row>();
-        var list = Make(source, ingested);
-        await list.LoadInitialAsync();
-
-        var pending = list.LoadRangeAsync(0, 5);
-        list.Invalidate();
-        await list.AwaitReloadAsync();
-        source.Gate.SetResult(true);
-        await pending;
-
-        Assert.Empty(ingested); // fetched at the old generation → dropped
-        Assert.Empty(list.AllLoadedIds);
-    }
-
-    [Fact]
-    public async Task Reload_after_invalidate_replaces_stale_segment()
+    public async Task Live_value_replaces_the_subscribed_segment()
     {
         var source = new FakeSource(10);
         var list = Make(source);
@@ -200,12 +214,9 @@ public class PaginatedListTests
         await list.LoadRangeAsync(0, 5);
 
         source.SetRows(8);
-        list.Invalidate();
-        await list.AwaitReloadAsync();
-        await list.LoadRangeAsync(0, 5); // re-fetch at the new generation
 
         Assert.Equal(Ids(0, 1, 2, 3, 4), list.AllLoadedIds);
-        Assert.Equal(2, source.PageCalls);
+        Assert.Equal(1, source.PageCalls);
     }
 
     [Fact]
@@ -219,13 +230,13 @@ public class PaginatedListTests
     }
 
     [Fact]
-    public void Epoch_differs_across_instances_and_generations()
+    public void Epoch_differs_across_instances_and_stays_stable_for_values()
     {
         var a = Make(new FakeSource(0));
         var b = Make(new FakeSource(0));
         Assert.NotEqual(a.Epoch, b.Epoch); // distinct instances
         var e0 = a.Epoch;
         a.PreloadForPreview(new List<string> { Id(1) });
-        Assert.Equal(e0, a.Epoch); // preview doesn't bump the generation
+        Assert.Equal(e0, a.Epoch);
     }
 }

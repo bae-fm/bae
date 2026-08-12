@@ -9,7 +9,6 @@ fn create_test_album() -> DbAlbum {
         created_at: Utc::now(),
     }
 }
-
 fn create_test_release(album_id: &str) -> DbRelease {
     DbRelease {
         id: Uuid::new_v4().to_string(),
@@ -759,74 +758,6 @@ async fn delete_album_removes_release_covers() {
     );
 }
 
-/// Drain the manager's library event channel and return the first
-/// `ReleaseRemoved` seen, failing if the channel closes first.
-async fn next_release_removed(
-    rx: &mut broadcast::Receiver<LibraryEvent>,
-) -> (String, String, Option<AlbumSummary>) {
-    loop {
-        match rx.recv().await {
-            Ok(LibraryEvent::ReleaseRemoved {
-                album_id,
-                release_id,
-                album,
-            }) => return (album_id, release_id, album),
-            Ok(_) => continue,
-            Err(e) => panic!("library event channel closed before ReleaseRemoved: {e}"),
-        }
-    }
-}
-
-#[tokio::test]
-async fn release_removed_carries_post_removal_parent_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
-
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
-
-    let mut rx = manager.subscribe_events();
-    manager.delete_release(&release1.id).await.unwrap();
-
-    let (album_id, release_id, summary) = next_release_removed(&mut rx).await;
-    assert_eq!(album_id, album.id);
-    assert_eq!(release_id, release1.id);
-    let summary = summary.expect("album survives, so the event carries its summary");
-    assert!(
-        !summary.release_ids.contains(&release1.id),
-        "deleted release must be gone from the post-removal summary"
-    );
-    assert!(
-        summary.release_ids.contains(&release2.id),
-        "surviving release must remain in the post-removal summary"
-    );
-}
-
-#[tokio::test]
-async fn release_removed_carries_none_when_album_no_longer_exists() {
-    // The album-cascade case: the sync path calls `emit_release_removed` for a
-    // release whose album was already removed with its last release, while
-    // `delete_release` takes the album-removed branch instead. So drive
-    // `emit_release_removed` against a missing album directly — the same call the
-    // sync path makes — and assert it ships `album: None` instead of panicking.
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    let mut rx = manager.subscribe_events();
-    manager
-        .emit_release_removed("gone-album-id", "gone-release-id")
-        .await;
-
-    let (album_id, release_id, summary) = next_release_removed(&mut rx).await;
-    assert_eq!(album_id, "gone-album-id");
-    assert_eq!(release_id, "gone-release-id");
-    assert!(
-        summary.is_none(),
-        "a removed album yields no summary, not a panic in AlbumSummary::from_raw"
-    );
-}
 
 #[tokio::test]
 async fn test_delete_album_deletes_all_releases() {

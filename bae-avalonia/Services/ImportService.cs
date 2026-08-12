@@ -18,26 +18,21 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
-    /// <summary>The sidebar's pre-shaped triage sections and tab counts — core's
-    /// projection. Read again on an import-domain invalidation; the UI iterates
-    /// and renders it without computing tab or group membership itself.</summary>
-    public Func<Task<(bool Current, (BridgeTriageQueue? Queue, string? Error) Result)>> TriageQueue { get; init; }
-        = () => throw new InvalidOperationException("ImportService stub: TriageQueue not wired");
+    public Func<BridgeFolderCandidate, BridgeCandidateRuntimeSnapshot, ImportCandidate>
+        ProjectFolderCandidate { get; init; }
+        = (_, _) => throw new InvalidOperationException(
+            "ImportService stub: ProjectFolderCandidate not wired");
 
-    /// <summary>The folders currently watched for imports, for the sidebar's "+"
-    /// menu.</summary>
-    public Func<(bool Current, List<BridgeWatchedFolder> Folders)> WatchedFolders { get; init; }
-        = () => throw new InvalidOperationException("ImportService stub: WatchedFolders not wired");
-
-    /// <summary>The full candidate for one triage row's key — signals, matches,
-    /// audio paths, and documents the row itself doesn't carry — fetched fresh
-    /// when a row's picker opens.</summary>
-    public Func<string, (bool Current, ImportCandidate? Candidate)> CandidateForKey { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: CandidateForKey not wired");
+    public Func<BridgeCandidateRuntimeSnapshot, (
+        ImportCandidateRowStatus RowStatus,
+        List<ReleaseCandidateChoice> Matches,
+        List<SignalBadge> Signals)> ProjectRuntimeCandidate { get; init; }
+        = _ => throw new InvalidOperationException(
+            "ImportService stub: ProjectRuntimeCandidate not wired");
 
     /// <summary>Scan a folder into the watched set (clearing the prior scan);
-    /// candidates stream in through invalidations. Returns the error line, or null
-    /// on success.</summary>
+    /// candidates and watched folders arrive through the import-candidate stream.
+    /// Returns the error line, or null on success.</summary>
     public Func<string, Task<(bool Current, string? Error)>> ScanFolder { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: ScanFolder not wired");
 
@@ -51,8 +46,8 @@ internal sealed class ImportService
     { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetFolderReleaseDecision not wired");
 
-    /// <summary>Skip or un-skip a candidate; the candidate invalidation re-tabs the
-    /// row.</summary>
+    /// <summary>Skip or un-skip a candidate; the import-candidate stream carries
+    /// the updated row.</summary>
     public Func<string, bool, Task<(bool Current, string? Error)>> SetCandidateSkipped { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateSkipped not wired");
 
@@ -63,8 +58,8 @@ internal sealed class ImportService
 
     /// <summary>Name the audio a track sheet describes, or clear it with null.
     /// Core persists the decision and drops the candidate's stored identify
-    /// verdict, so the candidate invalidation brings back both the new roles and
-    /// a fresh identification.</summary>
+    /// verdict; the import-candidate stream carries both the new roles and a
+    /// fresh identification.</summary>
     public Func<string, string, string?, Task<(bool Current, string? Error)>> SetSheetBinding { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetBinding not wired");
 
@@ -85,8 +80,8 @@ internal sealed class ImportService
     /// <summary>Put one of a candidate's files in a role, or put it back in the
     /// one the scan proposed — what the roles table's control and a slot's
     /// Exclude action both call. Core persists it and clears the candidate's
-    /// stored identify verdict, so the candidate invalidation brings back both
-    /// the new roles and a fresh identification.</summary>
+    /// stored identify verdict; the import-candidate stream carries both the new
+    /// roles and a fresh identification.</summary>
     public Func<string, string, BridgeFileRoleChoice, Task<(bool Current, string? Error)>> SetFileRole { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetFileRole not wired");
 
@@ -113,13 +108,6 @@ internal sealed class ImportService
     public Func<string, bool> CancelAutoIdentify { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: CancelAutoIdentify not wired");
 
-    /// <summary>Read the identify pipeline snapshot for a candidate key: the
-    /// localizable row status, the found pressings, and the signals-toolbar badges.
-    /// Null until the pipeline's first event lands. Synchronous — the dialog reads it
-    /// on each candidate invalidation.</summary>
-    public Func<string, (bool Current, (ImportCandidateRowStatus RowStatus, List<ReleaseCandidateChoice> Matches, List<SignalBadge> Signals)? Snapshot)> ReidentifyPipeline { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: ReidentifyPipeline not wired");
-
     /// <summary>What picking a release under a candidate claims, and where its
     /// metadata comes from. The re-identify dialog's path: it commits straight
     /// from the picked row, so it never prefetches. Synchronous — a read of the
@@ -139,26 +127,26 @@ internal sealed class ImportService
     /// evidence.</summary>
     /// <summary>Decide the candidate's identity: persist the choice and come
     /// back with the seeded edit the pane renders.</summary>
-    public Func<string, BridgeIdentityPick, Task<(bool Current, (DecidedEdit? Decided, string? Error) Result)>> PickCandidateIdentity { get; init; }
-        = (_, _) => throw new InvalidOperationException("ImportService stub: PickCandidateIdentity not wired");
+    public Func<string, BridgeIdentityPick, IReadOnlyList<LocalArtwork>, Task<(bool Current, (DecidedEdit? Decided, string? Error) Result)>> PickCandidateIdentity { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: PickCandidateIdentity not wired");
 
     /// <summary>The candidate's decided identity read back; `Undecided` when
     /// nothing is decided, which is a result rather than an error.</summary>
-    public Func<string, Task<(bool Current, (DecidedEdit? Decided, bool Undecided, string? Error) Result)>> CandidateDecidedIdentity { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: CandidateDecidedIdentity not wired");
+    public Func<string, IReadOnlyList<LocalArtwork>, Task<(bool Current, (DecidedEdit? Decided, bool Undecided, string? Error) Result)>> CandidateDecidedIdentity { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: CandidateDecidedIdentity not wired");
 
     /// <summary>Seed the import confirm form for a skip-identify import: the folder's
     /// embedded file tags projected into the edit form, with only the folder's local
     /// artwork offered (no source release).</summary>
-    /// <summary>Whether a chosen release is already in the library, so the confirm
-    /// dialog can warn before importing a duplicate (advisory, not a gate).</summary>
-    public Func<string, Task<(bool Current, (BridgeLibraryStatus? Status, string? Error) Result)>> CheckReleaseInLibrary { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: CheckReleaseInLibrary not wired");
+    /// <summary>The chosen source release's current library membership. The
+    /// confirm pane keeps this subscription for as long as that release is selected.</summary>
+    public Func<BridgeMetadataSource, string, string?, Action<BridgeLibraryStatus>, Action<Exception>, IDisposable?> SubscribeReleaseLibraryStatus { get; init; }
+        = (_, _, _, _, _) => throw new InvalidOperationException("ImportService stub: SubscribeReleaseLibraryStatus not wired");
 
     /// <summary>Commit the import of a candidate with the confirm dialog's edits,
     /// storage mode, pin, chosen identity, and cover overlaid. The import runs in the
-    /// background; its result updates the candidate row and grid through
-    /// invalidations. Returns the validation error line, or null on accept.</summary>
+    /// background; its result updates the candidate row and catalog subscriptions.
+    /// Returns the validation error line, or null on accept.</summary>
     public Func<string, string, BridgeIdentityChoice, string, bool, BridgeRawReleaseEdit, BridgeCoverSelection?, Task<(bool Current, string? Error)>> CommitImport { get; init; }
         = (_, _, _, _, _, _, _) => throw new InvalidOperationException("ImportService stub: CommitImport not wired");
 
@@ -170,9 +158,8 @@ internal sealed class ImportService
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static ImportService FromSession(SessionStore session) => new()
     {
-        TriageQueue = () => session.RunForCurrentHandle(NativeBae.ImportTriageQueue),
-        WatchedFolders = () => session.WithCurrentHandle(NativeBae.WatchedFolders),
-        CandidateForKey = key => session.WithCurrentHandle(handle => NativeBae.Candidate(handle, key)),
+        ProjectFolderCandidate = NativeBae.ImportCandidateRow,
+        ProjectRuntimeCandidate = NativeBae.ImportPipeline,
         ScanFolder = path => session.RunForCurrentHandle(handle => NativeBae.ScanFolder(handle, path, true)),
         RemoveWatchedFolder = path =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveWatchedFolder(handle, path)),
@@ -203,18 +190,23 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.AutoIdentifyRelease(handle, candidateKey, releaseId)),
         CancelAutoIdentify = candidateKey =>
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
-        ReidentifyPipeline = candidateKey =>
-            session.WithCurrentHandle(handle => NativeBae.ReidentifyPipeline(handle, candidateKey)),
         SearchReleases = (source, artist, album) =>
             session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
         ClaimForPick = (candidateKey, result, level) =>
             session.WithCurrentHandle(handle => NativeBae.ClaimForPick(handle, candidateKey, result, level)),
-        PickCandidateIdentity = (candidateKey, pick) =>
-            session.RunForCurrentHandle(handle => NativeBae.PickCandidateIdentity(handle, candidateKey, pick)),
-        CandidateDecidedIdentity = candidateKey =>
-            session.RunForCurrentHandle(handle => NativeBae.CandidateDecidedIdentity(handle, candidateKey)),
-        CheckReleaseInLibrary = releaseId =>
-            session.RunForCurrentHandle(handle => NativeBae.CheckReleaseInLibrary(handle, releaseId)),
+        PickCandidateIdentity = (candidateKey, pick, localArtwork) =>
+            session.RunForCurrentHandle(handle => NativeBae.PickCandidateIdentity(
+                handle, candidateKey, pick, localArtwork)),
+        CandidateDecidedIdentity = (candidateKey, localArtwork) =>
+            session.RunForCurrentHandle(handle => NativeBae.CandidateDecidedIdentity(
+                handle, candidateKey, localArtwork)),
+        SubscribeReleaseLibraryStatus = (source, releaseId, sourceGroupId, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeReleaseLibraryStatus(
+                    handle, source, releaseId, sourceGroupId, onValue, onError));
+            return current ? subscription : null;
+        },
         CommitImport = (candidateKey, folderPath, identity, storageMode, pin, userEdit, cover) =>
             session.RunForCurrentHandle(handle => NativeBae.ImportCandidate(
                 handle, candidateKey, identity, storageMode, pin, userEdit, cover)),

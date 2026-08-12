@@ -226,7 +226,7 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
 
     // `play` refills the context lane from the track's release, minting fresh
     // entry ids, and leaves Up Next alone — so capture the entries *after* play
-    // settles: drain up to the Playing state, keeping the latest QueueUpdated.
+    // settles: drain up to Playing, then read the current queue value.
     let (played, entries) = fixture
         .wait_for_playing_capturing_queue(Duration::from_secs(5))
         .await;

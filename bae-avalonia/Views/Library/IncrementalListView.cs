@@ -166,7 +166,7 @@ internal sealed class IncrementalRow<TRow> : ContentControl
 
     private void OnListChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(PaginatedList<TRow, string>.Generation))
+        if (e.PropertyName == nameof(PaginatedList<TRow, string>.Epoch))
         {
             KickLoad();
         }

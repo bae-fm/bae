@@ -52,10 +52,9 @@ private val logger = BaeLogger("bae.ReleaseDownloadControl")
 /**
  * Offline control for the shown release: Download / progress + Cancel /
  * Downloaded + Remove Download. Core joins the pin state, the storage actions it
- * offers, and the download queue into that state; the snapshot and the release
- * invalidations keep it live. Actions never mutate
- * optimistically — the next snapshot (or the release invalidation after a pin or
- * unpin) re-renders. Renders nothing when core offers no control for the release
+ * offers, and the download queue into that state; release and download
+ * subscriptions keep it live. Actions never mutate optimistically — the next
+ * subscribed value after a pin or unpin re-renders. Renders nothing when core offers no control for the release
  * (no cloud home, or a local release).
  */
 @Composable
@@ -102,7 +101,7 @@ internal fun ReleaseDownloadControl(
  * Unpin [releaseId], returning a user-facing error line to display (or null on
  * success). [onSettled] runs whether it succeeds or fails. A cancellation (the
  * screen left mid-unpin) propagates — core's drop guard emits the terminal
- * release invalidation, which flips the control back to Download.
+ * release subscription value, which flips the control back to Download.
  */
 private suspend fun runUnpin(
     session: OpenLibrary,

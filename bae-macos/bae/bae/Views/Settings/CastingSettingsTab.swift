@@ -46,7 +46,7 @@ struct CastingSettingsTab: View {
     }
 
     /// Reads the persisted setting and writes through the bridge — the config
-    /// invalidation is what moves the switch, so a refused or cancelled flip
+    /// subscription is what moves the switch, so a refused or cancelled flip
     /// leaves it where it was with nothing to undo.
     private var enabledBinding: Binding<Bool> {
         Binding(

@@ -9,7 +9,7 @@ import UIKit
 struct ProgressBar: UIViewRepresentable {
     let positionPublisher: AnyPublisher<PlaybackPositionEvent, Never>
     /// The user's elapsed-vs-remaining choice, from the config. Tapping the
-    /// leading label writes the config; the invalidation lands the new value
+    /// leading label writes the config; its subscription lands the new value
     /// back here, which is what re-renders the bar.
     let showRemainingTime: Bool
     let onSeek: (Double) -> Void

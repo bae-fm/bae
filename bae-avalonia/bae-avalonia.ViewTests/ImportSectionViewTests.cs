@@ -153,9 +153,6 @@ public sealed class ImportSectionViewTests
 
         var import = new ImportService
         {
-            CandidateForKey = key => (
-                true,
-                new ImportCandidate { Key = key, Name = "Release 01", FolderPath = key }),
             SetFolderReleaseDecision = (_, _) =>
                 Task.FromResult((true, (string?)null)),
             // Selecting a candidate reads its mapping before anything is
@@ -165,7 +162,7 @@ public sealed class ImportSectionViewTests
                 true,
                 ((BridgeMappingTable?)new BridgeMappingTable(
                     Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null)),
-            CandidateDecidedIdentity = key =>
+            CandidateDecidedIdentity = (key, _) =>
             {
                 resumed?.Add(key);
                 return Task.FromResult(
@@ -192,7 +189,16 @@ public sealed class ImportSectionViewTests
         app.ImportStore.SeedPreview(
             queue,
             PreviewData.ImportWatchedFolders,
-            activeTab);
+            activeTab,
+            new[]
+            {
+                new ImportCandidate
+                {
+                    Key = CandidateKey,
+                    Name = "Release 01",
+                    FolderPath = CandidateKey,
+                },
+            });
         return (view, app);
     }
 
@@ -257,13 +263,27 @@ public sealed class ImportSectionViewTests
 
     private static LibraryService EmptyLibrary() => new()
     {
-        AlbumCount = () => (true, 0L),
-        AlbumPage = (_, _, _) => (true, (new List<Album>(), (string?)null)),
-        ComposerCount = () => (true, 0L),
-        ComposerPage = (_, _, _) => (true, (new List<ComposerSummary>(), (string?)null)),
-        ArtistCount = () => (true, 0L),
-        ArtistPage = (_, _, _) => (true, (new List<ArtistSummary>(), (string?)null)),
+        SubscribeAlbumPage = (_, _, _, onValue, _) =>
+        {
+            onValue(Array.Empty<Album>(), 0);
+            return new TestSubscription();
+        },
+        SubscribeComposerPage = (_, _, _, onValue, _) =>
+        {
+            onValue(Array.Empty<ComposerSummary>(), 0);
+            return new TestSubscription();
+        },
+        SubscribeArtistPage = (_, _, _, onValue, _) =>
+        {
+            onValue(Array.Empty<ArtistSummary>(), 0);
+            return new TestSubscription();
+        },
     };
+
+    private sealed class TestSubscription : IDisposable
+    {
+        public void Dispose() { }
+    }
 
     private static Control CandidateRow(ImportSectionView view) =>
         view

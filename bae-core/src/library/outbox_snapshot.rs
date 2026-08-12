@@ -187,6 +187,13 @@ pub struct OutboxSnapshot {
 }
 
 impl OutboxSnapshot {
+    pub fn uploading_release_ids(&self) -> Vec<String> {
+        self.upload_groups
+            .iter()
+            .filter_map(|group| group.release_id.clone())
+            .collect()
+    }
+
     pub fn per_release_progress(&self) -> HashMap<String, UploadProgress> {
         self.upload_groups
             .iter()

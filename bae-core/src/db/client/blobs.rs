@@ -111,8 +111,8 @@ impl Database {
     /// The `_updated_at` version of each given release's `covers` row; ids with no
     /// cover row are absent from the map. This is the version a cover
     /// [`ImageRef`](crate::album_detail::ImageRef) carries — it moves whenever the
-    /// cover bytes change, which is what invalidates the UI's `(id, version)` cache
-    /// key and makes the `AlbumUpdated` re-render show the new art.
+    /// cover bytes change, which moves the UI's `(id, version)` cache key and makes
+    /// the subscribed album value show the new art.
     pub async fn cover_versions(
         &self,
         release_ids: &[String],
@@ -141,7 +141,7 @@ impl Database {
             return Ok(HashMap::new());
         }
         let ids = ids.to_vec();
-        self.read(move |sql| image_versions(&sql, image_type, &ids))
+        self.read(move |sql| image_versions_on(&sql, image_type, &ids))
             .await
     }
 
@@ -370,7 +370,7 @@ fn stamp_millis(raw: &str) -> Result<i64, DbError> {
 /// `ids` is a whole page's worth of releases (or, for the storage page, each row's
 /// release plus its album's), so it is unbounded and must be chunked under
 /// SQLite's variable limit like every other batched `IN` query here.
-fn image_versions(
+pub(super) fn image_versions_on(
     sql: &SqlReadContext<'_>,
     image_type: LibraryImageType,
     ids: &[String],

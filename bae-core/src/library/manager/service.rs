@@ -57,12 +57,33 @@ impl LibraryManager {
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
         let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
+        let (sync_status_values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
+            error: None,
+            last_sync_time: None,
+            syncing: database.is_syncing(),
+            sync_ready: database.is_syncing(),
+        });
+        let (outbox_values, _) = tokio::sync::watch::channel(None);
+        let download_queue = Arc::new(crate::library::DownloadQueue::new());
+        let (download_values, _) = tokio::sync::watch::channel(
+            crate::library::download_snapshot::build_download_snapshot(
+                &download_queue.ops(),
+                false,
+            ),
+        );
+        let (transfer_values, _) = tokio::sync::watch::channel(HashMap::new());
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let output_queue = Arc::new(crate::library::OutputQueue::new());
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let (output_values, _) = tokio::sync::watch::channel(
+            crate::library::output_snapshot::build_output_snapshot(&output_queue.ops(), false),
+        );
 
         let sync = SyncController::new(
             config_handle.clone(),
             key_service.clone(),
             clock.clone(),
-            event_tx.clone(),
+            outbox_values.clone(),
             database.clone(),
             outbox_in_flight,
             upload_sessions,
@@ -84,11 +105,17 @@ impl LibraryManager {
             event_tx,
             sync,
             sync_status,
+            sync_status_values,
+            outbox_values,
+            download_values,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
-            download_queue: Arc::new(crate::library::DownloadQueue::new()),
+            transfer_values,
+            download_queue,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            output_queue: Arc::new(crate::library::OutputQueue::new()),
+            output_queue,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            output_values,
             _upload_observer: observer,
         };
         manager.start_upload_observer_events(observer_events);
@@ -122,11 +149,34 @@ impl LibraryManager {
             sync_paused.clone(),
         );
 
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
+        let (sync_status_values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
+            error: None,
+            last_sync_time: None,
+            syncing: database.is_syncing(),
+            sync_ready: database.is_syncing(),
+        });
+        let (outbox_values, _) = tokio::sync::watch::channel(None);
+        let download_queue = Arc::new(crate::library::DownloadQueue::new());
+        let (download_values, _) = tokio::sync::watch::channel(
+            crate::library::download_snapshot::build_download_snapshot(
+                &download_queue.ops(),
+                false,
+            ),
+        );
+        let (transfer_values, _) = tokio::sync::watch::channel(HashMap::new());
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let output_queue = Arc::new(crate::library::OutputQueue::new());
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let (output_values, _) = tokio::sync::watch::channel(
+            crate::library::output_snapshot::build_output_snapshot(&output_queue.ops(), false),
+        );
+
         let sync = SyncController::new(
             config_handle.clone(),
             key_service.clone(),
             clock.clone(),
-            event_tx.clone(),
+            outbox_values.clone(),
             database.clone(),
             outbox_in_flight,
             upload_sessions,
@@ -135,8 +185,6 @@ impl LibraryManager {
             None,
             diagnostics.clone(),
         );
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
-
         let manager = LibraryManager {
             database,
             config_handle,
@@ -149,11 +197,17 @@ impl LibraryManager {
             event_tx,
             sync,
             sync_status,
+            sync_status_values,
+            outbox_values,
+            download_values,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
-            download_queue: Arc::new(crate::library::DownloadQueue::new()),
+            transfer_values,
+            download_queue,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            output_queue: Arc::new(crate::library::OutputQueue::new()),
+            output_queue,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            output_values,
             _upload_observer: Arc::new(observer),
         };
         manager.start_upload_observer_events(observer_events);
@@ -203,6 +257,12 @@ impl LibraryManager {
             .unwrap()
             .get(release_id)
             .copied()
+    }
+
+    pub fn subscribe_transfer_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<HashMap<String, ReleaseStorageAction>> {
+        self.transfer_values.subscribe()
     }
 
     /// Connect a real `SyncManager` over an injected cloud home for tests, so the
@@ -355,43 +415,14 @@ impl LibraryManager {
         .await;
     }
 
-    #[cfg(test)]
-    pub(crate) async fn observe_root_made_local_for_test(&self, root_table: &str, root_id: &str) {
-        coven::BlobTransitionObserver::on_root_made_local(
-            self._upload_observer.as_ref(),
-            root_table,
-            root_id,
-        )
-        .await;
-    }
-
-    /// Subscribe to the sync loop's status and turn it into library events: the
-    /// banner state, and granular entity events for the rows an applied changeset
-    /// touched. Call once after construction, with a tokio runtime available.
+    /// Subscribe to the sync loop's status and publish the current banner value.
+    /// Call once after construction, with a tokio runtime available.
     pub fn start(&self) {
         let mut rx = self.database.subscribe_sync_status();
         let lm = self.clone();
         self.runtime_handle.spawn(async move {
             loop {
                 let status = rx.borrow_and_update().clone();
-                // Row changes ride on a cycle that reached storage and changed
-                // data (Synchronized, or Blocked with writes still applied); they
-                // are a refresh hint, so the entity events they drive are re-reads
-                // by primary key, not a trusted stream.
-                if let SyncLoopStatus::Synchronized(success)
-                | SyncLoopStatus::Blocked { success, .. } = &status
-                {
-                    if let Some(row_changes) = &success.row_changes {
-                        let (changes, missing_fk) =
-                            crate::library::sync_events::changes_from_row_changes(row_changes);
-                        for _ in 0..missing_fk {
-                            lm.record_telemetry(TelemetryEvent::Anomaly {
-                                kind: crate::diagnostics::AnomalyKind::ChangesetMissingFk,
-                            });
-                        }
-                        lm.emit_sync_entity_changes(changes).await;
-                    }
-                }
                 // Fold coven's sync-loop status onto bae's flat banner state: a
                 // cycle in progress (CheckingStorage / Publishing) shows the
                 // spinner; a terminal status ends it, clearing the banner and
@@ -413,20 +444,20 @@ impl LibraryManager {
                         }
                         SyncLoopStatus::Failed { error } => (Some(Some(error.clone())), None),
                     };
-                let mut emit_error = None;
-                let mut emit_syncing = None;
-                let mut emit_time = None;
+                let mut changed = false;
+                let mut new_failure = false;
                 {
                     let mut state = lm.sync_status.lock().unwrap();
                     if let Some(error) = error_update {
                         if error != state.error {
                             state.error = error.clone();
-                            emit_error = Some(error.map(crate::ui::UiError::internal));
+                            new_failure = error.is_some();
+                            changed = true;
                         }
                     }
                     if syncing != state.syncing {
                         state.syncing = syncing;
-                        emit_syncing = Some(syncing);
+                        changed = true;
                     }
                     if let Some(raw) = last_sync_update {
                         if state.last_sync_time_raw.as_deref() != Some(raw.as_str()) {
@@ -434,43 +465,31 @@ impl LibraryManager {
                                 Ok(ms) => {
                                     state.last_sync_time_raw = Some(raw);
                                     state.last_sync_time = Some(ms);
-                                    emit_time = Some(state.last_sync_time);
+                                    changed = true;
                                 }
                                 Err(e) => {
                                     let message =
                                         format!("unparseable last_sync_time {raw:?}: {e}");
                                     warn!("{message}");
-                                    emit_error = Some(Some(crate::ui::UiError::internal(message)));
+                                    state.error = Some(message);
+                                    new_failure = true;
+                                    changed = true;
                                 }
                             }
                         }
                     }
                 }
-                if let Some(error) = emit_error {
-                    // A newly-set banner (inner `Some`) is a sync-cycle failure;
-                    // clearing it (inner `None`) is not. Ship the typed event
-                    // only for an actual failure, and only when a provider is
-                    // configured — a sync failure with no provider can't happen,
-                    // so its absence means don't fabricate one.
-                    if error.is_some() {
-                        let provider = lm.config_handle.config().cloud_home.provider.clone();
-                        if let Some(provider) = provider {
-                            lm.diagnostics.event(TelemetryEvent::SyncFailed {
-                                provider,
-                                operation: SyncOperation::Cycle,
-                            });
-                        }
+                if new_failure {
+                    let provider = lm.config_handle.config().cloud_home.provider.clone();
+                    if let Some(provider) = provider {
+                        lm.diagnostics.event(TelemetryEvent::SyncFailed {
+                            provider,
+                            operation: SyncOperation::Cycle,
+                        });
                     }
-                    // coven's error string is opaque (connectivity, auth, storage);
-                    // the UI shows a generic line plus this as copyable, log-only
-                    // detail. `None` clears the banner.
-                    lm.emit(LibraryEvent::SyncError { error });
                 }
-                if let Some(syncing) = emit_syncing {
-                    lm.emit(LibraryEvent::SyncingChanged { syncing });
-                }
-                if let Some(time) = emit_time {
-                    lm.emit(LibraryEvent::SyncTimeChanged { time });
+                if changed {
+                    lm.sync_status_values.send_replace(lm.get_sync_status());
                 }
                 // coven gives no per-item drain signal in the status, so re-derive
                 // the outbox snapshot each cycle to catch what it uploaded or failed.
@@ -486,6 +505,12 @@ impl LibraryManager {
         self.event_tx.subscribe()
     }
 
+    pub fn subscribe_sync_status_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::SyncStatusSnapshot> {
+        self.sync_status_values.subscribe()
+    }
+
     /// Emit a library event to all subscribers. Logs at warn-level when no
     /// subscribers remain — the bus is alive for the lifetime of the library
     /// so empty subscribers is unusual and worth a trace.
@@ -495,11 +520,16 @@ impl LibraryManager {
         }
     }
 
-    /// Build the current outbox snapshot and emit it as `OutboxChanged`. Called
-    /// at every outbox mutation, once per sync cycle, and on each upload
-    /// lifecycle callback so the Storage Manager's queue panel stays current.
+    /// Build and publish the current outbox snapshot. Called at every outbox
+    /// mutation, once per sync cycle, and on each upload lifecycle callback.
     pub(crate) async fn emit_outbox_changed(&self) {
         self.sync.emit_outbox_changed().await
+    }
+
+    pub fn subscribe_outbox_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>> {
+        self.outbox_values.subscribe()
     }
 
     /// Build the current download-queue snapshot and emit it as
@@ -507,9 +537,7 @@ impl LibraryManager {
     /// worker pick-up, per-file progress, success, failure, cancel, retry,
     /// pause/resume) so the Storage Manager's Downloads pane stays current.
     pub(crate) fn emit_download_queue_changed(&self) {
-        self.emit(LibraryEvent::DownloadQueueChanged {
-            snapshot: self.download_snapshot(),
-        });
+        self.download_values.send_replace(self.download_snapshot());
     }
 
     /// The current download-queue snapshot — per-release state and a
@@ -522,15 +550,19 @@ impl LibraryManager {
         )
     }
 
+    pub fn subscribe_download_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::DownloadSnapshot> {
+        self.download_values.subscribe()
+    }
+
     /// Build the current export-queue snapshot and emit it as
     /// `OutputQueueChanged`. Called at every queue mutation (enqueue, worker
     /// pick-up, per-file progress, success, failure, cancel, retry,
     /// pause/resume) so the Storage Manager's Exporting pane stays current.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn emit_output_queue_changed(&self) {
-        self.emit(LibraryEvent::OutputQueueChanged {
-            snapshot: self.output_snapshot(),
-        });
+        self.output_values.send_replace(self.output_snapshot());
     }
 
     /// The current export-queue snapshot — per-release state built from the
@@ -544,247 +576,17 @@ impl LibraryManager {
         )
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn subscribe_output_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::OutputSnapshot> {
+        self.output_values.subscribe()
+    }
+
     /// The current outbox processing snapshot — queue depth, per-item state, and
     /// a pre-formatted summary. Seeds the Storage Manager panel before the first
     /// `OutboxChanged` event arrives.
     pub async fn outbox_snapshot(&self) -> Result<crate::library::OutboxSnapshot, LibraryError> {
         self.sync.outbox_snapshot().await
-    }
-
-    // ── Fat-event emit helpers ───────────────────────────────────────
-    // Each reads the current state of the entity post-mutation from the DB
-    // and packs it into the event payload.
-
-    pub async fn emit_album_added(&self, album_id: &str) {
-        match self.find_album_detail(album_id).await {
-            Ok(Some(album)) => {
-                self.emit(LibraryEvent::AlbumAdded { album });
-            }
-            Ok(None) => {
-                warn!("emit_album_added: album {album_id} not found in DB, skipping event");
-            }
-            Err(e) => {
-                warn!("emit_album_added: DB error for album {album_id}: {e}");
-            }
-        }
-    }
-
-    pub async fn emit_album_updated(&self, album_id: &str) {
-        match self.find_album_detail(album_id).await {
-            Ok(Some(album)) => self.emit(LibraryEvent::AlbumUpdated { album }),
-            Ok(None) => {
-                warn!("emit_album_updated: album {album_id} not found in DB, skipping event");
-            }
-            Err(e) => {
-                warn!("emit_album_updated: DB error for album {album_id}: {e}");
-            }
-        }
-    }
-
-    /// Re-emit `AlbumUpdated` for every album, on each cloud-home transition. A
-    /// release's available storage actions are computed at resolve time from
-    /// whether a cloud home exists and then baked into the cached `ReleaseDetail`,
-    /// so connecting or disconnecting one leaves every already-resolved release
-    /// holding stale actions until a restart. Re-resolving reads `has_cloud_home()`
-    /// fresh. A burst, but connect/disconnect is rare.
-    pub async fn emit_all_albums_updated(&self) {
-        let albums = match self.get_albums(&[]).await {
-            Ok(albums) => albums,
-            Err(e) => {
-                warn!("emit_all_albums_updated: failed to list albums: {e}");
-                return;
-            }
-        };
-        for album in albums {
-            self.emit_album_updated(&album.id).await;
-        }
-    }
-
-    pub fn emit_album_removed(&self, album_id: &str, release_ids: Vec<String>) {
-        self.emit(LibraryEvent::AlbumRemoved {
-            album_id: album_id.to_string(),
-            release_ids,
-        });
-    }
-
-    pub async fn emit_release_added(&self, album_id: &str, release_id: &str) {
-        let release = match self.find_release_detail(release_id).await {
-            Ok(Some(release)) => release,
-            Ok(None) => {
-                warn!("emit_release_added: release {release_id} not found in DB, skipping event");
-                return;
-            }
-            Err(e) => {
-                warn!("emit_release_added: DB error for release {release_id}: {e}");
-                return;
-            }
-        };
-        let raw_album = match self.database.find_album_summary(album_id).await {
-            Ok(Some(raw)) => raw,
-            Ok(None) => {
-                warn!("emit_release_added: album {album_id} not found in DB, skipping event");
-                return;
-            }
-            Err(e) => {
-                warn!("emit_release_added: DB error for album {album_id}: {e}");
-                return;
-            }
-        };
-        // The release/album rows are already committed, so the event must fire for
-        // them. A cover lookup failure degrades to no covers (the UI lazily fetches
-        // them by id) — never drops the event for committed state.
-        let covers = self
-            .cover_refs(&raw_album.release_ids)
-            .await
-            .unwrap_or_else(|e| {
-                warn!(
-                    "emit_release_added: cover lookup failed for album {album_id}: {e}; \
-                 emitting without covers"
-                );
-                HashMap::new()
-            });
-        let album = AlbumSummary::from_raw(raw_album, |rid| covers.get(rid).cloned());
-        self.emit(LibraryEvent::ReleaseAdded { album, release });
-    }
-
-    pub async fn emit_release_updated(&self, album_id: &str, release_id: &str) {
-        match self.find_release_detail(release_id).await {
-            Ok(Some(release)) => {
-                self.emit(LibraryEvent::ReleaseUpdated {
-                    album_id: album_id.to_string(),
-                    release,
-                });
-            }
-            Ok(None) => {
-                warn!("emit_release_updated: release {release_id} not found in DB, skipping event");
-            }
-            Err(e) => {
-                warn!("emit_release_updated: DB error for release {release_id}: {e}");
-            }
-        }
-    }
-
-    pub async fn emit_release_removed(&self, album_id: &str, release_id: &str) {
-        // Ship the parent album's post-removal summary so the reducer interns it
-        // rather than reading the old release list to patch it — a read-to-write
-        // that goes stale on the sync path, where no AlbumUpdated co-fires. `None`
-        // means strictly "the album itself was removed with its last release"; a
-        // transient cover-lookup failure must NOT misreport the album as gone, so
-        // it degrades to a summary with no covers (the UI lazily fetches them).
-        let album = match self.database.find_album_summary(album_id).await {
-            Ok(Some(raw)) => {
-                let covers = self.cover_refs(&raw.release_ids).await.unwrap_or_else(|e| {
-                    warn!(
-                        "emit_release_removed: cover lookup failed for album {album_id}: {e}; \
-                         emitting without covers"
-                    );
-                    HashMap::new()
-                });
-                Some(AlbumSummary::from_raw(raw, |rid| covers.get(rid).cloned()))
-            }
-            Ok(None) => None,
-            Err(e) => {
-                warn!("emit_release_removed: DB error for album {album_id}: {e}");
-                None
-            }
-        };
-        self.emit(LibraryEvent::ReleaseRemoved {
-            album_id: album_id.to_string(),
-            release_id: release_id.to_string(),
-            album,
-        });
-    }
-
-    /// Emit granular library events for the entity changes an applied changeset
-    /// produced.
-    pub async fn emit_sync_entity_changes(
-        &self,
-        mut changes: crate::library::sync_events::ChangesetEntityChanges,
-    ) {
-        use crate::library::sync_events::{AlbumChangeEvent, ReleaseChangeEvent};
-
-        // The changeset couldn't resolve these to albums itself: a track whose
-        // release it didn't carry, or a cover whose release it didn't carry (a peer's
-        // `change_cover` writes the `covers` row alone). Both become album updates —
-        // the album payload carries its releases' tracks and cover refs — deduped
-        // against the albums the changeset already produced an event for, so one
-        // changeset never updates an album twice.
-        let mut seen: std::collections::HashSet<String> = changes
-            .album_events
-            .iter()
-            .map(|event| match event {
-                AlbumChangeEvent::Added(id) | AlbumChangeEvent::Updated(id) => id.clone(),
-                AlbumChangeEvent::Removed { album_id, .. } => album_id.clone(),
-            })
-            .collect();
-
-        if !changes.unresolved_track_ids.is_empty() {
-            match self
-                .database
-                .get_album_ids_for_tracks(&changes.unresolved_track_ids)
-                .await
-            {
-                Ok(resolved) => {
-                    for album_id in resolved.values() {
-                        if seen.insert(album_id.clone()) {
-                            changes
-                                .album_events
-                                .push(AlbumChangeEvent::Updated(album_id.clone()));
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to resolve track IDs to album IDs: {e}");
-                }
-            }
-        }
-
-        if !changes.unresolved_release_ids.is_empty() {
-            match self
-                .database
-                .get_album_ids_for_releases(&changes.unresolved_release_ids)
-                .await
-            {
-                Ok(resolved) => {
-                    for album_id in resolved.values() {
-                        if seen.insert(album_id.clone()) {
-                            changes
-                                .album_events
-                                .push(AlbumChangeEvent::Updated(album_id.clone()));
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to resolve release IDs to album IDs: {e}");
-                }
-            }
-        }
-
-        for event in changes.album_events {
-            match event {
-                AlbumChangeEvent::Added(id) => self.emit_album_added(&id).await,
-                AlbumChangeEvent::Updated(id) => self.emit_album_updated(&id).await,
-                AlbumChangeEvent::Removed {
-                    album_id,
-                    release_ids,
-                } => self.emit_album_removed(&album_id, release_ids),
-            }
-        }
-        for event in changes.release_events {
-            match event {
-                ReleaseChangeEvent::Added {
-                    album_id,
-                    release_id,
-                } => self.emit_release_added(&album_id, &release_id).await,
-                ReleaseChangeEvent::Updated {
-                    album_id,
-                    release_id,
-                } => self.emit_release_updated(&album_id, &release_id).await,
-                ReleaseChangeEvent::Removed {
-                    album_id,
-                    release_id,
-                } => self.emit_release_removed(&album_id, &release_id).await,
-            }
-        }
     }
 }

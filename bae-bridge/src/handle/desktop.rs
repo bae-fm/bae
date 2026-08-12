@@ -80,8 +80,8 @@ impl AppHandle {
 #[uniffi::export]
 impl AppHandle {
     /// Whether casting is available at all. Turning it off stops discovery and
-    /// disconnects any session in flight; the write fires a config invalidation,
-    /// which is what hides the Cast control — no app keeps its own copy.
+    /// disconnects any session in flight; the config subscription then hides the
+    /// Cast control — no app keeps its own copy.
     pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
             .set_cast_enabled(enabled)
@@ -124,14 +124,32 @@ impl AppHandle {
             .renderer_lost(service_type.into_core(), &instance_name);
     }
 
-    /// The current list of discovered remote-renderer devices (Cast and UPnP).
-    /// Requery on a `CastDevices` invalidation.
-    pub fn get_cast_devices(&self) -> Vec<crate::types::BridgeCastDevice> {
-        self.cast
-            .devices()
-            .into_iter()
-            .map(crate::types::BridgeCastDevice::from_core)
-            .collect()
+    pub fn subscribe_cast_devices(
+        &self,
+        callback: Box<dyn crate::types::CastDevicesCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut devices = self.cast.subscribe_devices();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(
+                devices
+                    .borrow_and_update()
+                    .clone()
+                    .into_iter()
+                    .map(crate::types::BridgeCastDevice::from_core)
+                    .collect(),
+            );
+            while devices.changed().await.is_ok() {
+                callback.on_value(
+                    devices
+                        .borrow_and_update()
+                        .clone()
+                        .into_iter()
+                        .map(crate::types::BridgeCastDevice::from_core)
+                        .collect(),
+                );
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     /// Cast playback to the device with `device_id`.
@@ -382,40 +400,69 @@ impl AppHandle {
             .map_err(BridgeError::database)
     }
 
-    /// The current watched-folder list. The UI fetches this when the import
-    /// view appears to render the group headers.
-    pub fn watched_folders(&self) -> Vec<crate::types::BridgeWatchedFolder> {
-        self.services
-            .import_watched_folders()
-            .into_iter()
-            .map(crate::types::BridgeWatchedFolder::from_core)
-            .collect()
-    }
-
-    pub fn get_import_candidates(&self) -> BridgeImportCandidatesSnapshot {
-        crate::types::BridgeImportCandidatesSnapshot::from_core(
-            self.services.get_import_candidates(),
-        )
-    }
-
-    /// The import sidebar: one pre-shaped row per candidate and the four tab
-    /// counts. Read it again on an `ImportCandidateList` invalidation — it
-    /// consults the stored verdicts and the live library, so it is a query
-    /// rather than something pushed a row at a time.
-    pub async fn get_import_triage_queue(
+    pub fn subscribe_import_candidates(
         &self,
-    ) -> Result<crate::types::BridgeTriageQueue, BridgeError> {
-        self.services
-            .import_triage_queue()
-            .await
-            .map(crate::types::BridgeTriageQueue::from_core)
-            .map_err(BridgeError::database)
+        callback: Box<dyn crate::types::ImportCandidatesCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_import_candidates();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
+                values.borrow_and_update().clone(),
+            ));
+            while values.changed().await.is_ok() {
+                callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
+                    values.borrow_and_update().clone(),
+                ));
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    pub fn get_candidate(&self, key: String) -> Option<BridgeImportCandidateSnapshot> {
-        self.services
-            .get_candidate(&key)
-            .map(crate::types::BridgeImportCandidateSnapshot::from_core)
+    pub fn subscribe_import_triage(
+        &self,
+        callback: Box<dyn crate::types::ImportTriageCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self
+            .services
+            .subscribe_import_triage_values(self.runtime.handle());
+        let task = self.runtime.handle().spawn(async move {
+            while let Some(value) = values.recv().await {
+                match value {
+                    Ok(value) => {
+                        callback.on_value(crate::types::BridgeTriageQueue::from_core(value))
+                    }
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
+    }
+
+    pub fn subscribe_release_library_status(
+        &self,
+        source: crate::types::BridgeMetadataSource,
+        release_id: String,
+        source_group_id: Option<String>,
+        callback: Box<dyn crate::types::ReleaseLibraryStatusCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values =
+            self.services
+                .subscribe_release_library_status(bae_core::db::LibraryCheck {
+                    release_id,
+                    source: source.into_core(),
+                    source_group_id,
+                });
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match values.next().await {
+                    Ok(value) => {
+                        callback.on_value(crate::types::BridgeLibraryStatus::from_core(value))
+                    }
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     pub async fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
@@ -451,7 +498,7 @@ impl AppHandle {
     }
 
     /// Mark the candidate at `path` skipped or unskipped. Persists the change;
-    /// the candidate invalidation makes the import view read the new row.
+    /// the candidate subscription carries the new row to the import view.
     pub async fn set_candidate_skipped(
         &self,
         path: String,
@@ -496,7 +543,7 @@ impl AppHandle {
     ///
     /// Persists the decision and clears the candidate's stored identify
     /// verdict, because a bound sheet is a different disc. The candidate
-    /// invalidation makes the import view read the new roles.
+    /// subscription carries the new roles to the import view.
     pub async fn set_sheet_binding(
         &self,
         candidate_key: String,
@@ -518,7 +565,7 @@ impl AppHandle {
     ///
     /// Persists the decision and clears the candidate's stored identify
     /// verdict, because a re-assigned or ignored sheet is a different
-    /// tracklist. The candidate invalidation makes the import view read it.
+    /// tracklist. The candidate subscription carries it to the import view.
     pub async fn set_sheet_disc(
         &self,
         candidate_key: String,
@@ -542,7 +589,7 @@ impl AppHandle {
     ///
     /// Persists the decision and clears the candidate's stored identify
     /// verdict, because a folder with one fewer track is a different disc. The
-    /// candidate invalidation makes the import view read the new roles.
+    /// candidate subscription carries the new roles to the import view.
     pub async fn set_file_role(
         &self,
         candidate_key: String,
@@ -555,8 +602,8 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
-    /// Scan every watched folder. Import invalidations tell the UI to read the
-    /// current candidate list.
+    /// Scan every watched folder. The import-candidate subscription carries the
+    /// resulting list to the UI.
     pub fn scan_watched_folders(&self) -> Result<(), BridgeError> {
         self.services
             .import_scan_watched_folders()
@@ -812,10 +859,27 @@ impl AppHandle {
 impl AppHandle {
     // ── Export queue ─────────────────────────────────────────────────
 
-    /// The current export-queue snapshot. Export invalidations tell the
-    /// Exporting pane to read it again.
+    /// The current export-queue snapshot.
     pub fn get_output_snapshot(&self) -> crate::types::BridgeOutputSnapshot {
         crate::types::BridgeOutputSnapshot::from_core(self.services.output_snapshot())
+    }
+
+    pub fn subscribe_outputs(
+        &self,
+        callback: Box<dyn crate::types::OutputCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_output_values();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(crate::types::BridgeOutputSnapshot::from_core(
+                values.borrow_and_update().clone(),
+            ));
+            while values.changed().await.is_ok() {
+                callback.on_value(crate::types::BridgeOutputSnapshot::from_core(
+                    values.borrow_and_update().clone(),
+                ));
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     /// Enqueue a verbatim release export to `target_dir`. It joins the in-memory

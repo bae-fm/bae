@@ -698,10 +698,14 @@ impl PlaybackService {
         let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
+        let playback_queue = PlaybackQueue::new(queue_ids);
+        let (queue_values, queue_receiver) =
+            tokio::sync::watch::channel(PlaybackQueueProjection::from_queue(&playback_queue));
         let thread_slot = Arc::new(Mutex::new(None));
         let handle = PlaybackHandle::new(
             command_tx.clone(),
             progress_handle.clone(),
+            queue_receiver,
             thread_slot.clone(),
         );
         let command_tx_for_completion = command_tx.clone();
@@ -764,7 +768,8 @@ impl PlaybackService {
                     command_tx: command_tx.clone(),
                     command_rx,
                     progress_tx,
-                    playback_queue: PlaybackQueue::new(queue_ids),
+                    queue_values,
+                    playback_queue,
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                     audio_output,
                     output: None,
@@ -1168,11 +1173,6 @@ impl PlaybackService {
                 PlaybackCommand::GetVolume(reply) => {
                     let _ = reply.send(self.audio_output.get_volume());
                 }
-                PlaybackCommand::GetQueueProjection(reply) => {
-                    if reply.send(self.queue_projection()).is_err() {
-                        warn!("get queue projection receiver dropped before reply");
-                    }
-                }
                 PlaybackCommand::Shutdown(reply) => {
                     self.persist_playback_state().await;
                     let _ = reply.send(());
@@ -1197,9 +1197,8 @@ impl PlaybackService {
             }
                 }
                 Ok(event) = library_event_rx.recv() => {
-                    if let LibraryEvent::TracksDeleted { track_ids } = event {
-                        self.handle_tracks_deleted(track_ids).await;
-                    }
+                    let LibraryEvent::TracksDeleted { track_ids } = event;
+                    self.handle_tracks_deleted(track_ids).await;
                 }
                 else => break,
             }

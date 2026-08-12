@@ -71,7 +71,7 @@ private const val QUEUE_UPCOMING_LOAD_BATCH_SIZE = 100
  * a drag-reorderable "Up Next" list. Reads the authoritative queue and now-
  * playing off the [fm.bae.app.playback.BaeCorePlayer]; mutations go straight to
  * the bridge (`clearUpNext`/`clearPlayingFrom`/`removeEntry`/`reorderEntry`/
- * `skipToEntry`) and reflect back as a `QueueUpdated` event that re-hydrates the
+ * `skipToEntry`) and reflect back through the queue subscription, which rehydrates the
  * projection.
  *
  * Each [QueueItem] carries a unique per-instance `entryId` — stable even when

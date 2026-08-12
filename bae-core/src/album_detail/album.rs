@@ -19,7 +19,7 @@ pub struct AlbumDetail {
     /// when its last release goes.
     pub primary_release_id: String,
     /// The album's cover — its primary release's — or `None` when there is no cover
-    /// row. The version moves when the bytes do, so `AlbumUpdated` carries a changed
+    /// row. The version moves when the bytes do, so subscribers receive a changed
     /// field and the UI re-renders.
     pub cover: Option<ImageRef>,
 }
@@ -38,9 +38,8 @@ pub struct AlbumSummary {
     /// at least one release, enforced by `delete_release`.
     pub primary_release_id: String,
     /// The album's cover — its primary release's — or `None` when there is no cover
-    /// row. Carried on the *summary* so a cover change is a changed field on
-    /// `AlbumUpdated`: the version moves when the bytes do, the UI's per-field
-    /// re-render fires, and the cover reloads.
+    /// row. Carried on the *summary* so a cover change updates its subscribed
+    /// value: the version moves when the bytes do and the cover reloads.
     pub cover: Option<ImageRef>,
 }
 

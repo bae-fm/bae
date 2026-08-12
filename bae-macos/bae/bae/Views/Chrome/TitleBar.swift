@@ -87,21 +87,21 @@ struct TitleBar: View {
             catch {
                 return
             }
-            do {
-                let results = try await library.searchLibrary(searchText)
+            let query = searchText
+            for await result in library.searchResults(query) {
                 guard !Task.isCancelled else { return }
-                uiStore.searchResults = SearchResults(
-                    bridge: results,
-                    query: searchText
-                )
-            }
-            catch {
-                guard !Task.isCancelled, let line = error.displayLine else {
-                    return
+                switch result {
+                case .success(let results):
+                    uiStore.searchResults = SearchResults(
+                        bridge: results,
+                        query: query
+                    )
+                case .failure(let error):
+                    guard let line = error.displayLine else { continue }
+                    uiStore.showError(
+                        String(localized: "Search failed: \(line)")
+                    )
                 }
-                uiStore.showError(
-                    String(localized: "Search failed: \(line)")
-                )
             }
         }
         .focusedSceneValue(\.focusSearch) { searchFocused = true }

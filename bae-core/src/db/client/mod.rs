@@ -24,6 +24,11 @@ use std::sync::{Arc, Mutex};
 use tracing::warn;
 
 mod album;
+pub use album::{AlbumDetailProjection, AlbumPageProjection, LibrarySearchProjection};
+pub use artist::{
+    ArtistDetailProjection, ArtistPageProjection, ComposerDetailProjection, ComposerPageProjection,
+    WorkDetailProjection,
+};
 mod artist;
 mod blobs;
 mod coven_capabilities;
@@ -33,10 +38,16 @@ mod identity;
 // and every caller is a gated import module — the mobile builds are sync and
 // playback clients with no import pipeline.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod import_projection;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use import_projection::ImportTriageDbProjection;
 mod payloads;
 mod playback;
+pub(crate) use playback::QueueCatalogProjection;
 mod release;
+mod release_projection;
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 mod track;
@@ -51,6 +62,10 @@ mod write;
 use query::*;
 pub use query::{DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 use read::*;
+use release_projection::{
+    find_release_detail_context_on, storage_count_on, storage_page_on, storage_total_size_on,
+};
+pub use release_projection::{ReleaseDetailProjection, StoragePageProjection};
 use write::*;
 
 struct DatabaseInner {
@@ -83,15 +98,6 @@ impl std::fmt::Debug for Database {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Database").finish_non_exhaustive()
     }
-}
-
-/// Outcome of `set_identity_atomic`: which event the caller emits for the source
-/// album — `AlbumRemoved` when `source_album_deleted`, `AlbumUpdated` when the
-/// release moved but other releases stayed. On a same-album update the field is
-/// meaningless and the caller should emit no source-album event.
-#[derive(Debug, Clone, Copy)]
-pub struct SetIdentityOutcome {
-    pub source_album_deleted: bool,
 }
 
 impl Database {

@@ -129,27 +129,17 @@ pub struct BridgeInvalidCandidate {
     pub reason: BridgeInvalidReason,
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeImportCandidateSnapshot {
-    Folder {
-        candidate: BridgeFolderCandidate,
-        runtime_snapshot: BridgeCandidateRuntimeSnapshot,
-        actionable: bool,
-    },
-    Invalid {
-        candidate: BridgeInvalidCandidate,
-    },
-    Runtime {
-        key: String,
-        runtime_snapshot: BridgeCandidateRuntimeSnapshot,
-    },
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderImportCandidateSnapshot {
     pub candidate: BridgeFolderCandidate,
     pub runtime: BridgeCandidateRuntimeSnapshot,
     pub actionable: bool,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeRuntimeImportCandidateSnapshot {
+    pub key: String,
+    pub runtime: BridgeCandidateRuntimeSnapshot,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -179,6 +169,7 @@ pub enum BridgeCandidateImportStatus {
 pub struct BridgeImportCandidatesSnapshot {
     pub watched_folders: Vec<BridgeWatchedFolder>,
     pub folder_candidates: Vec<BridgeFolderImportCandidateSnapshot>,
+    pub runtime_candidates: Vec<BridgeRuntimeImportCandidateSnapshot>,
     pub invalid_candidates: Vec<BridgeInvalidCandidate>,
     pub boundaries: Vec<BridgeFolderReleaseBoundary>,
     pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,

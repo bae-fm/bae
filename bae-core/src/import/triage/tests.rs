@@ -225,6 +225,7 @@ fn snapshot_of(candidates: Vec<(FolderCandidate, bool, bool)>) -> ImportCandidat
                 },
             )
             .collect(),
+        runtime_candidates: vec![],
         invalid_candidates: vec![],
         boundaries: vec![],
         folder_scan_statuses: vec![],

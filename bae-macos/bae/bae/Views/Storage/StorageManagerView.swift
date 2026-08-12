@@ -22,8 +22,6 @@ struct StorageManagerView: View {
     // other error alert).
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(ProjectionRegistry.self)
-    private var projectionRegistry
 
     @State
     private var filter: BridgeStorageFilter = .all
@@ -36,8 +34,6 @@ struct StorageManagerView: View {
     private var selection: Set<String> = []
     @State
     private var list: StorageList?
-    @State
-    private var listRegistration: ProjectionRegistration?
     /// Sum of `total_size` over every row the current filter matches — the
     /// full-universe figure the core aggregate computes, not just the pages
     /// loaded so far. `nil` until the first fetch for the current filter
@@ -45,8 +41,6 @@ struct StorageManagerView: View {
     /// zero/partial stand-in.
     @State
     private var totalSize: UInt64?
-    @State
-    private var totalSizeRegistration: ProjectionRegistration?
     @State
     private var rebuildTask: Task<Void, Never>?
     /// Runs row context-menu transitions; built lazily once the services are
@@ -141,11 +135,19 @@ struct StorageManagerView: View {
     private func rebuildList() {
         rebuildTask?.cancel()
         let filter = filter
+        let sort = sort
+        totalSize = nil
         let newList = StorageList(
             pageSource: StoragePageSource(
                 library: library,
                 sort: sort,
                 filter: filter,
+                onTotalSize: { value in
+                    guard self.filter == filter, self.sort == sort else {
+                        return
+                    }
+                    self.totalSize = value
+                }
             ),
             ingest: { [libraryStore] rows in
                 for row in rows {
@@ -157,39 +159,12 @@ struct StorageManagerView: View {
                 uiStore.showError(error)
             },
         )
-        // The total-size figure is scoped to the same filter as the list and
-        // refreshes on the same `.albumList` invalidations that reload the
-        // list's rows, via its own `Projection` rather than piggybacking on
-        // `PaginatedList.invalidate()` (which only re-fetches the row count).
-        let totalSizeProjection = Projection<UInt64>(
-            domain: .albumList,
-            query: { [library] _ in
-                try await library.storageTotalSize(filter)
-            },
-            apply: { totalSize = $0 },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
         rebuildTask = Task {
-            async let totalSizeResult = library.storageTotalSize(filter)
             await newList.loadInitial()
             guard !Task.isCancelled else {
                 return
             }
-            listRegistration = projectionRegistry.registerList(
-                newList,
-                domain: .albumList
-            )
-            totalSizeRegistration = projectionRegistry.register(
-                totalSizeProjection
-            )
             list = newList
-            do {
-                totalSize = try await totalSizeResult
-            }
-            catch {
-                totalSize = nil
-                uiStore.showError(error)
-            }
         }
     }
 }
@@ -206,7 +181,6 @@ struct StorageManagerView: View {
             .environment(Outputs.stub())
             .environment(PreviewData.configStore())
             .environment(UiStore())
-            .environment(ProjectionRegistry())
             .environment(PreviewData.downloadStore())
             .environment(PreviewData.outputStore())
             .environment(PreviewData.outboxStore())

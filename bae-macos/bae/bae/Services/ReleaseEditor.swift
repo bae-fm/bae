@@ -8,8 +8,7 @@ import Foundation
 final class ReleaseEditor: Sendable, Observable {
     let changeCover:
         @Sendable (
-            _ albumId: String, _ releaseId: String,
-            _ selection: BridgeCoverSelection
+            _ releaseId: String, _ selection: BridgeCoverSelection
         ) async throws -> Void
     let manageRelease:
         @Sendable (_ releaseId: String, _ pin: Bool) async throws -> Void
@@ -33,8 +32,8 @@ final class ReleaseEditor: Sendable, Observable {
 
     init(
         changeCover:
-            @escaping @Sendable (String, String, BridgeCoverSelection)
-            async throws -> Void = { _, _, _ in },
+            @escaping @Sendable (String, BridgeCoverSelection)
+            async throws -> Void = { _, _ in },
         manageRelease:
             @escaping @Sendable (String, Bool) async throws -> Void =
             { _, _ in },
@@ -84,9 +83,8 @@ final class ReleaseEditor: Sendable, Observable {
         self.init(
             changeCover: {
                 try await handle.changeCover(
-                    albumId: $0,
-                    releaseId: $1,
-                    selection: $2
+                    releaseId: $0,
+                    selection: $1
                 )
             },
             manageRelease: {

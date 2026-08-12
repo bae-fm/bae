@@ -186,7 +186,7 @@ pub enum ReleaseDownloadStatus {
 /// show at all — no cloud home, or a release whose audio is already local.
 ///
 /// **A live queue entry outranks `pinned`.** On pin success the release
-/// invalidation (which flips `pinned`) and the queue-drop snapshot arrive in
+/// subscription value (which flips `pinned`) and the queue-drop snapshot arrive in
 /// either order, so honoring the queue entry keeps the control offering Cancel
 /// until the download has actually left the queue — instead of flickering to
 /// Downloaded and back.
@@ -451,7 +451,7 @@ mod tests {
         }
     }
 
-    /// The whole point of the join: on pin success the release invalidation and
+    /// The whole point of the join: on pin success the release value and
     /// the queue-drop snapshot arrive in either order, so while an entry is still
     /// in the queue it decides the control — even once `pinned` has flipped.
     #[test]

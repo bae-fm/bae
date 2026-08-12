@@ -879,10 +879,9 @@ impl ImportService {
                             ),
                         });
                     };
-                    // Record before announcing: the bus turns the event into an
-                    // `ImportCandidateList` invalidation and the UI answers it
-                    // by reading the snapshot, so a candidate announced before
-                    // it is recorded reads back as still missing.
+                    // Record before announcing: the candidate value stream reads
+                    // this state, so announcing before the record would publish a
+                    // snapshot where the candidate is still missing.
                     seen_keys.insert(candidate.path.to_string_lossy().into_owned());
                     for candidate_key in superseded {
                         send_event(

@@ -320,7 +320,6 @@ extension View {
             .environment(libraryStore ?? PreviewData.libraryStore())
             .environment(playbackStore ?? PreviewData.playbackStore())
             .environment(downloadStore ?? PreviewData.downloadStore())
-            .environment(ProjectionRegistry())
             .environment(Library.stub())
             .environment(Playback.stub())
             .environment(Queue.stub())

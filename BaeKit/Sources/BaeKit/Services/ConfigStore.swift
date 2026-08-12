@@ -3,14 +3,14 @@ import SwiftUI
 /// Mirror of core's library configuration. The config and sync-status
 /// projections are the sole writers: views read the current `Config`
 /// (including sync settings) and invoke bridge methods to change them; the
-/// resulting `.config` / `.syncStatus` invalidation refreshes this store
-/// through the projection registry.
+/// config and sync-status subscriptions refresh this store with the persisted
+/// result.
 @Observable
 public class ConfigStore {
     public var config: Config
     /// Whether the sync loop is running right now. Runtime status, not
-    /// configuration: it rides the same `.config` invalidation as `config`
-    /// but lands here, not on the `Config` mirror, since it changes
+    /// configuration: it arrives through the sync-status subscription rather
+    /// than the `Config` mirror, since it changes
     /// independently of any persisted setting. Settings/pairing gate on this.
     public var syncReady: Bool
     /// The sync badge state, decided by core (error > syncing > synced > idle).

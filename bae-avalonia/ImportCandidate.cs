@@ -48,6 +48,9 @@ public sealed class ImportCandidate
     /// </summary>
     internal BridgeCandidateFiles? Files { get; set; }
 
+    /// <summary>The folder's image files as cover choices.</summary>
+    internal List<LocalArtwork> LocalArtwork { get; set; } = new();
+
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
 

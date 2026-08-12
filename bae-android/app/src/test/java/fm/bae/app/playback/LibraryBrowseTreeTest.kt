@@ -92,6 +92,7 @@ class LibraryBrowseTreeTest {
             assertTrue(children.single().mediaMetadata.isBrowsable == true)
             // page 2 × pageSize 20 → offset 40, limit 20, straight to the bridge.
             assertEquals(40uL to 20uL, handle.albumPageWindows.single())
+            assertTrue(handle.liveSubscriptions.single().cancelled)
         }
 
     @Test

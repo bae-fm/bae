@@ -13,7 +13,11 @@ internal sealed class DecidedEdit
     /// null for a folder read as its own tags. The level rides here because a
     /// re-pick has to send it back, and a folder read as its own tags has no
     /// claim to carry.</summary>
-    public (BridgeMetadataSource Source, string ReleaseId, BridgeClaimLevel Claim)? Release { get; set; }
+    public (
+        BridgeMetadataSource Source,
+        string ReleaseId,
+        string? SourceGroupId,
+        BridgeClaimLevel Claim)? Release { get; set; }
 
     /// <summary>The seeded edit either identity stands for.</summary>
     public PrefetchedEdit Edit { get; set; } = new();

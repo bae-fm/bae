@@ -17,17 +17,20 @@ struct ComposerDetailScreen: View {
 
     var body: some View {
         Group {
-            if let error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .padding(32)
-            }
-            else if let detail {
+            if let detail {
                 ComposerDetailContent(
                     detail: detail,
                     openWork: openWork,
                     openAlbum: openAlbum
                 )
+                .overlay(alignment: .top) {
+                    if let error {
+                        Text(error).foregroundStyle(.red).padding(12)
+                    }
+                }
+            }
+            else if let error {
+                Text(error).foregroundStyle(.red).padding(32)
             }
             else {
                 ProgressView()
@@ -53,23 +56,19 @@ struct ComposerDetailScreen: View {
 
     private func load() async {
         error = nil
-        do {
-            let getComposerDetail = library.getComposerDetail
-            let loaded =
-                try await Task.detached {
-                    try await getComposerDetail(artistId)
+        for await result in library.composerDetails(artistId) {
+            guard !Task.isCancelled else { return }
+            switch result {
+            case .success(let loaded):
+                guard let loaded else {
+                    error = String(localized: "Composer detail not found")
+                    continue
                 }
-                .value
-            try Task.checkCancellation()
-            guard let loaded else {
-                error = String(localized: "Composer detail not found")
-                return
+                detail = loaded
+                error = nil
+            case .failure(let bridgeError):
+                error = bridgeError.displayLine
             }
-            detail = loaded
-        }
-        catch is CancellationError {}
-        catch {
-            self.error = error.displayLine
         }
     }
 }

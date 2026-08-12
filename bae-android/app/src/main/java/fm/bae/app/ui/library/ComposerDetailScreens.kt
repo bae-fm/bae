@@ -43,8 +43,6 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.BridgeWorkReleaseSummary
@@ -67,14 +65,16 @@ internal fun ComposerDetailScreen(
     LaunchedEffect(artistId) {
         loadError = null
         try {
-            detail = withContext(Dispatchers.IO) { session.library.composerDetail(artistId) }
-            if (detail == null) {
-                loadError = appContext.getString(R.string.composer_detail_not_found)
+            session.library.composerDetails(artistId).collect { value ->
+                detail = value
+                loadError =
+                    if (value == null) appContext.getString(R.string.composer_detail_not_found)
+                    else null
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.error("Failed to load composer detail $artistId", e)
+            logger.error("Failed to subscribe to composer detail $artistId", e)
             loadError = appContext.getString(R.string.composer_detail_load_failed)
         }
     }
@@ -83,7 +83,7 @@ internal fun ComposerDetailScreen(
         val loaded = detail
         val error = loadError
         when {
-            error != null -> {
+            error != null && loaded == null -> {
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
@@ -98,6 +98,9 @@ internal fun ComposerDetailScreen(
             }
 
             else -> {
+                error?.let {
+                    Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                }
                 ComposerDetailContent(
                     detail = loaded,
                     onSelectWork = onSelectWork,
@@ -179,14 +182,16 @@ internal fun WorkDetailScreen(
     LaunchedEffect(workId) {
         loadError = null
         try {
-            detail = withContext(Dispatchers.IO) { session.library.workDetail(workId) }
-            if (detail == null) {
-                loadError = appContext.getString(R.string.work_detail_not_found)
+            session.library.workDetails(workId).collect { value ->
+                detail = value
+                loadError =
+                    if (value == null) appContext.getString(R.string.work_detail_not_found)
+                    else null
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.error("Failed to load work detail $workId", e)
+            logger.error("Failed to subscribe to work detail $workId", e)
             loadError = appContext.getString(R.string.work_detail_load_failed)
         }
     }
@@ -195,7 +200,7 @@ internal fun WorkDetailScreen(
         val loaded = detail
         val error = loadError
         when {
-            error != null -> {
+            error != null && loaded == null -> {
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
@@ -210,6 +215,9 @@ internal fun WorkDetailScreen(
             }
 
             else -> {
+                error?.let {
+                    Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                }
                 WorkDetailContent(
                     detail = loaded,
                     onSelectWork = onSelectWork,

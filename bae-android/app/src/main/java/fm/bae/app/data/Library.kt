@@ -1,18 +1,34 @@
 package fm.bae.app.data
 
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AlbumPageCallback
+import uniffi.bae_bridge.AlbumDetailCallback
+import uniffi.bae_bridge.ArtistPageCallback
+import uniffi.bae_bridge.ArtistDetailCallback
+import uniffi.bae_bridge.ComposerPageCallback
+import uniffi.bae_bridge.ComposerDetailCallback
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumPage
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
+import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeWorkDetail
+import uniffi.bae_bridge.LibrarySearchCallback
+import uniffi.bae_bridge.LiveSubscription
+import uniffi.bae_bridge.ReleaseDetailCallback
+import uniffi.bae_bridge.WorkDetailCallback
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 /**
  * Narrow projection of [AppHandle] for library browse and detail reads. The
@@ -24,45 +40,184 @@ import uniffi.bae_bridge.BridgeWorkDetail
 class Library(
     private val handle: AppHandle,
 ) {
-    suspend fun albumCount(): ULong = handle.getAlbumCount()
-
-    suspend fun albumPage(
+    fun subscribeAlbumPage(
         sortCriteria: List<BridgeSortCriterion>,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeAlbum> = handle.getAlbumPage(sortCriteria, offset, limit)
+        callback: AlbumPageCallback,
+    ): LiveSubscription = handle.subscribeAlbumPage(sortCriteria, offset, limit, callback)
 
-    suspend fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
+    fun albumPages(
+        sortCriteria: List<BridgeSortCriterion>,
+        offset: ULong,
+        limit: ULong,
+    ): Flow<BridgeAlbumPage> =
+        callbackFlow {
+            val subscription =
+                subscribeAlbumPage(
+                    sortCriteria,
+                    offset,
+                    limit,
+                    object : AlbumPageCallback {
+                        override fun onValue(value: BridgeAlbumPage) {
+                            trySend(value)
+                        }
 
-    /** Fat release detail (tracks grouped by side) by release id, or null when
-     *  no such release exists. */
-    suspend fun releaseDetail(releaseId: String): BridgeRelease? = handle.findReleaseDetail(releaseId)
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
 
-    suspend fun composerCount(): ULong = handle.getComposerCount()
+    fun albumDetails(albumId: String): Flow<BridgeAlbumDetail?> =
+        callbackFlow {
+            val subscription =
+                handle.subscribeAlbumDetail(
+                    albumId,
+                    object : AlbumDetailCallback {
+                        override fun onValue(value: BridgeAlbumDetail?) {
+                            trySend(value)
+                        }
 
-    suspend fun composerPage(
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
+
+    fun subscribeComposerPage(
         sortCriterion: BridgeComposerSortCriterion,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeComposerSummary> = handle.getComposerPage(listOf(sortCriterion), offset, limit)
+        callback: ComposerPageCallback,
+    ): LiveSubscription = handle.subscribeComposerPage(listOf(sortCriterion), offset, limit, callback)
 
-    suspend fun composerDetail(artistId: String): BridgeComposerDetail? = handle.getComposerDetail(artistId)
+    fun composerPages(
+        sortCriterion: BridgeComposerSortCriterion,
+        offset: ULong,
+        limit: ULong,
+    ): Flow<BridgeComposerPage> =
+        callbackFlow {
+            val subscription =
+                subscribeComposerPage(
+                    sortCriterion,
+                    offset,
+                    limit,
+                    object : ComposerPageCallback {
+                        override fun onValue(value: BridgeComposerPage) {
+                            trySend(value)
+                        }
 
-    suspend fun artistCount(): ULong = handle.getArtistCount()
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
 
-    suspend fun artistPage(
+    fun composerDetails(artistId: String): Flow<BridgeComposerDetail?> =
+        callbackFlow {
+            val subscription =
+                handle.subscribeComposerDetail(
+                    artistId,
+                    object : ComposerDetailCallback {
+                        override fun onValue(value: BridgeComposerDetail?) {
+                            trySend(value)
+                        }
+
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
+
+    fun subscribeArtistPage(
         sortCriterion: BridgeArtistSortCriterion,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeArtistSummary> = handle.getArtistPage(listOf(sortCriterion), offset, limit)
+        callback: ArtistPageCallback,
+    ): LiveSubscription = handle.subscribeArtistPage(listOf(sortCriterion), offset, limit, callback)
 
-    suspend fun artistDetail(artistId: String): BridgeArtistDetail? = handle.getArtistDetail(artistId)
+    fun artistDetails(artistId: String): Flow<BridgeArtistDetail?> =
+        callbackFlow {
+            val subscription =
+                handle.subscribeArtistDetail(
+                    artistId,
+                    object : ArtistDetailCallback {
+                        override fun onValue(value: BridgeArtistDetail?) {
+                            trySend(value)
+                        }
 
-    suspend fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
+
+    fun workDetails(workId: String): Flow<BridgeWorkDetail?> =
+        callbackFlow {
+            val subscription =
+                handle.subscribeWorkDetail(
+                    workId,
+                    object : WorkDetailCallback {
+                        override fun onValue(value: BridgeWorkDetail?) {
+                            trySend(value)
+                        }
+
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
+
+    fun releaseDetails(releaseId: String): Flow<BridgeRelease?> =
+        callbackFlow {
+            val subscription =
+                handle.subscribeReleaseDetail(
+                    releaseId,
+                    object : ReleaseDetailCallback {
+                        override fun onValue(value: BridgeRelease?) {
+                            trySend(value)
+                        }
+
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
 
     /**
      * Search albums and tracks by free-text query. Suspends: the bridge call is
      * async, so callers invoke it directly from a coroutine.
      */
-    suspend fun search(query: String): BridgeSearchResults = handle.searchLibrary(query)
+    fun searchResults(query: String): Flow<BridgeSearchResults> =
+        callbackFlow {
+            val subscription =
+                handle.subscribeLibrarySearch(
+                    query,
+                    object : LibrarySearchCallback {
+                        override fun onValue(value: BridgeSearchResults) {
+                            trySend(value)
+                        }
+
+                        override fun onError(error: BridgeException) {
+                            close(error)
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
 }

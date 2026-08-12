@@ -7,9 +7,6 @@ async fn local_folder_import() {
     let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
 
-    // Subscribe to library events BEFORE import
-    let mut event_rx = f.library_manager.subscribe_events();
-
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
@@ -71,19 +68,6 @@ async fn local_folder_import() {
     assert!(album_dir.join("02 Track Two.flac").exists());
     assert!(album_dir.join("03 Track Three.flac").exists());
 
-    // Verify library events were emitted
-    let mut events = Vec::new();
-    while let Ok(Ok(event)) =
-        tokio::time::timeout(std::time::Duration::from_millis(200), event_rx.recv()).await
-    {
-        events.push(event);
-    }
-
-    let album_added = events
-        .iter()
-        .filter(|e| matches!(e, bae_core::library::LibraryEvent::AlbumAdded { .. }))
-        .count();
-    assert_eq!(album_added, 1, "expected one AlbumAdded event after import");
 }
 
 /// 4. Import produces correct audio format records.

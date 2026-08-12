@@ -31,21 +31,19 @@ public class PlaybackStore {
     /// through `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
     /// Context-tail entries fetched past the initial window, keyed by their
-    /// absolute index in the tail. Reset wholesale on every `applyQueueSnapshot`
-    /// — a `QueueUpdated` is the invalidation signal for this ephemeral view
-    /// cache, not durable state to reconcile incrementally.
+    /// absolute index in the tail. Replaced when the queue subscription
+    /// delivers a newer revision.
     public var pagedUpcoming: [Int: QueueItem] = [:]
     /// The queue revision the current `manualQueue`/`queueContext` were resolved
     /// from. Stamped onto every `loadUpcomingRange` fetch so a reply computed
     /// under a since-superseded revision is dropped rather than merged.
     @ObservationIgnored
     public private(set) var revision: UInt64 = 0
-    /// In-flight `loadUpcomingRange` fetches, keyed "offset:end:revision", so
-    /// concurrent callers asking for the same range (every row in a batch
-    /// window mounting at once) coalesce onto one bridge call instead of each
-    /// issuing a duplicate.
+    /// Live page subscriptions, keyed "offset:end:revision", so concurrent
+    /// callers asking for the same range share one database subscription.
     @ObservationIgnored
-    private var inFlightUpcomingLoads: [String: Task<Void, Never>] = [:]
+    private var upcomingSubscriptions: [String: any LiveSubscriptionProtocol] =
+        [:]
 
     /// Current playback position. Updates at display rate during playback —
     /// far too frequent for `@Observable`; published as a Combine signal so
@@ -87,12 +85,17 @@ public class PlaybackStore {
             )
             return
         }
+        let replacesPages = snapshot.revision > revision
         manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
         revision = snapshot.revision
-        // The event is the invalidation signal: every previously fetched page
-        // is dropped, not reconciled against the new snapshot.
-        pagedUpcoming = [:]
+        if replacesPages {
+            for subscription in upcomingSubscriptions.values {
+                subscription.cancel()
+            }
+            upcomingSubscriptions = [:]
+            pagedUpcoming = [:]
+        }
     }
 
     /// The context-tail item at absolute `index`, or `nil` if not yet loaded —
@@ -108,21 +111,12 @@ public class PlaybackStore {
         return pagedUpcoming[index]
     }
 
-    /// Fetch `[offset, offset + limit)` of the context's upcoming tail and
-    /// merge it into `pagedUpcoming`. A no-op if the range is already loaded.
-    /// The reply is applied only if its revision still matches this store's
-    /// current `revision`; a mismatch means a `QueueUpdated` for a newer queue
-    /// state arrived while the fetch was in flight, and that event's wholesale
-    /// reset already replaced the view, so the reply is dropped rather than
-    /// merged. Fetch failures are never swallowed silently: logged at warn with
-    /// the failed range — a page fetch is background prefetch, not a
-    /// user-initiated action with its own error-display path.
-    ///
-    /// `@MainActor`: spawns a `Task` capturing `self` to coalesce concurrent
-    /// range fetches; Swift 6 only allows that capture across a `Task`
-    /// boundary when the call site (and the spawned task, which inherits it)
-    /// is actor-isolated. Callers are SwiftUI `.task(id:)` bodies, already on
-    /// the main actor.
+    /// Subscribe to `[offset, offset + limit)` of the context's upcoming tail
+    /// and merge each delivered page into `pagedUpcoming`. A no-op when that
+    /// range already has a subscription. A page is applied only while its queue
+    /// revision matches the current snapshot; a newer snapshot cancels and
+    /// removes all prior page subscriptions. Errors retain the last page and
+    /// are logged because this is background prefetch with no separate error UI.
     @MainActor
     public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
         guard let context = queueContext else {
@@ -132,50 +126,31 @@ public class PlaybackStore {
         guard offset < end else {
             return
         }
-        guard !(offset..<end).allSatisfy({ upcomingItem(at: $0) != nil })
-        else {
-            return
-        }
-
         let key = "\(offset):\(end):\(revision)"
-        if let existing = inFlightUpcomingLoads[key] {
-            await existing.value
+        if upcomingSubscriptions[key] != nil {
             return
         }
-        let task = Task {
-            await self.fetchUpcomingRange(
-                offset: offset,
-                end: end,
-                queue: queue
-            )
-        }
-        inFlightUpcomingLoads[key] = task
-        await task.value
-        inFlightUpcomingLoads[key] = nil
-    }
-
-    @MainActor
-    private func fetchUpcomingRange(offset: Int, end: Int, queue: Queue) async {
-        do {
-            let page = try await queue.getUpcomingPage(
-                UInt32(offset),
-                UInt32(end - offset)
-            )
-            guard page.revision == revision else {
+        upcomingSubscriptions[key] = queue.subscribeUpcomingPage(
+            UInt32(offset),
+            UInt32(end - offset),
+            { [weak self] page in
+                guard let self else { return }
+                guard page.revision == self.revision else {
+                    logger.warning(
+                        "dropping upcoming page for [\(offset), \(end)): delivered for a since-superseded revision"
+                    )
+                    return
+                }
+                for (i, entry) in page.entries.enumerated() {
+                    self.pagedUpcoming[offset + i] = QueueItem(bridge: entry)
+                }
+            },
+            { error in
                 logger.warning(
-                    "dropping upcoming page for [\(offset), \(end)): fetched under a since-superseded revision"
+                    "upcoming range [\(offset), \(end)) subscription failed: \(error.localizedDescription)"
                 )
-                return
             }
-            for (i, entry) in page.entries.enumerated() {
-                pagedUpcoming[offset + i] = QueueItem(bridge: entry)
-            }
-        }
-        catch {
-            logger.warning(
-                "failed to load upcoming range [\(offset), \(end)): \(error.localizedDescription)"
-            )
-        }
+        )
     }
 
     /// Enter the loading transition for `trackId`, retaining the currently

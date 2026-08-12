@@ -7,8 +7,8 @@ namespace Bae.Desktop;
 
 // Session state for the import flow: the sidebar's core-projected triage queue,
 // its watched folders, the sweep's identify progress, and the preview-position
-// label. TriageQueue/WatchedFolders/QueueIdentifyProgress are core-driven
-// (refreshed from an invalidation or a progress event); ActiveTab/FilterText/
+// label. TriageQueue/WatchedFolders are core-driven value streams and
+// QueueIdentifyProgress is driven by progress events; ActiveTab/FilterText/
 // SortOrder/SelectedReady are view state the sidebar itself sets. Unlike
 // macOS's per-field bindings, this store fires one coarse Changed event and the
 // sidebar rebuilds its content wholesale — the established pattern for this
@@ -18,11 +18,9 @@ internal sealed class ImportStore
     private readonly ImportService _import;
     private readonly Action<string, string> _showError;
     private readonly IMediaControl _mediaControls;
-    private readonly CoalescedReadModel _triageReads = new();
 
     // The sidebar's pre-shaped sections and tab counts — core's
-    // triage projection, read whole and re-read on the import-domain
-    // invalidations RefreshTriageQueue registers for. Defaults to an empty
+    // triage projection, delivered whole whenever its inputs change. Defaults to an empty
     // queue rather than null: "not loaded yet" and "the queue is genuinely
     // empty" render identically (the tab's empty state), so no surface needs to
     // tell them apart.
@@ -34,6 +32,12 @@ internal sealed class ImportStore
     // The folders being watched for imports, in add order — the sidebar's "+"
     // menu.
     public List<BridgeWatchedFolder> WatchedFolders { get; private set; } = new();
+
+    private Dictionary<string, ImportCandidate> _candidates = new();
+    private Dictionary<string, (
+        ImportCandidateRowStatus RowStatus,
+        List<ReleaseCandidateChoice> Matches,
+        List<SignalBadge> Signals)> _runtimeCandidates = new();
 
     // The queue sweep's identified-count over total, for the header's progress
     // line and bar. Null before the first tick of a session — the header hides
@@ -88,70 +92,40 @@ internal sealed class ImportStore
     internal void SeedPreview(
         BridgeTriageQueue queue,
         List<BridgeWatchedFolder> watchedFolders,
-        BridgeTriageTab activeTab)
+        BridgeTriageTab activeTab,
+        IEnumerable<ImportCandidate>? candidates = null)
     {
         TriageQueue = queue;
         WatchedFolders = watchedFolders;
         ActiveTab = activeTab;
+        if (candidates is not null)
+        {
+            _candidates = candidates.ToDictionary(candidate => candidate.Key);
+        }
         Changed?.Invoke();
     }
 #endif
 
-    // Re-read the triage queue and the watched folders from core. A failed read
-    // surfaces the import banner; no handle is a no-op. Called on the
-    // import-domain invalidations (ImportCandidateList, ImportCandidate,
-    // WatchedFolders, Release) and on the queue sweep's progress ticks, whose
-    // comment on why explains the coalescing: a burst of ticks collapses into
-    // the one query that finishes after the burst settles.
-    public async void RefreshTriageQueue() => await RequestCandidateRead();
-
-    private async Task RequestCandidateRead()
+    public void ApplyCandidates(BridgeImportCandidatesSnapshot snapshot)
     {
-        if (!_triageReads.Request())
-        {
-            return;
-        }
-        try
-        {
-            do
-            {
-                await ReadCandidates();
-            } while (_triageReads.Complete());
-        }
-        catch
-        {
-            _triageReads.Fail();
-            throw;
-        }
+        WatchedFolders = snapshot.WatchedFolders.ToList();
+        _candidates = snapshot.FolderCandidates.ToDictionary(
+            entry => entry.Candidate.FolderPath,
+            entry => _import.ProjectFolderCandidate(entry.Candidate, entry.Runtime));
+        _runtimeCandidates = snapshot.RuntimeCandidates.ToDictionary(
+            entry => entry.Key,
+            entry => _import.ProjectRuntimeCandidate(entry.Runtime));
+        Changed?.Invoke();
     }
 
-    // The read itself, awaitable — a caller that must see the new rows before
-    // it reads them (the sheet-binding editor) waits on this rather than on an
-    // `async void` it cannot observe.
-    private async Task ReadCandidates()
+    public void ApplyTriage(BridgeTriageQueue queue)
     {
-        var (queueCurrent, queueResult) = await _import.TriageQueue();
-        if (!queueCurrent)
-        {
-            return;
-        }
-        if (queueResult.Queue is not { } queue)
-        {
-            _showError(Loc.Chrome("import.error_title"), queueResult.Error ?? Loc.Chrome("import.failed"));
-            return;
-        }
         TriageQueue = queue;
         Interaction.RetainGroupDisclosureKeys(
             queue.Sections
                 .Select(section => section.Group)
                 .OfType<BridgeTriageGroup>()
                 .Select(group => GroupDisclosureKey(group.Key)));
-
-        var (foldersCurrent, folders) = _import.WatchedFolders();
-        if (foldersCurrent)
-        {
-            WatchedFolders = folders;
-        }
 
         // Selection can outlive the rows that earned it (a row imported by a
         // faster sibling call, or reclassified out of Ready) — drop keys no
@@ -167,14 +141,14 @@ internal sealed class ImportStore
 
     // Show a different tab (absolute set — the caller passes the tab its button
     // represents).
-    /// <summary>The candidate under `key`, read from core rather than from a
-    /// cached list — the triage store holds rows, not whole candidates, and a
-    /// caller wanting the files needs what the folder is now.</summary>
-    public ImportCandidate? Candidate(string key)
-    {
-        var (current, candidate) = _import.CandidateForKey(key);
-        return current ? candidate : null;
-    }
+    public ImportCandidate? Candidate(string key) =>
+        _candidates.GetValueOrDefault(key);
+
+    public (
+        ImportCandidateRowStatus RowStatus,
+        List<ReleaseCandidateChoice> Matches,
+        List<SignalBadge> Signals)? ReidentifyPipeline(string key) =>
+        _runtimeCandidates.GetValueOrDefault(key);
 
     public void SetActiveTab(BridgeTriageTab tab)
     {
@@ -218,18 +192,16 @@ internal sealed class ImportStore
         Changed?.Invoke();
     }
 
-    // CandidateVerdictStored invalidates each row list after its guarded DB
-    // write. This event updates only the queue-wide header.
+    // The identify-progress event updates only the queue-wide header; candidate
+    // rows arrive through the triage subscription.
     public void ApplyQueueIdentifyProgress(uint identified, uint total)
     {
         QueueIdentifyProgress = (identified, total);
         Changed?.Invoke();
     }
 
-    // Un-watch a folder: core drops it and its candidates, and the
-    // ImportCandidateList/WatchedFolders invalidations re-render the sidebar. A
-    // failed call surfaces the import banner; success is silent (the
-    // invalidation drives the refresh).
+    // Un-watch a folder: core drops it and its candidates. The candidate and
+    // triage subscriptions deliver the resulting state.
     public async void RemoveWatchedFolder(string path)
     {
         var (current, error) = await _import.RemoveWatchedFolder(path);
@@ -271,9 +243,8 @@ internal sealed class ImportStore
         }
     }
 
-    // Skip or un-skip a candidate: core persists the change and the candidate
-    // invalidation re-tabs the row. A failed call surfaces the import banner;
-    // success is silent (the invalidation drives the refresh).
+    // Skip or un-skip a candidate: core persists the change and the triage
+    // subscription delivers the candidate in its new tab.
     public async void SetCandidateSkipped(string key, bool skipped)
     {
         var (current, error) = await _import.SetCandidateSkipped(key, skipped);
@@ -318,7 +289,6 @@ internal sealed class ImportStore
             _showError(Loc.Chrome("import.error_title"), error);
             return false;
         }
-        await RequestCandidateRead();
         return true;
     }
 
@@ -337,7 +307,6 @@ internal sealed class ImportStore
             _showError(Loc.Chrome("import.error_title"), error);
             return false;
         }
-        await RequestCandidateRead();
         return true;
     }
 
@@ -378,7 +347,6 @@ internal sealed class ImportStore
             _showError(Loc.Chrome("import.error_title"), error);
             return false;
         }
-        await ReadCandidates();
         return true;
     }
 
@@ -421,8 +389,8 @@ internal sealed class ImportStore
                 break;
             case BridgeUiEvent.CandidateImportLoudnessProgress:
                 // The sidebar shows import progress as a percent + step off the
-                // row's own BridgeCandidateImportStatus (re-read on the next
-                // candidate invalidation); a per-track loudness fraction has no
+                // row's own BridgeCandidateImportStatus (delivered by the
+                // candidate subscription); a per-track loudness fraction has no
                 // leaf in this UI to drive.
                 break;
             case BridgeUiEvent.ImportQueueIdentifyProgress progress:
@@ -449,8 +417,8 @@ internal sealed class ImportStore
         PreviewElapsedChanged?.Invoke();
     }
 
-    // Scan a folder into the watched set; candidates stream in through
-    // invalidations. Returns the error line, or null on success.
+    // Scan a folder into the watched set; candidates stream through the value
+    // subscription. Returns the error line, or null on success.
     public System.Threading.Tasks.Task<(bool Current, string? Result)> ScanFolder(string path) =>
         _import.ScanFolder(path);
 

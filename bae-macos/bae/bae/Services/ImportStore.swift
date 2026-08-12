@@ -67,10 +67,10 @@ struct ReleaseQueueSection: Identifiable {
     }
 }
 
-/// Session state for the import flow. Mixed-writer: core drives event-driven
-/// fields — scan/identify state through the import-candidate projections, the
-/// triage queue through its own projection, preview state through the shared
-/// event dispatcher — while views drive user-set fields (mode, coverPick)
+/// Session state for the import flow. Mixed-writer: core drives scan/identify
+/// state and the triage queue through value subscriptions, and preview state
+/// through the shared event dispatcher, while views drive user-set fields
+/// (mode, coverPick)
 /// via `mutateCandidate(forKey:_:)`. The single-writer rule applies per field,
 /// not per store.
 ///
@@ -82,7 +82,7 @@ struct ReleaseQueueSection: Identifiable {
 class ImportStore {
     var folderCandidates: OrderedDictionary<String, Candidate> = [:]
     /// The folders being watched for imports, in add order. Fetched when the
-    /// import view appears and refreshed on watched-folder invalidation.
+    /// import view appears and updates through the candidate subscription.
     var watchedFolders: [BridgeWatchedFolder] = []
     /// Re-identify candidates — one per active "Re-identify..." sheet.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
@@ -90,8 +90,8 @@ class ImportStore {
     var reIdentifyCandidates: OrderedDictionary<String, Candidate> = [:]
 
     /// The sidebar's pre-shaped sections and tab counts — core's projection,
-    /// read whole and re-read on the domains
-    /// `AppService.makeImportTriageQueueProjection` registers for. Defaults to
+    /// delivered whole whenever its database or candidate inputs change.
+    /// Defaults to
     /// an empty queue rather than `nil`: "not loaded yet" and "the queue is
     /// genuinely empty" render identically (the tab's empty state), so no
     /// surface needs to tell them apart.
@@ -160,49 +160,9 @@ class ImportStore {
             }
         }
         folderCandidates = nextFolderCandidates
-    }
-
-    func applyImportCandidateSnapshot(
-        key requestedKey: String,
-        snapshot: BridgeImportCandidateSnapshot?
-    ) {
-        guard let snapshot else {
-            folderCandidates.removeValue(forKey: requestedKey)
-            return
-        }
-
-        switch snapshot {
-        case .folder(let bridge, let runtime, _):
-            let incoming = Candidate(bridge: bridge)
-            let existing = folderCandidates[incoming.key]
-            folderCandidates[incoming.key] =
-                existing.map { incoming.withSessionState(from: $0) }
-                ?? incoming
-            applyRuntime(runtime, to: incoming.key)
-
-        case .invalid(let candidate):
-            // Invalid folders are entries in the queue's Skipped sections.
-            // This path only has to stop treating the key as an addressable
-            // candidate.
-            folderCandidates.removeValue(forKey: candidate.folderPath)
-
-        case .runtime(let key, let runtime):
-            applyRuntime(runtime, to: key)
-        }
-    }
-
-    private func applyRuntime(
-        _ runtime: BridgeCandidateRuntimeSnapshot,
-        to key: String
-    ) {
-        if key.hasPrefix("reidentify:") {
-            mutateReIdentifyCandidate(key: key) { candidate in
-                applyRuntime(runtime, to: &candidate)
-            }
-        }
-        else {
-            mutateFolderCandidate(key: key) { candidate in
-                applyRuntime(runtime, to: &candidate)
+        for snapshot in snapshot.runtimeCandidates {
+            mutateReIdentifyCandidate(key: snapshot.key) { candidate in
+                applyRuntime(snapshot.runtime, to: &candidate)
             }
         }
     }
@@ -217,33 +177,6 @@ class ImportStore {
         candidate.signalsToolbar = runtime.signalsToolbar
         candidate.signals = runtime.signals.map(Signals.init(bridge:))
         candidate.importStatus = runtime.importStatus
-    }
-
-    func removeLibraryStatus(releaseId: String) {
-        sweepCandidates { candidate in
-            if case .complete(releaseId: let completedRelease, albumId: _) =
-                candidate.importStatus,
-                completedRelease == releaseId
-            {
-                candidate.importStatus = nil
-            }
-            candidate.removeLibraryStatuses { id, _ in id == releaseId }
-        }
-    }
-
-    private func sweepCandidates(_ mutate: (inout Candidate) -> Void) {
-        func sweep(
-            _ dict: inout OrderedDictionary<String, Candidate>
-        ) {
-            for key in dict.keys {
-                if var c = dict[key] {
-                    mutate(&c)
-                    dict[key] = c
-                }
-            }
-        }
-        sweep(&folderCandidates)
-        sweep(&reIdentifyCandidates)
     }
 
     private func mutateFolderCandidate(

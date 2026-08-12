@@ -326,6 +326,7 @@ impl BridgeReleaseGroup {
     pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
         let bae_core::import::release_group::ReleaseGroup {
             id,
+            source_group_id,
             title,
             artist,
             cover_art,
@@ -337,6 +338,7 @@ impl BridgeReleaseGroup {
         } = g;
         BridgeReleaseGroup {
             id,
+            source_group_id,
             title,
             artist,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),

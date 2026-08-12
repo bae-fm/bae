@@ -167,6 +167,7 @@ pub fn project(
 ) -> TriageQueue {
     let ImportCandidatesSnapshot {
         folder_candidates,
+        runtime_candidates: _,
         invalid_candidates,
         watched_folders,
         boundaries,
@@ -378,16 +379,50 @@ pub async fn load(
 
     // One check for the whole queue, deduplicated by release id — the key
     // `ready::classify` matches statuses against.
-    let checks: Vec<LibraryCheck> = {
-        let mut seen = std::collections::HashSet::new();
-        verdicts
-            .values()
-            .flat_map(|stored| named_matches(&stored.verdict))
-            .filter(|result| seen.insert(result.release_id.clone()))
-            .map(LibraryCheck::from)
-            .collect()
-    };
+    let checks = checks_from_verdicts(&verdicts);
     let statuses = library_manager.check_releases_in_library(&checks).await?;
+    let answers = answers_from_statuses(verdicts, &statuses)?;
+    let picks = stored_picks(&snapshot, &stored, library_manager).await?;
+    Ok(project(snapshot, &answers, &picks))
+}
+
+pub(crate) fn library_checks(
+    snapshot: &ImportCandidatesSnapshot,
+    stored: &HashMap<String, DbImportCandidateState>,
+) -> Result<Vec<LibraryCheck>, LibraryError> {
+    Ok(checks_from_verdicts(&stored_verdicts(snapshot, stored)?))
+}
+
+pub(crate) fn project_live(
+    snapshot: ImportCandidatesSnapshot,
+    projection: crate::db::ImportTriageDbProjection,
+) -> Result<TriageQueue, LibraryError> {
+    let verdicts = stored_verdicts(&snapshot, &projection.candidate_states)?;
+    let answers = answers_from_statuses(verdicts, &projection.library_statuses)?;
+    let picks = stored_picks_from_payloads(
+        &snapshot,
+        &projection.candidate_states,
+        &projection.source_payloads,
+    )?;
+    Ok(project(snapshot, &answers, &picks))
+}
+
+fn checks_from_verdicts(
+    verdicts: &HashMap<(String, u64), StoredCandidateVerdict>,
+) -> Vec<LibraryCheck> {
+    let mut seen = std::collections::HashSet::new();
+    verdicts
+        .values()
+        .flat_map(|stored| named_matches(&stored.verdict))
+        .filter(|result| seen.insert(result.release_id.clone()))
+        .map(LibraryCheck::from)
+        .collect()
+}
+
+fn answers_from_statuses(
+    verdicts: HashMap<(String, u64), StoredCandidateVerdict>,
+    statuses: &[LibraryStatus],
+) -> Result<HashMap<(String, u64), Answered>, LibraryError> {
     let by_release: HashMap<&str, &LibraryStatus> = statuses
         .iter()
         .map(|status| (status.release_id.as_str(), status))
@@ -423,8 +458,7 @@ pub async fn load(
         );
     }
 
-    let picks = stored_picks(&snapshot, &stored, library_manager).await?;
-    Ok(project(snapshot, &answers, &picks))
+    Ok(answers)
 }
 
 /// The matches a verdict names as *the* answer — the ones the Ready rule checks
@@ -533,6 +567,61 @@ async fn stored_picks(
         out.insert(candidate_identity, Picked { pick, release });
     }
     Ok(out)
+}
+
+fn stored_picks_from_payloads(
+    snapshot: &ImportCandidatesSnapshot,
+    stored: &HashMap<String, DbImportCandidateState>,
+    payloads: &HashMap<(crate::import::PayloadSource, String), String>,
+) -> Result<HashMap<(String, u64), Picked>, LibraryError> {
+    let mut out = HashMap::new();
+    for candidate in &snapshot.folder_candidates {
+        let content_hash = candidate.candidate.files.content_hash();
+        let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
+        if out.contains_key(&candidate_identity) {
+            continue;
+        }
+        let Some(row) = stored.get(&content_hash) else {
+            continue;
+        };
+        if row.file_edits.revision != candidate.candidate.file_edit_revision {
+            continue;
+        }
+        let Some(pick_json) = row.identity_pick.as_ref() else {
+            continue;
+        };
+        let pick: crate::import::IdentityPick =
+            serde_json::from_str(pick_json).map_err(|error| {
+                LibraryError::Internal(format!(
+                    "stored identity pick for {content_hash} does not decode: {error}"
+                ))
+            })?;
+        let release = picked_release_from_payloads(&pick, payloads)?;
+        out.insert(candidate_identity, Picked { pick, release });
+    }
+    Ok(out)
+}
+
+fn picked_release_from_payloads(
+    pick: &crate::import::IdentityPick,
+    payloads: &HashMap<(crate::import::PayloadSource, String), String>,
+) -> Result<Option<MatchedRelease>, LibraryError> {
+    let crate::import::IdentityPick::Release {
+        source, release_id, ..
+    } = pick
+    else {
+        return Ok(None);
+    };
+    let release = crate::import::MetadataRef::new(release_id.clone(), *source);
+    let Some(payloads) = crate::import::payloads::load_from_map(&release, payloads)
+        .map_err(|error| LibraryError::Internal(error.to_string()))?
+    else {
+        return Ok(None);
+    };
+    let detail = payloads
+        .detail()
+        .map_err(|error| LibraryError::Internal(error.to_string()))?;
+    Ok(Some(MatchedRelease::of_pick(*source, &detail)))
 }
 
 /// The release a pick settled on, as the documents archived for it describe it.

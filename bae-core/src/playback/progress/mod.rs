@@ -48,12 +48,6 @@ pub enum PlaybackProgress {
         track_id: String,
         progress: f64,
     },
-    /// The queue changed. The two lanes stay separate: the manual lane ("Up
-    /// Next") in order, and the context (the release being played from) as its
-    /// not-yet-played tail plus its shuffled flag, or `None` when nothing plays
-    /// from a release. Each entry is a per-instance id + track id; the event bus
-    /// resolves them to display items.
-    QueueUpdated(PlaybackQueueProjection),
     /// Tracks were appended/inserted into the queue. Fired only by add
     /// operations; never by remove/reorder/clear. The UI surfaces this as
     /// a transient "+N" badge.

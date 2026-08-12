@@ -120,10 +120,36 @@ func makeList(store: LibraryStore, albums: [BridgeAlbum]) -> AlbumList {
     )
 }
 
-/// Test-only page source that counts `page()` invocations. Used to pin
+final class TestPageSubscription: PageSubscription, @unchecked Sendable {
+    private let task: Task<Void, Never>
+
+    init(_ task: Task<Void, Never>) {
+        self.task = task
+    }
+
+    func cancel() {
+        task.cancel()
+    }
+}
+
+final class TestLiveSubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    private let task: Task<Void, Never>
+
+    init(_ task: Task<Void, Never>) {
+        self.task = task
+    }
+
+    func cancel() {
+        task.cancel()
+    }
+}
+
+/// Test-only page source that counts subscriptions. Used to pin
 /// the `loadRange` fast-path guard — interning alone is identity-stable,
-/// so a naive idempotency assertion passes whether or not `page()` was
-/// actually called a second time.
+/// so a naive idempotency assertion passes whether or not another page query
+/// was actually subscribed.
 final class CountingAlbumPageSource: PageSource, @unchecked Sendable {
     let albums: [BridgeAlbum]
     var pageCallCount = 0
@@ -132,15 +158,19 @@ final class CountingAlbumPageSource: PageSource, @unchecked Sendable {
         self.albums = albums
     }
 
-    func count() async throws -> Int {
-        albums.count
-    }
-
-    func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
+    func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        onError _: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
         pageCallCount += 1
-        let start = min(offset, albums.count)
-        let end = min(start + limit, albums.count)
-        return Array(albums[start..<end])
+        let albums = albums
+        return TestPageSubscription(Task { @MainActor in
+            let start = min(offset, albums.count)
+            let end = min(start + limit, albums.count)
+            onValue(Array(albums[start..<end]), albums.count)
+        })
     }
 }
 
@@ -165,20 +195,23 @@ final class ThrowingAlbumPageSource: PageSource, @unchecked Sendable {
         self.pageError = pageError
     }
 
-    func count() async throws -> Int {
-        if let countError {
-            throw countError
-        }
-        return albums.count
-    }
-
-    func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
-        if let pageError {
-            throw pageError
-        }
-        let start = min(offset, albums.count)
-        let end = min(start + limit, albums.count)
-        return Array(albums[start..<end])
+    func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        let albums = albums
+        let error = offset == 0 && limit == 50 ? countError : pageError
+        return TestPageSubscription(Task { @MainActor in
+            if let error {
+                onError(error)
+                return
+            }
+            let start = min(offset, albums.count)
+            let end = min(start + limit, albums.count)
+            onValue(Array(albums[start..<end]), albums.count)
+        })
     }
 }
 
@@ -550,13 +583,9 @@ struct InternReleaseDetailTests {
     }
 }
 
-// MARK: - loadReleaseDetail failure surfacing
+// MARK: - Release-detail subscription errors and values
 
-/// `findReleaseDetail` stub that throws for its first `failFirst` calls, then
-/// returns `release`. Lets a test drive a failure and then a retry through the
-/// real store method. `@unchecked Sendable` with a lock because the store runs
-/// the closure on a detached task.
-private final class DetailLoadProbe: @unchecked Sendable {
+private final class DetailSubscriptionProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var calls = 0
     private let failFirst: Int
@@ -567,76 +596,144 @@ private final class DetailLoadProbe: @unchecked Sendable {
         self.release = release
     }
 
-    func next() throws -> BridgeRelease? {
+    func subscribe(
+        callback: ReleaseDetailCallback
+    ) -> any LiveSubscriptionProtocol {
         lock.lock()
-        defer { lock.unlock() }
         calls += 1
-        if calls <= failFirst {
-            throw PaginatedListTestError(message: "detail load failed")
-        }
-        return release
+        let shouldFail = calls <= failFirst
+        let release = release
+        lock.unlock()
+        return TestLiveSubscription(
+            Task {
+                if shouldFail {
+                    callback.onError(
+                        error: .Diagnostic(
+                            category: .internal,
+                            detail: "detail load failed"
+                        )
+                    )
+                }
+                else {
+                    callback.onValue(value: release)
+                }
+            }
+        )
     }
 }
 
-@Suite("LibraryStore.loadReleaseDetail")
-struct LoadReleaseDetailTests {
+@MainActor
+private func waitForStoreUpdate(_ condition: () -> Bool) async {
+    for _ in 0..<100 where !condition() {
+        await Task.yield()
+    }
+}
+
+@Suite("LibraryStore.observeReleaseDetail")
+struct ObserveReleaseDetailTests {
 
     @MainActor
     @Test(
-        "a thrown load failure surfaces as a per-release error, not a swallow"
+        "a subscription failure surfaces as a per-release error"
     )
     func failureSurfacesError() async {
+        let probe = DetailSubscriptionProbe(failFirst: 1, release: nil)
         let store = LibraryStore()
-        let library = Library(findReleaseDetail: { _ in
-            throw PaginatedListTestError(message: "detail load failed")
+        let library = Library(subscribeReleaseDetail: { _, callback in
+            probe.subscribe(callback: callback)
         })
 
-        await store.loadReleaseDetail(releaseId: "release-1", library: library)
-
-        #expect(store.releaseDetails["release-1"] == nil)
-        #expect(
-            store.releaseDetailErrors["release-1"]
-                == DisplayError(line: "detail load failed")
+        await store.observeReleaseDetail(
+            releaseId: "release-1",
+            library: library,
+            onValue: {}
         )
-    }
-
-    @MainActor
-    @Test("a nil result surfaces a not-found error rather than spinning")
-    func nilResultSurfacesNotFound() async {
-        let store = LibraryStore()
-        let library = Library(findReleaseDetail: { _ in nil })
-
-        await store.loadReleaseDetail(releaseId: "release-1", library: library)
 
         #expect(store.releaseDetails["release-1"] == nil)
         #expect(store.releaseDetailErrors["release-1"] != nil)
     }
 
     @MainActor
-    @Test("retry after a failure clears the error and re-queries into content")
+    @Test("an absent live value removes the release without inventing an error")
+    func absenceRemovesRelease() async {
+        let probe = DetailSubscriptionProbe(failFirst: 0, release: nil)
+        let store = LibraryStore()
+        store.internReleaseDetail(makeBridgeRelease())
+        let library = Library(subscribeReleaseDetail: { _, callback in
+            probe.subscribe(callback: callback)
+        })
+
+        let observation = Task {
+            await store.observeReleaseDetail(
+                releaseId: "release-1",
+                library: library,
+                onValue: {}
+            )
+        }
+        await waitForStoreUpdate { store.releaseDetails["release-1"] == nil }
+        observation.cancel()
+        await observation.value
+
+        #expect(store.releaseDetails["release-1"] == nil)
+        #expect(store.releaseDetailErrors["release-1"] == nil)
+    }
+
+    @MainActor
+    @Test("a new subscription after failure clears the error with its value")
     func retryClearsErrorAndLoads() async {
-        let probe = DetailLoadProbe(failFirst: 1, release: makeBridgeRelease())
+        let probe = DetailSubscriptionProbe(
+            failFirst: 1,
+            release: makeBridgeRelease()
+        )
         let store = LibraryStore()
-        let library = Library(findReleaseDetail: { _ in try probe.next() })
+        let library = Library(subscribeReleaseDetail: { _, callback in
+            probe.subscribe(callback: callback)
+        })
 
-        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+        await store.observeReleaseDetail(
+            releaseId: "release-1",
+            library: library,
+            onValue: {}
+        )
         #expect(store.releaseDetailErrors["release-1"] != nil)
         #expect(store.releaseDetails["release-1"] == nil)
 
-        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+        let observation = Task {
+            await store.observeReleaseDetail(
+                releaseId: "release-1",
+                library: library,
+                onValue: {}
+            )
+        }
+        await waitForStoreUpdate { store.releaseDetails["release-1"] != nil }
+        observation.cancel()
+        await observation.value
         #expect(store.releaseDetailErrors["release-1"] == nil)
         #expect(store.releaseDetails["release-1"] != nil)
     }
 
     @MainActor
-    @Test("a successful load leaves no error")
+    @Test("an initial live value leaves no error")
     func successLeavesNoError() async {
         let store = LibraryStore()
-        let library = Library(findReleaseDetail: { _ in
-            makeBridgeRelease()
+        let probe = DetailSubscriptionProbe(
+            failFirst: 0,
+            release: makeBridgeRelease()
+        )
+        let library = Library(subscribeReleaseDetail: { _, callback in
+            probe.subscribe(callback: callback)
         })
 
-        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+        let observation = Task {
+            await store.observeReleaseDetail(
+                releaseId: "release-1",
+                library: library,
+                onValue: {}
+            )
+        }
+        await waitForStoreUpdate { store.releaseDetails["release-1"] != nil }
+        observation.cancel()
+        await observation.value
 
         #expect(store.releaseDetails["release-1"] != nil)
         #expect(store.releaseDetailErrors["release-1"] == nil)

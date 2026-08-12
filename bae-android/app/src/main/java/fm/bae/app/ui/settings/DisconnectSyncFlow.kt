@@ -111,7 +111,7 @@ internal class DisconnectSyncFlow(
 
     /**
      * Disconnect off the main thread. On success the sync config is cleared by
-     * core and the whole connected section falls away via config invalidation;
+     * core and the whole connected section falls away via the config subscription;
      * on failure the error shows inline and nothing durable changed.
      */
     suspend fun confirm() {

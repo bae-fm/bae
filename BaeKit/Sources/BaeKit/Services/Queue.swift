@@ -1,5 +1,28 @@
 import Foundation
 
+private final class QueueUpcomingValueSink: QueueUpcomingCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
+
+    init(
+        apply: @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.apply = apply
+        self.fail = fail
+    }
+
+    func onValue(value: BridgeQueueUpcomingPage) {
+        Task { @MainActor in apply(value) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
+    }
+}
+
 /// Queue mutations — appending, inserting, reordering, removing,
 /// jumping to a queue entry. Reorder/remove/skip target a per-instance
 /// `entryId`. Narrow subset of `AppHandle`.
@@ -21,14 +44,16 @@ public final class Queue: Sendable, Observable {
     public let skipToEntry: @Sendable (_ entryId: String) -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
-    /// Fetch one page of the context's upcoming tail past the initial window
-    /// `get_queue_snapshot`/`QueueUpdated` already carry. `offset` 0 is the
-    /// first not-yet-played entry after the current track. Called by
-    /// `PlaybackStore.loadUpcomingRange` as the queue view scrolls; not a
-    /// mutation, so it has no corresponding `QueueUpdated` event.
-    public let getUpcomingPage:
-        @Sendable (_ offset: UInt32, _ limit: UInt32) async throws ->
-            BridgeQueueUpcomingPage
+    /// Subscribe to one page of the context's upcoming tail past the initial
+    /// window. `offset` 0 is the first not-yet-played entry after the current
+    /// track.
+    public let subscribeUpcomingPage:
+        @Sendable (
+            _ offset: UInt32, _ limit: UInt32,
+            _ onValue:
+                @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
+            _ onError: @escaping @MainActor @Sendable (any Error) -> Void
+        ) -> any LiveSubscriptionProtocol
 
     public init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
@@ -46,10 +71,13 @@ public final class Queue: Sendable, Observable {
         },
         skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
         setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
-        getUpcomingPage:
-            @escaping @Sendable (UInt32, UInt32) async throws ->
-            BridgeQueueUpcomingPage = { _, _ in
-                BridgeQueueUpcomingPage(revision: 0, entries: [])
+        subscribeUpcomingPage:
+            @escaping @Sendable (
+                UInt32, UInt32,
+                @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
+                @escaping @MainActor @Sendable (any Error) -> Void
+            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
+                fatalError("Queue upcoming-page subscription is not installed")
             }
     ) {
         self.addToQueue = addToQueue
@@ -63,7 +91,7 @@ public final class Queue: Sendable, Observable {
         self.reorderEntry = reorderEntry
         self.skipToEntry = skipToEntry
         self.setShuffle = setShuffle
-        self.getUpcomingPage = getUpcomingPage
+        self.subscribeUpcomingPage = subscribeUpcomingPage
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -81,8 +109,15 @@ public final class Queue: Sendable, Observable {
             },
             skipToEntry: { handle.skipToEntry(entryId: $0) },
             setShuffle: { handle.setShuffle(on: $0) },
-            getUpcomingPage: {
-                try await handle.getQueueUpcomingPage(offset: $0, limit: $1)
+            subscribeUpcomingPage: { offset, limit, onValue, onError in
+                handle.subscribeQueueUpcomingPage(
+                    offset: offset,
+                    limit: limit,
+                    callback: QueueUpcomingValueSink(
+                        apply: onValue,
+                        fail: onError
+                    )
+                )
             }
         )
     }

@@ -270,9 +270,8 @@ impl LibraryManager {
     /// cloud-only). Emits a fresh snapshot.
     pub fn cancel_download(&self, release_id: &str) {
         // An active entry needs no follow-up here: the aborted pin task closes its
-        // progress channel, and the worker's drain emits the terminal
-        // `ReleaseTransferEnded` that clears the inline storage-row bar, sees the
-        // entry is gone, leaves the queue alone, and re-parks itself.
+        // progress channel, and the worker's drain clears the streamed transfer
+        // action, sees the entry is gone, leaves the queue alone, and re-parks.
         self.download_queue.cancel(release_id);
         self.emit_download_queue_changed();
     }
@@ -293,13 +292,12 @@ impl LibraryManager {
     /// All this supplies is how a pin runs: resolve the release's byte totals,
     /// ask `TransferService` to compose the pin task with this worker's progress
     /// drain, and yield the resulting operation. The
-    /// outcome comes from draining the transfer's progress channel — that drain is
-    /// also what emits the inline `ReleaseTransferProgress` bar the storage row
-    /// reads — and then joining the pin task, so a panicked pin reports the panic
-    /// rather than "the channel closed".
+    /// outcome comes from draining the transfer's progress channel — that drain
+    /// also publishes the action the storage row reads — and then joining the pin
+    /// task, so a panicked pin reports the panic rather than "the channel closed".
     ///
-    /// Success needs no follow-up here: `pin_release_blobs` already emitted
-    /// `ReleaseUpdated`, so the release's `pinned` flag flips reactively.
+    /// Success needs no follow-up here: `pin_release_blobs` committed the new
+    /// state, so the release subscription updates its `pinned` flag.
     /// Completion and failure reach diagnostics from inside the transfer
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
     /// to report on the way out.
@@ -425,10 +423,9 @@ impl LibraryManager {
         }
     }
 
-    /// Drain a transfer's progress channel, translating start into a
-    /// `ReleaseTransferProgress` UI event and emitting `ReleaseTransferEnded` on
-    /// completion or failure. On `Failed` the transfer channel's error string is
-    /// wrapped as a `Storage` failure and surfaced to the caller.
+    /// Drain a transfer's progress channel and publish its active action through
+    /// the transfer value stream. On `Failed` the transfer channel's error string
+    /// is wrapped as a `Storage` failure and surfaced to the caller.
     pub(super) async fn drive_transfer(
         &self,
         release_id: &str,
@@ -437,16 +434,12 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         use crate::storage::transfer::TransferProgress;
 
-        // The bridge transfer future is abortable: a view dismiss / re-trigger
-        // can drop this future between progress events, before its terminal
-        // `ReleaseTransferEnded` emits. The guard fires that event on drop so a
-        // cancelled transfer never freezes the progress bar on the release row;
-        // the normal exit defuses it after emitting the event itself.
-        let mut ended_guard = TransferEndedGuard {
-            event_tx: self.event_tx.clone(),
+        // The bridge transfer future is abortable. The guard clears the streamed
+        // action whether the channel completes or the future is dropped.
+        let _value_guard = TransferValueGuard {
             transfer_actions: self.transfer_actions.clone(),
+            transfer_values: self.transfer_values.clone(),
             release_id: release_id.to_string(),
-            armed: true,
         };
 
         let outcome = loop {
@@ -458,14 +451,12 @@ impl LibraryManager {
             };
             match progress {
                 TransferProgress::Started => {
-                    self.transfer_actions
-                        .lock()
-                        .unwrap()
-                        .insert(release_id.to_string(), action);
-                    self.emit(LibraryEvent::ReleaseTransferProgress {
-                        release_id: release_id.to_string(),
-                        action,
-                    });
+                    let actions = {
+                        let mut actions = self.transfer_actions.lock().unwrap();
+                        actions.insert(release_id.to_string(), action);
+                        actions.clone()
+                    };
+                    self.transfer_values.send_replace(actions);
                 }
                 TransferProgress::Progress { progress } => {
                     if matches!(action, ReleaseStorageAction::Pin) {
@@ -487,13 +478,6 @@ impl LibraryManager {
             }
         };
 
-        // Normal exit: emit the terminal event ourselves and defuse the guard so
-        // its drop doesn't emit a second one.
-        self.transfer_actions.lock().unwrap().remove(release_id);
-        self.emit(LibraryEvent::ReleaseTransferEnded {
-            release_id: release_id.to_string(),
-        });
-        ended_guard.defuse();
         outcome
     }
 }

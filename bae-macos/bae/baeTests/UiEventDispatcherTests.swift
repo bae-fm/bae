@@ -123,7 +123,7 @@ struct UiEventDispatcherTransportTests {
     @Test(
         "playbackStopped resets the store, clears info, and disables transport"
     )
-    func playbackStoppedClearsEverything() {
+    func playbackStoppedClearsEverything() async {
         let center = MPRemoteCommandCenter.shared()
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
@@ -132,23 +132,24 @@ struct UiEventDispatcherTransportTests {
             center.nextTrackCommand.isEnabled = false
             center.previousTrackCommand.isEnabled = false
         }
-        let appService = makeAppService()
+        let handle = FakeAppHandle()
+        let appService = makeAppService(handle: handle)
         let sink = UiEventDispatcher.makeSink(
             appService: appService,
             onUnhandled: DesktopUiEvents.apply
         )
         sink(playingEvent(trackId: "t1"))
-        sink(
-            .queueUpdated(
-                snapshot: BridgeQueueSnapshot(
-                    manual: [],
-                    context: nil,
-                    hasNext: true,
-                    hasPrevious: true,
-                    revision: 1
-                )
+        appService.startCommonSubscriptions()
+        handle.deliverQueue(
+            BridgeQueueSnapshot(
+                manual: [],
+                context: nil,
+                hasNext: true,
+                hasPrevious: true,
+                revision: 1
             )
         )
+        await waitUntil { center.nextTrackCommand.isEnabled }
 
         sink(.playbackStopped)
 
@@ -165,111 +166,6 @@ struct UiEventDispatcherTransportTests {
         #expect(infoCenter.nowPlayingInfo == nil)
         #expect(!center.nextTrackCommand.isEnabled)
         #expect(!center.previousTrackCommand.isEnabled)
-    }
-}
-
-@MainActor
-@Suite("UiEventDispatcher queue", .serialized)
-struct UiEventDispatcherQueueTests {
-    @Test(
-        "queueUpdated applies its snapshot to the queue and transport commands"
-    )
-    func queueUpdatedAppliesSnapshot() {
-        let center = MPRemoteCommandCenter.shared()
-        center.nextTrackCommand.isEnabled = false
-        center.previousTrackCommand.isEnabled = false
-        defer {
-            center.nextTrackCommand.isEnabled = false
-            center.previousTrackCommand.isEnabled = false
-        }
-
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-
-        sink(
-            .queueUpdated(
-                snapshot: BridgeQueueSnapshot(
-                    manual: [
-                        makeEntry(entryId: "manual-1", trackId: "track-1")
-                    ],
-                    context: BridgePlaybackContext(
-                        kind: .release,
-                        sourceTitle: nil,
-                        shuffled: false,
-                        upcoming: [
-                            makeEntry(entryId: "upcoming-1", trackId: "track-2")
-                        ],
-                        upcomingTotal: 1
-                    ),
-                    hasNext: true,
-                    hasPrevious: false,
-                    revision: 1
-                )
-            )
-        )
-
-        #expect(
-            appService.stateForTesting.manualQueueEntryIds == ["manual-1"]
-        )
-        #expect(
-            appService.stateForTesting.upcomingQueueEntryIds == ["upcoming-1"]
-        )
-        #expect(center.nextTrackCommand.isEnabled)
-        #expect(!center.previousTrackCommand.isEnabled)
-    }
-
-    /// The bridge's lag-recovery path is the only producer of a `.queue`
-    /// invalidation; the base `AppService`'s queue projection is its consumer
-    /// on both platforms. Invalidating `.queue` refetches through
-    /// `getQueueSnapshot` and lands the same `applyQueueSnapshot` the direct
-    /// `queueUpdated` arm uses.
-    @Test("a queue invalidation refetches and applies the snapshot")
-    func queueInvalidationRefetchesAndApplies() async {
-        let center = MPRemoteCommandCenter.shared()
-        center.nextTrackCommand.isEnabled = false
-        center.previousTrackCommand.isEnabled = false
-        defer {
-            center.nextTrackCommand.isEnabled = false
-            center.previousTrackCommand.isEnabled = false
-        }
-
-        let handle = FakeAppHandle()
-        handle.queueSnapshot = BridgeQueueSnapshot(
-            manual: [makeEntry(entryId: "manual-2", trackId: "track-3")],
-            context: nil,
-            hasNext: false,
-            hasPrevious: true,
-            revision: 1
-        )
-        let appService = makeAppService(handle: handle)
-        appService.registerCommonProjections()
-
-        appService.invalidateProjection(.queue)
-        await waitUntil {
-            appService.stateForTesting.manualQueueEntryIds == ["manual-2"]
-        }
-
-        #expect(
-            appService.stateForTesting.manualQueueEntryIds == ["manual-2"]
-        )
-        #expect(!center.nextTrackCommand.isEnabled)
-        #expect(center.previousTrackCommand.isEnabled)
-    }
-
-    private func makeEntry(entryId: String, trackId: String) -> BridgeQueueEntry
-    {
-        BridgeQueueEntry(
-            entryId: entryId,
-            trackId: trackId,
-            title: "Track Title",
-            artistNames: "Artist Name",
-            durationClock: bridgeClock(ms: 180_000),
-            albumTitle: "Album Title",
-            coverImage: nil
-        )
     }
 }
 
@@ -406,7 +302,6 @@ private let unhandledEvents: [BridgeUiEvent] = [
 ]
 
 private let handledEvents: [BridgeUiEvent] = [
-    .invalidated(invalidation: .config),
     .playbackStopped,
     .playbackError(reason: .syncDisconnected),
     .playbackLoading(trackId: "t1", track: nil),
@@ -427,18 +322,7 @@ private let handledEvents: [BridgeUiEvent] = [
     .volumeChanged(volume: 0.5),
     .muteChanged(isMuted: false),
     .repeatModeChanged(mode: .off),
-    .queueUpdated(
-        snapshot: BridgeQueueSnapshot(
-            manual: [],
-            context: nil,
-            hasNext: false,
-            hasPrevious: false,
-            revision: 1
-        )
-    ),
     .queueItemsAdded(count: 1),
-    .releaseTransferProgress(releaseId: "r1", action: .pin),
-    .releaseTransferEnded(releaseId: "r1"),
     .error(error: .Diagnostic(category: .internal, detail: "boom")),
 ]
 
@@ -496,11 +380,9 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
 
 /// A handle-less `AppHandle` that answers the reads the macOS `AppService`
 /// constructor makes so a dispatcher test can build the real service without a
-/// live core. `queueSnapshot`, when set, answers `getQueueSnapshot` for the
-/// lag-recovery projection test; any other call would hit the base FFI against
-/// the null handle and trap.
+/// live core.
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
-    var queueSnapshot: BridgeQueueSnapshot?
+    private var queueCallback: (any QueueCallback)?
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -532,22 +414,59 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         )
     }
 
-    override func getImportCandidates() -> BridgeImportCandidatesSnapshot {
-        BridgeImportCandidatesSnapshot(
-            watchedFolders: [],
-            folderCandidates: [],
-            invalidCandidates: [],
-            boundaries: [],
-            folderScanStatuses: []
-        )
+    override func subscribeConfig(
+        callback _: any ConfigCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
     }
 
-    override func getQueueSnapshot() async throws -> BridgeQueueSnapshot {
-        guard let queueSnapshot else {
-            preconditionFailure(
-                "FakeAppHandle.getQueueSnapshot called without a fixture"
-            )
-        }
-        return queueSnapshot
+    override func subscribeSyncStatus(
+        callback _: any SyncStatusCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
     }
+
+    override func subscribeDownloads(
+        callback _: any DownloadCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeOutbox(
+        callback _: any OutboxCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeCastDevices(
+        callback _: any CastDevicesCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeQueue(
+        callback: any QueueCallback
+    ) -> LiveSubscription {
+        queueCallback = callback
+        return NoopLiveSubscription()
+    }
+
+    func deliverQueue(_ value: BridgeQueueSnapshot) {
+        queueCallback?.onValue(value: value)
+    }
+
+}
+
+private final class NoopLiveSubscription: LiveSubscription,
+    @unchecked Sendable
+{
+    init() {
+        super.init(noHandle: LiveSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func cancel() {}
 }

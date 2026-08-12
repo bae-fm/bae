@@ -19,7 +19,7 @@ struct PlaybackProgressRepresentable: NSViewRepresentable {
     private var positionPublisher
     /// The user's elapsed-vs-remaining choice, read off the config mirror. The
     /// bar keeps no copy of it: clicking the label writes the config, and the
-    /// config invalidation lands the new value back here.
+    /// config subscription lands the new value back here.
     let showRemainingTime: Bool
     let durationMs: UInt64?
     let onSeek: (Double) -> Void

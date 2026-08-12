@@ -43,8 +43,37 @@ impl LibraryManager {
         Ok(self.database.get_album_count().await?)
     }
 
-    pub(crate) fn subscribe_album_count(&self) -> coven::LiveQuery<u64> {
-        self.database.subscribe_album_count()
+    pub(crate) fn subscribe_album_page(
+        &self,
+        sort: &[crate::db::AlbumSortCriterion],
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::AlbumPageProjection> {
+        self.database.subscribe_album_page(sort, offset, limit)
+    }
+
+    pub(crate) fn resolve_album_page(
+        &self,
+        projection: crate::db::AlbumPageProjection,
+    ) -> (Vec<AlbumSummary>, u64) {
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                let image = ImageRef {
+                    id: id.clone(),
+                    version,
+                    image_type: crate::db::LibraryImageType::Cover,
+                };
+                (id, image)
+            })
+            .collect::<HashMap<_, _>>();
+        let rows = projection
+            .rows
+            .into_iter()
+            .map(|row| AlbumSummary::from_raw(row, |id| covers.get(id).cloned()))
+            .collect();
+        (rows, projection.total_count)
     }
 
     /// Test-only. Production reads albums through `find_album_detail` /
@@ -62,6 +91,37 @@ impl LibraryManager {
             return Ok(None);
         };
         Ok(Some(self.resolve_album_detail(raw).await?))
+    }
+
+    pub(crate) fn subscribe_album_detail(
+        &self,
+        album_id: &str,
+    ) -> coven::LiveQuery<crate::db::AlbumDetailProjection> {
+        self.database.subscribe_album_detail(album_id)
+    }
+
+    pub(crate) async fn resolve_album_detail_projection(
+        &self,
+        projection: crate::db::AlbumDetailProjection,
+    ) -> Result<Option<AlbumDetail>, LibraryError> {
+        let Some(raw) = projection.detail else {
+            return Ok(None);
+        };
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                let image = ImageRef {
+                    id: id.clone(),
+                    version,
+                    image_type: crate::db::LibraryImageType::Cover,
+                };
+                (id, image)
+            })
+            .collect();
+        self.resolve_album_detail_with_covers(raw, covers)
+            .await
+            .map(Some)
     }
 
     /// Search the library for a parsed, non-blank query. The result count is the
@@ -107,6 +167,49 @@ impl LibraryManager {
         ))
     }
 
+    pub(crate) fn subscribe_library_search(
+        &self,
+        query: &crate::library::LibrarySearchQuery,
+    ) -> coven::LiveQuery<crate::db::LibrarySearchProjection> {
+        self.database
+            .subscribe_library_search(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
+    }
+
+    pub(crate) fn resolve_library_search_projection(
+        &self,
+        projection: crate::db::LibrarySearchProjection,
+    ) -> SearchResults {
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Cover,
+                    },
+                )
+            })
+            .collect();
+        let artist_images = projection
+            .artist_image_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Artist,
+                    },
+                )
+            })
+            .collect();
+        SearchResults::from_raw(projection.results, &covers, &artist_images)
+    }
+
     /// Delete an album and its data: the rows go in one cleanup-aware transaction,
     /// then coven evicts the blobs the delete plans name.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
@@ -142,8 +245,6 @@ impl LibraryManager {
             });
         }
 
-        self.emit_album_removed(album_id, releases.iter().map(|r| r.id.clone()).collect());
-
         Ok(())
     }
 }
@@ -158,6 +259,16 @@ impl LibraryManager {
         &self,
         raw: crate::db::DbAlbumDetail,
     ) -> Result<AlbumDetail, LibraryError> {
+        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
+        let covers = self.cover_refs(&release_ids).await?;
+        self.resolve_album_detail_with_covers(raw, covers).await
+    }
+
+    async fn resolve_album_detail_with_covers(
+        &self,
+        raw: crate::db::DbAlbumDetail,
+        covers: HashMap<String, ImageRef>,
+    ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = join_artist_names(&raw.artists);
         let primary_release_id = crate::db::resolve_primary_release_id(
             raw.album.primary_release_id.as_deref(),
@@ -171,10 +282,6 @@ impl LibraryManager {
 
         let has_cloud_home = self.has_cloud_home();
         let sync_ready = self.is_sync_ready();
-        // One cover lookup for the whole album: the album's cover is the primary
-        // release's, and each release carries its own.
-        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
-        let covers = self.cover_refs(&release_ids).await?;
         let cover = covers.get(&primary_release_id).cloned();
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, r) in raw.releases.into_iter().enumerate() {

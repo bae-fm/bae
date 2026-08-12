@@ -54,7 +54,7 @@ internal sealed partial class SettingsWindow
                     status.Text = string.Empty;
                     break;
                 case "rejected":
-                    // Nothing stored, so no config invalidation fires — keep the
+                    // Nothing stored, so no config value arrives — keep the
                     // draft and surface the rejection.
                     status.Text = string.Empty;
                     ShowSettingsError(Loc.Chrome("settings.discogs.rejected"));
@@ -93,7 +93,7 @@ internal sealed partial class SettingsWindow
                 return;
             }
             ClearSettingsError();
-            // Removing clears the config flag, firing a config invalidation — the
+            // Removing clears the config flag, publishing a config value — the
             // re-read restores the editable input. Nothing is patched inline here.
             var (current, error) = await _app.Discogs.RemoveToken();
             if (!current)

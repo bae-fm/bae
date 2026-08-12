@@ -734,7 +734,8 @@ async fn download_queue_active_pin_reports_file_progress() {
         false,
     )
     .await;
-    let mut events = manager.subscribe_events();
+    let mut values = manager.subscribe_download_values();
+    values.borrow_and_update();
 
     manager.enqueue_pins(vec![release_id.clone()]).await;
 
@@ -742,13 +743,11 @@ async fn download_queue_active_pin_reports_file_progress() {
     // 0, then the first file's 3 bytes, then both files' 7.
     let mut seen: Vec<u64> = Vec::new();
     for _ in 0..20 {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
+        tokio::time::timeout(std::time::Duration::from_secs(2), values.changed())
             .await
-            .expect("download queue event")
-            .expect("event channel stays open");
-        let LibraryEvent::DownloadQueueChanged { snapshot } = event else {
-            continue;
-        };
+            .expect("download queue value")
+            .expect("value stream stays open");
+        let snapshot = values.borrow_and_update().clone();
         for op in snapshot.ops {
             if op.release_id != release_id {
                 continue;

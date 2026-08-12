@@ -935,21 +935,8 @@ impl Database {
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-        self.read(move |sql| {
-            let states = sql.query(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, identity_pick, edit_revision \
-                     FROM import_candidate_state",
-                [],
-                |row| Ok(decode_import_candidate_state_row(row)),
-            )?;
-            let mut out = HashMap::with_capacity(states.len());
-            for state in states {
-                let state = state?;
-                out.insert(state.content_hash.clone(), state);
-            }
-            Ok(out)
-        })
-        .await
+        self.read(move |sql| load_import_candidate_states_on(&sql))
+            .await
     }
 
     pub async fn load_import_candidate_state(
@@ -969,4 +956,21 @@ impl Database {
         })
         .await
     }
+}
+
+pub(super) fn load_import_candidate_states_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
+    let states = sql.query(
+        "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, identity_pick, edit_revision \
+             FROM import_candidate_state",
+        [],
+        |row| Ok(decode_import_candidate_state_row(row)),
+    )?;
+    let mut out = HashMap::with_capacity(states.len());
+    for state in states {
+        let state = state?;
+        out.insert(state.content_hash.clone(), state);
+    }
+    Ok(out)
 }

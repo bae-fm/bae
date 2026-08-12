@@ -30,14 +30,10 @@ final class PlaybackEventHandler {
             .queueItemsAdded:
             applyControlEvent(event)
 
-        case .queueUpdated(let snapshot):
-            applyQueueSnapshot(snapshot)
-
         case .castStatusChanged(let deviceName):
             castStore.applyStatus(deviceName: deviceName)
 
-        case .invalidated, .playbackError, .releaseTransferProgress,
-            .releaseTransferEnded, .error, .previewPlaying, .previewPaused,
+        case .playbackError, .error, .previewPlaying, .previewPaused,
             .previewIdle, .previewProgress, .candidateImportLoudnessProgress,
             .importQueueIdentifyProgress:
             preconditionFailure("Unhandled playback event \(event)")

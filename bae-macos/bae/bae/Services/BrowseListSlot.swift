@@ -3,7 +3,7 @@ import Foundation
 import Observation
 
 /// One library-browse mode's list machinery: the warm `PaginatedList`, its
-/// live invalidation registration, the persisted sort criteria, and the
+/// live subscription, the persisted sort criteria, and the
 /// reload task that rebuilds the list when the criteria change. The album,
 /// composer, and artist modes are three instances of this shape; whether a
 /// slot loads eagerly (albums, at session construction) or on first mode
@@ -18,12 +18,9 @@ final class BrowseListSlot<
     private(set) var list: PaginatedList<Row>?
     private(set) var sortCriteria: [Criterion]
 
-    private var registration: ProjectionRegistration?
     private var reloadTask: Task<Void, Never>?
 
     private let defaultsKey: String
-    private let domain: BridgeInvalidationDomain
-    private let projectionRegistry: ProjectionRegistry
     private let makePageSource: ([Criterion]) -> any PageSource<Row>
     private let ingest: ([Row]) -> Void
     /// Takes the error, not a rendered line: whether a failure is worth showing
@@ -33,15 +30,11 @@ final class BrowseListSlot<
     init(
         defaultsKey: String,
         defaultCriteria: [Criterion],
-        domain: BridgeInvalidationDomain,
-        projectionRegistry: ProjectionRegistry,
         makePageSource: @escaping ([Criterion]) -> any PageSource<Row>,
         ingest: @escaping ([Row]) -> Void,
         onError: @escaping (any Error) -> Void
     ) {
         self.defaultsKey = defaultsKey
-        self.domain = domain
-        self.projectionRegistry = projectionRegistry
         self.makePageSource = makePageSource
         self.ingest = ingest
         self.onError = onError
@@ -90,10 +83,6 @@ final class BrowseListSlot<
         guard !Task.isCancelled else {
             return
         }
-        registration = projectionRegistry.registerList(
-            newList,
-            domain: domain
-        )
         list = newList
     }
 

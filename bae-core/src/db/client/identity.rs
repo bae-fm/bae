@@ -218,9 +218,6 @@ impl Database {
     /// different one already reads a different row. There is no stale payload
     /// to wipe, and the rows this release used may be another candidate's.
     ///
-    /// Returns `SetIdentityOutcome::source_album_deleted` so the caller
-    /// knows whether to emit `AlbumRemoved` or `AlbumUpdated` for the
-    /// source.
     #[allow(clippy::too_many_arguments)]
     pub async fn set_identity_atomic(
         &self,
@@ -231,7 +228,7 @@ impl Database {
         current_album_id: &str,
         target_album_id: &str,
         new_album: Option<&DbAlbum>,
-    ) -> Result<SetIdentityOutcome, DbError> {
+    ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let new_identities = new_identities.to_vec();
         let new_metadata_source = new_metadata_source.as_str().to_string();
@@ -312,15 +309,11 @@ impl Database {
             //    moved; same-album updates don't vacate anything. Recheck
             //    inside the transaction (TOCTOU: a writer may have added a
             //    release to the source since the manager's pre-flight read).
-            let source_album_deleted = if target_album_id != current_album_id {
-                cleanup_album_after_release_removal_on(tx, &current_album_id, &release_id, &reg)?
-            } else {
-                false
-            };
+            if target_album_id != current_album_id {
+                cleanup_album_after_release_removal_on(tx, &current_album_id, &release_id, &reg)?;
+            }
 
-            Ok(SetIdentityOutcome {
-                source_album_deleted,
-            })
+            Ok(())
         })
         .await
     }
@@ -351,16 +344,36 @@ impl Database {
         checks: &[LibraryCheck],
     ) -> Result<Vec<LibraryStatus>, DbError> {
         let checks = checks.to_vec();
+        self.read(move |sql| check_releases_in_library_on(&sql, &checks))
+            .await
+    }
 
-        self.read(move |sql| {
-            let mut statuses = Vec::with_capacity(checks.len());
+    pub(crate) fn subscribe_release_library_status(
+        &self,
+        check: LibraryCheck,
+    ) -> coven::LiveQuery<LibraryStatus> {
+        self.inner.handle.subscribe(move |sql| {
+            let mut statuses = check_releases_in_library_on(&sql, std::slice::from_ref(&check))
+                .map_err(CovenError::from)?;
+            Ok(statuses
+                .pop()
+                .expect("one library check produces one library status"))
+        })
+    }
+}
 
-            for check in &checks {
-                let source = check.source.as_str();
-                let group_id = check.source_group_id.as_deref();
-                let matched = sql
-                    .query_row(
-                        r#"
+pub(super) fn check_releases_in_library_on(
+    sql: &SqlReadContext<'_>,
+    checks: &[LibraryCheck],
+) -> Result<Vec<LibraryStatus>, DbError> {
+    let mut statuses = Vec::with_capacity(checks.len());
+
+    for check in checks {
+        let source = check.source.as_str();
+        let group_id = check.source_group_id.as_deref();
+        let matched = sql
+            .query_row(
+                r#"
                             SELECT
                                 a.id AS album_id,
                                 a.title AS album_title,
@@ -376,39 +389,36 @@ impl Database {
                             ORDER BY release_match DESC
                             LIMIT 1
                             "#,
-                        params![
-                            check.release_id,
-                            source,
-                            check.release_id,
-                            group_id,
-                            group_id
-                        ],
-                        |row| {
-                            Ok((
-                                row.get::<_, String>("album_id")?,
-                                row.get::<_, String>("album_title")?,
-                                row.get::<_, i64>("release_match")? != 0,
-                            ))
-                        },
-                    )
-                    .optional()?;
+                params![
+                    check.release_id,
+                    source,
+                    check.release_id,
+                    group_id,
+                    group_id
+                ],
+                |row| {
+                    Ok((
+                        row.get::<_, String>("album_id")?,
+                        row.get::<_, String>("album_title")?,
+                        row.get::<_, i64>("release_match")? != 0,
+                    ))
+                },
+            )
+            .optional()?;
 
-                let (album_id, album_title, release_in_library) = matched
-                    .map(|(album_id, album_title, release_match)| {
-                        (Some(album_id), Some(album_title), release_match)
-                    })
-                    .unwrap_or((None, None, false));
-                statuses.push(LibraryStatus {
-                    release_id: check.release_id.clone(),
-                    release_in_library,
-                    album_in_library: album_id.is_some(),
-                    album_title,
-                    album_id,
-                });
-            }
-
-            Ok(statuses)
-        })
-        .await
+        let (album_id, album_title, release_in_library) = matched
+            .map(|(album_id, album_title, release_match)| {
+                (Some(album_id), Some(album_title), release_match)
+            })
+            .unwrap_or((None, None, false));
+        statuses.push(LibraryStatus {
+            release_id: check.release_id.clone(),
+            release_in_library,
+            album_in_library: album_id.is_some(),
+            album_title,
+            album_id,
+        });
     }
+
+    Ok(statuses)
 }

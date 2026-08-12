@@ -20,14 +20,15 @@ extension ImportMappingFlow {
         }
         switch (candidate.identity, candidate.pick) {
         case (.unknown, _):
-            ImportSearchFlow.refreshDecidedIdentity(
+            await ImportSearchFlow.refreshDecidedIdentity(
                 importer: services.importer,
                 importStore: services.importStore,
                 key: key,
                 pick: .unknown
             )
+            .value
         case (.release, .some(let pick)):
-            ImportSearchFlow.refreshDecidedIdentity(
+            await ImportSearchFlow.refreshDecidedIdentity(
                 importer: services.importer,
                 importStore: services.importStore,
                 key: key,
@@ -37,16 +38,11 @@ extension ImportMappingFlow {
                     claim: pick.claim
                 )
             )
+            .value
         case (.release, .none):
             readCandidateMapping(key: key, services: services)
             return
         }
-        // Both reads run as the candidate's in-flight pick, so the pane can
-        // render the control that started it as pending; waiting on it here is
-        // what makes the decision and its consequence one operation.
-        await services.importStore.candidate(forKey: key)?
-            .prefetchTask?
-            .task.value
     }
 
     /// The table for a folder nobody has picked a release for: every source

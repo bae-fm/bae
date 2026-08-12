@@ -10,8 +10,7 @@ import SwiftUI
 /// performs the chosen transition for every targeted release, reusing the same
 /// `ReleaseEditor` / `Sync` service calls the album-detail "Storage…" sheet
 /// uses. Errors surface through `UiStore` (shown by the Storage Manager
-/// window's alert); the rows themselves refresh reactively when core invalidates
-/// the affected release, album list, or outbox.
+/// window's alert); subscribed rows and outbox values carry transition results.
 ///
 /// `manage` (move into library) needs the pin choice, so it stashes the targets
 /// in `pendingManage` and the view presents `ManageConfirmSheet`. `unmanage`
@@ -183,8 +182,7 @@ final class StorageActionRunner {
     /// Run an async per-release transition for each id, surfacing the first
     /// failure. `verb` names the action for the error message ("failed to pin
     /// for offline: …"). Each bridge call descends into the cloud future chain
-    /// on a runtime worker; progress renders from the per-release
-    /// `ReleaseTransferProgress` events, not here.
+    /// on a runtime worker; progress renders from subscribed release values.
     private func runEach(
         _ releaseIds: [String],
         _ verb: String,

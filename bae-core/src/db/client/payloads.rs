@@ -10,6 +10,14 @@
 use super::*;
 
 impl Database {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn load_all_source_release_payloads(
+        &self,
+    ) -> Result<HashMap<(crate::import::PayloadSource, String), String>, DbError> {
+        self.read(move |sql| load_all_source_release_payloads_on(&sql))
+            .await
+    }
+
     /// Write documents, replacing any already stored under the same entity. One
     /// transaction: a payload set is written whole or not at all, which is what
     /// lets a reader treat the anchor document's presence as the whole set's.
@@ -64,4 +72,23 @@ impl Database {
         })
         .await
     }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn load_all_source_release_payloads_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<HashMap<(crate::import::PayloadSource, String), String>, DbError> {
+    let rows = sql.query(
+        "SELECT source, source_release_id, json FROM source_release_payloads",
+        [],
+        |row| {
+            let source = crate::import::PayloadSource::from_str(&row.get::<_, String>(0)?)
+                .map_err(|error| column_conversion_error(row, "source", error))?;
+            Ok((source, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+        },
+    )?;
+    Ok(rows
+        .into_iter()
+        .map(|(source, id, json)| ((source, id), json))
+        .collect())
 }

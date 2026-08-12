@@ -38,9 +38,6 @@ internal static partial class NativeBae
 
     // -- Cast --
 
-    internal static IReadOnlyList<BridgeCastDevice> GetCastDevices(AppHandle handle) =>
-        handle.GetCastDevices();
-
     internal static void StartCastDiscovery(AppHandle handle) => handle.StartCastDiscovery();
 
     internal static void StopCastDiscovery(AppHandle handle) => handle.StopCastDiscovery();
@@ -53,8 +50,8 @@ internal static partial class NativeBae
     internal static void StopCasting(AppHandle handle) => handle.StopCasting();
 
     /// <summary>Whether casting is available at all. Turning it off stops discovery
-    /// and disconnects any session in flight; the write fires a config
-    /// invalidation, which is what hides the cast control.</summary>
+    /// and disconnects any session in flight; the config subscription hides the
+    /// cast control.</summary>
     internal static string? SetCastEnabled(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetCastEnabled(enabled));
 
@@ -83,11 +80,21 @@ internal static partial class NativeBae
 
     internal static void QueueClearPlayingFrom(AppHandle handle) => handle.ClearPlayingFrom();
 
-    // One page of the context's upcoming tail past the window QueueUpdated
-    // already carries. offset 0 is the first not-yet-played entry after the
-    // current track — the same coordinate space as BridgePlaybackContext.Upcoming.
-    internal static (BridgeQueueUpcomingPage? Page, string? Error) QueueUpcomingPage(AppHandle handle, uint offset, uint limit) =>
-        CaptureBridgeValue(() => Await(() => handle.GetQueueUpcomingPage(offset, limit)));
+    internal static LiveSubscription SubscribeQueueUpcomingPage(
+        AppHandle handle,
+        uint offset,
+        uint limit,
+        Action<BridgeQueueUpcomingPage> onValue,
+        Action<Exception> onError) =>
+        handle.SubscribeQueueUpcomingPage(offset, limit, new QueueUpcomingSink(onValue, onError));
+
+    private sealed class QueueUpcomingSink(
+        Action<BridgeQueueUpcomingPage> onValue,
+        Action<Exception> onError) : QueueUpcomingCallback
+    {
+        public void OnValue(BridgeQueueUpcomingPage value) => onValue(value);
+        public void OnError(BridgeException error) => onError(error);
+    }
 
     internal static void AddReleaseToQueue(AppHandle handle, string releaseId) => handle.AddReleaseToQueue(releaseId);
 

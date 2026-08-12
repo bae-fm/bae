@@ -17,7 +17,7 @@ extension ImportSearchFlow {
         key: String,
         pick: BridgeIdentityPick
     ) {
-        applyIdentity(importStore: importStore, key: key, pick: pick) {
+        _ = applyIdentity(importStore: importStore, key: key, pick: pick) {
             try await importer.pickCandidateIdentity(key, pick)
         }
     }
@@ -28,12 +28,13 @@ extension ImportSearchFlow {
     /// where it came from. A `nil` answer (the decision vanished under a
     /// racing edit) backs the pane out to undecided.
     @MainActor
+    @discardableResult
     static func refreshDecidedIdentity(
         importer: Importer,
         importStore: ImportStore,
         key: String,
         pick: BridgeIdentityPick
-    ) {
+    ) -> Task<Void, Never> {
         applyIdentity(importStore: importStore, key: key, pick: pick) {
             try await importer.candidateDecidedIdentity(key)
         }
@@ -48,7 +49,7 @@ extension ImportSearchFlow {
         key: String,
         pick: BridgeIdentityPick,
         operation: @escaping () async throws -> BridgeDecidedIdentity?
-    ) {
+    ) -> Task<Void, Never> {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.error = nil
             switch pick {
@@ -124,6 +125,7 @@ extension ImportSearchFlow {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.prefetchTask = CancelOnDeinit(task)
         }
+        return task
     }
 
     /// Land the answer on the candidate — the one place either identity's

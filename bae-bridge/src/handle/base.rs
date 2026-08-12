@@ -1,5 +1,4 @@
 use super::*;
-
 impl AppHandle {
     pub(crate) fn start(
         services: AppServices,
@@ -12,7 +11,6 @@ impl AppHandle {
         #[cfg(feature = "cast")]
         let cast = bae_cast::CastController::start(
             services.clone(),
-            ui_event_bus.clone(),
             runtime.handle().clone(),
             bae_core::renderer::RendererDiscovery::for_host(),
         );
@@ -35,27 +33,38 @@ impl AppHandle {
     // Library
     // =========================================================================
 
-    pub async fn get_album_page(
+    pub fn subscribe_album_page(
         &self,
         sort_criteria: Vec<BridgeSortCriterion>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<BridgeAlbum>, BridgeError> {
-        let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
+        callback: Box<dyn crate::types::AlbumPageCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let sort = sort_criteria
             .into_iter()
             .map(BridgeSortCriterion::into_core)
-            .collect();
-        let albums = self
-            .services
-            .get_album_page(&sort, offset, limit)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-
-        Ok(albums.into_iter().map(BridgeAlbum::from_core).collect())
+            .collect::<Vec<_>>();
+        let mut query = self.services.subscribe_album_page(&sort, offset, limit);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match query.next().await {
+                    Ok(raw) => {
+                        let (rows, total_count) = services.resolve_album_page(raw);
+                        callback.on_value(crate::types::BridgeAlbumPage {
+                            rows: rows.into_iter().map(BridgeAlbum::from_core).collect(),
+                            total_count,
+                        });
+                    }
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// 0-based position of `album_id` under the given sort, matching
-    /// `get_album_page`'s ordering, or `None` if the album isn't present.
+    /// 0-based position of `album_id` under the given sort, or `None` if the
+    /// album isn't present.
     /// Lets the grid load the page containing an album and scroll to it
     /// without depending on that page already being fetched.
     pub async fn get_album_index(
@@ -73,103 +82,136 @@ impl AppHandle {
             .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
-    pub async fn get_album_count(&self) -> Result<u64, BridgeError> {
-        self.services
-            .get_album_count()
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    pub async fn get_composer_count(&self) -> Result<u64, BridgeError> {
-        self.services
-            .get_composer_count()
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    pub async fn get_composer_page(
+    pub fn subscribe_composer_page(
         &self,
         sort_criteria: Vec<BridgeComposerSortCriterion>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<BridgeComposerSummary>, BridgeError> {
-        let sort: Vec<bae_core::db::ComposerSortCriterion> = sort_criteria
+        callback: Box<dyn crate::types::ComposerPageCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let sort = sort_criteria
             .into_iter()
             .map(BridgeComposerSortCriterion::into_core)
-            .collect();
-        let composers = self
-            .services
-            .get_composer_page(&sort, offset, limit)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(composers
-            .into_iter()
-            .map(BridgeComposerSummary::from_core)
-            .collect())
+            .collect::<Vec<_>>();
+        let mut query = self.services.subscribe_composer_page(&sort, offset, limit);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match query.next().await {
+                    Ok(raw) => {
+                        let (rows, total_count) = services.resolve_composer_page(raw);
+                        callback.on_value(crate::types::BridgeComposerPage {
+                            rows: rows
+                                .into_iter()
+                                .map(BridgeComposerSummary::from_core)
+                                .collect(),
+                            total_count,
+                        });
+                    }
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    pub async fn get_composer_detail(
+    pub fn subscribe_composer_detail(
         &self,
         artist_id: String,
-    ) -> Result<Option<BridgeComposerDetail>, BridgeError> {
-        let detail = self
-            .services
-            .get_composer_detail(&artist_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(BridgeComposerDetail::from_core))
+        callback: Box<dyn crate::types::ComposerDetailCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut query = self.services.subscribe_composer_detail(&artist_id);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match query.next().await {
+                    Ok(projection) => callback.on_value(
+                        services
+                            .resolve_composer_detail_projection(projection)
+                            .map(BridgeComposerDetail::from_core),
+                    ),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    pub async fn get_work_detail(
+    pub fn subscribe_work_detail(
         &self,
         work_id: String,
-    ) -> Result<Option<BridgeWorkDetail>, BridgeError> {
-        let detail = self
-            .services
-            .get_work_detail(&work_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(BridgeWorkDetail::from_core))
+        callback: Box<dyn crate::types::WorkDetailCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut query = self.services.subscribe_work_detail(&work_id);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match query.next().await {
+                    Ok(projection) => callback.on_value(
+                        services
+                            .resolve_work_detail_projection(projection)
+                            .map(BridgeWorkDetail::from_core),
+                    ),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    pub async fn get_artist_count(&self) -> Result<u64, BridgeError> {
-        self.services
-            .get_artist_count()
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    pub async fn get_artist_page(
+    pub fn subscribe_artist_page(
         &self,
         sort_criteria: Vec<BridgeArtistSortCriterion>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<BridgeArtistSummary>, BridgeError> {
-        let sort: Vec<bae_core::db::ArtistSortCriterion> = sort_criteria
+        callback: Box<dyn crate::types::ArtistPageCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let sort = sort_criteria
             .into_iter()
             .map(BridgeArtistSortCriterion::into_core)
-            .collect();
-        let artists = self
-            .services
-            .get_artist_page(&sort, offset, limit)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(artists
-            .into_iter()
-            .map(BridgeArtistSummary::from_core)
-            .collect())
+            .collect::<Vec<_>>();
+        let mut query = self.services.subscribe_artist_page(&sort, offset, limit);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match query.next().await {
+                    Ok(raw) => {
+                        let (rows, total_count) = services.resolve_artist_page(raw);
+                        callback.on_value(crate::types::BridgeArtistPage {
+                            rows: rows
+                                .into_iter()
+                                .map(BridgeArtistSummary::from_core)
+                                .collect(),
+                            total_count,
+                        });
+                    }
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    pub async fn get_artist_detail(
+    pub fn subscribe_artist_detail(
         &self,
         artist_id: String,
-    ) -> Result<Option<BridgeArtistDetail>, BridgeError> {
-        let detail = self
-            .services
-            .get_artist_detail(&artist_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(BridgeArtistDetail::from_core))
+        callback: Box<dyn crate::types::ArtistDetailCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut query = self.services.subscribe_artist_detail(&artist_id);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            loop {
+                match query.next().await {
+                    Ok(projection) => callback.on_value(
+                        services
+                            .resolve_artist_detail_projection(projection)
+                            .map(BridgeArtistDetail::from_core),
+                    ),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     /// Filesystem path for the user's own external file behind a library file
@@ -186,120 +228,99 @@ impl AppHandle {
         Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
     }
 
-    pub async fn get_album_detail(
+    pub fn subscribe_album_detail(
         &self,
         album_id: String,
-    ) -> Result<BridgeAlbumDetail, BridgeError> {
-        let detail = self
+        callback: Box<dyn crate::types::AlbumDetailCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self
             .services
-            .find_album_detail(&album_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?
-            .ok_or_else(|| BridgeError::NotFound {
-                entity: crate::types::BridgeEntityKind::Album,
-                id: album_id.to_string(),
-            })?;
-
-        Ok(BridgeAlbumDetail::from_core(detail))
+            .subscribe_album_detail_values(self.runtime.handle(), album_id);
+        let task = self.runtime.handle().spawn(async move {
+            while let Some(value) = values.recv().await {
+                match value {
+                    Ok(value) => callback.on_value(value.map(BridgeAlbumDetail::from_core)),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// Fat release detail (tracks, files, gallery) for the album-detail
-    /// view. Returns `Ok(None)` when the release doesn't exist.
-    pub async fn find_release_detail(
+    pub fn subscribe_release_detail(
         &self,
         release_id: String,
-    ) -> Result<Option<BridgeRelease>, BridgeError> {
-        let detail = self
+        callback: Box<dyn crate::types::ReleaseDetailCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self
             .services
-            .find_release_detail(&release_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(BridgeRelease::from_core))
+            .subscribe_release_detail_values(self.runtime.handle(), release_id);
+        let task = self.runtime.handle().spawn(async move {
+            while let Some(value) = values.recv().await {
+                match value {
+                    Ok(value) => callback.on_value(value.map(BridgeRelease::from_core)),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// One page of the Storage Manager list, pre-sorted and
-    /// pre-filtered. Rows carry both halves (release + parent album) so
-    /// the UI can populate its normalized slices from a single call.
-    pub async fn storage_page(
+    pub fn subscribe_storage_projection(
         &self,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
         offset: u64,
         limit: u64,
-    ) -> Result<BridgeStoragePage, BridgeError> {
-        let core_sort = sort.into_core();
-        let core_filter = filter.into_core();
-        let page = self
-            .services
-            .get_storage_page(&core_sort, core_filter, offset, limit)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-
-        Ok(BridgeStoragePage::from_core(page))
+        callback: Box<dyn crate::types::StorageProjectionCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_storage_values(
+            self.runtime.handle(),
+            sort.into_core(),
+            filter.into_core(),
+            offset,
+            limit,
+        );
+        let task = self.runtime.handle().spawn(async move {
+            while let Some(value) = values.recv().await {
+                match value {
+                    Ok(value) => callback.on_value(crate::types::BridgeStorageProjection {
+                        page: BridgeStoragePage::from_core(value.page),
+                        total_size: value.total_size,
+                    }),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// Count of storage rows matching `filter`. Matches
-    /// `storage_page`'s `total_count` for the same filter.
-    pub async fn storage_count(&self, filter: BridgeStorageFilter) -> Result<u64, BridgeError> {
-        let core_filter = filter.into_core();
-        self.services
-            .get_storage_count(core_filter)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    /// Sum of `total_size` over every storage row matching `filter` — the
-    /// storage-manager footer's "Total:" figure, independent of how many
-    /// pages of the filtered list are loaded.
-    pub async fn storage_total_size(
+    pub fn subscribe_library_search(
         &self,
-        filter: BridgeStorageFilter,
-    ) -> Result<u64, BridgeError> {
-        let core_filter = filter.into_core();
-        self.services
-            .get_storage_total_size(core_filter)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    pub async fn search_library(&self, query: String) -> Result<BridgeSearchResults, BridgeError> {
-        // Trim and blank-check are core policy, not the surface's: a blank query is
-        // not a search and yields empty results, never a `LIKE '%%'` match-all.
-        let results = match bae_core::library::LibrarySearchQuery::parse(&query) {
-            Some(query) => self
-                .services
-                .search_library(&query)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?,
-            None => bae_core::album_detail::SearchResults::default(),
-        };
-        Ok(BridgeSearchResults {
-            albums: results
-                .albums
-                .into_iter()
-                .map(BridgeAlbumSearchResult::from_core)
-                .collect(),
-            artists: results
-                .artists
-                .into_iter()
-                .map(BridgeArtistSummary::from_core)
-                .collect(),
-            tracks: results
-                .tracks
-                .into_iter()
-                .map(BridgeTrackSearchResult::from_core)
-                .collect(),
-            composers: results
-                .composers
-                .into_iter()
-                .map(BridgeComposerSummary::from_core)
-                .collect(),
-            works: results
-                .works
-                .into_iter()
-                .map(BridgeWorkSummary::from_core)
-                .collect(),
-        })
+        query: String,
+        callback: Box<dyn crate::types::LibrarySearchCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let parsed = bae_core::library::LibrarySearchQuery::parse(&query);
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            let Some(parsed) = parsed else {
+                callback.on_value(BridgeSearchResults::from_core(
+                    bae_core::album_detail::SearchResults::default(),
+                ));
+                std::future::pending::<()>().await;
+                return;
+            };
+            let mut values = services.subscribe_library_search(&parsed);
+            loop {
+                match values.next().await {
+                    Ok(projection) => callback.on_value(BridgeSearchResults::from_core(
+                        services.resolve_library_search_projection(projection),
+                    )),
+                    Err(error) => callback.on_error(BridgeError::database(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     // =========================================================================
@@ -403,32 +424,40 @@ impl AppHandle {
         self.services.playback_add_release_next(release_id);
     }
 
-    pub async fn get_queue_snapshot(&self) -> Result<BridgeQueueSnapshot, BridgeError> {
-        let snapshot = self
-            .services
-            .get_queue_snapshot()
-            .await
-            .map_err(BridgeError::internal)?;
-        Ok(BridgeQueueSnapshot::from_core(snapshot))
+    pub fn subscribe_queue(
+        &self,
+        callback: Box<dyn crate::types::QueueCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_queue_values(self.runtime.handle());
+        let task = self.runtime.handle().spawn(async move {
+            while let Some(value) = values.recv().await {
+                match value {
+                    Ok(value) => callback.on_value(BridgeQueueSnapshot::from_core(value)),
+                    Err(error) => callback.on_error(BridgeError::internal(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// A page of the context's upcoming tail past the window
-    /// `get_queue_snapshot`/`QueueUpdated` already carry. `offset` 0 is the
-    /// first not-yet-played entry after the current track — the same
-    /// coordinate space as `BridgePlaybackContext.upcoming`. The reply's
-    /// `revision` lets the caller drop a page answered for a since-superseded
-    /// queue state.
-    pub async fn get_queue_upcoming_page(
+    pub fn subscribe_queue_upcoming_page(
         &self,
         offset: u32,
         limit: u32,
-    ) -> Result<BridgeQueueUpcomingPage, BridgeError> {
-        let page = self
-            .services
-            .get_queue_upcoming_page(offset, limit)
-            .await
-            .map_err(BridgeError::internal)?;
-        Ok(BridgeQueueUpcomingPage::from_core(page))
+        callback: Box<dyn crate::types::QueueUpcomingCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values =
+            self.services
+                .subscribe_queue_upcoming_values(self.runtime.handle(), offset, limit);
+        let task = self.runtime.handle().spawn(async move {
+            while let Some(value) = values.recv().await {
+                match value {
+                    Ok(value) => callback.on_value(BridgeQueueUpcomingPage::from_core(value)),
+                    Err(error) => callback.on_error(BridgeError::internal(error)),
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     /// Resolve a list of IDs (album or track) to track IDs.
@@ -499,8 +528,8 @@ impl AppHandle {
     }
 
     /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed. The write fires a config
-    /// invalidation, which is what re-renders the bar — no app keeps its own copy.
+    /// instead of showing the time elapsed. The config subscription carries the
+    /// persisted value back to the bar — no app keeps its own copy.
     pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
             .set_show_remaining_time(enabled)
@@ -508,9 +537,8 @@ impl AppHandle {
     }
 
     /// Whether the library page spans the window's full width instead of
-    /// centering its content in a width-capped column. The write fires a
-    /// config invalidation, which re-renders the page — no app keeps its own
-    /// copy.
+    /// centering its content in a width-capped column. The config subscription
+    /// carries the persisted value back to the page — no app keeps its own copy.
     pub fn set_library_full_width(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
             .set_library_full_width(enabled)
@@ -578,7 +606,6 @@ impl AppHandle {
 
     pub async fn change_cover(
         &self,
-        album_id: String,
         release_id: String,
         selection: BridgeCoverSelection,
     ) -> Result<(), BridgeError> {
@@ -595,7 +622,7 @@ impl AppHandle {
         };
 
         self.services
-            .change_cover(&album_id, &release_id, core_selection)
+            .change_cover(&release_id, core_selection)
             .await
             .map_err(|e| BridgeError::internal(format!("{e}")))
     }
@@ -772,8 +799,46 @@ impl AppHandle {
         crate::types::BridgeSyncStatusSnapshot::from_core(self.services.get_sync_status())
     }
 
-    /// The current cloud outbox processing snapshot. Outbox invalidations tell
-    /// the Storage Manager to read it again.
+    pub fn subscribe_config(
+        &self,
+        callback: Box<dyn crate::types::ConfigCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_config_changes();
+        let services = self.services.clone();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(
+                BridgeConfig::from_core(&values.borrow_and_update()),
+                services.is_sync_ready(),
+            );
+            while values.changed().await.is_ok() {
+                callback.on_value(
+                    BridgeConfig::from_core(&values.borrow_and_update()),
+                    services.is_sync_ready(),
+                );
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
+    }
+
+    pub fn subscribe_sync_status(
+        &self,
+        callback: Box<dyn crate::types::SyncStatusCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_sync_status_values();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(BridgeSyncStatusSnapshot::from_core(
+                values.borrow_and_update().clone(),
+            ));
+            while values.changed().await.is_ok() {
+                callback.on_value(BridgeSyncStatusSnapshot::from_core(
+                    values.borrow_and_update().clone(),
+                ));
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
+    }
+
+    /// The current cloud outbox processing snapshot.
     pub async fn get_outbox_snapshot(
         &self,
     ) -> Result<crate::types::BridgeOutboxSnapshot, BridgeError> {
@@ -783,6 +848,42 @@ impl AppHandle {
             .await
             .map_err(BridgeError::internal)?;
         Ok(crate::types::BridgeOutboxSnapshot::from_core(snapshot))
+    }
+
+    pub fn subscribe_outbox(
+        &self,
+        callback: Box<dyn crate::types::OutboxCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let services = self.services.clone();
+        let mut values = services.subscribe_outbox_values();
+        let task = self.runtime.handle().spawn(async move {
+            let current = { values.borrow_and_update().clone() };
+            let initial = match current {
+                Some(value) => value,
+                None => services
+                    .outbox_snapshot()
+                    .await
+                    .map_err(|error| error.to_string()),
+            };
+            match initial {
+                Ok(value) => {
+                    callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(value))
+                }
+                Err(error) => callback.on_error(BridgeError::internal(error)),
+            }
+            while values.changed().await.is_ok() {
+                match values.borrow_and_update().clone() {
+                    Some(Ok(value)) => {
+                        callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(value))
+                    }
+                    Some(Err(error)) => callback.on_error(BridgeError::internal(error)),
+                    None => {
+                        tracing::warn!("outbox value stream published an absent snapshot");
+                    }
+                }
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     /// Retry failed uploads now: drain coven's upload queue immediately instead
@@ -814,10 +915,27 @@ impl AppHandle {
 
     // ── Download (pin) queue ─────────────────────────────────────────
 
-    /// The current download-queue snapshot. Download invalidations tell the
-    /// Downloads pane to read it again.
+    /// The current download-queue snapshot.
     pub fn get_download_snapshot(&self) -> crate::types::BridgeDownloadSnapshot {
         crate::types::BridgeDownloadSnapshot::from_core(self.services.download_snapshot())
+    }
+
+    pub fn subscribe_downloads(
+        &self,
+        callback: Box<dyn crate::types::DownloadCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_download_values();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(
+                values.borrow_and_update().clone(),
+            ));
+            while values.changed().await.is_ok() {
+                callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(
+                    values.borrow_and_update().clone(),
+                ));
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial
@@ -874,92 +992,6 @@ impl AppHandle {
     /// would stop the background audio.
     pub async fn save_playback_state(&self) {
         self.services.playback_save_state().await;
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeMcpServerStatus {
-    pub(super) fn from_core(status: bae_desktop::McpServerStatus) -> Self {
-        match status {
-            bae_desktop::McpServerStatus::Disabled => BridgeMcpServerStatus::Disabled,
-            bae_desktop::McpServerStatus::Running { url } => BridgeMcpServerStatus::Running { url },
-            bae_desktop::McpServerStatus::Error { error } => BridgeMcpServerStatus::Error {
-                error: crate::types::BridgeMcpServerError::from_core(error),
-            },
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeMcpServerError {
-    pub(super) fn from_core(error: bae_desktop::McpServerError) -> Self {
-        use crate::types::BridgeMcpServerError;
-        match error {
-            bae_desktop::McpServerError::InvalidConfig { detail } => {
-                BridgeMcpServerError::InvalidConfig { detail }
-            }
-            bae_desktop::McpServerError::TokenUnavailable { detail } => {
-                BridgeMcpServerError::TokenUnavailable { detail }
-            }
-            bae_desktop::McpServerError::BindFailed { detail } => {
-                BridgeMcpServerError::BindFailed { detail }
-            }
-            bae_desktop::McpServerError::ServerFailed { detail } => {
-                BridgeMcpServerError::ServerFailed { detail }
-            }
-        }
-    }
-}
-
-#[cfg(feature = "cast")]
-impl crate::types::BridgeCastStatus {
-    pub(super) fn from_core(status: bae_cast::CastStatus) -> Self {
-        use crate::types::BridgeCastStatus;
-        match status {
-            bae_cast::CastStatus::NotCasting => BridgeCastStatus::NotCasting,
-            bae_cast::CastStatus::Casting { device_name } => {
-                BridgeCastStatus::Casting { device_name }
-            }
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeSubsonicServerStatus {
-    pub(super) fn from_core(status: bae_desktop::SubsonicServerStatus) -> Self {
-        use crate::types::BridgeSubsonicServerStatus;
-        match status {
-            bae_desktop::SubsonicServerStatus::Disabled => BridgeSubsonicServerStatus::Disabled,
-            bae_desktop::SubsonicServerStatus::Running { url } => {
-                BridgeSubsonicServerStatus::Running { url }
-            }
-            bae_desktop::SubsonicServerStatus::Error { error } => {
-                BridgeSubsonicServerStatus::Error {
-                    error: crate::types::BridgeSubsonicServerError::from_core(error),
-                }
-            }
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeSubsonicServerError {
-    pub(super) fn from_core(error: bae_desktop::SubsonicServerError) -> Self {
-        use crate::types::BridgeSubsonicServerError;
-        match error {
-            bae_desktop::SubsonicServerError::InvalidConfig { detail } => {
-                BridgeSubsonicServerError::InvalidConfig { detail }
-            }
-            bae_desktop::SubsonicServerError::CredentialUnavailable { detail } => {
-                BridgeSubsonicServerError::CredentialUnavailable { detail }
-            }
-            bae_desktop::SubsonicServerError::BindFailed { detail } => {
-                BridgeSubsonicServerError::BindFailed { detail }
-            }
-            bae_desktop::SubsonicServerError::ServerFailed { detail } => {
-                BridgeSubsonicServerError::ServerFailed { detail }
-            }
-        }
     }
 }
 

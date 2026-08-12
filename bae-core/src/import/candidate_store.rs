@@ -14,7 +14,8 @@ mod state;
 use state::CandidateState;
 pub use state::{
     CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
-    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot, WatchedFolderScanStatus,
+    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot,
+    RuntimeImportCandidateSnapshot, WatchedFolderScanStatus,
 };
 
 /// The synchronized owner of the import scanner's in-memory projection.

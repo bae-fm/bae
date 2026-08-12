@@ -1,18 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Bae.Desktop;
 
 // The storage dialog's four filter tabs. All lists every release; Unmanaged and
 // Managed split on storage state; Uploading is driven solely by the release
 // having pending outbox uploads. Tab membership is applied server-side (the
-// dialog fetches a per-tab page via NativeBae.StoragePage/StorageCount), so this
+// dialog subscribes to a per-tab page through LibraryService), so this
 // enum is purely the vocabulary the tab bar and the wire filter share.
 public enum StorageTab { All, Unmanaged, Managed, Uploading }
 
 // The five sortable columns. Storage (the sixth column) is inert, so it has no
 // field here. SortDirection is reused from LibrarySort.cs. Sorting is applied
-// server-side (NativeBae.StoragePage takes the field/direction), so this enum is
+// server-side (the storage subscription takes the field/direction), so this enum is
 // the vocabulary the column headers and the wire sort share.
 public enum StorageSortField { AlbumTitle, ArtistNames, Format, FileCount, TotalSize }
 
@@ -114,22 +113,4 @@ public static class StorageListModel
             default: direction = default; return false;
         }
     }
-}
-
-// The in-flight transfer overlay: release id → action token ("pin"/"unpin"/
-// "manage"/"unmanage", the same wire tags NativeBae.TransferActionKey accepts).
-// Apply overwrites; Clear of an unknown id is a no-op returning false; TokenFor
-// returns null when the release is idle. Pure over primitives so the terminal-
-// cleanup and no-op-clear behavior are unit-tested apart from the store shell.
-public sealed class StorageTransferOverlay
-{
-    private readonly Dictionary<string, string> _tokens = new();
-
-    public void Apply(string releaseId, string actionToken) => _tokens[releaseId] = actionToken;
-
-    public bool Clear(string releaseId) => _tokens.Remove(releaseId);
-
-    public string? TokenFor(string releaseId) => _tokens.TryGetValue(releaseId, out var token) ? token : null;
-
-    public IReadOnlyCollection<string> ActiveReleaseIds => _tokens.Keys;
 }

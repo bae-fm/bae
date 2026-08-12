@@ -4,31 +4,25 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.ErrorLines
 import fm.bae.app.playback.PlaybackEventSink
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeInvalidation
 import uniffi.bae_bridge.BridgeUiEvent
 
 private const val TAG = "bae.UiEventAdapter"
 private val logger = BaeLogger(TAG)
 
 /**
- * Routes bridge UI events into Android's app state. Query-backed state is
- * refreshed from core on invalidation; playback transport events still carry the
- * live payload the Android player needs to drive Media3.
+ * Routes transient bridge UI events into Android's app state. Persistent values
+ * arrive through their typed subscriptions owned by the open library session.
  */
 object UiEventAdapter {
     suspend fun handle(
         event: BridgeUiEvent,
-        appHandle: AppHandle,
         stores: OpenLibraryStores,
         player: PlaybackEventSink,
         errors: ErrorLines,
     ) {
         try {
-            route(event, appHandle, stores, player, errors)
+            route(event, stores, player, errors)
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
@@ -44,20 +38,11 @@ object UiEventAdapter {
 
     private suspend fun route(
         event: BridgeUiEvent,
-        appHandle: AppHandle,
         stores: OpenLibraryStores,
         player: PlaybackEventSink,
         errors: ErrorLines,
     ) {
-        when (event) {
-            is BridgeUiEvent.Invalidated -> {
-                handleInvalidation(event.invalidation, appHandle, stores, errors)
-            }
-
-            else -> {
-                handleDirectEvent(event, stores, player, errors)
-            }
-        }
+        handleDirectEvent(event, stores, player, errors)
     }
 
     private fun handleDirectEvent(
@@ -124,10 +109,6 @@ object UiEventAdapter {
                 player.onRepeatModeChanged(event.mode)
             }
 
-            is BridgeUiEvent.QueueUpdated -> {
-                applyQueueUpdated(event, player)
-            }
-
             is BridgeUiEvent.VolumeChanged -> {
                 player.onVolumeChanged(event.volume)
             }
@@ -145,22 +126,6 @@ object UiEventAdapter {
             }
         }
         return true
-    }
-
-    /** Forward a queue-snapshot replacement to the player, mapping the windowed
-     *  snapshot's fields (manual lane, context window, transport flags, and the
-     *  revision the store stamps its fetched pages against). */
-    private fun applyQueueUpdated(
-        event: BridgeUiEvent.QueueUpdated,
-        player: PlaybackEventSink,
-    ) {
-        player.onQueueUpdated(
-            manual = event.snapshot.manual,
-            context = event.snapshot.context,
-            hasNext = event.snapshot.hasNext,
-            hasPrevious = event.snapshot.hasPrevious,
-            revision = event.snapshot.revision,
-        )
     }
 
     private fun handleAppErrorEvent(
@@ -196,13 +161,10 @@ object UiEventAdapter {
             // Importing is a desktop feature; Android has no import queue, so
             // how much of it has been identified drives nothing here.
             is BridgeUiEvent.ImportQueueIdentifyProgress,
-            is BridgeUiEvent.ReleaseTransferProgress,
-            is BridgeUiEvent.ReleaseTransferEnded,
             -> {
                 logger.debug("ignoring ${event::class.simpleName}")
             }
 
-            is BridgeUiEvent.Invalidated,
             is BridgeUiEvent.PlaybackLoading,
             is BridgeUiEvent.PlaybackPlaying,
             is BridgeUiEvent.PlaybackPaused,
@@ -211,7 +173,6 @@ object UiEventAdapter {
             is BridgeUiEvent.PlaybackProgress,
             is BridgeUiEvent.PlaybackSeeked,
             is BridgeUiEvent.RepeatModeChanged,
-            is BridgeUiEvent.QueueUpdated,
             is BridgeUiEvent.VolumeChanged,
             is BridgeUiEvent.MuteChanged,
             is BridgeUiEvent.QueueItemsAdded,
@@ -223,75 +184,4 @@ object UiEventAdapter {
         }
     }
 
-    private suspend fun handleInvalidation(
-        invalidation: BridgeInvalidation,
-        appHandle: AppHandle,
-        stores: OpenLibraryStores,
-        errors: ErrorLines,
-    ) {
-        when (invalidation) {
-            BridgeInvalidation.AlbumList -> {
-                stores.library.invalidateAlbumList()
-            }
-
-            BridgeInvalidation.ComposerList -> {
-                stores.library.invalidateComposerList()
-            }
-
-            BridgeInvalidation.ArtistList -> {
-                stores.library.invalidateArtistList()
-            }
-
-            is BridgeInvalidation.Album -> {
-                val detail = withContext(Dispatchers.IO) { appHandle.getAlbumDetail(invalidation.albumId) }
-                stores.library.replaceAlbumDetail(detail)
-            }
-
-            is BridgeInvalidation.Release -> {
-                val release =
-                    withContext(Dispatchers.IO) {
-                        appHandle.findReleaseDetail(invalidation.releaseId)
-                    }
-                if (release != null) {
-                    val detail = withContext(Dispatchers.IO) { appHandle.getAlbumDetail(release.albumId) }
-                    stores.library.replaceAlbumDetail(detail)
-                }
-            }
-
-            BridgeInvalidation.Config -> {
-                val config = withContext(Dispatchers.IO) { appHandle.getConfig() }
-                stores.config.setConfig(config)
-            }
-
-            BridgeInvalidation.SyncStatus -> {
-                val snapshot = withContext(Dispatchers.IO) { appHandle.getSyncStatus() }
-                stores.config.setSyncStatus(snapshot, errors)
-            }
-
-            BridgeInvalidation.DownloadQueue -> {
-                val snapshot = withContext(Dispatchers.IO) { appHandle.getDownloadSnapshot() }
-                stores.downloads.setSnapshot(snapshot)
-            }
-
-            BridgeInvalidation.Outbox -> {
-                val snapshot = withContext(Dispatchers.IO) { appHandle.getOutboxSnapshot() }
-                stores.outbox.setSnapshot(snapshot)
-            }
-
-            BridgeInvalidation.CastDevices -> {
-                val devices = withContext(Dispatchers.IO) { appHandle.getCastDevices() }
-                stores.cast.setDevices(devices)
-            }
-
-            BridgeInvalidation.Queue,
-            BridgeInvalidation.OutputQueue,
-            BridgeInvalidation.ImportCandidateList,
-            is BridgeInvalidation.ImportCandidate,
-            BridgeInvalidation.WatchedFolders,
-            is BridgeInvalidation.Composer,
-            -> {
-                logger.debug("ignoring ${invalidation::class.simpleName}")
-            }
-        }
-    }
 }

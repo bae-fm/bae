@@ -14,7 +14,7 @@ namespace Bae.Desktop;
 
 // The settings window's Formats section: the format list (inline Save As… scope
 // toggles, edit dialog, add/remove) and the default format per save target.
-// Writes round-trip through config invalidation into the settings re-read (Render)
+// Writes round-trip through the config subscription into the settings re-read (Render)
 // with no optimistic mutation; preset edits send the whole set (set-state), never
 // one mutated field. Mirrors macOS's FormatsSettingsTab.
 internal sealed partial class FormatsSettingsSection
@@ -64,7 +64,7 @@ internal sealed partial class FormatsSettingsSection
     }
 
     // Drive every control from the persisted settings. Called on open and on every
-    // config-invalidation re-read; in-progress local drafts (a name being typed)
+    // config-subscription re-read; in-progress local drafts (a name being typed)
     // live in the rebuilt controls and re-seed from the fresh values.
     public void Render(Settings settings)
     {

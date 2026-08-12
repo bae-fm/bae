@@ -198,6 +198,38 @@ impl BridgeStoragePage {
     }
 }
 
+impl BridgeSearchResults {
+    pub(crate) fn from_core(results: bae_core::album_detail::SearchResults) -> Self {
+        Self {
+            albums: results
+                .albums
+                .into_iter()
+                .map(BridgeAlbumSearchResult::from_core)
+                .collect(),
+            artists: results
+                .artists
+                .into_iter()
+                .map(BridgeArtistSummary::from_core)
+                .collect(),
+            tracks: results
+                .tracks
+                .into_iter()
+                .map(BridgeTrackSearchResult::from_core)
+                .collect(),
+            composers: results
+                .composers
+                .into_iter()
+                .map(BridgeComposerSummary::from_core)
+                .collect(),
+            works: results
+                .works
+                .into_iter()
+                .map(BridgeWorkSummary::from_core)
+                .collect(),
+        }
+    }
+}
+
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeCandidateSearchResults {
     /// Echoes back the `tab` and `source` the search ran against so the caller

@@ -18,66 +18,27 @@ impl Database {
         }
 
         let entries = entries.to_vec();
-        self
-            .read(move |sql| {
-                let track_ids: Vec<String> =
-                    entries.iter().map(|e| e.track_id.clone()).collect();
-                let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
-                for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
-                    let placeholders = in_clause_placeholders(chunk.len());
-                    let query = format!(
-                        "SELECT \
-                            t.id AS track_id, \
-                            t.title, \
-                            t.duration_ms, \
-                            a.title AS album_title, \
-                            r.id AS cover_image_id, \
-                            c._updated_at AS cover_version, \
-                            COALESCE( \
-                                NULLIF(( \
-                                    SELECT GROUP_CONCAT(art.name, ', ' ORDER BY ta.position) \
-                                    FROM track_artists ta \
-                                    JOIN artists art ON art.id = ta.artist_id \
-                                    WHERE ta.track_id = t.id \
-                                ), ''), \
-                                (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
-                            ) AS artist_names \
-                        FROM tracks t \
-                        JOIN releases r ON r.id = t.release_id \
-                        JOIN albums a ON a.id = r.album_id \
-                        LEFT JOIN covers c ON c.id = r.id \
-                        WHERE t.id IN ({placeholders})"
-                    );
+        self.read(move |sql| get_queue_items_on(&sql, &entries))
+            .await
+    }
 
-                    meta_by_track.extend(sql.query(
-                        &query,
-                        coven::rusqlite::params_from_iter(chunk.iter()),
-                        |row| {
-                            let track_id: String = row.get("track_id")?;
-                            let cover_image_id: String = row.get("cover_image_id")?;
-                            let cover_version: Option<String> = row.get("cover_version")?;
-                            Ok((
-                                track_id,
-                                TrackQueueMeta {
-                                    title: row.get("title")?,
-                                    artist_names: row.get("artist_names")?,
-                                    duration_ms: row.get("duration_ms")?,
-                                    album_title: row.get("album_title")?,
-                                    cover_image: cover_version.map(|version| {
-                                        crate::album_detail::ImageRef {
-                                            id: cover_image_id,
-                                            version,
-                                            image_type: LibraryImageType::Cover,
-                                        }
-                                    }),
-                                },
-                            ))
-                        },
-                    )?);
-                }
+    pub(crate) fn subscribe_queue_catalog(
+        &self,
+        entries: Vec<QueueEntry>,
+        context_release_id: Option<String>,
+    ) -> coven::LiveQuery<QueueCatalogProjection> {
+        self.inner.handle.subscribe(move |sql| {
+            queue_catalog_on(&sql, &entries, context_release_id.as_deref())
+                .map_err(CovenError::from)
+        })
+    }
 
-                Ok(resolve_queue_entries(&meta_by_track, &entries))
-            })
+    pub(crate) async fn get_queue_catalog(
+        &self,
+        entries: Vec<QueueEntry>,
+        context_release_id: Option<String>,
+    ) -> Result<QueueCatalogProjection, DbError> {
+        self.read(move |sql| queue_catalog_on(&sql, &entries, context_release_id.as_deref()))
             .await
     }
 
@@ -202,4 +163,89 @@ impl Database {
         })
         .await
     }
+}
+
+fn get_queue_items_on(
+    sql: &SqlReadContext<'_>,
+    entries: &[QueueEntry],
+) -> Result<Vec<QueueItem>, DbError> {
+    if entries.is_empty() {
+        return Ok(Vec::new());
+    }
+    let track_ids: Vec<String> = entries.iter().map(|entry| entry.track_id.clone()).collect();
+    let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
+    for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
+        let placeholders = in_clause_placeholders(chunk.len());
+        let query = format!(
+            "SELECT \
+                t.id AS track_id, t.title, t.duration_ms, a.title AS album_title, \
+                r.id AS cover_image_id, c._updated_at AS cover_version, \
+                COALESCE( \
+                    NULLIF(( \
+                        SELECT GROUP_CONCAT(art.name, ', ' ORDER BY ta.position) \
+                        FROM track_artists ta \
+                        JOIN artists art ON art.id = ta.artist_id \
+                        WHERE ta.track_id = t.id \
+                    ), ''), \
+                    (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
+                ) AS artist_names \
+             FROM tracks t \
+             JOIN releases r ON r.id = t.release_id \
+             JOIN albums a ON a.id = r.album_id \
+             LEFT JOIN covers c ON c.id = r.id \
+             WHERE t.id IN ({placeholders})"
+        );
+        meta_by_track.extend(sql.query(
+            &query,
+            coven::rusqlite::params_from_iter(chunk.iter()),
+            |row| {
+                let track_id: String = row.get("track_id")?;
+                let cover_image_id: String = row.get("cover_image_id")?;
+                let cover_version: Option<String> = row.get("cover_version")?;
+                Ok((
+                    track_id,
+                    TrackQueueMeta {
+                        title: row.get("title")?,
+                        artist_names: row.get("artist_names")?,
+                        duration_ms: row.get("duration_ms")?,
+                        album_title: row.get("album_title")?,
+                        cover_image: cover_version.map(|version| crate::album_detail::ImageRef {
+                            id: cover_image_id,
+                            version,
+                            image_type: LibraryImageType::Cover,
+                        }),
+                    },
+                ))
+            },
+        )?);
+    }
+    Ok(resolve_queue_entries(&meta_by_track, entries))
+}
+
+fn queue_catalog_on(
+    sql: &SqlReadContext<'_>,
+    entries: &[QueueEntry],
+    context_release_id: Option<&str>,
+) -> Result<QueueCatalogProjection, DbError> {
+    let items = get_queue_items_on(sql, entries)?;
+    let source_title = match context_release_id {
+        None => None,
+        Some(release_id) => {
+            let album_id = find_release_by_id_on(sql, release_id)?.map(|release| release.album_id);
+            match album_id {
+                None => None,
+                Some(album_id) => find_album_by_id_on(sql, &album_id)?.map(|album| album.title),
+            }
+        }
+    };
+    Ok(QueueCatalogProjection {
+        items,
+        source_title,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct QueueCatalogProjection {
+    pub items: Vec<QueueItem>,
+    pub source_title: Option<String>,
 }

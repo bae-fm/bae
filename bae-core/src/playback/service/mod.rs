@@ -506,6 +506,7 @@ pub struct PlaybackService {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     command_rx: tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    queue_values: tokio::sync::watch::Sender<PlaybackQueueProjection>,
     playback_queue: PlaybackQueue,
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
     audio_output: Box<dyn AudioOutput>,
@@ -685,7 +686,6 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::PreviewSeekByRatio(_)
         | PlaybackCommand::PreviewCompleted
         | PlaybackCommand::GetVolume(_)
-        | PlaybackCommand::GetQueueProjection(_)
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::PlayOn(_)

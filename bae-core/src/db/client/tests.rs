@@ -104,3 +104,6 @@ mod injected_ids_tests;
 
 #[cfg(test)]
 mod queue_cover_tests;
+
+#[cfg(test)]
+mod live_query_tests;

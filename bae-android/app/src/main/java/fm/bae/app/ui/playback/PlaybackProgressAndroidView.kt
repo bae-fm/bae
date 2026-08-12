@@ -92,7 +92,7 @@ fun PlaybackProgressAndroidView(
                         player.seekTo((ratio * duration).toLong())
                     }
                 },
-                // Write-through: the config invalidation re-renders the bar, so
+                // Write-through: the config subscription re-renders the bar, so
                 // nothing is flipped locally.
                 onToggleRemaining = {
                     runLoggedBridgeCommand(logger, "setShowRemainingTime") {

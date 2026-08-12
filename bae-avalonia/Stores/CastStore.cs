@@ -40,14 +40,8 @@ internal sealed class CastStore
         StatusChanged?.Invoke();
     }
 
-    // Reload the device list from the current handle (a castDevices invalidation).
-    public void RefreshDevices()
+    public void ApplyDevices(IReadOnlyList<BridgeCastDevice> devices)
     {
-        var (current, devices) = _cast.GetCastDevices();
-        if (!current)
-        {
-            return;
-        }
         Devices = devices;
         DevicesChanged?.Invoke();
     }

@@ -132,14 +132,12 @@ async fn discogs_validation_signals_confirm_and_reject() {
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
 }
 
-/// Aborting the transfer driver mid-flight (the bridge future is abortable)
-/// must still emit `ReleaseTransferEnded` so the UI's transfer indicator
-/// clears. The drop guard inside `drive_transfer` fires it when the future
-/// is dropped between progress events.
+/// Aborting the transfer driver must remove its action from the value stream so
+/// subscribers cannot retain an in-flight transfer after its future is gone.
 #[tokio::test]
-async fn aborted_transfer_still_emits_transfer_ended() {
+async fn aborted_transfer_clears_the_streamed_action() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let mut rx = manager.subscribe_events();
+    let mut values = manager.subscribe_transfer_values();
 
     // A channel whose sender we hold open: `drive_transfer` parks in
     // `rx.recv().await` forever, so the only way out is the abort below.
@@ -153,8 +151,17 @@ async fn aborted_transfer_still_emits_transfer_ended() {
         panic!("the parked driver must only exit by abort, returned {result:?}");
     });
 
-    // Let the task reach its parked `recv()` before aborting.
-    tokio::task::yield_now().await;
+    tx.send(crate::storage::transfer::TransferProgress::Started)
+        .expect("the transfer driver is listening");
+    values
+        .changed()
+        .await
+        .expect("the active transfer value must arrive");
+    assert_eq!(
+        values.borrow().get(REL_ABORT),
+        Some(&ReleaseStorageAction::Pin)
+    );
+
     handle.abort();
     let join = handle.await;
     assert!(
@@ -162,19 +169,11 @@ async fn aborted_transfer_still_emits_transfer_ended() {
             .is_cancelled(),
         "the driver must end by cancellation, not a panic"
     );
-    drop(tx);
-
-    let event = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv())
+    values
+        .changed()
         .await
-        .expect("ReleaseTransferEnded must arrive after abort")
-        .expect("event channel stays open");
-    assert!(
-        matches!(
-            &event,
-            LibraryEvent::ReleaseTransferEnded { release_id } if release_id == REL_ABORT
-        ),
-        "the drop guard must emit ReleaseTransferEnded for the aborted release, got {event:?}"
-    );
+        .expect("the cleared transfer value must arrive");
+    assert!(!values.borrow().contains_key(REL_ABORT));
 }
 
 /// Seed an album with two releases, each holding two tracks with explicit
@@ -509,85 +508,6 @@ async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_win
         snapshot.manual.len(),
         manual_count,
         "the manual lane is never windowed"
-    );
-}
-
-/// A peer's `change_cover` writes exactly one row — the `covers` row — so that is
-/// the whole changeset this device receives. The applied changeset has to reach the
-/// album, and what has to arrive is the UI's art cache key: the cover `ImageRef`'s
-/// version (`covers._updated_at`). Before this was handled the changeset was
-/// dropped, and the receiving device kept rendering the old art indefinitely.
-///
-/// The peer here *replaces* an existing cover — a fresh `blob_id` repointing the
-/// same row — which is exactly what `change_cover` does, so the version the event
-/// carries has to be the new one, not the one the device already had.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn a_peers_lone_cover_change_emits_an_album_update_carrying_the_new_cache_key() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-
-    // The cover this device already has, and the cache key it renders it under.
-    store_test_cover_image(&manager, &release.id).await;
-    let stale_version = manager
-        .find_album_detail(&album.id)
-        .await
-        .unwrap()
-        .expect("album detail")
-        .cover
-        .expect("the release starts with a cover")
-        .version;
-
-    // The peer's `change_cover`, as it lands here: the same row repointed at a new
-    // blob, and its `_updated_at` moves.
-    store_test_cover_image_with_blob(&manager, &release.id, "replacement-blob").await;
-    let expected_version = manager
-        .database
-        .cover_version(&release.id)
-        .await
-        .unwrap()
-        .expect("the cover row has a version");
-    assert_ne!(
-        expected_version, stale_version,
-        "replacing the cover must move its version, or this test proves nothing"
-    );
-
-    // Feed the changeset the peer would have sent: the `covers` row, alone.
-    let mut rx = manager.subscribe_events();
-    let (changes, _missing_fk) =
-        crate::library::sync_events::changes_from_row_changes(&[coven::RowChange {
-            table: "covers".to_string(),
-            op: coven::ChangeOp::Update,
-            columns: vec![Some(release.id.clone())],
-        }]);
-    manager.emit_sync_entity_changes(changes).await;
-
-    let updated = tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        loop {
-            match rx.recv().await {
-                Ok(LibraryEvent::AlbumUpdated { album }) => return album,
-                Ok(_) => continue,
-                Err(e) => panic!("library event channel closed before AlbumUpdated: {e}"),
-            }
-        }
-    })
-    .await
-    .expect("a lone cover change must emit an album update");
-
-    assert_eq!(updated.album.id, album.id);
-    let cover = updated
-        .cover
-        .expect("the album update carries its cover ref");
-    assert_eq!(
-        cover.version, expected_version,
-        "the album update must carry the NEW cover version — that ref is the art cache key"
-    );
-    assert_ne!(
-        cover.version, stale_version,
-        "carrying the old version would re-render the stale art"
     );
 }
 

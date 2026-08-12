@@ -14,22 +14,11 @@ impl PlaybackService {
     }
 
     pub(super) fn emit_queue_update(&self) {
-        let projection = self.queue_projection();
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::QueueUpdated(projection),
-        );
+        self.queue_values.send_replace(self.queue_projection());
     }
 
     pub(super) fn queue_projection(&self) -> PlaybackQueueProjection {
-        PlaybackQueueProjection {
-            manual: self.playback_queue.manual_entries(),
-            context: self.playback_queue.context_projection(),
-            has_next: self.playback_queue.has_upcoming()
-                || self.playback_queue.repeat_mode() != RepeatMode::Off,
-            has_previous: self.playback_queue.has_previous(),
-            revision: self.playback_queue.revision(),
-        }
+        PlaybackQueueProjection::from_queue(&self.playback_queue)
     }
 
     pub(super) fn emit_queue_items_added(&self, count: u32) {
@@ -40,5 +29,17 @@ impl PlaybackService {
             &self.progress_tx,
             PlaybackProgress::QueueItemsAdded { count },
         );
+    }
+}
+
+impl PlaybackQueueProjection {
+    pub(super) fn from_queue(queue: &PlaybackQueue) -> Self {
+        Self {
+            manual: queue.manual_entries(),
+            context: queue.context_projection(),
+            has_next: queue.has_upcoming() || queue.repeat_mode() != RepeatMode::Off,
+            has_previous: queue.has_previous(),
+            revision: queue.revision(),
+        }
     }
 }

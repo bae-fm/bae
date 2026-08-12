@@ -83,7 +83,6 @@ impl LibraryManager {
     /// release's cover blob.
     pub async fn change_cover(
         &self,
-        album_id: &str,
         release_id: &str,
         selection: CoverSelection,
     ) -> Result<(), LibraryError> {
@@ -144,10 +143,6 @@ impl LibraryManager {
             .await?;
         self.store_library_image_blob(&library_image, &bytes)
             .await?;
-
-        // Don't touch primary_release_id: "change cover" sets the image on THIS
-        // release; "set primary release" is a separate user action.
-        self.emit_album_updated(album_id).await;
 
         Ok(())
     }

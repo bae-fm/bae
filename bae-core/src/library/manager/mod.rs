@@ -55,8 +55,7 @@ use coven::ExactCloudHome;
 use coven::IdRef;
 use coven::SyncLoopStatus;
 
-/// Library events can burst during imports and sync catch-up; lag is recoverable
-/// through UI invalidations, and this bound keeps ordinary bursts in order.
+/// Transient library events can burst during imports and sync catch-up.
 mod service;
 mod storage_operations;
 use storage_operations::*;
@@ -94,8 +93,6 @@ mod track;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::discogs_validation_from_result;
-
-pub(crate) use release::find_release_detail_with;
 
 /// Outcome of `resolve_identity_target_album` — where a release should
 /// land after a `set_identity` call. `new_album` carries the album row
@@ -681,38 +678,22 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     }
 }
 
-/// Emits `ReleaseTransferEnded` on drop unless defused. `drive_transfer` holds
-/// one so an aborted transfer future (its bridge wrapper is dropped mid-flight)
-/// still clears the UI's transfer indicator; the normal exit defuses it after
-/// emitting the event itself. The broadcast send is synchronous, so `Drop` can
-/// fire it directly.
-struct TransferEndedGuard {
-    event_tx: broadcast::Sender<LibraryEvent>,
+/// Removes the transfer action from the value stream when the transfer future
+/// completes or is dropped.
+struct TransferValueGuard {
     transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
+    transfer_values: tokio::sync::watch::Sender<HashMap<String, ReleaseStorageAction>>,
     release_id: String,
-    armed: bool,
 }
 
-impl TransferEndedGuard {
-    fn defuse(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for TransferEndedGuard {
+impl Drop for TransferValueGuard {
     fn drop(&mut self) {
-        if !self.armed {
-            return;
-        }
-        self.transfer_actions
-            .lock()
-            .unwrap()
-            .remove(&self.release_id);
-        if let Err(err) = self.event_tx.send(LibraryEvent::ReleaseTransferEnded {
-            release_id: std::mem::take(&mut self.release_id),
-        }) {
-            warn!("ReleaseTransferEnded on abort had no subscribers: {err}");
-        }
+        let actions = {
+            let mut actions = self.transfer_actions.lock().unwrap();
+            actions.remove(&self.release_id);
+            actions.clone()
+        };
+        self.transfer_values.send_replace(actions);
     }
 }
 
@@ -730,98 +711,10 @@ impl Drop for TransferCancelGuard {
     }
 }
 
-/// Emitted by `LibraryManager` when data changes.
-///
-/// Album-level and release-level events are mutually exclusive for the same album
-/// in the same mutation: each mutation site emits exactly one event per affected
-/// album. `AlbumAdded` carries the first release in its payload, so `ReleaseAdded`
-/// only fires when the album already exists.
+/// Transient operation events emitted by `LibraryManager`.
 #[derive(Clone, Debug)]
 pub enum LibraryEvent {
-    // ── Album-level: carry the full album payload ─────────────────
-    AlbumAdded {
-        album: AlbumDetail,
-    },
-    AlbumUpdated {
-        album: AlbumDetail,
-    },
-    AlbumRemoved {
-        album_id: String,
-        /// Ids of the album's child releases to drop alongside it.
-        release_ids: Vec<String>,
-    },
-
-    // ── Release-level (carry the release + parent album) ─────────
-    ReleaseAdded {
-        album: AlbumSummary,
-        release: ReleaseDetail,
-    },
-    ReleaseUpdated {
-        album_id: String,
-        release: ReleaseDetail,
-    },
-    ReleaseRemoved {
-        album_id: String,
-        release_id: String,
-        /// Parent album's post-removal summary, so the reducer interns it
-        /// instead of patching its `release_ids` by reading the old list.
-        /// `None` when the album itself was removed with its last release.
-        album: Option<AlbumSummary>,
-    },
-
-    // ── Retained (not about library data shape) ──────────────────
-    TracksDeleted {
-        track_ids: Vec<String>,
-    },
-    /// Sync loop's latest error state. `None` clears a prior failure (sync
-    /// recovered). Emitted on transitions so the UI banner appears and
-    /// disappears in step with sync health. When set, it's a
-    /// `UiError::Diagnostic` whose category keys the generic line and whose
-    /// detail is the opaque, log-only error chain.
-    SyncError {
-        error: Option<crate::ui::UiError>,
-    },
-    /// Wall-clock time the last sync cycle completed successfully, as Unix
-    /// epoch milliseconds. Emitted on transitions so the sidebar's "Last
-    /// synced …" subtitle updates after every cycle and stays stable in
-    /// between.
-    SyncTimeChanged {
-        time: Option<i64>,
-    },
-    /// Whether the sync loop is currently mid-cycle. Emitted on transitions so
-    /// the sidebar can show a spinner over the active library row from when a
-    /// "Sync Now" kicks the loop to when it idles again.
-    SyncingChanged {
-        syncing: bool,
-    },
-    /// The cloud outbox changed — carries the full processing snapshot so the
-    /// Storage Manager re-renders its queue panel.
-    OutboxChanged {
-        snapshot: crate::library::OutboxSnapshot,
-    },
-    /// A pin/unpin/manage/unmanage transition started. The UI shows an in-flight
-    /// indicator until the matching `ReleaseTransferEnded` arrives.
-    ReleaseTransferProgress {
-        release_id: String,
-        action: ReleaseStorageAction,
-    },
-    /// A transition finished (success OR failure) — the UI clears its transfer
-    /// indicator. On failure the user-facing reason still arrives via the
-    /// thrown error from the transfer call.
-    ReleaseTransferEnded {
-        release_id: String,
-    },
-    /// The in-memory download (pin) queue changed — carries the full snapshot
-    /// so the Storage Manager re-renders its Downloads pane and storage rows
-    /// re-read their per-release "Downloading" badge.
-    DownloadQueueChanged {
-        snapshot: crate::library::DownloadSnapshot,
-    },
-    /// The in-memory export queue changed — carries the full snapshot so the
-    /// Storage Manager re-renders its Exporting pane.
-    OutputQueueChanged {
-        snapshot: crate::library::OutputSnapshot,
-    },
+    TracksDeleted { track_ids: Vec<String> },
 }
 /// Persistence and queries for albums, tracks, and files: import state
 /// transitions, library browsing, and deletion with cloud-storage cleanup.
@@ -843,6 +736,10 @@ pub struct LibraryManager {
     /// make-Remote/make-Local primitives.
     sync: SyncController,
     sync_status: Arc<Mutex<SyncStatusState>>,
+    sync_status_values: tokio::sync::watch::Sender<crate::library::SyncStatusSnapshot>,
+    outbox_values:
+        tokio::sync::watch::Sender<Option<Result<crate::library::OutboxSnapshot, String>>>,
+    download_values: tokio::sync::watch::Sender<crate::library::DownloadSnapshot>,
     /// Cancellation tokens for in-progress foreground transfers (unmanage),
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
@@ -850,6 +747,7 @@ pub struct LibraryManager {
     /// duration; transient.
     transfer_cancels: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
     transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
+    transfer_values: tokio::sync::watch::Sender<HashMap<String, ReleaseStorageAction>>,
     /// In-memory queue for "Pin for offline". A single serial worker drains it
     /// one release at a time. Shared across manager clones; transient (empty
     /// after a restart — a release that wasn't fully pinned stays cloud-only).
@@ -861,6 +759,8 @@ pub struct LibraryManager {
     /// see the `export` module above.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     output_queue: Arc<crate::library::OutputQueue>,
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    output_values: tokio::sync::watch::Sender<crate::library::OutputSnapshot>,
     /// The upload observer coven reports blob transitions to. coven holds only a
     /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
     /// sole owner and its lifetime is the manager's. Its event sender feeds a task

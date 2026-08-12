@@ -220,13 +220,10 @@ fn enqueue_export_missing_release_does_not_panic() {
     ));
 }
 
-/// A consumer that falls behind the broadcast bus gets `Lagged`, not
-/// `Closed`. The dropped events can't be replayed, so the pump synthesizes
-/// every coarse invalidation (the UI re-reads each domain instead of
-/// freezing on the last delivered snapshot) and keeps delivering the
-/// events behind the gap.
+/// A consumer that falls behind the transient-event bus keeps receiving the
+/// events behind the gap. Persistent values have independent subscriptions.
 #[tokio::test]
-async fn pump_ui_events_recovers_from_broadcast_lag_by_invalidating() {
+async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     let (tx, rx) = tokio::sync::broadcast::channel(1);
 
     // Two sends into a capacity-1 channel before the pump runs: the first
@@ -247,40 +244,10 @@ async fn pump_ui_events_recovers_from_broadcast_lag_by_invalidating() {
     pump.await.unwrap();
 
     let events = events.lock().unwrap();
-    let (last, recovery) = events.split_last().expect("events delivered");
-    assert!(
-        matches!(
-            last,
-            crate::types::BridgeUiEvent::MuteChanged { is_muted: true }
-        ),
-        "expected the event behind the lag to still be delivered, got: {events:?}",
-    );
-    // Every recovery event is an invalidation, and the set covers the
-    // snapshot-backed domains — outbox included, so a lagged-away final
-    // OutboxChanged can't leave the queue pane frozen.
-    let invalidations: Vec<_> = recovery
-        .iter()
-        .map(|event| match event {
-            crate::types::BridgeUiEvent::Invalidated { invalidation } => invalidation,
-            other => {
-                panic!("expected only invalidations before the queued event, got {other:?}")
-            }
-        })
-        .collect();
-    for expected in [
-        crate::types::BridgeInvalidation::AlbumList,
-        crate::types::BridgeInvalidation::Outbox,
-        crate::types::BridgeInvalidation::DownloadQueue,
-        crate::types::BridgeInvalidation::OutputQueue,
-        crate::types::BridgeInvalidation::SyncStatus,
-        crate::types::BridgeInvalidation::Queue,
-        crate::types::BridgeInvalidation::Config,
-    ] {
-        assert!(
-            invalidations.iter().any(|i| **i == expected),
-            "lag recovery missing {expected:?}: {invalidations:?}",
-        );
-    }
+    assert!(matches!(
+        events.as_slice(),
+        [crate::types::BridgeUiEvent::MuteChanged { is_muted: true }]
+    ));
 }
 
 /// The per-file converter flattens core's `UploadState` into plain fields:
@@ -317,26 +284,6 @@ fn upload_file_op_flattens_state_into_fields() {
     let done = convert(UploadState::Done);
     assert_eq!(done.state, BridgeUploadFileState::Done);
     assert_eq!(done.bytes_done, 1000);
-}
-
-#[test]
-fn convert_ui_event_preserves_invalidation_key() {
-    let event = super::convert_ui_event(bae_core::ui::UiBusEvent::Invalidated(
-        bae_core::ui::Invalidation::Release {
-            release_id: "rel-1".to_string(),
-        },
-    ))
-    .expect("invalidation event maps to a bridge event");
-
-    assert!(
-        matches!(
-            event,
-            crate::types::BridgeUiEvent::Invalidated {
-                invalidation: crate::types::BridgeInvalidation::Release { ref release_id },
-            } if release_id == "rel-1"
-        ),
-        "expected release invalidation, got {event:?}",
-    );
 }
 
 #[test]

@@ -29,7 +29,6 @@ use bae_core::renderer::{
     RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType,
     RendererStreamFormat, ReportedRenderer, StreamFormatFn, TRANSCODE_BITRATE_KBPS,
 };
-use bae_core::ui::{Invalidation, UiBusEvent, UiEventBus};
 use md5::{Digest, Md5};
 use rand::RngCore;
 use tokio::runtime::Handle;
@@ -217,6 +216,7 @@ pub struct CastController {
     /// Where the picker's devices come from: bae's own browsing, or the services
     /// a host's browser reports in. Chosen once, per host.
     discovery: Mutex<RendererDiscovery>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -227,42 +227,44 @@ struct Inner {
 
 impl CastController {
     /// Build the controller over a host's device source and start the background
-    /// tasks it needs: the device-list forwarders that invalidate an open picker,
+    /// tasks it needs: the device-list forwarders that publish an open picker's value,
     /// the follower that tracks the playback service's session status, and the
     /// watcher that applies the `cast_enabled` setting.
     pub fn start(
         services: AppServices,
-        ui_event_bus: UiEventBus,
         runtime: Handle,
         discovery: RendererDiscovery,
     ) -> Arc<Self> {
-        // Forward each browse's list changes to the UI as an invalidation, so an
-        // open picker requeries the merged list as devices come and go.
-        for devices in discovery.subscribe() {
-            Self::spawn_device_list_forwarder(devices, ui_event_bus.clone(), &runtime);
-        }
+        let receivers = discovery.subscribe();
+        let (devices_tx, _) = tokio::sync::watch::channel(discovery.devices());
         let controller = Arc::new(Self {
             runtime: runtime.clone(),
             services,
             discovery: Mutex::new(discovery),
+            devices_tx,
             inner: Arc::new(Mutex::new(Inner {
                 server: None,
                 status: CastStatus::NotCasting,
             })),
         });
+        for devices in receivers {
+            controller.spawn_device_list_forwarder(devices);
+        }
         controller.spawn_status_follower();
         controller.spawn_setting_watcher();
         controller
     }
 
     fn spawn_device_list_forwarder(
+        self: &Arc<Self>,
         mut devices: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
-        ui_event_bus: UiEventBus,
-        runtime: &Handle,
     ) {
-        runtime.spawn(async move {
+        let controller = self.clone();
+        self.runtime.spawn(async move {
             while devices.changed().await.is_ok() {
-                ui_event_bus.emit(UiBusEvent::Invalidated(Invalidation::CastDevices));
+                controller
+                    .devices_tx
+                    .send_replace(controller.discovery.lock().unwrap().devices());
             }
         });
     }
@@ -371,6 +373,10 @@ impl CastController {
     /// list, sorted by name for a stable picker.
     pub fn devices(&self) -> Vec<RendererDevice> {
         self.discovery.lock().unwrap().devices()
+    }
+
+    pub fn subscribe_devices(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
+        self.devices_tx.subscribe()
     }
 
     pub fn status(&self) -> CastStatus {
@@ -588,12 +594,8 @@ mod tests {
         let services = runtime
             .block_on(AppServices::for_test(manager))
             .expect("app services");
-        let controller = CastController::start(
-            services.clone(),
-            UiEventBus::new(),
-            runtime.handle().clone(),
-            discovery,
-        );
+        let controller =
+            CastController::start(services.clone(), runtime.handle().clone(), discovery);
         (controller, services, tmp)
     }
 

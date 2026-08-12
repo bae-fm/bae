@@ -185,7 +185,6 @@
         ) -> LibraryBrowseSession {
             LibraryBrowseSession(
                 library: .stub(),
-                projectionRegistry: ProjectionRegistry(),
                 libraryStore: libraryStore,
                 uiStore: uiStore,
             )

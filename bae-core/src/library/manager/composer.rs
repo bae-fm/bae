@@ -35,6 +35,42 @@ impl LibraryManager {
             .collect())
     }
 
+    pub(crate) fn subscribe_composer_page(
+        &self,
+        sort: &[crate::db::ComposerSortCriterion],
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::ComposerPageProjection> {
+        self.database.subscribe_composer_page(sort, offset, limit)
+    }
+
+    pub(crate) fn resolve_composer_page(
+        &self,
+        projection: crate::db::ComposerPageProjection,
+    ) -> (Vec<ComposerSummary>, u64) {
+        let images = projection
+            .image_versions
+            .into_iter()
+            .map(|(id, version)| {
+                let image = ImageRef {
+                    id: id.clone(),
+                    version,
+                    image_type: crate::db::LibraryImageType::Artist,
+                };
+                (id, image)
+            })
+            .collect::<HashMap<_, _>>();
+        let rows = projection
+            .rows
+            .into_iter()
+            .map(|row| {
+                let image = images.get(&row.artist.id).cloned();
+                ComposerSummary::from_raw(row, image)
+            })
+            .collect();
+        (rows, projection.total_count)
+    }
+
     pub async fn get_composer_detail(
         &self,
         artist_id: &str,
@@ -89,6 +125,78 @@ impl LibraryManager {
             unlinked_track_roles: raw.unlinked_track_roles,
             default_work_id,
         }))
+    }
+
+    pub(crate) fn subscribe_composer_detail(
+        &self,
+        artist_id: &str,
+    ) -> coven::LiveQuery<crate::db::ComposerDetailProjection> {
+        self.database.subscribe_composer_detail(artist_id)
+    }
+
+    pub(crate) fn resolve_composer_detail_projection(
+        &self,
+        projection: crate::db::ComposerDetailProjection,
+    ) -> Option<ComposerDetail> {
+        let raw = projection.detail?;
+        let images = projection
+            .image_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Artist,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Cover,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let work_groups = raw
+            .work_groups
+            .into_iter()
+            .map(|group| ComposerWorkGroup {
+                id: group.id,
+                parent: group
+                    .parent
+                    .map(|parent| work_summary_with_cover(parent, &covers)),
+                works: group
+                    .works
+                    .into_iter()
+                    .map(|work| work_summary_with_cover(work, &covers))
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+        let default_work_id = work_groups.first().and_then(|group| {
+            group
+                .parent
+                .as_ref()
+                .map(|work| work.raw.work.id.clone())
+                .or_else(|| group.works.first().map(|work| work.raw.work.id.clone()))
+        });
+        let image = images.get(&raw.composer.artist.id).cloned();
+        Some(ComposerDetail {
+            composer: ComposerSummary::from_raw(raw.composer, image),
+            work_groups,
+            unlinked_release_roles: raw.unlinked_release_roles,
+            unlinked_track_roles: raw.unlinked_track_roles,
+            default_work_id,
+        })
     }
 
     /// Resolve each parsed work to the `works` row already holding its
@@ -154,6 +262,56 @@ impl LibraryManager {
                 .collect(),
             tracks: raw.tracks,
         }))
+    }
+
+    pub(crate) fn subscribe_work_detail(
+        &self,
+        work_id: &str,
+    ) -> coven::LiveQuery<crate::db::WorkDetailProjection> {
+        self.database.subscribe_work_detail(work_id)
+    }
+
+    pub(crate) fn resolve_work_detail_projection(
+        &self,
+        projection: crate::db::WorkDetailProjection,
+    ) -> Option<WorkDetail> {
+        let raw = projection.detail?;
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Cover,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let work_cover = raw
+            .work
+            .representative_release_id
+            .as_ref()
+            .and_then(|id| covers.get(id).cloned());
+        Some(WorkDetail {
+            work: WorkSummary::from_raw(raw.work, work_cover),
+            child_works: raw
+                .child_works
+                .into_iter()
+                .map(|work| work_summary_with_cover(work, &covers))
+                .collect(),
+            releases: raw
+                .releases
+                .into_iter()
+                .map(|release| {
+                    let cover = covers.get(&release.release_id).cloned();
+                    WorkReleaseSummary::from_raw(release, cover)
+                })
+                .collect(),
+            tracks: raw.tracks,
+        })
     }
 }
 

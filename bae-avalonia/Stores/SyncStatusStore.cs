@@ -51,6 +51,11 @@ internal sealed class SyncStatusStore
             return;
         }
 
+        Apply(status);
+    }
+
+    public void Apply(BridgeSyncStatusSnapshot status)
+    {
         ErrorText = status.Error is null ? null : BridgeDisplay.LocalizedLine(status.Error);
         Indicator = BaeBridgeMethods.BridgeSyncIndicator(status);
         LastSyncTime = Indicator is BridgeSyncIndicator.Synced synced

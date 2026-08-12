@@ -34,7 +34,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             ),
             castStore: CastStore(),
             outboxStore: OutboxStore(snapshot: initialOutbox),
-            projectionRegistry: ProjectionRegistry(),
             library: Library(handle: appHandle),
             playback: Playback(handle: appHandle),
             queue: Queue(handle: appHandle),
@@ -59,7 +58,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// after construction. Errors route through the base's default `showError`
     /// (the `ConfigStore` banner).
     func wireUp() {
-        registerCommonProjections()
+        startCommonSubscriptions()
         subscribeUIEvents(onUnhandled: DesktopUiEvents.ignore)
         setupRemoteCommands()
     }

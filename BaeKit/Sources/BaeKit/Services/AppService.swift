@@ -14,7 +14,6 @@ public struct AppServiceComponents {
     fileprivate let downloadStore: DownloadStore
     fileprivate let castStore: CastStore
     fileprivate let outboxStore: OutboxStore
-    fileprivate let projectionRegistry: ProjectionRegistry
     fileprivate let library: Library
     fileprivate let playback: Playback
     fileprivate let queue: Queue
@@ -31,7 +30,6 @@ public struct AppServiceComponents {
         downloadStore: DownloadStore,
         castStore: CastStore,
         outboxStore: OutboxStore,
-        projectionRegistry: ProjectionRegistry,
         library: Library,
         playback: Playback,
         queue: Queue,
@@ -47,7 +45,6 @@ public struct AppServiceComponents {
         self.downloadStore = downloadStore
         self.castStore = castStore
         self.outboxStore = outboxStore
-        self.projectionRegistry = projectionRegistry
         self.library = library
         self.playback = playback
         self.queue = queue
@@ -115,9 +112,7 @@ open class AppService: @unchecked Sendable, Observable {
     /// (carries the sync-pause flag).
     private let outboxStore: OutboxStore
 
-    /// Query-backed projections refreshed by scoped invalidation events.
-    private let projectionRegistry: ProjectionRegistry
-    private let commonProjections: CommonProjections
+    private let commonSubscriptions: CommonSubscriptions
 
     // MARK: - Domain services
     //
@@ -159,14 +154,11 @@ open class AppService: @unchecked Sendable, Observable {
         downloadStore = components.downloadStore
         castStore = components.castStore
         outboxStore = components.outboxStore
-        projectionRegistry = components.projectionRegistry
-        commonProjections = CommonProjections(
-            registry: components.projectionRegistry,
+        commonSubscriptions = CommonSubscriptions(
             appHandle: appHandle,
             configStore: components.configStore,
             outboxStore: components.outboxStore,
             downloadStore: components.downloadStore,
-            libraryStore: components.libraryStore,
             castStore: components.castStore
         )
         library = components.library
@@ -200,7 +192,6 @@ open class AppService: @unchecked Sendable, Observable {
             .environment(downloadStore)
             .environment(outboxStore)
             .environment(downloads)
-            .environment(projectionRegistry)
             .environment(imageStore)
             .environment(library)
             .environment(playback)
@@ -221,7 +212,6 @@ open class AppService: @unchecked Sendable, Observable {
             .environment(downloadStore)
             .environment(outboxStore)
             .environment(downloads)
-            .environment(projectionRegistry)
             .environment(imageStore)
             .environment(library)
             .environment(playback)
@@ -243,7 +233,6 @@ open class AppService: @unchecked Sendable, Observable {
             .environment(service?.downloadStore)
             .environment(service?.outboxStore)
             .environment(service?.downloads)
-            .environment(service?.projectionRegistry)
             .environment(service?.imageStore)
             .environment(service?.library)
             .environment(service?.playback)
@@ -380,18 +369,13 @@ open class AppService: @unchecked Sendable, Observable {
         #endif
     }
 
-    /// Start the projections both platforms share.
-    public func registerCommonProjections() {
-        commonProjections.start(
+    public func startCommonSubscriptions() {
+        commonSubscriptions.start(
             applyQueue: { [weak self] snapshot in
                 self?.playbackEvents.applyQueueSnapshot(snapshot)
             },
             onError: { [weak self] error in self?.showError(error) }
         )
-    }
-
-    public func invalidateProjection(_ invalidation: BridgeInvalidation) {
-        projectionRegistry.invalidate(invalidation)
     }
 
     func applyPlaybackEvent(_ event: BridgeUiEvent) {

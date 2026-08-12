@@ -78,36 +78,10 @@ struct AlbumDetailView: View {
             NowPlayingBar()
         }
         .task(id: albumId) {
-            if context != nil {
-                if let releaseId = selectedReleaseId {
-                    await libraryStore.loadReleaseDetail(
-                        releaseId: releaseId,
-                        library: library
-                    )
-                }
-                return
-            }
-            // Eagerly load detail for every release so the picker has labels
-            // and switching releases doesn't flash a spinner. N is typically
-            // 1-3. Bail on cancellation (the user navigated away).
-            guard let summary = libraryStore.albumSummaries[albumId] else {
-                if let releaseId = selectedReleaseId {
-                    await libraryStore.loadReleaseDetail(
-                        releaseId: releaseId,
-                        library: library
-                    )
-                }
-                return
-            }
-            for releaseId in summary.releaseIds {
-                if Task.isCancelled {
-                    return
-                }
-                await libraryStore.loadReleaseDetail(
-                    releaseId: releaseId,
-                    library: library
-                )
-            }
+            await libraryStore.observeAlbumDetail(
+                albumId: albumId,
+                library: library
+            )
         }
     }
 
@@ -116,11 +90,11 @@ struct AlbumDetailView: View {
     /// re-runs the on-demand load for that release.
     @ViewBuilder
     private func detailPlaceholder(releaseId: String?) -> some View {
-        if let releaseId, let error = libraryStore.releaseDetailErrors[releaseId] {
+        if let error = libraryStore.albumDetailErrors[albumId] {
             LoadFailureView(line: error.line) {
                 Task {
-                    await libraryStore.loadReleaseDetail(
-                        releaseId: releaseId,
+                    await libraryStore.observeAlbumDetail(
+                        albumId: albumId,
                         library: library
                     )
                 }
@@ -187,12 +161,6 @@ struct AlbumDetailView: View {
                 ForEach(summary.releaseIds, id: \.self) { id in
                     Button {
                         selectedReleaseId = id
-                        Task {
-                            await libraryStore.loadReleaseDetail(
-                                releaseId: id,
-                                library: library
-                            )
-                        }
                     } label: {
                         Group {
                             if let label = libraryStore.releaseDetails[id]?.displayName {

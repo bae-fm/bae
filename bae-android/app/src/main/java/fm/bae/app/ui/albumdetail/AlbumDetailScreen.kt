@@ -61,8 +61,6 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
@@ -111,16 +109,21 @@ fun AlbumDetailScreen(
 
     LaunchedEffect(albumId, retryToken) {
         loadError = null
-        if (session.libraryStore.albumDetail(albumId) == null) {
-            try {
-                val loaded = withContext(Dispatchers.IO) { session.library.albumDetail(albumId) }
-                session.libraryStore.seedAlbumDetail(loaded)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error("Failed to load album detail $albumId", e)
-                loadError = e.message ?: appContext.getString(R.string.album_load_failed)
+        try {
+            session.library.albumDetails(albumId).collect { loaded ->
+                session.libraryStore.applyAlbumDetail(albumId, loaded)
+                loadError =
+                    if (loaded == null) {
+                        appContext.getString(R.string.album_load_failed)
+                    } else {
+                        null
+                    }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("Failed to subscribe to album detail $albumId", e)
+            loadError = e.message ?: appContext.getString(R.string.album_load_failed)
         }
     }
 
@@ -143,6 +146,13 @@ fun AlbumDetailScreen(
             if (loaded == null) {
                 AlbumDetailLoadingBox(loadError, onRetry = { retryToken++ })
             } else {
+                loadError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp),
+                    )
+                }
                 val release = loaded.releases.firstOrNull { it.id == selectedReleaseId }
                 AlbumDetailContent(
                     detail = loaded,

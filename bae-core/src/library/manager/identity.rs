@@ -50,9 +50,8 @@ impl LibraryManager {
     /// fields, and tracks stay as they are. The caller decides whether to reseed
     /// the metadata.
     ///
-    /// Emits `AlbumAdded` or `AlbumUpdated` for the destination album, plus
-    /// `AlbumRemoved` or `AlbumUpdated` for the vacated source album if the release
-    /// actually moved.
+    /// The atomic commit wakes subscriptions for the destination and any vacated
+    /// source album.
     pub async fn set_identity(
         &self,
         release_id: &str,
@@ -75,8 +74,7 @@ impl LibraryManager {
         // The atomic call does all source-album bookkeeping inside its transaction
         // (empty-check, primary_release_id repair, album_artists copy) — those
         // decisions live there so a separate read and write can't race.
-        let outcome = self
-            .database
+        self.database
             .set_identity_atomic(
                 release_id,
                 &new_identities,
@@ -87,27 +85,6 @@ impl LibraryManager {
                 target.new_album.as_ref(),
             )
             .await?;
-
-        let release_moved = target.album_id != current_album_id;
-
-        // The destination event is AlbumAdded when we just created the album,
-        // AlbumUpdated otherwise (its release set changed). The source event covers
-        // the move: AlbumRemoved when the vacated album is now empty, AlbumUpdated
-        // when releases remain.
-        if target.new_album.is_some() {
-            self.emit_album_added(&target.album_id).await;
-        } else {
-            self.emit_album_updated(&target.album_id).await;
-        }
-        if release_moved {
-            if outcome.source_album_deleted {
-                // No child releases remain under the vacated album, and the
-                // destination event above already re-homed the moved one.
-                self.emit_album_removed(&current_album_id, Vec::new());
-            } else {
-                self.emit_album_updated(&current_album_id).await;
-            }
-        }
 
         Ok(())
     }

@@ -88,12 +88,6 @@ pub enum ImportEvent {
     },
 }
 
-impl ImportServiceHandle {
-    pub(crate) fn record_candidate_event(&self, event: &ImportEvent) {
-        self.candidate_store.record_event(event);
-    }
-}
-
 /// Search query — one of the three search modes.
 pub enum SearchQuery {
     General {
@@ -157,6 +151,7 @@ pub struct ImportServiceHandle {
     event_tx: broadcast::Sender<ImportEvent>,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     candidate_store: CandidateStore,
+    candidate_values: tokio::sync::watch::Sender<ImportCandidatesSnapshot>,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
     watcher_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
@@ -264,7 +259,10 @@ impl ImportServiceHandle {
         candidate_store: CandidateStore,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     ) -> Self {
-        Self {
+        let initial_candidates =
+            candidate_store.snapshot(folder_registry.lock().unwrap().watched_folders());
+        let (candidate_values, _) = tokio::sync::watch::channel(initial_candidates);
+        let handle = Self {
             requests_tx,
             worker_thread: Arc::new(Mutex::new(Some(worker_thread))),
             library_manager,
@@ -273,11 +271,37 @@ impl ImportServiceHandle {
             event_tx,
             folder_registry,
             candidate_store,
+            candidate_values,
             folder_state_commit,
             watcher_tx,
             watcher_thread: Arc::new(Mutex::new(Some(watcher_thread))),
             runtime_handle,
-        }
+        };
+        handle.start_candidate_value_stream();
+        handle
+    }
+
+    fn start_candidate_value_stream(&self) {
+        let mut events = self.event_tx.subscribe();
+        let candidate_store = self.candidate_store.clone();
+        let folder_registry = self.folder_registry.clone();
+        let candidate_values = self.candidate_values.clone();
+        self.runtime_handle.spawn(async move {
+            loop {
+                match events.recv().await {
+                    Ok(event) => {
+                        candidate_store.record_event(&event);
+                        let snapshot = candidate_store
+                            .snapshot(folder_registry.lock().unwrap().watched_folders());
+                        candidate_values.send_replace(snapshot);
+                    }
+                    Err(broadcast::error::RecvError::Lagged(count)) => {
+                        warn!("import candidate value stream dropped {count} values");
+                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
     }
 
     pub(crate) fn start_candidate_services(
@@ -384,6 +408,12 @@ impl ImportServiceHandle {
     pub fn get_import_candidates(&self) -> ImportCandidatesSnapshot {
         let watched_folders = self.watched_folders();
         self.candidate_store.snapshot(watched_folders)
+    }
+
+    pub fn subscribe_import_candidates(
+        &self,
+    ) -> tokio::sync::watch::Receiver<ImportCandidatesSnapshot> {
+        self.candidate_values.subscribe()
     }
 
     pub fn get_candidate(&self, key: &str) -> Option<ImportCandidateSnapshot> {

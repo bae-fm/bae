@@ -77,20 +77,6 @@ impl LibraryManager {
         // isn't — drop it before re-deriving the snapshot.
         self.sync.clear_upload_session(release_id);
         self.emit_outbox_changed().await;
-        // Refresh the release row (it no longer reads as "uploading"). A
-        // best-effort UI nudge — the cancel itself already succeeded above.
-        match self.get_release_by_id(release_id).await {
-            Ok(Some(release)) => {
-                self.emit_release_updated(&release.album_id, release_id)
-                    .await
-            }
-            Ok(None) => {
-                warn!("cancel_release_upload: release {release_id} missing; skipped UI refresh")
-            }
-            Err(e) => {
-                warn!("cancel_release_upload: loading release {release_id} for refresh failed: {e}")
-            }
-        }
         Ok(())
     }
 
@@ -176,6 +162,62 @@ impl LibraryManager {
             ));
         }
         Ok(StoragePage { rows, total_count })
+    }
+
+    pub(crate) fn subscribe_storage_page(
+        &self,
+        sort: &crate::db::StorageSortCriterion,
+        filter: crate::db::StorageFilter,
+        uploading_release_ids: Vec<String>,
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<crate::db::StoragePageProjection> {
+        self.database
+            .subscribe_storage_page(sort, filter, uploading_release_ids, offset, limit)
+    }
+
+    pub(crate) async fn resolve_storage_page_projection(
+        &self,
+        projection: crate::db::StoragePageProjection,
+    ) -> Result<(StoragePage, u64), LibraryError> {
+        let covers = projection
+            .cover_versions
+            .into_iter()
+            .map(|(id, version)| {
+                (
+                    id.clone(),
+                    ImageRef {
+                        id,
+                        version,
+                        image_type: crate::db::LibraryImageType::Cover,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let has_cloud_home = self.has_cloud_home();
+        let sync_ready = self.is_sync_ready();
+        let mut rows = Vec::with_capacity(projection.rows.len());
+        for raw in projection.rows {
+            let pinned = self
+                .release_pinned(raw.release.any_file_id.as_deref())
+                .await?;
+            let transfer_action = self.current_transfer_action(&raw.release.id);
+            rows.push(StorageRow::from_raw(
+                raw,
+                has_cloud_home,
+                sync_ready,
+                pinned,
+                transfer_action,
+                |release_id| covers.get(release_id).cloned(),
+            ));
+        }
+        Ok((
+            StoragePage {
+                rows,
+                total_count: projection.total_count,
+            },
+            projection.total_size,
+        ))
     }
 
     /// Count storage rows matching `filter`. Matches `get_storage_page`'s

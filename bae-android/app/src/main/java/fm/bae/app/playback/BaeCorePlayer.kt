@@ -14,7 +14,6 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +33,8 @@ import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeUiEvent
+import uniffi.bae_bridge.LiveSubscription
+import uniffi.bae_bridge.QueueUpcomingCallback
 
 /** Now-playing snapshot the [fm.bae.app.ui.playback.NowPlayingBar] renders. */
 private const val TAG = "bae.BaeCorePlayer"
@@ -269,7 +270,7 @@ class BaeCorePlayer(
     private var playWhenReady: Boolean = false
 
     /** The flat up-next playlist (manual lane then the context tail), hydrated
-     *  from the latest `QueueUpdated` event. This is the linear order the Media3
+     *  from the latest queue value. This is the linear order the Media3
      *  session and skip-by-index need; the in-app two-section projection reads
      *  [manualEntries] / [contextLane] separately. */
     private var entries: List<Meta> = emptyList()
@@ -280,10 +281,8 @@ class BaeCorePlayer(
     private var manualEntries: List<Meta> = emptyList()
     private var contextLane: ContextLane? = null
 
-    /** Context-tail entries fetched past [ContextLane.entries]'s initial window,
-     *  keyed by absolute index. Reset wholesale on every `QueueUpdated` — that
-     *  event is the invalidation signal for this ephemeral view cache, not
-     *  durable state to reconcile incrementally. */
+    /** Context-tail entries delivered past [ContextLane.entries]'s initial
+     *  window, keyed by absolute index. Replaced when the queue revision moves. */
     private var pagedUpcoming: Map<Int, QueueItem> = emptyMap()
 
     /** The queue revision the current [manualEntries]/[contextLane] were built
@@ -291,11 +290,9 @@ class BaeCorePlayer(
      *  under a since-superseded revision is dropped rather than merged. */
     private var queueRevision: ULong = 0u
 
-    /** In-flight [loadUpcomingRange] fetches, keyed "offset:end:revision", so
-     *  concurrent callers asking for the same range (every visible row in a
-     *  batch window composing at once) coalesce onto one bridge call instead of
-     *  each issuing a duplicate. */
-    private val inFlightUpcomingLoads = mutableMapOf<String, Job>()
+    /** Live page subscriptions keyed "offset:end:revision", so concurrent
+     *  callers asking for the same range share one database subscription. */
+    private val upcomingSubscriptions = mutableMapOf<String, LiveSubscription>()
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -612,13 +609,13 @@ class BaeCorePlayer(
     }
 
     /**
-     * Hydrate the playlist from a `QueueUpdated` event. The core resolves each
-     * item's metadata (including its cover image id) before emitting, so map both
+     * Apply the latest queue value. Core resolves each item's metadata
+     * (including its cover image id) before delivery, so map both
      * lanes straight to entries. The flat [entries] (manual lane then the context
      * tail) drives the Media3 session and skip-by-index; the two lanes are also
      * kept apart for the in-app two-section projection.
      */
-    override fun onQueueUpdated(
+    override fun onQueueValue(
         manual: List<BridgeQueueEntry>,
         context: BridgePlaybackContext?,
         hasNext: Boolean,
@@ -635,11 +632,18 @@ class BaeCorePlayer(
                     upcomingTotal = it.upcomingTotal.toInt(),
                 )
             }
+        if (revision < queueRevision) {
+            logger.warning("dropping queue value at revision $revision; revision $queueRevision is already applied")
+            return
+        }
+        val replacesPages = revision > queueRevision
         manualEntries = manualMetas
         contextLane = lane
-        // The event is the invalidation signal: every previously fetched page is
-        // dropped, not reconciled against the new snapshot.
-        pagedUpcoming = emptyMap()
+        if (replacesPages) {
+            upcomingSubscriptions.values.forEach(LiveSubscription::cancel)
+            upcomingSubscriptions.clear()
+            pagedUpcoming = emptyMap()
+        }
         queueRevision = revision
         entries = manualMetas + (lane?.entries ?: emptyList())
         this.hasNext = hasNext
@@ -648,24 +652,11 @@ class BaeCorePlayer(
     }
 
     /**
-     * Whether the context tail's absolute [index] is already loaded, either in
-     * the initial window or [pagedUpcoming].
-     */
-    private fun upcomingItemLoaded(index: Int): Boolean {
-        val lane = contextLane ?: return false
-        return lane.entries.getOrNull(index)?.toQueueItem() != null || pagedUpcoming.containsKey(index)
-    }
-
-    /**
-     * Fetch `[offset, offset + limit)` of the context's upcoming tail and merge
-     * it into [pagedUpcoming]. A no-op if the range is already loaded. The reply
-     * is applied only if its revision still matches [queueRevision]; a mismatch
-     * means a `QueueUpdated` for a newer queue state arrived while the fetch was
-     * in flight, and that event's wholesale reset already replaced the
-     * projection, so the reply is dropped rather than merged. Fetch failures are
-     * never swallowed silently: logged at warn with the failed range — a page
-     * fetch is background prefetch, not a user-initiated action with its own
-     * error-display path.
+     * Subscribe to `[offset, offset + limit)` of the context's upcoming tail and
+     * merge every delivered page into [pagedUpcoming]. A no-op if that range
+     * already has a subscription. A newer queue revision cancels all prior page
+     * subscriptions. Errors retain the last page and are logged because this is
+     * background prefetch with no separate error UI.
      */
     suspend fun loadUpcomingRange(
         offset: Int,
@@ -673,49 +664,37 @@ class BaeCorePlayer(
     ) {
         val lane = contextLane ?: return
         val end = minOf(offset + limit, lane.upcomingTotal)
-        // Nothing to fetch: an empty/backwards range, or every row in it already
-        // loaded. The `offset >= end` check short-circuits so the per-row scan
-        // only runs on a non-empty range.
-        if (offset >= end || (offset until end).all { upcomingItemLoaded(it) }) return
-
-        // Coalesce concurrent requests for the same range+revision: the first
-        // caller launches the fetch and removes the key once it settles; any
-        // caller that finds an in-flight job just awaits it.
+        if (offset >= end) return
         val key = "$offset:$end:$queueRevision"
-        val existing = inFlightUpcomingLoads[key]
-        if (existing != null) {
-            existing.join()
-        } else {
-            val job = scope.launch { fetchUpcomingRange(offset, end) }
-            inFlightUpcomingLoads[key] = job
-            job.join()
-            inFlightUpcomingLoads.remove(key)
-        }
-    }
+        if (upcomingSubscriptions.containsKey(key)) return
+        upcomingSubscriptions[key] =
+            appHandle.subscribeQueueUpcomingPage(
+                offset.toUInt(),
+                (end - offset).toUInt(),
+                object : QueueUpcomingCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeQueueUpcomingPage) {
+                        scope.launch {
+                            if (value.revision != queueRevision) {
+                                logger.warning(
+                                    "dropping upcoming page for [$offset, $end): delivered for a since-superseded revision",
+                                )
+                                return@launch
+                            }
+                            val loaded =
+                                value.entries
+                                    .mapIndexedNotNull { i, entry ->
+                                        entry.toEntry().toQueueItem()?.let { (offset + i) to it }
+                                    }.toMap()
+                            pagedUpcoming = pagedUpcoming + loaded
+                            publish()
+                        }
+                    }
 
-    private suspend fun fetchUpcomingRange(
-        offset: Int,
-        end: Int,
-    ) {
-        try {
-            val page = appHandle.getQueueUpcomingPage(offset.toUInt(), (end - offset).toUInt())
-            if (page.revision != queueRevision) {
-                logger.warning(
-                    "dropping upcoming page for [$offset, $end): fetched under a since-superseded revision",
-                )
-                return
-            }
-            val loaded =
-                page.entries
-                    .mapIndexedNotNull { i, entry -> entry.toEntry().toQueueItem()?.let { (offset + i) to it } }
-                    .toMap()
-            pagedUpcoming = pagedUpcoming + loaded
-            publish()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("failed to load upcoming range [$offset, $end)", e)
-        }
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        logger.error("upcoming range [$offset, $end) subscription failed", error)
+                    }
+                },
+            )
     }
 
     /**
@@ -950,5 +929,10 @@ class BaeCorePlayer(
 
     fun detachSystemHooks() {
         systemHooks.detach()
+    }
+
+    fun cancelQueuePageSubscriptions() {
+        upcomingSubscriptions.values.forEach(LiveSubscription::cancel)
+        upcomingSubscriptions.clear()
     }
 }

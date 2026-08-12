@@ -42,7 +42,7 @@ impl LibraryManager {
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. No playback side effect — unlike
     /// `pause_between_sides`, nothing is staged on it — so the write is the whole
-    /// operation; the resulting config invalidation re-renders the bar.
+    /// operation; the config value stream re-renders the bar.
     pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
         self.config_handle
             .update(|c| c.show_remaining_time = enabled)
@@ -50,7 +50,7 @@ impl LibraryManager {
 
     /// Whether the library page spans the window's full width instead of
     /// centering its content in a width-capped column. Pure display
-    /// preference: the write's config invalidation re-renders the page.
+    /// preference: the config value stream re-renders the page after the write.
     pub fn set_library_full_width(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
         self.config_handle
             .update(|c| c.library_full_width = enabled)

@@ -1,8 +1,6 @@
 use super::*;
-
 mod fail_import;
 use fail_import::*;
-
 impl Database {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
@@ -304,18 +302,8 @@ impl Database {
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
         let uploading = self.uploading_release_ids(filter).await?;
         let where_clause = storage_filter_where(filter, uploading.len());
-        let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
-
-        self.read(move |conn| {
-            conn.query_row(
-                &query,
-                coven::rusqlite::params_from_iter(uploading.iter()),
-                |row| row.get::<_, i64>(0),
-            )
-            .map(|c| c as u64)
-            .map_err(DbError::from)
-        })
-        .await
+        self.read(move |sql| storage_count_on(&sql, &where_clause, &uploading))
+            .await
     }
 
     /// Sum of `total_size` over every storage row matching `filter` — the
@@ -326,22 +314,8 @@ impl Database {
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
         let uploading = self.uploading_release_ids(filter).await?;
         let where_clause = storage_filter_where(filter, uploading.len());
-        let query = format!(
-            "SELECT COALESCE(SUM(rf.file_size), 0) \
-             FROM releases r JOIN release_files rf ON rf.release_id = r.id \
-             {where_clause}"
-        );
-
-        self.read(move |conn| {
-            conn.query_row(
-                &query,
-                coven::rusqlite::params_from_iter(uploading.iter()),
-                |row| row.get::<_, i64>(0),
-            )
-            .map(|c| c as u64)
-            .map_err(DbError::from)
-        })
-        .await
+        self.read(move |sql| storage_total_size_on(&sql, &where_clause, &uploading))
+            .await
     }
 
     /// Paginated storage-page query. Joins releases × albums × (optional)
@@ -386,27 +360,50 @@ impl Database {
 
         let query = Self::storage_page_query(&order_by, artist_sort_join, &where_clause);
 
-        self.read(move |sql| {
-            // The uploading ids bind before the page's limit/offset, matching
-            // their order in the rendered clause.
-            let mut binds: Vec<Box<dyn coven::rusqlite::ToSql>> = uploading
+        self.read(move |sql| storage_page_on(&sql, &query, &uploading, offset, limit))
+            .await
+    }
+
+    pub(crate) fn subscribe_storage_page(
+        &self,
+        sort: &StorageSortCriterion,
+        filter: StorageFilter,
+        uploading: Vec<String>,
+        offset: u64,
+        limit: u64,
+    ) -> coven::LiveQuery<StoragePageProjection> {
+        let (order_by, needs_artist_sort_join) = storage_order_by(sort);
+        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let where_clause = storage_filter_where(filter, uploading.len());
+        let query = Self::storage_page_query(&order_by, artist_sort_join, &where_clause);
+        self.inner.handle.subscribe(move |sql| {
+            let rows = storage_page_on(&sql, &query, &uploading, offset, limit)
+                .map_err(CovenError::from)?;
+            let total_count =
+                storage_count_on(&sql, &where_clause, &uploading).map_err(CovenError::from)?;
+            let total_size =
+                storage_total_size_on(&sql, &where_clause, &uploading).map_err(CovenError::from)?;
+            let cover_ids = rows
                 .iter()
-                .map(|id| Box::new(id.clone()) as Box<dyn coven::rusqlite::ToSql>)
-                .collect();
-            binds.push(Box::new(limit as i64));
-            binds.push(Box::new(offset as i64));
-            sql.query(
-                &query,
-                coven::rusqlite::params_from_iter(binds.iter()),
-                |row| {
-                    let release = row_to_release_summary(row)?;
-                    Ok(parse_album_summary_row(row).map(|album| DbStorageRow { release, album }))
-                },
-            )?
-            .into_iter()
-            .collect()
+                .flat_map(|row| {
+                    [row.release.id.clone()]
+                        .into_iter()
+                        .chain(resolve_primary_release_id(
+                            row.album.primary_release_id.as_deref(),
+                            row.album.release_ids.iter().map(String::as_str),
+                        ))
+                })
+                .collect::<Vec<_>>();
+            let cover_versions =
+                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &cover_ids)
+                    .map_err(CovenError::from)?;
+            Ok(StoragePageProjection {
+                rows,
+                total_count,
+                total_size,
+                cover_versions,
+            })
         })
-        .await
     }
 
     /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must
@@ -448,26 +445,29 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<ReleaseDetailContext>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
-                return Ok(None);
-            };
-            let album_artists = get_artists_for_album_on(&sql, &release.album_id)?;
-            let releases = get_releases_for_album_on(&sql, &release.album_id)?;
-            let Some(release_index) = releases.iter().position(|r| r.id == release_id) else {
-                return Ok(None);
-            };
-            // The album's compilation flag decides each track's display artist.
-            let is_compilation = find_album_by_id_on(&sql, &release.album_id)?
-                .is_some_and(|album| album.is_compilation);
-            Ok(Some(ReleaseDetailContext {
-                detail: build_release_detail_on(&sql, release)?,
-                album_artists,
-                release_index,
-                is_compilation,
-            }))
+        self.read(move |sql| find_release_detail_context_on(&sql, &release_id))
+            .await
+    }
+
+    pub(crate) fn subscribe_release_detail(
+        &self,
+        release_id: &str,
+    ) -> coven::LiveQuery<ReleaseDetailProjection> {
+        let release_id = release_id.to_string();
+        self.inner.handle.subscribe(move |sql| {
+            let context =
+                find_release_detail_context_on(&sql, &release_id).map_err(CovenError::from)?;
+            let cover_versions = super::blobs::image_versions_on(
+                &sql,
+                LibraryImageType::Cover,
+                std::slice::from_ref(&release_id),
+            )
+            .map_err(CovenError::from)?;
+            Ok(ReleaseDetailProjection {
+                context,
+                cover_versions,
+            })
         })
-        .await
     }
 
     /// Ordered by `created_at`.

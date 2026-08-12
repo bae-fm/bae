@@ -21,7 +21,7 @@ namespace Bae.Desktop;
 // VirtualizingStackPanel realizes only visible rows; a realized row resolves its
 // column positions through list.IdAt (a placeholder for a not-yet-loaded slot) and
 // triggers LoadRange for a batch window around itself. A realized row re-triggers
-// when the list's load epoch changes (an invalidation bumps the generation) or when
+// when the list's load epoch changes (a subscription value bumps the generation) or when
 // the list instance is swapped (a sort change), matching the BaeKit AlbumGridView.
 // The one expanded album's inline detail panel is injected under its host row.
 internal sealed class AlbumGridView : UserControl
@@ -526,9 +526,9 @@ internal sealed class AlbumRowControl : ContentControl
 
     private void OnListChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // A generation bump (invalidation) restarts this row's load — the epoch
-        // moved, so the cached segment is stale and re-fetches.
-        if (e.PropertyName == nameof(PaginatedList<Album, string>.Generation))
+        // A new page value restarts this row's load because its position may
+        // now resolve to a different album.
+        if (e.PropertyName == nameof(PaginatedList<Album, string>.Epoch))
         {
             KickLoad();
         }
