@@ -206,7 +206,7 @@ private fun NowPlayingTransportButtons(
     IconButton(onClick = onOpenQueue) {
         Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
     }
-    // set_repeat_mode is non-throwing; core emits RepeatModeChanged which updates
+    // set_repeat_mode is non-throwing; the retained playback subscription updates
     // the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented (TRACK uses
     // the repeat-one glyph).
     IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {

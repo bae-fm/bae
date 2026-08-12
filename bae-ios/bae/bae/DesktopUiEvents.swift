@@ -11,15 +11,10 @@ enum DesktopUiEvents {
     @MainActor
     static func ignore(_ event: BridgeUiEvent) {
         switch event {
-        case .previewIdle, .previewPlaying, .previewPaused, .previewProgress,
-            .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
+        case .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
             break
 
-        case .castStatusChanged, .playbackStopped, .playbackError,
-            .playbackLoading,
-            .playbackPlaying, .playbackPaused, .playbackProgress,
-            .playbackSeeked, .volumeChanged, .muteChanged, .repeatModeChanged,
-            .queueItemsAdded, .error:
+        case .playbackError, .queueItemsAdded, .error:
             preconditionFailure("Unhandled UI event \(event)")
         }
     }

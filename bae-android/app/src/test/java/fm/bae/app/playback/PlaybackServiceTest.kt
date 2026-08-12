@@ -11,6 +11,7 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SyncStatusStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,9 +25,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AlbumDetailCallback
 import uniffi.bae_bridge.AlbumPageCallback
+import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumPage
@@ -34,22 +35,22 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.CastDevicesCallback
-import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.BridgeDiagnostics
-import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
-import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.BridgeWorkDetail
+import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ComposerDetailCallback
 import uniffi.bae_bridge.ComposerPageCallback
+import uniffi.bae_bridge.ConfigCallback
+import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.LibrarySearchCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.ReleaseDetailCallback
 import uniffi.bae_bridge.SyncStatusCallback
@@ -93,8 +94,8 @@ class PlaybackServiceTest {
         // service can stop and restart (a fresh session over the same player) or
         // be killed by the system. Had onDestroy released the player, projecting a
         // new event would throw "Player is released".
-        session.playback.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        session.playback.applyPlaybackState(
+            playingState(
                 "t1",
                 "Track Title",
                 "Artist Name",
@@ -134,7 +135,8 @@ class PlaybackServiceTest {
             stores =
                 OpenLibraryStores(
                     library = LibraryStore(),
-                    config = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
+                    config = ConfigStore(BridgeFixtures.config()),
+                    syncStatus = SyncStatusStore(),
                     downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
                     outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
                     cast = CastStore(),
@@ -148,6 +150,7 @@ class PlaybackServiceTest {
                     isAppForeground = { false },
                 ),
             appContext = context,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }
 
@@ -178,8 +181,7 @@ internal class FakeAppHandle(
     val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
 
-    private fun liveSubscription(): FakeLiveSubscription =
-        FakeLiveSubscription().also(liveSubscriptions::add)
+    private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
 
     override fun pause() {
         pauseCount++
@@ -204,6 +206,8 @@ internal class FakeAppHandle(
     override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()
+
+    override fun subscribePlaybackValues(callback: PlaybackValuesCallback): LiveSubscription = liveSubscription()
 
     override fun triggerSync() {}
 

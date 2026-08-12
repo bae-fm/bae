@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackPauseReason
-import uniffi.bae_bridge.BridgeUiEvent
+import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -31,7 +31,7 @@ class PlaybackControlsTest {
     @Test
     fun togglePlayPausePausesWhilePlaying() {
         val (player, handle) = player()
-        player.onPlaying(playingEvent())
+        player.applyPlaybackState(playingEvent())
         shadowOf(Looper.getMainLooper()).idle()
 
         player.togglePlayPause()
@@ -44,7 +44,7 @@ class PlaybackControlsTest {
     @Test
     fun togglePlayPauseResumesWhilePaused() {
         val (player, handle) = player()
-        player.onPaused(pausedEvent())
+        player.applyPlaybackState(pausedEvent())
         shadowOf(Looper.getMainLooper()).idle()
 
         player.togglePlayPause()
@@ -57,7 +57,7 @@ class PlaybackControlsTest {
     @Test
     fun stopForwardsToCore() {
         val (player, handle) = player()
-        player.onPlaying(playingEvent())
+        player.applyPlaybackState(playingEvent())
         shadowOf(Looper.getMainLooper()).idle()
 
         (player as Player).stop()
@@ -70,7 +70,7 @@ class PlaybackControlsTest {
     fun volumeEventUpdatesTheVolumeFlow() {
         val (player, _) = player()
 
-        player.onVolumeChanged(0.3f)
+        player.applyValues(playbackValues(BridgePlaybackValueState.Stopped, volume = 0.3f))
 
         assertEquals(0.3f, player.volume.value)
     }
@@ -79,13 +79,13 @@ class PlaybackControlsTest {
     fun muteEventUpdatesTheMuteFlow() {
         val (player, _) = player()
 
-        player.onMuteChanged(true)
+        player.applyValues(playbackValues(BridgePlaybackValueState.Stopped, isMuted = true))
 
         assertEquals(true, player.isMuted.value)
     }
 
     private fun playingEvent() =
-        BridgeUiEvent.PlaybackPlaying(
+        playingState(
             trackId = "cur",
             trackTitle = "Title cur",
             artistNames = "Artist Name",
@@ -97,7 +97,7 @@ class PlaybackControlsTest {
         )
 
     private fun pausedEvent() =
-        BridgeUiEvent.PlaybackPaused(
+        pausedState(
             trackId = "cur",
             trackTitle = "Title cur",
             artistNames = "Artist Name",

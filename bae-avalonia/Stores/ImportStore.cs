@@ -350,43 +350,12 @@ internal sealed class ImportStore
         return true;
     }
 
-    // Import-preview and candidate-loudness events, which drive the import
-    // picker's live position label (and the system transport controls for the
-    // preview session), plus the queue sweep's progress. Routed here by the
-    // event router.
+    // Import progress is transient. Preview state and position arrive through
+    // the retained playback-values subscription.
     public void HandlePreviewEvent(BridgeUiEvent evt)
     {
         switch (evt)
         {
-            case BridgeUiEvent.PreviewProgress previewProgress:
-                var elapsed = BridgeDisplay.Clock(previewProgress.PositionMs);
-                PreviewElapsedText = _previewDurationLabel is null
-                    ? elapsed
-                    : $"{elapsed} / {_previewDurationLabel}";
-                PreviewElapsedChanged?.Invoke();
-                _mediaControls.UpdatePreviewPosition(previewProgress.PositionMs);
-                break;
-            case BridgeUiEvent.PreviewPlaying preview:
-                // Total duration arrives once when preview starts; the next
-                // PreviewProgress tick renders it alongside the elapsed position.
-                _previewDurationLabel = BridgeDisplay.Clock(preview.DurationMs);
-                PreviewingPath = preview.Path;
-                PreviewElapsedChanged?.Invoke();
-                _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: true);
-                break;
-            case BridgeUiEvent.PreviewPaused preview:
-                _previewDurationLabel = BridgeDisplay.Clock(preview.DurationMs);
-                PreviewingPath = preview.Path;
-                PreviewElapsedChanged?.Invoke();
-                _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: false);
-                break;
-            case BridgeUiEvent.PreviewIdle:
-                _previewDurationLabel = null;
-                PreviewingPath = null;
-                PreviewElapsedText = string.Empty;
-                PreviewElapsedChanged?.Invoke();
-                _mediaControls.UpdatePreviewIdle();
-                break;
             case BridgeUiEvent.CandidateImportLoudnessProgress:
                 // The sidebar shows import progress as a percent + step off the
                 // row's own BridgeCandidateImportStatus (delivered by the
@@ -403,6 +372,38 @@ internal sealed class ImportStore
                 BaeDiagnostics.Logger.Warning(
                     $"Unexpected BridgeUiEvent variant {evt.GetType().Name} reached the import preview handler.");
                 break;
+        }
+    }
+
+    public void ApplyPreviewValues(BridgePreviewValues values)
+    {
+        switch (values.State)
+        {
+            case BridgePreviewState.Playing playing:
+                _previewDurationLabel = BridgeDisplay.Clock(playing.DurationMs);
+                PreviewingPath = playing.Path;
+                _mediaControls.UpdateNowPlayingForPreview(
+                    playing.Path, playing.DurationMs, isPlaying: true);
+                break;
+            case BridgePreviewState.Paused paused:
+                _previewDurationLabel = BridgeDisplay.Clock(paused.DurationMs);
+                PreviewingPath = paused.Path;
+                _mediaControls.UpdateNowPlayingForPreview(
+                    paused.Path, paused.DurationMs, isPlaying: false);
+                break;
+            case BridgePreviewState.Idle:
+                _previewDurationLabel = null;
+                PreviewingPath = null;
+                _mediaControls.UpdatePreviewIdle();
+                break;
+        }
+        PreviewElapsedText = values.State is BridgePreviewState.Idle
+            ? string.Empty
+            : $"{BridgeDisplay.Clock(values.PositionMs)} / {_previewDurationLabel}";
+        PreviewElapsedChanged?.Invoke();
+        if (values.State is not BridgePreviewState.Idle)
+        {
+            _mediaControls.UpdatePreviewPosition(values.PositionMs);
         }
     }
 

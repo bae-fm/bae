@@ -13,7 +13,8 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
-import uniffi.bae_bridge.BridgeUiEvent
+import uniffi.bae_bridge.BridgePlaybackPosition
+import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -115,17 +116,19 @@ class PlaybackSeekProjectionTest {
 
         player.seekTo(75_000)
         shadowOf(Looper.getMainLooper()).idle()
-        player.onLoading(
-            trackId = "track-1",
-            track =
-                BridgeLoadingTrackInfo(
-                    trackTitle = "Track Title",
-                    artistNames = "Artist Name",
-                    albumId = "album-1",
-                    albumTitle = "Album Title",
-                    coverImage = null,
-                    durationMs = 100_000uL,
-                ),
+        player.applyPlaybackState(
+            loadingState(
+                trackId = "track-1",
+                track =
+                    BridgeLoadingTrackInfo(
+                        trackTitle = "Track Title",
+                        artistNames = "Artist Name",
+                        albumId = "album-1",
+                        albumTitle = "Album Title",
+                        coverImage = null,
+                        durationMs = 100_000uL,
+                    ),
+            ),
         )
 
         player.onProgress(positionMs = 20_000, durationMs = 100_000, progress = 0.20)
@@ -216,7 +219,7 @@ class PlaybackSeekProjectionTest {
         player.startPlaying(durationMs = 100_000uL)
         player.onProgress(positionMs = 25_000, durationMs = 100_000, progress = 0.25)
 
-        player.onStopped()
+        player.applyPlaybackState(BridgePlaybackValueState.Stopped)
 
         assertPosition(
             player.position.value,
@@ -265,8 +268,8 @@ class PlaybackSeekProjectionTest {
     }
 
     private fun BaeCorePlayer.startPlaying(durationMs: ULong) {
-        onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        applyPlaybackState(
+            playingState(
                 trackId = "track-1",
                 trackTitle = "Track Title",
                 artistNames = "Artist Name",
@@ -285,7 +288,12 @@ class PlaybackSeekProjectionTest {
         durationMs: Long,
         progress: Double,
     ) {
-        onProgress("track-1", positionMs, durationMs, progress)
+        applyValues(
+            playbackValues(
+                playingState(durationMs = durationMs.toULong()),
+                BridgePlaybackPosition("track-1", positionMs.toULong(), durationMs.toULong(), progress),
+            ),
+        )
     }
 
     private fun BaeCorePlayer.onSeeked(
@@ -293,7 +301,13 @@ class PlaybackSeekProjectionTest {
         durationMs: Long,
         progress: Double,
     ) {
-        onSeeked("track-1", positionMs, durationMs, progress)
+        applyValues(
+            playbackValues(
+                playingState(durationMs = durationMs.toULong()),
+                BridgePlaybackPosition("track-1", positionMs.toULong(), durationMs.toULong(), progress),
+                seekRevision = 1u,
+            ),
+        )
     }
 
     private fun assertPosition(

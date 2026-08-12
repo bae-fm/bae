@@ -21,7 +21,6 @@ public sealed class Settings
     /// <summary>Connected cloud provider's wire name, or null when not syncing.</summary>
     public string? SyncProvider { get; set; }
     public string? SyncAccount { get; set; }
-    public bool SyncReady { get; set; }
     public bool PauseBetweenSides { get; set; }
 
     /// <summary>Whether the seek bar's leading label counts down the time
@@ -95,28 +94,24 @@ public sealed class Settings
     }
 
     /// <summary>One-line sync state for the settings header.</summary>
-    [JsonIgnore]
-    public string SyncStatusText
+    public string SyncStatusText(bool? syncReady)
     {
-        get
+        if (SyncProvider is null)
         {
-            if (SyncProvider is null)
-            {
-                return Loc.Chrome("settings.sync.not_connected");
-            }
-            var account = string.IsNullOrEmpty(SyncAccount) ? string.Empty : $" ({SyncAccount})";
-            var state = SyncReady
-                ? Loc.Chrome("settings.sync.ready")
-                : Loc.Chrome("settings.sync.initializing");
-            return Loc.Chrome(
-                "settings.sync.status",
-                new System.Collections.Generic.Dictionary<string, object?>
-                {
-                    ["provider"] = ProviderLabel,
-                    ["account"] = account,
-                    ["state"] = state,
-                });
+            return Loc.Chrome("settings.sync.not_connected");
         }
+        var account = string.IsNullOrEmpty(SyncAccount) ? string.Empty : $" ({SyncAccount})";
+        var state = syncReady == true
+            ? Loc.Chrome("settings.sync.ready")
+            : Loc.Chrome("settings.sync.initializing");
+        return Loc.Chrome(
+            "settings.sync.status",
+            new System.Collections.Generic.Dictionary<string, object?>
+            {
+                ["provider"] = ProviderLabel,
+                ["account"] = account,
+                ["state"] = state,
+            });
     }
 
     /// <summary>

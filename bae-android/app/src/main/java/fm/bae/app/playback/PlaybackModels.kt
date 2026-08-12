@@ -2,13 +2,10 @@ package fm.bae.app.playback
 
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
-import uniffi.bae_bridge.BridgeUiEvent
 
 data class NowPlaying(
     val trackId: String,
@@ -83,49 +80,10 @@ data class QueueProjection(
 }
 
 /**
- * The playback-state intake [BaeCorePlayer] exposes to [fm.bae.app.data.UiEventAdapter].
- * Event routing depends on this contract, not the concrete player, so playback
- * handling can be exercised against a fake sink.
+ * The transient playback-event intake [BaeCorePlayer] exposes to
+ * [fm.bae.app.data.UiEventAdapter]. Retained playback and queue values arrive
+ * through their typed subscriptions.
  */
 interface PlaybackEventSink {
-    fun onLoading(
-        trackId: String,
-        track: BridgeLoadingTrackInfo?,
-    )
-
-    fun onPlaying(event: BridgeUiEvent.PlaybackPlaying)
-
-    fun onPaused(event: BridgeUiEvent.PlaybackPaused)
-
-    fun onStopped()
-
-    fun onProgress(
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long,
-        progress: Double,
-    )
-
-    fun onSeeked(
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long,
-        progress: Double,
-    )
-
-    fun onRepeatModeChanged(mode: BridgeRepeatMode)
-
-    fun onQueueValue(
-        manual: List<BridgeQueueEntry>,
-        context: BridgePlaybackContext?,
-        hasNext: Boolean,
-        hasPrevious: Boolean,
-        revision: ULong,
-    )
-
-    fun onVolumeChanged(volume: Float)
-
-    fun onMuteChanged(isMuted: Boolean)
-
     fun onQueueItemsAdded(count: Int)
 }

@@ -28,12 +28,8 @@ public enum UiEventDispatcher {
         appService: AppService
     ) -> Outcome {
         switch event {
-        case .playbackPlaying, .playbackPaused, .playbackLoading,
-            .playbackStopped, .playbackProgress,
-            .playbackSeeked, .volumeChanged, .muteChanged,
-            .repeatModeChanged, .queueItemsAdded,
-            .castStatusChanged:
-            appService.applyPlaybackEvent(event)
+        case .queueItemsAdded(let count):
+            appService.applyQueueItemsAdded(count)
 
         case .playbackError(let reason):
             appService.showError(reason)
@@ -41,8 +37,7 @@ public enum UiEventDispatcher {
         case .error(let error):
             appService.showError(error)
 
-        case .previewPlaying, .previewPaused, .previewIdle, .previewProgress,
-            .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
+        case .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
             // Preview, import-loudness, and the import queue's identify progress
             // are desktop-only: the platform sink owns them. iOS ignores them.
             return .unhandled

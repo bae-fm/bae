@@ -39,6 +39,11 @@ public class PaginatedListTests
         public int PageCalls;
         public TaskCompletionSource<bool>? Gate;
         public Exception? CountThrows;
+        public int ActivePageCount => _active.Count(active => active.Limit > 0);
+        public IReadOnlySet<int> ActivePageOffsets => _active
+            .Where(active => active.Limit > 0)
+            .Select(active => active.Offset)
+            .ToHashSet();
 
         public FakeSource(int n) => _rows = Enumerable.Range(0, n).Select(i => new Row(Id(i))).ToList();
 
@@ -217,6 +222,45 @@ public class PaginatedListTests
 
         Assert.Equal(Ids(0, 1, 2, 3, 4), list.AllLoadedIds);
         Assert.Equal(1, source.PageCalls);
+    }
+
+    [Fact]
+    public async Task Shrinking_final_page_removes_ids_beyond_the_new_total()
+    {
+        var source = new FakeSource(55);
+        var list = Make(source);
+        await list.LoadInitialAsync();
+        await list.LoadRangeAsync(50, 5);
+
+        source.SetRows(52);
+
+        Assert.Equal(52, list.TotalCount);
+        Assert.Equal(Id(50), list.IdAt(50));
+        Assert.Equal(Id(51), list.IdAt(51));
+        Assert.Null(list.IdAt(52));
+        Assert.Equal(Ids(50, 51), list.AllLoadedIds);
+    }
+
+    [Fact]
+    public async Task Visible_page_subscriptions_stay_bounded_while_scrolling()
+    {
+        var source = new FakeSource(500);
+        var list = Make(source);
+        await list.LoadInitialAsync();
+
+        for (var offset = 0; offset <= 250; offset += 50)
+        {
+            await list.LoadRangeAsync(offset, 50);
+        }
+
+        Assert.True(source.ActivePageCount <= 3);
+        Assert.DoesNotContain(0, source.ActivePageOffsets);
+        Assert.Null(list.IdAt(0));
+
+        source.SetRows(501);
+
+        Assert.Equal(501, list.TotalCount);
+        Assert.Null(list.IdAt(0));
     }
 
     [Fact]

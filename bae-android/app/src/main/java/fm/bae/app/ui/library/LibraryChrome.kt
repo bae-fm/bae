@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
@@ -57,12 +58,12 @@ import uniffi.bae_bridge.BridgeSortField
 
 @Composable
 internal fun LibraryErrorBanner(
-    page: LibraryPage,
+    page: AlbumPageStore,
     appError: String?,
     syncError: String?,
     session: OpenLibrary,
 ) {
-    val appendError = if (page.order.isNotEmpty()) page.error else null
+    val appendError = if (page.rows.isNotEmpty()) page.error else null
     val banner = appendError?.message ?: appError ?: syncError ?: return
     ErrorBanner(
         message = banner,

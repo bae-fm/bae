@@ -224,61 +224,64 @@ struct PaginatedListRowLoadIDTests {
 @Suite("PaginatedList segment management")
 struct PaginatedListSegmentTests {
     @MainActor
-    private func fiveAlbumList(_ store: LibraryStore) -> AlbumList {
+    private func albumList(_ store: LibraryStore) -> AlbumList {
         makeList(
             store: store,
-            albums: (0..<5).map { makeBridgeAlbum(id: "a\($0)") }
+            albums: (0..<55).map { makeBridgeAlbum(id: "a\($0)") }
         )
     }
 
     @MainActor
     @Test("overlapping ranges merge without duplicates")
     func overlappingMerge() async {
-        let list = fiveAlbumList(LibraryStore())
+        let list = albumList(LibraryStore())
         await list.loadInitial()
 
-        await list.loadRange(offset: 0, limit: 3)  // [0, 3)
-        await list.loadRange(offset: 1, limit: 3)  // [1, 4) overlaps
+        await list.loadRange(offset: 50, limit: 3)  // [50, 53)
+        await list.loadRange(offset: 51, limit: 3)  // [51, 54) overlaps
 
-        #expect(list.allLoadedIds == ["a0", "a1", "a2", "a3"])
+        #expect(list.allLoadedIds == (0..<54).map { "a\($0)" })
     }
 
     @MainActor
     @Test("adjacent ranges coalesce into one contiguous run")
     func adjacentCoalesce() async {
-        let list = fiveAlbumList(LibraryStore())
+        let list = albumList(LibraryStore())
         await list.loadInitial()
 
-        await list.loadRange(offset: 0, limit: 2)  // [0, 2)
-        await list.loadRange(offset: 2, limit: 2)  // [2, 4)
+        await list.loadRange(offset: 50, limit: 2)  // [50, 52)
+        await list.loadRange(offset: 52, limit: 2)  // [52, 54)
 
-        #expect(list.allLoadedIds == ["a0", "a1", "a2", "a3"])
-        #expect(list.idAt(3) == "a3")
+        #expect(list.allLoadedIds == (0..<54).map { "a\($0)" })
+        #expect(list.idAt(53) == "a53")
     }
 
     @MainActor
     @Test("a new range absorbs a segment it fully contains")
     func absorbsContainedSegment() async {
-        let list = fiveAlbumList(LibraryStore())
+        let list = albumList(LibraryStore())
         await list.loadInitial()
 
-        await list.loadRange(offset: 1, limit: 2)  // [1, 3)
-        await list.loadRange(offset: 0, limit: 4)  // [0, 4) contains it
+        await list.loadRange(offset: 51, limit: 2)  // [51, 53)
+        await list.loadRange(offset: 50, limit: 4)  // [50, 54) contains it
 
-        #expect(list.allLoadedIds == ["a0", "a1", "a2", "a3"])
+        #expect(list.allLoadedIds == (0..<54).map { "a\($0)" })
     }
 
     @MainActor
     @Test("disjoint ranges stay separate and sort by position")
     func disjointSortsByPosition() async {
-        let list = fiveAlbumList(LibraryStore())
+        let list = albumList(LibraryStore())
         await list.loadInitial()
 
-        await list.loadRange(offset: 3, limit: 2)  // [3, 5) loaded first
-        await list.loadRange(offset: 0, limit: 2)  // [0, 2)
+        await list.loadRange(offset: 53, limit: 2)  // [53, 55) loaded first
+        await list.loadRange(offset: 50, limit: 2)  // [50, 52)
 
-        #expect(list.allLoadedIds == ["a0", "a1", "a3", "a4"])
-        #expect(list.idAt(2) == nil)  // the gap stays unloaded
+        #expect(
+            list.allLoadedIds
+                == (0..<52).map { "a\($0)" } + ["a53", "a54"]
+        )
+        #expect(list.idAt(52) == nil)  // the gap stays unloaded
     }
 
     @MainActor
@@ -313,6 +316,120 @@ struct PaginatedListSegmentTests {
         #expect(list.idAt(50) == "a50")
     }
 
+    @MainActor
+    @Test("a shrinking final page removes ids beyond the new total")
+    func shrinkingFinalPageClipsLoadedIds() async {
+        let source = MutableAlbumPageSource(count: 55)
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+        await list.loadRange(offset: 50, limit: 5)
+
+        await source.setCount(52)
+
+        #expect(list.totalCount == 52)
+        #expect(list.idAt(50) == "a50")
+        #expect(list.idAt(51) == "a51")
+        #expect(list.idAt(52) == nil)
+        #expect(list.allLoadedIds == (0..<52).map { "a\($0)" })
+    }
+
+    @MainActor
+    @Test("visible page subscriptions stay bounded while scrolling")
+    func visiblePageSubscriptionsStayBounded() async {
+        let source = MutableAlbumPageSource(count: 500)
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+
+        for offset in stride(from: 50, through: 250, by: 50) {
+            await list.loadRange(offset: offset, limit: 50)
+        }
+
+        #expect(source.activeCount <= 3)
+        #expect(!source.activeOffsets.contains(0))
+        #expect(list.idAt(0) == nil)
+
+        await source.setCount(501)
+
+        #expect(list.totalCount == 501)
+        #expect(list.idAt(0) == nil)
+    }
+
+}
+
+private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
+    private struct Active {
+        let offset: Int
+        let limit: Int
+        let onValue: @MainActor @Sendable ([BridgeAlbum], Int) -> Void
+    }
+
+    private let lock = NSLock()
+    private var count: Int
+    private var active: [UUID: Active] = [:]
+
+    init(count: Int) {
+        self.count = count
+    }
+
+    var activeCount: Int { lock.withLock { active.count } }
+    var activeOffsets: Set<Int> {
+        lock.withLock { Set(active.values.map(\.offset)) }
+    }
+
+    func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
+        onError _: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        let id = UUID()
+        let active = Active(offset: offset, limit: limit, onValue: onValue)
+        lock.withLock { self.active[id] = active }
+        Task { await deliver(active) }
+        return MutablePageSubscription { [weak self] in
+            guard let self else { return }
+            self.lock.withLock { _ = self.active.removeValue(forKey: id) }
+        }
+    }
+
+    func setCount(_ count: Int) async {
+        let subscriptions = lock.withLock {
+            self.count = count
+            return Array(active.values)
+        }
+        for subscription in subscriptions {
+            await deliver(subscription)
+        }
+    }
+
+    private func deliver(_ active: Active) async {
+        let count = lock.withLock { self.count }
+        let end = min(active.offset + active.limit, count)
+        let rows = active.offset < end
+            ? (active.offset..<end).map { makeBridgeAlbum(id: "a\($0)") }
+            : []
+        await active.onValue(rows, count)
+    }
+}
+
+private final class MutablePageSubscription: PageSubscription, @unchecked Sendable {
+    private let onCancel: @Sendable () -> Void
+
+    init(onCancel: @escaping @Sendable () -> Void) {
+        self.onCancel = onCancel
+    }
+
+    func cancel() {
+        onCancel()
+    }
 }
 
 /// One-shot async gate: `page()` awaits `wait()`; the test resumes every waiter

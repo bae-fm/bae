@@ -460,6 +460,24 @@ impl AppHandle {
         std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
+    pub fn subscribe_playback_values(
+        &self,
+        callback: Box<dyn crate::types::PlaybackValuesCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let mut values = self.services.subscribe_playback_values();
+        let task = self.runtime.handle().spawn(async move {
+            callback.on_value(BridgePlaybackValues::from_core(
+                values.borrow_and_update().clone(),
+            ));
+            while values.changed().await.is_ok() {
+                callback.on_value(BridgePlaybackValues::from_core(
+                    values.borrow_and_update().clone(),
+                ));
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
+    }
+
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
     pub async fn resolve_to_track_ids(&self, ids: Vec<String>) -> Result<Vec<String>, BridgeError> {
@@ -804,17 +822,10 @@ impl AppHandle {
         callback: Box<dyn crate::types::ConfigCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         let mut values = self.services.subscribe_config_changes();
-        let services = self.services.clone();
         let task = self.runtime.handle().spawn(async move {
-            callback.on_value(
-                BridgeConfig::from_core(&values.borrow_and_update()),
-                services.is_sync_ready(),
-            );
+            callback.on_value(BridgeConfig::from_core(&values.borrow_and_update()));
             while values.changed().await.is_ok() {
-                callback.on_value(
-                    BridgeConfig::from_core(&values.borrow_and_update()),
-                    services.is_sync_ready(),
-                );
+                callback.on_value(BridgeConfig::from_core(&values.borrow_and_update()));
             }
         });
         std::sync::Arc::new(crate::LiveSubscription::new(task))
@@ -965,36 +976,3 @@ impl AppHandle {
         self.services.retry_downloads();
     }
 }
-
-/// Playback-state persistence, deliberately **not** `cancellable`.
-///
-/// Both of these write playback state to disk and must run to completion: dropping the
-/// future partway leaves the queue, current track, and position unwritten, so the next cold
-/// launch silently restores stale state. `BaeApp`'s `ShutdownRace` relies on this — it lets
-/// the losing task keep running rather than cancelling it.
-#[uniffi::export(async_runtime = "tokio")]
-impl AppHandle {
-    /// Graceful shutdown: saves playback state to disk, then stops the playback service.
-    pub async fn shutdown(&self) {
-        #[cfg(feature = "desktop")]
-        {
-            self.desktop.shutdown_mcp();
-            self.desktop.shutdown_subsonic();
-            self.services.playback_shutdown().await;
-        }
-        #[cfg(not(feature = "desktop"))]
-        self.services.playback_shutdown().await;
-    }
-
-    /// Persist the current playback state without stopping playback. Mobile
-    /// calls this when the app is backgrounded so the queue, current track, and
-    /// position survive a later cold launch — it can't call `shutdown`, which
-    /// would stop the background audio.
-    pub async fn save_playback_state(&self) {
-        self.services.playback_save_state().await;
-    }
-}
-
-// =========================================================================
-// Release gallery (all platforms)
-// =========================================================================

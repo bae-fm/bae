@@ -466,6 +466,12 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
+    pub fn subscribe_playback_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackValues> {
+        self.inner.playback.subscribe_values()
+    }
+
     pub fn subscribe_queue_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,

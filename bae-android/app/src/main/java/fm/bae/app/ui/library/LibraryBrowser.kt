@@ -81,8 +81,8 @@ internal fun LibraryBrowser(
     onSettings: () -> Unit,
     onDownloads: () -> Unit,
 ) {
-    val syncing by session.configStore.syncing.collectAsState()
-    val syncError by session.configStore.syncError.collectAsState()
+    val syncSnapshot by session.syncStatusStore.snapshot.collectAsState()
+    val syncError by session.syncStatusStore.error.collectAsState()
     val appError by session.configStore.error.collectAsState()
     val appContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -103,7 +103,7 @@ internal fun LibraryBrowser(
             onComposerSortChange = { state.composerSortCriterion = it },
             artistSortCriterion = state.artistSortCriterion,
             onArtistSortChange = { state.artistSortCriterion = it },
-            syncing = syncing,
+            syncing = syncSnapshot?.syncing == true,
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
         )
@@ -123,7 +123,6 @@ internal fun LibraryBrowser(
             onSelectComposer = onSelectComposer,
             onSelectArtist = onSelectArtist,
             onSelectWork = onSelectWork,
-            appContext = appContext,
         )
         NowPlayingBar(session = session)
     }
@@ -172,7 +171,6 @@ private fun LibraryBrowserContent(
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
-    appContext: Context,
 ) {
     Box(modifier = modifier) {
         if (searchQuery.isNotBlank()) {
@@ -194,7 +192,6 @@ private fun LibraryBrowserContent(
                         syncError = syncError,
                         gridState = gridState,
                         onSelectAlbum = onSelectAlbum,
-                        appContext = appContext,
                     )
                 }
 
@@ -205,7 +202,6 @@ private fun LibraryBrowserContent(
                         appError = appError,
                         syncError = syncError,
                         onSelectComposer = onSelectComposer,
-                        appContext = appContext,
                     )
                 }
 
@@ -216,7 +212,6 @@ private fun LibraryBrowserContent(
                         appError = appError,
                         syncError = syncError,
                         onSelectArtist = onSelectArtist,
-                        appContext = appContext,
                     )
                 }
             }
@@ -232,13 +227,11 @@ private fun AlbumBrowserContent(
     syncError: String?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
-    appContext: Context,
 ) {
     val page =
         rememberLibraryPage(
             session = session,
             sortCriterion = sortCriterion,
-            appContext = appContext,
             gridState = gridState,
         )
     Column(modifier = Modifier.fillMaxSize()) {
@@ -264,13 +257,11 @@ private fun ComposerBrowserContent(
     appError: String?,
     syncError: String?,
     onSelectComposer: (String) -> Unit,
-    appContext: Context,
 ) {
     val page =
         rememberComposerPage(
             session = session,
             sortCriterion = sortCriterion,
-            appContext = appContext,
         )
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryGlobalErrorBanner(
@@ -292,13 +283,11 @@ private fun ArtistBrowserContent(
     appError: String?,
     syncError: String?,
     onSelectArtist: (String) -> Unit,
-    appContext: Context,
 ) {
     val page =
         rememberArtistPage(
             session = session,
             sortCriterion = sortCriterion,
-            appContext = appContext,
         )
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryGlobalErrorBanner(

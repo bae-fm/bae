@@ -190,8 +190,8 @@ private fun LibraryOpenScreen(
     // The Resume shortcut opens the app straight into playback. Opening the
     // library already restored the queue paused at the saved position, so this
     // is the explicit resume that turns that restore into audio. The resulting
-    // PlaybackPlaying event brings the foreground playback service up (the app is
-    // foregrounded by the launch), the same path an on-screen play uses. Keyed on
+    // retained playing value brings the foreground playback service up (the app
+    // is foregrounded by the launch), the same path an on-screen play uses. Keyed on
     // the session + action so it fires once and re-arms only for a fresh request;
     // the Search shortcut seeds the browser through LibraryScreen instead.
     LaunchedEffect(session, shortcutAction) {

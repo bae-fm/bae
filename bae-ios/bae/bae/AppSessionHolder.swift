@@ -3,8 +3,8 @@ import Foundation
 import Observation
 
 /// Position-update tick interval handed to the bridge, in milliseconds.
-/// bae-core drives the playback engine and emits `PlaybackProgress` at this
-/// cadence; the progress bar re-renders from each tick.
+/// bae-core drives the playback engine and updates its retained playback value
+/// at this cadence; the progress bar re-renders from each delivered value.
 private let positionUpdateIntervalMs: UInt32 = 200
 
 struct LockedLibrary {

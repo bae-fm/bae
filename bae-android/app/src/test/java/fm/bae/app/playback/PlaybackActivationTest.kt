@@ -16,7 +16,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
-import uniffi.bae_bridge.BridgeUiEvent
 
 /**
  * When playback activates, the player must project a non-empty timeline in
@@ -58,14 +57,14 @@ class PlaybackActivationTest {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = false)
 
-        player.onLoading("t1", loadingTrack())
+        player.applyPlaybackState(loadingState("t1", loadingTrack()))
         shadowOf(Looper.getMainLooper()).idle()
 
         // Non-empty timeline + BUFFERING + play-when-ready is exactly Media3's
         // "user engaged" condition for posting the notification and going
         // foreground. Dropping the loading metadata would leave an empty timeline
         // forced to STATE_IDLE, so the service would only go foreground at the
-        // (often much later) PlaybackPlaying.
+        // later playing value.
         assertEquals(Player.STATE_BUFFERING, player.playbackState)
         assertTrue(player.playWhenReady)
         assertEquals(1, player.currentTimeline.windowCount)
@@ -79,8 +78,8 @@ class PlaybackActivationTest {
 
         // A track is playing, then the next begins loading before its metadata
         // resolves (the bare loading event carries no track).
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 "t1",
                 "First Title",
                 "Artist Name",
@@ -91,7 +90,7 @@ class PlaybackActivationTest {
                 200_000uL,
             ),
         )
-        player.onLoading("t2", null)
+        player.applyPlaybackState(loadingState("t2", null))
         shadowOf(Looper.getMainLooper()).idle()
 
         // The previous track stays current (with a spinner) so the timeline never
@@ -109,7 +108,7 @@ class PlaybackActivationTest {
         // The service must come up while the track is still loading — before the
         // possibly-long download finishes and the screen locks — the instant core
         // resolves the loading track's metadata, not only once it starts playing.
-        player.onLoading("t1", loadingTrack())
+        player.applyPlaybackState(loadingState("t1", loadingTrack()))
         shadowOf(Looper.getMainLooper()).idle()
 
         val started = shadowOf(context).nextStartedService
@@ -124,7 +123,7 @@ class PlaybackActivationTest {
         // A bare loading event with no prior track has nothing to host yet, so it
         // must not start the service (which would otherwise be an idle service the
         // system reclaims). The resolved event that follows starts it.
-        player.onLoading("t1", null)
+        player.applyPlaybackState(loadingState("t1", null))
         shadowOf(Looper.getMainLooper()).idle()
 
         assertNull(shadowOf(context).nextStartedService)
@@ -135,8 +134,8 @@ class PlaybackActivationTest {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = true)
 
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 "t1",
                 "Track Title",
                 "Artist Name",
@@ -162,8 +161,8 @@ class PlaybackActivationTest {
         // lock-screen control) must not start the service — Android forbids a
         // service start from the background. The service started when playback
         // began on screen keeps the audio alive.
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 "t1",
                 "Track Title",
                 "Artist Name",

@@ -40,8 +40,7 @@ enum PreviewData {
                     discogsUsable: false,
                     sync: nil
                 )
-            ),
-            syncReady: false
+            )
         )
     }
 
@@ -317,6 +316,7 @@ extension View {
         downloadStore: DownloadStore? = nil
     ) -> some View {
         environment(PreviewData.configStore())
+            .environment(SyncStatusStore())
             .environment(libraryStore ?? PreviewData.libraryStore())
             .environment(playbackStore ?? PreviewData.playbackStore())
             .environment(downloadStore ?? PreviewData.downloadStore())

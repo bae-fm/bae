@@ -240,7 +240,7 @@ private fun ExpandedSecondaryControls(session: OpenLibrary) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // set_repeat_mode is non-throwing; core emits RepeatModeChanged which
+        // set_repeat_mode is non-throwing; the retained playback subscription
         // updates the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented
         // (TRACK uses the repeat-one glyph). Same logic as the compact bar.
         IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
@@ -263,9 +263,9 @@ private fun ExpandedVolumeRow(session: OpenLibrary) {
     val volume by session.playback.volume.collectAsState()
     val isMuted by session.playback.isMuted.collectAsState()
     // Mute toggle + level slider. While dragging, follow the finger from a local
-    // value (cleared on release); the VolumeChanged events would otherwise snap the
+    // value (cleared on release); retained volume updates would otherwise snap the
     // thumb back mid-drag, same as the seek slider above. Both bridge calls are
-    // non-throwing; the resulting VolumeChanged/MuteChanged events drive the flows.
+    // non-throwing; retained playback values drive the flows.
     var dragVolume by remember { mutableStateOf<Float?>(null) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { session.appHandle.setMuted(!isMuted) }) {

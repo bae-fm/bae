@@ -17,9 +17,8 @@ private let logger = Logger.bae("AppService")
 @MainActor
 final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Import-flow session state — folder candidates and the preview audio
-    /// state. Mixed-writer: core drives event-driven fields (scan/identify state
-    /// via live values, preview state via the shared event
-    /// dispatcher); views drive user-set fields (mode, coverPick).
+    /// state. Mixed-writer: core drives scan/identify and preview state through
+    /// retained values; views drive user-set fields (mode, coverPick).
     private let importStore: ImportStore
 
     /// Navigation and selection state — which album is expanded, which release
@@ -67,10 +66,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         initialOutbox: BridgeOutboxSnapshot
     ) {
         let playbackStore = PlaybackStore()
-        let configStore = ConfigStore(
-            config: Config(bridge: config),
-            syncReady: appHandle.isSyncReady()
-        )
+        let configStore = ConfigStore(config: Config(bridge: config))
+        let syncStatusStore = SyncStatusStore()
         let libraryStore = LibraryStore()
         let downloadStore = DownloadStore(
             snapshot: appHandle.getDownloadSnapshot()
@@ -119,6 +116,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let components = AppServiceComponents(
             playbackStore: playbackStore,
             configStore: configStore,
+            syncStatusStore: syncStatusStore,
             libraryStore: libraryStore,
             downloadStore: downloadStore,
             castStore: castStore,
@@ -143,6 +141,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
 
     override func showError(_ error: DisplayError) {
         uiStore.showError(error)
+    }
+
+    override func applyPlatformPlaybackValues(_ values: BridgePlaybackValues) {
+        desktopEvents.apply(values.preview)
     }
 
     /// Wire the live `AppHandle` into the stores: start the common and desktop

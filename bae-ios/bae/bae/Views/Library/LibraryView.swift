@@ -327,7 +327,8 @@ extension LibraryView {
         }
         do {
             try await Task.sleep(for: .milliseconds(300))
-        } catch {
+        }
+        catch {
             return
         }
         for await result in library.searchResults(query) {
@@ -344,20 +345,20 @@ extension LibraryView {
 }
 
 private struct LibrarySyncToolbarStatus: View {
-    @Environment(ConfigStore.self)
-    private var configStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatusStore
 
     var body: some View {
         Group {
             // The live spinner is its own element, driven by an in-progress cycle;
             // the badge word comes from core's indicator when no cycle is running.
-            if configStore.syncing {
+            if syncStatusStore.syncing {
                 ProgressView()
                     .controlSize(.small)
                     .accessibilityLabel(Text("syncing\u{2026}"))
             }
             else {
-                Text(SyncIndicatorLabel.text(configStore.syncIndicator))
+                Text(SyncIndicatorLabel.text(syncStatusStore.indicator))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -419,6 +420,8 @@ private struct DownloadsStrip: View {
 private struct LibraryBanner: View {
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatusStore
     @Environment(Sync.self)
     private var sync
 
@@ -435,7 +438,7 @@ private struct LibraryBanner: View {
                 .accessibilityLabel("Dismiss")
             }
         }
-        else if let error = configStore.syncError {
+        else if let error = syncStatusStore.error {
             banner(message: error.line) {
                 Button("Retry") { sync.triggerSync() }
                     .font(.caption.bold())

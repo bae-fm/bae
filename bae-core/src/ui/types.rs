@@ -99,77 +99,14 @@ impl PlaybackErrorReason {
     }
 }
 
-/// Top-level UI event. One enum for everything. Events that carry a new value
-/// inline use a top-level variant; database-backed state uses live-result
-/// subscriptions instead of this transient event stream.
-/// High-frequency events (PlaybackProgress, PreviewProgress) go to NSViews on
-/// the native side. Everything else goes to the @Observable store.
+/// Transient notifications that do not describe retained application state.
 #[derive(Debug, Clone)]
 pub enum UiBusEvent {
-    // ── Playback ───────────────────────────────────────────────────
-    PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
     /// downloaded yet, or an in-core decode failure. Carries a typed reason the
     /// UI renders for its locale; playback falls back to stopped.
     PlaybackError {
         reason: PlaybackErrorReason,
-    },
-    PlaybackLoading {
-        track_id: String,
-        /// The target track's display metadata, once core has resolved it.
-        /// `None` in the first loading event (before the DB lookup), `Some`
-        /// once the prepared track is in hand — letting the UI switch the
-        /// now-playing bar from the prior track to the target while audio is
-        /// still downloading.
-        track: Option<crate::playback::LoadingTrack>,
-    },
-    PlaybackPlaying {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        artist_id: String,
-        album_id: String,
-        album_title: String,
-        cover_image: Option<crate::album_detail::ImageRef>,
-        duration_ms: u64,
-    },
-    PlaybackPaused {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        artist_id: String,
-        album_id: String,
-        album_title: String,
-        cover_image: Option<crate::album_detail::ImageRef>,
-        duration_ms: u64,
-        reason: crate::playback::PlaybackPauseReason,
-    },
-    /// Position tick — goes to NSView.
-    PlaybackProgress {
-        track_id: String,
-        position_ms: u64,
-        /// User-facing track duration (pregap-adjusted), so the media-control
-        /// update reads it from the event instead of the now-playing slice.
-        duration_ms: u64,
-        progress: f64,
-    },
-    /// Position after a seek completes — goes to NSView.
-    PlaybackSeeked {
-        track_id: String,
-        position_ms: u64,
-        /// User-facing track duration (pregap-adjusted), so the media-control
-        /// update reads it from the event instead of the now-playing slice.
-        duration_ms: u64,
-        progress: f64,
-    },
-    VolumeChanged {
-        volume: f32,
-    },
-    MuteChanged {
-        is_muted: bool,
-    },
-    RepeatModeChanged {
-        mode: crate::playback::RepeatMode,
     },
     /// Tracks were just appended/inserted into the queue. Carries the count
     /// for a transient "+N" UI indicator. Fires only on add operations
@@ -177,22 +114,6 @@ pub enum UiBusEvent {
     /// never on remove/reorder/clear. Suppressed when count is zero.
     QueueItemsAdded {
         count: u32,
-    },
-
-    // ── Preview ────────────────────────────────────────────────────
-    PreviewIdle,
-    PreviewPlaying {
-        path: String,
-        duration_ms: u64,
-    },
-    PreviewPaused {
-        path: String,
-        duration_ms: u64,
-    },
-    /// High-frequency tick — goes to NSView, not store.
-    PreviewProgress {
-        position_ms: u64,
-        progress: f64,
     },
 
     // ── Import live progress ───────────────────────────────────────
@@ -214,14 +135,6 @@ pub enum UiBusEvent {
     ImportQueueIdentifyProgress {
         identified: u32,
         total: u32,
-    },
-
-    // ── Cast ───────────────────────────────────────────────────────
-    /// The active renderer changed: `Some(name)` when playback moved to a Cast
-    /// device, `None` when it returned to local output. Drives the cast button's
-    /// active state and the "Casting to `<name>`" row.
-    CastStatusChanged {
-        device_name: Option<String>,
     },
 
     // ── Errors ─────────────────────────────────────────────────────

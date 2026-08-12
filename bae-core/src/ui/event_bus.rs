@@ -48,116 +48,11 @@ impl UiEventBus {
 
             while let Some(event) = rx.recv().await {
                 match event {
-                    PlaybackProgress::StateChanged { state } => {
-                        let bus_event = match &state {
-                            crate::playback::PlaybackState::Stopped => UiBusEvent::PlaybackStopped,
-                            crate::playback::PlaybackState::Loading { track_id, resolved } => {
-                                UiBusEvent::PlaybackLoading {
-                                    track_id: track_id.clone(),
-                                    track: resolved.clone(),
-                                }
-                            }
-                            crate::playback::PlaybackState::Playing {
-                                track_info,
-                                duration_ms,
-                            } => UiBusEvent::PlaybackPlaying {
-                                track_id: track_info.track_id.clone(),
-                                track_title: track_info.track_title.clone(),
-                                artist_names: track_info.artist_names.clone(),
-                                artist_id: track_info.artist_id.clone(),
-                                album_id: track_info.album_id.clone(),
-                                album_title: track_info.album_title.clone(),
-                                cover_image: track_info.cover_image.clone(),
-                                duration_ms: *duration_ms,
-                            },
-                            crate::playback::PlaybackState::Paused {
-                                track_info,
-                                duration_ms,
-                                reason,
-                            } => UiBusEvent::PlaybackPaused {
-                                track_id: track_info.track_id.clone(),
-                                track_title: track_info.track_title.clone(),
-                                artist_names: track_info.artist_names.clone(),
-                                artist_id: track_info.artist_id.clone(),
-                                album_id: track_info.album_id.clone(),
-                                album_title: track_info.album_title.clone(),
-                                cover_image: track_info.cover_image.clone(),
-                                duration_ms: *duration_ms,
-                                reason: reason.clone(),
-                            },
-                        };
-                        bus.emit(bus_event);
-                    }
-                    PlaybackProgress::PositionUpdate {
-                        track_id,
-                        position_ms,
-                        duration_ms,
-                        progress,
-                    } => {
-                        bus.emit(UiBusEvent::PlaybackProgress {
-                            track_id,
-                            position_ms,
-                            duration_ms,
-                            progress,
-                        });
-                    }
-                    PlaybackProgress::Seeked {
-                        track_id,
-                        position_ms,
-                        duration_ms,
-                        progress,
-                    } => {
-                        bus.emit(UiBusEvent::PlaybackSeeked {
-                            track_id,
-                            position_ms,
-                            duration_ms,
-                            progress,
-                        });
-                    }
                     PlaybackProgress::QueueItemsAdded { count } => {
                         bus.emit(UiBusEvent::QueueItemsAdded { count });
                     }
-                    PlaybackProgress::VolumeChanged { volume } => {
-                        bus.emit(UiBusEvent::VolumeChanged { volume });
-                    }
-                    PlaybackProgress::MuteChanged { is_muted } => {
-                        bus.emit(UiBusEvent::MuteChanged { is_muted });
-                    }
-                    PlaybackProgress::RepeatModeChanged { mode } => {
-                        bus.emit(UiBusEvent::RepeatModeChanged { mode });
-                    }
-                    PlaybackProgress::PreviewStateChanged(state) => {
-                        let bus_event = match &state {
-                            crate::playback::PreviewState::Idle => UiBusEvent::PreviewIdle,
-                            crate::playback::PreviewState::Playing { path, duration_ms } => {
-                                UiBusEvent::PreviewPlaying {
-                                    path: path.clone(),
-                                    duration_ms: *duration_ms,
-                                }
-                            }
-                            crate::playback::PreviewState::Paused { path, duration_ms } => {
-                                UiBusEvent::PreviewPaused {
-                                    path: path.clone(),
-                                    duration_ms: *duration_ms,
-                                }
-                            }
-                        };
-                        bus.emit(bus_event);
-                    }
-                    PlaybackProgress::PreviewPositionUpdate {
-                        position_ms,
-                        progress,
-                    } => {
-                        bus.emit(UiBusEvent::PreviewProgress {
-                            position_ms,
-                            progress,
-                        });
-                    }
                     PlaybackProgress::PlaybackError { reason } => {
                         bus.emit(UiBusEvent::PlaybackError { reason });
-                    }
-                    PlaybackProgress::RemoteStatusChanged { device_name } => {
-                        bus.emit(UiBusEvent::CastStatusChanged { device_name });
                     }
                     _ => {}
                 }

@@ -1,0 +1,32 @@
+package fm.bae.app.data
+
+import fm.bae.app.ErrorLines
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import uniffi.bae_bridge.BridgeSyncIndicator
+import uniffi.bae_bridge.BridgeSyncStatusSnapshot
+import uniffi.bae_bridge.bridgeSyncIndicator
+
+/** Runtime sync state. The sync-status value stream is its only writer. */
+class SyncStatusStore(
+    private val indicatorFor: (BridgeSyncStatusSnapshot) -> BridgeSyncIndicator = ::bridgeSyncIndicator,
+) {
+    private val _snapshot = MutableStateFlow<BridgeSyncStatusSnapshot?>(null)
+    val snapshot: StateFlow<BridgeSyncStatusSnapshot?> = _snapshot.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _indicator = MutableStateFlow<BridgeSyncIndicator>(BridgeSyncIndicator.Idle)
+    val indicator: StateFlow<BridgeSyncIndicator> = _indicator.asStateFlow()
+
+    fun apply(
+        status: BridgeSyncStatusSnapshot,
+        errors: ErrorLines,
+    ) {
+        _snapshot.value = status
+        _error.value = status.error?.let(errors::line)
+        _indicator.value = indicatorFor(status)
+    }
+}

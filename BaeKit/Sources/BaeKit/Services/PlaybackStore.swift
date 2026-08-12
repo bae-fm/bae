@@ -3,6 +3,12 @@ import SwiftUI
 import os.log
 
 private let logger = Logger.bae("PlaybackStore")
+private let maximumUpcomingPageSubscriptions = 3
+
+private struct UpcomingPageKey: Hashable {
+    let range: Range<Int>
+    let revision: UInt64
+}
 
 /// Mirror of core's playback state. The event dispatcher is the sole writer:
 /// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
@@ -39,11 +45,13 @@ public class PlaybackStore {
     /// under a since-superseded revision is dropped rather than merged.
     @ObservationIgnored
     public private(set) var revision: UInt64 = 0
-    /// Live page subscriptions, keyed "offset:end:revision", so concurrent
-    /// callers asking for the same range share one database subscription.
+    /// Live pages around the reported visible window. Moving the window evicts
+    /// both subscriptions and their rows, so scroll history does not remain
+    /// subscribed or cached.
     @ObservationIgnored
-    private var upcomingSubscriptions: [String: any LiveSubscriptionProtocol] =
-        [:]
+    private var upcomingSubscriptions:
+        [UpcomingPageKey: any LiveSubscriptionProtocol] =
+            [:]
 
     /// Current playback position. Updates at display rate during playback —
     /// far too frequent for `@Observable`; published as a Combine signal so
@@ -77,81 +85,6 @@ public class PlaybackStore {
     }
 
     public init() {}
-
-    public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
-        guard snapshot.revision >= revision else {
-            logger.debug(
-                "dropping queue snapshot at revision \(snapshot.revision); revision \(self.revision) is already applied"
-            )
-            return
-        }
-        let replacesPages = snapshot.revision > revision
-        manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
-        queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
-        revision = snapshot.revision
-        if replacesPages {
-            for subscription in upcomingSubscriptions.values {
-                subscription.cancel()
-            }
-            upcomingSubscriptions = [:]
-            pagedUpcoming = [:]
-        }
-    }
-
-    /// The context-tail item at absolute `index`, or `nil` if not yet loaded —
-    /// either still outside the initial window and not yet paged in, or past
-    /// `upcomingTotal` entirely.
-    public func upcomingItem(at index: Int) -> QueueItem? {
-        guard let context = queueContext else {
-            return nil
-        }
-        if index < context.upcoming.count {
-            return context.upcoming[index]
-        }
-        return pagedUpcoming[index]
-    }
-
-    /// Subscribe to `[offset, offset + limit)` of the context's upcoming tail
-    /// and merge each delivered page into `pagedUpcoming`. A no-op when that
-    /// range already has a subscription. A page is applied only while its queue
-    /// revision matches the current snapshot; a newer snapshot cancels and
-    /// removes all prior page subscriptions. Errors retain the last page and
-    /// are logged because this is background prefetch with no separate error UI.
-    @MainActor
-    public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
-        guard let context = queueContext else {
-            return
-        }
-        let end = min(offset + limit, context.upcomingTotal)
-        guard offset < end else {
-            return
-        }
-        let key = "\(offset):\(end):\(revision)"
-        if upcomingSubscriptions[key] != nil {
-            return
-        }
-        upcomingSubscriptions[key] = queue.subscribeUpcomingPage(
-            UInt32(offset),
-            UInt32(end - offset),
-            { [weak self] page in
-                guard let self else { return }
-                guard page.revision == self.revision else {
-                    logger.warning(
-                        "dropping upcoming page for [\(offset), \(end)): delivered for a since-superseded revision"
-                    )
-                    return
-                }
-                for (i, entry) in page.entries.enumerated() {
-                    self.pagedUpcoming[offset + i] = QueueItem(bridge: entry)
-                }
-            },
-            { error in
-                logger.warning(
-                    "upcoming range [\(offset), \(end)) subscription failed: \(error.localizedDescription)"
-                )
-            }
-        )
-    }
 
     /// Enter the loading transition for `trackId`, retaining the currently
     /// displayed track. Core's first `PlaybackLoading` carries only a track id
@@ -331,6 +264,117 @@ public class PlaybackStore {
         playbackPosition = state
         playbackPositionSubject.send(snapshot.event)
         return snapshot
+    }
+}
+
+extension PlaybackStore {
+    public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
+        guard snapshot.revision >= revision else {
+            logger.debug(
+                "dropping queue snapshot at revision \(snapshot.revision); revision \(self.revision) is already applied"
+            )
+            return
+        }
+        let replacesPages = snapshot.revision > revision
+        manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
+        queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
+        revision = snapshot.revision
+        if replacesPages {
+            for subscription in upcomingSubscriptions.values {
+                subscription.cancel()
+            }
+            upcomingSubscriptions = [:]
+            pagedUpcoming = [:]
+        }
+    }
+
+    /// The context-tail item at absolute `index`, or `nil` if not yet loaded —
+    /// either still outside the initial window and not yet paged in, or past
+    /// `upcomingTotal` entirely.
+    public func upcomingItem(at index: Int) -> QueueItem? {
+        guard let context = queueContext else {
+            return nil
+        }
+        if index < context.upcoming.count {
+            return context.upcoming[index]
+        }
+        return pagedUpcoming[index]
+    }
+
+    /// Subscribe to `[offset, offset + limit)` of the context's upcoming tail
+    /// and merge each delivered page into `pagedUpcoming`. A no-op when that
+    /// range already has a subscription. A page is applied only while its queue
+    /// revision matches the current snapshot; a newer snapshot cancels and
+    /// removes all prior page subscriptions. Errors retain the last page and
+    /// are logged because this is background prefetch with no separate error UI.
+    @MainActor
+    public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
+        guard let context = queueContext else {
+            return
+        }
+        let end = min(offset + limit, context.upcomingTotal)
+        guard offset < end else {
+            return
+        }
+        let key = UpcomingPageKey(range: offset..<end, revision: revision)
+        if upcomingSubscriptions[key] != nil {
+            return
+        }
+        makeRoomForUpcomingPage(near: key.range)
+        upcomingSubscriptions[key] = queue.subscribeUpcomingPage(
+            UInt32(offset),
+            UInt32(end - offset),
+            { [weak self] page in
+                guard let self else { return }
+                guard self.upcomingSubscriptions[key] != nil else {
+                    return
+                }
+                guard page.revision == self.revision else {
+                    logger.warning(
+                        "dropping upcoming page for [\(offset), \(end)): delivered for a since-superseded revision"
+                    )
+                    return
+                }
+                for (i, entry) in page.entries.enumerated() {
+                    self.pagedUpcoming[offset + i] = QueueItem(bridge: entry)
+                }
+            },
+            { error in
+                logger.warning(
+                    "upcoming range [\(offset), \(end)) subscription failed: \(error.localizedDescription)"
+                )
+            }
+        )
+    }
+
+    @MainActor
+    private func makeRoomForUpcomingPage(near visibleRange: Range<Int>) {
+        while upcomingSubscriptions.count >= maximumUpcomingPageSubscriptions {
+            let visibleMidpoint =
+                visibleRange.lowerBound + visibleRange.count / 2
+            guard
+                let key = upcomingSubscriptions.keys.max(by: { lhs, rhs in
+                    distance(from: lhs.range, to: visibleMidpoint)
+                        < distance(from: rhs.range, to: visibleMidpoint)
+                }),
+                let subscription = upcomingSubscriptions.removeValue(
+                    forKey: key
+                )
+            else {
+                return
+            }
+            subscription.cancel()
+            for index in key.range
+            where index >= (queueContext?.upcoming.count ?? 0) {
+                pagedUpcoming.removeValue(forKey: index)
+            }
+        }
+    }
+
+    private func distance(from range: Range<Int>, to index: Int) -> Int {
+        if index < range.lowerBound { return range.lowerBound - index }
+        if index >= range.upperBound { return index - range.upperBound + 1 }
+        return 0
     }
 }
 

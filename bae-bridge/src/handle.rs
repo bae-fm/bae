@@ -19,12 +19,12 @@ use crate::types::{
     BridgeArtistSortCriterion, BridgeArtistSummary, BridgeComposerDetail,
     BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
     BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
-    BridgeMetadataSource, BridgeQueueSnapshot, BridgeQueueUpcomingPage, BridgeRelease,
-    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage,
-    BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
-    BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeMetadataSource, BridgePlaybackValues, BridgeQueueSnapshot, BridgeQueueUpcomingPage,
+    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
+    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
+    BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack,
+    BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail,
+    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeStorageMode, BridgeSubsonicServerStatus};
@@ -47,6 +47,7 @@ mod desktop;
 mod editing_projection;
 mod import_projection;
 mod library_projection;
+mod playback_persistence;
 mod queue_projection;
 mod service_status;
 use import_projection::convert_ui_event;

@@ -44,13 +44,7 @@ internal sealed class QueuePane : IDisposable
     private PlaybackPositionRender? _position;
     private long _renderedSecond = -1;
 
-    // Incremental context paging state for the current open list.
     private ObservableCollection<object>? _rows;
-    private ulong _revision;
-    private ulong _contextTotal;
-    private ulong _contextLoaded;
-    private readonly SortedDictionary<ulong, BridgeQueueEntry[]> _contextPages = new();
-    private readonly Dictionary<ulong, IDisposable> _contextSubscriptions = new();
 
     public QueuePane(AppService app, Border host)
     {
@@ -145,7 +139,8 @@ internal sealed class QueuePane : IDisposable
             return;
         }
         _app.PlaybackStore.QueueChanged -= Rebuild;
-        CancelContextSubscription();
+        _app.PlaybackStore.ContextPagesChanged -= RefreshRows;
+        _app.PlaybackStore.ReportVisibleContextRange(0, -1);
         _host.Child = null;
         _listSlot = null;
         _card = null;
@@ -162,6 +157,7 @@ internal sealed class QueuePane : IDisposable
         Rebuild();
         RenderCard();
         _app.PlaybackStore.QueueChanged += Rebuild;
+        _app.PlaybackStore.ContextPagesChanged += RefreshRows;
         _host.IsVisible = true;
     }
 
@@ -338,10 +334,8 @@ internal sealed class QueuePane : IDisposable
     // ── List ──────────────────────────────────────────────────────────────────
     private void Rebuild()
     {
-        CancelContextSubscription();
         var manual = _app.PlaybackStore.ManualQueue;
         var context = _app.PlaybackStore.Context;
-        _revision = _app.PlaybackStore.Revision;
 
         var rows = new ObservableCollection<object>();
         if (manual.Count == 0)
@@ -357,13 +351,8 @@ internal sealed class QueuePane : IDisposable
             }
         }
 
-        _contextTotal = 0;
-        _contextLoaded = 0;
-        _contextPages.Clear();
         if (context is { UpcomingTotal: > 0 } ctx)
         {
-            _contextTotal = ctx.UpcomingTotal;
-            _contextPages[0] = ctx.Upcoming;
             AddContextRows(rows, ctx);
         }
 
@@ -395,13 +384,16 @@ internal sealed class QueuePane : IDisposable
             Content = items,
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
         };
+        var contextStart = ContextStartRow();
         scroller.ScrollChanged += (_, _) =>
         {
-            if (scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 400)
-            {
-                _ = LoadMoreContext(rows);
-            }
+            const double estimatedRowHeight = 58;
+            var first = Math.Max(0, (int)(scroller.Offset.Y / estimatedRowHeight) - contextStart);
+            var last = Math.Max(first, (int)((scroller.Offset.Y + scroller.Viewport.Height) / estimatedRowHeight) - contextStart);
+            _app.PlaybackStore.ReportVisibleContextRange(first, last);
         };
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            _app.PlaybackStore.ReportVisibleContextRange(0, Math.Max(0, (int)(scroller.Viewport.Height / 58))));
         // A card dropped anywhere on the list appends to Up Next (a precise
         // drop-at-index and in-list reorder land with the reorder change).
         EnableQueueDrop(scroller);
@@ -416,66 +408,25 @@ internal sealed class QueuePane : IDisposable
             QueueLane.Context,
             ContextSectionTitle(context),
             context.Shuffled));
-        var expectedOffset = 0UL;
-        foreach (var (offset, entries) in _contextPages)
+        for (var index = 0; index < checked((int)context.UpcomingTotal); index++)
         {
-            if (offset != expectedOffset)
-            {
-                break;
-            }
-            foreach (var entry in entries)
-            {
-                rows.Add(new EntryRow(QueueLane.Context, entry));
-            }
-            expectedOffset += (ulong)entries.Length;
+            rows.Add(_app.PlaybackStore.ContextItemAt(index) is { } entry
+                ? new EntryRow(QueueLane.Context, entry)
+                : new ContextPlaceholderRow(index));
         }
-        _contextLoaded = expectedOffset;
     }
 
-    private Task LoadMoreContext(ObservableCollection<object> rows)
+    private int ContextStartRow()
     {
-        if (_contextLoaded >= _contextTotal ||
-            _contextSubscriptions.ContainsKey(_contextLoaded) ||
-            !ReferenceEquals(rows, _rows))
-        {
-            return Task.CompletedTask;
-        }
-        var offset = _contextLoaded;
-        var subscription = _app.Queue.SubscribeUpcomingPage(
-            checked((uint)offset),
-            100,
-            page => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyUpcomingPage(rows, offset, page)),
-            error => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                _app.ShowError(Loc.Chrome("error.title"), error.Message)));
-        if (subscription is not null)
-        {
-            _contextSubscriptions[offset] = subscription;
-        }
-        return Task.CompletedTask;
+        var manualCount = _app.PlaybackStore.ManualQueue.Count;
+        return manualCount == 0 ? 2 : manualCount + 2;
     }
 
-    private void ApplyUpcomingPage(
-        ObservableCollection<object> rows,
-        ulong offset,
-        BridgeQueueUpcomingPage page)
+    private void RefreshRows()
     {
-        if (!ReferenceEquals(rows, _rows) || page.Revision != _revision)
+        if (_rows is not { } rows)
         {
             return;
-        }
-
-        var oldLength = _contextPages.TryGetValue(offset, out var oldPage)
-            ? oldPage.Length
-            : -1;
-        _contextPages[offset] = page.Entries;
-        if (oldLength >= 0 && oldLength != page.Entries.Length)
-        {
-            foreach (var laterOffset in _contextSubscriptions.Keys.Where(key => key > offset).ToArray())
-            {
-                _contextSubscriptions[laterOffset].Dispose();
-                _contextSubscriptions.Remove(laterOffset);
-                _contextPages.Remove(laterOffset);
-            }
         }
         RebuildRowsFromCurrentValues(rows);
     }
@@ -503,28 +454,20 @@ internal sealed class QueuePane : IDisposable
         }
     }
 
-    private void CancelContextSubscription()
-    {
-        foreach (var subscription in _contextSubscriptions.Values)
-        {
-            subscription.Dispose();
-        }
-        _contextSubscriptions.Clear();
-        _contextPages.Clear();
-    }
-
     public void Dispose()
     {
         Hide();
         _app.PlaybackStore.NowPlayingChanged -= OnNowPlayingChanged;
         _app.PlaybackStore.PlaybackStopped -= OnPlaybackStopped;
         _app.PlaybackStore.PositionChanged -= OnPositionChanged;
+        _app.PlaybackStore.ContextPagesChanged -= RefreshRows;
     }
 
     private Control BuildRowVisual(object? row) => row switch
     {
         SectionHeaderRow header => BuildSectionHeader(header),
         EntryRow entry => BuildEntryRow(entry),
+        ContextPlaceholderRow => new Border { Height = 58 },
         EmptyManualRow => BuildEmptyDropArea(),
         _ => new Control(),
     };
@@ -770,6 +713,8 @@ internal sealed class QueuePane : IDisposable
     private sealed record SectionHeaderRow(QueueLane Lane, string Text, bool? Shuffled);
 
     private sealed record EntryRow(QueueLane Lane, BridgeQueueEntry Entry);
+
+    private sealed record ContextPlaceholderRow(int Index);
 
     private sealed record EmptyManualRow;
 }

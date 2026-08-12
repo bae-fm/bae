@@ -2,15 +2,15 @@ import BaeKit
 import SwiftUI
 
 /// Banner at the top of the Library settings Sync section when the sync loop
-/// has reported an error. Reads `configStore.syncError` directly so only this
+/// has reported an error. Reads `syncStatusStore.error` directly so only this
 /// view re-renders on sync-health transitions, not the whole settings tab.
 struct SyncErrorBanner: View {
-    @Environment(ConfigStore.self)
-    var configStore
+    @Environment(SyncStatusStore.self)
+    var syncStatusStore
     let onReconnect: () -> Void
 
     var body: some View {
-        if let syncError = configStore.syncError {
+        if let syncError = syncStatusStore.error {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -41,6 +41,18 @@ struct SyncErrorBanner: View {
         }
         .formStyle(.grouped)
         .frame(width: 500)
-        .environment(PreviewData.syncErrorConfigStore())
+        .environment(
+            SyncStatusStore(
+                snapshot: BridgeSyncStatusSnapshot(
+                    error: .Diagnostic(
+                        category: .network,
+                        detail: "The cloud provider rejected the request."
+                    ),
+                    lastSyncTime: nil,
+                    syncing: false,
+                    syncReady: false
+                )
+            )
+        )
     }
 #endif

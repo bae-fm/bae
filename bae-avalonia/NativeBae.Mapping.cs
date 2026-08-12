@@ -130,8 +130,7 @@ internal static partial class NativeBae
     private static Settings Settings(
         BridgeConfig config,
         BridgeMcpServerStatus mcpStatus,
-        BridgeSubsonicServerStatus subsonicStatus,
-        bool syncReady) =>
+        BridgeSubsonicServerStatus subsonicStatus) =>
         new()
         {
             LibraryName = config.LibraryName,
@@ -140,7 +139,6 @@ internal static partial class NativeBae
             DiscogsUsable = config.DiscogsUsable,
             SyncProvider = config.Sync is null ? null : SyncProviderTag(config.Sync.Provider),
             SyncAccount = config.Sync?.CloudAccountDisplay,
-            SyncReady = syncReady,
             PauseBetweenSides = config.PauseBetweenSides,
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,

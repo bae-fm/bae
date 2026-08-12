@@ -12,7 +12,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeUiEvent
 
 /**
  * The current-item index the Media3 [State] carries ([BaeCorePlayer.getState]).
@@ -63,8 +62,8 @@ class GetStateCurrentIndexTest {
         manual: List<BridgeQueueEntry>,
     ) {
         player.onQueueValue(manual = manual, context = null, hasNext = true, hasPrevious = false, revision = 1uL)
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 trackId = "cur",
                 trackTitle = "Title cur",
                 artistNames = "Artist Name",

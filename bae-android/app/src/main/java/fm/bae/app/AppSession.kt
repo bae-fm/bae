@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
@@ -15,6 +16,7 @@ import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
@@ -47,6 +49,7 @@ import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
@@ -75,10 +78,12 @@ class OpenLibrary(
     private val stores: OpenLibraryStores,
     val playback: BaeCorePlayer,
     private val appContext: Context,
+    scope: CoroutineScope,
 ) {
     // Library is always a thin wrapper around appHandle; construct it here rather
     // than requiring callers to pass a separately-constructed instance.
     val library = Library(appHandle)
+    internal val browserPages = BrowserPageStores(library, appContext, scope)
 
     // Every image the app shows resolves through this store, and its cache entries
     // are keyed on this library's image ids — so it lives and dies with the
@@ -90,6 +95,7 @@ class OpenLibrary(
     val cast = Cast(appHandle, appContext)
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
+    val syncStatusStore: SyncStatusStore get() = stores.syncStatus
     val downloadStore: DownloadStore get() = stores.downloads
     val outboxStore: OutboxStore get() = stores.outbox
     val castStore: CastStore get() = stores.cast
@@ -100,8 +106,8 @@ class OpenLibrary(
     private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
     /**
-     * Subscribe to the live event stream, routing playback variants into the
-     * [BaeCorePlayer] and everything else into the stores.
+     * Subscribe to retained values first, then route transient notifications
+     * through the event adapter.
      *
      * The [PlaybackService] is not started here. It hosts the foreground service
      * that keeps core's audio thread alive while the screen is off, which Android
@@ -140,13 +146,9 @@ class OpenLibrary(
         valueSubscriptions +=
             appHandle.subscribeConfig(
                 object : ConfigCallback {
-                    override fun onValue(
-                        config: BridgeConfig,
-                        syncReady: Boolean,
-                    ) {
+                    override fun onValue(config: BridgeConfig) {
                         scope.launch(Dispatchers.Main.immediate) {
                             stores.config.setConfig(config)
-                            stores.config.setSyncReady(syncReady)
                         }
                     }
                 },
@@ -156,7 +158,18 @@ class OpenLibrary(
                 object : SyncStatusCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgeSyncStatusSnapshot) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.setSyncStatus(value, LocaleErrorLines(appContext))
+                            stores.syncStatus.apply(value, LocaleErrorLines(appContext))
+                        }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribePlaybackValues(
+                object : PlaybackValuesCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgePlaybackValues) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            playback.applyValues(value)
+                            stores.cast.applyStatus(value.remoteDeviceName)
                         }
                     }
                 },
@@ -253,6 +266,7 @@ class OpenLibrary(
     }
 
     private fun stopSessionServices() {
+        browserPages.cancel()
         // Detach the audio-focus listener + becoming-noisy receiver: they call
         // appHandle.pause()/resume() on their own (system-driven, no user
         // action), so they must stop touching the handle before it's closed. The
@@ -478,7 +492,8 @@ object AppSessionHolder {
                     diagnostics,
                     OpenLibraryStores(
                         library = LibraryStore(),
-                        config = ConfigStore(config, handle.isSyncReady()),
+                        config = ConfigStore(config),
+                        syncStatus = SyncStatusStore(),
                         downloads = DownloadStore(handle.getDownloadSnapshot()),
                         outbox = OutboxStore(initialOutbox),
                         cast = CastStore(),
@@ -529,5 +544,6 @@ object AppSessionHolder {
                     },
                 ),
             appContext = appContext,
+            scope = appScope,
         )
 }

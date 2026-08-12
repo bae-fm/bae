@@ -31,6 +31,132 @@ pub struct PlaybackQueueProjection {
     pub revision: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct PlaybackPosition {
+    pub track_id: String,
+    pub position_ms: u64,
+    pub duration_ms: u64,
+    pub progress: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PreviewValues {
+    pub state: PreviewState,
+    pub position_ms: u64,
+    pub progress: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaybackValues {
+    pub state: PlaybackState,
+    pub position: Option<PlaybackPosition>,
+    /// Monotonic acknowledgement of an applied seek. It remains at the latest
+    /// value across ordinary position ticks so consumers cannot miss the seek
+    /// acknowledgement when watch delivery coalesces updates.
+    pub seek_revision: u64,
+    pub volume: f32,
+    pub is_muted: bool,
+    pub repeat_mode: RepeatMode,
+    pub remote_device_name: Option<String>,
+    pub preview: PreviewValues,
+}
+
+impl PlaybackValues {
+    pub(super) fn initial() -> Self {
+        Self {
+            state: PlaybackState::Stopped,
+            position: None,
+            seek_revision: 0,
+            volume: 1.0,
+            is_muted: false,
+            repeat_mode: RepeatMode::Off,
+            remote_device_name: None,
+            preview: PreviewValues {
+                state: PreviewState::Idle,
+                position_ms: 0,
+                progress: 0.0,
+            },
+        }
+    }
+
+    pub(super) fn applying(&self, event: &PlaybackProgress) -> Option<Self> {
+        let mut next = self.clone();
+        match event {
+            PlaybackProgress::StateChanged { state } => {
+                if playback_track_id(&next.state) != playback_track_id(state) {
+                    next.position = None;
+                }
+                next.state = state.clone();
+            }
+            PlaybackProgress::PositionUpdate {
+                track_id,
+                position_ms,
+                duration_ms,
+                progress,
+            } => {
+                next.position = Some(PlaybackPosition {
+                    track_id: track_id.clone(),
+                    position_ms: *position_ms,
+                    duration_ms: *duration_ms,
+                    progress: *progress,
+                });
+            }
+            PlaybackProgress::Seeked {
+                track_id,
+                position_ms,
+                duration_ms,
+                progress,
+            } => {
+                next.position = Some(PlaybackPosition {
+                    track_id: track_id.clone(),
+                    position_ms: *position_ms,
+                    duration_ms: *duration_ms,
+                    progress: *progress,
+                });
+                next.seek_revision = next
+                    .seek_revision
+                    .checked_add(1)
+                    .expect("playback seek revision overflow");
+            }
+            PlaybackProgress::RepeatModeChanged { mode } => next.repeat_mode = *mode,
+            PlaybackProgress::VolumeChanged { volume } => next.volume = *volume,
+            PlaybackProgress::MuteChanged { is_muted } => next.is_muted = *is_muted,
+            PlaybackProgress::RemoteStatusChanged { device_name } => {
+                next.remote_device_name.clone_from(device_name);
+            }
+            PlaybackProgress::PreviewStateChanged(state) => {
+                next.preview.state = state.clone();
+                if matches!(state, PreviewState::Idle) {
+                    next.preview.position_ms = 0;
+                    next.preview.progress = 0.0;
+                }
+            }
+            PlaybackProgress::PreviewPositionUpdate {
+                position_ms,
+                progress,
+            } => {
+                next.preview.position_ms = *position_ms;
+                next.preview.progress = *progress;
+            }
+            PlaybackProgress::QueueItemsAdded { .. }
+            | PlaybackProgress::PlaybackError { .. }
+            | PlaybackProgress::TrackCompleted { .. }
+            | PlaybackProgress::DecodeStats { .. } => return None,
+        }
+        Some(next)
+    }
+}
+
+fn playback_track_id(state: &PlaybackState) -> Option<&str> {
+    match state {
+        PlaybackState::Stopped => None,
+        PlaybackState::Loading { track_id, .. } => Some(track_id),
+        PlaybackState::Playing { track_info, .. } | PlaybackState::Paused { track_info, .. } => {
+            Some(&track_info.track_id)
+        }
+    }
+}
+
 /// Progress updates during playback. The variants below the "Internal events"
 /// divider are consumed by `PlaybackService` itself (`TrackCompleted` drives
 /// auto-advance); external subscribers can ignore them, since the transitions

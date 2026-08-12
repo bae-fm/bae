@@ -116,9 +116,11 @@ internal sealed class AppService : IDisposable
         Subsonic = subsonic;
 
         ShellStore = new ShellStore();
-        PlaybackStore = new PlaybackStore();
+        PlaybackStore = new PlaybackStore(
+            Queue,
+            error => ShowError(Loc.Chrome("error.title"), error.Message));
         CastStore = new CastStore(Cast);
-        SyncStatusStore = new SyncStatusStore(Sync);
+        SyncStatusStore = new SyncStatusStore();
         // Built before the now-playing bar (in the shell): the bar reads the
         // remaining-time preference through the settings mirror, whose Current
         // stays null until a library seeds it.
@@ -127,9 +129,7 @@ internal sealed class AppService : IDisposable
         UiEventRouter = new UiEventRouter(
             PlaybackStore,
             ShowError,
-            MediaControl,
-            ImportStore.HandlePreviewEvent,
-            CastStore);
+            ImportStore.HandlePreviewEvent);
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
         StorageStore = new StorageStore(Downloads, Sync);
@@ -139,7 +139,7 @@ internal sealed class AppService : IDisposable
         LibraryBrowserStore = new LibraryBrowserStore(Library, Images, dispatcher, HandleBrowseError);
         _valueSubscriptions = new ValueSubscriptions(
             session, dispatcher, SettingsStore, SyncStatusStore, PlaybackStore,
-            StorageStore, CastStore, ImportStore, ShowError);
+            StorageStore, CastStore, ImportStore, MediaControl, ShowError);
     }
 
     private void HandleBrowseError(Exception exception)

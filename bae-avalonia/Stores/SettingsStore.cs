@@ -37,4 +37,13 @@ internal sealed class SettingsStore
         Current = fresh;
         Changed?.Invoke();
     }
+
+    public void ApplyConfig(Settings fresh)
+    {
+        if (Current is null)
+        {
+            throw new InvalidOperationException("config value arrived before the initial settings snapshot");
+        }
+        Apply(fresh);
+    }
 }

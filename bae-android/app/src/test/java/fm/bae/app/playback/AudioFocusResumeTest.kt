@@ -14,7 +14,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgePlaybackPauseReason
-import uniffi.bae_bridge.BridgeUiEvent
 
 /**
  * Audio-focus pause/resume policy. A transient focus loss (a dictation session,
@@ -39,8 +38,8 @@ class AudioFocusResumeTest {
         )
 
     private fun BaeCorePlayer.startPlaying() =
-        onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        applyPlaybackState(
+            playingState(
                 "t1",
                 "Track Title",
                 "Artist Name",
@@ -53,8 +52,8 @@ class AudioFocusResumeTest {
         )
 
     private fun BaeCorePlayer.reportPaused() =
-        onPaused(
-            BridgeUiEvent.PlaybackPaused(
+        applyPlaybackState(
+            pausedState(
                 "t1",
                 "Track Title",
                 "Artist Name",

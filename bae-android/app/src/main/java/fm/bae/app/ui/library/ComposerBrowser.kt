@@ -1,6 +1,5 @@
 package fm.bae.app.ui.library
 
-import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -45,126 +46,41 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ComposerPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import uniffi.bae_bridge.ComposerPageCallback
-import uniffi.bae_bridge.BridgeComposerPage
+import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.BridgeSortDirection
-
-private const val TAG = "bae.ComposerBrowser"
-private val logger = BaeLogger(TAG)
-
-internal class ComposerPage(
-    private val session: OpenLibrary,
-    private val sortCriterion: BridgeComposerSortCriterion,
-    private val appContext: Context,
-    private val scope: CoroutineScope,
-    private val onRetry: () -> Unit,
-) {
-    val composers = mutableStateMapOf<String, BridgeComposerSummary>()
-    val order = mutableStateListOf<String>()
-    var totalCount by mutableStateOf(0)
-        private set
-    var loading by mutableStateOf(true)
-        private set
-    var error by mutableStateOf<PageError?>(null)
-        private set
-    private val pages = mutableMapOf<Int, List<String>>()
-    private val subscriptions = mutableMapOf<Int, LiveSubscription>()
-
-    private fun ingest(offset: Int, page: BridgeComposerPage) {
-        page.rows.forEach { composer ->
-            composers[composer.artistId] = composer
-        }
-        pages[offset] = page.rows.map { it.artistId }
-        order.clear()
-        order.addAll(pages.toSortedMap().values.flatten().distinct())
-        totalCount = page.totalCount.toInt()
-        loading = false
-        error = null
-    }
-
-    fun start() {
-        loading = true
-        error = null
-        subscribe(0)
-    }
-
-    fun loadMore() {
-        if (order.size >= totalCount) return
-        subscribe((pages.keys.maxOrNull() ?: -PAGE_SIZE) + PAGE_SIZE)
-    }
-
-    private fun subscribe(offset: Int) {
-        if (subscriptions.containsKey(offset)) return
-        subscriptions[offset] =
-            session.library.subscribeComposerPage(
-                sortCriterion,
-                offset.toULong(),
-                PAGE_SIZE.toULong(),
-                object : ComposerPageCallback {
-                    override fun onValue(value: BridgeComposerPage) {
-                        scope.launch(Dispatchers.Main.immediate) { ingest(offset, value) }
-                    }
-
-                    override fun onError(errorValue: BridgeException) {
-                        logger.error("Composer page subscription failed at offset $offset", errorValue)
-                        scope.launch(Dispatchers.Main.immediate) {
-                            loading = false
-                            error = PageError(errorValue.message ?: appContext.getString(R.string.library_load_failed), onRetry)
-                        }
-                    }
-                },
-            )
-    }
-
-    fun cancel() {
-        subscriptions.values.forEach(LiveSubscription::cancel)
-        subscriptions.clear()
-    }
-}
 
 @Composable
 internal fun rememberComposerPage(
     session: OpenLibrary,
     sortCriterion: BridgeComposerSortCriterion,
-    appContext: Context,
-): ComposerPage {
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var retryToken by remember(sortCriterion) { mutableStateOf(0) }
-    val page =
-        remember(sortCriterion, retryToken) {
-            ComposerPage(session, sortCriterion, appContext, scope) { retryToken++ }
-        }
-    DisposableEffect(page) {
-        page.start()
-        onDispose(page::cancel)
+): ComposerPageStore {
+    val page = session.browserPages.composers
+    DisposableEffect(page, sortCriterion) {
+        page.activate(sortCriterion)
+        onDispose(page::deactivate)
     }
     return page
 }
 
 @Composable
 internal fun ComposerListContent(
-    page: ComposerPage,
+    page: ComposerPageStore,
     onSelectComposer: (String) -> Unit,
 ) {
     val pageError = page.error
     when {
-        pageError != null && page.order.isEmpty() -> {
+        pageError != null && page.rows.isEmpty() -> {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -175,7 +91,7 @@ internal fun ComposerListContent(
             }
         }
 
-        page.loading && page.order.isEmpty() -> {
+        page.loading && page.rows.isEmpty() -> {
             Box(modifier = Modifier.fillMaxSize()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
@@ -192,20 +108,19 @@ internal fun ComposerListContent(
         }
 
         else -> {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(page.order, key = { it }) { artistId ->
-                    val composer =
-                        checkNotNull(page.composers[artistId]) {
-                            "composer page order referenced missing composer: $artistId"
-                        }
-                    ComposerSummaryRow(
-                        composer = composer,
-                        onClick = { onSelectComposer(artistId) },
-                    )
+            val listState = rememberLazyListState()
+            LaunchedEffect(page, listState) {
+                snapshotFlow {
+                    val visible = listState.layoutInfo.visibleItemsInfo
+                    (visible.firstOrNull()?.index ?: 0) to (visible.lastOrNull()?.index ?: 0)
+                }.distinctUntilChanged().collect { (first, last) ->
+                    page.reportVisibleRange(first, last)
                 }
-                item {
-                    LaunchedEffect(page.order.size, page.totalCount) {
-                        page.loadMore()
+            }
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                items(page.totalCount, key = { index -> page.rows[index]?.artistId ?: "composer-slot-$index" }) { index ->
+                    page.rows[index]?.let { composer ->
+                        ComposerSummaryRow(composer = composer, onClick = { onSelectComposer(composer.artistId) })
                     }
                 }
             }

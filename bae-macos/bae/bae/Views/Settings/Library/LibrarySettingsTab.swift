@@ -16,6 +16,8 @@ struct LibrarySettingsTab: View {
     #endif
     @Environment(ConfigStore.self)
     var configStore
+    @Environment(SyncStatusStore.self)
+    var syncStatusStore
     @Environment(UiStore.self)
     var uiStore
     @Environment(OutboxStore.self)
@@ -27,7 +29,7 @@ struct LibrarySettingsTab: View {
     private var showForgetConfirm = false
 
     private var isConnected: Bool {
-        configStore.syncReady
+        syncStatusStore.syncReady
     }
 
     var body: some View {
@@ -318,7 +320,8 @@ private struct RecoveryCodeSection: View {
 
     @MainActor
     private func librarySettingsTabPreview(
-        configStore: ConfigStore
+        configStore: ConfigStore,
+        syncReady: Bool = false
     ) -> some View {
         LibrarySettingsTab(onForgetLibrary: {})
             .frame(width: 500, height: 640)
@@ -332,6 +335,16 @@ private struct RecoveryCodeSection: View {
                 )
             #endif
             .environment(configStore)
+            .environment(
+                SyncStatusStore(
+                    snapshot: BridgeSyncStatusSnapshot(
+                        error: nil,
+                        lastSyncTime: nil,
+                        syncing: false,
+                        syncReady: syncReady
+                    )
+                )
+            )
             .environment(UiStore())
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     }
@@ -342,7 +355,8 @@ private struct RecoveryCodeSection: View {
 
     #Preview("Connected") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore()
+            configStore: PreviewData.connectedConfigStore(),
+            syncReady: true
         )
     }
 #endif

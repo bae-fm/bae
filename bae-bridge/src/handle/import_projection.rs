@@ -554,36 +554,6 @@ impl crate::types::BridgeMatchedSignal {
     }
 }
 
-impl crate::types::BridgeLoadingTrackInfo {
-    pub(super) fn from_core(t: bae_core::playback::LoadingTrack) -> Self {
-        let bae_core::playback::LoadingTrack {
-            track_info,
-            duration_ms,
-        } = t;
-        let bae_core::playback::PlaybackTrackInfo {
-            track_title,
-            artist_names,
-            album_id,
-            album_title,
-            cover_image,
-            // The now-playing bar's loading state renders only the fields above;
-            // identity/side detail belongs to the full Playing/Paused events.
-            track_id: _,
-            artist_id: _,
-            release_id: _,
-            side: _,
-        } = track_info;
-        crate::types::BridgeLoadingTrackInfo {
-            track_title,
-            artist_names,
-            album_id,
-            album_title,
-            cover_image: cover_image.map(crate::types::BridgeImageRef::from_core),
-            duration_ms,
-        }
-    }
-}
-
 /// Every `UiBusEvent` has a bridge mirror, so this always returns `Some`.
 pub(super) fn convert_ui_event(
     event: bae_core::ui::UiBusEvent,
@@ -592,99 +562,10 @@ pub(super) fn convert_ui_event(
     use bae_core::ui::UiBusEvent;
 
     match event {
-        // ── Playback ───────────────────────────────────────────────
-        UiBusEvent::PlaybackStopped => Some(BridgeUiEvent::PlaybackStopped),
         UiBusEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
             reason: crate::types::BridgePlaybackErrorReason::from_core(reason),
         }),
-        UiBusEvent::PlaybackLoading { track_id, track } => Some(BridgeUiEvent::PlaybackLoading {
-            track_id,
-            track: track.map(BridgeLoadingTrackInfo::from_core),
-        }),
-        UiBusEvent::PlaybackPlaying {
-            track_id,
-            track_title,
-            artist_names,
-            artist_id,
-            album_id,
-            album_title,
-            cover_image,
-            duration_ms,
-        } => Some(BridgeUiEvent::PlaybackPlaying {
-            track_id,
-            track_title,
-            artist_names,
-            artist_id,
-            album_id,
-            album_title,
-            cover_image: cover_image.map(BridgeImageRef::from_core),
-            duration_ms,
-        }),
-        UiBusEvent::PlaybackPaused {
-            track_id,
-            track_title,
-            artist_names,
-            artist_id,
-            album_id,
-            album_title,
-            cover_image,
-            duration_ms,
-            reason,
-        } => Some(BridgeUiEvent::PlaybackPaused {
-            track_id,
-            track_title,
-            artist_names,
-            artist_id,
-            album_id,
-            album_title,
-            cover_image: cover_image.map(BridgeImageRef::from_core),
-            duration_ms,
-            reason: BridgePlaybackPauseReason::from_core(reason),
-        }),
-        UiBusEvent::PlaybackProgress {
-            track_id,
-            position_ms,
-            duration_ms,
-            progress,
-        } => Some(BridgeUiEvent::PlaybackProgress {
-            track_id,
-            position_ms,
-            duration_ms,
-            progress,
-        }),
-        UiBusEvent::PlaybackSeeked {
-            track_id,
-            position_ms,
-            duration_ms,
-            progress,
-        } => Some(BridgeUiEvent::PlaybackSeeked {
-            track_id,
-            position_ms,
-            duration_ms,
-            progress,
-        }),
-        UiBusEvent::VolumeChanged { volume } => Some(BridgeUiEvent::VolumeChanged { volume }),
-        UiBusEvent::MuteChanged { is_muted } => Some(BridgeUiEvent::MuteChanged { is_muted }),
-        UiBusEvent::RepeatModeChanged { mode } => Some(BridgeUiEvent::RepeatModeChanged {
-            mode: BridgeRepeatMode::from_core(mode),
-        }),
         UiBusEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
-
-        // ── Preview ────────────────────────────────────────────────
-        UiBusEvent::PreviewIdle => Some(BridgeUiEvent::PreviewIdle),
-        UiBusEvent::PreviewPlaying { path, duration_ms } => {
-            Some(BridgeUiEvent::PreviewPlaying { path, duration_ms })
-        }
-        UiBusEvent::PreviewPaused { path, duration_ms } => {
-            Some(BridgeUiEvent::PreviewPaused { path, duration_ms })
-        }
-        UiBusEvent::PreviewProgress {
-            position_ms,
-            progress,
-        } => Some(BridgeUiEvent::PreviewProgress {
-            position_ms,
-            progress,
-        }),
 
         // ── Import live progress ───────────────────────────────────
         UiBusEvent::CandidateImportLoudnessProgress {
@@ -700,11 +581,6 @@ pub(super) fn convert_ui_event(
         }),
         UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
             Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
-        }
-
-        // ── Cast ───────────────────────────────────────────────────
-        UiBusEvent::CastStatusChanged { device_name } => {
-            Some(BridgeUiEvent::CastStatusChanged { device_name })
         }
 
         // ── Errors ─────────────────────────────────────────────────

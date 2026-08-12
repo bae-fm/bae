@@ -92,7 +92,7 @@ pub trait CastDevicesCallback: Send + Sync {
 
 #[uniffi::export(callback_interface)]
 pub trait ConfigCallback: Send + Sync {
-    fn on_value(&self, config: BridgeConfig, sync_ready: bool);
+    fn on_value(&self, config: BridgeConfig);
 }
 
 #[uniffi::export(callback_interface)]
@@ -110,6 +110,11 @@ pub trait QueueCallback: Send + Sync {
 pub trait QueueUpcomingCallback: Send + Sync {
     fn on_value(&self, value: BridgeQueueUpcomingPage);
     fn on_error(&self, error: BridgeError);
+}
+
+#[uniffi::export(callback_interface)]
+pub trait PlaybackValuesCallback: Send + Sync {
+    fn on_value(&self, value: BridgePlaybackValues);
 }
 
 #[uniffi::export(callback_interface)]

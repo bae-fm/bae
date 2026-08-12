@@ -118,6 +118,9 @@ where Row.ID: Sendable {
     private let onError: (any Error) -> Void
     @ObservationIgnored
     private var subscriptions: [String: any PageSubscription] = [:]
+    @ObservationIgnored
+    private var subscriptionRanges: [String: Range<Int>] = [:]
+    private static var maximumVisiblePageSubscriptions: Int { 3 }
 
     public init(
         pageSource: any PageSource<Row>,
@@ -199,9 +202,7 @@ where Row.ID: Sendable {
                         return
                     }
                     self.totalCount = totalCount
-                    self.segments.removeAll {
-                        $0.range.lowerBound >= totalCount
-                    }
+                    self.clipSegments(to: totalCount)
                     self.initialLoadError = nil
                     self.ingest(rows)
                     let upper = min(offset + rows.count, totalCount)
@@ -236,6 +237,8 @@ where Row.ID: Sendable {
                     waiter.resume()
                 }
             )
+            subscriptionRanges[key] = offset..<(offset + limit)
+            evictPages(outsideWindowAround: offset..<(offset + limit))
         }
     }
 
@@ -293,6 +296,63 @@ where Row.ID: Sendable {
         )
         segments = remaining.sorted {
             $0.range.lowerBound < $1.range.lowerBound
+        }
+        clipSegments(to: totalCount)
+    }
+
+    private func clipSegments(to totalCount: Int) {
+        segments = segments.compactMap { segment in
+            let upper = min(segment.range.upperBound, totalCount)
+            guard segment.range.lowerBound < upper else { return nil }
+            return Segment(
+                range: segment.range.lowerBound..<upper,
+                ids: Array(segment.ids.prefix(upper - segment.range.lowerBound))
+            )
+        }
+    }
+
+    private func evictPages(outsideWindowAround visible: Range<Int>) {
+        while subscriptionRanges.count > Self.maximumVisiblePageSubscriptions {
+            let center = visible.lowerBound + visible.count / 2
+            guard
+                let key = subscriptionRanges.max(by: { lhs, rhs in
+                    distance(lhs.value, from: center)
+                        < distance(rhs.value, from: center)
+                })?
+                .key, let range = subscriptionRanges.removeValue(forKey: key)
+            else { return }
+            subscriptions.removeValue(forKey: key)?.cancel()
+            removeLoadedRange(range)
+        }
+    }
+
+    private func distance(_ range: Range<Int>, from position: Int) -> Int {
+        abs(range.lowerBound + range.count / 2 - position)
+    }
+
+    private func removeLoadedRange(_ removed: Range<Int>) {
+        segments = segments.flatMap { segment -> [Segment] in
+            guard segment.range.overlaps(removed) else { return [segment] }
+            var pieces: [Segment] = []
+            if segment.range.lowerBound < removed.lowerBound {
+                let count = removed.lowerBound - segment.range.lowerBound
+                pieces.append(
+                    Segment(
+                        range: segment.range.lowerBound..<removed.lowerBound,
+                        ids: Array(segment.ids.prefix(count))
+                    )
+                )
+            }
+            if segment.range.upperBound > removed.upperBound {
+                let start = removed.upperBound - segment.range.lowerBound
+                pieces.append(
+                    Segment(
+                        range: removed.upperBound..<segment.range.upperBound,
+                        ids: Array(segment.ids.dropFirst(start))
+                    )
+                )
+            }
+            return pieces
         }
     }
 

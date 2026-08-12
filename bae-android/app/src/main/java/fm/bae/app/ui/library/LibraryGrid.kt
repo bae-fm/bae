@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
@@ -56,7 +57,7 @@ private const val SCENE_ALBUM_COUNT = 9
 @Composable
 internal fun LibraryGridContent(
     session: OpenLibrary,
-    page: LibraryPage,
+    page: AlbumPageStore,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
@@ -73,7 +74,7 @@ internal fun LibraryGridContent(
     val pageError = page.error
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
         when {
-            pageError != null && page.order.isEmpty() -> {
+            pageError != null && page.rows.isEmpty() -> {
                 Column(
                     modifier = Modifier.align(Alignment.Center).padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -83,7 +84,7 @@ internal fun LibraryGridContent(
                 }
             }
 
-            page.loading && page.order.isEmpty() -> {
+            page.loading && page.rows.isEmpty() -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
 
@@ -97,7 +98,8 @@ internal fun LibraryGridContent(
 
             else -> {
                 LibraryGridBacking(
-                    albums = page.order.map { page.albums.getValue(it) },
+                    count = page.totalCount,
+                    albumAt = page.rows::get,
                     gridState = gridState,
                     onSelectAlbum = onSelectAlbum,
                 )
@@ -115,7 +117,8 @@ internal fun LibraryGridContent(
  */
 @Composable
 private fun LibraryGridBacking(
-    albums: List<BridgeAlbum>,
+    count: Int,
+    albumAt: (Int) -> BridgeAlbum?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
@@ -127,11 +130,13 @@ private fun LibraryGridBacking(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(albums, key = { it.id }) { album ->
-            AlbumGridCard(
-                album = album,
-                onClick = { onSelectAlbum(album.id) },
-            )
+        items(count, key = { index -> albumAt(index)?.id ?: "album-slot-$index" }) { index ->
+            val album = albumAt(index)
+            if (album != null) {
+                AlbumGridCard(album = album, onClick = { onSelectAlbum(album.id) })
+            } else {
+                Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+            }
         }
     }
 }
@@ -146,7 +151,8 @@ internal fun LibraryGridScene() {
     BaeAppChrome {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             LibraryGridBacking(
-                albums = List(SCENE_ALBUM_COUNT) { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
+                count = SCENE_ALBUM_COUNT,
+                albumAt = { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
                 gridState = rememberLazyGridState(),
                 onSelectAlbum = {},
             )

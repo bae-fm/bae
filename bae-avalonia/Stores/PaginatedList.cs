@@ -54,6 +54,8 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
     // issuing a duplicate — the segment fast-path can't dedupe a burst that starts
     // before any fetch returns.
     private readonly Dictionary<string, IDisposable> _subscriptions = new();
+    private readonly Dictionary<string, (int Lower, int Upper)> _subscriptionRanges = new();
+    private const int MaximumVisiblePageSubscriptions = 3;
     // A stable per-instance token folded into the epoch so a swapped-in list (fresh
     // instance) is still a distinct epoch.
     private readonly object _identity = new();
@@ -195,6 +197,7 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
                 (rows, totalCount) =>
                 {
                     TotalCount = totalCount;
+                    ClipSegments(totalCount);
                     InitialLoadError = null;
                     if (!initial)
                     {
@@ -216,6 +219,11 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
                     }
                     completion.TrySetResult();
                 });
+            if (!initial)
+            {
+                _subscriptionRanges[key] = (offset, offset + limit);
+                EvictPagesOutsideWindow(offset, offset + limit);
+            }
         }
         catch (Exception exception)
         {
@@ -269,6 +277,71 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
 
         _segments.Clear();
         _segments.AddRange(remaining);
+        ClipSegments(TotalCount);
+    }
+
+    private void ClipSegments(int totalCount)
+    {
+        for (var index = _segments.Count - 1; index >= 0; index--)
+        {
+            var segment = _segments[index];
+            var upper = Math.Min(segment.Upper, totalCount);
+            if (segment.Lower >= upper)
+            {
+                _segments.RemoveAt(index);
+            }
+            else if (upper < segment.Upper)
+            {
+                _segments[index] = new Segment(
+                    segment.Lower,
+                    upper,
+                    segment.Ids.Take(upper - segment.Lower).ToList());
+            }
+        }
+    }
+
+    private void EvictPagesOutsideWindow(int visibleLower, int visibleUpper)
+    {
+        var center = visibleLower + (visibleUpper - visibleLower) / 2;
+        while (_subscriptionRanges.Count > MaximumVisiblePageSubscriptions)
+        {
+            var key = _subscriptionRanges.MaxBy(pair =>
+                Math.Abs(pair.Value.Lower + (pair.Value.Upper - pair.Value.Lower) / 2 - center)).Key;
+            var range = _subscriptionRanges[key];
+            _subscriptionRanges.Remove(key);
+            _subscriptions.Remove(key, out var subscription);
+            subscription!.Dispose();
+            RemoveLoadedRange(range.Lower, range.Upper);
+        }
+    }
+
+    private void RemoveLoadedRange(int lower, int upper)
+    {
+        var remaining = new List<Segment>();
+        foreach (var segment in _segments)
+        {
+            if (segment.Upper <= lower || segment.Lower >= upper)
+            {
+                remaining.Add(segment);
+                continue;
+            }
+            if (segment.Lower < lower)
+            {
+                remaining.Add(new Segment(
+                    segment.Lower,
+                    lower,
+                    segment.Ids.Take(lower - segment.Lower).ToList()));
+            }
+            if (segment.Upper > upper)
+            {
+                remaining.Add(new Segment(
+                    upper,
+                    segment.Upper,
+                    segment.Ids.Skip(upper - segment.Lower).ToList()));
+            }
+        }
+        _segments.Clear();
+        _segments.AddRange(remaining);
     }
 
     // ── Test / preview support ───────────────────────────────────────────────
@@ -280,6 +353,7 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
             subscription.Dispose();
         }
         _subscriptions.Clear();
+        _subscriptionRanges.Clear();
     }
 
     /// <summary>Seed one segment synchronously for previews and tests.</summary>

@@ -4,11 +4,11 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // Mirror of core's sync-status snapshot for the toolbar indicator and the sync
-// banner. Refresh reads the snapshot from the current handle; the window renders
-// the indicator and banner from these fields on Changed.
+// banner. The sync-status value subscription is its only writer; the window
+// renders the indicator and banner from these fields on Changed.
 internal sealed class SyncStatusStore
 {
-    private readonly SyncService _sync;
+    private readonly Func<BridgeSyncStatusSnapshot, BridgeSyncIndicator> _indicatorFor;
 
     // The localized sync-error line, or null when sync is healthy. Kept for the
     // reconnect banner; the toolbar badge is driven by Indicator.
@@ -22,53 +22,30 @@ internal sealed class SyncStatusStore
     // timestamp can never accompany a stopped loop.
     public string? LastSyncTime { get; private set; }
 
+    public bool? SyncReady { get; private set; }
+
     public event Action? Changed;
 
-    public SyncStatusStore(SyncService sync)
+    public SyncStatusStore()
+        : this(BaeBridgeMethods.BridgeSyncIndicator)
     {
-        _sync = sync;
     }
 
-    public void Refresh()
+    internal SyncStatusStore(
+        Func<BridgeSyncStatusSnapshot, BridgeSyncIndicator> indicatorFor)
     {
-        var (current, result) = _sync.SyncStatus();
-        if (!current)
-        {
-            return;
-        }
-        if (result.Error is not null)
-        {
-            BaeDiagnostics.Logger.Error($"Failed to read sync status snapshot: {result.Error}");
-            Reset();
-            return;
-        }
-
-        var status = result.Status;
-        if (status is null)
-        {
-            BaeDiagnostics.Logger.Error("Failed to read sync status snapshot.");
-            Reset();
-            return;
-        }
-
-        Apply(status);
+        _indicatorFor = indicatorFor;
     }
 
     public void Apply(BridgeSyncStatusSnapshot status)
     {
         ErrorText = status.Error is null ? null : BridgeDisplay.LocalizedLine(status.Error);
-        Indicator = BaeBridgeMethods.BridgeSyncIndicator(status);
+        Indicator = _indicatorFor(status);
         LastSyncTime = Indicator is BridgeSyncIndicator.Synced synced
             ? SyncIndicatorModel.FormatSyncTime(synced.LastSyncTime)
             : null;
+        SyncReady = status.SyncReady;
         Changed?.Invoke();
     }
 
-    public void Reset()
-    {
-        ErrorText = null;
-        Indicator = new BridgeSyncIndicator.Idle();
-        LastSyncTime = null;
-        Changed?.Invoke();
-    }
 }

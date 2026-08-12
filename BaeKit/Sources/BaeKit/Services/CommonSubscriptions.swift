@@ -1,14 +1,14 @@
 import Foundation
 
 private final class ConfigValueSink: ConfigCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeConfig, Bool) -> Void
+    private let apply: @MainActor @Sendable (BridgeConfig) -> Void
 
-    init(apply: @escaping @MainActor @Sendable (BridgeConfig, Bool) -> Void) {
+    init(apply: @escaping @MainActor @Sendable (BridgeConfig) -> Void) {
         self.apply = apply
     }
 
-    func onValue(config: BridgeConfig, syncReady: Bool) {
-        Task { @MainActor in apply(config, syncReady) }
+    func onValue(config: BridgeConfig) {
+        Task { @MainActor in apply(config) }
     }
 }
 private final class SyncStatusValueSink: SyncStatusCallback,
@@ -24,6 +24,20 @@ private final class SyncStatusValueSink: SyncStatusCallback,
     }
 
     func onValue(value: BridgeSyncStatusSnapshot) {
+        Task { @MainActor in apply(value) }
+    }
+}
+
+private final class PlaybackValuesSink: PlaybackValuesCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgePlaybackValues) -> Void
+
+    init(apply: @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void) {
+        self.apply = apply
+    }
+
+    func onValue(value: BridgePlaybackValues) {
         Task { @MainActor in apply(value) }
     }
 }
@@ -105,6 +119,7 @@ private final class CastDevicesValueSink: CastDevicesCallback,
 final class CommonSubscriptions {
     private let appHandle: AppHandle
     private let configStore: ConfigStore
+    private let syncStatusStore: SyncStatusStore
     private let outboxStore: OutboxStore
     private let downloadStore: DownloadStore
     private let castStore: CastStore
@@ -113,18 +128,22 @@ final class CommonSubscriptions {
     init(
         appHandle: AppHandle,
         configStore: ConfigStore,
+        syncStatusStore: SyncStatusStore,
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
         castStore: CastStore
     ) {
         self.appHandle = appHandle
         self.configStore = configStore
+        self.syncStatusStore = syncStatusStore
         self.outboxStore = outboxStore
         self.downloadStore = downloadStore
         self.castStore = castStore
     }
 
     func start(
+        applyPlayback:
+            @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void,
         applyQueue:
             @escaping @MainActor @Sendable (BridgeQueueSnapshot) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
@@ -132,17 +151,17 @@ final class CommonSubscriptions {
         precondition(subscriptions.isEmpty)
         subscriptions = [
             appHandle.subscribeConfig(
-                callback: ConfigValueSink { [configStore] config, syncReady in
-                    configStore.applyConfigSnapshot(
-                        config,
-                        syncReady: syncReady
-                    )
+                callback: ConfigValueSink { [configStore] config in
+                    configStore.applyConfigSnapshot(config)
                 }
             ),
             appHandle.subscribeSyncStatus(
-                callback: SyncStatusValueSink { [configStore] value in
-                    configStore.applySyncStatusSnapshot(value)
+                callback: SyncStatusValueSink { [syncStatusStore] value in
+                    syncStatusStore.apply(value)
                 }
+            ),
+            appHandle.subscribePlaybackValues(
+                callback: PlaybackValuesSink(apply: applyPlayback)
             ),
             appHandle.subscribeQueue(
                 callback: QueueValueSink(

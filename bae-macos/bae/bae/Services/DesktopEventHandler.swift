@@ -15,35 +15,6 @@ final class DesktopEventHandler {
 
     func apply(_ event: BridgeUiEvent) {
         switch event {
-        case .previewPlaying(let path, let durationMs):
-            importStore.previewState = .playing(
-                path: path,
-                durationMs: durationMs
-            )
-            mediaControlService.updateNowPlayingForPreview(
-                state: .playing(path: path, durationMs: durationMs)
-            )
-
-        case .previewPaused(let path, let durationMs):
-            importStore.previewState = .paused(
-                path: path,
-                durationMs: durationMs
-            )
-            mediaControlService.updateNowPlayingForPreview(
-                state: .paused(path: path, durationMs: durationMs)
-            )
-
-        case .previewIdle:
-            importStore.previewState = .idle
-            importStore.previewProgressSubject.send(.reset)
-            mediaControlService.updateNowPlayingForPreview(state: .idle)
-
-        case .previewProgress(let positionMs, let progress):
-            importStore.previewProgressSubject.send(
-                .position(progress: progress, positionMs: positionMs)
-            )
-            mediaControlService.updatePreviewPosition(positionMs: positionMs)
-
         case .candidateImportLoudnessProgress(
             let key,
             let tracksDone,
@@ -64,11 +35,37 @@ final class DesktopEventHandler {
                 identified: identified, total: total
             )
 
-        case .castStatusChanged, .playbackStopped, .playbackError,
-            .playbackLoading, .playbackPlaying, .playbackPaused,
-            .playbackProgress, .playbackSeeked, .volumeChanged, .muteChanged,
-            .repeatModeChanged, .queueItemsAdded, .error:
+        case .playbackError, .queueItemsAdded, .error:
             preconditionFailure("Unhandled UI event \(event)")
         }
+    }
+
+    func apply(_ values: BridgePreviewValues) {
+        switch values.state {
+        case .playing(let path, let durationMs):
+            importStore.previewState = .playing(
+                path: path,
+                durationMs: durationMs
+            )
+            mediaControlService.updateNowPlayingForPreview(state: values.state)
+        case .paused(let path, let durationMs):
+            importStore.previewState = .paused(
+                path: path,
+                durationMs: durationMs
+            )
+            mediaControlService.updateNowPlayingForPreview(state: values.state)
+        case .idle:
+            importStore.previewState = .idle
+            mediaControlService.updateNowPlayingForPreview(state: .idle)
+        }
+        importStore.previewProgressSubject.send(
+            values.state == .idle
+                ? .reset
+                : .position(
+                    progress: values.progress,
+                    positionMs: values.positionMs
+                )
+        )
+        mediaControlService.updatePreviewPosition(positionMs: values.positionMs)
     }
 }

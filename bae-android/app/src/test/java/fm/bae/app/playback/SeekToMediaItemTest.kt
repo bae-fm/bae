@@ -17,7 +17,6 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -94,8 +93,8 @@ class SeekToMediaItemTest {
         manual: List<BridgeQueueEntry>,
         context: BridgePlaybackContext? = null,
     ) {
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 trackId = "cur",
                 trackTitle = "Title cur",
                 artistNames = "Artist Name",

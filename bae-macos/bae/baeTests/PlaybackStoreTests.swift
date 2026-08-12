@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
@@ -53,6 +54,110 @@ struct PlaybackStoreQueueRevisionTests {
 
         #expect(store.revision == 2)
         #expect(store.manualQueue.map(\.entryId) == ["newer"])
+    }
+}
+
+@Suite("PlaybackStore queue page window")
+struct PlaybackStoreQueuePageWindowTests {
+    @MainActor
+    @Test("moving the visible window cancels and evicts old queue pages")
+    func boundsSubscriptions() async {
+        let recorder = QueuePageSubscriptionRecorder()
+        let queue = Queue(
+            subscribeUpcomingPage: { offset, _, onValue, _ in
+                recorder.make(offset: Int(offset), onValue: onValue)
+            }
+        )
+        let store = PlaybackStore()
+        store.queueContext = QueuePlaybackContext(
+            kind: .library,
+            sourceTitle: nil,
+            shuffled: false,
+            upcoming: [],
+            upcomingTotal: 500
+        )
+
+        await store.loadUpcomingRange(offset: 0, limit: 60, queue: queue)
+        await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
+        await store.loadUpcomingRange(offset: 200, limit: 60, queue: queue)
+        await store.loadUpcomingRange(offset: 300, limit: 60, queue: queue)
+
+        #expect(recorder.maximumActive <= 3)
+        #expect(recorder.subscriptions[0]?.cancelled == true)
+        #expect(store.upcomingItem(at: 0) == nil)
+
+        recorder.deliver(offset: 0)
+
+        #expect(store.upcomingItem(at: 0) == nil)
+    }
+}
+
+private final class QueuePageSubscriptionRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recordedSubscriptions: [Int: QueuePageTestSubscription] = [:]
+    private var callbacks: [Int: @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void] = [:]
+    private var recordedMaximumActive = 0
+
+    var subscriptions: [Int: QueuePageTestSubscription] {
+        lock.withLock { recordedSubscriptions }
+    }
+
+    var maximumActive: Int {
+        lock.withLock { recordedMaximumActive }
+    }
+
+    func make(
+        offset: Int,
+        onValue: @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void
+    ) -> QueuePageTestSubscription {
+        let subscription = QueuePageTestSubscription()
+        lock.withLock {
+            recordedSubscriptions[offset] = subscription
+            callbacks[offset] = onValue
+            recordedMaximumActive = max(
+                recordedMaximumActive,
+                recordedSubscriptions.values.count { !$0.cancelled }
+            )
+        }
+        return subscription
+    }
+
+    @MainActor
+    func deliver(offset: Int) {
+        let callback = lock.withLock { callbacks[offset] }
+        callback?(
+            BridgeQueueUpcomingPage(
+                revision: 0,
+                entries: [
+                    BridgeQueueEntry(
+                        entryId: "evicted",
+                        trackId: "track-evicted",
+                        title: "Track Title",
+                        artistNames: "Artist Name",
+                        durationClock: nil,
+                        albumTitle: "Album Title",
+                        coverImage: nil
+                    )
+                ]
+            )
+        )
+    }
+}
+
+private final class QueuePageTestSubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var isCancelled = false
+
+    var cancelled: Bool {
+        lock.withLock { isCancelled }
+    }
+
+    func cancel() {
+        lock.withLock {
+            isCancelled = true
+        }
     }
 }
 

@@ -29,69 +29,40 @@ import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackSourceKind
+import uniffi.bae_bridge.BridgePlaybackValueState
+import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
-import uniffi.bae_bridge.BridgeUiEvent
-import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.QueueUpcomingCallback
 
 /** Now-playing snapshot the [fm.bae.app.ui.playback.NowPlayingBar] renders. */
 private const val TAG = "bae.BaeCorePlayer"
+private const val MAX_UPCOMING_PAGE_SUBSCRIPTIONS = 3
 private val logger = BaeLogger(TAG)
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-private fun availableCommands(
-    hasNext: Boolean,
-    hasPrevious: Boolean,
-): Player.Commands {
-    val builder =
-        Player.Commands
-            .Builder()
-            .add(Player.COMMAND_PLAY_PAUSE)
-            .add(Player.COMMAND_STOP)
-            .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-            .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
-            // Lets a browse client (Android Auto / a head unit) play a tapped
-            // library item: its play request resolves to a single-item
-            // setMediaItem, which routes to handleSetMediaItems below. The
-            // core-driven queue isn't editable through the raw media-item API, so
-            // COMMAND_CHANGE_MEDIA_ITEMS (add/remove/move) stays unavailable.
-            .add(Player.COMMAND_SET_MEDIA_ITEM)
-            .add(Player.COMMAND_SET_REPEAT_MODE)
-            .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
-            .add(Player.COMMAND_GET_TIMELINE)
-            .add(Player.COMMAND_GET_METADATA)
-
-    listOf(
-        hasNext to listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
-        hasPrevious to listOf(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM),
-    ).forEach { (enabled, commands) ->
-        if (enabled) {
-            commands.forEach { builder.add(it) }
-        }
-    }
-
-    return builder.build()
-}
+private data class UpcomingPageKey(
+    val range: IntRange,
+    val revision: ULong,
+)
 
 /**
  * Media3 [Player] that is a pure projection of bae-core's playback state.
  *
- * bae-core owns playback: it decodes audio (FFmpeg → AAudio) and emits playback
- * state as [uniffi.bae_bridge.BridgeUiEvent] variants over `subscribeUiEvents`.
- * This player holds no audio; it mirrors those events into a Media3 [State] so
+ * bae-core owns playback: it decodes audio (FFmpeg → AAudio) and publishes
+ * retained values through `subscribePlaybackValues`. This player holds no audio;
+ * it mirrors those values into a Media3 [State] so
  * the [androidx.media3.session.MediaSession] (and through it the notification,
  * lock screen, and in-app UI) reflects what core is doing.
  *
  * Single source of truth is core. Transport commands ([handleSetPlayWhenReady],
  * [handleSeekTo], …) forward to the bridge and make NO local state change; the
- * resulting `Playback*` event is what updates [State]. This avoids the optimistic
+ * resulting retained value is what updates [State]. This avoids the optimistic
  * local mutation a normal [SimpleBasePlayer] does, which would fight core.
  *
  * Audio focus and becoming-noisy aren't handled by a custom [SimpleBasePlayer],
  * so this requests focus when playback starts and pauses core on focus loss /
- * unplug — the pause reflects back as a `PlaybackPaused` event.
+ * unplug — the retained playback value reflects that pause back.
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class BaeCorePlayer(
@@ -99,6 +70,7 @@ class BaeCorePlayer(
     private val appHandle: AppHandle,
     private val context: Context,
     private val scope: CoroutineScope,
+    private val queuePageSource: QueuePageSource = QueuePageSource(appHandle),
     /**
      * Whether the app currently has a foreground (started) Activity. Android
      * forbids starting a service from the background, so [ensurePlaybackService]
@@ -120,7 +92,7 @@ class BaeCorePlayer(
     /**
      * Display metadata for one track. Queue entries carry it from
      * `getQueueItems`; the current track's is overridden by the
-     * `PlaybackPlaying`/`PlaybackPaused` payload (the authoritative source for
+     * playback-value payload (the authoritative source for
      * what's playing, and resilient to queue/playback event ordering).
      */
     internal data class Meta(
@@ -290,9 +262,9 @@ class BaeCorePlayer(
      *  under a since-superseded revision is dropped rather than merged. */
     private var queueRevision: ULong = 0u
 
-    /** Live page subscriptions keyed "offset:end:revision", so concurrent
-     *  callers asking for the same range share one database subscription. */
-    private val upcomingSubscriptions = mutableMapOf<String, LiveSubscription>()
+    /** Live pages around the reported visible window. Moving the window evicts
+     *  both subscriptions and their rows. */
+    private val upcomingSubscriptions = mutableMapOf<UpcomingPageKey, QueuePageSubscription>()
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -311,6 +283,7 @@ class BaeCorePlayer(
     /** Id of the now-playing track, or null when stopped. Mirrored into the
      *  [currentTrackId] StateFlow by [publish] for the in-app queue screen. */
     private var playingTrackId: String? = null
+    private var lastSeekRevision: ULong = 0u
     private var hasNext: Boolean = false
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
@@ -345,15 +318,15 @@ class BaeCorePlayer(
     private val _queue = MutableStateFlow(QueueProjection.EMPTY)
     val queue: StateFlow<QueueProjection> = _queue.asStateFlow()
 
-    // Repeat mode for the in-app now-playing control. Driven by core's
-    // RepeatModeChanged (the same event that sets the Media3 `repeatMode`), so
+    // Repeat mode for the in-app now-playing control. Driven by core's retained
+    // playback value (which also sets Media3 `repeatMode`), so
     // the in-app button and the system controls reflect one source.
     private val _repeatMode = MutableStateFlow(BridgeRepeatMode.OFF)
     val repeatMode: StateFlow<BridgeRepeatMode> = _repeatMode.asStateFlow()
 
     // Output volume [0,1] and mute, for the expanded now-playing controls.
-    // Driven by core's VolumeChanged/MuteChanged (the same events the desktop
-    // playback store consumes), so the in-app slider/mute button reflect core.
+    // Driven by core's retained playback value, so the in-app slider/mute button
+    // reflects core.
     // Independent of the Media3 State like _queue/_repeatMode — no publish().
     private val _volume = MutableStateFlow(1f)
     val volume: StateFlow<Float> = _volume.asStateFlow()
@@ -389,7 +362,53 @@ class BaeCorePlayer(
 
     // ── Event intake (called from UiEventAdapter on the application looper) ──
 
-    override fun onLoading(
+    fun applyValues(values: BridgePlaybackValues) {
+        when (val state = values.state) {
+            BridgePlaybackValueState.Stopped -> {
+                onStopped()
+            }
+
+            is BridgePlaybackValueState.Loading -> {
+                onLoading(state.trackId, state.track)
+            }
+
+            is BridgePlaybackValueState.Playing -> {
+                applyPlaying(
+                    state.trackId,
+                    state.trackTitle,
+                    state.artistNames,
+                    state.albumTitle,
+                    state.coverImage,
+                    state.durationMs.toLong(),
+                )
+            }
+
+            is BridgePlaybackValueState.Paused -> {
+                applyPaused(
+                    state.trackId,
+                    state.trackTitle,
+                    state.artistNames,
+                    state.albumTitle,
+                    state.coverImage,
+                    state.durationMs.toLong(),
+                    state.reason,
+                )
+            }
+        }
+        values.position?.let {
+            if (values.seekRevision != lastSeekRevision) {
+                onSeeked(it.trackId, it.positionMs.toLong(), it.durationMs.toLong(), it.progress)
+            } else {
+                onProgress(it.trackId, it.positionMs.toLong(), it.durationMs.toLong(), it.progress)
+            }
+        }
+        lastSeekRevision = values.seekRevision
+        onRepeatModeChanged(values.repeatMode)
+        onVolumeChanged(values.volume)
+        onMuteChanged(values.isMuted)
+    }
+
+    private fun onLoading(
         trackId: String,
         track: BridgeLoadingTrackInfo?,
     ) {
@@ -412,12 +431,19 @@ class BaeCorePlayer(
         activate(Transport.BUFFERING, current)
     }
 
-    override fun onPlaying(event: BridgeUiEvent.PlaybackPlaying) {
+    private fun applyPlaying(
+        trackId: String,
+        trackTitle: String,
+        artistNames: String,
+        albumTitle: String,
+        coverImage: BridgeImageRef?,
+        durationMs: Long,
+    ) {
         activate(
             Transport.READY,
             Current(
-                meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImage),
-                event.durationMs.toLong(),
+                meta(trackId, trackTitle, artistNames, albumTitle, coverImage),
+                durationMs,
             ),
         )
     }
@@ -496,25 +522,33 @@ class BaeCorePlayer(
         }
     }
 
-    override fun onPaused(event: BridgeUiEvent.PlaybackPaused) {
+    private fun applyPaused(
+        trackId: String,
+        trackTitle: String,
+        artistNames: String,
+        albumTitle: String,
+        coverImage: BridgeImageRef?,
+        durationMs: Long,
+        reason: BridgePlaybackPauseReason,
+    ) {
         positionModel.setActiveTrack(
-            trackChanged = event.trackId != playingTrackId,
-            rawDurationMs = event.durationMs.toLong(),
+            trackChanged = trackId != playingTrackId,
+            rawDurationMs = durationMs,
         )
         transport = Transport.READY
         playWhenReady = false
-        playingTrackId = event.trackId
-        currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImage)
-        refreshArtwork(event.coverImage)
+        playingTrackId = trackId
+        currentMeta = meta(trackId, trackTitle, artistNames, albumTitle, coverImage)
+        refreshArtwork(coverImage)
         sidePausePrompt =
-            when (val reason = event.reason) {
+            when (reason) {
                 BridgePlaybackPauseReason.Manual -> null
                 is BridgePlaybackPauseReason.SideEnded -> reason.prompt
             }
         publish()
     }
 
-    override fun onStopped() {
+    private fun onStopped() {
         transport = Transport.IDLE
         playWhenReady = false
         playingTrackId = null
@@ -544,7 +578,7 @@ class BaeCorePlayer(
             coverImage = coverImage,
         )
 
-    override fun onProgress(
+    private fun onProgress(
         trackId: String,
         positionMs: Long,
         durationMs: Long,
@@ -556,7 +590,7 @@ class BaeCorePlayer(
         )
     }
 
-    override fun onSeeked(
+    private fun onSeeked(
         trackId: String,
         positionMs: Long,
         durationMs: Long,
@@ -585,7 +619,7 @@ class BaeCorePlayer(
         logger.warning("ignoring playback position for stale track $trackId; current track is $playingTrackId")
     }
 
-    override fun onRepeatModeChanged(mode: BridgeRepeatMode) {
+    private fun onRepeatModeChanged(mode: BridgeRepeatMode) {
         media3RepeatMode =
             when (mode) {
                 BridgeRepeatMode.OFF -> Player.REPEAT_MODE_OFF
@@ -596,11 +630,11 @@ class BaeCorePlayer(
         publish()
     }
 
-    override fun onVolumeChanged(volume: Float) {
+    private fun onVolumeChanged(volume: Float) {
         _volume.value = volume
     }
 
-    override fun onMuteChanged(isMuted: Boolean) {
+    private fun onMuteChanged(isMuted: Boolean) {
         _isMuted.value = isMuted
     }
 
@@ -615,7 +649,7 @@ class BaeCorePlayer(
      * tail) drives the Media3 session and skip-by-index; the two lanes are also
      * kept apart for the in-app two-section projection.
      */
-    override fun onQueueValue(
+    fun onQueueValue(
         manual: List<BridgeQueueEntry>,
         context: BridgePlaybackContext?,
         hasNext: Boolean,
@@ -640,7 +674,7 @@ class BaeCorePlayer(
         manualEntries = manualMetas
         contextLane = lane
         if (replacesPages) {
-            upcomingSubscriptions.values.forEach(LiveSubscription::cancel)
+            upcomingSubscriptions.values.forEach(QueuePageSubscription::cancel)
             upcomingSubscriptions.clear()
             pagedUpcoming = emptyMap()
         }
@@ -665,15 +699,18 @@ class BaeCorePlayer(
         val lane = contextLane ?: return
         val end = minOf(offset + limit, lane.upcomingTotal)
         if (offset >= end) return
-        val key = "$offset:$end:$queueRevision"
+        val key = UpcomingPageKey(offset until end, queueRevision)
         if (upcomingSubscriptions.containsKey(key)) return
+        makeRoomForUpcomingPageNear(key.range)
+        upcomingSubscriptions[key] = QueuePageSubscription {}
         upcomingSubscriptions[key] =
-            appHandle.subscribeQueueUpcomingPage(
+            queuePageSource.subscribe(
                 offset.toUInt(),
                 (end - offset).toUInt(),
                 object : QueueUpcomingCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgeQueueUpcomingPage) {
                         scope.launch {
+                            if (!upcomingSubscriptions.containsKey(key)) return@launch
                             if (value.revision != queueRevision) {
                                 logger.warning(
                                     "dropping upcoming page for [$offset, $end): delivered for a since-superseded revision",
@@ -696,6 +733,29 @@ class BaeCorePlayer(
                 },
             )
     }
+
+    private fun makeRoomForUpcomingPageNear(visibleRange: IntRange) {
+        while (upcomingSubscriptions.size >= MAX_UPCOMING_PAGE_SUBSCRIPTIONS) {
+            val visibleMidpoint = visibleRange.first + visibleRange.count() / 2
+            val key =
+                upcomingSubscriptions.keys.maxBy { candidate ->
+                    distance(candidate.range, visibleMidpoint)
+                }
+            upcomingSubscriptions.remove(key)?.cancel()
+            val initialCount = contextLane?.entries?.size ?: 0
+            pagedUpcoming = pagedUpcoming.filterKeys { it !in key.range || it < initialCount }
+        }
+    }
+
+    private fun distance(
+        range: IntRange,
+        index: Int,
+    ): Int =
+        when {
+            index < range.first -> range.first - index
+            index > range.last -> index - range.last
+            else -> 0
+        }
 
     /**
      * Push the rebuilt projection: refresh the Media3 [State] for the session,
@@ -893,7 +953,7 @@ class BaeCorePlayer(
      * head unit). The item carries a browse media id — not audio this player
      * decodes — so resolve the tapped id to a play-by-id command and forward it
      * to core, exactly as the in-app album detail plays a track. No local state
-     * change: the resulting `Playback*` events update [State], like every other
+     * change: the resulting retained value updates [State], like every other
      * transport command here. Reached via COMMAND_SET_MEDIA_ITEM (a browse play
      * resolves to a single-item setMediaItem).
      */
@@ -932,7 +992,7 @@ class BaeCorePlayer(
     }
 
     fun cancelQueuePageSubscriptions() {
-        upcomingSubscriptions.values.forEach(LiveSubscription::cancel)
+        upcomingSubscriptions.values.forEach(QueuePageSubscription::cancel)
         upcomingSubscriptions.clear()
     }
 }

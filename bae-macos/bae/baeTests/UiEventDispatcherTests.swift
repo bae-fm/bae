@@ -12,164 +12,6 @@ import Testing
 /// (Now Playing info + remote command center), so every suite here is
 /// serialized and resets state on exit.
 @MainActor
-@Suite("UiEventDispatcher transport arms", .serialized)
-struct UiEventDispatcherTransportTests {
-    @Test("playbackPlaying sets the playing track and pushes rate 1.0")
-    func playbackPlayingSetsPlayingTrack() {
-        let infoCenter = MPNowPlayingInfoCenter.default()
-        infoCenter.nowPlayingInfo = nil
-        defer { infoCenter.nowPlayingInfo = nil }
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-
-        sink(playingEvent(trackId: "t1"))
-
-        guard case .playing(let track) = appService.stateForTesting.nowPlaying
-        else {
-            Issue.record("expected .playing")
-            return
-        }
-        #expect(track.trackId == "t1")
-        let info = infoCenter.nowPlayingInfo
-        #expect(info?[MPMediaItemPropertyTitle] as? String == "Track Title")
-        #expect(info?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 1.0)
-    }
-
-    @Test("playbackPaused sets the paused track and pushes rate 0.0")
-    func playbackPausedSetsPausedTrack() {
-        let infoCenter = MPNowPlayingInfoCenter.default()
-        infoCenter.nowPlayingInfo = nil
-        defer { infoCenter.nowPlayingInfo = nil }
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-
-        sink(pausedEvent(trackId: "t1"))
-
-        guard
-            case .paused(let track, let reason) = appService
-                .stateForTesting.nowPlaying
-        else {
-            Issue.record("expected .paused")
-            return
-        }
-        #expect(track.trackId == "t1")
-        #expect(reason == .manual)
-        let info = infoCenter.nowPlayingInfo
-        #expect(info?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 0.0)
-    }
-
-    @Test("a bare playbackLoading retains the prior track and info")
-    func bareLoadingRetainsPriorTrackAndInfo() {
-        let infoCenter = MPNowPlayingInfoCenter.default()
-        infoCenter.nowPlayingInfo = nil
-        defer { infoCenter.nowPlayingInfo = nil }
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-        sink(playingEvent(trackId: "t1"))
-        let infoBeforeLoading = infoCenter.nowPlayingInfo
-
-        sink(.playbackLoading(trackId: "t2", track: nil))
-
-        #expect(appService.stateForTesting.nowPlaying.track?.trackId == "t1")
-        #expect(appService.stateForTesting.nowPlaying.loadingTrackId == "t2")
-        let title =
-            infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
-        let priorTitle = infoBeforeLoading?[MPMediaItemPropertyTitle] as? String
-        #expect(title == priorTitle)
-    }
-
-    @Test("a resolved playbackLoading swaps the target and pushes rate 0.0")
-    func resolvedLoadingSwapsTargetAndInfo() {
-        let infoCenter = MPNowPlayingInfoCenter.default()
-        infoCenter.nowPlayingInfo = nil
-        defer { infoCenter.nowPlayingInfo = nil }
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-        sink(playingEvent(trackId: "t1"))
-        sink(.playbackLoading(trackId: "t2", track: nil))
-
-        sink(
-            .playbackLoading(
-                trackId: "t2",
-                track: BridgeLoadingTrackInfo(
-                    trackTitle: "Target Title",
-                    artistNames: "Artist Name",
-                    albumId: "album-1",
-                    albumTitle: "Album Title",
-                    coverImage: nil,
-                    durationMs: 180_000
-                )
-            )
-        )
-
-        #expect(appService.stateForTesting.nowPlaying.track?.trackId == "t2")
-        let info = infoCenter.nowPlayingInfo
-        #expect(info?[MPMediaItemPropertyTitle] as? String == "Target Title")
-        #expect(info?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 0.0)
-    }
-
-    @Test(
-        "playbackStopped resets the store, clears info, and disables transport"
-    )
-    func playbackStoppedClearsEverything() async {
-        let center = MPRemoteCommandCenter.shared()
-        let infoCenter = MPNowPlayingInfoCenter.default()
-        infoCenter.nowPlayingInfo = nil
-        defer {
-            infoCenter.nowPlayingInfo = nil
-            center.nextTrackCommand.isEnabled = false
-            center.previousTrackCommand.isEnabled = false
-        }
-        let handle = FakeAppHandle()
-        let appService = makeAppService(handle: handle)
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-        sink(playingEvent(trackId: "t1"))
-        appService.startCommonSubscriptions()
-        handle.deliverQueue(
-            BridgeQueueSnapshot(
-                manual: [],
-                context: nil,
-                hasNext: true,
-                hasPrevious: true,
-                revision: 1
-            )
-        )
-        await waitUntil { center.nextTrackCommand.isEnabled }
-
-        sink(.playbackStopped)
-
-        guard case .stopped = appService.stateForTesting.nowPlaying else {
-            Issue.record("expected .stopped")
-            return
-        }
-        guard
-            case .reset = appService.stateForTesting.playbackPosition
-        else {
-            Issue.record("expected playback position to reset")
-            return
-        }
-        #expect(infoCenter.nowPlayingInfo == nil)
-        #expect(!center.nextTrackCommand.isEnabled)
-        #expect(!center.previousTrackCommand.isEnabled)
-    }
-}
-
-@MainActor
 @Suite("UiEventDispatcher error seams", .serialized)
 struct UiEventDispatcherErrorTests {
     @Test("playbackError reaches uiStore through the showError override")
@@ -206,8 +48,8 @@ struct UiEventDispatcherErrorTests {
 @MainActor
 @Suite("UiEventDispatcher control arms", .serialized)
 struct UiEventDispatcherControlTests {
-    @Test("volumeChanged/muteChanged/repeatModeChanged/queueItemsAdded")
-    func controlArmsWriteThePlaybackStore() {
+    @Test("queueItemsAdded reaches the transient playback signal")
+    func queueItemsAddedReachesPlaybackSignal() {
         let appService = makeAppService()
         let sink = UiEventDispatcher.makeSink(
             appService: appService,
@@ -218,14 +60,8 @@ struct UiEventDispatcherControlTests {
             .sink { addedCounts.append($0) }
         defer { subscription.cancel() }
 
-        sink(.volumeChanged(volume: 0.4))
-        sink(.muteChanged(isMuted: true))
-        sink(.repeatModeChanged(mode: .context))
         sink(.queueItemsAdded(count: 3))
 
-        #expect(appService.stateForTesting.volume == 0.4)
-        #expect(appService.stateForTesting.isMuted)
-        #expect(appService.stateForTesting.repeatMode == .context)
         #expect(addedCounts == [3])
     }
 }
@@ -258,41 +94,7 @@ struct UiEventDispatcherOutcomeTests {
 
 // MARK: - Shared fixtures
 
-private func playingEvent(trackId: String) -> BridgeUiEvent {
-    .playbackPlaying(
-        trackId: trackId,
-        trackTitle: "Track Title",
-        artistNames: "Artist Name",
-        artistId: "artist-1",
-        albumId: "album-1",
-        albumTitle: "Album Title",
-        coverImage: nil,
-        durationMs: 200_000
-    )
-}
-
-private func pausedEvent(trackId: String) -> BridgeUiEvent {
-    .playbackPaused(
-        trackId: trackId,
-        trackTitle: "Track Title",
-        artistNames: "Artist Name",
-        artistId: "artist-1",
-        albumId: "album-1",
-        albumTitle: "Album Title",
-        coverImage: nil,
-        durationMs: 200_000,
-        reason: .manual
-    )
-}
-
-/// The five events the shared dispatcher declines: import preview playback and
-/// per-track loudness-measurement progress. Every other `BridgeUiEvent` variant
-/// belongs in `handledEvents` below.
 private let unhandledEvents: [BridgeUiEvent] = [
-    .previewIdle,
-    .previewPlaying(path: "/tmp/preview.flac", durationMs: 1_000),
-    .previewPaused(path: "/tmp/preview.flac", durationMs: 1_000),
-    .previewProgress(positionMs: 0, progress: 0),
     .candidateImportLoudnessProgress(
         key: "k",
         tracksDone: 0,
@@ -302,26 +104,7 @@ private let unhandledEvents: [BridgeUiEvent] = [
 ]
 
 private let handledEvents: [BridgeUiEvent] = [
-    .playbackStopped,
     .playbackError(reason: .syncDisconnected),
-    .playbackLoading(trackId: "t1", track: nil),
-    playingEvent(trackId: "t1"),
-    pausedEvent(trackId: "t1"),
-    .playbackProgress(
-        trackId: "t1",
-        positionMs: 0,
-        durationMs: 100_000,
-        progress: 0
-    ),
-    .playbackSeeked(
-        trackId: "t1",
-        positionMs: 0,
-        durationMs: 100_000,
-        progress: 0
-    ),
-    .volumeChanged(volume: 0.5),
-    .muteChanged(isMuted: false),
-    .repeatModeChanged(mode: .off),
     .queueItemsAdded(count: 1),
     .error(error: .Diagnostic(category: .internal, detail: "boom")),
 ]

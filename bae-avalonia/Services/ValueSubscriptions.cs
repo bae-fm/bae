@@ -19,17 +19,28 @@ internal sealed class ValueSubscriptions : IDisposable
         StorageStore storage,
         CastStore cast,
         ImportStore import,
+        IMediaControl mediaControls,
         Action<string, string> showError)
     {
         session.WithCurrentHandle(handle =>
         {
-            _subscriptions.Add(handle.SubscribeConfig(new ConfigSink((config, syncReady) =>
-                dispatcher.Post(() => settings.Apply(NativeBae.SettingsFromConfig(handle, config, syncReady))))));
+            _subscriptions.Add(handle.SubscribeConfig(new ConfigSink(config =>
+                dispatcher.Post(() => settings.ApplyConfig(NativeBae.SettingsFromConfig(handle, config))))));
             _subscriptions.Add(handle.SubscribeSyncStatus(new SyncSink(value =>
-                dispatcher.Post(() => sync.Apply(value)))));
+                dispatcher.Post(() =>
+                {
+                    sync.Apply(value);
+                }))));
             _subscriptions.Add(handle.SubscribeQueue(new QueueSink(
                 value => dispatcher.Post(() => playback.ApplyQueueValue(value)),
                 error => dispatcher.Post(() => Show(error, showError)))));
+            _subscriptions.Add(handle.SubscribePlaybackValues(new PlaybackSink(value =>
+                dispatcher.Post(() =>
+                {
+                    playback.ApplyValues(value, mediaControls);
+                    cast.ApplyStatus(value.RemoteDeviceName);
+                    import.ApplyPreviewValues(value.Preview);
+                }))));
             _subscriptions.Add(handle.SubscribeOutbox(new OutboxSink(
                 value => dispatcher.Post(() => storage.ApplyOutbox(value)),
                 error => dispatcher.Post(() => Show(error, showError)))));
@@ -65,9 +76,9 @@ internal sealed class ValueSubscriptions : IDisposable
         _subscriptions.Clear();
     }
 
-    private sealed class ConfigSink(Action<BridgeConfig, bool> apply) : ConfigCallback
+    private sealed class ConfigSink(Action<BridgeConfig> apply) : ConfigCallback
     {
-        public void OnValue(BridgeConfig config, bool syncReady) => apply(config, syncReady);
+        public void OnValue(BridgeConfig config) => apply(config);
     }
 
     private sealed class SyncSink(Action<BridgeSyncStatusSnapshot> apply) : SyncStatusCallback
@@ -79,6 +90,11 @@ internal sealed class ValueSubscriptions : IDisposable
     {
         public void OnValue(BridgeQueueSnapshot value) => apply(value);
         public void OnError(BridgeException value) => error(value);
+    }
+
+    private sealed class PlaybackSink(Action<BridgePlaybackValues> apply) : PlaybackValuesCallback
+    {
+        public void OnValue(BridgePlaybackValues value) => apply(value);
     }
 
     private sealed class OutboxSink(Action<BridgeOutboxSnapshot> apply, Action<BridgeException> error) : OutboxCallback

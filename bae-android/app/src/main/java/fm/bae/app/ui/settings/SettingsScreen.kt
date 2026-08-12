@@ -86,9 +86,9 @@ fun SettingsScreen(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val config by session.configStore.config.collectAsState()
-    val syncReady by session.configStore.syncReady.collectAsState()
-    val syncIndicator by session.configStore.syncIndicator.collectAsState()
-    val syncError by session.configStore.syncError.collectAsState()
+    val syncSnapshot by session.syncStatusStore.snapshot.collectAsState()
+    val syncIndicator by session.syncStatusStore.indicator.collectAsState()
+    val syncError by session.syncStatusStore.error.collectAsState()
     val allLibraries by libraries.collectAsState()
     var confirmLeave by remember { mutableStateOf(false) }
     var showRecoveryCode by remember { mutableStateOf(false) }
@@ -101,7 +101,7 @@ fun SettingsScreen(
         libraries = allLibraries,
         syncIndicator = syncIndicator,
         syncError = syncError,
-        syncReady = syncReady,
+        syncReady = syncSnapshot?.syncReady == true,
         ioDispatcher = ioDispatcher,
         onBack = onBack,
         onSwitchLibrary = onSwitchLibrary,

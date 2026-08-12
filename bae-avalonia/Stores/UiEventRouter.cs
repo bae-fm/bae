@@ -3,87 +3,29 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// Routes each BridgeUiEvent to the store that owns its field: playback events to
-// the playback store and error banners to the shell store. Playback events also push metadata, status, and timeline
-// to the system media transport controls. Import-preview, candidate-loudness,
-// and the import queue's identify-progress events are handed to the import
-// store, which owns the picker's live labels (and drives the transport
-// controls for the preview session) and the sidebar's progress line.
+// Routes transient BridgeUiEvent values: queue-add confirmations and error
+// banners, plus import progress. Retained playback, preview, cast, and queue
+// state arrive through typed value subscriptions.
 internal sealed class UiEventRouter
 {
     private readonly PlaybackStore _playback;
     private readonly Action<string, string> _showError;
-    private readonly IMediaControl _mediaControls;
     private readonly Action<BridgeUiEvent> _importEvents;
-    private readonly CastStore _cast;
 
     public UiEventRouter(
         PlaybackStore playback,
         Action<string, string> showError,
-        IMediaControl mediaControls,
-        Action<BridgeUiEvent> importEvents,
-        CastStore cast)
+        Action<BridgeUiEvent> importEvents)
     {
         _playback = playback;
         _showError = showError;
-        _mediaControls = mediaControls;
         _importEvents = importEvents;
-        _cast = cast;
     }
 
     public void Route(BridgeUiEvent evt)
     {
         switch (evt)
         {
-            case BridgeUiEvent.PlaybackPlaying playing:
-                _playback.ApplyPlaying(playing.AlbumId, playing.TrackId, playing.TrackTitle, playing.ArtistNames, playing.CoverImage);
-                _mediaControls.UpdateNowPlayingPlaying(
-                    playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle, playing.CoverImage, playing.DurationMs);
-                break;
-            case BridgeUiEvent.PlaybackPaused paused:
-                _playback.ApplyPaused(paused.AlbumId, paused.TrackId, paused.TrackTitle, paused.ArtistNames, paused.CoverImage, paused.Reason);
-                _mediaControls.UpdateNowPlayingPaused(
-                    paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle, paused.CoverImage, paused.DurationMs);
-                break;
-            case BridgeUiEvent.PlaybackStopped:
-                _playback.ApplyStopped();
-                _mediaControls.UpdateNowPlayingStopped();
-                break;
-            case BridgeUiEvent.PlaybackProgress progress:
-                _playback.ApplyProgress(progress.TrackId, progress.PositionMs, progress.DurationMs, progress.Progress);
-                _mediaControls.UpdatePosition(progress.PositionMs, progress.DurationMs);
-                break;
-            case BridgeUiEvent.PlaybackSeeked seeked:
-                _playback.ApplySeeked(seeked.TrackId, seeked.PositionMs, seeked.DurationMs, seeked.Progress);
-                // A jump, not a tick: the surfaces that announce seeks separately
-                // report only this arm.
-                _mediaControls.UpdateSeekedPosition(seeked.PositionMs, seeked.DurationMs);
-                break;
-            case BridgeUiEvent.PlaybackLoading loading:
-                // Both the in-app bar and the transport controls take the target
-                // once core resolves it; before that (a bare loading event) both
-                // keep showing the prior track.
-                _playback.ApplyLoading(loading.TrackId, loading.Track);
-                if (loading.Track is { } loadingTrack)
-                {
-                    _mediaControls.UpdateNowPlayingLoading(
-                        loadingTrack.TrackTitle, loadingTrack.ArtistNames, loadingTrack.AlbumTitle,
-                        loadingTrack.CoverImage, loadingTrack.DurationMs);
-                }
-                break;
-            case BridgeUiEvent.VolumeChanged volume:
-                // Core reports volume and mute separately; the surface wants both
-                // at once, so each arm pairs its half with the store's other half.
-                _playback.ApplyVolume(volume.Volume);
-                _mediaControls.UpdateVolume(volume.Volume, _playback.IsMuted);
-                break;
-            case BridgeUiEvent.MuteChanged mute:
-                _playback.ApplyMute(mute.IsMuted);
-                _mediaControls.UpdateVolume(_playback.Volume, mute.IsMuted);
-                break;
-            case BridgeUiEvent.RepeatModeChanged repeat:
-                _playback.ApplyRepeat(repeat.Mode);
-                break;
             case BridgeUiEvent.QueueItemsAdded added:
                 _playback.ApplyQueueItemsAdded(checked((int)added.Count));
                 break;
@@ -103,18 +45,9 @@ internal sealed class UiEventRouter
                     _showError(Loc.Chrome("error.title"), errorLine);
                 }
                 break;
-            case BridgeUiEvent.PreviewProgress:
-            case BridgeUiEvent.PreviewPlaying:
-            case BridgeUiEvent.PreviewPaused:
-            case BridgeUiEvent.PreviewIdle:
             case BridgeUiEvent.CandidateImportLoudnessProgress:
             case BridgeUiEvent.ImportQueueIdentifyProgress:
                 _importEvents(evt);
-                break;
-            case BridgeUiEvent.CastStatusChanged cast:
-                // The active renderer changed — casting to a device, or back to
-                // local (a user stop or a receiver-side end core detected).
-                _cast.ApplyStatus(cast.DeviceName);
                 break;
             default:
                 // A BridgeUiEvent variant with no arm above: log the drift so a new

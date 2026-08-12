@@ -229,8 +229,8 @@ internal sealed class MediaControlService : IMediaControl
         else
         {
             // Move the surface's timeline to the seek target now; the
-            // PlaybackSeeked event that follows corrects it. Duration is known
-            // whenever a ratio is.
+            // retained seek revision that follows corrects it. Duration is
+            // known whenever a ratio is.
             if (_state.CurrentDurationMs is { } durationMs)
             {
                 PushPosition((ulong)(ratio * durationMs), durationMs, seeked: true);

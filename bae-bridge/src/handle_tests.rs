@@ -229,8 +229,9 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     // Two sends into a capacity-1 channel before the pump runs: the first
     // is overwritten, so the pump's first recv returns Lagged with the
     // second event still queued behind it.
-    tx.send(bae_core::ui::UiBusEvent::PlaybackStopped).unwrap();
-    tx.send(bae_core::ui::UiBusEvent::MuteChanged { is_muted: true })
+    tx.send(bae_core::ui::UiBusEvent::QueueItemsAdded { count: 1 })
+        .unwrap();
+    tx.send(bae_core::ui::UiBusEvent::QueueItemsAdded { count: 2 })
         .unwrap();
     drop(tx);
 
@@ -246,7 +247,7 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     let events = events.lock().unwrap();
     assert!(matches!(
         events.as_slice(),
-        [crate::types::BridgeUiEvent::MuteChanged { is_muted: true }]
+        [crate::types::BridgeUiEvent::QueueItemsAdded { count: 2 }]
     ));
 }
 
@@ -284,30 +285,6 @@ fn upload_file_op_flattens_state_into_fields() {
     let done = convert(UploadState::Done);
     assert_eq!(done.state, BridgeUploadFileState::Done);
     assert_eq!(done.bytes_done, 1000);
-}
-
-#[test]
-fn convert_ui_event_preserves_seeked_position_kind() {
-    let event = super::convert_ui_event(bae_core::ui::UiBusEvent::PlaybackSeeked {
-        track_id: "track-1".to_string(),
-        position_ms: 75_000,
-        duration_ms: 100_000,
-        progress: 0.75,
-    })
-    .expect("seeked event maps to a bridge event");
-
-    assert!(
-        matches!(
-            event,
-            crate::types::BridgeUiEvent::PlaybackSeeked {
-                ref track_id,
-                position_ms: 75_000,
-                duration_ms: 100_000,
-                progress,
-            } if track_id == "track-1" && progress == 0.75
-        ),
-        "expected PlaybackSeeked, got {event:?}",
-    );
 }
 
 #[test]

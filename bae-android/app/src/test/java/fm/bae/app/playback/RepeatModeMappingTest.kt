@@ -13,6 +13,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
@@ -38,7 +39,7 @@ class RepeatModeMappingTest {
                 BridgeRepeatMode.CONTEXT to Player.REPEAT_MODE_ALL,
             )
         for ((coreMode, media3Mode) in cases) {
-            player.onRepeatModeChanged(coreMode)
+            player.applyValues(playbackValues(BridgePlaybackValueState.Stopped, repeatMode = coreMode))
             shadowOf(Looper.getMainLooper()).idle()
 
             assertEquals(coreMode, player.repeatMode.value)

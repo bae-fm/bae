@@ -3,6 +3,9 @@ package fm.bae.app.widget
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.playback.applyPlaybackState
+import fm.bae.app.playback.playbackValues
+import fm.bae.app.playback.playingState
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeUiEvent
+import uniffi.bae_bridge.BridgePlaybackValueState
 import java.io.File
 
 /**
@@ -59,8 +62,8 @@ class WidgetSnapshotTest {
     @Test
     fun playerPlayingEventMapsToPlayingSnapshot() {
         val player = player()
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 trackId = "t1",
                 trackTitle = "Track Title",
                 artistNames = "Artist Name",
@@ -83,7 +86,7 @@ class WidgetSnapshotTest {
     @Test
     fun playerStoppedEventMapsToEmptyState() {
         val player = player()
-        player.onStopped()
+        player.applyValues(playbackValues(BridgePlaybackValueState.Stopped))
 
         val snapshot = WidgetSnapshot.from(player.nowPlaying.value, player.isPlaying.value)
 

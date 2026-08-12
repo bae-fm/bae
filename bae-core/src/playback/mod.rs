@@ -29,7 +29,10 @@ pub use audio_output::{
 pub use context::{ContextSource, ContextStart};
 pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
-pub use progress::{PlaybackProgress, PlaybackQueueProjection, PreviewState};
+pub use progress::{
+    PlaybackPosition, PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewState,
+    PreviewValues,
+};
 pub use queue::{
     ContextProjection, ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry,
     QueueEntryId, QueueSnapshot,

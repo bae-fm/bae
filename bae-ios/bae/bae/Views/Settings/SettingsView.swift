@@ -7,6 +7,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatusStore
     @Environment(AppSessionHolder.self)
     private var holder
     @Environment(Sync.self)
@@ -127,7 +129,7 @@ struct SettingsView: View {
                 // live sync session this run (the membership chain lives in the
                 // library's cloud storage), so gate on syncReady — runtime status
                 // — not merely a configured provider.
-                if configStore.syncReady {
+                if syncStatusStore.syncReady {
                     Section {
                         NavigationLink {
                             MembersView()
@@ -265,6 +267,8 @@ private struct SyncConnectedControls: View {
 
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatusStore
     @Environment(OutboxStore.self)
     private var outboxStore
 
@@ -327,7 +331,7 @@ private struct SyncConnectedControls: View {
                 onDisconnect: { flow.promptDisconnect() }
             )
 
-            if let syncError = configStore.syncError {
+            if let syncError = syncStatusStore.error {
                 LabeledContent(
                     "Status",
                     value: String(localized: "Disconnected")
@@ -340,7 +344,7 @@ private struct SyncConnectedControls: View {
             else {
                 LabeledContent(
                     "Status",
-                    value: SyncIndicatorLabel.text(configStore.syncIndicator)
+                    value: SyncIndicatorLabel.text(syncStatusStore.indicator)
                 )
             }
 

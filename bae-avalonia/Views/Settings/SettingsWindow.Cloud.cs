@@ -172,6 +172,7 @@ internal sealed partial class SettingsWindow
         content.Children.Add(oauthButtons);
         content.Children.Add(s3Form);
 
-        renderers.Add(fresh => syncStatus.Text = fresh.SyncStatusText);
+        renderers.Add(fresh =>
+            syncStatus.Text = fresh.SyncStatusText(_app.SyncStatusStore.SyncReady));
     }
 }

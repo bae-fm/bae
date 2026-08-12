@@ -10,6 +10,7 @@ import SwiftUI
 public struct AppServiceComponents {
     fileprivate let playbackStore: PlaybackStore
     fileprivate let configStore: ConfigStore
+    fileprivate let syncStatusStore: SyncStatusStore
     fileprivate let libraryStore: LibraryStore
     fileprivate let downloadStore: DownloadStore
     fileprivate let castStore: CastStore
@@ -26,6 +27,7 @@ public struct AppServiceComponents {
     public init(
         playbackStore: PlaybackStore,
         configStore: ConfigStore,
+        syncStatusStore: SyncStatusStore,
         libraryStore: LibraryStore,
         downloadStore: DownloadStore,
         castStore: CastStore,
@@ -41,6 +43,7 @@ public struct AppServiceComponents {
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
+        self.syncStatusStore = syncStatusStore
         self.libraryStore = libraryStore
         self.downloadStore = downloadStore
         self.castStore = castStore
@@ -103,6 +106,7 @@ open class AppService: @unchecked Sendable, Observable {
 
     private let playbackStore: PlaybackStore
     private let configStore: ConfigStore
+    private let syncStatusStore: SyncStatusStore
     private let libraryStore: LibraryStore
     /// In-memory download (pin) queue mirror — per-release state and summary.
     private let downloadStore: DownloadStore
@@ -150,6 +154,7 @@ open class AppService: @unchecked Sendable, Observable {
         self.diagnostics = diagnostics
         playbackStore = components.playbackStore
         configStore = components.configStore
+        syncStatusStore = components.syncStatusStore
         libraryStore = components.libraryStore
         downloadStore = components.downloadStore
         castStore = components.castStore
@@ -157,6 +162,7 @@ open class AppService: @unchecked Sendable, Observable {
         commonSubscriptions = CommonSubscriptions(
             appHandle: appHandle,
             configStore: components.configStore,
+            syncStatusStore: components.syncStatusStore,
             outboxStore: components.outboxStore,
             downloadStore: components.downloadStore,
             castStore: components.castStore
@@ -188,6 +194,7 @@ open class AppService: @unchecked Sendable, Observable {
         content
             .environment(playbackStore)
             .environment(configStore)
+            .environment(syncStatusStore)
             .environment(libraryStore)
             .environment(downloadStore)
             .environment(outboxStore)
@@ -208,6 +215,7 @@ open class AppService: @unchecked Sendable, Observable {
         content
             .environment(playbackStore)
             .environment(configStore)
+            .environment(syncStatusStore)
             .environment(libraryStore)
             .environment(downloadStore)
             .environment(outboxStore)
@@ -229,6 +237,7 @@ open class AppService: @unchecked Sendable, Observable {
         content
             .environment(service?.playbackStore)
             .environment(service?.configStore)
+            .environment(service?.syncStatusStore)
             .environment(service?.libraryStore)
             .environment(service?.downloadStore)
             .environment(service?.outboxStore)
@@ -371,6 +380,10 @@ open class AppService: @unchecked Sendable, Observable {
 
     public func startCommonSubscriptions() {
         commonSubscriptions.start(
+            applyPlayback: { [weak self] values in
+                self?.playbackEvents.apply(values)
+                self?.applyPlatformPlaybackValues(values)
+            },
             applyQueue: { [weak self] snapshot in
                 self?.playbackEvents.applyQueueSnapshot(snapshot)
             },
@@ -378,8 +391,10 @@ open class AppService: @unchecked Sendable, Observable {
         )
     }
 
-    func applyPlaybackEvent(_ event: BridgeUiEvent) {
-        playbackEvents.apply(event)
+    open func applyPlatformPlaybackValues(_: BridgePlaybackValues) {}
+
+    func applyQueueItemsAdded(_ count: UInt32) {
+        playbackEvents.applyQueueItemsAdded(count)
     }
 
     #if DEBUG

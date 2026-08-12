@@ -67,54 +67,8 @@ object UiEventAdapter {
         errors: ErrorLines,
     ): Boolean {
         when (event) {
-            is BridgeUiEvent.PlaybackLoading -> {
-                player.onLoading(event.trackId, event.track)
-            }
-
-            is BridgeUiEvent.PlaybackPlaying -> {
-                player.onPlaying(event)
-            }
-
-            is BridgeUiEvent.PlaybackPaused -> {
-                player.onPaused(event)
-            }
-
-            BridgeUiEvent.PlaybackStopped -> {
-                player.onStopped()
-            }
-
             is BridgeUiEvent.PlaybackError -> {
                 stores.config.showError(errors.line(event.reason))
-            }
-
-            is BridgeUiEvent.PlaybackProgress -> {
-                player.onProgress(
-                    trackId = event.trackId,
-                    positionMs = event.positionMs.toLong(),
-                    durationMs = event.durationMs.toLong(),
-                    progress = event.progress,
-                )
-            }
-
-            is BridgeUiEvent.PlaybackSeeked -> {
-                player.onSeeked(
-                    trackId = event.trackId,
-                    positionMs = event.positionMs.toLong(),
-                    durationMs = event.durationMs.toLong(),
-                    progress = event.progress,
-                )
-            }
-
-            is BridgeUiEvent.RepeatModeChanged -> {
-                player.onRepeatModeChanged(event.mode)
-            }
-
-            is BridgeUiEvent.VolumeChanged -> {
-                player.onVolumeChanged(event.volume)
-            }
-
-            is BridgeUiEvent.MuteChanged -> {
-                player.onMuteChanged(event.isMuted)
             }
 
             is BridgeUiEvent.QueueItemsAdded -> {
@@ -138,12 +92,6 @@ object UiEventAdapter {
                 stores.config.showError(errors.line(event.error))
             }
 
-            // Which device playback is on, including a receiver-side end core
-            // noticed on its own.
-            is BridgeUiEvent.CastStatusChanged -> {
-                stores.cast.applyStatus(event.deviceName)
-            }
-
             else -> {
                 return false
             }
@@ -153,10 +101,6 @@ object UiEventAdapter {
 
     private fun ignoreObsoleteEvent(event: BridgeUiEvent) {
         when (event) {
-            BridgeUiEvent.PreviewIdle,
-            is BridgeUiEvent.PreviewPlaying,
-            is BridgeUiEvent.PreviewPaused,
-            is BridgeUiEvent.PreviewProgress,
             is BridgeUiEvent.CandidateImportLoudnessProgress,
             // Importing is a desktop feature; Android has no import queue, so
             // how much of it has been identified drives nothing here.
@@ -165,23 +109,12 @@ object UiEventAdapter {
                 logger.debug("ignoring ${event::class.simpleName}")
             }
 
-            is BridgeUiEvent.PlaybackLoading,
-            is BridgeUiEvent.PlaybackPlaying,
-            is BridgeUiEvent.PlaybackPaused,
-            BridgeUiEvent.PlaybackStopped,
             is BridgeUiEvent.PlaybackError,
-            is BridgeUiEvent.PlaybackProgress,
-            is BridgeUiEvent.PlaybackSeeked,
-            is BridgeUiEvent.RepeatModeChanged,
-            is BridgeUiEvent.VolumeChanged,
-            is BridgeUiEvent.MuteChanged,
             is BridgeUiEvent.QueueItemsAdded,
             is BridgeUiEvent.Error,
-            is BridgeUiEvent.CastStatusChanged,
             -> {
                 error("handled event reached obsolete-event path: ${event::class.simpleName}")
             }
         }
     }
-
 }

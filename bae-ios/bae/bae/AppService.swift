@@ -24,10 +24,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     ) {
         let components = AppServiceComponents(
             playbackStore: PlaybackStore(),
-            configStore: ConfigStore(
-                config: Config(bridge: config),
-                syncReady: appHandle.isSyncReady()
-            ),
+            configStore: ConfigStore(config: Config(bridge: config)),
+            syncStatusStore: SyncStatusStore(),
             libraryStore: LibraryStore(),
             downloadStore: DownloadStore(
                 snapshot: appHandle.getDownloadSnapshot()

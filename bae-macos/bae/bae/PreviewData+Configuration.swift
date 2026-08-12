@@ -56,8 +56,7 @@
                         discogsUsable: false,
                         sync: nil
                     )
-                ),
-                syncReady: false
+                )
             )
         }
 

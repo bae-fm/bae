@@ -15,7 +15,7 @@ public struct Config: Equatable {
     /// (managed import enqueues a cloud_outbox row and uploads on the next
     /// sync cycle) gate on `sync != nil`. Flows that need sync live this
     /// instant (device pairing, restore-code generation) gate on
-    /// `ConfigStore.syncReady` — that's runtime status, kept off this
+    /// `SyncStatusStore.syncReady` — that's runtime status, kept off this
     /// persisted-config mirror.
     public let sync: BridgeSyncConfig?
     public let pauseBetweenSides: Bool

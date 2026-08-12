@@ -1,34 +1,10 @@
 import SwiftUI
 
-/// Mirror of core's library configuration. The config and sync-status
-/// projections are the sole writers: views read the current `Config`
-/// (including sync settings) and invoke bridge methods to change them; the
-/// config and sync-status subscriptions refresh this store with the persisted
-/// result.
+/// Mirror of core's library configuration. The config value stream is its only
+/// writer.
 @Observable
 public class ConfigStore {
     public var config: Config
-    /// Whether the sync loop is running right now. Runtime status, not
-    /// configuration: it arrives through the sync-status subscription rather
-    /// than the `Config` mirror, since it changes
-    /// independently of any persisted setting. Settings/pairing gate on this.
-    public var syncReady: Bool
-    /// The sync badge state, decided by core (error > syncing > synced > idle).
-    /// The UI maps a variant to a label; it never re-derives which state wins,
-    /// which is how a stale timestamp used to read as "Synced" on a loop that
-    /// never came up.
-    public var syncIndicator: BridgeSyncIndicator = .idle
-    /// Sync loop's latest error, or nil when sync is healthy. Set/cleared by
-    /// the sync-status projection from `getSyncStatus()`. The Library settings
-    /// tab surfaces this as a reconnect banner (generic line + copyable
-    /// detail).
-    public var syncError: DisplayError?
-
-    #if os(iOS)
-        /// Whether a sync cycle is running right now. iOS surfaces this as an
-        /// indeterminate spinner in the library toolbar; macOS has no consumer.
-        public var syncing: Bool = false
-    #endif
 
     #if os(iOS)
         /// Latest surfaced error from core's `error` event, or nil when
@@ -65,24 +41,12 @@ public class ConfigStore {
         }
     #endif
 
-    public init(config: Config, syncReady: Bool) {
+    public init(config: Config) {
         self.config = config
-        self.syncReady = syncReady
     }
 
-    public func applyConfigSnapshot(_ config: BridgeConfig, syncReady: Bool) {
+    public func applyConfigSnapshot(_ config: BridgeConfig) {
         self.config = Config(bridge: config)
-        self.syncReady = syncReady
     }
 
-    public func applySyncStatusSnapshot(_ snapshot: BridgeSyncStatusSnapshot) {
-        // `flatMap`, not `map`: an error core says has no line leaves the sync
-        // banner clear rather than showing an empty one.
-        syncError = snapshot.error.flatMap { DisplayError($0) }
-        syncReady = snapshot.syncReady
-        syncIndicator = bridgeSyncIndicator(snapshot: snapshot)
-        #if os(iOS)
-            syncing = snapshot.syncing
-        #endif
-    }
 }

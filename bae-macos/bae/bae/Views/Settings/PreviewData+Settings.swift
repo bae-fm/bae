@@ -95,22 +95,7 @@
         /// the connected controls, the devices list, and the recovery section.
         @MainActor
         static func connectedConfigStore() -> ConfigStore {
-            ConfigStore(
-                config: Config(bridge: connectedBridgeConfig),
-                syncReady: true,
-            )
-        }
-
-        /// A `ConfigStore` whose sync loop has reported an error — the Sync
-        /// section's reconnect banner reads `syncError` directly.
-        @MainActor
-        static func syncErrorConfigStore() -> ConfigStore {
-            let store = makeConfigStore(libraryFullWidth: false)
-            store.syncError = DisplayError(
-                line:
-                    "The cloud provider rejected the request (403 Forbidden)."
-            )
-            return store
+            ConfigStore(config: Config(bridge: connectedBridgeConfig))
         }
 
         private static let connectedBridgeConfig = BridgeConfig(

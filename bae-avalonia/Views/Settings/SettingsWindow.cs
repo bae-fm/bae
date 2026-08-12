@@ -147,6 +147,7 @@ internal sealed partial class SettingsWindow
             }
         }
         _app.SettingsStore.Changed += Refresh;
+        _app.SyncStatusStore.Changed += Refresh;
 
         // A key saved while offline lands "unvalidated"; opening settings is a
         // chance to settle it now that there may be connectivity. The core no-ops
@@ -156,6 +157,7 @@ internal sealed partial class SettingsWindow
         window.Closed += (_, _) =>
         {
             _app.SettingsStore.Changed -= Refresh;
+            _app.SyncStatusStore.Changed -= Refresh;
             unsubscribeUpdates?.Invoke();
             _window = null;
         };

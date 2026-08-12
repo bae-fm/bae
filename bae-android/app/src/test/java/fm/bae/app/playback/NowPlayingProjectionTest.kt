@@ -13,7 +13,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeUiEvent
 
 /**
  * The MediaSession playlist projection (BaeCorePlayer.orderedMetas). The
@@ -73,8 +72,8 @@ class NowPlayingProjectionTest {
         // Main.immediate runs the artwork fetch inline (the fake returns without
         // suspending), so the current item already carries its bytes here.
         val player = player(imageBytes = mapOf("cover-1" to coverBytes))
-        player.onPlaying(
-            BridgeUiEvent.PlaybackPlaying(
+        player.applyPlaybackState(
+            playingState(
                 trackId = "cur",
                 trackTitle = "Title cur",
                 artistNames = "Artist Name",

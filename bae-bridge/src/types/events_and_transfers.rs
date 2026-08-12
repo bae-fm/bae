@@ -35,90 +35,16 @@ pub trait ArtworkAnalyzerCallback: Send + Sync {
 /// fields inlined. Database-backed state uses live-result subscriptions.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUiEvent {
-    // ── Playback ───────────────────────────────────────────────────
-    PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
     /// downloaded yet, or an in-core decode failure. The UI renders `reason`
     /// for its locale; playback itself falls back to stopped.
     PlaybackError {
         reason: BridgePlaybackErrorReason,
     },
-    PlaybackLoading {
-        track_id: String,
-        /// The target track's metadata, once core has resolved it. `None` in the
-        /// first loading event; `Some` once the prepared track is in hand, so the
-        /// UI can switch the now-playing bar to the target while audio is still
-        /// downloading.
-        track: Option<BridgeLoadingTrackInfo>,
-    },
-    PlaybackPlaying {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        artist_id: String,
-        album_id: String,
-        album_title: String,
-        cover_image: Option<BridgeImageRef>,
-        duration_ms: u64,
-    },
-    PlaybackPaused {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        artist_id: String,
-        album_id: String,
-        album_title: String,
-        cover_image: Option<BridgeImageRef>,
-        duration_ms: u64,
-        reason: BridgePlaybackPauseReason,
-    },
-    /// Position tick — goes to NSView.
-    PlaybackProgress {
-        track_id: String,
-        position_ms: u64,
-        /// User-facing track duration (pregap-adjusted), so the media-control
-        /// update reads it from the event instead of the now-playing slice.
-        duration_ms: u64,
-        progress: f64,
-    },
-    /// Position after a seek completes — goes to NSView.
-    PlaybackSeeked {
-        track_id: String,
-        position_ms: u64,
-        /// User-facing track duration (pregap-adjusted), so the media-control
-        /// update reads it from the event instead of the now-playing slice.
-        duration_ms: u64,
-        progress: f64,
-    },
-    VolumeChanged {
-        volume: f32,
-    },
-    MuteChanged {
-        is_muted: bool,
-    },
-    RepeatModeChanged {
-        mode: BridgeRepeatMode,
-    },
     /// Tracks were appended/inserted into the queue. Carries the count for
     /// a transient "+N" badge in the UI. Suppressed when count is zero.
     QueueItemsAdded {
         count: u32,
-    },
-
-    // ── Preview ────────────────────────────────────────────────────
-    PreviewIdle,
-    PreviewPlaying {
-        path: String,
-        duration_ms: u64,
-    },
-    PreviewPaused {
-        path: String,
-        duration_ms: u64,
-    },
-    /// High-frequency tick — goes to NSView, not store.
-    PreviewProgress {
-        position_ms: u64,
-        progress: f64,
     },
 
     // ── Import live progress ───────────────────────────────────────
@@ -137,14 +63,6 @@ pub enum BridgeUiEvent {
     ImportQueueIdentifyProgress {
         identified: u32,
         total: u32,
-    },
-
-    // ── Cast ───────────────────────────────────────────────────────
-    /// The active renderer changed: `Some(name)` when playback moved to a Cast
-    /// device, `None` when it returned to local output. Drives the cast button's
-    /// active state and the "Casting to `<name>`" row.
-    CastStatusChanged {
-        device_name: Option<String>,
     },
 
     // ── Errors ─────────────────────────────────────────────────────
