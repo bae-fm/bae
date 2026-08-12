@@ -11,6 +11,7 @@ cd "$(dirname "$0")/.."
 # bindings for a bridge nobody asked for, and it surfaces later as a Swift or
 # C# compile error nowhere near its cause. Local and unconditional on purpose.
 export CARGO_TARGET_DIR="target-macos"
+MACOS_TARGET="aarch64-apple-darwin"
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "Usage: $0 [--release]"
@@ -65,7 +66,8 @@ if [ -z "${RUSTC_WRAPPER+x}" ] && command -v sccache &> /dev/null; then
 fi
 
 echo "Building for macOS (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
-cargo build $CARGO_FLAGS --target aarch64-apple-darwin -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+cargo build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
+    --lib --bin uniffi-bindgen --features "$BAE_BRIDGE_FEATURES"
 
 # Write the Swift compilation conditions derived from the feature set. The
 # Xcode project includes this file (via Signing.xcconfig) so the #if guards in
@@ -88,7 +90,8 @@ else
 fi
 
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
-STATIC_LIB="$CARGO_TARGET_DIR/aarch64-apple-darwin/$CARGO_PROFILE/libbae_bridge.a"
+STATIC_LIB="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE/libbae_bridge.a"
+BINDGEN="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE/uniffi-bindgen"
 INSTALLED_BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
 XCFRAMEWORK="BaeKit/Frameworks/BaeBridgeFFI.xcframework"
 COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
@@ -120,7 +123,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     GENERATED_XCFRAMEWORK="$GENERATION_TMP/BaeBridgeFFI.xcframework"
     mkdir -p "$GENERATED_BINDINGS"
 
-    cargo run --bin uniffi-bindgen generate \
+    "$BINDGEN" generate \
         --library "$STATIC_LIB" \
         --language swift \
         --out-dir "$GENERATED_BINDINGS/"
@@ -154,7 +157,8 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
 fi
 
 echo "Generating localization String Catalog (Apple)..."
-cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-macos/bae/bae
+cargo run -q $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-loc --bin loc-gen -- \
+    emit --target apple --out-dir bae-macos/bae/bae
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
