@@ -20,8 +20,6 @@ namespace Bae.Desktop;
 // through a domain service — no view here touches NativeBae.
 internal sealed partial class StorageDialog
 {
-    private const ulong StoragePageSize = 100;
-
     private readonly AppService _app;
     private readonly ModalHost _host;
 
@@ -45,10 +43,7 @@ internal sealed partial class StorageDialog
         // bounded to releases with active outbox activity, refreshed by
         // LoadStorageRows and read without another database call by StorageCellText.
         var outboxProgress = new Dictionary<string, BridgeUploadProgress>();
-        // The loaded storage rows by release id — the incremental list's side store,
-        // the id → row resolution the table and the row menu read.
-        var rowsById = new Dictionary<string, BridgeStorageRow>();
-        long? totalSize = null;
+        var query = _app.StorageQueryStore;
 
         // The filter tab resets to All each open (macOS parity); the sort persists.
         // Both are server-side (the row set is paged), so changing either rebuilds
@@ -80,54 +75,9 @@ internal sealed partial class StorageDialog
                 row.Release.StorageState == BridgeReleaseStorageState.Remote, row.Release.Pinned);
         }
 
-        void Ingest(IReadOnlyList<BridgeStorageRow> rows)
-        {
-            foreach (var row in rows)
-            {
-                rowsById[row.Release.Id] = row;
-            }
-        }
-
-        void OnListError(Exception exception)
-        {
-            if (exception is OperationCanceledException)
-            {
-                return;
-            }
-            status.Text = (exception as PageLoadException)?.Line ?? Loc.Chrome("storage.load_failed");
-            status.IsVisible = true;
-        }
-
-        // One list instance per current tab/sort — the query is baked into the page
-        // source, so a tab or sort change rebuilds this rather than mutating it.
-        PaginatedList<BridgeStorageRow, string> BuildList()
-        {
-            var tab = activeTab;
-            var field = sortField;
-            var direction = sortDirection;
-            var source = new LibraryPageSource<BridgeStorageRow>(
-                (offset, limit, onValue, onError) =>
-                    _app.Library.SubscribeStorage(
-                        tab,
-                        field,
-                        direction,
-                        offset,
-                        limit,
-                        (rows, count, size) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                        {
-                            totalSize = size;
-                            onValue(rows, count);
-                            RenderFooter(count);
-                        }),
-                        error => Avalonia.Threading.Dispatcher.UIThread.Post(() => onError(error))));
-            return new PaginatedList<BridgeStorageRow, string>(source, row => row.Release.Id, Ingest, OnListError);
-        }
-
-        var list = BuildList();
-
         var table = new StorageTableView(
-            () => list,
-            id => rowsById.GetValueOrDefault(id),
+            () => query.List,
+            query.Row,
             selected,
             StorageCellText);
 
@@ -222,35 +172,27 @@ internal sealed partial class StorageDialog
                 }
             }
 
-            rowsById.Clear();
-            totalSize = null;
-            list.Cancel();
-            list = BuildList();
-            table.Rebind();
-            await list.LoadInitialAsync();
-            if (list.InitialLoadError is not null)
+            await query.Update(activeTab, sortField, sortDirection);
+            if (query.ErrorLine is not null)
             {
-                status.Text = Loc.Chrome("storage.load_failed");
+                status.Text = query.ErrorLine;
                 status.IsVisible = true;
                 return;
             }
             status.IsVisible = false;
-            // Force the first page so its cells render immediately and its ids are
-            // known for the selection reconcile (further pages load on scroll).
-            await list.LoadRangeAsync(0, (int)StoragePageSize);
             // Drop selections for releases no longer present after the reload.
-            selected.IntersectWith(list.AllLoadedIds);
+            selected.IntersectWith(query.List.AllLoadedIds);
             table.RefreshHighlights();
 
             RenderTabs();
             RenderHeader();
-            RenderFooter(list.TotalCount);
+            RenderFooter(query.List.TotalCount);
         }
 
         void RenderFooter(int releaseCount)
         {
             var releasesText = Loc.Chrome("storage.footer.releases", "count", (long)releaseCount);
-            footer.Text = totalSize is { } size
+            footer.Text = query.TotalSize is { } size
                 ? $"{releasesText} · {Loc.Chrome("storage.footer.total", "size", Loc.Bytes(size))}"
                 : releasesText;
         }
@@ -680,6 +622,10 @@ internal sealed partial class StorageDialog
             // A release with a transition in flight offers only "Cancel" — the storage
             // actions would race it. Core dispatches the cancel to whichever queue is
             // running.
+            var rowsById = releaseIds
+                .Select(id => query.Row(id))
+                .Where(row => row is not null)
+                .ToDictionary(row => row!.Release.Id, row => row!);
             var (transitioning, uploadError) = await _app.StorageStore.TransitioningReleases(releaseIds, rowsById);
             if (uploadError is not null)
             {
@@ -751,6 +697,17 @@ internal sealed partial class StorageDialog
             table.RefreshCells();
         }
         _app.StorageStore.Changed += OnStorageChanged;
+        void OnStorageQueryChanged()
+        {
+            table.Rebind();
+            if (query.ErrorLine is { } error)
+            {
+                status.Text = error;
+                status.IsVisible = true;
+            }
+            RenderFooter(query.List.TotalCount);
+        }
+        query.Changed += OnStorageQueryChanged;
         try
         {
             await _host.Show(close =>
@@ -786,7 +743,8 @@ internal sealed partial class StorageDialog
         finally
         {
             _app.StorageStore.Changed -= OnStorageChanged;
-            list.Cancel();
+            query.Changed -= OnStorageQueryChanged;
+            query.Cancel();
         }
     }
 

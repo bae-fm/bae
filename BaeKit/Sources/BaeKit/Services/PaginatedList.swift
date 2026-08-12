@@ -120,6 +120,8 @@ where Row.ID: Sendable {
     private var subscriptions: [String: any PageSubscription] = [:]
     @ObservationIgnored
     private var subscriptionRanges: [String: Range<Int>] = [:]
+    @ObservationIgnored
+    private var subscriptionIdentities: [String: UUID] = [:]
     private static var maximumVisiblePageSubscriptions: Int { 3 }
 
     public init(
@@ -188,16 +190,29 @@ where Row.ID: Sendable {
         await subscribeRange(offset: offset, limit: limit, initial: false)
     }
 
+    public func cancel() {
+        for subscription in subscriptions.values {
+            subscription.cancel()
+        }
+        subscriptions.removeAll()
+        subscriptionRanges.removeAll()
+        subscriptionIdentities.removeAll()
+    }
+
     private func subscribeRange(offset: Int, limit: Int, initial: Bool) async {
         let key = "\(offset):\(limit)"
         guard subscriptions[key] == nil else { return }
         await withCheckedContinuation { continuation in
             let waiter = InitialDeliveryWaiter(continuation)
+            let identity = UUID()
+            subscriptionIdentities[key] = identity
             subscriptions[key] = pageSource.subscribe(
                 offset: offset,
                 limit: limit,
                 onValue: { [weak self] rows, totalCount in
-                    guard let self else {
+                    guard let self,
+                        self.isCurrentSubscription(key, identity)
+                    else {
                         waiter.resume()
                         return
                     }
@@ -220,13 +235,16 @@ where Row.ID: Sendable {
                     waiter.resume()
                 },
                 onError: { [weak self] error in
-                    guard let self else {
+                    guard let self,
+                        self.isCurrentSubscription(key, identity)
+                    else {
                         waiter.resume()
                         return
                     }
                     if initial, self.segments.isEmpty {
                         self.initialLoadError = DisplayError(error)
                         self.subscriptions.removeValue(forKey: key)?.cancel()
+                        self.subscriptionIdentities.removeValue(forKey: key)
                     }
                     else {
                         logger.error(
@@ -240,6 +258,11 @@ where Row.ID: Sendable {
             subscriptionRanges[key] = offset..<(offset + limit)
             evictPages(outsideWindowAround: offset..<(offset + limit))
         }
+    }
+
+    private func isCurrentSubscription(_ key: String, _ identity: UUID) -> Bool
+    {
+        subscriptionIdentities[key] == identity
     }
 
     // MARK: - Layout helpers
@@ -322,6 +345,7 @@ where Row.ID: Sendable {
                 .key, let range = subscriptionRanges.removeValue(forKey: key)
             else { return }
             subscriptions.removeValue(forKey: key)?.cancel()
+            subscriptionIdentities.removeValue(forKey: key)
             removeLoadedRange(range)
         }
     }

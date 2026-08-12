@@ -14,6 +14,7 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
+import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SyncStatusStore
@@ -60,9 +61,9 @@ private val logger = BaeLogger(TAG)
 
 /**
  * Position-update tick interval handed to the bridge, in milliseconds. bae-core
- * drives the real playback engine on Android and emits `PlaybackProgress` at
- * this cadence; the [BaeCorePlayer] re-anchors its extrapolating position from
- * each tick.
+ * drives the real playback engine on Android and publishes retained playback
+ * values at this cadence; the [BaeCorePlayer] re-anchors its extrapolating
+ * position from each value.
  */
 private const val POSITION_UPDATE_INTERVAL_MS = 200u
 
@@ -84,6 +85,7 @@ class OpenLibrary(
     // than requiring callers to pass a separately-constructed instance.
     val library = Library(appHandle)
     internal val browserPages = BrowserPageStores(library, appContext, scope)
+    internal val libraryQueries = LibraryQueryStores(library, scope)
 
     // Every image the app shows resolves through this store, and its cache entries
     // are keyed on this library's image ids — so it lives and dies with the
@@ -267,6 +269,7 @@ class OpenLibrary(
 
     private fun stopSessionServices() {
         browserPages.cancel()
+        libraryQueries.cancel()
         // Detach the audio-focus listener + becoming-noisy receiver: they call
         // appHandle.pause()/resume() on their own (system-driven, no user
         // action), so they must stop touching the handle before it's closed. The

@@ -17,11 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -29,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
@@ -38,17 +35,11 @@ import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeWorkSummary
-
-private const val DEBOUNCE_MS = 300L
-private const val TAG = "bae.SearchResultsScreen"
-private val logger = BaeLogger(TAG)
 
 internal fun BridgeSearchResults.hasNoResults(): Boolean =
     albums.isEmpty() &&
@@ -74,37 +65,18 @@ fun SearchResultsScreen(
     onSelectComposer: (String) -> Unit,
     onSelectWork: (String) -> Unit,
 ) {
-    var results by remember { mutableStateOf<BridgeSearchResults?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val state by session.libraryQueries.search.state.collectAsState()
     val appContext = LocalContext.current
 
-    // Re-keyed on query: a new keystroke cancels the in-flight debounce + search
-    // (the suspend bridge call included), so only the latest query's results land.
-    // `results` is not cleared between keystrokes, keeping prior results visible
-    // while the next search runs instead of flashing the spinner.
-    LaunchedEffect(query) {
-        loading = true
-        error = null
-        try {
-            delay(DEBOUNCE_MS)
-            session.library.searchResults(query).collect { value ->
-                results = value
-                loading = false
-                error = null
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Search failed", e)
-            error = appContext.getString(R.string.search_failed)
-        } finally {
-            loading = false
+    DisposableEffect(query, session) {
+        session.libraryQueries.search.activate(query)
+        onDispose {
+            session.libraryQueries.search.deactivate(query)
         }
     }
 
-    val current = results
-    val currentError = error
+    val current = state.value
+    val currentError = state.error?.let { appContext.getString(R.string.search_failed) }
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             currentError != null && current == null -> {
@@ -115,7 +87,7 @@ fun SearchResultsScreen(
                 )
             }
 
-            loading && current == null -> {
+            !state.delivered && current == null -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
 

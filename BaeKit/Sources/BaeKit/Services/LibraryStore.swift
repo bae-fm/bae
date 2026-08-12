@@ -363,7 +363,7 @@ extension BridgeAlbum: Identifiable {}
 /// ## Queries write slices
 ///
 /// Page subscriptions and detail subscriptions write one or more slices from
-/// core query results. The store does not fold catalog event deltas.
+/// core query results.
 @MainActor
 @Observable
 public final class LibraryStore {
@@ -557,7 +557,6 @@ public final class LibraryStore {
                 applyAlbumDetailSnapshot(albumId: albumId, bridge: detail)
             case .failure(let error):
                 albumDetailErrors[albumId] = DisplayError(error)
-                return
             }
         }
     }
@@ -578,7 +577,6 @@ public final class LibraryStore {
                 onValue()
             case .failure(let error):
                 releaseDetailErrors[releaseId] = DisplayError(error)
-                return
             }
         }
     }

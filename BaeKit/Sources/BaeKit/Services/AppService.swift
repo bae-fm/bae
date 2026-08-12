@@ -117,6 +117,12 @@ open class AppService: @unchecked Sendable, Observable {
     private let outboxStore: OutboxStore
 
     private let commonSubscriptions: CommonSubscriptions
+    private let libraryProjectionStore: LibraryProjectionStore
+    private lazy var libraryListsStore = LibraryListsStore(
+        library: library,
+        libraryStore: libraryStore,
+        onError: { [weak self] error in self?.showError(error) }
+    )
 
     // MARK: - Domain services
     //
@@ -133,7 +139,7 @@ open class AppService: @unchecked Sendable, Observable {
     private nonisolated let downloads: Downloads
     /// Cast transport: browse for devices, and move playback to or from one.
     private nonisolated let cast: Cast
-    private let playbackEvents: PlaybackEventHandler
+    private let playbackValues: PlaybackValueHandler
 
     #if DEBUG
         private let testAccess: AppServiceTestAccess
@@ -167,6 +173,9 @@ open class AppService: @unchecked Sendable, Observable {
             downloadStore: components.downloadStore,
             castStore: components.castStore
         )
+        libraryProjectionStore = LibraryProjectionStore(
+            library: components.library
+        )
         library = components.library
         playback = components.playback
         queue = components.queue
@@ -175,7 +184,7 @@ open class AppService: @unchecked Sendable, Observable {
         sync = components.sync
         downloads = components.downloads
         cast = components.cast
-        playbackEvents = PlaybackEventHandler(
+        playbackValues = PlaybackValueHandler(
             appHandle: appHandle,
             playbackStore: components.playbackStore,
             castStore: components.castStore,
@@ -186,70 +195,6 @@ open class AppService: @unchecked Sendable, Observable {
                 playbackStore: components.playbackStore
             )
         #endif
-    }
-
-    public func installSharedEnvironment<Content: View>(
-        _ content: Content
-    ) -> some View {
-        content
-            .environment(playbackStore)
-            .environment(configStore)
-            .environment(syncStatusStore)
-            .environment(libraryStore)
-            .environment(downloadStore)
-            .environment(outboxStore)
-            .environment(downloads)
-            .environment(imageStore)
-            .environment(library)
-            .environment(playback)
-            .environment(queue)
-            .environment(sync)
-            .environment(cast)
-            .environment(castStore)
-            .environment(mediaPaths)
-    }
-
-    public func installSharedEnvironment<Content: Scene>(
-        _ content: Content
-    ) -> some Scene {
-        content
-            .environment(playbackStore)
-            .environment(configStore)
-            .environment(syncStatusStore)
-            .environment(libraryStore)
-            .environment(downloadStore)
-            .environment(outboxStore)
-            .environment(downloads)
-            .environment(imageStore)
-            .environment(library)
-            .environment(playback)
-            .environment(queue)
-            .environment(sync)
-            .environment(cast)
-            .environment(castStore)
-            .environment(mediaPaths)
-    }
-
-    public static func installSharedEnvironment<Content: Scene>(
-        _ content: Content,
-        from service: AppService?
-    ) -> some Scene {
-        content
-            .environment(service?.playbackStore)
-            .environment(service?.configStore)
-            .environment(service?.syncStatusStore)
-            .environment(service?.libraryStore)
-            .environment(service?.downloadStore)
-            .environment(service?.outboxStore)
-            .environment(service?.downloads)
-            .environment(service?.imageStore)
-            .environment(service?.library)
-            .environment(service?.playback)
-            .environment(service?.queue)
-            .environment(service?.sync)
-            .environment(service?.cast)
-            .environment(service?.castStore)
-            .environment(service?.mediaPaths)
     }
 
     public var libraryId: String { configStore.config.libraryId }
@@ -381,11 +326,11 @@ open class AppService: @unchecked Sendable, Observable {
     public func startCommonSubscriptions() {
         commonSubscriptions.start(
             applyPlayback: { [weak self] values in
-                self?.playbackEvents.apply(values)
+                self?.playbackValues.apply(values)
                 self?.applyPlatformPlaybackValues(values)
             },
             applyQueue: { [weak self] snapshot in
-                self?.playbackEvents.applyQueueSnapshot(snapshot)
+                self?.playbackValues.applyQueueSnapshot(snapshot)
             },
             onError: { [weak self] error in self?.showError(error) }
         )
@@ -394,7 +339,7 @@ open class AppService: @unchecked Sendable, Observable {
     open func applyPlatformPlaybackValues(_: BridgePlaybackValues) {}
 
     func applyQueueItemsAdded(_ count: UInt32) {
-        playbackEvents.applyQueueItemsAdded(count)
+        playbackValues.applyQueueItemsAdded(count)
     }
 
     #if DEBUG
@@ -408,4 +353,76 @@ open class AppService: @unchecked Sendable, Observable {
         }
 
     #endif
+}
+
+extension AppService {
+    public func installSharedEnvironment<Content: View>(
+        _ content: Content
+    ) -> some View {
+        content
+            .environment(playbackStore)
+            .environment(configStore)
+            .environment(syncStatusStore)
+            .environment(libraryStore)
+            .environment(libraryProjectionStore)
+            .environment(libraryListsStore)
+            .environment(downloadStore)
+            .environment(outboxStore)
+            .environment(downloads)
+            .environment(imageStore)
+            .environment(library)
+            .environment(playback)
+            .environment(queue)
+            .environment(sync)
+            .environment(cast)
+            .environment(castStore)
+            .environment(mediaPaths)
+    }
+
+    public func installSharedEnvironment<Content: Scene>(
+        _ content: Content
+    ) -> some Scene {
+        content
+            .environment(playbackStore)
+            .environment(configStore)
+            .environment(syncStatusStore)
+            .environment(libraryStore)
+            .environment(libraryProjectionStore)
+            .environment(libraryListsStore)
+            .environment(downloadStore)
+            .environment(outboxStore)
+            .environment(downloads)
+            .environment(imageStore)
+            .environment(library)
+            .environment(playback)
+            .environment(queue)
+            .environment(sync)
+            .environment(cast)
+            .environment(castStore)
+            .environment(mediaPaths)
+    }
+
+    public static func installSharedEnvironment<Content: Scene>(
+        _ content: Content,
+        from service: AppService?
+    ) -> some Scene {
+        content
+            .environment(service?.playbackStore)
+            .environment(service?.configStore)
+            .environment(service?.syncStatusStore)
+            .environment(service?.libraryStore)
+            .environment(service?.libraryProjectionStore)
+            .environment(service?.libraryListsStore)
+            .environment(service?.downloadStore)
+            .environment(service?.outboxStore)
+            .environment(service?.downloads)
+            .environment(service?.imageStore)
+            .environment(service?.library)
+            .environment(service?.playback)
+            .environment(service?.queue)
+            .environment(service?.sync)
+            .environment(service?.cast)
+            .environment(service?.castStore)
+            .environment(service?.mediaPaths)
+    }
 }

@@ -210,6 +210,51 @@ class ImportStore {
             mutateFolderCandidate(key: key, mutate)
         }
     }
+
+    @MainActor
+    func refreshLibraryStatusSubscriptions(
+        importer: Importer,
+        key: String
+    ) {
+        guard let current = candidate(forKey: key) else { return }
+        let desired = current.search.libraryStatusSubscriptionKeys()
+
+        mutateCandidate(forKey: key) { candidate in
+            candidate.libraryStatusSubscriptions =
+                candidate.libraryStatusSubscriptions.filter {
+                    desired.contains($0.key)
+                }
+        }
+
+        for statusKey in desired {
+            guard
+                candidate(forKey: key)?
+                    .libraryStatusSubscriptions[statusKey] == nil
+            else { continue }
+            let subscription = importer.subscribeReleaseLibraryStatus(
+                source: statusKey.source,
+                releaseId: statusKey.releaseId,
+                sourceGroupId: statusKey.sourceGroupId,
+                onValue: { [weak self] status in
+                    self?
+                        .mutateCandidate(forKey: key) {
+                            $0.libraryStatuses[status.releaseId] = status
+                        }
+                },
+                onError: { [weak self] error in
+                    guard let line = error.displayLine else { return }
+                    self?
+                        .mutateCandidate(forKey: key) {
+                            $0.error = line
+                        }
+                }
+            )
+            mutateCandidate(forKey: key) {
+                $0.libraryStatusSubscriptions[statusKey] =
+                    CancelOnDeinit(subscription)
+            }
+        }
+    }
 }
 
 // MARK: - Triage rendering

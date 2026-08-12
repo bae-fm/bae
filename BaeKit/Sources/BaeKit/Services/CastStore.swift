@@ -1,9 +1,9 @@
 import Observation
 
 /// Cast state for the playback surfaces: the current cast status (which device,
-/// if any) and the discovered device list. The status is driven by the
-/// `castStatusChanged` UI event (so it follows a receiver-side end too); the
-/// device list by the `castDevices` projection while the picker is open.
+/// if any) and the discovered device list. Retained playback values drive the
+/// status, including receiver-side ends; the cast-device value stream drives the
+/// device list while the picker is open.
 @MainActor
 @Observable
 public final class CastStore {
@@ -21,7 +21,7 @@ public final class CastStore {
         return nil
     }
 
-    /// Apply a `castStatusChanged` event: `Some(name)` while casting, `nil` back
+    /// Apply the retained playback value: `Some(name)` while casting, `nil` back
     /// on local output.
     public func applyStatus(deviceName: String?) {
         status = deviceName.map { .casting(deviceName: $0) } ?? .notCasting

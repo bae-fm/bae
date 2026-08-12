@@ -1,5 +1,5 @@
 @MainActor
-final class PlaybackEventHandler {
+final class PlaybackValueHandler {
     private let appHandle: AppHandle
     private let playbackStore: PlaybackStore
     private let castStore: CastStore

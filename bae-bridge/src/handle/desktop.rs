@@ -174,8 +174,7 @@ impl AppHandle {
         self.cast.stop_casting();
     }
 
-    /// Whether playback is currently on a Cast device, and which. Refresh on a
-    /// `CastStatusChanged` event.
+    /// Whether playback is currently on a Cast device, and which.
     pub fn get_cast_status(&self) -> crate::types::BridgeCastStatus {
         crate::types::BridgeCastStatus::from_core(self.cast.status())
     }

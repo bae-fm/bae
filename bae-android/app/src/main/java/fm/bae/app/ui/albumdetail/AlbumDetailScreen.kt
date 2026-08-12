@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,7 +61,6 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
-import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
@@ -98,34 +98,27 @@ fun AlbumDetailScreen(
     initialReleaseId: String? = null,
     onBack: () -> Unit,
 ) {
-    val details by session.libraryStore.albumDetails.collectAsState()
-    val detail = details[albumId]
+    val query by session.libraryQueries.album.state.collectAsState()
+    val detail = query.value
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
-    var retryToken by remember(albumId) { mutableStateOf(0) }
-    var loadError by remember(albumId) { mutableStateOf<String?>(null) }
     val appContext = LocalContext.current
 
-    LaunchedEffect(albumId, retryToken) {
-        loadError = null
-        try {
-            session.library.albumDetails(albumId).collect { loaded ->
-                session.libraryStore.applyAlbumDetail(albumId, loaded)
-                loadError =
-                    if (loaded == null) {
-                        appContext.getString(R.string.album_load_failed)
-                    } else {
-                        null
-                    }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to subscribe to album detail $albumId", e)
-            loadError = e.message ?: appContext.getString(R.string.album_load_failed)
+    DisposableEffect(albumId, session) {
+        session.libraryQueries.album.activate(albumId)
+        onDispose {
+            session.libraryQueries.album.deactivate(albumId)
         }
     }
+
+    val loadError =
+        query.error?.message
+            ?: if (query.delivered && detail == null) {
+                appContext.getString(R.string.album_load_failed)
+            } else {
+                null
+            }
 
     LaunchedEffect(detail) {
         if (selectedReleaseId == null && detail != null) {
@@ -144,7 +137,7 @@ fun AlbumDetailScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
             if (loaded == null) {
-                AlbumDetailLoadingBox(loadError, onRetry = { retryToken++ })
+                AlbumDetailLoadingBox(loadError, onRetry = session.libraryQueries.album::retry)
             } else {
                 loadError?.let {
                     Text(

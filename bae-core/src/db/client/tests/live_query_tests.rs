@@ -35,6 +35,39 @@ async fn live_db() -> (Database, tempfile::TempDir) {
     (db, temp)
 }
 
+async fn browsable_sync_db(path: &std::path::Path, device_id: &str) -> Database {
+    let library_dir = coven::StoreDir::new(path.parent().unwrap());
+    let mut config = coven::Config::with_defaults(
+        "test-library".to_string(),
+        device_id.to_string(),
+        "Test Library".to_string(),
+    );
+    config.cloud_home.storage = coven::HomeStorage::Browsable;
+    crate::config::install_test_keyring();
+    Database::open(
+        library_dir,
+        config,
+        Arc::new(SystemClock),
+        Arc::new(coven::UuidProvider),
+        crate::sync::synced_tables(),
+        None,
+    )
+    .unwrap()
+}
+
+fn copy_store(source: &std::path::Path, destination: &std::path::Path) {
+    for entry in std::fs::read_dir(source).unwrap() {
+        let entry = entry.unwrap();
+        let target = destination.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            std::fs::create_dir_all(&target).unwrap();
+            copy_store(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), target).unwrap();
+        }
+    }
+}
+
 #[tokio::test]
 async fn album_page_subscription_delivers_rows_count_and_cover_versions() {
     let (db, _temp) = live_db().await;
@@ -221,4 +254,68 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     assert!(updated.release_in_library);
     assert!(updated.album_in_library);
     assert_eq!(updated.album_id.as_deref(), Some(ALBUM_ID));
+}
+
+#[tokio::test]
+async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
+    let seed_dir = tempfile::TempDir::new().unwrap();
+    let writer_dir = tempfile::TempDir::new().unwrap();
+    let reader_dir = tempfile::TempDir::new().unwrap();
+    let seed = browsable_sync_db(&seed_dir.path().join("library.db"), "test-device").await;
+    let home = Arc::new(coven::InMemoryCloudHome::new());
+    seed.establish_test_identity().unwrap();
+    seed.connect_sync_with_test_home(home.clone(), coven::CloudCipher::Plaintext)
+        .await
+        .unwrap();
+    seed.disconnect_sync();
+    drop(seed);
+    copy_store(seed_dir.path(), writer_dir.path());
+    copy_store(seed_dir.path(), reader_dir.path());
+
+    let writer = browsable_sync_db(&writer_dir.path().join("library.db"), "test-device").await;
+    let reader = browsable_sync_db(&reader_dir.path().join("library.db"), "test-device").await;
+    writer
+        .connect_sync_with_test_home(home.clone(), coven::CloudCipher::Plaintext)
+        .await
+        .unwrap();
+    reader
+        .connect_sync_with_test_home(home, coven::CloudCipher::Plaintext)
+        .await
+        .unwrap();
+
+    let mut live = reader.subscribe_album_page(&[], 0, 50);
+    assert_eq!(live.next().await.unwrap().total_count, 0);
+
+    writer
+        .call(|sql| {
+            sql.execute_batch(&format!(
+                "INSERT INTO artists (id, name, _updated_at, created_at)
+                 VALUES ('{ARTIST_ID}', 'Artist Name', 'remote', '2026-01-01T00:00:00Z');
+                 INSERT INTO albums
+                   (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
+                 VALUES ('{ALBUM_ID}', 'Synced Album', '{ARTIST_ID}', '{RELEASE_ID}', 0, 'remote', '2026-01-01T00:00:00Z');
+                 INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                 VALUES ('{RELEASE_ID}', '{ALBUM_ID}', 'file_tags', 1, 'remote', '2026-01-01T00:00:00Z');"
+            ))
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    writer.sync_now();
+
+    let updated = tokio::time::timeout(Duration::from_secs(20), async {
+        loop {
+            reader.sync_now();
+            if let Ok(Ok(value)) =
+                tokio::time::timeout(Duration::from_millis(250), live.next()).await
+            {
+                if value.total_count == 1 {
+                    break value;
+                }
+            }
+        }
+    })
+    .await
+    .expect("reader materializes the writer's synced album");
+    assert_eq!(updated.rows[0].title, "Synced Album");
 }

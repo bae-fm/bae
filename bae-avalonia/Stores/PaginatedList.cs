@@ -55,6 +55,7 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
     // before any fetch returns.
     private readonly Dictionary<string, IDisposable> _subscriptions = new();
     private readonly Dictionary<string, (int Lower, int Upper)> _subscriptionRanges = new();
+    private readonly Dictionary<string, object> _subscriptionIdentities = new();
     private const int MaximumVisiblePageSubscriptions = 3;
     // A stable per-instance token folded into the epoch so a swapped-in list (fresh
     // instance) is still a distinct epoch.
@@ -191,11 +192,19 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
         }
         try
         {
+            var identity = new object();
+            _subscriptionIdentities[key] = identity;
             _subscriptions[key] = _pageSource.Subscribe(
                 offset,
                 limit,
                 (rows, totalCount) =>
                 {
+                    if (!_subscriptionIdentities.TryGetValue(key, out var current) ||
+                        !ReferenceEquals(current, identity))
+                    {
+                        completion.TrySetResult();
+                        return;
+                    }
                     TotalCount = totalCount;
                     ClipSegments(totalCount);
                     InitialLoadError = null;
@@ -209,6 +218,12 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
                 },
                 exception =>
                 {
+                    if (!_subscriptionIdentities.TryGetValue(key, out var current) ||
+                        !ReferenceEquals(current, identity))
+                    {
+                        completion.TrySetResult();
+                        return;
+                    }
                     if (initial)
                     {
                         InitialLoadError = exception;
@@ -227,6 +242,7 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
         }
         catch (Exception exception)
         {
+            _subscriptionIdentities.Remove(key);
             if (initial) InitialLoadError = exception;
             else _onError(exception);
             completion.TrySetResult();
@@ -310,6 +326,7 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
             var range = _subscriptionRanges[key];
             _subscriptionRanges.Remove(key);
             _subscriptions.Remove(key, out var subscription);
+            _subscriptionIdentities.Remove(key);
             subscription!.Dispose();
             RemoveLoadedRange(range.Lower, range.Upper);
         }
@@ -354,6 +371,7 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
         }
         _subscriptions.Clear();
         _subscriptionRanges.Clear();
+        _subscriptionIdentities.Clear();
     }
 
     /// <summary>Seed one segment synchronously for previews and tests.</summary>

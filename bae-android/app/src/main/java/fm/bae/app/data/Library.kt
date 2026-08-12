@@ -30,6 +30,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+private val logger = fm.bae.app.BaeLogger("bae.Library")
+
 /**
  * Narrow projection of [AppHandle] for library browse and detail reads. The
  * page/detail calls suspend across the bridge; callers invoke them from their
@@ -39,6 +41,9 @@ import kotlinx.coroutines.flow.callbackFlow
  */
 class Library(
     private val handle: AppHandle,
+    private val onUnhandledError: (BridgeException) -> Unit = {
+        logger.error("library live query failed", it)
+    },
 ) {
     fun subscribeAlbumPage(
         sortCriteria: List<BridgeSortCriterion>,
@@ -64,14 +69,17 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onUnhandledError(error)
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun albumDetails(albumId: String): Flow<BridgeAlbumDetail?> =
+    fun albumDetails(
+        albumId: String,
+        onError: (BridgeException) -> Unit = onUnhandledError,
+    ): Flow<BridgeAlbumDetail?> =
         callbackFlow {
             val subscription =
                 handle.subscribeAlbumDetail(
@@ -82,7 +90,7 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onError(error)
                         }
                     },
                 )
@@ -113,14 +121,17 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onUnhandledError(error)
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun composerDetails(artistId: String): Flow<BridgeComposerDetail?> =
+    fun composerDetails(
+        artistId: String,
+        onError: (BridgeException) -> Unit = onUnhandledError,
+    ): Flow<BridgeComposerDetail?> =
         callbackFlow {
             val subscription =
                 handle.subscribeComposerDetail(
@@ -131,7 +142,7 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onError(error)
                         }
                     },
                 )
@@ -145,7 +156,10 @@ class Library(
         callback: ArtistPageCallback,
     ): LiveSubscription = handle.subscribeArtistPage(listOf(sortCriterion), offset, limit, callback)
 
-    fun artistDetails(artistId: String): Flow<BridgeArtistDetail?> =
+    fun artistDetails(
+        artistId: String,
+        onError: (BridgeException) -> Unit = onUnhandledError,
+    ): Flow<BridgeArtistDetail?> =
         callbackFlow {
             val subscription =
                 handle.subscribeArtistDetail(
@@ -156,14 +170,17 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onError(error)
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun workDetails(workId: String): Flow<BridgeWorkDetail?> =
+    fun workDetails(
+        workId: String,
+        onError: (BridgeException) -> Unit = onUnhandledError,
+    ): Flow<BridgeWorkDetail?> =
         callbackFlow {
             val subscription =
                 handle.subscribeWorkDetail(
@@ -174,7 +191,7 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onError(error)
                         }
                     },
                 )
@@ -192,7 +209,7 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onUnhandledError(error)
                         }
                     },
                 )
@@ -203,7 +220,10 @@ class Library(
      * Search albums and tracks by free-text query. Suspends: the bridge call is
      * async, so callers invoke it directly from a coroutine.
      */
-    fun searchResults(query: String): Flow<BridgeSearchResults> =
+    fun searchResults(
+        query: String,
+        onError: (BridgeException) -> Unit = onUnhandledError,
+    ): Flow<BridgeSearchResults> =
         callbackFlow {
             val subscription =
                 handle.subscribeLibrarySearch(
@@ -214,7 +234,7 @@ class Library(
                         }
 
                         override fun onError(error: BridgeException) {
-                            close(error)
+                            onError(error)
                         }
                     },
                 )

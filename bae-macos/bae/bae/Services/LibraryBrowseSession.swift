@@ -43,10 +43,9 @@ enum ComposerPaneSelection: Equatable {
 /// remount) and the selections persist; `LibraryView` reads this session and
 /// calls its methods rather than owning the state itself.
 ///
-/// Detail payloads derived from the selections (`composerPaneDetail`,
-/// `artistDetail`) are deliberately NOT here — they stay `@State` on
-/// `LibraryView` and cheaply re-fetch on remount. Losing a selection would be
-/// a bug; a brief detail reload is not.
+/// Detail payload subscriptions derived from these selections live in the
+/// app-owned `LibraryProjectionStore`; the view reports selection changes and
+/// renders its delivered values.
 @MainActor
 @Observable
 final class LibraryBrowseSession {

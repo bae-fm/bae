@@ -47,6 +47,9 @@
                 .environment(Queue.stub())
                 .environment(Downloads.stub())
                 .environment(backing.library)
+                .environment(
+                    LibraryProjectionStore(library: backing.library)
+                )
                 .environment(libraryStore)
                 .environment(uiStore)
                 .environment(backing.session)
@@ -67,6 +70,9 @@
             )
             return MainAppView()
                 .environment(backing.library)
+                .environment(
+                    LibraryProjectionStore(library: backing.library)
+                )
                 .environment(backing.session)
                 .environment(libraryStore)
                 .environment(uiStore)

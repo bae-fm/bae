@@ -44,6 +44,7 @@ internal sealed class AppService : IDisposable
     // album / composer / artist paginated lists and their sort. One per open
     // library, like the other stores.
     public LibraryBrowserStore LibraryBrowserStore { get; }
+    public AlbumDetailStore AlbumDetailStore { get; }
 
     // The reactive stores. One instance per open library: a switch builds a fresh
     // AppService with fresh stores (mirroring macOS's AppService).
@@ -54,6 +55,7 @@ internal sealed class AppService : IDisposable
     public SettingsStore SettingsStore { get; }
     public ImportStore ImportStore { get; }
     public StorageStore StorageStore { get; }
+    public StorageQueryStore StorageQueryStore { get; }
     public UiEventRouter UiEventRouter { get; }
     private readonly ValueSubscriptions _valueSubscriptions;
 
@@ -125,7 +127,11 @@ internal sealed class AppService : IDisposable
         // remaining-time preference through the settings mirror, whose Current
         // stays null until a library seeds it.
         SettingsStore = new SettingsStore(Settings);
-        ImportStore = new ImportStore(Import, ShowError, MediaControl);
+        ImportStore = new ImportStore(
+            Import,
+            ShowError,
+            MediaControl,
+            action => dispatcher.Post(action));
         UiEventRouter = new UiEventRouter(
             PlaybackStore,
             ShowError,
@@ -133,10 +139,15 @@ internal sealed class AppService : IDisposable
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
         StorageStore = new StorageStore(Downloads, Sync);
+        StorageQueryStore = new StorageQueryStore(Library, dispatcher);
         // The library browser's paginated lists. A page subscription failure routes
         // to the shell banner; a session-swap mid-fetch (an OperationCanceled) is
         // the list being replaced and is dropped.
         LibraryBrowserStore = new LibraryBrowserStore(Library, Images, dispatcher, HandleBrowseError);
+        AlbumDetailStore = new AlbumDetailStore(
+            Library,
+            action => dispatcher.Post(action),
+            HandleAlbumDetailError);
         _valueSubscriptions = new ValueSubscriptions(
             session, dispatcher, SettingsStore, SyncStatusStore, PlaybackStore,
             StorageStore, CastStore, ImportStore, MediaControl, ShowError);
@@ -156,6 +167,12 @@ internal sealed class AppService : IDisposable
                 BaeDiagnostics.Logger.Warning("A library page load failed.", exception);
                 return;
         }
+    }
+
+    private void HandleAlbumDetailError(Exception exception)
+    {
+        ShowError(Loc.Chrome("error.title"), Loc.Chrome("album.open_failed"));
+        BaeDiagnostics.Logger.Warning("An album detail subscription failed.", exception);
     }
 
 #if DEBUG
@@ -244,5 +261,10 @@ internal sealed class AppService : IDisposable
     public void ReportScreen(BridgeScreen screen) =>
         NativeBae.ReportScreen(BaeDiagnostics.Handle, screen);
 
-    public void Dispose() => _valueSubscriptions.Dispose();
+    public void Dispose()
+    {
+        _valueSubscriptions.Dispose();
+        AlbumDetailStore.Dispose();
+        ImportStore.Dispose();
+    }
 }

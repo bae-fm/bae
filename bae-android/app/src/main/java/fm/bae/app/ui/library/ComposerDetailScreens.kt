@@ -22,18 +22,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
@@ -42,14 +39,10 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
-import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.BridgeWorkReleaseSummary
 import uniffi.bae_bridge.BridgeWorkSummary
-
-private const val TAG = "bae.ComposerDetailScreens"
-private val logger = BaeLogger(TAG)
 
 @Composable
 internal fun ComposerDetailScreen(
@@ -59,25 +52,21 @@ internal fun ComposerDetailScreen(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
-    var detail by remember(artistId) { mutableStateOf<BridgeComposerDetail?>(null) }
-    var loadError by remember(artistId) { mutableStateOf<String?>(null) }
+    val query by session.libraryQueries.composer.state.collectAsState()
+    val detail = query.value
     val appContext = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(artistId) {
-        loadError = null
-        try {
-            session.library.composerDetails(artistId).collect { value ->
-                detail = value
-                loadError =
-                    if (value == null) appContext.getString(R.string.composer_detail_not_found)
-                    else null
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to subscribe to composer detail $artistId", e)
-            loadError = appContext.getString(R.string.composer_detail_load_failed)
+    DisposableEffect(artistId, session) {
+        session.libraryQueries.composer.activate(artistId)
+        onDispose {
+            session.libraryQueries.composer.deactivate(artistId)
         }
     }
+    val loadError =
+        when {
+            query.error != null -> appContext.getString(R.string.composer_detail_load_failed)
+            query.delivered && detail == null -> appContext.getString(R.string.composer_detail_not_found)
+            else -> null
+        }
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryDetailTopBar(onBack = onBack)
         val loaded = detail
@@ -176,25 +165,21 @@ internal fun WorkDetailScreen(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
-    var detail by remember(workId) { mutableStateOf<BridgeWorkDetail?>(null) }
-    var loadError by remember(workId) { mutableStateOf<String?>(null) }
+    val query by session.libraryQueries.work.state.collectAsState()
+    val detail = query.value
     val appContext = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(workId) {
-        loadError = null
-        try {
-            session.library.workDetails(workId).collect { value ->
-                detail = value
-                loadError =
-                    if (value == null) appContext.getString(R.string.work_detail_not_found)
-                    else null
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to subscribe to work detail $workId", e)
-            loadError = appContext.getString(R.string.work_detail_load_failed)
+    DisposableEffect(workId, session) {
+        session.libraryQueries.work.activate(workId)
+        onDispose {
+            session.libraryQueries.work.deactivate(workId)
         }
     }
+    val loadError =
+        when {
+            query.error != null -> appContext.getString(R.string.work_detail_load_failed)
+            query.delivered && detail == null -> appContext.getString(R.string.work_detail_not_found)
+            else -> null
+        }
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryDetailTopBar(onBack = onBack)
         val loaded = detail

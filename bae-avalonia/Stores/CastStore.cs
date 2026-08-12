@@ -5,10 +5,10 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // Cast state for the now-playing bar's cast control: the current cast status
-// (which device, if any) and the discovered device list. Status is driven by the
-// castStatusChanged UI event (so a receiver-side end updates it too); the device
-// list by the castDevices projection while the picker is open. Discovery runs
-// only while the picker is open.
+// (which device, if any) and the discovered device list. The retained playback
+// values drive status, including receiver-side ends; the cast-device value stream
+// drives the device list while the picker is open. Discovery runs only while the
+// picker is open.
 internal sealed class CastStore
 {
     private readonly CastService _cast;
@@ -32,8 +32,8 @@ internal sealed class CastStore
         _cast = cast;
     }
 
-    // Apply a castStatusChanged event: the device name while casting, null back on
-    // local output.
+    // Apply the retained playback value: the device name while casting, null back
+    // on local output.
     public void ApplyStatus(string? deviceName)
     {
         CastingDeviceName = deviceName;

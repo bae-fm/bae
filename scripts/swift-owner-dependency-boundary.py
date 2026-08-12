@@ -43,7 +43,7 @@ CAPABILITY_TYPES = {
     "Outputs",
     "PaginatedList",
     "Playback",
-    "PlaybackEventHandler",
+    "PlaybackValueHandler",
     "PlaybackStore",
     "PassthroughSubject",
     "PreviewAudio",

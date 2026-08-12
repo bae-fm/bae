@@ -43,56 +43,9 @@ extension ImportSearchFlow {
             }
             candidate.searchTask = nil
         }
-        refreshLibraryStatusSubscriptions(
+        importStore.refreshLibraryStatusSubscriptions(
             importer: importer,
-            importStore: importStore,
             key: key
         )
-    }
-
-    @MainActor
-    private static func refreshLibraryStatusSubscriptions(
-        importer: Importer,
-        importStore: ImportStore,
-        key: String
-    ) {
-        guard let candidate = importStore.candidate(forKey: key) else { return }
-        let desired = candidate.search.libraryStatusSubscriptionKeys()
-
-        importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.libraryStatusSubscriptions =
-                candidate.libraryStatusSubscriptions.filter {
-                    desired.contains($0.key)
-                }
-        }
-
-        for statusKey in desired {
-            guard
-                importStore.candidate(forKey: key)?
-                    .libraryStatusSubscriptions[statusKey] == nil
-            else { continue }
-            let subscription = importer.subscribeReleaseLibraryStatus(
-                source: statusKey.source,
-                releaseId: statusKey.releaseId,
-                sourceGroupId: statusKey.sourceGroupId,
-                onValue: { [weak importStore] status in
-                    importStore?
-                        .mutateCandidate(forKey: key) {
-                            $0.libraryStatuses[status.releaseId] = status
-                        }
-                },
-                onError: { [weak importStore] error in
-                    guard let line = error.displayLine else { return }
-                    importStore?
-                        .mutateCandidate(forKey: key) {
-                            $0.error = line
-                        }
-                }
-            )
-            importStore.mutateCandidate(forKey: key) {
-                $0.libraryStatusSubscriptions[statusKey] =
-                    CancelOnDeinit(subscription)
-            }
-        }
     }
 }

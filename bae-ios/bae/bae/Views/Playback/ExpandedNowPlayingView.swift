@@ -6,7 +6,7 @@ import SwiftUI
 /// tapped. The player fills the first screen and the upcoming queue sits below it
 /// in the same scroll, so a swipe up scrolls into the queue and a swipe down from
 /// the top dismisses (the sheet and the list coordinate that handoff). Reads the
-/// shared `PlaybackStore` — driven by core's `BridgeUiEvent`s — and sends
+/// shared `PlaybackStore` — driven by core's retained playback values — and sends
 /// transport / seek / repeat / volume / mute through `Playback` and queue
 /// mutations through `Queue` (all non-throwing fire-and-forget).
 ///

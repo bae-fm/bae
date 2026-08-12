@@ -341,10 +341,11 @@ struct PaginatedListSegmentTests {
     @Test("visible page subscriptions stay bounded while scrolling")
     func visiblePageSubscriptionsStayBounded() async {
         let source = MutableAlbumPageSource(count: 500)
+        var errors: [String] = []
         let list = AlbumList(
             pageSource: source,
             ingest: { _ in },
-            onError: { _ in },
+            onError: { errors.append($0.localizedDescription) },
         )
         await list.loadInitial()
 
@@ -360,6 +361,13 @@ struct PaginatedListSegmentTests {
 
         #expect(list.totalCount == 501)
         #expect(list.idAt(0) == nil)
+
+        await source.deliverCancelledValue(offset: 0, totalCount: 999)
+        await source.deliverCancelledError(offset: 0)
+
+        #expect(list.totalCount == 501)
+        #expect(list.idAt(0) == nil)
+        #expect(errors.isEmpty)
     }
 
 }
@@ -369,11 +377,13 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
         let offset: Int
         let limit: Int
         let onValue: @MainActor @Sendable ([BridgeAlbum], Int) -> Void
+        let onError: @MainActor @Sendable (any Error) -> Void
     }
 
     private let lock = NSLock()
     private var count: Int
     private var active: [UUID: Active] = [:]
+    private var cancelled: [Active] = []
 
     init(count: Int) {
         self.count = count
@@ -388,16 +398,45 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
         offset: Int,
         limit: Int,
         onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
-        onError _: @escaping @MainActor @Sendable (any Error) -> Void
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) -> any PageSubscription {
         let id = UUID()
-        let active = Active(offset: offset, limit: limit, onValue: onValue)
+        let active = Active(
+            offset: offset,
+            limit: limit,
+            onValue: onValue,
+            onError: onError
+        )
         lock.withLock { self.active[id] = active }
         Task { await deliver(active) }
         return MutablePageSubscription { [weak self] in
             guard let self else { return }
-            self.lock.withLock { _ = self.active.removeValue(forKey: id) }
+            self.lock.withLock {
+                if let removed = self.active.removeValue(forKey: id) {
+                    self.cancelled.append(removed)
+                }
+            }
         }
+    }
+
+    func deliverCancelledValue(offset: Int, totalCount: Int) async {
+        let subscription = lock.withLock {
+            cancelled.first { $0.offset == offset }
+        }
+        guard let subscription else { return }
+        let end = min(subscription.offset + subscription.limit, totalCount)
+        let rows = subscription.offset < end
+            ? (subscription.offset..<end).map { makeBridgeAlbum(id: "stale-a\($0)") }
+            : []
+        await subscription.onValue(rows, totalCount)
+    }
+
+    func deliverCancelledError(offset: Int) async {
+        let subscription = lock.withLock {
+            cancelled.first { $0.offset == offset }
+        }
+        guard let subscription else { return }
+        await subscription.onError(PaginatedListTestError(message: "stale error"))
     }
 
     func setCount(_ count: Int) async {

@@ -6,13 +6,15 @@ struct ArtistDetailScreen: View {
     let artistId: String
     let openAlbum: (String) -> Void
 
-    @Environment(Library.self)
-    private var library
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
 
-    @State
-    private var detail: BridgeArtistDetail?
-    @State
-    private var error: String?
+    private var detail: BridgeArtistDetail? { libraryProjections.artist.value }
+    private var error: String? {
+        libraryProjections.artist.error?.line
+            ?? (libraryProjections.artist.delivered && detail == nil
+                ? String(localized: "Artist detail not found") : nil)
+    }
 
     var body: some View {
         Group {
@@ -34,9 +36,8 @@ struct ArtistDetailScreen: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: artistId) {
-            await load()
-        }
+        .onAppear { libraryProjections.activateArtist(artistId) }
+        .onDisappear { libraryProjections.deactivateArtist(artistId) }
     }
 
     private var navigationTitle: String {
@@ -49,23 +50,6 @@ struct ArtistDetailScreen: View {
         return ""
     }
 
-    private func load() async {
-        error = nil
-        for await result in library.artistDetails(artistId) {
-            guard !Task.isCancelled else { return }
-            switch result {
-            case .success(let loaded):
-                guard let loaded else {
-                    error = String(localized: "Artist detail not found")
-                    continue
-                }
-                detail = loaded
-                error = nil
-            case .failure(let bridgeError):
-                error = bridgeError.displayLine
-            }
-        }
-    }
 }
 
 private struct ArtistDetailContent: View {

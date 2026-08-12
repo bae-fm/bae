@@ -18,17 +18,8 @@ struct LibraryView: View {
     var session
     @Environment(ConfigStore.self)
     var configStore
-
-    /// Detail payloads derived from `session.detailSelection` /
-    /// `session.selectedArtistId`. View-local by design (see
-    /// `LibraryBrowseSession`'s doc comment): a remount re-fetches them cheaply
-    /// rather than keeping them warm, while the selections themselves persist.
-    @State
-    private var composerDetail: BridgeComposerDetail?
-    @State
-    private var workDetail: BridgeWorkDetail?
-    @State
-    private var artistDetail: BridgeArtistDetail?
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
     /// Collapse kinematics for the header, fed by the panes' scroll reports
     /// (`reportsHeaderScroll`). The header scrubs between its full and
     /// compact metrics off `headerCollapse.progress`, reclaiming the
@@ -73,14 +64,41 @@ struct LibraryView: View {
                 await session.artists.ensureLoaded()
             }
         }
-        .task(id: session.detailSelection.composerId) {
-            await loadComposerDetail()
+        .onChange(of: session.detailSelection.composerId, initial: true) {
+            oldId,
+            newId in
+            if let oldId { libraryProjections.deactivateComposer(oldId) }
+            if let newId { libraryProjections.activateComposer(newId) }
         }
-        .task(id: session.detailSelection) {
-            await loadWorkDetail()
+        .onChange(of: session.detailSelection.workId, initial: true) {
+            oldId,
+            newId in
+            if let oldId { libraryProjections.deactivateWork(oldId) }
+            if let newId { libraryProjections.activateWork(newId) }
         }
-        .task(id: session.selectedArtistId) {
-            await loadArtistDetail()
+        .onChange(of: session.selectedArtistId, initial: true) { oldId, newId in
+            if let oldId { libraryProjections.deactivateArtist(oldId) }
+            if let newId { libraryProjections.activateArtist(newId) }
+        }
+        .onChange(of: libraryProjections.composer.value) { _, detail in
+            guard let detail,
+                case .composer(let artistId, nil) = session.detailSelection,
+                artistId == detail.composer.artistId,
+                let defaultWorkId = detail.defaultWorkId
+            else { return }
+            session.selectComposerWork(
+                artistId: artistId,
+                workId: defaultWorkId
+            )
+        }
+        .onChange(of: libraryProjections.composer.error?.line) { _, line in
+            if let line { uiStore.showError(line) }
+        }
+        .onChange(of: libraryProjections.artist.error?.line) { _, line in
+            if let line { uiStore.showError(line) }
+        }
+        .onChange(of: libraryProjections.work.error?.line) { _, line in
+            if let line { uiStore.showError(line) }
         }
         .task(id: uiStore.pendingLibraryNavigation?.seq) {
             guard let request = uiStore.pendingLibraryNavigation else {
@@ -352,93 +370,9 @@ extension LibraryView {
         )
     }
 
-    private func loadComposerDetail() async {
-        guard let selectedComposerId = session.detailSelection.composerId
-        else {
-            return
-        }
-        for await result in library.composerDetails(selectedComposerId) {
-            guard !Task.isCancelled,
-                session.detailSelection.composerId == selectedComposerId
-            else { return }
-            switch result {
-            case .success(let detail):
-                guard let detail else {
-                    uiStore.showError(
-                        DisplayError(
-                            line: String(localized: "Composer detail not found")
-                        )
-                    )
-                    continue
-                }
-                composerDetail = detail
-                if case .composer(let artistId, nil) = session.detailSelection,
-                    artistId == selectedComposerId,
-                    let defaultWorkId = detail.defaultWorkId
-                {
-                    session.selectComposerWork(
-                        artistId: selectedComposerId,
-                        workId: defaultWorkId
-                    )
-                }
-            case .failure(let error):
-                uiStore.showError(error)
-            }
-        }
-    }
-
-    private func loadArtistDetail() async {
-        guard let requestedArtistId = session.selectedArtistId else {
-            return
-        }
-        for await result in library.artistDetails(requestedArtistId) {
-            guard !Task.isCancelled,
-                session.selectedArtistId == requestedArtistId
-            else { return }
-            switch result {
-            case .success(let detail):
-                guard let detail else {
-                    uiStore.showError(
-                        DisplayError(
-                            line: String(localized: "Artist detail not found")
-                        )
-                    )
-                    continue
-                }
-                artistDetail = detail
-            case .failure(let error):
-                uiStore.showError(error)
-            }
-        }
-    }
-
-    private func loadWorkDetail() async {
-        let selectedDetail = session.detailSelection
-        guard let selectedWorkId = selectedDetail.workId else {
-            return
-        }
-        for await result in library.workDetails(selectedWorkId) {
-            guard !Task.isCancelled,
-                session.detailSelection == selectedDetail
-            else { return }
-            switch result {
-            case .success(let detail):
-                guard let detail else {
-                    uiStore.showError(
-                        DisplayError(
-                            line: String(localized: "Work detail not found")
-                        )
-                    )
-                    continue
-                }
-                workDetail = detail
-            case .failure(let error):
-                uiStore.showError(error)
-            }
-        }
-    }
-
     private var composerPaneDetail: ComposerPaneDetail {
+        let composerDetail = libraryProjections.composer.value
+        let workDetail = libraryProjections.work.value
         switch session.detailSelection {
         case .none:
             return .empty
@@ -459,6 +393,7 @@ extension LibraryView {
     }
 
     private var selectedArtistDetail: BridgeArtistDetail? {
+        let artistDetail = libraryProjections.artist.value
         guard artistDetail?.artist.artistId == session.selectedArtistId else {
             return nil
         }
@@ -481,6 +416,7 @@ extension LibraryView {
             .environment(Queue.stub())
             .environment(Downloads.stub())
             .environment(library)
+            .environment(LibraryProjectionStore(library: library))
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -504,6 +440,7 @@ extension LibraryView {
             .environment(Queue.stub())
             .environment(Downloads.stub())
             .environment(library)
+            .environment(LibraryProjectionStore(library: library))
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -528,6 +465,7 @@ extension LibraryView {
             .environment(Queue.stub())
             .environment(Downloads.stub())
             .environment(library)
+            .environment(LibraryProjectionStore(library: library))
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -558,6 +496,7 @@ extension LibraryView {
             .environment(Queue.stub())
             .environment(Downloads.stub())
             .environment(library)
+            .environment(LibraryProjectionStore(library: library))
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -581,6 +520,7 @@ extension LibraryView {
             .environment(Queue.stub())
             .environment(Downloads.stub())
             .environment(library)
+            .environment(LibraryProjectionStore(library: library))
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)

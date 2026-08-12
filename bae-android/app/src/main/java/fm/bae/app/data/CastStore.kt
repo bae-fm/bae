@@ -8,9 +8,7 @@ import uniffi.bae_bridge.BridgeCastStatus
 
 /**
  * Cast state for the playback surfaces: which device playback is on, and what
- * the picker found while it was open. The status follows core's
- * `CastStatusChanged` event (so a receiver-side end lands here too); the device
- * list follows the cast-device subscription.
+ * the picker found while it was open. Both follow retained value subscriptions.
  */
 class CastStore {
     private val _status = MutableStateFlow<BridgeCastStatus>(BridgeCastStatus.NotCasting)
@@ -19,7 +17,7 @@ class CastStore {
     private val _devices = MutableStateFlow<List<BridgeCastDevice>>(emptyList())
     val devices: StateFlow<List<BridgeCastDevice>> = _devices.asStateFlow()
 
-    /** Apply a status event: a name while casting, null back on local output. */
+    /** Apply the retained status: a name while casting, null on local output. */
     fun applyStatus(deviceName: String?) {
         _status.value =
             deviceName?.let { BridgeCastStatus.Casting(it) } ?: BridgeCastStatus.NotCasting

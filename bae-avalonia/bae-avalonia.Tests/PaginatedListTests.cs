@@ -35,6 +35,7 @@ public class PaginatedListTests
 
         private List<Row> _rows;
         private readonly List<Active> _active = new();
+        private readonly List<Active> _cancelled = new();
         public int CountCalls;
         public int PageCalls;
         public TaskCompletionSource<bool>? Gate;
@@ -67,8 +68,28 @@ public class PaginatedListTests
             var active = new Active(offset, limit, onValue, onError);
             _active.Add(active);
             Deliver(active);
-            return new Subscription(() => _active.Remove(active));
+            return new Subscription(() =>
+            {
+                if (_active.Remove(active))
+                {
+                    _cancelled.Add(active);
+                }
+            });
         }
+
+        public void DeliverCancelledValue(int offset, int totalCount)
+        {
+            var active = _cancelled.First(item => item.Offset == offset);
+            active.OnValue(
+                Enumerable.Range(offset, active.Limit)
+                    .Select(i => new Row($"stale-{Id(i)}"))
+                    .ToList(),
+                totalCount);
+        }
+
+        public void DeliverCancelledError(int offset) =>
+            _cancelled.First(item => item.Offset == offset)
+                .OnError(new InvalidOperationException("stale error"));
 
         private void Deliver(Active active)
         {
@@ -245,7 +266,8 @@ public class PaginatedListTests
     public async Task Visible_page_subscriptions_stay_bounded_while_scrolling()
     {
         var source = new FakeSource(500);
-        var list = Make(source);
+        var errors = new List<Exception>();
+        var list = Make(source, errors: errors);
         await list.LoadInitialAsync();
 
         for (var offset = 0; offset <= 250; offset += 50)
@@ -261,6 +283,14 @@ public class PaginatedListTests
 
         Assert.Equal(501, list.TotalCount);
         Assert.Null(list.IdAt(0));
+
+        await list.LoadRangeAsync(0, 50);
+        source.DeliverCancelledValue(0, 999);
+        source.DeliverCancelledError(0);
+
+        Assert.Equal(501, list.TotalCount);
+        Assert.Equal(Id(0), list.IdAt(0));
+        Assert.Empty(errors);
     }
 
     [Fact]

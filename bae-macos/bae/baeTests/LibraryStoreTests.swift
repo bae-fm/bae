@@ -622,6 +622,39 @@ private final class DetailSubscriptionProbe: @unchecked Sendable {
     }
 }
 
+private final class ContinuingDetailSubscriptionProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var callback: ReleaseDetailCallback?
+
+    func subscribe(
+        callback: ReleaseDetailCallback
+    ) -> any LiveSubscriptionProtocol {
+        lock.withLock {
+            self.callback = callback
+        }
+        return TestLiveSubscription(Task {})
+    }
+
+    func emitError() {
+        let callback: (any ReleaseDetailCallback)? = lock.withLock {
+            self.callback
+        }
+        callback?.onError(
+            error: BridgeError.Diagnostic(
+                category: BridgeErrorCategory.internal,
+                detail: "detail load failed"
+            )
+        )
+    }
+
+    func emitValue(_ value: BridgeRelease?) {
+        let callback: (any ReleaseDetailCallback)? = lock.withLock {
+            self.callback
+        }
+        callback?.onValue(value: value)
+    }
+}
+
 @MainActor
 private func waitForStoreUpdate(_ condition: () -> Bool) async {
     for _ in 0..<100 where !condition() {
@@ -637,20 +670,62 @@ struct ObserveReleaseDetailTests {
         "a subscription failure surfaces as a per-release error"
     )
     func failureSurfacesError() async {
-        let probe = DetailSubscriptionProbe(failFirst: 1, release: nil)
+        let probe = ContinuingDetailSubscriptionProbe()
         let store = LibraryStore()
         let library = Library(subscribeReleaseDetail: { _, callback in
             probe.subscribe(callback: callback)
         })
 
-        await store.observeReleaseDetail(
-            releaseId: "release-1",
-            library: library,
-            onValue: {}
-        )
+        let observation = Task {
+            await store.observeReleaseDetail(
+                releaseId: "release-1",
+                library: library,
+                onValue: {}
+            )
+        }
+        await Task.yield()
+        probe.emitError()
+        await waitForStoreUpdate {
+            store.releaseDetailErrors["release-1"] != nil
+        }
 
         #expect(store.releaseDetails["release-1"] == nil)
         #expect(store.releaseDetailErrors["release-1"] != nil)
+
+        observation.cancel()
+        probe.emitValue(nil)
+        await observation.value
+    }
+
+    @MainActor
+    @Test("a value after a live error is still delivered")
+    func valueAfterErrorIsDelivered() async {
+        let probe = ContinuingDetailSubscriptionProbe()
+        let store = LibraryStore()
+        let library = Library(subscribeReleaseDetail: { _, callback in
+            probe.subscribe(callback: callback)
+        })
+
+        let observation = Task {
+            await store.observeReleaseDetail(
+                releaseId: "release-1",
+                library: library,
+                onValue: {}
+            )
+        }
+        await Task.yield()
+        probe.emitError()
+        await waitForStoreUpdate {
+            store.releaseDetailErrors["release-1"] != nil
+        }
+        probe.emitValue(makeBridgeRelease())
+        await waitForStoreUpdate { store.releaseDetails["release-1"] != nil }
+        observation.cancel()
+        probe.emitValue(nil)
+        await observation.value
+
+        #expect(store.releaseDetails["release-1"] != nil)
+        #expect(store.releaseDetailErrors["release-1"] == nil)
     }
 
     @MainActor
@@ -681,27 +756,42 @@ struct ObserveReleaseDetailTests {
     @MainActor
     @Test("a new subscription after failure clears the error with its value")
     func retryClearsErrorAndLoads() async {
-        let probe = DetailSubscriptionProbe(
-            failFirst: 1,
-            release: makeBridgeRelease()
-        )
+        let failingProbe = ContinuingDetailSubscriptionProbe()
         let store = LibraryStore()
-        let library = Library(subscribeReleaseDetail: { _, callback in
-            probe.subscribe(callback: callback)
+        let failingLibrary = Library(subscribeReleaseDetail: { _, callback in
+            failingProbe.subscribe(callback: callback)
         })
 
-        await store.observeReleaseDetail(
-            releaseId: "release-1",
-            library: library,
-            onValue: {}
-        )
+        let failedObservation = Task {
+            await store.observeReleaseDetail(
+                releaseId: "release-1",
+                library: failingLibrary,
+                onValue: {}
+            )
+        }
+        await Task.yield()
+        failingProbe.emitError()
+        await waitForStoreUpdate {
+            store.releaseDetailErrors["release-1"] != nil
+        }
         #expect(store.releaseDetailErrors["release-1"] != nil)
         #expect(store.releaseDetails["release-1"] == nil)
+        failedObservation.cancel()
+        failingProbe.emitValue(nil)
+        await failedObservation.value
+
+        let succeedingProbe = DetailSubscriptionProbe(
+            failFirst: 0,
+            release: makeBridgeRelease()
+        )
+        let succeedingLibrary = Library(subscribeReleaseDetail: { _, callback in
+            succeedingProbe.subscribe(callback: callback)
+        })
 
         let observation = Task {
             await store.observeReleaseDetail(
                 releaseId: "release-1",
-                library: library,
+                library: succeedingLibrary,
                 onValue: {}
             )
         }

@@ -11,8 +11,7 @@ namespace Bae.Desktop;
 // always-on). While casting the glyph tints to the accent over a soft accent fill
 // and the flyout carries a "Casting to …" header plus a disconnect action; the
 // discovered devices follow, or an empty-state line when none are found. The
-// device list refreshes on the castDevices projection and the active device on the
-// castStatusChanged event, both mirrored into CastStore.
+// device list and retained playback values are both mirrored into CastStore.
 //
 // The control is present only while casting is turned on. That is presentation
 // only: core is what refuses to browse or connect when the setting is off.

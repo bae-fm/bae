@@ -8,8 +8,8 @@ namespace Bae.Desktop;
 /// Cast transport and discovery — the C# mirror of the macOS-only <c>Cast</c>
 /// service (BaeKit has no cross-platform counterpart). Wraps the receiver
 /// discovery and the switch to and from a device. The cast <em>status</em>
-/// (which device, if any) is not read here;
-/// it arrives on the castStatusChanged UI event, mirrored into <c>CastStore</c>.
+/// (which device, if any) is not read here; the retained playback-values
+/// subscription mirrors it into <c>CastStore</c>.
 /// Commands carry the session-swap currency the Windows session exposes; every
 /// delegate defaults to a fail-loud stub and <see cref="FromSession"/> is the
 /// production wiring.

@@ -13,11 +13,14 @@ namespace Bae.Desktop;
 // macOS's per-field bindings, this store fires one coarse Changed event and the
 // sidebar rebuilds its content wholesale — the established pattern for this
 // app's imperative views (see QueuePane).
-internal sealed class ImportStore
+internal sealed class ImportStore : IDisposable
 {
     private readonly ImportService _import;
     private readonly Action<string, string> _showError;
     private readonly IMediaControl _mediaControls;
+    private readonly Action<Action> _dispatch;
+    private IDisposable? _releaseLibraryStatusSubscription;
+    private long _releaseLibraryStatusGeneration;
 
     // The sidebar's pre-shaped sections and tab counts — core's
     // triage projection, delivered whole whenever its inputs change. Defaults to an empty
@@ -71,6 +74,9 @@ internal sealed class ImportStore
     public string PreviewElapsedText { get; private set; } = string.Empty;
     public event Action? PreviewElapsedChanged;
 
+    public BridgeLibraryStatus? ReleaseLibraryStatus { get; private set; }
+    public event Action? ReleaseLibraryStatusChanged;
+
     // The file the preview transport is playing, by its absolute path — the
     // only identity the preview events carry. The mapping pane accents the slot
     // row whose audio this is; null when nothing is previewing.
@@ -80,12 +86,59 @@ internal sealed class ImportStore
     // Shown after the elapsed position; null when nothing is previewing.
     private string? _previewDurationLabel;
 
-    public ImportStore(ImportService import, Action<string, string> showError, IMediaControl mediaControls)
+    public ImportStore(
+        ImportService import,
+        Action<string, string> showError,
+        IMediaControl mediaControls,
+        Action<Action> dispatch)
     {
         _import = import;
         _showError = showError;
         _mediaControls = mediaControls;
+        _dispatch = dispatch;
         SortOrder = ImportSortStore.Load();
+    }
+
+    public void ObserveReleaseLibraryStatus(
+        BridgeMetadataSource source,
+        string releaseId,
+        string? sourceGroupId)
+    {
+        _releaseLibraryStatusSubscription?.Dispose();
+        var generation = ++_releaseLibraryStatusGeneration;
+        ReleaseLibraryStatus = null;
+        ReleaseLibraryStatusChanged?.Invoke();
+        _releaseLibraryStatusSubscription = _import.SubscribeReleaseLibraryStatus(
+            source,
+            releaseId,
+            sourceGroupId,
+            status => _dispatch(() =>
+            {
+                if (generation != _releaseLibraryStatusGeneration)
+                {
+                    return;
+                }
+                ReleaseLibraryStatus = status.ReleaseInLibrary || status.AlbumInLibrary
+                    ? status
+                    : null;
+                ReleaseLibraryStatusChanged?.Invoke();
+            }),
+            error => _dispatch(() =>
+            {
+                if (generation == _releaseLibraryStatusGeneration)
+                {
+                    _showError(Loc.Chrome("error.title"), error.Message);
+                }
+            }));
+    }
+
+    public void ClearReleaseLibraryStatus()
+    {
+        _releaseLibraryStatusSubscription?.Dispose();
+        _releaseLibraryStatusSubscription = null;
+        _releaseLibraryStatusGeneration += 1;
+        ReleaseLibraryStatus = null;
+        ReleaseLibraryStatusChanged?.Invoke();
     }
 
 #if DEBUG
@@ -434,6 +487,7 @@ internal sealed class ImportStore
     // — it's a preference, not library state.
     public void Reset()
     {
+        ClearReleaseLibraryStatus();
         TriageQueue = new BridgeTriageQueue(
             Sections: Array.Empty<BridgeTriageSection>(),
             Counts: new BridgeTriageTabCounts(Ready: 0, NeedsYou: 0, Done: 0, Skipped: 0),
@@ -457,4 +511,6 @@ internal sealed class ImportStore
         var folder = WatchedFolders.FirstOrDefault(folder => folder.Path == path);
         return $"{folder?.Name ?? path} ({path}): {detail}";
     }
+
+    public void Dispose() => ClearReleaseLibraryStatus();
 }

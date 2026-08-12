@@ -202,7 +202,7 @@ impl EphemeralServer {
 
 /// Owns everything casting needs: device discovery, the ephemeral server (lazily
 /// started on the first cast, stopped when casting ends), and the current status.
-/// A background task follows the playback service's cast-status events to keep
+/// A background task follows the playback service's remote-output status to keep
 /// the status and the server lifecycle in step — including a receiver-side end
 /// the service detects on its own.
 ///
@@ -295,7 +295,7 @@ impl CastController {
         });
     }
 
-    /// Follow the playback service's `CastStatusChanged` events: update the
+    /// Follow the playback service's remote-output status: update the
     /// status, and stop the ephemeral server once casting ends (a user stop or a
     /// receiver-side end the service surfaced on its own).
     fn spawn_status_follower(&self) {

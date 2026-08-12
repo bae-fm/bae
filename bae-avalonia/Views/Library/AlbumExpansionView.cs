@@ -19,46 +19,50 @@ namespace Bae.Desktop;
 // more than one), play / shuffle / queue actions, the track list, and the total
 // duration. The per-release metadata dialogs (edit, re-identify, change cover,
 // gallery, export, delete) and the storage band are the album-detail dialog family
-// and land with that area; the panel grows those actions then. Built per open
-// through BuildAsync off the album detail read.
+// and land with that area; the panel grows those actions then. The browser's
+// album-detail store owns the live query; this view renders its current value.
 internal static class AlbumExpansionView
 {
-    // Fetch the album's detail and build the panel, or null when the session closed
-    // mid-fetch or the album can't be opened (the caller leaves the row collapsed).
-    public static async Task<Control?> BuildAsync(AppService app, ReleaseActionDialogs dialogs, Album card, Action onClose)
+    public static Task<Control?> BuildAsync(
+        AppService app,
+        ReleaseActionDialogs dialogs,
+        Album card,
+        Action onClose)
     {
-        var first = new TaskCompletionSource<Control?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var host = new ContentControl();
-        var subscription = app.Library.SubscribeAlbumDetail(
-            card.Id,
-            detail => Dispatcher.UIThread.Post(() =>
+        var host = new ContentControl
+        {
+            Content = new ProgressBar { IsIndeterminate = true },
+        };
+        var missingReported = false;
+        void Render()
+        {
+            var store = app.AlbumDetailStore;
+            if (store.AlbumId != card.Id || !store.HasValue)
             {
-                if (detail is null)
+                return;
+            }
+            if (store.Detail is not { } detail)
+            {
+                host.Content = new Panel();
+                if (!missingReported)
                 {
+                    missingReported = true;
                     app.ShowError(Loc.Chrome("error.title"), Loc.Chrome("album.open_failed"));
-                    first.TrySetResult(null);
-                    return;
                 }
-                host.Content = BuildContent(app, dialogs, card, detail, onClose);
-                first.TrySetResult(host);
-            }),
-            error => Dispatcher.UIThread.Post(() =>
-            {
-                app.ShowError(Loc.Chrome("error.title"), error.Message);
-                first.TrySetResult(null);
-            }));
-        if (subscription is null)
-        {
-            return null;
+                return;
+            }
+            host.Content = BuildContent(app, dialogs, card, detail, onClose);
         }
-        var control = await first.Task;
-        if (control is null)
+
+        app.AlbumDetailStore.Changed += Render;
+        host.DetachedFromVisualTree += (_, _) =>
         {
-            subscription.Dispose();
-            return null;
-        }
-        host.DetachedFromVisualTree += (_, _) => subscription.Dispose();
-        return host;
+            app.AlbumDetailStore.Changed -= Render;
+            app.AlbumDetailStore.Clear(card.Id);
+        };
+        app.AlbumDetailStore.Select(card.Id);
+        Render();
+        return Task.FromResult<Control?>(host);
     }
 
     private static Control BuildContent(

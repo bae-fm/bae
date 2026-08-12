@@ -3,7 +3,9 @@ import SwiftUI
 
 struct StorageManagerView: View {
     @Environment(Library.self)
-    var library
+    private var library
+    @Environment(StorageManagerStore.self)
+    private var storageManagerStore
     @Environment(LibraryStore.self)
     var libraryStore
     @Environment(ReleaseEditor.self)
@@ -32,17 +34,6 @@ struct StorageManagerView: View {
     )
     @State
     private var selection: Set<String> = []
-    @State
-    private var list: StorageList?
-    /// Sum of `total_size` over every row the current filter matches — the
-    /// full-universe figure the core aggregate computes, not just the pages
-    /// loaded so far. `nil` until the first fetch for the current filter
-    /// resolves; the footer renders nothing while it's `nil` rather than a
-    /// zero/partial stand-in.
-    @State
-    private var totalSize: UInt64?
-    @State
-    private var rebuildTask: Task<Void, Never>?
     /// Runs row context-menu transitions; built lazily once the services are
     /// available from the environment.
     @State
@@ -59,7 +50,7 @@ struct StorageManagerView: View {
             .pickerStyle(.segmented)
             .padding()
 
-            if let list, let runner {
+            if let list = storageManagerStore.list, let runner {
                 if let error = list.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await list.loadInitial() }
@@ -76,7 +67,10 @@ struct StorageManagerView: View {
                     )
 
                     Divider()
-                    StorageFooter(list: list, totalSize: totalSize)
+                    StorageFooter(
+                        list: list,
+                        totalSize: storageManagerStore.totalSize
+                    )
                 }
             }
             else {
@@ -118,69 +112,47 @@ struct StorageManagerView: View {
             }
         }
         .errorAlert(uiStore)
-        .task { rebuildList() }
+        .task { updateQuery() }
         .onChange(of: filter) { _, _ in
             // Selection is scoped to the visible tab; switching tabs would
             // otherwise carry releases from the old filter into the new tab's
             // multi-select actions.
             selection = []
-            rebuildList()
+            updateQuery()
         }
-        .onChange(of: sort) { _, _ in rebuildList() }
+        .onChange(of: sort) { _, _ in updateQuery() }
         .onDisappear {
-            rebuildTask?.cancel()
+            storageManagerStore.cancel()
         }
     }
 
-    private func rebuildList() {
-        rebuildTask?.cancel()
-        let filter = filter
-        let sort = sort
-        totalSize = nil
-        let newList = StorageList(
-            pageSource: StoragePageSource(
-                library: library,
-                sort: sort,
-                filter: filter,
-                onTotalSize: { value in
-                    guard self.filter == filter, self.sort == sort else {
-                        return
-                    }
-                    self.totalSize = value
-                }
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internAlbumSummary(row.album)
-                    _ = libraryStore.internReleaseSummary(row.release)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-        rebuildTask = Task {
-            await newList.loadInitial()
-            guard !Task.isCancelled else {
-                return
-            }
-            list = newList
-        }
+    private func updateQuery() {
+        storageManagerStore.update(filter: filter, sort: sort)
     }
 }
 
 #if DEBUG
     #Preview("Full screen") {
+        let library = PreviewData.storageLibrary()
+        let libraryStore = LibraryStore()
+        let uiStore = UiStore()
         StorageManagerView()
-            .environment(PreviewData.storageLibrary())
+            .environment(library)
+            .environment(
+                StorageManagerStore(
+                    library: library,
+                    libraryStore: libraryStore,
+                    onError: { uiStore.showError($0) }
+                )
+            )
             .environment(ImageStore.stub())
-            .environment(LibraryStore())
+            .environment(libraryStore)
             .environment(ReleaseEditor.stub())
             .environment(Sync.stub())
             .environment(Downloads.stub())
             .environment(Outputs.stub())
             .environment(PreviewData.configStore())
-            .environment(UiStore())
+            .environment(uiStore)
             .environment(PreviewData.downloadStore())
             .environment(PreviewData.outputStore())
             .environment(PreviewData.outboxStore())

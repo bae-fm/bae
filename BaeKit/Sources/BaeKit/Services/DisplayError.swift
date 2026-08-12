@@ -20,7 +20,7 @@ extension BridgePlaybackErrorReason: LocalizedFailure {}
 /// translated). UI-originated errors (a failed drop, a caught Swift error) are
 /// already localized prose and carry no detail; core errors crossing the bridge
 /// arrive as typed reasons and render their generic per-category line here.
-public struct DisplayError: Equatable {
+public struct DisplayError: Equatable, Sendable {
     private static let detailExcerptLength = 400
 
     public let line: String

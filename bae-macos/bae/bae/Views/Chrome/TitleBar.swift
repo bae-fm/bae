@@ -10,8 +10,8 @@ private let titleBarLeadingPadding: CGFloat = 80
 private let titleBarTrailingPadding: CGFloat = 16
 
 struct TitleBar: View {
-    @Environment(Library.self)
-    var library
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
     @Environment(UiStore.self)
     var uiStore
     @Environment(\.openSettings)
@@ -75,34 +75,26 @@ struct TitleBar: View {
                     .frame(height: 1)
             }
         }
-        .task(id: searchText) {
+        .onChange(of: searchText, initial: true) { oldValue, newValue in
+            libraryProjections.deactivateSearch(oldValue)
             if searchText.isEmpty {
                 uiStore.showSearchPopover = false
                 uiStore.searchResults = nil
                 return
             }
-            do {
-                try await Task.sleep(for: .milliseconds(300))
+            libraryProjections.activateSearch(newValue)
+        }
+        .onChange(of: libraryProjections.search.value) { _, results in
+            if let results {
+                uiStore.searchResults = results
             }
-            catch {
-                return
-            }
-            let query = searchText
-            for await result in library.searchResults(query) {
-                guard !Task.isCancelled else { return }
-                switch result {
-                case .success(let results):
-                    uiStore.searchResults = SearchResults(
-                        bridge: results,
-                        query: query
-                    )
-                case .failure(let error):
-                    guard let line = error.displayLine else { continue }
-                    uiStore.showError(
-                        String(localized: "Search failed: \(line)")
-                    )
-                }
-            }
+        }
+        .onChange(of: libraryProjections.search.error?.line) { _, line in
+            guard let line else { return }
+            uiStore.showError(String(localized: "Search failed: \(line)"))
+        }
+        .onDisappear {
+            libraryProjections.deactivateSearch(searchText)
         }
         .focusedSceneValue(\.focusSearch) { searchFocused = true }
         .onChange(of: uiStore.searchResults != nil) { _, hasResults in
@@ -199,8 +191,10 @@ private struct SectionSegmentedControl: View {
     // body) so the missing-environment audit, which only reads the preview
     // closure's modifier chain, can see it.
     #Preview("Title bar") {
+        let library = Library.stub()
         TitleBarPreview()
-            .environment(Library.stub())
+            .environment(library)
+            .environment(LibraryProjectionStore(library: library))
             .environment(UiStore())
     }
 #endif

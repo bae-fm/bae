@@ -43,6 +43,7 @@ internal sealed class PlaybackStore
     private ulong _lastSeekRevision;
     private readonly SortedDictionary<int, BridgeQueueEntry[]> _contextPages = new();
     private readonly Dictionary<QueuePageKey, IDisposable> _contextSubscriptions = new();
+    private readonly Dictionary<QueuePageKey, object> _contextSubscriptionIdentities = new();
 
     public PlaybackStore(QueueService queue, Action<Exception> queueError)
     {
@@ -139,6 +140,7 @@ internal sealed class PlaybackStore
         {
             _contextSubscriptions[key].Dispose();
             _contextSubscriptions.Remove(key);
+            _contextSubscriptionIdentities.Remove(key);
             if (key.Offset > 0)
             {
                 removedPage |= _contextPages.Remove(key.Offset);
@@ -160,26 +162,44 @@ internal sealed class PlaybackStore
         {
             return;
         }
+        var identity = new object();
+        _contextSubscriptionIdentities[key] = identity;
         var subscription = _queue.SubscribeUpcomingPage(
             checked((uint)key.Offset),
             checked((uint)(key.End - key.Offset)),
-            page => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyContextPage(key, page)),
-            error => Avalonia.Threading.Dispatcher.UIThread.Post(() => _queueError(error)));
+            page => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyContextPage(key, identity, page)),
+            error => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyContextPageError(key, identity, error)));
         if (subscription is not null)
         {
             _contextSubscriptions[key] = subscription;
         }
+        else
+        {
+            _contextSubscriptionIdentities.Remove(key);
+        }
     }
 
-    private void ApplyContextPage(QueuePageKey key, BridgeQueueUpcomingPage page)
+    private void ApplyContextPage(QueuePageKey key, object identity, BridgeQueueUpcomingPage page)
     {
-        if (!_contextSubscriptions.ContainsKey(key) || page.Revision != Revision)
+        if (!IsCurrentContextSubscription(key, identity) || page.Revision != Revision)
         {
             return;
         }
         _contextPages[key.Offset] = page.Entries;
         ContextPagesChanged?.Invoke();
     }
+
+    private void ApplyContextPageError(QueuePageKey key, object identity, Exception error)
+    {
+        if (IsCurrentContextSubscription(key, identity))
+        {
+            _queueError(error);
+        }
+    }
+
+    private bool IsCurrentContextSubscription(QueuePageKey key, object identity) =>
+        _contextSubscriptionIdentities.TryGetValue(key, out var current) &&
+        ReferenceEquals(current, identity);
 
     public void ApplyValues(BridgePlaybackValues values, IMediaControl mediaControls)
     {
@@ -404,6 +424,7 @@ internal sealed class PlaybackStore
             subscription.Dispose();
         }
         _contextSubscriptions.Clear();
+        _contextSubscriptionIdentities.Clear();
         _contextPages.Clear();
         if (_queueContext is { } context)
         {

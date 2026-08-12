@@ -7,13 +7,17 @@ struct ComposerDetailScreen: View {
     let openWork: (String) -> Void
     let openAlbum: (String, String) -> Void
 
-    @Environment(Library.self)
-    private var library
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
 
-    @State
-    private var detail: BridgeComposerDetail?
-    @State
-    private var error: String?
+    private var detail: BridgeComposerDetail? {
+        libraryProjections.composer.value
+    }
+    private var error: String? {
+        libraryProjections.composer.error?.line
+            ?? (libraryProjections.composer.delivered && detail == nil
+                ? String(localized: "Composer detail not found") : nil)
+    }
 
     var body: some View {
         Group {
@@ -39,9 +43,8 @@ struct ComposerDetailScreen: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: artistId) {
-            await load()
-        }
+        .onAppear { libraryProjections.activateComposer(artistId) }
+        .onDisappear { libraryProjections.deactivateComposer(artistId) }
     }
 
     private var navigationTitle: String {
@@ -54,23 +57,6 @@ struct ComposerDetailScreen: View {
         return ""
     }
 
-    private func load() async {
-        error = nil
-        for await result in library.composerDetails(artistId) {
-            guard !Task.isCancelled else { return }
-            switch result {
-            case .success(let loaded):
-                guard let loaded else {
-                    error = String(localized: "Composer detail not found")
-                    continue
-                }
-                detail = loaded
-                error = nil
-            case .failure(let bridgeError):
-                error = bridgeError.displayLine
-            }
-        }
-    }
 }
 
 private struct ComposerDetailContent: View {

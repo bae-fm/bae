@@ -81,12 +81,10 @@ private struct LibraryRouteDestination: View {
 /// the database, navigation into album detail, and a persistent now-playing
 /// bar. The grid receives updated pages from its database subscriptions.
 struct LibraryView: View {
-    @Environment(LibraryStore.self)
-    private var libraryStore
-    @Environment(Library.self)
-    private var library
-    @Environment(ConfigStore.self)
-    private var configStore
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
+    @Environment(LibraryListsStore.self)
+    private var libraryLists
     @Environment(Sync.self)
     private var sync
     @Environment(Playback.self)
@@ -99,19 +97,9 @@ struct LibraryView: View {
     @State
     private var mode: LibraryBrowserMode = .albums
     @State
-    private var albumList: AlbumList?
-    @State
-    private var composerList: ComposerList?
-    @State
-    private var artistList: ArtistList?
-    @State
     private var routePath: [LibraryRoute] = []
     @State
     private var searchQuery = ""
-    @State
-    private var searchResults: SearchResults?
-    @State
-    private var searchError: String?
     // Newest-first by default, matching the desktop library. Held as the two
     // enum components (each Equatable) so onChange can rebuild the paged list.
     @State
@@ -154,8 +142,9 @@ struct LibraryView: View {
                 text: $searchQuery,
                 prompt: "Search"
             )
-            .task(id: searchQuery) {
-                await runSearch()
+            .onChange(of: searchQuery, initial: true) { oldQuery, newQuery in
+                libraryProjections.deactivateSearch(oldQuery)
+                libraryProjections.activateSearch(newQuery)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -201,14 +190,19 @@ struct LibraryView: View {
                 NowPlayingBar()
             }
         }
-        .task(id: listSelection) {
+        .onChange(of: listSelection, initial: true) { _, _ in
             switch mode {
             case .albums:
-                await rebuildList()
+                libraryLists.updateAlbums([
+                    BridgeSortCriterion(
+                        field: sortField,
+                        direction: sortDirection
+                    )
+                ])
             case .composers:
-                await rebuildComposerList()
+                libraryLists.updateComposers([composerSortCriterion])
             case .artists:
-                await rebuildArtistList()
+                libraryLists.updateArtists([artistSortCriterion])
             }
         }
     }
@@ -219,86 +213,16 @@ extension LibraryView {
         !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// Rebuild the paged album list for the current sort — on first appear and
-    /// whenever the sort field/direction changes.
-    private func rebuildList() async {
-        let newList = AlbumList(
-            pageSource: LibraryAlbumPageSource(
-                library: library,
-                sort: [
-                    BridgeSortCriterion(field: sortField, direction: sortDirection)
-                ]
-            ),
-            ingest: { rows in
-                for row in rows {
-                    _ = libraryStore.internAlbumSummary(row)
-                }
-            },
-            onError: { error in
-                configStore.showError(error)
-            },
-        )
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        albumList = newList
-    }
-
-    private func rebuildComposerList() async {
-        let newList = ComposerList(
-            pageSource: LibraryComposerPageSource(
-                library: library,
-                sort: [composerSortCriterion]
-            ),
-            ingest: { rows in
-                for row in rows {
-                    _ = libraryStore.internComposerSummary(row)
-                }
-            },
-            onError: { error in
-                configStore.showError(error)
-            },
-        )
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        composerList = newList
-    }
-
-    private func rebuildArtistList() async {
-        let newList = ArtistList(
-            pageSource: LibraryArtistPageSource(
-                library: library,
-                sort: [artistSortCriterion]
-            ),
-            ingest: { rows in
-                for row in rows {
-                    _ = libraryStore.internArtistSummary(row)
-                }
-            },
-            onError: { error in
-                configStore.showError(error)
-            },
-        )
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        artistList = newList
-    }
-
     @ViewBuilder
     private var content: some View {
         LibraryContentView(
             isSearching: isSearching,
             mode: mode,
-            albumList: albumList,
-            composerList: composerList,
-            artistList: artistList,
-            searchResults: searchResults,
-            searchError: searchError,
+            albumList: libraryLists.albums,
+            composerList: libraryLists.composers,
+            artistList: libraryLists.artists,
+            searchResults: libraryProjections.search.value,
+            searchError: libraryProjections.search.error?.line,
             sync: sync,
             onSelectAlbum: {
                 routePath.appendAlbum(
@@ -313,35 +237,6 @@ extension LibraryView {
         )
     }
 
-    /// Debounced library search. `.task(id: searchQuery)` cancels the prior run
-    /// on each keystroke: a pending 300ms debounce unwinds, and the post-await
-    /// cancellation drops the old subscription, so only the latest query's
-    /// live results land. Prior results stay on screen while the next search
-    /// starts.
-    private func runSearch() async {
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        searchError = nil
-        guard !query.isEmpty else {
-            searchResults = nil
-            return
-        }
-        do {
-            try await Task.sleep(for: .milliseconds(300))
-        }
-        catch {
-            return
-        }
-        for await result in library.searchResults(query) {
-            guard !Task.isCancelled else { return }
-            switch result {
-            case .success(let bridge):
-                searchResults = SearchResults(bridge: bridge, query: query)
-                searchError = nil
-            case .failure(let error):
-                searchError = error.displayLine
-            }
-        }
-    }
 }
 
 private struct LibrarySyncToolbarStatus: View {

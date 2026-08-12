@@ -315,12 +315,22 @@ extension View {
         playbackStore: PlaybackStore? = nil,
         downloadStore: DownloadStore? = nil
     ) -> some View {
-        environment(PreviewData.configStore())
+        let library = Library.stub()
+        let resolvedLibraryStore = libraryStore ?? PreviewData.libraryStore()
+        return environment(PreviewData.configStore())
             .environment(SyncStatusStore())
-            .environment(libraryStore ?? PreviewData.libraryStore())
+            .environment(resolvedLibraryStore)
             .environment(playbackStore ?? PreviewData.playbackStore())
             .environment(downloadStore ?? PreviewData.downloadStore())
-            .environment(Library.stub())
+            .environment(library)
+            .environment(LibraryProjectionStore(library: library))
+            .environment(
+                LibraryListsStore(
+                    library: library,
+                    libraryStore: resolvedLibraryStore,
+                    onError: { _ in }
+                )
+            )
             .environment(Playback.stub())
             .environment(Queue.stub())
             .environment(Downloads.stub())

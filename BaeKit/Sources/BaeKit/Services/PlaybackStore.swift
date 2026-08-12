@@ -12,7 +12,7 @@ private struct UpcomingPageKey: Hashable {
 
 /// Mirror of core's playback state. The event dispatcher is the sole writer:
 /// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
-/// `queueContext` are all driven by `BridgeUiEvent` deliveries. Views read
+/// `queueContext` are driven by retained playback and queue values. Views read
 /// fields at the leaf and never write back — they invoke `appHandle` actions
 /// instead, and the resulting events flow back through the dispatcher.
 ///

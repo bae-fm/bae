@@ -56,8 +56,6 @@ internal sealed class ImportMappingPane : UserControl
     // choices. Null while nothing is settled, which is also when there is
     // nothing to commit.
     private PrefetchedEdit? _prefetch;
-    private BridgeLibraryStatus? _libraryStatus;
-    private IDisposable? _libraryStatusSubscription;
 
     // The release the mapping was computed against, held here rather than looked
     // up again: putting a file back or binding a sheet clears the candidate's
@@ -120,6 +118,7 @@ internal sealed class ImportMappingPane : UserControl
         Content = _content;
         _import.PreviewElapsedChanged += OnPreviewChanged;
         _import.Changed += OnQueueChanged;
+        _import.ReleaseLibraryStatusChanged += Render;
         Render();
     }
 
@@ -230,7 +229,7 @@ internal sealed class ImportMappingPane : UserControl
 
     private void ResetEdit()
     {
-        CancelLibraryStatusSubscription();
+        _import.ClearReleaseLibraryStatus();
         _identity = ImportIdentity.Release;
         _mapping = null;
         _prefetch = null;
@@ -238,7 +237,6 @@ internal sealed class ImportMappingPane : UserControl
         _releaseClaim = BridgeClaimLevel.Exact;
         _prefetching = false;
         _prefetchFailed = false;
-        _libraryStatus = null;
         _pressing = Empty();
         _albumTitle = string.Empty;
         _albumArtistText = string.Empty;
@@ -348,14 +346,16 @@ internal sealed class ImportMappingPane : UserControl
                 _searchOpen = false;
                 Render();
 
-                SubscribeLibraryStatus(release);
+                _import.ObserveReleaseLibraryStatus(
+                    release.Source,
+                    release.ReleaseId,
+                    release.SourceGroupId);
             }
             else
             {
-                CancelLibraryStatusSubscription();
+                _import.ClearReleaseLibraryStatus();
                 Seed(decided.Edit);
                 _identity = ImportIdentity.Unknown;
-                _libraryStatus = null;
                 _searchOpen = false;
                 Render();
             }
@@ -365,32 +365,6 @@ internal sealed class ImportMappingPane : UserControl
             _prefetching = false;
             Render();
         }
-    }
-
-    private void SubscribeLibraryStatus((
-        BridgeMetadataSource Source,
-        string ReleaseId,
-        string? SourceGroupId,
-        BridgeClaimLevel Claim) release)
-    {
-        CancelLibraryStatusSubscription();
-        _libraryStatusSubscription = _app.Import.SubscribeReleaseLibraryStatus(
-            release.Source,
-            release.ReleaseId,
-            release.SourceGroupId,
-            status => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                _libraryStatus = status.ReleaseInLibrary || status.AlbumInLibrary ? status : null;
-                Render();
-            }),
-            error => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                _app.ShowError(Loc.Chrome("error.title"), error.Message)));
-    }
-
-    private void CancelLibraryStatusSubscription()
-    {
-        _libraryStatusSubscription?.Dispose();
-        _libraryStatusSubscription = null;
     }
 
     private void Seed(PrefetchedEdit prefetched)
@@ -493,7 +467,7 @@ internal sealed class ImportMappingPane : UserControl
         {
             sections.Children.Add(BuildSearchEditor());
         }
-        if (_libraryStatus is { } status)
+        if (_import.ReleaseLibraryStatus is { } status)
         {
             sections.Children.Add(BuildLibraryStatusBanner(status));
         }

@@ -39,6 +39,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Construction wires its subscriptions; `wireUp()` starts delivery
     /// after the complete application service has been initialized.
     private let libraryBrowseSession: LibraryBrowseSession
+    private let storageManagerStore: StorageManagerStore
 
     // MARK: - Desktop-only domain services
 
@@ -102,6 +103,11 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             library: library,
             libraryStore: libraryStore,
             uiStore: uiStore
+        )
+        storageManagerStore = StorageManagerStore(
+            library: library,
+            libraryStore: libraryStore,
+            onError: { uiStore.showError($0) }
         )
         desktopSubscriptions = DesktopSubscriptions(
             appHandle: appHandle,
@@ -169,6 +175,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         installSharedEnvironment(content)
             .environment(importStore)
             .environment(libraryBrowseSession)
+            .environment(storageManagerStore)
             .environment(previewAudio)
             .environment(releaseEditor)
             .environment(importer)
@@ -197,6 +204,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         BaeKit.AppService.installSharedEnvironment(content, from: service)
             .environment(service?.importStore)
             .environment(service?.libraryBrowseSession)
+            .environment(service?.storageManagerStore)
             .environment(service?.previewAudio)
             .environment(service?.releaseEditor)
             .environment(service?.importer)

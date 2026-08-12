@@ -7,13 +7,15 @@ struct WorkDetailScreen: View {
     let openWork: (String) -> Void
     let openAlbum: (BridgeWorkReleaseSummary) -> Void
 
-    @Environment(Library.self)
-    private var library
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
 
-    @State
-    private var detail: BridgeWorkDetail?
-    @State
-    private var error: String?
+    private var detail: BridgeWorkDetail? { libraryProjections.work.value }
+    private var error: String? {
+        libraryProjections.work.error?.line
+            ?? (libraryProjections.work.delivered && detail == nil
+                ? String(localized: "Work detail not found") : nil)
+    }
 
     var body: some View {
         Group {
@@ -39,9 +41,8 @@ struct WorkDetailScreen: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: workId) {
-            await load()
-        }
+        .onAppear { libraryProjections.activateWork(workId) }
+        .onDisappear { libraryProjections.deactivateWork(workId) }
     }
 
     private var navigationTitle: String {
@@ -54,23 +55,6 @@ struct WorkDetailScreen: View {
         return ""
     }
 
-    private func load() async {
-        error = nil
-        for await result in library.workDetails(workId) {
-            guard !Task.isCancelled else { return }
-            switch result {
-            case .success(let loaded):
-                guard let loaded else {
-                    error = String(localized: "Work detail not found")
-                    continue
-                }
-                detail = loaded
-                error = nil
-            case .failure(let bridgeError):
-                error = bridgeError.displayLine
-            }
-        }
-    }
 }
 
 private struct WorkDetailContent: View {
