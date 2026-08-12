@@ -19,17 +19,13 @@ import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 import uniffi.bae_bridge.BridgeTrack
 import java.util.LinkedHashMap
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 
 private const val TAG = "bae.LibraryBrowseTree"
 private val logger = BaeLogger(TAG)
@@ -72,221 +68,6 @@ private data class ParentInterests(
         get() = explicit.isEmpty() && implicit.isEmpty()
 }
 
-private class LiveProjection<T>(
-    private val scope: CoroutineScope,
-    private val flow: Flow<LiveQueryEvent<T>>,
-    private val onEvent: (LiveQueryEvent<T>, isUpdate: Boolean) -> Unit,
-) {
-    private data class Delivered<T>(val value: T)
-
-    private val lock = Any()
-    private var delivered: Delivered<T>? = null
-    private val first = CompletableDeferred<LiveQueryEvent<T>>()
-    private var eventDelivered = false
-    private var started = false
-    private var cancelled = false
-    private var job: Job? = null
-
-    fun start() {
-        val shouldStart =
-            synchronized(lock) {
-                if (started || cancelled) {
-                    false
-                } else {
-                    started = true
-                    true
-                }
-            }
-        if (!shouldStart) return
-        val launched =
-            flow
-                .onEach { event ->
-                    val isUpdate =
-                        synchronized(lock) {
-                            val update = eventDelivered
-                            eventDelivered = true
-                            if (event is LiveQueryEvent.Value) {
-                                delivered = Delivered(event.value)
-                            }
-                            if (!first.isCompleted) first.complete(event)
-                            update
-                        }
-                    onEvent(event, isUpdate)
-                }.launchIn(scope)
-        synchronized(lock) {
-            if (cancelled) launched.cancel() else job = launched
-        }
-    }
-
-    suspend fun value(): T {
-        synchronized(lock) { delivered }?.let { return it.value }
-        return when (val event = first.await()) {
-            is LiveQueryEvent.Value -> event.value
-            is LiveQueryEvent.Error -> throw event.error
-        }
-    }
-
-    fun cancel() {
-        val activeJob =
-            synchronized(lock) {
-                cancelled = true
-                first.cancel()
-                job
-            }
-        activeJob?.cancel()
-    }
-}
-
-private class LiveProjectionCache<Key, Value>(
-    private val scope: CoroutineScope,
-    private val maximumCount: Int,
-    private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
-    private val isRetained: (Key) -> Boolean,
-    private val onChanged: (Key, previous: Value?, current: Value) -> Unit = { _, _, _ -> },
-    private val onError: (Key, BridgeException) -> Unit,
-) {
-    private class Entry<Value>(
-        val identity: Any,
-        val projection: LiveProjection<Value>,
-        var waiters: Int = 0,
-        var cancelWhenUnused: Boolean = false,
-        var delivered: Delivered<Value>? = null,
-    )
-
-    private data class Delivered<Value>(val value: Value)
-
-    private val lock = Any()
-    private val projections = LinkedHashMap<Key, Entry<Value>>(16, 0.75f, true)
-
-    suspend fun value(key: Key): Value {
-        val entry = acquire(key)
-        return try {
-            entry.projection.value()
-        } finally {
-            release(key, entry.identity)
-        }
-    }
-
-    fun ensure(key: Key) {
-        var created = false
-        val entry =
-            synchronized(lock) {
-                (projections[key]
-                    ?: createEntry(key).also {
-                        projections[key] = it
-                        created = true
-                    }).also { it.cancelWhenUnused = false }
-            }
-        trimAndCancel()
-        if (created) entry.projection.start()
-    }
-
-    fun cancelWhenUnused(key: Key) {
-        val cancelled =
-            synchronized(lock) {
-                projections[key]?.let { entry ->
-                    if (isRetained(key)) {
-                        entry.cancelWhenUnused = false
-                        null
-                    } else if (entry.waiters == 0) {
-                        projections.remove(key)
-                    } else {
-                        entry.cancelWhenUnused = true
-                        null
-                    }
-                }
-            }
-        cancelled?.projection?.cancel()
-    }
-
-    fun cancelAll() {
-        val cancelled =
-            synchronized(lock) {
-                projections.values.toList().also { projections.clear() }
-            }
-        cancelled.forEach { it.projection.cancel() }
-    }
-
-    private fun acquire(key: Key): Entry<Value> {
-        var created = false
-        val entry =
-            synchronized(lock) {
-                (projections[key]
-                    ?: createEntry(key).also {
-                        projections[key] = it
-                        created = true
-                    }).also { it.waiters++ }
-            }
-        trimAndCancel()
-        if (created) entry.projection.start()
-        return entry
-    }
-
-    private fun createEntry(key: Key): Entry<Value> {
-        val identity = Any()
-        val projection =
-            LiveProjection(scope, flow(key)) { event, isUpdate ->
-                apply(key, identity, event, isUpdate)
-            }
-        return Entry(identity, projection)
-    }
-
-    private fun release(
-        key: Key,
-        identity: Any,
-    ) {
-        val cancelled =
-            synchronized(lock) {
-                projections[key]?.takeIf { it.identity === identity }?.let { entry ->
-                    check(entry.waiters > 0)
-                    entry.waiters--
-                    if (entry.waiters == 0 && entry.cancelWhenUnused && !isRetained(key)) {
-                        projections.remove(key)
-                    } else {
-                        null
-                    }
-                }
-            }
-        cancelled?.projection?.cancel()
-        trimAndCancel()
-    }
-
-    private fun apply(
-        key: Key,
-        identity: Any,
-        event: LiveQueryEvent<Value>,
-        isUpdate: Boolean,
-    ) {
-        synchronized(lock) {
-            val entry = projections[key]?.takeIf { it.identity === identity } ?: return
-            when (event) {
-                is LiveQueryEvent.Value -> {
-                    val previous = entry.delivered?.value
-                    entry.delivered = Delivered(event.value)
-                    if (isUpdate) onChanged(key, previous, event.value)
-                }
-                is LiveQueryEvent.Error -> onError(key, event.error)
-            }
-        }
-    }
-
-    private fun trimAndCancel() {
-        val evicted =
-            synchronized(lock) {
-                buildList {
-                    while (projections.size > maximumCount) {
-                        val candidate =
-                            projections.entries.firstOrNull { (key, entry) ->
-                                entry.waiters == 0 && !isRetained(key)
-                            } ?: break
-                        projections.remove(candidate.key)?.let(::add)
-                    }
-                }
-            }
-        evicted.forEach { it.projection.cancel() }
-    }
-}
-
 /**
  * Builds the media-browse tree Android Auto / Bluetooth head units navigate,
  * served from the same paged library reads the in-app browser uses ([Library]).
@@ -326,18 +107,31 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val interestLock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
+    private val parentRevisions = QueryRevisions<String>()
+    private val searchRevisions = QueryRevisions<String>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
             isRetained = { false },
-            onChanged = { key, previous, current ->
-                if (previous?.totalCount == current.totalCount) {
-                    onChildrenChanged(key.parentId, current.totalCount)
+            minimumRevision = { key -> parentRevisions.current(key.parentId) },
+            eventRevision = { key, _, previous, isUpdate ->
+                parentRevisions.pageEvent(key.parentId, previous, isUpdate)
+            },
+            onChanged = { key, change ->
+                val currentRevision = parentRevisions.current(key.parentId)
+                val pageOwnsChange =
+                    change.recoveredFromError ||
+                        change.previousValue?.totalCount == change.currentValue.totalCount
+                if (pageOwnsChange && change.previousRevision >= currentRevision) {
+                    parentRevisions.advanceTo(key.parentId, change.revision)
+                    onChildrenChanged(key.parentId, change.currentValue.totalCount)
                 }
             },
             onError = { _, error -> onQueryError(error) },
+            onEntryCreated = { key -> parentRevisions.retain(key.parentId) },
+            onEntryRemoved = { key -> parentRevisions.release(key.parentId) },
         )
     private val parentObservers =
         LiveProjectionCache(
@@ -345,8 +139,14 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = Int.MAX_VALUE,
             flow = ::parentCountFlow,
             isRetained = ::isParentRetained,
-            onChanged = { parentId, _, count -> onChildrenChanged(parentId, count) },
+            minimumRevision = parentRevisions::current,
+            eventRevision = { parentId, event, _, isUpdate ->
+                parentRevisions.observerEvent(parentId, event, isUpdate)
+            },
+            onChanged = { parentId, change -> onChildrenChanged(parentId, change.currentValue) },
             onError = { _, error -> onQueryError(error) },
+            onEntryCreated = parentRevisions::retain,
+            onEntryRemoved = parentRevisions::release,
         )
     private val albumDetails = exactProjections(library::albumDetails)
     private val composerDetails = exactProjections(library::composerDetails)
@@ -358,7 +158,23 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
             flow = ::searchPageFlow,
             isRetained = { false },
+            minimumRevision = { key -> searchRevisions.current(key.query) },
+            eventRevision = { key, _, previous, isUpdate ->
+                searchRevisions.pageEvent(key.query, previous, isUpdate)
+            },
+            onChanged = { key, change ->
+                val currentRevision = searchRevisions.current(key.query)
+                if (change.recoveredFromError &&
+                    change.previousRevision == currentRevision &&
+                    change.revision > currentRevision
+                ) {
+                    searchRevisions.advanceTo(key.query, change.revision)
+                    notifySearchResults(key.query, change.currentValue.totalCount)
+                }
+            },
             onError = { _, error -> onQueryError(error) },
+            onEntryCreated = { key -> searchRevisions.retain(key.query) },
+            onEntryRemoved = { key -> searchRevisions.release(key.query) },
         )
     private val searchObservers =
         LiveProjectionCache(
@@ -366,8 +182,14 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = Int.MAX_VALUE,
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
-            onChanged = { query, _, value -> notifySearchResults(query, value.albums.size) },
+            minimumRevision = searchRevisions::current,
+            eventRevision = { query, event, _, isUpdate ->
+                searchRevisions.observerEvent(query, event, isUpdate)
+            },
+            onChanged = { query, change -> notifySearchResults(query, change.currentValue.albums.size) },
             onError = { _, error -> onQueryError(error) },
+            onEntryCreated = searchRevisions::retain,
+            onEntryRemoved = searchRevisions::release,
         )
     private val spokenSearches = exactProjections(library::searchResults)
 
