@@ -93,4 +93,25 @@ struct DisplayErrorTests {
                 == "connection reset"
         )
     }
+
+    @Test(
+        "long diagnostics expose a bounded opening excerpt and retain the full detail"
+    )
+    func longDiagnosticExcerpt() throws {
+        let detail =
+            String(repeating: "opening context ", count: 40)
+            + "terminal context"
+        let displayed = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(category: .database, detail: detail)
+                    as any Error
+            )
+        )
+        let excerpt = try #require(displayed.detailExcerpt)
+
+        #expect(excerpt.hasPrefix("opening context"))
+        #expect(excerpt.hasSuffix("…"))
+        #expect(excerpt.count < detail.count)
+        #expect(displayed.detail == detail)
+    }
 }

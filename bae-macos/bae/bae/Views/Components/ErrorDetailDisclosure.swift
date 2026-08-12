@@ -27,12 +27,30 @@ struct ErrorDetailDisclosure: View {
                     .foregroundStyle(tint)
             }
 
-            if let detail = error.detail {
-                DisclosureGroup(isExpanded: $detailExpanded) {
+            if let detail = error.detail, let excerpt = error.detailExcerpt {
+                Button {
+                    detailExpanded = !detailExpanded
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .rotationEffect(.degrees(detailExpanded ? 90 : 0))
+                        Text("Details")
+                            .font(.caption)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if detailExpanded {
                     HStack(alignment: .top, spacing: 6) {
-                        Text(detail)
+                        Text(excerpt)
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
+                            .lineLimit(6)
+                            .truncationMode(.tail)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Button {
@@ -43,10 +61,6 @@ struct ErrorDetailDisclosure: View {
                         .buttonStyle(.borderless)
                         .help("Copy details")
                     }
-                } label: {
-                    Text("Details")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
         }

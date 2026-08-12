@@ -21,8 +21,18 @@ extension BridgePlaybackErrorReason: LocalizedFailure {}
 /// already localized prose and carry no detail; core errors crossing the bridge
 /// arrive as typed reasons and render their generic per-category line here.
 public struct DisplayError: Equatable {
+    private static let detailExcerptLength = 400
+
     public let line: String
     public let detail: String?
+
+    /// The opening portion rendered inline. Copy actions continue to use
+    /// `detail`, which retains the complete diagnostic.
+    public var detailExcerpt: String? {
+        guard let detail else { return nil }
+        let excerpt = detail.prefix(Self.detailExcerptLength)
+        return excerpt.endIndex == detail.endIndex ? detail : "\(excerpt)…"
+    }
 
     /// A UI-originated error: prose the UI already localized, with no opaque
     /// detail to disclose.
