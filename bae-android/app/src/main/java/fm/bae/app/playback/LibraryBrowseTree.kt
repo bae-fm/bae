@@ -58,7 +58,15 @@ private data class ParentPageKey(
 )
 
 private class ParentInterest {
+    private val countLock = Any()
+    private var lastKnownCount: Int? = null
     val ended = CompletableDeferred<Unit>()
+
+    fun recordCount(count: Int) {
+        synchronized(countLock) { lastKnownCount = count }
+    }
+
+    fun knownCount(): Int? = synchronized(countLock) { lastKnownCount }
 
     fun end() {
         ended.complete(Unit)
@@ -136,9 +144,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             onChanged = { parentId, count ->
                 retirePagesAndNotify(parentId, count)
             },
-            onError = { parentId, previous, error, isUpdate ->
+            onError = { parentId, _, error, _ ->
                 onQueryError(error)
-                if (isUpdate) retirePagesAndNotify(parentId, previous ?: 0)
+                parentInterests(parentId)
+                    .firstNotNullOfOrNull(ParentInterest::knownCount)
+                    ?.let { count -> retirePagesAndNotify(parentId, count) }
             },
         )
     private val albumDetails = exactProjections(library::albumDetails)
@@ -210,7 +220,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             is BrowseId.Album,
             is BrowseId.Composer,
             is BrowseId.Work,
-            -> pageProjections.value(ParentPageKey(parentId, page, pageSize)).items
+            -> {
+                val deliveredPage = pageProjections.value(ParentPageKey(parentId, page, pageSize))
+                parentInterests(parentId).recordCount(deliveredPage.totalCount)
+                deliveredPage.items
+            }
 
             is BrowseId.Track -> {
                 // A track is a leaf (playable, not browsable); a browse client
@@ -289,7 +303,8 @@ internal class LibraryBrowseTree<Owner : Any>(
                 }
             }
         if (isObservableParent(parentId)) {
-            awaitParentObservation(parentId, interest, parentObservers)
+            val event = awaitParentObservation(parentId, interest, parentObservers)
+            if (event is LiveQueryEvent.Value) interest.recordCount(event.value)
         }
         return true
     }
@@ -323,7 +338,8 @@ internal class LibraryBrowseTree<Owner : Any>(
             if (!isParentRetained(evictedParent)) parentObservers.cancelWhenUnused(evictedParent)
         }
         if (isObservableParent(parentId)) {
-            awaitParentObservation(parentId, interest, parentObservers)
+            val event = awaitParentObservation(parentId, interest, parentObservers)
+            if (event is LiveQueryEvent.Value) interest.recordCount(event.value)
         }
         return true
     }
@@ -443,6 +459,13 @@ internal class LibraryBrowseTree<Owner : Any>(
     private fun isParentRetained(parentId: String): Boolean =
         synchronized(interestLock) { parentsByOwner.values.any { parentId in it.parentIds } }
 
+    private fun parentInterests(parentId: String): List<ParentInterest> =
+        synchronized(interestLock) {
+            parentsByOwner.values.mapNotNull { interests ->
+                interests.explicit[parentId] ?: interests.implicit[parentId]
+            }
+        }
+
     private fun isSearchRetained(query: String): Boolean =
         synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
 
@@ -491,21 +514,6 @@ internal class LibraryBrowseTree<Owner : Any>(
             onError = { _, _, error, _ -> onQueryError(error) },
         )
 
-    private fun isObservableParent(parentId: String): Boolean =
-        when (BrowseId.parse(parentId)) {
-            BrowseId.Albums,
-            BrowseId.Composers,
-            is BrowseId.Album,
-            is BrowseId.Composer,
-            is BrowseId.Work,
-            -> true
-
-            null,
-            BrowseId.Root,
-            is BrowseId.Track,
-            -> false
-        }
-
     private fun parentCountFlow(parentId: String): Flow<LiveQueryEvent<Int>> =
         when (val id = checkNotNull(BrowseId.parse(parentId))) {
             BrowseId.Albums ->
@@ -541,6 +549,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Root,
             is BrowseId.Track,
             -> error("static browse id $parentId cannot create a parent observation")
+        }.map { event ->
+            event.mapValue { count ->
+                parentInterests(parentId).recordCount(count)
+                count
+            }
         }
 
     private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
@@ -611,6 +624,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Root,
             is BrowseId.Track,
             -> error("static browse id ${key.parentId} cannot create a live page")
+        }.map { event ->
+            event.mapValue { page ->
+                parentInterests(key.parentId).recordCount(page.totalCount)
+                page
+            }
         }
 
     private companion object {
@@ -662,25 +680,46 @@ private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
  *  the start index `play_release` expects. */
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
+private fun Iterable<ParentInterest>.recordCount(count: Int) {
+    forEach { interest -> interest.recordCount(count) }
+}
+
+private fun isObservableParent(parentId: String): Boolean =
+    when (BrowseId.parse(parentId)) {
+        BrowseId.Albums,
+        BrowseId.Composers,
+        is BrowseId.Album,
+        is BrowseId.Composer,
+        is BrowseId.Work,
+        -> true
+
+        null,
+        BrowseId.Root,
+        is BrowseId.Track,
+        -> false
+    }
+
 private suspend fun <Value> awaitParentObservation(
     parentId: String,
     interest: ParentInterest,
     parentObservers: LiveProjectionCache<String, Value>,
-) {
-    coroutineScope {
-        val observation =
-            async(start = CoroutineStart.UNDISPATCHED) {
-                parentObservers.event(parentId)
-            }
-        select {
-            observation.onAwait {}
-            interest.ended.onAwait {
-                observation.cancel()
-                throw parentInterestEnded()
+): LiveQueryEvent<Value> {
+    val event =
+        coroutineScope {
+            val observation =
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    parentObservers.event(parentId)
+                }
+            select {
+                observation.onAwait { it }
+                interest.ended.onAwait {
+                    observation.cancel()
+                    throw parentInterestEnded()
+                }
             }
         }
-    }
     if (interest.ended.isCompleted) throw parentInterestEnded()
+    return event
 }
 
 private fun parentInterestEnded(): BridgeException =

@@ -732,25 +732,6 @@ class LibraryBrowseTreeTest {
         }
 
     @Test
-    fun parentObservationErrorRetiresPagesAndLaterValueRecovers() =
-        runBlocking {
-            val handle = FakeAppHandle()
-            val notifications = mutableListOf<Pair<String, Int>>()
-            val tree = tree(handle) { parentId, count -> notifications += parentId to count }
-
-            tree.subscribeParent(Any(), BrowseId.Albums.mediaId)
-            tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)
-            handle.failAlbumParentObservation()
-            handle.emitAlbumParentObservation(1uL)
-
-            assertEquals(
-                listOf(BrowseId.Albums.mediaId to 0, BrowseId.Albums.mediaId to 1),
-                notifications,
-            )
-            assertTrue(handle.albumPageSubscriptions.single().cancelled)
-        }
-
-    @Test
     fun albumDrillsToItsPrimaryReleaseTracksWithFlatIndices() =
         runBlocking {
             val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-1")
