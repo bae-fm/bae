@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>бібліотеки</value></data>
   <data name="library.empty" xml:space="preserve"><value>бібліотека порожня</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>не вдалося завантажити бібліотеку</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Повторити</value></data>
   <data name="library.locked" xml:space="preserve"><value>бібліотеку заблоковано</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>не вдалося відкрити бібліотеку</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Ця бібліотека зашифрована, а її ключа немає на цьому пристрої. Введіть 64-символьний шістнадцятковий ключ, щоб розблокувати її.</value></data>

@@ -233,8 +233,6 @@ struct Candidate: Equatable, Identifiable {
 
     func withSessionState(from existing: Candidate) -> Candidate {
         var copy = self
-        copy.identifyState = existing.identifyState
-        copy.importStatus = existing.importStatus
         copy.releaseDetailBridge = existing.releaseDetailBridge
         copy.claim = existing.claim
         copy.pick = existing.pick
@@ -244,8 +242,6 @@ struct Candidate: Equatable, Identifiable {
         copy.error = existing.error
         copy.coverPick = existing.coverPick
         copy.search = existing.search
-        copy.signals = existing.signals
-        copy.signalsToolbar = existing.signalsToolbar
         copy.identityChoice = existing.identityChoice
         copy.editValues = existing.editValues
         copy.exactPressing = existing.exactPressing

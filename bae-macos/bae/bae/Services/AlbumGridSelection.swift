@@ -13,6 +13,15 @@ import Observation
 final class AlbumGridSelection {
     private(set) var selectedIds: Set<String> = []
     private(set) var anchorId: String?
+    @ObservationIgnored
+    private let onSelectionChanged: @MainActor (Set<String>) -> Void
+
+    init(
+        onSelectionChanged: @escaping @MainActor (Set<String>) -> Void = { _ in
+        }
+    ) {
+        self.onSelectionChanged = onSelectionChanged
+    }
 
     var isEmpty: Bool {
         selectedIds.isEmpty
@@ -31,6 +40,7 @@ final class AlbumGridSelection {
             selectedIds.insert(id)
         }
         anchorId = id
+        onSelectionChanged(selectedIds)
     }
 
     /// shift-click: union the contiguous range between the anchor and `targetId`
@@ -58,35 +68,33 @@ final class AlbumGridSelection {
                 selectedIds.insert(id)
             }
         }
+        onSelectionChanged(selectedIds)
     }
 
     /// cmd-A: select every loaded album id, anchored on the last.
     func selectAll(_ ids: [String]) {
         selectedIds = Set(ids)
         anchorId = ids.last
+        onSelectionChanged(selectedIds)
     }
 
     func clear() {
         selectedIds = []
         anchorId = nil
+        onSelectionChanged(selectedIds)
     }
 
     /// Drop ids that no longer exist (pruned after a delete elsewhere). Clears the
     /// anchor if it was among them.
     func remove(_ ids: [String]) {
+        let prior = selectedIds
         selectedIds.subtract(ids)
         if let anchorId, ids.contains(anchorId) {
             self.anchorId = nil
         }
-    }
-
-    /// Keep only albums present in the current delivered list snapshot. Album
-    /// page subscriptions call this after replacing their loaded segments, so
-    /// a remote deletion cannot leave a selected id behind.
-    func retainAvailable(_ ids: [String]) {
-        let available = Set(ids)
-        let missing = selectedIds.subtracting(available)
-        remove(Array(missing))
+        if selectedIds != prior {
+            onSelectionChanged(selectedIds)
+        }
     }
 
     /// The menu/drag target rule: a card that is part of a multi-selection targets

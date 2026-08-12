@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>ライブラリ</value></data>
   <data name="library.empty" xml:space="preserve"><value>ライブラリは空です</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>ライブラリを読み込めませんでした</value></data>
+  <data name="library.retry" xml:space="preserve"><value>再試行</value></data>
   <data name="library.locked" xml:space="preserve"><value>ライブラリはロックされています</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>ライブラリを開けませんでした</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>このライブラリは暗号化されており、そのキーはこのデバイスにありません。ロックを解除するには16進数64文字のキーを入力してください。</value></data>

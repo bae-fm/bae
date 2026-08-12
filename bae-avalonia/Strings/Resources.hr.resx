@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>fonoteke</value></data>
   <data name="library.empty" xml:space="preserve"><value>fonoteka je prazna</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>nije moguće učitati fonoteku</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Pokušaj ponovno</value></data>
   <data name="library.locked" xml:space="preserve"><value>fonoteka je zaključana</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>nije moguće otvoriti fonoteku</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Ova je fonoteka šifrirana, a njezin ključ nije na ovom uređaju. Unesite 64-znamenkasti heksadecimalni ključ za otključavanje.</value></data>

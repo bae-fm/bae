@@ -36,6 +36,7 @@ private const val SESSION_ACTIVITY_REQUEST_CODE = 1
  */
 class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
+    private var browseTree: LibraryBrowseTree? = null
 
     // Browse reads (onGetChildren / onGetItem) run here — off the main thread,
     // since they hit the bridge/DB — for the service's lifetime.
@@ -54,6 +55,7 @@ class PlaybackService : MediaLibraryService() {
             stopSelf()
             return
         }
+        var callback: BaeLibrarySessionCallback? = null
         val tree =
             LibraryBrowseTree(
                 library = open.library,
@@ -64,13 +66,22 @@ class PlaybackService : MediaLibraryService() {
                     )
                 },
                 artworkUri = { image -> ArtworkContentProvider.uriFor(this, image) },
+                scope = browseScope,
+                onChildrenChanged = { parentId, count ->
+                    mediaSession?.notifyChildrenChanged(parentId, count, null)
+                },
+                onSearchResultChanged = { query, count ->
+                    callback?.searchResultsChanged(query, count)
+                },
             )
+        callback = BaeLibrarySessionCallback(tree, browseScope)
         val session =
             MediaLibrarySession
-                .Builder(this, player, BaeLibrarySessionCallback(tree, browseScope))
+                .Builder(this, player, callback)
                 .setSessionActivity(sessionActivity())
                 .build()
         addSession(session)
+        browseTree = tree
         mediaSession = session
     }
 
@@ -89,6 +100,8 @@ class PlaybackService : MediaLibraryService() {
             release()
         }
         mediaSession = null
+        browseTree?.close()
+        browseTree = null
         browseScope.cancel()
         super.onDestroy()
     }

@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>ശേഖരങ്ങൾ</value></data>
   <data name="library.empty" xml:space="preserve"><value>ലൈബ്രറി ശൂന്യമാണ്</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>ലൈബ്രറി ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="library.retry" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുക</value></data>
   <data name="library.locked" xml:space="preserve"><value>ലൈബ്രറി ലോക്ക് ചെയ്തിരിക്കുന്നു</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>ലൈബ്രറി തുറക്കാനായില്ല</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>ഈ ലൈബ്രറി എൻക്രിപ്റ്റ് ചെയ്തതാണ്, അതിന്റെ കീ ഈ ഉപകരണത്തിൽ ഇല്ല. അൺലോക്ക് ചെയ്യാൻ 64 അക്ഷരമുള്ള ഹെക്സ് കീ നൽകുക.</value></data>

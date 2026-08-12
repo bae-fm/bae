@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>bibliothèques</value></data>
   <data name="library.empty" xml:space="preserve"><value>la bibliothèque est vide</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>impossible de charger la bibliothèque</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Réessayer</value></data>
   <data name="library.locked" xml:space="preserve"><value>la bibliothèque est verrouillée</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>impossible d'ouvrir la bibliothèque</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Cette bibliothèque est chiffrée et sa clé n'est pas sur cet appareil. Saisissez la clé hexadécimale de 64 caractères pour la déverrouiller.</value></data>

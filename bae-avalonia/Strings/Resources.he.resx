@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>ספריות</value></data>
   <data name="library.empty" xml:space="preserve"><value>הספרייה ריקה</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>לא ניתן לטעון את הספרייה</value></data>
+  <data name="library.retry" xml:space="preserve"><value>נסה שוב</value></data>
   <data name="library.locked" xml:space="preserve"><value>הספרייה נעולה</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>לא ניתן לפתוח את הספרייה</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>ספרייה זו מוצפנת והמפתח שלה אינו במכשיר הזה. הזינו את המפתח ההקסדצימלי באורך 64 תווים כדי לפתוח אותה.</value></data>

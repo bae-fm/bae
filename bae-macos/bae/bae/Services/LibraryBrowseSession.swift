@@ -1,5 +1,83 @@
 import BaeKit
+import Foundation
 import Observation
+
+@MainActor
+private final class SelectedAlbumObservations {
+    private struct Observation {
+        let identity: UUID
+        let task: Task<Void, Never>
+    }
+
+    private let library: Library
+    private let libraryStore: LibraryStore
+    private let uiStore: UiStore
+    private weak var selection: AlbumGridSelection?
+    private var observations: [String: Observation] = [:]
+
+    init(library: Library, libraryStore: LibraryStore, uiStore: UiStore) {
+        self.library = library
+        self.libraryStore = libraryStore
+        self.uiStore = uiStore
+    }
+
+    func makeSelection() -> AlbumGridSelection {
+        precondition(self.selection == nil)
+        let selection = AlbumGridSelection { [self] selectedIds in
+            selectionChanged(selectedIds)
+        }
+        self.selection = selection
+        return selection
+    }
+
+    func selectionChanged(_ selectedIds: Set<String>) {
+        let removed = observations.keys.filter { !selectedIds.contains($0) }
+        for albumId in removed {
+            observations.removeValue(forKey: albumId)?.task.cancel()
+        }
+        for albumId in selectedIds where observations[albumId] == nil {
+            observe(albumId: albumId)
+        }
+    }
+
+    private func observe(albumId: String) {
+        let identity = UUID()
+        let values = library.albumDetails(albumId)
+        let task = Task { [weak self] in
+            for await result in values {
+                guard !Task.isCancelled else { return }
+                self?.deliver(result, albumId: albumId, identity: identity)
+            }
+        }
+        observations[albumId] = Observation(identity: identity, task: task)
+    }
+
+    private func deliver(
+        _ result: Result<BridgeAlbumDetail?, BridgeError>,
+        albumId: String,
+        identity: UUID
+    ) {
+        guard observations[albumId]?.identity == identity else { return }
+        switch result {
+        case .success(let detail):
+            libraryStore.applyAlbumDetailSnapshot(
+                albumId: albumId,
+                bridge: detail
+            )
+            if detail == nil {
+                selection?.remove([albumId])
+            }
+        case .failure(let error):
+            uiStore.showError(error)
+        }
+    }
+
+    deinit {
+        for observation in observations.values {
+            observation.task.cancel()
+        }
+    }
+}
 
 // MARK: - ComposerPaneSelection
 
@@ -69,8 +147,12 @@ final class LibraryBrowseSession {
         libraryStore: LibraryStore,
         uiStore: UiStore
     ) {
-        let albumSelection = AlbumGridSelection()
-        self.albumSelection = albumSelection
+        let selectedAlbumObservations = SelectedAlbumObservations(
+            library: library,
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        self.albumSelection = selectedAlbumObservations.makeSelection()
         albums = BrowseListSlot(
             defaultsKey: "librarySortCriteria",
             defaultCriteria: [
@@ -84,9 +166,8 @@ final class LibraryBrowseSession {
                     _ = libraryStore.internAlbumSummary(row)
                 }
             },
-            onSnapshot: { ids, total in
+            onSnapshot: { _, total in
                 libraryStore.setAlbumTotal(total)
-                albumSelection.retainAvailable(ids)
             },
             onError: { uiStore.showError($0) }
         )

@@ -57,6 +57,9 @@ public class PaginatedListTests
             }
         }
 
+        public void FailCount(Exception exception) =>
+            _active.Single(active => active.Limit == 0).OnError(exception);
+
         public IDisposable Subscribe(
             int offset,
             int limit,
@@ -90,6 +93,9 @@ public class PaginatedListTests
         public void DeliverCancelledError(int offset) =>
             _cancelled.First(item => item.Offset == offset)
                 .OnError(new InvalidOperationException("stale error"));
+
+        public void DeliverCancelledCount(int totalCount) =>
+            _cancelled.Single(item => item.Limit == 0).OnValue([], totalCount);
 
         private void Deliver(Active active)
         {
@@ -145,6 +151,40 @@ public class PaginatedListTests
         // is set, and it does not route to the later-page error sink.
         Assert.NotNull(list.InitialLoadError);
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task Retry_replaces_failed_count_subscription_and_recovers()
+    {
+        var source = new FakeSource(3) { CountThrows = new InvalidOperationException("db down") };
+        var list = Make(source);
+        await list.LoadInitialAsync();
+        Assert.NotNull(list.InitialLoadError);
+
+        source.CountThrows = null;
+        await list.RetryInitialLoadAsync();
+
+        Assert.Equal(2, source.CountCalls);
+        Assert.Null(list.InitialLoadError);
+        Assert.Equal(3, list.TotalCount);
+
+        source.DeliverCancelledCount(99);
+        Assert.Equal(3, list.TotalCount);
+    }
+
+    [Fact]
+    public async Task Count_subscription_recovers_after_nonterminal_error()
+    {
+        var source = new FakeSource(3);
+        var list = Make(source);
+        await list.LoadInitialAsync();
+
+        source.FailCount(new InvalidOperationException("temporary"));
+        Assert.NotNull(list.InitialLoadError);
+        source.SetRows(4);
+
+        Assert.Null(list.InitialLoadError);
+        Assert.Equal(4, list.TotalCount);
     }
 
     [Fact]

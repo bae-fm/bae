@@ -180,6 +180,8 @@ internal class FakeAppHandle(
     val composerPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val albumPageCallbacks = mutableListOf<AlbumPageCallback>()
+    val searchCallbacks = mutableListOf<LibrarySearchCallback>()
 
     private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
 
@@ -220,9 +222,35 @@ internal class FakeAppHandle(
         callback: AlbumPageCallback,
     ): LiveSubscription {
         albumPageWindows.add(offset to limit)
+        albumPageCallbacks += callback
         val rows = albumPages(offset, limit)
         callback.onValue(BridgeAlbumPage(rows, rows.size.toULong()))
         return liveSubscription()
+    }
+
+    fun emitAlbumPage(
+        subscription: Int,
+        rows: List<BridgeAlbum>,
+    ) {
+        albumPageCallbacks[subscription].onValue(
+            BridgeAlbumPage(rows, rows.size.toULong()),
+        )
+    }
+
+    fun failAlbumPage(subscription: Int) {
+        albumPageCallbacks[subscription].onError(
+            uniffi.bae_bridge.BridgeException.Diagnostic(
+                uniffi.bae_bridge.BridgeErrorCategory.INTERNAL,
+                "temporary",
+            ),
+        )
+    }
+
+    fun emitSearchResults(
+        subscription: Int,
+        value: BridgeSearchResults,
+    ) {
+        searchCallbacks[subscription].onValue(value)
     }
 
     override fun subscribeComposerPage(
@@ -273,6 +301,7 @@ internal class FakeAppHandle(
         query: String,
         callback: LibrarySearchCallback,
     ): LiveSubscription {
+        searchCallbacks += callback
         callback.onValue(searchResults(query))
         return liveSubscription()
     }

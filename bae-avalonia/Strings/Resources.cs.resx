@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>knihovny</value></data>
   <data name="library.empty" xml:space="preserve"><value>knihovna je prázdná</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>nelze načíst knihovnu</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Zkusit znovu</value></data>
   <data name="library.locked" xml:space="preserve"><value>knihovna je zamčena</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>nelze otevřít knihovnu</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Tato knihovna je šifrovaná a její klíč není na tomto zařízení. Pro odemčení zadejte šestnáctkový klíč o 64 znacích.</value></data>

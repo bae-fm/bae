@@ -15,7 +15,16 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 import uniffi.bae_bridge.BridgeTrack
-import kotlinx.coroutines.flow.first
+import java.util.LinkedHashMap
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 private const val TAG = "bae.LibraryBrowseTree"
 private val logger = BaeLogger(TAG)
@@ -29,6 +38,101 @@ internal data class BrowseLabels(
     val albums: String,
     val composers: String,
 )
+
+private data class BrowsePage(
+    val items: List<MediaItem>,
+    val totalCount: Int,
+)
+
+private data class ParentPageKey(
+    val parentId: String,
+    val page: Int,
+    val pageSize: Int,
+)
+
+private class LiveProjection<T>(
+    scope: CoroutineScope,
+    flow: Flow<T>,
+    private val onChanged: (T) -> Unit,
+) {
+    private data class Delivered<T>(val value: T)
+
+    private val lock = Any()
+    private var delivered: Delivered<T>? = null
+    private val first = CompletableDeferred<T>()
+    private val job: Job =
+        flow
+            .onEach { value ->
+                val isUpdate =
+                    synchronized(lock) {
+                        val prior = delivered
+                        delivered = Delivered(value)
+                        if (!first.isCompleted) first.complete(value)
+                        prior != null
+                    }
+                if (isUpdate) onChanged(value)
+            }.launchIn(scope)
+
+    suspend fun value(): T {
+        synchronized(lock) { delivered }?.let { return it.value }
+        return first.await()
+    }
+
+    fun cancel() {
+        first.cancel()
+        job.cancel()
+    }
+}
+
+private class LiveProjectionCache<Key, Value>(
+    private val scope: CoroutineScope,
+    private val maximumCount: Int,
+    private val flow: (Key) -> Flow<Value>,
+    private val onChanged: (Key, Value) -> Unit = { _, _ -> },
+) {
+    private val lock = Any()
+    private val projections = LinkedHashMap<Key, LiveProjection<Value>>(16, 0.75f, true)
+
+    suspend fun value(key: Key): Value = projection(key).value()
+
+    fun cancel(key: Key) {
+        synchronized(lock) { projections.remove(key) }?.cancel()
+    }
+
+    fun cancelWhere(predicate: (Key) -> Boolean) {
+        val cancelled =
+            synchronized(lock) {
+                val keys = projections.keys.filter(predicate)
+                keys.mapNotNull(projections::remove)
+            }
+        cancelled.forEach(LiveProjection<Value>::cancel)
+    }
+
+    fun cancelAll() {
+        val cancelled =
+            synchronized(lock) {
+                projections.values.toList().also { projections.clear() }
+            }
+        cancelled.forEach(LiveProjection<Value>::cancel)
+    }
+
+    private fun projection(key: Key): LiveProjection<Value> {
+        val evicted = mutableListOf<LiveProjection<Value>>()
+        val projection =
+            synchronized(lock) {
+                projections[key]
+                    ?: LiveProjection(scope, flow(key)) { onChanged(key, it) }.also {
+                        projections[key] = it
+                        while (projections.size > maximumCount) {
+                            val eldest = projections.entries.iterator().next()
+                            projections.remove(eldest.key)?.let(evicted::add)
+                        }
+                    }
+            }
+        evicted.forEach(LiveProjection<Value>::cancel)
+        return projection
+    }
+}
 
 /**
  * Builds the media-browse tree Android Auto / Bluetooth head units navigate,
@@ -54,8 +158,33 @@ internal class LibraryBrowseTree(
      *  the browse client fetches its bytes from — the same bytes the bridge's
      *  `fetchLibraryImageBytes` serves. */
     artworkUri: (image: BridgeImageRef) -> Uri,
+    scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+    private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
+    private val onSearchResultChanged: (query: String, itemCount: Int) -> Unit = { _, _ -> },
 ) {
     private val nodes = BrowseNodeFactory(artworkUri)
+    private val pageProjections =
+        LiveProjectionCache(
+            scope = scope,
+            maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
+            flow = ::pageFlow,
+            onChanged = { key, value -> onChildrenChanged(key.parentId, value.totalCount) },
+        )
+    private val albumDetails =
+        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::albumDetails)
+    private val composerDetails =
+        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::composerDetails)
+    private val workDetails =
+        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::workDetails)
+    private val releaseDetails =
+        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::releaseDetails)
+    private val searches =
+        LiveProjectionCache(
+            scope = scope,
+            maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
+            flow = library::searchResults,
+            onChanged = { query, value -> onSearchResultChanged(query, value.albums.size) },
+        )
 
     /** The tree root. Its [children] are the top-level categories. */
     fun root(): MediaItem =
@@ -103,25 +232,12 @@ internal class LibraryBrowseTree(
                 )
             }
 
-            BrowseId.Albums -> {
-                albumListChildren(page, pageSize)
-            }
-
-            BrowseId.Composers -> {
-                composerListChildren(page, pageSize)
-            }
-
-            is BrowseId.Album -> {
-                albumTrackChildren(id.albumId, page, pageSize)
-            }
-
-            is BrowseId.Composer -> {
-                composerNodeChildren(id.artistId, page, pageSize)
-            }
-
-            is BrowseId.Work -> {
-                workNodeChildren(id.workId, page, pageSize)
-            }
+            BrowseId.Albums,
+            BrowseId.Composers,
+            is BrowseId.Album,
+            is BrowseId.Composer,
+            is BrowseId.Work,
+            -> pageProjections.value(ParentPageKey(parentId, page, pageSize)).items
 
             is BrowseId.Track -> {
                 // A track is a leaf (playable, not browsable); a browse client
@@ -151,22 +267,22 @@ internal class LibraryBrowseTree(
             }
 
             is BrowseId.Album -> {
-                val detail = library.albumDetails(id.albumId).first() ?: return null
+                val detail = albumDetails.value(id.albumId) ?: return null
                 nodes.album(detail.album.id, detail.album.title, detail.album.cover)
             }
 
             is BrowseId.Composer -> {
-                val detail = library.composerDetails(id.artistId).first() ?: return null
+                val detail = composerDetails.value(id.artistId) ?: return null
                 nodes.composer(detail.composer)
             }
 
             is BrowseId.Work -> {
-                val detail = library.workDetails(id.workId).first() ?: return null
+                val detail = workDetails.value(id.workId) ?: return null
                 nodes.work(detail.work)
             }
 
             is BrowseId.Track -> {
-                val release = library.releaseDetails(id.releaseId).first() ?: return null
+                val release = releaseDetails.value(id.releaseId) ?: return null
                 val track = flatTracks(release).getOrNull(id.index) ?: return null
                 nodes.track(release, track, id.index)
             }
@@ -182,9 +298,11 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = library.searchResults(query).first().albums.map { nodes.album(it.id, it.title, it.cover) }
+        val albums = searches.value(query).albums.map { nodes.album(it.id, it.title, it.cover) }
         return paginate(albums, page, pageSize)
     }
+
+    suspend fun searchCount(query: String): Int = searches.value(query).albums.size
 
     /**
      * The track a spoken "play X" should start, or null when the search finds
@@ -194,12 +312,12 @@ internal class LibraryBrowseTree(
      * answer is null — the search does not then fall back to the album list.
      */
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
-        val results = library.searchResults(query).first()
+        val results = searches.value(query)
         val firstTrack = results.tracks.firstOrNull()
         val firstAlbum = results.albums.firstOrNull()
         return when {
             firstTrack != null -> {
-                library.albumDetails(firstTrack.albumId).first()?.let(::primaryRelease)?.let { release ->
+                albumDetails.value(firstTrack.albumId)?.let(::primaryRelease)?.let { release ->
                     val index = flatTracks(release).indexOfFirst { it.id == firstTrack.id }
                     if (index < 0) {
                         logger.debug(
@@ -212,7 +330,7 @@ internal class LibraryBrowseTree(
             }
 
             firstAlbum != null -> {
-                library.albumDetails(firstAlbum.id).first()?.let(::primaryRelease)?.let { BrowseId.Track(it.id, 0) }
+                albumDetails.value(firstAlbum.id)?.let(::primaryRelease)?.let { BrowseId.Track(it.id, 0) }
             }
 
             else -> {
@@ -221,64 +339,77 @@ internal class LibraryBrowseTree(
         }
     }
 
-    private suspend fun albumListChildren(
-        page: Int,
-        pageSize: Int,
-    ): List<MediaItem> {
-        val albums =
-            library.albumPages(listOf(ALBUM_SORT), offsetOf(page, pageSize), limitOf(pageSize)).first().rows
-        return albums.map { nodes.album(it.id, it.title, it.cover) }
+    fun cancelParent(parentId: String) =
+        pageProjections.cancelWhere { it.parentId == parentId }
+
+    fun cancelSearch(query: String) = searches.cancel(query)
+
+    fun close() {
+        pageProjections.cancelAll()
+        albumDetails.cancelAll()
+        composerDetails.cancelAll()
+        workDetails.cancelAll()
+        releaseDetails.cancelAll()
+        searches.cancelAll()
     }
 
-    private suspend fun composerListChildren(
-        page: Int,
-        pageSize: Int,
-    ): List<MediaItem> {
-        val composers = library.composerPages(COMPOSER_SORT, offsetOf(page, pageSize), limitOf(pageSize)).first().rows
-        return composers.map { nodes.composer(it) }
-    }
+    private fun pageFlow(key: ParentPageKey): Flow<BrowsePage> =
+        when (val id = checkNotNull(BrowseId.parse(key.parentId))) {
+            BrowseId.Albums ->
+                library
+                    .albumPages(listOf(ALBUM_SORT), offsetOf(key.page, key.pageSize), limitOf(key.pageSize))
+                    .map { page ->
+                        BrowsePage(
+                            page.rows.map { nodes.album(it.id, it.title, it.cover) },
+                            page.totalCount.toInt(),
+                        )
+                    }
 
-    private suspend fun albumTrackChildren(
-        albumId: String,
-        page: Int,
-        pageSize: Int,
-    ): List<MediaItem> {
-        val detail = library.albumDetails(albumId).first() ?: return emptyList()
-        val release = primaryRelease(detail) ?: return emptyList()
-        val items = flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
-        return paginate(items, page, pageSize)
-    }
+            BrowseId.Composers ->
+                library
+                    .composerPages(COMPOSER_SORT, offsetOf(key.page, key.pageSize), limitOf(key.pageSize))
+                    .map { page -> BrowsePage(page.rows.map(nodes::composer), page.totalCount.toInt()) }
 
-    private suspend fun composerNodeChildren(
-        artistId: String,
-        page: Int,
-        pageSize: Int,
-    ): List<MediaItem> {
-        val detail = library.composerDetails(artistId).first()
-        if (detail == null) {
-            logger.warning("composer $artistId has no detail; no browse children")
-            return emptyList()
+            is BrowseId.Album ->
+                library.albumDetails(id.albumId).map { detail ->
+                    val items =
+                        detail?.let(::primaryRelease)?.let { release ->
+                            flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
+                        }.orEmpty()
+                    BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                }
+
+            is BrowseId.Composer ->
+                library.composerDetails(id.artistId).map { detail ->
+                    val items =
+                        if (detail == null) {
+                            logger.warning("composer ${id.artistId} has no detail; no browse children")
+                            emptyList()
+                        } else {
+                            val works = detail.workGroups.flatMap { group -> listOfNotNull(group.parent) + group.works }
+                            works.map(nodes::work) +
+                                detail.unlinkedReleaseRoles.map { nodes.album(it.albumId, it.albumTitle, null) }
+                        }
+                    BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                }
+
+            is BrowseId.Work ->
+                library.workDetails(id.workId).map { detail ->
+                    val items =
+                        if (detail == null) {
+                            logger.warning("work ${id.workId} has no detail; no browse children")
+                            emptyList()
+                        } else {
+                            detail.childWorks.map(nodes::work) +
+                                detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover) }
+                        }
+                    BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                }
+
+            BrowseId.Root,
+            is BrowseId.Track,
+            -> error("static browse id ${key.parentId} cannot create a live page")
         }
-        val works = detail.workGroups.flatMap { group -> listOfNotNull(group.parent) + group.works }
-        val workItems = works.map { nodes.work(it) }
-        val creditAlbums = detail.unlinkedReleaseRoles.map { nodes.album(it.albumId, it.albumTitle, null) }
-        return paginate(workItems + creditAlbums, page, pageSize)
-    }
-
-    private suspend fun workNodeChildren(
-        workId: String,
-        page: Int,
-        pageSize: Int,
-    ): List<MediaItem> {
-        val detail = library.workDetails(workId).first()
-        if (detail == null) {
-            logger.warning("work $workId has no detail; no browse children")
-            return emptyList()
-        }
-        val childWorkItems = detail.childWorks.map { nodes.work(it) }
-        val releaseAlbums = detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover) }
-        return paginate(childWorkItems + releaseAlbums, page, pageSize)
-    }
 
     private companion object {
         const val ROOT_TITLE = "bae"
@@ -292,6 +423,9 @@ internal class LibraryBrowseTree(
         // subscribes without paging asks for Int.MAX_VALUE; cap it so a browse
         // read never pulls the whole library.
         const val MAX_PAGE_SIZE = 500
+        const val MAXIMUM_PAGE_SUBSCRIPTIONS = 12
+        const val MAXIMUM_EXACT_SUBSCRIPTIONS = 24
+        const val MAXIMUM_SEARCH_SUBSCRIPTIONS = 8
 
         fun limitOf(pageSize: Int): ULong = pageSize.coerceIn(1, MAX_PAGE_SIZE).toULong()
 

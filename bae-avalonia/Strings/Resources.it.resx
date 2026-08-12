@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>librerie</value></data>
   <data name="library.empty" xml:space="preserve"><value>la libreria è vuota</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>impossibile caricare la libreria</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Riprova</value></data>
   <data name="library.locked" xml:space="preserve"><value>la libreria è bloccata</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>impossibile aprire la libreria</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Questa libreria è crittografata e la sua chiave non è su questo dispositivo. Inserisci la chiave esadecimale a 64 caratteri per sbloccarla.</value></data>

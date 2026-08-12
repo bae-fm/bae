@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>คลัง</value></data>
   <data name="library.empty" xml:space="preserve"><value>คลังว่างเปล่า</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>โหลดคลังไม่ได้</value></data>
+  <data name="library.retry" xml:space="preserve"><value>ลองใหม่</value></data>
   <data name="library.locked" xml:space="preserve"><value>คลังถูกล็อก</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>เปิดคลังไม่ได้</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>คลังนี้ถูกเข้ารหัสและคีย์ไม่ได้อยู่บนอุปกรณ์นี้ ป้อนคีย์เลขฐานสิบหก 64 อักขระเพื่อปลดล็อก</value></data>

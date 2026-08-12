@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>Bibliotheken</value></data>
   <data name="library.empty" xml:space="preserve"><value>Bibliothek ist leer</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>Bibliothek konnte nicht geladen werden</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Erneut versuchen</value></data>
   <data name="library.locked" xml:space="preserve"><value>Bibliothek ist gesperrt</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>Bibliothek konnte nicht geöffnet werden</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Diese Bibliothek ist verschlüsselt und ihr Schlüssel ist nicht auf diesem Gerät. Gib den 64-stelligen Hex-Schlüssel ein, um sie zu entsperren.</value></data>

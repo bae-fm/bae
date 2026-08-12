@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>লাইব্রেরি</value></data>
   <data name="library.empty" xml:space="preserve"><value>লাইব্রেরি খালি</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>লাইব্রেরি লোড করা যায়নি</value></data>
+  <data name="library.retry" xml:space="preserve"><value>আবার চেষ্টা করুন</value></data>
   <data name="library.locked" xml:space="preserve"><value>লাইব্রেরি লক করা</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>লাইব্রেরি খোলা যায়নি</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>এই লাইব্রেরি এনক্রিপ্ট করা এবং এর কী এই ডিভাইসে নেই। এটি আনলক করতে ৬৪-অক্ষরের হেক্স কী লিখুন।</value></data>

@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>biblioteki</value></data>
   <data name="library.empty" xml:space="preserve"><value>biblioteka jest pusta</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>nie udało się wczytać biblioteki</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Ponów</value></data>
   <data name="library.locked" xml:space="preserve"><value>biblioteka jest zablokowana</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>nie udało się otworzyć biblioteki</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Ta biblioteka jest zaszyfrowana, a jej klucza nie ma na tym urządzeniu. Wprowadź 64-znakowy klucz szesnastkowy, aby ją odblokować.</value></data>

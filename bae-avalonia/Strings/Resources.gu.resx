@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>લાઇબ્રેરીઓ</value></data>
   <data name="library.empty" xml:space="preserve"><value>લાઇબ્રેરી ખાલી છે</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>લાઇબ્રેરી લોડ કરી શકાયી નહીં</value></data>
+  <data name="library.retry" xml:space="preserve"><value>ફરી પ્રયાસ કરો</value></data>
   <data name="library.locked" xml:space="preserve"><value>લાઇબ્રેરી લૉક છે</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>લાઇબ્રેરી ખોલી શકાયી નહીં</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>આ લાઇબ્રેરી એન્ક્રિપ્ટેડ છે અને તેની કી આ ઉપકરણ પર નથી. તેને અનલૉક કરવા માટે 64 અક્ષરની હેક્સ કી દાખલ કરો.</value></data>

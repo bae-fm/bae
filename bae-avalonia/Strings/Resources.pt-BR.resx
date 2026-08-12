@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>bibliotecas</value></data>
   <data name="library.empty" xml:space="preserve"><value>a biblioteca está vazia</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>não foi possível carregar a biblioteca</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="library.locked" xml:space="preserve"><value>a biblioteca está bloqueada</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>não foi possível abrir a biblioteca</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Esta biblioteca é criptografada e sua chave não está neste dispositivo. Insira a chave hexadecimal de 64 caracteres para desbloqueá-la.</value></data>

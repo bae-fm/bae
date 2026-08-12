@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀਆਂ</value></data>
   <data name="library.empty" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਖਾਲੀ ਹੈ</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਲੋਡ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ</value></data>
+  <data name="library.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ</value></data>
   <data name="library.locked" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਲਾਕ ਹੈ</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਖੋਲ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਇਨਕ੍ਰਿਪਟ ਕੀਤੀ ਹੋਈ ਹੈ ਅਤੇ ਇਸ ਦੀ ਕੁੰਜੀ ਇਸ ਡਿਵਾਈਸ ਤੇ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਅਨਲਾਕ ਕਰਨ ਲਈ 64-ਅੱਖਰੀ ਹੈਕਸ ਕੁੰਜੀ ਦਰਜ ਕਰੋ।</value></data>

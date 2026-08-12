@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>bibliotheken</value></data>
   <data name="library.empty" xml:space="preserve"><value>bibliotheek is leeg</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>kan de bibliotheek niet laden</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Opnieuw proberen</value></data>
   <data name="library.locked" xml:space="preserve"><value>bibliotheek is vergrendeld</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>kan de bibliotheek niet openen</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Deze bibliotheek is versleuteld en de sleutel staat niet op dit apparaat. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen.</value></data>

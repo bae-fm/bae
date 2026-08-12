@@ -25,6 +25,7 @@ internal sealed class IncrementalListView<TRow> : UserControl
     private readonly RowSlotFacade _facade;
     private readonly ItemsControl _rows;
     private readonly Control _emptyState;
+    private readonly InitialLoadErrorView _errorState;
 
     private PaginatedList<TRow, string> _bound;
 
@@ -60,8 +61,9 @@ internal sealed class IncrementalListView<TRow> : UserControl
             FontSize = 24,
         };
         _emptyState[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        _errorState = new InitialLoadErrorView(() => _list().RetryInitialLoadAsync());
 
-        Content = new Panel { Children = { scroller, _emptyState } };
+        Content = new Panel { Children = { scroller, _emptyState, _errorState } };
         Subscribe(_bound);
         RenderState();
     }
@@ -85,13 +87,19 @@ internal sealed class IncrementalListView<TRow> : UserControl
             _facade.NotifyReset();
             RenderState();
         }
+        else if (e.PropertyName == nameof(PaginatedList<TRow, string>.InitialLoadError))
+        {
+            RenderState();
+        }
     }
 
     private void RenderState()
     {
-        var empty = _list().InitialLoadError is null && _list().TotalCount == 0;
+        var failed = _list().InitialLoadError is not null;
+        var empty = !failed && _list().TotalCount == 0;
+        _errorState.IsVisible = failed;
         _emptyState.IsVisible = empty;
-        _rows.IsVisible = !empty;
+        _rows.IsVisible = !failed && !empty;
     }
 }
 

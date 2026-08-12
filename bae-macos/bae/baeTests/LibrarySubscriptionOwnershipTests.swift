@@ -105,13 +105,17 @@ struct LibraryBrowseSessionAlbumProjectionTests {
     }
 
     @MainActor
-    @Test("a remote page deletion clears the deleted album selection")
-    func remoteDeletionClearsSelection() async {
-        let probe = AlbumPageSubscriptionProbe()
+    @Test("page eviction does not clear a selected album")
+    func pageEvictionKeepsSelection() async {
+        let pageProbe = AlbumPageSubscriptionProbe()
+        let detailProbe = AlbumDetailSubscriptionProbe()
         let session = LibraryBrowseSession(
             library: Library(
                 subscribeAlbumPage: { _, _, _, callback in
-                    probe.subscribe(callback: callback)
+                    pageProbe.subscribe(callback: callback)
+                },
+                subscribeAlbumDetail: { _, callback in
+                    detailProbe.subscribe(callback: callback)
                 }
             ),
             libraryStore: LibraryStore(),
@@ -119,8 +123,8 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         )
 
         session.start()
-        await waitForStoreUpdate { probe.isSubscribed }
-        probe.emit(
+        await waitForStoreUpdate { pageProbe.isSubscribed }
+        pageProbe.emit(
             rows: [
                 makeBridgeAlbum(id: "album-a"),
                 makeBridgeAlbum(id: "album-b"),
@@ -131,13 +135,103 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             session.albums.list?.totalCount == 2
         }
         session.albumSelection.toggle("album-a")
+        await waitForStoreUpdate { detailProbe.count == 1 }
+        guard detailProbe.count == 1 else {
+            Issue.record("selection did not start its album observation")
+            return
+        }
 
-        probe.emit(rows: [makeBridgeAlbum(id: "album-b")], total: 1)
+        pageProbe.emit(rows: [makeBridgeAlbum(id: "album-c")], total: 3)
         await waitForStoreUpdate {
-            session.albums.list?.totalCount == 1
+            session.albums.list?.totalCount == 3
+        }
+
+        #expect(session.albumSelection.contains("album-a"))
+    }
+
+    @MainActor
+    @Test("a remote deletion clears the selected album")
+    func remoteDeletionClearsSelection() async {
+        let pageProbe = AlbumPageSubscriptionProbe()
+        let detailProbe = AlbumDetailSubscriptionProbe()
+        let session = LibraryBrowseSession(
+            library: Library(
+                subscribeAlbumPage: { _, _, _, callback in
+                    pageProbe.subscribe(callback: callback)
+                },
+                subscribeAlbumDetail: { _, callback in
+                    detailProbe.subscribe(callback: callback)
+                }
+            ),
+            libraryStore: LibraryStore(),
+            uiStore: UiStore()
+        )
+
+        session.start()
+        await waitForStoreUpdate { pageProbe.isSubscribed }
+        pageProbe.emit(rows: [makeBridgeAlbum(id: "album-a")], total: 1)
+        await waitForStoreUpdate { session.albums.list?.totalCount == 1 }
+        session.albumSelection.toggle("album-a")
+        await waitForStoreUpdate { detailProbe.count == 1 }
+        guard detailProbe.count == 1 else {
+            Issue.record("selection did not start its album observation")
+            return
+        }
+
+        detailProbe.emitValue(subscription: 0, value: nil)
+        await waitForStoreUpdate {
+            !session.albumSelection.contains("album-a")
         }
 
         #expect(!session.albumSelection.contains("album-a"))
+    }
+
+    @MainActor
+    @Test("deselecting an album cancels its exact observation")
+    func deselectionCancelsObservation() async {
+        let detailProbe = AlbumDetailSubscriptionProbe()
+        let session = LibraryBrowseSession(
+            library: Library(
+                subscribeAlbumDetail: { _, callback in
+                    detailProbe.subscribe(callback: callback)
+                }
+            ),
+            libraryStore: LibraryStore(),
+            uiStore: UiStore()
+        )
+
+        session.albumSelection.toggle("album-a")
+        await waitForStoreUpdate { detailProbe.count == 1 }
+        session.albumSelection.toggle("album-a")
+        await waitForStoreUpdate {
+            detailProbe.isCancelled(subscription: 0)
+        }
+
+        #expect(detailProbe.isCancelled(subscription: 0))
+    }
+
+    @MainActor
+    @Test("ending the browse session cancels selected album observations")
+    func sessionEndCancelsObservation() async {
+        let detailProbe = AlbumDetailSubscriptionProbe()
+        var session: LibraryBrowseSession? = LibraryBrowseSession(
+            library: Library(
+                subscribeAlbumDetail: { _, callback in
+                    detailProbe.subscribe(callback: callback)
+                }
+            ),
+            libraryStore: LibraryStore(),
+            uiStore: UiStore()
+        )
+        weak var weakSession = session
+
+        session?.albumSelection.toggle("album-a")
+        await waitForStoreUpdate { detailProbe.count == 1 }
+        session = nil
+        await Task.yield()
+
+        #expect(weakSession == nil)
+        #expect(detailProbe.isCancelled(subscription: 0))
     }
 }
 

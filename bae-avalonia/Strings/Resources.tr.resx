@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>kitaplıklar</value></data>
   <data name="library.empty" xml:space="preserve"><value>kitaplık boş</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>kitaplık yüklenemedi</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Yeniden Dene</value></data>
   <data name="library.locked" xml:space="preserve"><value>kitaplık kilitli</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>kitaplık açılamadı</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Bu kitaplık şifreli ve anahtarı bu cihazda yok. Kilidini açmak için 64 karakterlik onaltılık anahtarı girin.</value></data>

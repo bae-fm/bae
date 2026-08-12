@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>thư viện</value></data>
   <data name="library.empty" xml:space="preserve"><value>thư viện trống</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>không thể tải thư viện</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Thử lại</value></data>
   <data name="library.locked" xml:space="preserve"><value>thư viện đang khóa</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>không thể mở thư viện</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>Thư viện này được mã hóa và khóa của nó không có trên thiết bị này. Nhập khóa thập lục phân 64 ký tự để mở khóa.</value></data>

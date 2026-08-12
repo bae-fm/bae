@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>संग्रहालये</value></data>
   <data name="library.empty" xml:space="preserve"><value>लायब्ररी रिकामी आहे</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>लायब्ररी लोड करता आली नाही</value></data>
+  <data name="library.retry" xml:space="preserve"><value>पुन्हा प्रयत्न करा</value></data>
   <data name="library.locked" xml:space="preserve"><value>लायब्ररी लॉक आहे</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>लायब्ररी उघडता आली नाही</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>ही लायब्ररी कूटबद्ध आहे आणि तिची कळ या डिव्हाइसवर नाही. ती अनलॉक करण्यासाठी 64-अक्षरी hex कळ द्या.</value></data>

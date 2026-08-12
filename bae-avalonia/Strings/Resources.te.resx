@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>లైబ్రరీలు</value></data>
   <data name="library.empty" xml:space="preserve"><value>లైబ్రరీ ఖాళీగా ఉంది</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>లైబ్రరీని లోడ్ చేయలేకపోయింది</value></data>
+  <data name="library.retry" xml:space="preserve"><value>మళ్లీ ప్రయత్నించు</value></data>
   <data name="library.locked" xml:space="preserve"><value>లైబ్రరీ లాక్ చేయబడింది</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>లైబ్రరీని తెరవలేకపోయింది</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>ఈ లైబ్రరీ గుప్తీకరించబడింది మరియు దాని కీ ఈ పరికరంలో లేదు. దాన్ని అన్‌లాక్ చేయడానికి 64-అక్షరాల హెక్స్ కీని నమోదు చేయండి.</value></data>

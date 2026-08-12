@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>ಲೈಬ್ರರಿಗಳು</value></data>
   <data name="library.empty" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಖಾಲಿಯಾಗಿದೆ</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="library.retry" xml:space="preserve"><value>ಮರುಪ್ರಯತ್ನಿಸಿ</value></data>
   <data name="library.locked" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಆಗಿದೆ</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯವನ್ನು ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>ಈ ಗ್ರಂಥಾಲಯ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗಿದೆ ಮತ್ತು ಅದರ ಕೀಲಿ ಈ ಸಾಧನದಲ್ಲಿಲ್ಲ. ಅನ್ಲಾಕ್ ಮಾಡಲು 64 ಅಕ್ಷರಗಳ ಹೆಕ್ಸ್ ಕೀಲಿಯನ್ನು ನಮೂದಿಸಿ.</value></data>

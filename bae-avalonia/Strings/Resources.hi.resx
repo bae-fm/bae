@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>लाइब्रेरी</value></data>
   <data name="library.empty" xml:space="preserve"><value>लाइब्रेरी खाली है</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>लाइब्रेरी लोड नहीं हो सकी</value></data>
+  <data name="library.retry" xml:space="preserve"><value>फिर कोशिश करें</value></data>
   <data name="library.locked" xml:space="preserve"><value>लाइब्रेरी लॉक है</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>लाइब्रेरी खोली नहीं जा सकी</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>यह लाइब्रेरी एन्क्रिप्टेड है और इसकी कुंजी इस डिवाइस पर नहीं है। इसे अनलॉक करने के लिए 64-वर्ण वाली हेक्स कुंजी दर्ज करें।</value></data>

@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>库</value></data>
   <data name="library.empty" xml:space="preserve"><value>库为空</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>无法加载库</value></data>
+  <data name="library.retry" xml:space="preserve"><value>重试</value></data>
   <data name="library.locked" xml:space="preserve"><value>库已锁定</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>无法打开库</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>此库已加密，其密钥不在此设备上。请输入 64 位十六进制密钥以解锁。</value></data>

@@ -32,6 +32,7 @@ internal sealed class AlbumGridView : UserControl
     private readonly ItemsControl _rows;
     private readonly RowSlotFacade _facade;
     private readonly Control _emptyState;
+    private readonly InitialLoadErrorView _errorState;
     private readonly Panel _root;
 
     private PaginatedList<Album, string> _list;
@@ -67,10 +68,12 @@ internal sealed class AlbumGridView : UserControl
         };
 
         _emptyState = BuildEmptyState();
+        _errorState = new InitialLoadErrorView(() => _list.RetryInitialLoadAsync());
 
         _root = new Panel();
         _root.Children.Add(scroller);
         _root.Children.Add(_emptyState);
+        _root.Children.Add(_errorState);
         Content = _root;
 
         Focusable = true;
@@ -138,9 +141,11 @@ internal sealed class AlbumGridView : UserControl
     // ── Empty / error / rows state ────────────────────────────────────────────
     private void RenderState()
     {
-        var empty = _list.InitialLoadError is null && _list.TotalCount == 0;
+        var failed = _list.InitialLoadError is not null;
+        var empty = !failed && _list.TotalCount == 0;
+        _errorState.IsVisible = failed;
         _emptyState.IsVisible = empty;
-        _rows.IsVisible = !empty;
+        _rows.IsVisible = !failed && !empty;
     }
 
     private Control BuildEmptyState()

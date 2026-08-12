@@ -259,8 +259,8 @@ struct ImportStoreBatchSnapshotTests {
     }
 
     @MainActor
-    @Test("carries session state forward, taking scan fields from the snapshot")
-    func carriesSessionState() throws {
+    @Test("takes runtime state from each snapshot while preserving editor state")
+    func refreshesRuntimeAndCarriesEditorState() throws {
         let store = ImportStore()
         var existing = folderCandidate(
             folderPath: "/w1/a",
@@ -269,6 +269,14 @@ struct ImportStoreBatchSnapshotTests {
         )
         existing.identity = .unknown
         existing.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
+        existing.identifyState = .triangulating(
+            discid: .computing,
+            barcode: .scanning
+        )
+        existing.signals = Signals(
+            text: .settled(catalogs: ["CAT-1"], freeText: [])
+        )
+        existing.signalsToolbar = PreviewData.toolbarBothRunning
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.folderCandidates["/w1/a"] = existing
 
@@ -296,13 +304,13 @@ struct ImportStoreBatchSnapshotTests {
         )
 
         let merged = try #require(store.folderCandidates["/w1/a"])
-        // Session state carried from the existing candidate — the batch path
-        // discards the snapshot's idle runtime in favor of it.
+        // Editor/session state survives, while core's runtime fields take the
+        // newly delivered values.
         #expect(merged.identity == .unknown)
-        #expect(
-            merged.importStatus
-                == .complete(releaseId: "rel-1", albumId: "al-1")
-        )
+        #expect(merged.importStatus == nil)
+        #expect(merged.identifyState == .idle)
+        #expect(merged.signals == nil)
+        #expect(merged.signalsToolbar.signals.isEmpty)
         #expect(merged.libraryStatuses["rel-1"] != nil)
         // Scan fields come from the incoming snapshot.
         #expect(merged.displayName == "A-renamed")

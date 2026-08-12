@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>資料庫</value></data>
   <data name="library.empty" xml:space="preserve"><value>資料庫是空的</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>無法載入資料庫</value></data>
+  <data name="library.retry" xml:space="preserve"><value>重試</value></data>
   <data name="library.locked" xml:space="preserve"><value>資料庫已鎖定</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>無法開啟資料庫</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>此資料庫已加密，且其金鑰不在此裝置上。請輸入 64 字元十六進位金鑰以解鎖。</value></data>

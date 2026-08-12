@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>நூலகங்கள்</value></data>
   <data name="library.empty" xml:space="preserve"><value>நூலகம் காலியாக உள்ளது</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>நூலகத்தை ஏற்ற முடியவில்லை</value></data>
+  <data name="library.retry" xml:space="preserve"><value>மீண்டும் முயற்சி செய்</value></data>
   <data name="library.locked" xml:space="preserve"><value>நூலகம் பூட்டப்பட்டுள்ளது</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>நூலகத்தைத் திறக்க முடியவில்லை</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>இந்த நூலகம் குறியாக்கப்பட்டுள்ளது; அதன் விசை இந்த சாதனத்தில் இல்லை. அதைத் திறக்க 64 எழுத்துகள் கொண்ட hex விசையை உள்ளிடவும்.</value></data>

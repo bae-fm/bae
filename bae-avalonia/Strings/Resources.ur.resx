@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>کتب خانے</value></data>
   <data name="library.empty" xml:space="preserve"><value>لائبریری خالی ہے</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>لائبریری لوڈ نہیں ہو سکی</value></data>
+  <data name="library.retry" xml:space="preserve"><value>دوبارہ کوشش کریں</value></data>
   <data name="library.locked" xml:space="preserve"><value>لائبریری مقفل ہے</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>لائبریری کھولی نہیں جا سکی</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>یہ لائبریری خفیہ کردہ ہے اور اس کی کلید اس آلے پر نہیں ہے۔ اسے کھولنے کے لیے 64 حروف والی hex کلید درج کریں۔</value></data>

@@ -102,6 +102,7 @@
   <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
   <data name="library.empty" xml:space="preserve"><value>No albums</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>couldn't load the library</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Retry</value></data>
   <data name="library.locked" xml:space="preserve"><value>library is locked</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>couldn't open the library</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>This library is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>

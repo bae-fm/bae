@@ -155,6 +155,23 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
     /// <summary>Fetch the total count. Called once when the list is first mounted.</summary>
     public async Task LoadInitialAsync()
     {
+        if (_subscriptions.ContainsKey("0:0"))
+        {
+            return;
+        }
+        InitialLoadError = null;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        SubscribeRange(0, 0, initial: true, completion);
+        await completion.Task;
+    }
+
+    /// <summary>Replace the count subscription after a surfaced cold-load
+    /// failure. The old subscription identity is removed before the new one is
+    /// installed, so a queued value from the replaced query cannot overwrite
+    /// the retry's result.</summary>
+    public async Task RetryInitialLoadAsync()
+    {
+        RemoveSubscription("0:0");
         InitialLoadError = null;
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         SubscribeRange(0, 0, initial: true, completion);
@@ -329,6 +346,16 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
             _subscriptionIdentities.Remove(key);
             subscription!.Dispose();
             RemoveLoadedRange(range.Lower, range.Upper);
+        }
+    }
+
+    private void RemoveSubscription(string key)
+    {
+        _subscriptionRanges.Remove(key);
+        _subscriptionIdentities.Remove(key);
+        if (_subscriptions.Remove(key, out var subscription))
+        {
+            subscription.Dispose();
         }
     }
 

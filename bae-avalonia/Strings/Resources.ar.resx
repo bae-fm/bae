@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>المكتبات</value></data>
   <data name="library.empty" xml:space="preserve"><value>المكتبة فارغة</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>تعذّر تحميل المكتبة</value></data>
+  <data name="library.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
   <data name="library.locked" xml:space="preserve"><value>المكتبة مقفلة</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>تعذّر فتح المكتبة</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>هذه المكتبة مشفّرة ومفتاحها غير موجود على هذا الجهاز. أدخل المفتاح السداسي العشري المكوّن من 64 حرفًا لإلغاء قفلها.</value></data>

@@ -101,6 +101,7 @@
   <data name="libraries.title" xml:space="preserve"><value>라이브러리</value></data>
   <data name="library.empty" xml:space="preserve"><value>라이브러리가 비어 있습니다</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>라이브러리를 불러올 수 없음</value></data>
+  <data name="library.retry" xml:space="preserve"><value>다시 시도</value></data>
   <data name="library.locked" xml:space="preserve"><value>라이브러리가 잠겨 있습니다</value></data>
   <data name="library.open_failed" xml:space="preserve"><value>라이브러리를 열 수 없음</value></data>
   <data name="library.unlock.body" xml:space="preserve"><value>이 라이브러리는 암호화되어 있고 키가 이 기기에 없습니다. 잠금을 해제하려면 64자 16진수 키를 입력하세요.</value></data>
