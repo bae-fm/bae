@@ -58,19 +58,48 @@ private data class ParentPageKey(
 )
 
 private class ParentInterest {
-    private val countLock = Any()
-    private var lastKnownCount: Int? = null
+    private val count = AcceptedCount()
     val ended = CompletableDeferred<Unit>()
 
-    fun recordCount(count: Int) {
-        synchronized(countLock) { lastKnownCount = count }
-    }
+    fun acceptCount(value: AcceptedValue<Int>): Boolean = count.accept(value.sequence, value.value)
 
-    fun knownCount(): Int? = synchronized(countLock) { lastKnownCount }
+    fun acceptPage(value: AcceptedValue<BrowsePage>): Boolean = count.accept(value.sequence, value.value.totalCount)
+
+    fun acceptError(error: AcceptedError<*>): Int? = count.acceptError(error.sequence)
 
     fun end() {
         ended.complete(Unit)
     }
+}
+
+internal class AcceptedCount {
+    private val lock = Any()
+    private var sequence = 0L
+    private var count: Int? = null
+
+    fun accept(
+        acceptedSequence: Long,
+        acceptedCount: Int,
+    ): Boolean =
+        synchronized(lock) {
+            if (acceptedSequence < sequence) {
+                false
+            } else {
+                sequence = acceptedSequence
+                count = acceptedCount
+                true
+            }
+        }
+
+    fun acceptError(acceptedSequence: Long): Int? =
+        synchronized(lock) {
+            if (acceptedSequence < sequence) {
+                null
+            } else {
+                sequence = acceptedSequence
+                count
+            }
+        }
 }
 
 private data class ParentInterests(
@@ -122,17 +151,17 @@ internal class LibraryBrowseTree<Owner : Any>(
         val identity: Any,
         val onResultsChanged: (Int) -> Unit,
     ) {
-        private var lastKnownCount: Int? = null
+        private val count = AcceptedCount()
 
-        fun recordCount(count: Int) {
-            lastKnownCount = count
-        }
+        fun acceptValue(value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>): Boolean =
+            count.accept(value.sequence, value.value.albums.size)
 
-        fun knownCount(): Int? = lastKnownCount
+        fun acceptError(error: AcceptedError<*>): Int? = count.acceptError(error.sequence)
     }
 
     private val nodes = BrowseNodeFactory(artworkUri)
     private val interestLock = Any()
+    private val acceptedEventSequence = AcceptedEventSequence()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
     private val pageProjections =
@@ -141,8 +170,9 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
             isRetained = { false },
-            onAcceptedValue = { key, page -> parentInterests(key.parentId).recordCount(page.totalCount) },
-            onError = { _, _, error, _ -> onQueryError(error) },
+            acceptedEventSequence = acceptedEventSequence,
+            onAcceptedValue = { key, page -> parentInterests(key.parentId).acceptPage(page) },
+            onError = { _, error -> onQueryError(error.error) },
         )
     private val parentObservers =
         LiveProjectionCache(
@@ -150,14 +180,18 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = Int.MAX_VALUE,
             flow = ::parentCountFlow,
             isRetained = ::isParentRetained,
-            onAcceptedValue = { parentId, count -> parentInterests(parentId).recordCount(count) },
-            onChanged = { parentId, count ->
-                retirePagesAndNotify(parentId, count)
+            acceptedEventSequence = acceptedEventSequence,
+            onAcceptedValue = { parentId, value -> parentInterests(parentId).acceptCount(value) },
+            onChanged = { parentId, value ->
+                if (parentInterests(parentId).acceptCount(value)) {
+                    retirePagesAndNotify(parentId, value.value)
+                }
             },
-            onError = { parentId, _, error, _ ->
-                onQueryError(error)
+            onError = { parentId, error ->
+                onQueryError(error.error)
                 parentInterests(parentId)
-                    .firstNotNullOfOrNull { it.knownCount() }
+                    .map { it.acceptError(error) }
+                    .firstOrNull { it != null }
                     ?.let { count -> retirePagesAndNotify(parentId, count) }
             },
         )
@@ -171,11 +205,14 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
-            onAcceptedValue = { query, results -> recordSearchCount(query, results.albums.size) },
-            onChanged = { query, results -> notifySearchResults(query, results.albums.size) },
-            onError = { query, _, error, _ ->
-                onQueryError(error)
-                knownSearchCount(query)?.let { count -> notifySearchResults(query, count) }
+            acceptedEventSequence = acceptedEventSequence,
+            onAcceptedValue = { query, value -> acceptSearchValue(query, value) },
+            onChanged = { query, value ->
+                if (acceptSearchValue(query, value)) notifySearchResults(query, value.value.albums.size)
+            },
+            onError = { query, error ->
+                onQueryError(error.error)
+                acceptSearchError(query, error)?.let { count -> notifySearchResults(query, count) }
             },
         )
     private val spokenSearches = exactProjections(library::searchResults)
@@ -391,20 +428,26 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 
-    private fun recordSearchCount(
+    private fun acceptSearchValue(
         query: String,
-        count: Int,
-    ) {
-        synchronized(interestLock) {
-            searchesByOwner.values.filter { it.query == query }.forEach { it.recordCount(count) }
-        }
-    }
-
-    private fun knownSearchCount(query: String): Int? =
+        value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>,
+    ): Boolean =
         synchronized(interestLock) {
             searchesByOwner.values
                 .filter { it.query == query }
-                .firstNotNullOfOrNull(SearchInterest::knownCount)
+                .map { it.acceptValue(value) }
+                .any { it }
+        }
+
+    private fun acceptSearchError(
+        query: String,
+        error: AcceptedError<*>,
+    ): Int? =
+        synchronized(interestLock) {
+            searchesByOwner.values
+                .filter { it.query == query }
+                .map { it.acceptError(error) }
+                .firstOrNull { it != null }
         }
 
     fun disconnect(owner: Owner) {
@@ -532,7 +575,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             MAXIMUM_EXACT_SUBSCRIPTIONS,
             flow,
             isRetained = { false },
-            onError = { _, _, error, _ -> onQueryError(error) },
+            onError = { _, error -> onQueryError(error.error) },
         )
 
     private fun parentCountFlow(parentId: String): Flow<LiveQueryEvent<Int>> =
@@ -691,9 +734,11 @@ private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
  *  the start index `play_release` expects. */
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
-private fun Iterable<ParentInterest>.recordCount(count: Int) {
-    forEach { interest -> interest.recordCount(count) }
-}
+private fun Iterable<ParentInterest>.acceptCount(value: AcceptedValue<Int>): Boolean =
+    map { interest -> interest.acceptCount(value) }.any { it }
+
+private fun Iterable<ParentInterest>.acceptPage(value: AcceptedValue<BrowsePage>): Boolean =
+    map { interest -> interest.acceptPage(value) }.any { it }
 
 private fun isObservableParent(parentId: String): Boolean =
     when (BrowseId.parse(parentId)) {

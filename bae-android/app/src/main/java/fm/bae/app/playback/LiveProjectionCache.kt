@@ -9,6 +9,27 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import uniffi.bae_bridge.BridgeException
 import java.util.LinkedHashMap
+import java.util.concurrent.atomic.AtomicLong
+
+internal class AcceptedEventSequence {
+    private val next = AtomicLong()
+
+    fun next(): Long = next.incrementAndGet()
+}
+
+internal data class AcceptedValue<Value>(
+    val value: Value,
+    val sequence: Long,
+    val identity: Any,
+)
+
+internal data class AcceptedError<Value>(
+    val previousValue: Value?,
+    val error: BridgeException,
+    val isUpdate: Boolean,
+    val sequence: Long,
+    val identity: Any,
+)
 
 private class LiveProjection<T>(
     private val scope: CoroutineScope,
@@ -63,9 +84,10 @@ internal class LiveProjectionCache<Key, Value>(
     private val maximumCount: Int,
     private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
     private val isRetained: (Key) -> Boolean,
-    private val onAcceptedValue: ((Key, Value) -> Unit)? = null,
-    private val onChanged: (Key, Value) -> Unit = { _, _ -> },
-    private val onError: (Key, previousValue: Value?, BridgeException, isUpdate: Boolean) -> Unit,
+    private val acceptedEventSequence: AcceptedEventSequence = AcceptedEventSequence(),
+    private val onAcceptedValue: ((Key, AcceptedValue<Value>) -> Unit)? = null,
+    private val onChanged: (Key, AcceptedValue<Value>) -> Unit = { _, _ -> },
+    private val onError: (Key, AcceptedError<Value>) -> Unit,
 ) {
     private class Entry<Value>(
         val identity: Any,
@@ -84,8 +106,6 @@ internal class LiveProjectionCache<Key, Value>(
     )
 
     private data class Delivered<Value>(val value: Value)
-
-    private data class Changed<Value>(val value: Value)
 
     private val lock = Any()
     private val projections = LinkedHashMap<Key, Entry<Value>>(16, 0.75f, true)
@@ -243,7 +263,7 @@ internal class LiveProjectionCache<Key, Value>(
         entry: Entry<Value>,
         event: LiveQueryEvent<Value>,
     ): Boolean {
-        var acceptedValue: Delivered<Value>? = null
+        var acceptedValue: AcceptedValue<Value>? = null
         val accepted =
             synchronized(lock) {
                 entry.retiredError?.let { throw it }
@@ -253,12 +273,17 @@ internal class LiveProjectionCache<Key, Value>(
                     false
                 } else {
                     if (event is LiveQueryEvent.Value && onAcceptedValue != null) {
-                        acceptedValue = Delivered(event.value)
+                        acceptedValue =
+                            AcceptedValue(
+                                value = event.value,
+                                sequence = acceptedEventSequence.next(),
+                                identity = entry.identity,
+                            )
                     }
                     true
                 }
             }
-        acceptedValue?.let { delivered -> onAcceptedValue?.invoke(key, delivered.value) }
+        acceptedValue?.let { value -> onAcceptedValue?.invoke(key, value) }
         return accepted
     }
 
@@ -269,9 +294,9 @@ internal class LiveProjectionCache<Key, Value>(
         isUpdate: Boolean,
     ) {
         var changedSignal: CompletableDeferred<Unit>? = null
-        var acceptedValue: Delivered<Value>? = null
-        var changedValue: Changed<Value>? = null
-        var error: Pair<Value?, BridgeException>? = null
+        var acceptedValue: AcceptedValue<Value>? = null
+        var changedValue: AcceptedValue<Value>? = null
+        var error: AcceptedError<Value>? = null
         var callbackPinned = false
         synchronized(lock) {
             val entry = projections[key]?.takeIf { it.identity === identity } ?: return
@@ -279,14 +304,28 @@ internal class LiveProjectionCache<Key, Value>(
             when (event) {
                 is LiveQueryEvent.Value -> {
                     entry.delivered = Delivered(event.value)
-                    if (onAcceptedValue != null) {
-                        acceptedValue = Delivered(event.value)
-                    }
+                    val accepted =
+                        AcceptedValue(
+                            value = event.value,
+                            sequence = acceptedEventSequence.next(),
+                            identity = entry.identity,
+                        )
+                    if (onAcceptedValue != null) acceptedValue = accepted
                     if (isUpdate) {
-                        changedValue = Changed(event.value)
+                        changedValue = accepted
                     }
                 }
-                is LiveQueryEvent.Error -> error = entry.delivered?.value to event.error
+
+                is LiveQueryEvent.Error -> {
+                    error =
+                        AcceptedError(
+                            previousValue = entry.delivered?.value,
+                            error = event.error,
+                            isUpdate = isUpdate,
+                            sequence = acceptedEventSequence.next(),
+                            identity = entry.identity,
+                        )
+                }
             }
             entry.latest = event
             changedSignal = entry.changed
@@ -295,9 +334,9 @@ internal class LiveProjectionCache<Key, Value>(
             if (callbackPinned) entry.waiters++
         }
         try {
-            acceptedValue?.let { delivered -> onAcceptedValue?.invoke(key, delivered.value) }
-            changedValue?.let { onChanged(key, it.value) }
-            error?.let { (previous, exception) -> onError(key, previous, exception, isUpdate) }
+            acceptedValue?.let { value -> onAcceptedValue?.invoke(key, value) }
+            changedValue?.let { value -> onChanged(key, value) }
+            error?.let { acceptedError -> onError(key, acceptedError) }
         } finally {
             changedSignal?.complete(Unit)
             if (callbackPinned) release(key, identity)
