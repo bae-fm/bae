@@ -61,11 +61,27 @@ private class ParentInterest {
     private val count = AcceptedCount()
     val ended = CompletableDeferred<Unit>()
 
-    fun acceptCount(value: AcceptedValue<Int>): Boolean = count.accept(value.sequence, value.value)
+    fun acceptCount(value: AcceptedValue<Int>) {
+        count.acceptRead(value.sequence, value.value)
+    }
 
-    fun acceptPage(value: AcceptedValue<BrowsePage>): Boolean = count.accept(value.sequence, value.value.totalCount)
+    fun acceptPage(value: AcceptedValue<BrowsePage>) {
+        count.acceptRead(value.sequence, value.value.totalCount)
+    }
 
-    fun acceptError(error: AcceptedError<*>): Int? = count.acceptError(error.sequence)
+    fun acceptPage(event: AcceptedEvent<BrowsePage>) {
+        (event.event as? LiveQueryEvent.Value)?.let { value ->
+            count.acceptRead(event.sequence, value.value.totalCount)
+        }
+    }
+
+    fun commitObserver(event: AcceptedEvent<Int>): Int? =
+        when (val value = event.event) {
+            is LiveQueryEvent.Value ->
+                count.commitValue(event.sequence, value.value, event.isInitial)
+
+            is LiveQueryEvent.Error -> count.commitError(event.sequence, event.isInitial)
+        }
 
     fun end() {
         ended.complete(Unit)
@@ -74,30 +90,50 @@ private class ParentInterest {
 
 internal class AcceptedCount {
     private val lock = Any()
-    private var sequence = 0L
+    private var readSequence = 0L
+    private var changeSequence = 0L
     private var count: Int? = null
 
-    fun accept(
+    fun acceptRead(
         acceptedSequence: Long,
         acceptedCount: Int,
-    ): Boolean =
+    ) {
         synchronized(lock) {
-            if (acceptedSequence < sequence) {
-                false
-            } else {
-                sequence = acceptedSequence
+            if (acceptedSequence >= readSequence) {
+                readSequence = acceptedSequence
                 count = acceptedCount
-                true
+            }
+        }
+    }
+
+    fun commitValue(
+        acceptedSequence: Long,
+        acceptedCount: Int,
+        isInitial: Boolean,
+    ): Int? =
+        synchronized(lock) {
+            if (acceptedSequence < changeSequence) {
+                null
+            } else {
+                changeSequence = acceptedSequence
+                if (acceptedSequence >= readSequence) {
+                    readSequence = acceptedSequence
+                    count = acceptedCount
+                }
+                acceptedCount.takeUnless { isInitial }
             }
         }
 
-    fun acceptError(acceptedSequence: Long): Int? =
+    fun commitError(
+        acceptedSequence: Long,
+        isInitial: Boolean,
+    ): Int? =
         synchronized(lock) {
-            if (acceptedSequence < sequence) {
+            if (acceptedSequence < changeSequence) {
                 null
             } else {
-                sequence = acceptedSequence
-                count
+                changeSequence = acceptedSequence
+                count?.takeUnless { isInitial }
             }
         }
 }
@@ -153,17 +189,38 @@ internal class LibraryBrowseTree<Owner : Any>(
     ) {
         private val count = AcceptedCount()
 
-        fun acceptValue(value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>): Boolean =
-            count.accept(value.sequence, value.value.albums.size)
+        fun acceptRead(value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>) {
+            count.acceptRead(value.sequence, value.value.albums.size)
+        }
 
-        fun acceptError(error: AcceptedError<*>): Int? = count.acceptError(error.sequence)
+        fun commitChange(event: AcceptedEvent<uniffi.bae_bridge.BridgeSearchResults>): Int? =
+            when (val value = event.event) {
+                is LiveQueryEvent.Value ->
+                    count.commitValue(event.sequence, value.value.albums.size, event.isInitial)
+
+                is LiveQueryEvent.Error -> count.commitError(event.sequence, event.isInitial)
+            }
     }
+
+    private data class ParentNotification(
+        val count: Int,
+        val retirePages: () -> Unit,
+    )
+
+    private data class SearchNotification(
+        val count: Int,
+        val listeners: List<(Int) -> Unit>,
+    )
 
     private val nodes = BrowseNodeFactory(artworkUri)
     private val interestLock = Any()
     private val acceptedEventSequence = AcceptedEventSequence()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
+    private val parentNotifications = mutableMapOf<String, ArrayDeque<ParentNotification>>()
+    private val drainingParentNotifications = mutableSetOf<String>()
+    private val searchNotifications = mutableMapOf<String, ArrayDeque<SearchNotification>>()
+    private val drainingSearchNotifications = mutableSetOf<String>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
@@ -171,8 +228,13 @@ internal class LibraryBrowseTree<Owner : Any>(
             flow = ::pageFlow,
             isRetained = { false },
             acceptedEventSequence = acceptedEventSequence,
-            onAcceptedValue = { key, page -> parentInterests(key.parentId).acceptPage(page) },
-            onError = { _, error -> onQueryError(error.error) },
+            onAcceptedRead = { key, page ->
+                parentInterests(key.parentId).forEach { interest -> interest.acceptPage(page) }
+            },
+            onAcceptedChange = { key, event ->
+                parentInterests(key.parentId).forEach { interest -> interest.acceptPage(event) }
+                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
+            },
         )
     private val parentObservers =
         LiveProjectionCache(
@@ -181,18 +243,12 @@ internal class LibraryBrowseTree<Owner : Any>(
             flow = ::parentCountFlow,
             isRetained = ::isParentRetained,
             acceptedEventSequence = acceptedEventSequence,
-            onAcceptedValue = { parentId, value -> parentInterests(parentId).acceptCount(value) },
-            onChanged = { parentId, value ->
-                if (parentInterests(parentId).acceptCount(value)) {
-                    retirePagesAndNotify(parentId, value.value)
-                }
+            onAcceptedRead = { parentId, value ->
+                parentInterests(parentId).forEach { interest -> interest.acceptCount(value) }
             },
-            onError = { parentId, error ->
-                onQueryError(error.error)
-                parentInterests(parentId)
-                    .map { it.acceptError(error) }
-                    .firstOrNull { it != null }
-                    ?.let { count -> retirePagesAndNotify(parentId, count) }
+            onAcceptedChange = { parentId, event ->
+                commitParentChange(parentId, event)
+                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
             },
         )
     private val albumDetails = exactProjections(library::albumDetails)
@@ -206,13 +262,10 @@ internal class LibraryBrowseTree<Owner : Any>(
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
             acceptedEventSequence = acceptedEventSequence,
-            onAcceptedValue = { query, value -> acceptSearchValue(query, value) },
-            onChanged = { query, value ->
-                if (acceptSearchValue(query, value)) notifySearchResults(query, value.value.albums.size)
-            },
-            onError = { query, error ->
-                onQueryError(error.error)
-                acceptSearchError(query, error)?.let { count -> notifySearchResults(query, count) }
+            onAcceptedRead = { query, value -> acceptSearchRead(query, value) },
+            onAcceptedChange = { query, event ->
+                commitSearchChange(query, event)
+                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
             },
         )
     private val spokenSearches = exactProjections(library::searchResults)
@@ -421,34 +474,63 @@ internal class LibraryBrowseTree<Owner : Any>(
             searchObservers.cancelWhenUnused(previousQuery)
         }
         val count = searchObservers.value(query).albums.size
+        val initialListener =
+            synchronized(interestLock) {
+                searchesByOwner[owner]
+                    ?.takeIf { it.identity === identity }
+                    ?.onResultsChanged
+            }
+        initialListener?.invoke(count)
+    }
+
+    private fun acceptSearchRead(
+        query: String,
+        value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>,
+    ) {
         synchronized(interestLock) {
-            searchesByOwner[owner]
-                ?.takeIf { it.identity === identity }
-                ?.onResultsChanged(count)
+            searchesByOwner.values
+                .filter { it.query == query }
+                .forEach { it.acceptRead(value) }
         }
     }
 
-    private fun acceptSearchValue(
+    private fun commitSearchChange(
         query: String,
-        value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>,
-    ): Boolean =
-        synchronized(interestLock) {
-            searchesByOwner.values
-                .filter { it.query == query }
-                .map { it.acceptValue(value) }
-                .any { it }
-        }
+        event: AcceptedEvent<uniffi.bae_bridge.BridgeSearchResults>,
+    ) {
+        val shouldDrain =
+            synchronized(interestLock) {
+                val interests = searchesByOwner.values.filter { it.query == query }
+                val counts = interests.map { it.commitChange(event) }
+                val count = counts.firstOrNull { it != null }
+                if (count == null) {
+                    false
+                } else {
+                    searchNotifications
+                        .getOrPut(query, ::ArrayDeque)
+                        .addLast(SearchNotification(count, interests.map { it.onResultsChanged }))
+                    drainingSearchNotifications.add(query)
+                }
+            }
+        if (shouldDrain) drainSearchNotifications(query)
+    }
 
-    private fun acceptSearchError(
-        query: String,
-        error: AcceptedError<*>,
-    ): Int? =
-        synchronized(interestLock) {
-            searchesByOwner.values
-                .filter { it.query == query }
-                .map { it.acceptError(error) }
-                .firstOrNull { it != null }
+    private fun drainSearchNotifications(query: String) {
+        while (true) {
+            val notification =
+                synchronized(interestLock) {
+                    val queue = searchNotifications[query]
+                    if (queue == null || queue.isEmpty()) {
+                        searchNotifications.remove(query)
+                        drainingSearchNotifications.remove(query)
+                        null
+                    } else {
+                        queue.removeFirst()
+                    }
+                } ?: return
+            notification.listeners.forEach { listener -> listener(notification.count) }
         }
+    }
 
     fun disconnect(owner: Owner) {
         val (parents, query) =
@@ -507,6 +589,10 @@ internal class LibraryBrowseTree<Owner : Any>(
                 parentsByOwner.values.flatMap(ParentInterests::entries).also {
                     parentsByOwner.clear()
                     searchesByOwner.clear()
+                    parentNotifications.clear()
+                    drainingParentNotifications.clear()
+                    searchNotifications.clear()
+                    drainingSearchNotifications.clear()
                 }
             }
         parentInterests.forEach { (_, interest) -> interest.end() }
@@ -524,48 +610,59 @@ internal class LibraryBrowseTree<Owner : Any>(
         synchronized(interestLock) { parentsByOwner.values.any { parentId in it.parentIds } }
 
     private fun parentInterests(parentId: String): List<ParentInterest> =
-        synchronized(interestLock) {
-            parentsByOwner.values.mapNotNull { interests ->
-                interests.explicit[parentId] ?: interests.implicit[parentId]
-            }
-        }
+        synchronized(interestLock) { parentInterestsLocked(parentId) }
 
     private fun isSearchRetained(query: String): Boolean =
         synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
 
-    private fun retirePagesAndNotify(
+    private fun commitParentChange(
         parentId: String,
-        count: Int,
+        event: AcceptedEvent<Int>,
     ) {
-        pageProjections.retireWhere(
-            predicate = { key -> key.parentId == parentId },
-            error =
-                BridgeException.Diagnostic(
-                    category = BridgeErrorCategory.DATABASE,
-                    detail = "browse parent changed; retry the requested page",
-                ),
-        )
-        onChildrenChanged(parentId, count)
+        val shouldDrain =
+            synchronized(interestLock) {
+                val interests = parentInterestsLocked(parentId)
+                val counts = interests.map { it.commitObserver(event) }
+                val count = counts.firstOrNull { it != null }
+                if (count == null) {
+                    false
+                } else {
+                    val retirePages =
+                        pageProjections.prepareRetireWhere(
+                            predicate = { key -> key.parentId == parentId },
+                            error = parentChangedError(),
+                        )
+                    parentNotifications
+                        .getOrPut(parentId, ::ArrayDeque)
+                        .addLast(ParentNotification(count, retirePages))
+                    drainingParentNotifications.add(parentId)
+                }
+            }
+        if (shouldDrain) drainParentNotifications(parentId)
     }
 
-    private fun notifySearchResults(
-        query: String,
-        count: Int,
-    ) {
-        val listeners =
-            synchronized(interestLock) {
-                searchesByOwner
-                    .filterValues { it.query == query }
-                    .map { (owner, interest) -> owner to interest.identity }
-            }
-        listeners.forEach { (owner, identity) ->
-            synchronized(interestLock) {
-                searchesByOwner[owner]
-                    ?.takeIf { it.identity === identity }
-                    ?.onResultsChanged(count)
-            }
+    private fun drainParentNotifications(parentId: String) {
+        while (true) {
+            val notification =
+                synchronized(interestLock) {
+                    val queue = parentNotifications[parentId]
+                    if (queue == null || queue.isEmpty()) {
+                        parentNotifications.remove(parentId)
+                        drainingParentNotifications.remove(parentId)
+                        null
+                    } else {
+                        queue.removeFirst()
+                    }
+                } ?: return
+            notification.retirePages()
+            onChildrenChanged(parentId, notification.count)
         }
     }
+
+    private fun parentInterestsLocked(parentId: String): List<ParentInterest> =
+        parentsByOwner.values.mapNotNull { interests ->
+            interests.explicit[parentId] ?: interests.implicit[parentId]
+        }
 
     private fun <Key, Value> exactProjections(
         flow: (Key) -> Flow<LiveQueryEvent<Value>>,
@@ -575,7 +672,9 @@ internal class LibraryBrowseTree<Owner : Any>(
             MAXIMUM_EXACT_SUBSCRIPTIONS,
             flow,
             isRetained = { false },
-            onError = { _, error -> onQueryError(error.error) },
+            onAcceptedChange = { _, event ->
+                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
+            },
         )
 
     private fun parentCountFlow(parentId: String): Flow<LiveQueryEvent<Int>> =
@@ -734,11 +833,11 @@ private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
  *  the start index `play_release` expects. */
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
-private fun Iterable<ParentInterest>.acceptCount(value: AcceptedValue<Int>): Boolean =
-    map { interest -> interest.acceptCount(value) }.any { it }
-
-private fun Iterable<ParentInterest>.acceptPage(value: AcceptedValue<BrowsePage>): Boolean =
-    map { interest -> interest.acceptPage(value) }.any { it }
+private fun parentChangedError(): BridgeException =
+    BridgeException.Diagnostic(
+        category = BridgeErrorCategory.DATABASE,
+        detail = "browse parent changed; retry the requested page",
+    )
 
 private fun isObservableParent(parentId: String): Boolean =
     when (BrowseId.parse(parentId)) {

@@ -23,10 +23,9 @@ internal data class AcceptedValue<Value>(
     val identity: Any,
 )
 
-internal data class AcceptedError<Value>(
-    val previousValue: Value?,
-    val error: BridgeException,
-    val isUpdate: Boolean,
+internal data class AcceptedEvent<Value>(
+    val event: LiveQueryEvent<Value>,
+    val isInitial: Boolean,
     val sequence: Long,
     val identity: Any,
 )
@@ -85,16 +84,14 @@ internal class LiveProjectionCache<Key, Value>(
     private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
     private val isRetained: (Key) -> Boolean,
     private val acceptedEventSequence: AcceptedEventSequence = AcceptedEventSequence(),
-    private val onAcceptedValue: ((Key, AcceptedValue<Value>) -> Unit)? = null,
-    private val onChanged: (Key, AcceptedValue<Value>) -> Unit = { _, _ -> },
-    private val onError: (Key, AcceptedError<Value>) -> Unit,
+    private val onAcceptedRead: ((Key, AcceptedValue<Value>) -> Unit)? = null,
+    private val onAcceptedChange: (Key, AcceptedEvent<Value>) -> Unit,
 ) {
     private class Entry<Value>(
         val identity: Any,
         val projection: LiveProjection<Value>,
         var waiters: Int = 0,
         var cancelWhenUnused: Boolean = false,
-        var delivered: Delivered<Value>? = null,
         var latest: LiveQueryEvent<Value>? = null,
         var changed: CompletableDeferred<Unit> = CompletableDeferred(),
         var retiredError: BridgeException? = null,
@@ -104,8 +101,6 @@ internal class LiveProjectionCache<Key, Value>(
         val event: LiveQueryEvent<Value>?,
         val changed: CompletableDeferred<Unit>,
     )
-
-    private data class Delivered<Value>(val value: Value)
 
     private val lock = Any()
     private val projections = LinkedHashMap<Key, Entry<Value>>(16, 0.75f, true)
@@ -169,6 +164,13 @@ internal class LiveProjectionCache<Key, Value>(
         predicate: (Key) -> Boolean,
         error: BridgeException,
     ) {
+        prepareRetireWhere(predicate, error).invoke()
+    }
+
+    fun prepareRetireWhere(
+        predicate: (Key) -> Boolean,
+        error: BridgeException,
+    ): () -> Unit {
         val retired =
             synchronized(lock) {
                 projections.entries
@@ -181,9 +183,11 @@ internal class LiveProjectionCache<Key, Value>(
                         entry to signal
                     }
             }
-        retired.forEach { (entry, signal) ->
-            signal.complete(Unit)
-            cancel(entry)
+        return {
+            retired.forEach { (entry, signal) ->
+                signal.complete(Unit)
+                cancel(entry)
+            }
         }
     }
 
@@ -272,7 +276,7 @@ internal class LiveProjectionCache<Key, Value>(
                 if (entry.latest !== event) {
                     false
                 } else {
-                    if (event is LiveQueryEvent.Value && onAcceptedValue != null) {
+                    if (event is LiveQueryEvent.Value && onAcceptedRead != null) {
                         acceptedValue =
                             AcceptedValue(
                                 value = event.value,
@@ -283,7 +287,7 @@ internal class LiveProjectionCache<Key, Value>(
                     true
                 }
             }
-        acceptedValue?.let { value -> onAcceptedValue?.invoke(key, value) }
+        acceptedValue?.let { value -> onAcceptedRead?.invoke(key, value) }
         return accepted
     }
 
@@ -294,52 +298,27 @@ internal class LiveProjectionCache<Key, Value>(
         isUpdate: Boolean,
     ) {
         var changedSignal: CompletableDeferred<Unit>? = null
-        var acceptedValue: AcceptedValue<Value>? = null
-        var changedValue: AcceptedValue<Value>? = null
-        var error: AcceptedError<Value>? = null
-        var callbackPinned = false
+        var acceptedEvent: AcceptedEvent<Value>? = null
         synchronized(lock) {
             val entry = projections[key]?.takeIf { it.identity === identity } ?: return
             if (entry.retiredError != null) return
-            when (event) {
-                is LiveQueryEvent.Value -> {
-                    entry.delivered = Delivered(event.value)
-                    val accepted =
-                        AcceptedValue(
-                            value = event.value,
-                            sequence = acceptedEventSequence.next(),
-                            identity = entry.identity,
-                        )
-                    if (onAcceptedValue != null) acceptedValue = accepted
-                    if (isUpdate) {
-                        changedValue = accepted
-                    }
-                }
-
-                is LiveQueryEvent.Error -> {
-                    error =
-                        AcceptedError(
-                            previousValue = entry.delivered?.value,
-                            error = event.error,
-                            isUpdate = isUpdate,
-                            sequence = acceptedEventSequence.next(),
-                            identity = entry.identity,
-                        )
-                }
-            }
+            acceptedEvent =
+                AcceptedEvent(
+                    event = event,
+                    isInitial = !isUpdate,
+                    sequence = acceptedEventSequence.next(),
+                    identity = entry.identity,
+                )
             entry.latest = event
             changedSignal = entry.changed
             entry.changed = CompletableDeferred()
-            callbackPinned = acceptedValue != null || changedValue != null || error != null
-            if (callbackPinned) entry.waiters++
+            entry.waiters++
         }
         try {
-            acceptedValue?.let { value -> onAcceptedValue?.invoke(key, value) }
-            changedValue?.let { value -> onChanged(key, value) }
-            error?.let { acceptedError -> onError(key, acceptedError) }
+            acceptedEvent?.let { accepted -> onAcceptedChange(key, accepted) }
         } finally {
             changedSignal?.complete(Unit)
-            if (callbackPinned) release(key, identity)
+            release(key, identity)
         }
     }
 
