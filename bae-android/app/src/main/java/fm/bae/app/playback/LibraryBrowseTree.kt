@@ -6,9 +6,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
+import fm.bae.app.data.LiveQueryEvent
+import fm.bae.app.data.mapValue
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -51,52 +54,98 @@ private data class ParentPageKey(
 )
 
 private class LiveProjection<T>(
-    scope: CoroutineScope,
-    flow: Flow<T>,
-    private val onChanged: (T) -> Unit,
+    private val scope: CoroutineScope,
+    private val flow: Flow<LiveQueryEvent<T>>,
+    private val onEvent: (LiveQueryEvent<T>, isUpdate: Boolean) -> Unit,
 ) {
     private data class Delivered<T>(val value: T)
 
     private val lock = Any()
     private var delivered: Delivered<T>? = null
-    private val first = CompletableDeferred<T>()
-    private val job: Job =
-        flow
-            .onEach { value ->
-                val isUpdate =
-                    synchronized(lock) {
-                        val prior = delivered
-                        delivered = Delivered(value)
-                        if (!first.isCompleted) first.complete(value)
-                        prior != null
-                    }
-                if (isUpdate) onChanged(value)
-            }.launchIn(scope)
+    private val first = CompletableDeferred<LiveQueryEvent<T>>()
+    private var eventDelivered = false
+    private var started = false
+    private var cancelled = false
+    private var job: Job? = null
+
+    fun start() {
+        val shouldStart =
+            synchronized(lock) {
+                if (started || cancelled) {
+                    false
+                } else {
+                    started = true
+                    true
+                }
+            }
+        if (!shouldStart) return
+        val launched =
+            flow
+                .onEach { event ->
+                    val isUpdate =
+                        synchronized(lock) {
+                            val update = eventDelivered
+                            eventDelivered = true
+                            if (event is LiveQueryEvent.Value) {
+                                delivered = Delivered(event.value)
+                            }
+                            if (!first.isCompleted) first.complete(event)
+                            update
+                        }
+                    onEvent(event, isUpdate)
+                }.launchIn(scope)
+        synchronized(lock) {
+            if (cancelled) launched.cancel() else job = launched
+        }
+    }
 
     suspend fun value(): T {
         synchronized(lock) { delivered }?.let { return it.value }
-        return first.await()
+        return when (val event = first.await()) {
+            is LiveQueryEvent.Value -> event.value
+            is LiveQueryEvent.Error -> throw event.error
+        }
     }
 
     fun cancel() {
-        first.cancel()
-        job.cancel()
+        val activeJob =
+            synchronized(lock) {
+                cancelled = true
+                first.cancel()
+                job
+            }
+        activeJob?.cancel()
     }
 }
 
 private class LiveProjectionCache<Key, Value>(
     private val scope: CoroutineScope,
     private val maximumCount: Int,
-    private val flow: (Key) -> Flow<Value>,
+    private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
+    private val isRetained: (Key) -> Boolean,
     private val onChanged: (Key, Value) -> Unit = { _, _ -> },
+    private val onError: (Key, BridgeException) -> Unit,
 ) {
-    private val lock = Any()
-    private val projections = LinkedHashMap<Key, LiveProjection<Value>>(16, 0.75f, true)
+    private class Entry<Value>(
+        val identity: Any,
+        val projection: LiveProjection<Value>,
+        var waiters: Int = 0,
+    )
 
-    suspend fun value(key: Key): Value = projection(key).value()
+    private val lock = Any()
+    private val projections = LinkedHashMap<Key, Entry<Value>>(16, 0.75f, true)
+
+    suspend fun value(key: Key): Value {
+        val entry = acquire(key)
+        return try {
+            entry.projection.value()
+        } finally {
+            release(key, entry.identity)
+        }
+    }
 
     fun cancel(key: Key) {
-        synchronized(lock) { projections.remove(key) }?.cancel()
+        synchronized(lock) { projections.remove(key) }?.projection?.cancel()
     }
 
     fun cancelWhere(predicate: (Key) -> Boolean) {
@@ -105,7 +154,7 @@ private class LiveProjectionCache<Key, Value>(
                 val keys = projections.keys.filter(predicate)
                 keys.mapNotNull(projections::remove)
             }
-        cancelled.forEach(LiveProjection<Value>::cancel)
+        cancelled.forEach { it.projection.cancel() }
     }
 
     fun cancelAll() {
@@ -113,24 +162,75 @@ private class LiveProjectionCache<Key, Value>(
             synchronized(lock) {
                 projections.values.toList().also { projections.clear() }
             }
-        cancelled.forEach(LiveProjection<Value>::cancel)
+        cancelled.forEach { it.projection.cancel() }
     }
 
-    private fun projection(key: Key): LiveProjection<Value> {
-        val evicted = mutableListOf<LiveProjection<Value>>()
-        val projection =
+    fun trim() {
+        trimAndCancel()
+    }
+
+    private fun acquire(key: Key): Entry<Value> {
+        var created: LiveProjection<Value>? = null
+        val entry =
             synchronized(lock) {
-                projections[key]
-                    ?: LiveProjection(scope, flow(key)) { onChanged(key, it) }.also {
-                        projections[key] = it
-                        while (projections.size > maximumCount) {
-                            val eldest = projections.entries.iterator().next()
-                            projections.remove(eldest.key)?.let(evicted::add)
-                        }
-                    }
+                (projections[key]
+                    ?: run {
+                        val identity = Any()
+                        val projection =
+                            LiveProjection(scope, flow(key)) { event, isUpdate ->
+                                apply(key, identity, event, isUpdate)
+                            }
+                        created = projection
+                        Entry(identity, projection).also { projections[key] = it }
+                    }).also { it.waiters++ }
             }
-        evicted.forEach(LiveProjection<Value>::cancel)
-        return projection
+        trimAndCancel()
+        created?.start()
+        return entry
+    }
+
+    private fun release(
+        key: Key,
+        identity: Any,
+    ) {
+        synchronized(lock) {
+            projections[key]?.takeIf { it.identity === identity }?.let { entry ->
+                check(entry.waiters > 0)
+                entry.waiters--
+            }
+        }
+        trimAndCancel()
+    }
+
+    private fun apply(
+        key: Key,
+        identity: Any,
+        event: LiveQueryEvent<Value>,
+        isUpdate: Boolean,
+    ) {
+        synchronized(lock) {
+            if (projections[key]?.identity !== identity) return
+            when (event) {
+                is LiveQueryEvent.Value -> if (isUpdate) onChanged(key, event.value)
+                is LiveQueryEvent.Error -> onError(key, event.error)
+            }
+        }
+    }
+
+    private fun trimAndCancel() {
+        val evicted =
+            synchronized(lock) {
+                buildList {
+                    while (projections.size > maximumCount) {
+                        val candidate =
+                            projections.entries.firstOrNull { (key, entry) ->
+                                entry.waiters == 0 && !isRetained(key)
+                            } ?: break
+                        projections.remove(candidate.key)?.let(::add)
+                    }
+                }
+            }
+        evicted.forEach { it.projection.cancel() }
     }
 }
 
@@ -141,14 +241,13 @@ private class LiveProjectionCache<Key, Value>(
  * drills to its primary release's tracks; a composer drills to its works and
  * credited albums, and a work to its child works and releases.
  *
- * Reads are `suspend` and paged: the top-level album and composer lists page
- * straight from the database honoring the browser's requested page window,
- * never loading the whole library. Detail-derived child lists (an album's
- * tracks, a composer's works) come from a single bounded detail read and are
- * sliced to the requested window. Nodes themselves are built by
- * [BrowseNodeFactory]; this type only reads and navigates.
+ * Queries are live and paged: the top-level album and composer lists honor the
+ * browser's requested page window without loading the whole library. Active
+ * controller interests retain their projections until unsubscribe or
+ * disconnect; delivered inactive pages remain in bounded caches. Nodes
+ * themselves are built by [BrowseNodeFactory].
  */
-internal class LibraryBrowseTree(
+internal class LibraryBrowseTree<Owner : Any>(
     private val library: Library,
     /** The category labels, resolved through the platform string catalog on
      *  demand (not at construction) so a browse request picks up the current
@@ -158,32 +257,39 @@ internal class LibraryBrowseTree(
      *  the browse client fetches its bytes from — the same bytes the bridge's
      *  `fetchLibraryImageBytes` serves. */
     artworkUri: (image: BridgeImageRef) -> Uri,
-    scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
-    private val onSearchResultChanged: (query: String, itemCount: Int) -> Unit = { _, _ -> },
+    private val onQueryError: (BridgeException) -> Unit = { error ->
+        logger.error("library browse live query failed", error)
+    },
 ) {
+    private data class SearchInterest(val onResultsChanged: (Int) -> Unit)
+
     private val nodes = BrowseNodeFactory(artworkUri)
+    private val interestLock = Any()
+    private val parentsByOwner = mutableMapOf<Owner, MutableSet<String>>()
+    private val searchesByOwner = mutableMapOf<Owner, MutableMap<String, SearchInterest>>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
+            isRetained = { key -> isParentRetained(key.parentId) },
             onChanged = { key, value -> onChildrenChanged(key.parentId, value.totalCount) },
+            onError = { _, error -> onQueryError(error) },
         )
-    private val albumDetails =
-        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::albumDetails)
-    private val composerDetails =
-        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::composerDetails)
-    private val workDetails =
-        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::workDetails)
-    private val releaseDetails =
-        LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, library::releaseDetails)
+    private val albumDetails = exactProjections(library::albumDetails)
+    private val composerDetails = exactProjections(library::composerDetails)
+    private val workDetails = exactProjections(library::workDetails)
+    private val releaseDetails = exactProjections(library::releaseDetails)
     private val searches =
         LiveProjectionCache(
             scope = scope,
             maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
             flow = library::searchResults,
-            onChanged = { query, value -> onSearchResultChanged(query, value.albums.size) },
+            isRetained = ::isSearchRetained,
+            onChanged = { query, value -> notifySearchResults(query, value.albums.size) },
+            onError = { _, error -> onQueryError(error) },
         )
 
     /** The tree root. Its [children] are the top-level categories. */
@@ -302,7 +408,60 @@ internal class LibraryBrowseTree(
         return paginate(albums, page, pageSize)
     }
 
-    suspend fun searchCount(query: String): Int = searches.value(query).albums.size
+    fun subscribeParent(
+        owner: Owner,
+        parentId: String,
+    ): Boolean {
+        if (BrowseId.parse(parentId) == null) return false
+        synchronized(interestLock) {
+            parentsByOwner.getOrPut(owner, ::mutableSetOf).add(parentId)
+        }
+        return true
+    }
+
+    fun unsubscribeParent(
+        owner: Owner,
+        parentId: String,
+    ) {
+        val retained =
+            synchronized(interestLock) {
+                parentsByOwner[owner]?.let { parents ->
+                    parents.remove(parentId)
+                    if (parents.isEmpty()) parentsByOwner.remove(owner)
+                }
+                parentsByOwner.values.any { parentId in it }
+            }
+        if (!retained) pageProjections.cancelWhere { it.parentId == parentId }
+    }
+
+    suspend fun subscribeSearch(
+        owner: Owner,
+        query: String,
+        onResultsChanged: (Int) -> Unit,
+    ) {
+        synchronized(interestLock) {
+            searchesByOwner
+                .getOrPut(owner, ::mutableMapOf)[query] = SearchInterest(onResultsChanged)
+        }
+        onResultsChanged(searches.value(query).albums.size)
+    }
+
+    fun disconnect(owner: Owner) {
+        val (parents, queries) =
+            synchronized(interestLock) {
+                parentsByOwner.remove(owner).orEmpty() to searchesByOwner.remove(owner)?.keys.orEmpty()
+            }
+        parents.forEach { parentId ->
+            if (!isParentRetained(parentId)) {
+                pageProjections.cancelWhere { it.parentId == parentId }
+            }
+        }
+        queries.forEach { query ->
+            if (!isSearchRetained(query)) searches.cancel(query)
+        }
+        pageProjections.trim()
+        searches.trim()
+    }
 
     /**
      * The track a spoken "play X" should start, or null when the search finds
@@ -339,12 +498,11 @@ internal class LibraryBrowseTree(
         }
     }
 
-    fun cancelParent(parentId: String) =
-        pageProjections.cancelWhere { it.parentId == parentId }
-
-    fun cancelSearch(query: String) = searches.cancel(query)
-
     fun close() {
+        synchronized(interestLock) {
+            parentsByOwner.clear()
+            searchesByOwner.clear()
+        }
         pageProjections.cancelAll()
         albumDetails.cancelAll()
         composerDetails.cancelAll()
@@ -353,57 +511,97 @@ internal class LibraryBrowseTree(
         searches.cancelAll()
     }
 
-    private fun pageFlow(key: ParentPageKey): Flow<BrowsePage> =
+    private fun isParentRetained(parentId: String): Boolean =
+        synchronized(interestLock) { parentsByOwner.values.any { parentId in it } }
+
+    private fun isSearchRetained(query: String): Boolean =
+        synchronized(interestLock) { searchesByOwner.values.any { query in it } }
+
+    private fun notifySearchResults(
+        query: String,
+        count: Int,
+    ) {
+        val listeners =
+            synchronized(interestLock) {
+                searchesByOwner.values.mapNotNull { it[query] }
+            }
+        listeners.forEach { it.onResultsChanged(count) }
+    }
+
+    private fun <Key, Value> exactProjections(
+        flow: (Key) -> Flow<LiveQueryEvent<Value>>,
+    ): LiveProjectionCache<Key, Value> =
+        LiveProjectionCache(
+            scope,
+            MAXIMUM_EXACT_SUBSCRIPTIONS,
+            flow,
+            isRetained = { false },
+            onError = { _, error -> onQueryError(error) },
+        )
+
+    private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
         when (val id = checkNotNull(BrowseId.parse(key.parentId))) {
             BrowseId.Albums ->
                 library
                     .albumPages(listOf(ALBUM_SORT), offsetOf(key.page, key.pageSize), limitOf(key.pageSize))
-                    .map { page ->
-                        BrowsePage(
-                            page.rows.map { nodes.album(it.id, it.title, it.cover) },
-                            page.totalCount.toInt(),
-                        )
+                    .map { event ->
+                        event.mapValue { page ->
+                            BrowsePage(
+                                page.rows.map { nodes.album(it.id, it.title, it.cover) },
+                                page.totalCount.toInt(),
+                            )
+                        }
                     }
 
             BrowseId.Composers ->
                 library
                     .composerPages(COMPOSER_SORT, offsetOf(key.page, key.pageSize), limitOf(key.pageSize))
-                    .map { page -> BrowsePage(page.rows.map(nodes::composer), page.totalCount.toInt()) }
+                    .map { event ->
+                        event.mapValue { page ->
+                            BrowsePage(page.rows.map(nodes::composer), page.totalCount.toInt())
+                        }
+                    }
 
             is BrowseId.Album ->
-                library.albumDetails(id.albumId).map { detail ->
-                    val items =
-                        detail?.let(::primaryRelease)?.let { release ->
-                            flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
-                        }.orEmpty()
-                    BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                library.albumDetails(id.albumId).map { event ->
+                    event.mapValue { detail ->
+                        val items =
+                            detail?.let(::primaryRelease)?.let { release ->
+                                flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
+                            }.orEmpty()
+                        BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                    }
                 }
 
             is BrowseId.Composer ->
-                library.composerDetails(id.artistId).map { detail ->
-                    val items =
-                        if (detail == null) {
-                            logger.warning("composer ${id.artistId} has no detail; no browse children")
-                            emptyList()
-                        } else {
-                            val works = detail.workGroups.flatMap { group -> listOfNotNull(group.parent) + group.works }
-                            works.map(nodes::work) +
-                                detail.unlinkedReleaseRoles.map { nodes.album(it.albumId, it.albumTitle, null) }
-                        }
-                    BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                library.composerDetails(id.artistId).map { event ->
+                    event.mapValue { detail ->
+                        val items =
+                            if (detail == null) {
+                                logger.warning("composer ${id.artistId} has no detail; no browse children")
+                                emptyList()
+                            } else {
+                                val works = detail.workGroups.flatMap { group -> listOfNotNull(group.parent) + group.works }
+                                works.map(nodes::work) +
+                                    detail.unlinkedReleaseRoles.map { nodes.album(it.albumId, it.albumTitle, null) }
+                            }
+                        BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                    }
                 }
 
             is BrowseId.Work ->
-                library.workDetails(id.workId).map { detail ->
-                    val items =
-                        if (detail == null) {
-                            logger.warning("work ${id.workId} has no detail; no browse children")
-                            emptyList()
-                        } else {
-                            detail.childWorks.map(nodes::work) +
-                                detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover) }
-                        }
-                    BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                library.workDetails(id.workId).map { event ->
+                    event.mapValue { detail ->
+                        val items =
+                            if (detail == null) {
+                                logger.warning("work ${id.workId} has no detail; no browse children")
+                                emptyList()
+                            } else {
+                                detail.childWorks.map(nodes::work) +
+                                    detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover) }
+                            }
+                        BrowsePage(paginate(items, key.page, key.pageSize), items.size)
+                    }
                 }
 
             BrowseId.Root,

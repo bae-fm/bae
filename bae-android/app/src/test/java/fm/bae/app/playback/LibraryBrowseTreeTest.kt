@@ -5,6 +5,7 @@ import androidx.media3.common.MediaItem
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.data.Library
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -15,6 +16,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerWorkGroup
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMetadataSource
 import uniffi.bae_bridge.BridgeReleaseRoleSummary
 import uniffi.bae_bridge.BridgeTrack
@@ -38,7 +41,7 @@ class LibraryBrowseTreeTest {
     private fun tree(
         handle: FakeAppHandle,
         onChildrenChanged: (String, Int) -> Unit = { _, _ -> },
-    ): LibraryBrowseTree =
+    ): LibraryBrowseTree<Any> =
         LibraryBrowseTree(
             library = Library(handle),
             labels = { labels },
@@ -137,6 +140,144 @@ class LibraryBrowseTreeTest {
         }
 
     @Test
+    fun activeParentPagesSurviveTheCacheBoundUntilUnsubscribe() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parentId, count -> notifications += parentId to count }
+            val controller = Any()
+            tree.subscribeParent(controller, BrowseId.Albums.mediaId)
+
+            repeat(13) { page ->
+                tree.children(BrowseId.Albums.mediaId, page = page, pageSize = 20)
+            }
+            handle.emitAlbumPage(
+                subscription = 0,
+                rows = listOf(BridgeFixtures.album(id = "album-retained")),
+            )
+
+            assertFalse(handle.liveSubscriptions.first().cancelled)
+            assertEquals(BrowseId.Albums.mediaId to 1, notifications.last())
+
+            tree.unsubscribeParent(controller, BrowseId.Albums.mediaId)
+            assertTrue(handle.liveSubscriptions.all { it.cancelled })
+        }
+
+    @Test
+    fun activeSearchesSurviveTheCacheBoundUntilDisconnect() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle)
+            val controller = Any()
+
+            repeat(9) { index ->
+                val query = "query-$index"
+                tree.subscribeSearch(controller, query) { count -> notifications += query to count }
+            }
+            handle.emitSearchResults(
+                subscription = 0,
+                value =
+                    BridgeFixtures.searchResults(
+                        albums = listOf(BridgeFixtures.albumSearchResult(id = "album-retained")),
+                    ),
+            )
+
+            assertFalse(handle.liveSubscriptions.first().cancelled)
+            assertEquals("query-0" to 1, notifications.last())
+
+            tree.disconnect(controller)
+            assertTrue(handle.liveSubscriptions.all { it.cancelled })
+        }
+
+    @Test
+    fun unobservedSearchCacheStaysBounded() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+
+            repeat(9) { index ->
+                tree.search("query-$index", page = 0, pageSize = 20)
+            }
+
+            assertTrue(handle.liveSubscriptions.count { !it.cancelled } <= 8)
+            assertTrue(handle.liveSubscriptions.first().cancelled)
+        }
+
+    @Test
+    fun initialErrorCompletesTheRequestAndLaterValueRecovers() =
+        runBlocking {
+            val handle = FakeAppHandle(initialAlbumPageError = queryFailure())
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parentId, count -> notifications += parentId to count }
+            tree.subscribeParent(Any(), BrowseId.Albums.mediaId)
+
+            val error =
+                runCatching {
+                    withTimeout(1_000) {
+                        tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)
+                    }
+                }.exceptionOrNull()
+
+            assertTrue(error is BridgeException.Diagnostic)
+            assertFalse(handle.liveSubscriptions.single().cancelled)
+
+            handle.emitAlbumPage(
+                subscription = 0,
+                rows = listOf(BridgeFixtures.album(id = "album-recovered")),
+            )
+            assertEquals(BrowseId.Albums.mediaId to 1, notifications.single())
+            assertEquals(
+                BrowseId.Album("album-recovered").mediaId,
+                tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)!!.single().mediaId,
+            )
+        }
+
+    @Test
+    fun replacedProjectionRejectsQueuedValuesErrorsAndNotifications() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val errors = mutableListOf<BridgeException>()
+            val tree =
+                LibraryBrowseTree<Any>(
+                    library = Library(handle),
+                    labels = { labels },
+                    artworkUri = { image -> Uri.parse("content://test/cover/${image.id}") },
+                    onChildrenChanged = { parentId, count -> notifications += parentId to count },
+                    onQueryError = errors::add,
+                )
+            val controller = Any()
+            tree.subscribeParent(controller, BrowseId.Albums.mediaId)
+            tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)
+            tree.unsubscribeParent(controller, BrowseId.Albums.mediaId)
+            tree.subscribeParent(controller, BrowseId.Albums.mediaId)
+            tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)
+
+            handle.failAlbumPage(subscription = 0)
+            handle.emitAlbumPage(
+                subscription = 0,
+                rows = listOf(BridgeFixtures.album(id = "album-stale")),
+            )
+
+            assertTrue(errors.isEmpty())
+            assertTrue(notifications.isEmpty())
+            assertTrue(
+                tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)!!.isEmpty(),
+            )
+
+            handle.emitAlbumPage(
+                subscription = 1,
+                rows = listOf(BridgeFixtures.album(id = "album-current")),
+            )
+            assertEquals(BrowseId.Albums.mediaId to 1, notifications.single())
+            assertEquals(
+                BrowseId.Album("album-current").mediaId,
+                tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)!!.single().mediaId,
+            )
+        }
+
+    @Test
     fun closingTreeCancelsRetainedQueries() =
         runBlocking {
             val handle = FakeAppHandle()
@@ -154,14 +295,13 @@ class LibraryBrowseTreeTest {
             val handle = FakeAppHandle()
             val notifications = mutableListOf<Pair<String, Int>>()
             val tree =
-                LibraryBrowseTree(
+                LibraryBrowseTree<Any>(
                     library = Library(handle),
                     labels = { labels },
                     artworkUri = { image -> Uri.parse("content://test/cover/${image.id}") },
-                    onSearchResultChanged = { query, count -> notifications += query to count },
                 )
 
-            tree.search("query", page = 0, pageSize = 10)
+            tree.subscribeSearch(Any(), "query") { count -> notifications += "query" to count }
             handle.emitSearchResults(
                 subscription = 0,
                 value =
@@ -429,4 +569,10 @@ class LibraryBrowseTreeTest {
             assertEquals("B", item.title)
             assertTrue(item.mediaMetadata.isPlayable == true)
         }
+
+    private fun queryFailure(): BridgeException =
+        BridgeException.Diagnostic(
+            category = BridgeErrorCategory.DATABASE,
+            detail = "query failed",
+        )
 }

@@ -170,6 +170,7 @@ internal class FakeAppHandle(
     private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
+    private val initialAlbumPageError: uniffi.bae_bridge.BridgeException? = null,
 ) : AppHandle(NoHandle) {
     var pauseCount = 0
     var resumeCount = 0
@@ -223,8 +224,12 @@ internal class FakeAppHandle(
     ): LiveSubscription {
         albumPageWindows.add(offset to limit)
         albumPageCallbacks += callback
-        val rows = albumPages(offset, limit)
-        callback.onValue(BridgeAlbumPage(rows, rows.size.toULong()))
+        if (initialAlbumPageError == null) {
+            val rows = albumPages(offset, limit)
+            callback.onValue(BridgeAlbumPage(rows, rows.size.toULong()))
+        } else {
+            callback.onError(initialAlbumPageError)
+        }
         return liveSubscription()
     }
 

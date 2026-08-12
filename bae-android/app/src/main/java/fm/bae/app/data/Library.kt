@@ -7,16 +7,13 @@ import uniffi.bae_bridge.ArtistPageCallback
 import uniffi.bae_bridge.ArtistDetailCallback
 import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.ComposerDetailCallback
-import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumPage
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
-import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
-import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -30,21 +27,29 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
-private val logger = fm.bae.app.BaeLogger("bae.Library")
+internal sealed interface LiveQueryEvent<out Value> {
+    data class Value<Value>(val value: Value) : LiveQueryEvent<Value>
+
+    data class Error(val error: BridgeException) : LiveQueryEvent<Nothing>
+}
+
+internal inline fun <Value, Mapped> LiveQueryEvent<Value>.mapValue(
+    transform: (Value) -> Mapped,
+): LiveQueryEvent<Mapped> =
+    when (this) {
+        is LiveQueryEvent.Value -> LiveQueryEvent.Value(transform(value))
+        is LiveQueryEvent.Error -> this
+    }
 
 /**
- * Narrow projection of [AppHandle] for library browse and detail reads. The
- * page/detail calls suspend across the bridge; callers invoke them from their
- * existing coroutine. Image bytes are not here — every image in the app resolves
- * through [fm.bae.app.data.ImageStore], which owns their caching too.
+ * Narrow projection of [AppHandle] for library browse and detail live queries.
+ * Each flow stays subscribed after an error and can deliver later values; the
+ * error is an event rather than flow termination. Image bytes are not here —
+ * every image in the app resolves through [fm.bae.app.data.ImageStore], which
+ * owns their caching too.
  * Mirrors the macOS `Library` domain service.
  */
-class Library(
-    private val handle: AppHandle,
-    private val onUnhandledError: (BridgeException) -> Unit = {
-        logger.error("library live query failed", it)
-    },
-) {
+class Library(private val handle: AppHandle) {
     fun subscribeAlbumPage(
         sortCriteria: List<BridgeSortCriterion>,
         offset: ULong,
@@ -52,11 +57,11 @@ class Library(
         callback: AlbumPageCallback,
     ): LiveSubscription = handle.subscribeAlbumPage(sortCriteria, offset, limit, callback)
 
-    fun albumPages(
+    internal fun albumPages(
         sortCriteria: List<BridgeSortCriterion>,
         offset: ULong,
         limit: ULong,
-    ): Flow<BridgeAlbumPage> =
+    ): Flow<LiveQueryEvent<BridgeAlbumPage>> =
         callbackFlow {
             val subscription =
                 subscribeAlbumPage(
@@ -65,32 +70,31 @@ class Library(
                     limit,
                     object : AlbumPageCallback {
                         override fun onValue(value: BridgeAlbumPage) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onUnhandledError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun albumDetails(
+    internal fun albumDetails(
         albumId: String,
-        onError: (BridgeException) -> Unit = onUnhandledError,
-    ): Flow<BridgeAlbumDetail?> =
+    ): Flow<LiveQueryEvent<BridgeAlbumDetail?>> =
         callbackFlow {
             val subscription =
                 handle.subscribeAlbumDetail(
                     albumId,
                     object : AlbumDetailCallback {
                         override fun onValue(value: BridgeAlbumDetail?) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
@@ -104,11 +108,11 @@ class Library(
         callback: ComposerPageCallback,
     ): LiveSubscription = handle.subscribeComposerPage(listOf(sortCriterion), offset, limit, callback)
 
-    fun composerPages(
+    internal fun composerPages(
         sortCriterion: BridgeComposerSortCriterion,
         offset: ULong,
         limit: ULong,
-    ): Flow<BridgeComposerPage> =
+    ): Flow<LiveQueryEvent<BridgeComposerPage>> =
         callbackFlow {
             val subscription =
                 subscribeComposerPage(
@@ -117,32 +121,31 @@ class Library(
                     limit,
                     object : ComposerPageCallback {
                         override fun onValue(value: BridgeComposerPage) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onUnhandledError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun composerDetails(
+    internal fun composerDetails(
         artistId: String,
-        onError: (BridgeException) -> Unit = onUnhandledError,
-    ): Flow<BridgeComposerDetail?> =
+    ): Flow<LiveQueryEvent<BridgeComposerDetail?>> =
         callbackFlow {
             val subscription =
                 handle.subscribeComposerDetail(
                     artistId,
                     object : ComposerDetailCallback {
                         override fun onValue(value: BridgeComposerDetail?) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
@@ -156,60 +159,58 @@ class Library(
         callback: ArtistPageCallback,
     ): LiveSubscription = handle.subscribeArtistPage(listOf(sortCriterion), offset, limit, callback)
 
-    fun artistDetails(
+    internal fun artistDetails(
         artistId: String,
-        onError: (BridgeException) -> Unit = onUnhandledError,
-    ): Flow<BridgeArtistDetail?> =
+    ): Flow<LiveQueryEvent<BridgeArtistDetail?>> =
         callbackFlow {
             val subscription =
                 handle.subscribeArtistDetail(
                     artistId,
                     object : ArtistDetailCallback {
                         override fun onValue(value: BridgeArtistDetail?) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun workDetails(
+    internal fun workDetails(
         workId: String,
-        onError: (BridgeException) -> Unit = onUnhandledError,
-    ): Flow<BridgeWorkDetail?> =
+    ): Flow<LiveQueryEvent<BridgeWorkDetail?>> =
         callbackFlow {
             val subscription =
                 handle.subscribeWorkDetail(
                     workId,
                     object : WorkDetailCallback {
                         override fun onValue(value: BridgeWorkDetail?) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
             awaitClose(subscription::cancel)
         }
 
-    fun releaseDetails(releaseId: String): Flow<BridgeRelease?> =
+    internal fun releaseDetails(releaseId: String): Flow<LiveQueryEvent<BridgeRelease?>> =
         callbackFlow {
             val subscription =
                 handle.subscribeReleaseDetail(
                     releaseId,
                     object : ReleaseDetailCallback {
                         override fun onValue(value: BridgeRelease?) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onUnhandledError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )
@@ -217,24 +218,21 @@ class Library(
         }
 
     /**
-     * Search albums and tracks by free-text query. Suspends: the bridge call is
-     * async, so callers invoke it directly from a coroutine.
+     * Search albums and tracks by free-text query. Values and nonterminal errors
+     * share one live flow; collecting continues until the caller cancels.
      */
-    fun searchResults(
-        query: String,
-        onError: (BridgeException) -> Unit = onUnhandledError,
-    ): Flow<BridgeSearchResults> =
+    internal fun searchResults(query: String): Flow<LiveQueryEvent<BridgeSearchResults>> =
         callbackFlow {
             val subscription =
                 handle.subscribeLibrarySearch(
                     query,
                     object : LibrarySearchCallback {
                         override fun onValue(value: BridgeSearchResults) {
-                            trySend(value)
+                            trySend(LiveQueryEvent.Value(value))
                         }
 
                         override fun onError(error: BridgeException) {
-                            onError(error)
+                            trySend(LiveQueryEvent.Error(error))
                         }
                     },
                 )

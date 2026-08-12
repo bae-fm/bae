@@ -1,7 +1,6 @@
 package fm.bae.app.data
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +21,17 @@ internal data class LiveQueryState<Value>(
     val error: BridgeException? = null,
 )
 
+private fun <Value> MutableStateFlow<LiveQueryState<Value>>.apply(event: LiveQueryEvent<Value?>) {
+    value =
+        when (event) {
+            is LiveQueryEvent.Value -> LiveQueryState(value = event.value, delivered = true)
+            is LiveQueryEvent.Error -> value.copy(error = event.error)
+        }
+}
+
 internal class DetailQueryStore<Value>(
     private val scope: CoroutineScope,
-    private val subscribe: (String, (BridgeException) -> Unit) -> Flow<Value?>,
+    private val subscribe: (String) -> Flow<LiveQueryEvent<Value?>>,
 ) {
     private val mutableState = MutableStateFlow(LiveQueryState<Value>())
     val state: StateFlow<LiveQueryState<Value>> = mutableState.asStateFlow()
@@ -64,15 +71,9 @@ internal class DetailQueryStore<Value>(
         mutableState.value = LiveQueryState()
         job =
             scope.launch {
-                subscribe(value) { error ->
-                    scope.launch(Dispatchers.Main.immediate) {
-                        if (generation == currentGeneration) {
-                            mutableState.value = mutableState.value.copy(error = error)
-                        }
-                    }
-                }.collect { result ->
+                subscribe(value).collect { event ->
                     if (generation == currentGeneration) {
-                        mutableState.value = LiveQueryState(value = result, delivered = true)
+                        mutableState.apply(event)
                     }
                 }
             }
@@ -99,15 +100,9 @@ internal class SearchQueryStore(
         job =
             scope.launch {
                 delay(300)
-                library.searchResults(value) { error ->
-                    scope.launch(Dispatchers.Main.immediate) {
-                        if (generation == currentGeneration) {
-                            mutableState.value = mutableState.value.copy(error = error)
-                        }
-                    }
-                }.collect { result ->
+                library.searchResults(value).collect { event ->
                     if (generation == currentGeneration) {
-                        mutableState.value = LiveQueryState(value = result, delivered = true)
+                        mutableState.apply(event)
                     }
                 }
             }

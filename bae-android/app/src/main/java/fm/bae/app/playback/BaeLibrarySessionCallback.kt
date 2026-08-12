@@ -11,10 +11,10 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.common.util.concurrent.SettableFuture
 import fm.bae.app.BaeLogger
-import java.util.LinkedHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeException
 
 private const val TAG = "bae.BaeLibrarySessionCallback"
 private val logger = BaeLogger(TAG)
@@ -33,20 +33,9 @@ private val logger = BaeLogger(TAG)
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal class BaeLibrarySessionCallback(
-    private val tree: LibraryBrowseTree,
+    private val tree: LibraryBrowseTree<MediaSession.ControllerInfo>,
     private val scope: CoroutineScope,
 ) : MediaLibrarySession.Callback {
-    private data class SearchListener(
-        val session: MediaLibrarySession,
-        val browser: MediaSession.ControllerInfo,
-        val params: LibraryParams?,
-    )
-
-    private val subscriptionLock = Any()
-    private val parentsByController = mutableMapOf<MediaSession.ControllerInfo, MutableSet<String>>()
-    private val searchesByController =
-        mutableMapOf<MediaSession.ControllerInfo, LinkedHashMap<String, SearchListener>>()
-
     override fun onGetLibraryRoot(
         session: MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -60,16 +49,23 @@ internal class BaeLibrarySessionCallback(
         page: Int,
         pageSize: Int,
         params: LibraryParams?,
+    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = getChildren(parentId, page, pageSize, params)
+
+    internal fun getChildren(
+        parentId: String,
+        page: Int,
+        pageSize: Int,
+        params: LibraryParams?,
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
         scope.future {
-            val children = tree.children(parentId, page, pageSize)
-            val result: LibraryResult<ImmutableList<MediaItem>> =
+            queryResult {
+                val children = tree.children(parentId, page, pageSize)
                 if (children == null) {
                     LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
                 } else {
                     LibraryResult.ofItemList(children, params)
                 }
-            result
+            }
         }
 
     override fun onSubscribe(
@@ -78,13 +74,10 @@ internal class BaeLibrarySessionCallback(
         parentId: String,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<Void>> {
-        if (BrowseId.parse(parentId) == null) {
+        if (!tree.subscribeParent(browser, parentId)) {
             return SettableFuture.create<LibraryResult<Void>>().also {
                 it.set(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
             }
-        }
-        synchronized(subscriptionLock) {
-            parentsByController.getOrPut(browser, ::mutableSetOf).add(parentId)
         }
         return SettableFuture.create<LibraryResult<Void>>().also { it.set(LibraryResult.ofVoid()) }
     }
@@ -94,15 +87,7 @@ internal class BaeLibrarySessionCallback(
         browser: MediaSession.ControllerInfo,
         parentId: String,
     ): ListenableFuture<LibraryResult<Void>> {
-        val cancelParent =
-            synchronized(subscriptionLock) {
-                parentsByController[browser]?.let { parents ->
-                    parents.remove(parentId)
-                    if (parents.isEmpty()) parentsByController.remove(browser)
-                }
-                parentsByController.values.none { parentId in it }
-            }
-        if (cancelParent) tree.cancelParent(parentId)
+        tree.unsubscribeParent(browser, parentId)
         return SettableFuture.create<LibraryResult<Void>>().also { it.set(LibraryResult.ofVoid()) }
     }
 
@@ -112,14 +97,14 @@ internal class BaeLibrarySessionCallback(
         mediaId: String,
     ): ListenableFuture<LibraryResult<MediaItem>> =
         scope.future {
-            val item = tree.item(mediaId)
-            val result: LibraryResult<MediaItem> =
+            queryResult {
+                val item = tree.item(mediaId)
                 if (item == null) {
                     LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
                 } else {
                     LibraryResult.ofItem(item, null)
                 }
-            result
+            }
         }
 
     override fun onSearch(
@@ -129,10 +114,12 @@ internal class BaeLibrarySessionCallback(
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<Void>> =
         scope.future {
-            registerSearch(SearchListener(session, browser, params), query)
-            val count = tree.searchCount(query)
-            session.notifySearchResultChanged(browser, query, count, params)
-            LibraryResult.ofVoid()
+            queryResult {
+                tree.subscribeSearch(browser, query) { count ->
+                    session.notifySearchResultChanged(browser, query, count, params)
+                }
+                LibraryResult.ofVoid()
+            }
         }
 
     override fun onGetSearchResult(
@@ -143,7 +130,11 @@ internal class BaeLibrarySessionCallback(
         pageSize: Int,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
-        scope.future { LibraryResult.ofItemList(tree.search(query, page, pageSize), params) }
+        scope.future {
+            queryResult {
+                LibraryResult.ofItemList(tree.search(query, page, pageSize), params)
+            }
+        }
 
     /**
      * Resolve the media items a controller asked to play. Two shapes arrive: an
@@ -164,65 +155,15 @@ internal class BaeLibrarySessionCallback(
         session: MediaSession,
         controller: MediaSession.ControllerInfo,
     ) {
-        val (parents, queries) =
-            synchronized(subscriptionLock) {
-                val parents = parentsByController.remove(controller).orEmpty()
-                val queries = searchesByController.remove(controller)?.keys.orEmpty()
-                parents to queries
-            }
-        parents.forEach { parentId ->
-            val stillSubscribed = synchronized(subscriptionLock) { parentsByController.values.any { parentId in it } }
-            if (!stillSubscribed) tree.cancelParent(parentId)
-        }
-        queries.forEach { query ->
-            val stillSubscribed = synchronized(subscriptionLock) { searchesByController.values.any { query in it } }
-            if (!stillSubscribed) tree.cancelSearch(query)
-        }
+        tree.disconnect(controller)
     }
 
-    fun searchResultsChanged(
-        query: String,
-        count: Int,
-    ) {
-        val listeners =
-            synchronized(subscriptionLock) {
-                searchesByController.values.mapNotNull { it[query] }
-            }
-        listeners.forEach { listener ->
-            listener.session.notifySearchResultChanged(
-                listener.browser,
-                query,
-                count,
-                listener.params,
-            )
+    private suspend fun <T : Any> queryResult(block: suspend () -> LibraryResult<T>): LibraryResult<T> =
+        try {
+            block()
+        } catch (_: BridgeException) {
+            LibraryResult.ofError<T>(SessionError.ERROR_UNKNOWN)
         }
-    }
-
-    private fun registerSearch(
-        listener: SearchListener,
-        query: String,
-    ) {
-        val cancelledQueries = mutableListOf<String>()
-        synchronized(subscriptionLock) {
-            val searches =
-                searchesByController.getOrPut(listener.browser) {
-                    LinkedHashMap(SEARCHES_PER_CONTROLLER, 0.75f, true)
-                }
-            searches[query] = listener
-            while (searches.size > SEARCHES_PER_CONTROLLER) {
-                val eldest = searches.entries.iterator().next()
-                searches.remove(eldest.key)
-                cancelledQueries += eldest.key
-            }
-        }
-        cancelledQueries.forEach { cancelled ->
-            val stillSubscribed =
-                synchronized(subscriptionLock) {
-                    searchesByController.values.any { cancelled in it }
-                }
-            if (!stillSubscribed) tree.cancelSearch(cancelled)
-        }
-    }
 
     private suspend fun resolveForPlayback(item: MediaItem): MediaItem {
         // A tapped browse node already names what to play.
@@ -240,10 +181,6 @@ internal class BaeLibrarySessionCallback(
                 .setMediaMetadata(item.mediaMetadata)
                 .build()
         } ?: item
-    }
-
-    private companion object {
-        const val SEARCHES_PER_CONTROLLER = 8
     }
 }
 

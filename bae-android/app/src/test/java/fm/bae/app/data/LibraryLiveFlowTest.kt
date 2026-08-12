@@ -1,9 +1,11 @@
 package fm.bae.app.data
 
 import fm.bae.app.BridgeFixtures
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.bae_bridge.AlbumDetailCallback
 import uniffi.bae_bridge.AppHandle
@@ -35,7 +37,10 @@ class LibraryLiveFlowTest {
                 },
             )
 
-        assertEquals(detail, library.albumDetails("album-1").first())
+        val events = library.albumDetails("album-1").take(2).toList()
+
+        assertTrue(events[0] is LiveQueryEvent.Error)
+        assertEquals(detail, (events[1] as LiveQueryEvent.Value).value)
     }
 
     private class TestLiveSubscription : LiveSubscription(NoHandle) {
