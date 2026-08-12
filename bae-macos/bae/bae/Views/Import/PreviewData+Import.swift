@@ -235,11 +235,11 @@
             ]
             return BridgeTriageQueue(
                 sections: [
-                    // Two of the three Ready rows sit under a folder the scan
+                    // Two of the three importable rows sit under a folder the scan
                     // read as one release's worth of subfolders; the third is
                     // its own folder and sits at the same leading edge.
                     BridgeTriageSection(
-                        tab: .ready,
+                        tab: .pending,
                         watchedFolderPath: importWatchedFolder.path,
                         group: BridgeTriageGroup(
                             key: folderReleaseBoundaryKey,
@@ -248,16 +248,13 @@
                         entries: [rows[0], rows[5]].map(candidateEntry)
                     ),
                     BridgeTriageSection(
-                        tab: .ready,
+                        tab: .pending,
                         watchedFolderPath: importWatchedFolder.path,
                         group: nil,
-                        entries: [candidateEntry(rows[6])]
-                    ),
-                    BridgeTriageSection(
-                        tab: .needsYou,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [boundaryEntry(folderReleaseBoundary)]
+                        entries: [
+                            candidateEntry(rows[6]),
+                            boundaryEntry(folderReleaseBoundary),
+                        ]
                     ),
                     BridgeTriageSection(
                         tab: .done,
@@ -276,8 +273,7 @@
                     ),
                 ],
                 counts: BridgeTriageTabCounts(
-                    ready: 3,
-                    needsYou: 1,
+                    pending: 4,
                     done: 3,
                     skipped: 1 + UInt32(invalidCandidates.count)
                 ),
@@ -354,7 +350,7 @@
                 skipped: false,
                 isAdded: true
             ),
-            // Two more Ready folders, so the tab shows a folder group with
+            // Two more importable folders, so Pending shows a folder group with
             // rows in it beside a row that belongs to no group.
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/Album Title Three",
@@ -596,7 +592,7 @@
         private static let releaseQueue = BridgeTriageQueue(
             sections: [
                 BridgeTriageSection(
-                    tab: .ready,
+                    tab: .pending,
                     watchedFolderPath: releaseQueueRoot,
                     group: BridgeTriageGroup(
                         key: releaseQueueGroupKey,
@@ -605,21 +601,17 @@
                     entries: releaseQueueRows[0...1].map(candidateEntry)
                 ),
                 BridgeTriageSection(
-                    tab: .ready,
+                    tab: .pending,
                     watchedFolderPath: releaseQueueRoot,
                     group: nil,
-                    entries: [candidateEntry(releaseQueueRows[2])]
-                ),
-                BridgeTriageSection(
-                    tab: .needsYou,
-                    watchedFolderPath: releaseQueueRoot,
-                    group: nil,
-                    entries: [boundaryEntry(releaseQueueBoundary)]
+                    entries: [
+                        candidateEntry(releaseQueueRows[2]),
+                        boundaryEntry(releaseQueueBoundary),
+                    ]
                 ),
             ],
             counts: BridgeTriageTabCounts(
-                ready: 3,
-                needsYou: 1,
+                pending: 4,
                 done: 0,
                 skipped: 0
             ),
@@ -641,7 +633,7 @@
         private static let releaseQueueResolved = BridgeTriageQueue(
             sections: [
                 BridgeTriageSection(
-                    tab: .ready,
+                    tab: .pending,
                     watchedFolderPath: releaseQueueRoot,
                     group: nil,
                     entries: [
@@ -663,8 +655,7 @@
                 )
             ],
             counts: BridgeTriageTabCounts(
-                ready: 1,
-                needsYou: 0,
+                pending: 1,
                 done: 0,
                 skipped: 0
             ),

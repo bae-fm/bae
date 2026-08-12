@@ -403,7 +403,7 @@ struct ImportStoreTriageRenderingTests {
         store.triageQueue = BridgeTriageQueue(
             sections: [
                 BridgeTriageSection(
-                    tab: .ready,
+                    tab: .pending,
                     watchedFolderPath: "/w",
                     group: nil,
                     entries: [
@@ -412,7 +412,7 @@ struct ImportStoreTriageRenderingTests {
                     ]
                 ),
                 BridgeTriageSection(
-                    tab: .needsYou,
+                    tab: .pending,
                     watchedFolderPath: "/w",
                     group: BridgeTriageGroup(
                         key: BridgeFolderReleaseDecisionKey(
@@ -474,8 +474,7 @@ struct ImportStoreTriageRenderingTests {
                 ),
             ],
             counts: BridgeTriageTabCounts(
-                ready: 2,
-                needsYou: 2,
+                pending: 4,
                 done: 1,
                 skipped: 2
             ),
@@ -488,16 +487,16 @@ struct ImportStoreTriageRenderingTests {
     @Test("sections preserve grouping while sorting entries")
     func sectionsPreserveGrouping() throws {
         let store = seededStore()
-        let ready = try #require(
+        let importable = try #require(
             store.releaseSections(
-                tab: .ready,
+                tab: .pending,
                 filterText: "",
                 sortOrder: .nameAZ
             )
-            .first
+            .first { $0.group == nil }
         )
         #expect(
-            ready.entries.compactMap { entry in
+            importable.entries.compactMap { entry in
                 guard
                     case .candidate(_, let row) = entry.bridge
                 else { return nil }
@@ -506,7 +505,7 @@ struct ImportStoreTriageRenderingTests {
                 == ["Alpha", "Beta"]
         )
         #expect(
-            ready.entries.map(\.id)
+            importable.entries.map(\.id)
                 == [
                     "candidate:/w/ready-a",
                     "candidate:/w/ready-b",
@@ -515,11 +514,11 @@ struct ImportStoreTriageRenderingTests {
 
         let grouped = try #require(
             store.releaseSections(
-                tab: .needsYou,
+                tab: .pending,
                 filterText: "",
                 sortOrder: .nameAZ
             )
-            .first
+            .first { $0.group != nil }
         )
         #expect(grouped.group?.name == "Collection")
         #expect(
@@ -528,15 +527,15 @@ struct ImportStoreTriageRenderingTests {
 
         let descending = try #require(
             store.releaseSections(
-                tab: .ready,
+                tab: .pending,
                 filterText: "",
                 sortOrder: .nameZA
             )
-            .first
+            .first { $0.group == nil }
         )
         #expect(
             descending.entries.map(\.id)
-                == ready.entries.reversed().map(\.id)
+                == importable.entries.reversed().map(\.id)
         )
     }
 
@@ -563,13 +562,13 @@ struct ImportStoreTriageRenderingTests {
     }
 
     @MainActor
-    @Test("a new queue projection moves an answered row into Ready")
-    func answeringMovesTheRowOut() {
+    @Test("an answered row stays in Pending and becomes selectable")
+    func answeringMakesThePendingRowSelectable() {
         let store = ImportStore()
         store.triageQueue = BridgeTriageQueue(
             sections: [
                 BridgeTriageSection(
-                    tab: .needsYou,
+                    tab: .pending,
                     watchedFolderPath: "/w",
                     group: nil,
                     entries: [
@@ -587,8 +586,7 @@ struct ImportStoreTriageRenderingTests {
                 )
             ],
             counts: BridgeTriageTabCounts(
-                ready: 0,
-                needsYou: 1,
+                pending: 1,
                 done: 0,
                 skipped: 0
             ),
@@ -597,7 +595,7 @@ struct ImportStoreTriageRenderingTests {
 
         #expect(
             store.releaseSections(
-                tab: .needsYou,
+                tab: .pending,
                 filterText: "",
                 sortOrder: .nameAZ
             )
@@ -607,7 +605,7 @@ struct ImportStoreTriageRenderingTests {
         store.triageQueue = BridgeTriageQueue(
             sections: [
                 BridgeTriageSection(
-                    tab: .ready,
+                    tab: .pending,
                     watchedFolderPath: "/w",
                     group: nil,
                     entries: [
@@ -618,8 +616,7 @@ struct ImportStoreTriageRenderingTests {
                 )
             ],
             counts: BridgeTriageTabCounts(
-                ready: 1,
-                needsYou: 0,
+                pending: 1,
                 done: 0,
                 skipped: 0
             ),
@@ -628,11 +625,11 @@ struct ImportStoreTriageRenderingTests {
 
         #expect(
             store.releaseSections(
-                tab: .needsYou,
+                tab: .pending,
                 filterText: "",
                 sortOrder: .nameAZ
             )
-            .isEmpty
+            .count == 1
         )
         #expect(
             store.selectableReadyRows(filterText: "", sortOrder: .nameAZ)
@@ -653,12 +650,12 @@ struct ImportStoreTriageRenderingTests {
     @Test("section identity keeps path components distinct")
     func sectionIdentityDoesNotConcatenatePaths() {
         let first = ReleaseQueueSectionID(
-            tab: .ready,
+            tab: .pending,
             watchedFolderPath: "/a|b",
             groupRelativeFolderPath: "c"
         )
         let second = ReleaseQueueSectionID(
-            tab: .ready,
+            tab: .pending,
             watchedFolderPath: "/a",
             groupRelativeFolderPath: "b|c"
         )

@@ -582,8 +582,7 @@ mod triage_tests {
             TriagePlacement::Skipped,
         ] {
             let expected = match core.tab() {
-                TriageTab::Ready => BridgeTriageTab::Ready,
-                TriageTab::NeedsYou => BridgeTriageTab::NeedsYou,
+                TriageTab::Pending => BridgeTriageTab::Pending,
                 TriageTab::Done => BridgeTriageTab::Done,
                 TriageTab::Skipped => BridgeTriageTab::Skipped,
             };

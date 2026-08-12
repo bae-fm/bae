@@ -6,7 +6,7 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // The sidebar row list's sort order — the only thing left for the UI to decide
-// once core has placed every row into its tab and, under Needs you, its group.
+// once core has placed every row into its tab and, within Pending, its group.
 // Only name order survives the triage redesign: a BridgeTriageRow carries no
 // discovery timestamp, so a "date added" option
 // would silently degrade into an alias for name order. Better to drop it than
@@ -105,16 +105,16 @@ internal static class TriageListModel
     // release nobody has matched.
     internal static bool TitleIsFolderName(BridgeTriageRow row) => row.Matched is null;
 
-    // The cover art of every Ready row, in queue order. Identification already
-    // fetched these — a row reaches Ready by settling on one match, and that
-    // match carries the thumbnail URL — so the Ready tab has no reason to open
+    // The cover art of every bulk-importable Pending row, in queue order.
+    // Identification already fetched these, so Pending has no reason to open
     // on a grid of blanks. Unfiltered and unsorted: what the tab is about to
     // draw does not depend on what the filter box currently says.
     internal static List<string> ReadyCoverThumbnailUrls(BridgeTriageQueue queue) =>
         queue.Sections
-            .Where(section => section.Tab == BridgeTriageTab.Ready)
+            .Where(section => section.Tab == BridgeTriageTab.Pending)
             .SelectMany(section => section.Entries)
             .OfType<BridgeTriageEntry.Candidate>()
+            .Where(candidate => candidate.Row.Selectable)
             .Select(candidate => candidate.Row.Matched?.CoverThumbnailUrl)
             .Where(url => !string.IsNullOrEmpty(url))
             .Select(url => url!)
@@ -152,7 +152,7 @@ internal static class TriageListModel
 
     internal static List<BridgeTriageRow> SelectableReadyRows(
         BridgeTriageQueue queue, string filterText, CandidateSortOrder sortOrder) =>
-        Sections(queue, BridgeTriageTab.Ready, filterText, sortOrder)
+        Sections(queue, BridgeTriageTab.Pending, filterText, sortOrder)
             .SelectMany(section => section.Entries)
             .Select(entry => entry.Bridge)
             .OfType<BridgeTriageEntry.Candidate>()

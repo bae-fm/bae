@@ -375,7 +375,6 @@
   <data name="import.list_menu" xml:space="preserve"><value>排序與監看的資料夾</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>名稱（A–Z）</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>名稱（Z–A）</value></data>
-  <data name="import.tab.ready" xml:space="preserve"><value>就緒</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>待處理</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>已完成</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>選擇壓片版本</value></data>

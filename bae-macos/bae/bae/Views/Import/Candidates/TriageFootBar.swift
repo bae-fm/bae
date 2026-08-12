@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The Ready tab's foot bar: the selection count and the bulk-import button.
-/// Exists only in Ready — multi-select is the whole point of the Ready rule,
-/// and nowhere else offers a checkbox.
+/// Pending's foot bar: the selection count and the bulk-import button. Only
+/// rows core marks selectable contribute to it.
 struct TriageFootBar: View {
     let selectedCount: Int
     let readyCount: Int

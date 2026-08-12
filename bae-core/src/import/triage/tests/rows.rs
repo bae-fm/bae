@@ -103,16 +103,36 @@ fn signals_context() -> crate::identify::state::SignalsContext {
 
 // ── 1. Tab membership is total and exclusive ────────────────────────────────
 
+#[test]
+fn ready_and_needs_you_share_the_pending_tab() {
+    let ready = place(
+        false,
+        false,
+        None,
+        &CandidateAnswer::Classified(QueueClassification::Ready),
+    );
+    let needs_you = place(
+        false,
+        false,
+        None,
+        &CandidateAnswer::Classified(QueueClassification::NeedsYou(
+            NeedsYou::SignalsConflict,
+        )),
+    );
+
+    assert_eq!(ready.tab(), TriageTab::Pending);
+    assert_eq!(needs_you.tab(), TriageTab::Pending);
+}
+
 /// Every combination of what is known, import status, `skipped` and `is_added`
-/// lands in exactly one tab, and in the one the plan's rules name.
+/// lands in exactly one tab.
 ///
-/// The expectation is written as four independent predicates rather than as a
+/// The expectation is written as three independent predicates rather than as a
 /// second copy of `place`'s `if` chain: each is guarded by `!done` / `!skipped`
 /// so the precedence is stated once, declaratively, and a reordering of the
 /// checks in `place` breaks it.
 #[test]
 fn tab_membership_is_total_and_exclusive() {
-    let ready = CandidateAnswer::Classified(QueueClassification::Ready);
     let mut combinations = 0;
     for answer in every_answer() {
         for import_status in every_import_status() {
@@ -127,12 +147,10 @@ fn tab_membership_is_total_and_exclusive() {
                     );
                     let done = !importing && (is_added || import_status.is_some());
                     let is_skipped = !importing && !done && skipped;
-                    let is_ready = !importing && !done && !skipped && answer == ready;
-                    let needs_you = importing || (!done && !skipped && answer != ready);
+                    let pending = importing || (!done && !skipped);
 
                     let expected: Vec<TriageTab> = [
-                        (TriageTab::Ready, is_ready),
-                        (TriageTab::NeedsYou, needs_you),
+                        (TriageTab::Pending, pending),
                         (TriageTab::Done, done),
                         (TriageTab::Skipped, is_skipped),
                     ]
@@ -143,7 +161,7 @@ fn tab_membership_is_total_and_exclusive() {
                     assert_eq!(
                         expected.len(),
                         1,
-                        "the four tab rules must hold for exactly one tab \
+                        "the three tab rules must hold for exactly one tab \
                          (answer {answer:?}, import status {import_status:?}, \
                          skipped {skipped}, is_added {is_added})"
                     );
@@ -175,7 +193,7 @@ fn tab_membership_is_total_and_exclusive() {
 fn a_candidate_with_no_verdict_is_needs_you_not_ready() {
     for phase in every_phase() {
         let placement = place(false, false, None, &CandidateAnswer::Unanswered(phase));
-        assert_eq!(placement.tab(), TriageTab::NeedsYou);
+        assert_eq!(placement.tab(), TriageTab::Pending);
         assert_eq!(
             placement,
             TriagePlacement::NeedsYou {
@@ -297,7 +315,7 @@ fn an_import_in_flight_is_importing_not_done() {
     // land in a Needs-you group either.
     assert_eq!(
         place(false, false, Some(&importing), &ready).tab(),
-        TriageTab::NeedsYou
+        TriageTab::Pending
     );
 
     // The finished states still are Done.
@@ -388,8 +406,7 @@ fn tab_counts_equal_the_rows_in_each_tab() {
             .filter(|row| row.placement.tab() == tab)
             .count() as u32
     };
-    assert_eq!(queue.counts.ready, tally(TriageTab::Ready));
-    assert_eq!(queue.counts.needs_you, tally(TriageTab::NeedsYou));
+    assert_eq!(queue.counts.pending, tally(TriageTab::Pending));
     assert_eq!(queue.counts.done, tally(TriageTab::Done));
     assert_eq!(
         queue.counts.skipped,
@@ -401,8 +418,7 @@ fn tab_counts_equal_the_rows_in_each_tab() {
     assert_eq!(
         queue.counts,
         TriageTabCounts {
-            ready: 2,
-            needs_you: 3,
+            pending: 5,
             done: 1,
             skipped: 2,
         }
@@ -415,7 +431,7 @@ fn tab_counts_equal_the_rows_in_each_tab() {
             .into_iter()
             .filter(|row| row.selectable)
             .count() as u32,
-        queue.counts.ready
+        2
     );
 }
 

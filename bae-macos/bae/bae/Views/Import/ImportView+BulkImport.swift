@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-// MARK: - Bulk import (Ready tab)
+// MARK: - Bulk import (importable Pending rows)
 
 extension ImportView {
     /// Import every Ready candidate named in `keys` — the foot bar's action.

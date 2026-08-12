@@ -94,7 +94,7 @@ internal sealed class MainShellView : UserControl, System.IDisposable
 
     public void Dispose() => _queuePane.Dispose();
 
-    // Switch to the import section and land it on a fresh Ready tab — the
+    // Switch to the import section and land it on a fresh Pending tab — the
     // switcher click, and the folder-drop / activation flows that route here.
     public void ShowImport()
     {

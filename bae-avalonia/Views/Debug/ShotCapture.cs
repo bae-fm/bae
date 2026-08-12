@@ -61,7 +61,7 @@ internal static class ShotCapture
             700,
             () => BuildImportQueue(
                 PreviewData.ImportQueue,
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 collapseGroup: false,
                 refreshingRoot: null)),
         new Scene(
@@ -70,7 +70,7 @@ internal static class ShotCapture
             700,
             () => BuildImportQueue(
                 PreviewData.ImportQueue,
-                BridgeTriageTab.NeedsYou,
+                BridgeTriageTab.Pending,
                 collapseGroup: false,
                 refreshingRoot: null)),
         new Scene(
@@ -79,7 +79,7 @@ internal static class ShotCapture
             700,
             () => BuildImportQueue(
                 PreviewData.ImportQueue,
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 collapseGroup: true,
                 refreshingRoot: null)),
         new Scene(
@@ -88,7 +88,7 @@ internal static class ShotCapture
             700,
             () => BuildImportQueue(
                 PreviewData.ImportScanningQueue,
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 collapseGroup: false,
                 refreshingRoot: PreviewData.ImportRoot)),
         new Scene(
@@ -97,7 +97,7 @@ internal static class ShotCapture
             700,
             () => BuildImportQueue(
                 PreviewData.ImportResolvedQueue,
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 collapseGroup: false,
                 refreshingRoot: null)),
     };

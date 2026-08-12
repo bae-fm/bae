@@ -300,8 +300,7 @@ impl crate::types::BridgeTriageQueue {
             folder_scan_statuses,
         } = queue;
         let bae_core::import::TriageTabCounts {
-            ready,
-            needs_you,
+            pending,
             done,
             skipped,
         } = counts;
@@ -311,8 +310,7 @@ impl crate::types::BridgeTriageQueue {
                 .map(crate::types::BridgeTriageSection::from_core)
                 .collect(),
             counts: crate::types::BridgeTriageTabCounts {
-                ready,
-                needs_you,
+                pending,
                 done,
                 skipped,
             },
@@ -413,8 +411,7 @@ impl crate::types::BridgeTriageSection {
 impl crate::types::BridgeTriageTab {
     pub(super) fn from_core(tab: bae_core::import::TriageTab) -> Self {
         match tab {
-            bae_core::import::TriageTab::Ready => Self::Ready,
-            bae_core::import::TriageTab::NeedsYou => Self::NeedsYou,
+            bae_core::import::TriageTab::Pending => Self::Pending,
             bae_core::import::TriageTab::Done => Self::Done,
             bae_core::import::TriageTab::Skipped => Self::Skipped,
         }

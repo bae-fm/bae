@@ -95,7 +95,7 @@
         static func importReleaseQueue(
             store: ImportStore,
             tab: BridgeTriageTab,
-            collapseReadyGroup: Bool,
+            collapsePendingGroup: Bool,
             refreshingWatchedFolderPath: String?
         ) -> some View {
             let uiStore = UiStore()
@@ -106,9 +106,9 @@
                     true
                 )
             }
-            if collapseReadyGroup,
+            if collapsePendingGroup,
                 let group = store.triageQueue.sections
-                    .first(where: { $0.tab == .ready })?
+                    .first(where: { $0.tab == .pending })?
                     .group
             {
                 uiStore.setReleaseGroupExpanded(
@@ -136,8 +136,8 @@
     #Preview("Import Release Queue") {
         PreviewScenes.importReleaseQueue(
             store: PreviewData.releaseQueueImportStore,
-            tab: .ready,
-            collapseReadyGroup: false,
+            tab: .pending,
+            collapsePendingGroup: false,
             refreshingWatchedFolderPath: nil
         )
     }
@@ -145,8 +145,8 @@
     #Preview("Import Release Queue Scanning") {
         PreviewScenes.importReleaseQueue(
             store: PreviewData.releaseQueueScanningImportStore(),
-            tab: .ready,
-            collapseReadyGroup: false,
+            tab: .pending,
+            collapsePendingGroup: false,
             refreshingWatchedFolderPath:
                 PreviewData.releaseQueueWatchedFolder.path
         )
@@ -155,8 +155,8 @@
     #Preview("Import Release Queue Resolved") {
         PreviewScenes.importReleaseQueue(
             store: PreviewData.releaseQueueResolvedImportStore,
-            tab: .ready,
-            collapseReadyGroup: false,
+            tab: .pending,
+            collapsePendingGroup: false,
             refreshingWatchedFolderPath: nil
         )
     }

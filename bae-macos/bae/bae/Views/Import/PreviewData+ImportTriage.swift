@@ -278,16 +278,11 @@
             BridgeTriageQueue(
                 sections: [
                     BridgeTriageSection(
-                        tab: .ready,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [candidateEntry(triageRowReady)]
-                    ),
-                    BridgeTriageSection(
-                        tab: .needsYou,
+                        tab: .pending,
                         watchedFolderPath: importWatchedFolder.path,
                         group: nil,
                         entries: [
+                            triageRowReady,
                             triageRowPickAPressing,
                             triageRowSignalsConflict,
                             triageRowAlreadyInLibrary,
@@ -297,7 +292,7 @@
                         .map(candidateEntry)
                     ),
                     BridgeTriageSection(
-                        tab: .needsYou,
+                        tab: .pending,
                         watchedFolderPath: importWatchedFolder.path,
                         group: BridgeTriageGroup(
                             key: folderReleaseBoundary.key,
@@ -328,8 +323,7 @@
                     ),
                 ],
                 counts: BridgeTriageTabCounts(
-                    ready: 1,
-                    needsYou: 6,
+                    pending: 7,
                     done: 2,
                     skipped: 1 + UInt32(invalidCandidates.count)
                 ),

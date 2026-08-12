@@ -59,7 +59,8 @@ struct ImportReleaseBoundaryViewTests {
     )
     func decisionClearsSelectionBeforeCoreCompletes() async throws {
         let uiStore = UiStore()
-        uiStore.setImportCandidateTab(.needsYou)
+        uiStore.setImportCandidateTab(.pending)
+        uiStore.setImportCandidateFilterText("Box")
         uiStore.selectFolderCandidate("candidate:selected-before-decision")
         let importer = Importer(
             setFolderReleaseDecision: { _, _ in

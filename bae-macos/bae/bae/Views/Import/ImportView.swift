@@ -276,7 +276,7 @@ struct ImportView: View {
 
     #Preview("Import tab — a release settled") {
         let uiStore = ImportTabPreview.uiStore(
-            tab: .ready,
+            tab: .pending,
             selected: PreviewData.importTabCandidate.key,
             ticked: [PreviewData.importTabCandidate.key]
         )
@@ -284,12 +284,7 @@ struct ImportView: View {
     }
 
     #Preview("Import tab — nothing selected") {
-        let uiStore = ImportTabPreview.uiStore(tab: .ready)
-        ImportView().importTabPreviewEnvironment(uiStore: uiStore)
-    }
-
-    #Preview("Import tab — needs you") {
-        let uiStore = ImportTabPreview.uiStore(tab: .needsYou)
+        let uiStore = ImportTabPreview.uiStore(tab: .pending)
         ImportView().importTabPreviewEnvironment(uiStore: uiStore)
     }
 #endif

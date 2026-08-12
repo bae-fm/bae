@@ -1,6 +1,6 @@
 //! The import sidebar's rows, decided once in core.
 //!
-//! The sidebar asks the same four questions of every candidate — which tab it
+//! The sidebar asks the same questions of every candidate — which tab it
 //! belongs to, which Needs-you group it joins, what it leads with, and whether
 //! it takes a bulk-import checkbox — and every one of them is a rule rather
 //! than a rendering. [`crate::identify::view`] is the precedent: shape the
@@ -40,7 +40,7 @@ mod model;
 
 pub use model::*;
 
-/// Which tab a candidate belongs to, and — under Needs you — why.
+/// Which tab a candidate belongs to, and why a Pending row still needs input.
 ///
 /// A total function of four facts core already holds, checked in one order:
 ///
@@ -156,7 +156,7 @@ fn row(
     }
 }
 
-/// Every candidate's row and the four tab counts, in one pass.
+/// Every candidate's row and the three tab counts, in one pass.
 ///
 /// `answers` is keyed by content hash, which is what the stored rows are keyed
 /// by; a candidate with no entry has no verdict yet.
@@ -196,7 +196,7 @@ pub fn project(
         counts.bump(row.placement.tab());
         rows.push(row);
     }
-    counts.needs_you += boundaries.len() as u32;
+    counts.pending += boundaries.len() as u32;
     let sections = project_sections(&watched_folders, &rows, &invalid_candidates, &boundaries);
     TriageQueue {
         sections,
@@ -316,7 +316,7 @@ fn project_sections(
         ordered.push(OrderedEntry {
             watched_folder_path: boundary.key.watched_folder_path.clone(),
             display_path: boundary.display_path.clone(),
-            tab: TriageTab::NeedsYou,
+            tab: TriageTab::Pending,
             group: group_for(
                 &boundary.key.watched_folder_path,
                 &boundary.display_path,

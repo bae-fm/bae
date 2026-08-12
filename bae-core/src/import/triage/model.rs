@@ -1,19 +1,17 @@
 use super::*;
 
-/// The sidebar's four tabs, split by what the queue needs from the user rather
-/// than by lifecycle.
+/// The sidebar's three lifecycle tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TriageTab {
-    Ready,
-    NeedsYou,
+    Pending,
     Done,
     Skipped,
 }
 
-/// Where a row sits: its tab, and — under Needs you — why it is there.
+/// Where a row sits within Pending, or which terminal tab it belongs to.
 ///
-/// One field rather than a tab plus an optional group, so "Needs you with no
-/// group" and "Ready carrying a group" are not states anything can represent.
+/// One field rather than a tab plus optional status fields, so an unresolved
+/// row without a reason and an importable row with one are unrepresentable.
 /// See `many-fields-none-together-means-a-missing-type`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriagePlacement {
@@ -43,10 +41,7 @@ pub enum TriagePlacement {
 impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
-            Self::Ready => TriageTab::Ready,
-            // Pending is where a row waits for something to settle without
-            // anyone answering it, which is what an import in flight is doing.
-            Self::NeedsYou { .. } | Self::Importing => TriageTab::NeedsYou,
+            Self::Ready | Self::NeedsYou { .. } | Self::Importing => TriageTab::Pending,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
@@ -433,8 +428,7 @@ pub struct TriageSection {
 /// counts an array length.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TriageTabCounts {
-    pub ready: u32,
-    pub needs_you: u32,
+    pub pending: u32,
     pub done: u32,
     pub skipped: u32,
 }
@@ -442,8 +436,7 @@ pub struct TriageTabCounts {
 impl TriageTabCounts {
     pub(super) fn bump(&mut self, tab: TriageTab) {
         match tab {
-            TriageTab::Ready => self.ready += 1,
-            TriageTab::NeedsYou => self.needs_you += 1,
+            TriageTab::Pending => self.pending += 1,
             TriageTab::Done => self.done += 1,
             TriageTab::Skipped => self.skipped += 1,
         }

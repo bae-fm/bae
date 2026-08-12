@@ -195,17 +195,17 @@ pub enum BridgeFolderScanStatus {
 // rule the sidebar renders — which tab, which group, which checkbox, which
 // counts — is core's; a UI iterates these and formats them for its locale.
 
-/// The sidebar's four tabs.
+/// The sidebar's three tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriageTab {
-    Ready,
-    NeedsYou,
+    Pending,
     Done,
     Skipped,
 }
 
-/// Where a row sits, and — under Needs you — why. One value rather than a tab
-/// plus an optional group, so a surface cannot read half of it.
+/// Where a row sits, including why a Pending row still needs input. One value
+/// rather than a tab plus an optional group, so a surface cannot read half of
+/// it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Ready,
@@ -336,10 +336,9 @@ pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
 #[uniffi::export]
 pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
     match placement {
-        BridgeTriagePlacement::Ready => BridgeTriageTab::Ready,
-        BridgeTriagePlacement::NeedsYou { .. } | BridgeTriagePlacement::Importing => {
-            BridgeTriageTab::NeedsYou
-        }
+        BridgeTriagePlacement::Ready
+        | BridgeTriagePlacement::NeedsYou { .. }
+        | BridgeTriagePlacement::Importing => BridgeTriageTab::Pending,
         BridgeTriagePlacement::Done => BridgeTriageTab::Done,
         BridgeTriagePlacement::Skipped => BridgeTriageTab::Skipped,
     }
@@ -570,8 +569,7 @@ pub struct BridgeTriageSection {
 /// filter is applied.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeTriageTabCounts {
-    pub ready: u32,
-    pub needs_you: u32,
+    pub pending: u32,
     pub done: u32,
     pub skipped: u32,
 }

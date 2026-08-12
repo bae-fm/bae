@@ -9,8 +9,8 @@ func releaseGroupDisclosureID(
 
 // MARK: - ImportCandidateListContent
 
-/// The import sidebar: four tabs over one triage queue. Every row, its tab,
-/// its Needs-you group, and the tab counts come from
+/// The import sidebar: three tabs over one triage queue. Every row, its tab,
+/// its Pending group, and the tab counts come from
 /// `ImportStore.triageQueue` — core's projection — read through
 /// `ImportStore`'s filtering/sorting helpers. This view iterates and renders;
 /// it decides nothing about where a row belongs.
@@ -32,7 +32,7 @@ struct ImportCandidateListContent: View {
         ) -> Void
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
-    /// Import every candidate in `keys` — the Ready foot bar's bulk action.
+    /// Import every candidate in `keys` — Pending's bulk action.
     let onImportSelected: (_ keys: [String]) -> Void
 
     @Environment(UiStore.self)
@@ -86,7 +86,7 @@ struct ImportCandidateListContent: View {
     /// True when the active tab has nothing to show — drives the empty state.
     private var activeTabIsEmpty: Bool {
         switch uiStore.importCandidateTab {
-        case .ready, .needsYou, .done, .skipped:
+        case .pending, .done, .skipped:
             sections(uiStore.importCandidateTab).isEmpty
         }
     }
@@ -140,7 +140,7 @@ struct ImportCandidateListContent: View {
                             .firstUnidentifiedCandidateKey
                             .map { key in
                                 {
-                                    uiStore.setImportCandidateTab(.needsYou)
+                                    uiStore.setImportCandidateTab(.pending)
                                     selectedKey = key
                                 }
                             }
@@ -164,9 +164,9 @@ struct ImportCandidateListContent: View {
                 releaseGroupDisclosureIDs
             )
         }
-        // Ready rows are covers this app has already downloaded once, for a tab
-        // that is one click away. Decoding them as the queue lands is what
-        // makes the tab's first frame the art rather than a grid of spinners.
+        // Importable rows are covers this app has already downloaded once.
+        // Decoding them as the queue lands keeps Pending's first frame from
+        // being a grid of spinners.
         .task(id: importStore.readyCoverThumbnailUrls) {
             await imageStore.warm(
                 importStore.readyCoverThumbnailUrls.map {
@@ -193,8 +193,7 @@ struct ImportCandidateListContent: View {
 
     private var emptyTabSymbol: String {
         switch uiStore.importCandidateTab {
-        case .ready: "checkmark.circle"
-        case .needsYou: "questionmark.circle"
+        case .pending: "questionmark.circle"
         case .done: "tray.full"
         case .skipped: "minus.circle"
         }
@@ -203,8 +202,7 @@ struct ImportCandidateListContent: View {
     @ViewBuilder
     private var tabList: some View {
         switch uiStore.importCandidateTab {
-        case .ready: readyList
-        case .needsYou: needsYouList
+        case .pending: pendingList
         case .done: doneList
         case .skipped: skippedList
         }
@@ -375,17 +373,17 @@ extension ImportCandidateListContent {
 /// The per-tab lists. In an extension so the view's body and the chrome it
 /// builds — tabs, filter, progress — read as one piece above them.
 extension ImportCandidateListContent {
-    // MARK: - Ready
+    // MARK: - Pending
 
     private var selectedReadyKeys: Set<String> {
         let currentReady = Set(readyRows.map(\.candidateKey))
         return uiStore.selectedReadyCandidates.intersection(currentReady)
     }
 
-    private var readyList: some View {
+    private var pendingList: some View {
         VStack(spacing: 0) {
             List(selection: $selectedKey) {
-                ForEach(sections(.ready)) { section in
+                ForEach(sections(.pending)) { section in
                     releaseSection(section)
                 }
             }
@@ -401,18 +399,6 @@ extension ImportCandidateListContent {
                 onImport: { onImportSelected(Array(selectedReadyKeys)) }
             )
         }
-    }
-
-    // MARK: - Needs you
-
-    private var needsYouList: some View {
-        List(selection: $selectedKey) {
-            ForEach(sections(.needsYou)) { section in
-                releaseSection(section)
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.surface)
     }
 
     // MARK: - Done

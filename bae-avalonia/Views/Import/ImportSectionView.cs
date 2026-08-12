@@ -13,12 +13,12 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// The import triage sidebar: four tabs (Pending / Ready / Done / Skipped) over
+// The import triage sidebar: three tabs (Pending / Done / Skipped) over
 // core's BridgeTriageQueue projection, shown in the shell's content area when the
 // Library/Import switcher selects Import (the macOS import sidebar's Avalonia
 // counterpart — ImportCandidateListContent + TriageRowView share this partial
 // view owner while their section/row rendering lives in separate files. Every
-// row, its tab, its Needs-you group, and the tab counts come
+// row, its tab, its Pending group, and the tab counts come
 // from ImportStore.TriageQueue, read through TriageListModel's
 // filter/group/sort; this view iterates and renders — it decides nothing about
 // where a row belongs.
@@ -30,10 +30,10 @@ namespace Bae.Desktop;
 // macOS reserves for a focused row rides this row's tooltip instead.
 //
 // Built once and kept for the window's lifetime (the store subscription lives
-// that long); entering the section resets to Ready and refreshes.
+// that long); entering the section resets to Pending and refreshes.
 internal sealed partial class ImportSectionView : UserControl
 {
-    // Wide enough for the four tab labels and their count badges on one line.
+    // Wide enough for the three tab labels and their count badges on one line.
     private const double PaneWidth = 420;
 
     private readonly AppService _app;
@@ -44,8 +44,8 @@ internal sealed partial class ImportSectionView : UserControl
     // its row without asking the pane.
     private string? _selectedKey;
 
-    // The Ready covers already handed to the image store, so a re-render that
-    // left Ready alone does not queue the same decodes again.
+    // The importable covers already handed to the image store, so an unchanged
+    // queue does not enqueue the same decodes again.
     private List<string> _warmedReadyCovers = new();
 
     // Header controls, built once and mutated in place on Render() so the
@@ -101,7 +101,7 @@ internal sealed partial class ImportSectionView : UserControl
         {
             return;
         }
-        _import.SetActiveTab(BridgeTriageTab.NeedsYou);
+        _import.SetActiveTab(BridgeTriageTab.Pending);
     }
 
     // ── Shell ─────────────────────────────────────────────────────────────────
@@ -280,10 +280,10 @@ internal sealed partial class ImportSectionView : UserControl
         WarmReadyCovers();
     }
 
-    // Ready rows are covers this app has already downloaded once, for a tab
-    // that is one click away. Decoding them as the queue lands is what makes
-    // the tab's first paint the art rather than a grid of blanks. Keyed on the
-    // URL list so a re-render that changed nothing about Ready warms nothing.
+    // Importable rows are covers this app has already downloaded once.
+    // Decoding them as the queue lands keeps Pending's first paint from being
+    // a grid of blanks. Keyed on the URL list so an unchanged queue warms
+    // nothing.
     private void WarmReadyCovers()
     {
         var urls = TriageListModel.ReadyCoverThumbnailUrls(_import.TriageQueue);
@@ -300,12 +300,11 @@ internal sealed partial class ImportSectionView : UserControl
     private void RenderTabBar()
     {
         _tabBarHost.Children.Clear();
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 4 };
         var counts = _import.TriageQueue.Counts;
-        AddTabSegment(row, 0, BridgeTriageTab.NeedsYou, Loc.Chrome("import.tab.pending"), counts.NeedsYou);
-        AddTabSegment(row, 1, BridgeTriageTab.Ready, Loc.Chrome("import.tab.ready"), counts.Ready);
-        AddTabSegment(row, 2, BridgeTriageTab.Done, Loc.Chrome("import.tab.done"), counts.Done);
-        AddTabSegment(row, 3, BridgeTriageTab.Skipped, Loc.Chrome("import.tab.skipped"), counts.Skipped);
+        AddTabSegment(row, 0, BridgeTriageTab.Pending, Loc.Chrome("import.tab.pending"), counts.Pending);
+        AddTabSegment(row, 1, BridgeTriageTab.Done, Loc.Chrome("import.tab.done"), counts.Done);
+        AddTabSegment(row, 2, BridgeTriageTab.Skipped, Loc.Chrome("import.tab.skipped"), counts.Skipped);
         _tabBarHost.Children.Add(row);
     }
 
@@ -457,7 +456,7 @@ internal sealed partial class ImportSectionView : UserControl
             {
                 line.Click += (_, _) =>
                 {
-                    _import.SetActiveTab(BridgeTriageTab.NeedsYou);
+                    _import.SetActiveTab(BridgeTriageTab.Pending);
                     OnRowActivated(row);
                 };
             }
@@ -488,8 +487,7 @@ internal sealed partial class ImportSectionView : UserControl
     {
         Control content = _import.ActiveTab switch
         {
-            BridgeTriageTab.Ready => RenderReady(),
-            BridgeTriageTab.NeedsYou => RenderNeedsYou(),
+            BridgeTriageTab.Pending => RenderPending(),
             BridgeTriageTab.Done => RenderDone(),
             BridgeTriageTab.Skipped => RenderSkipped(),
             _ => new Panel(),
@@ -510,18 +508,23 @@ internal sealed partial class ImportSectionView : UserControl
         return new Border { Child = text, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
     }
 
-    private Control RenderReady()
+    private Control RenderPending()
     {
-        var rows = TriageListModel.SelectableReadyRows(
+        var sections = TriageListModel.Sections(
             _import.TriageQueue,
+            BridgeTriageTab.Pending,
             _import.FilterText,
             _import.SortOrder);
-        if (rows.Count == 0)
+        if (sections.Count == 0)
         {
             return EmptyState(_import.FilterText.Length > 0);
         }
 
-        var scroller = RenderReleaseSections(BridgeTriageTab.Ready);
+        var rows = TriageListModel.SelectableReadyRows(
+            _import.TriageQueue,
+            _import.FilterText,
+            _import.SortOrder);
+        var scroller = RenderReleaseSections(BridgeTriageTab.Pending);
 
         var readyKeys = rows.Select(row => row.CandidateKey).ToList();
         var selectedCount = _import.SelectedReady.Count(readyKeys.Contains);
@@ -609,7 +612,7 @@ internal sealed partial class ImportSectionView : UserControl
         {
             // Selection can outlive the row that earned it (imported by a
             // faster sibling call, or reclassified) — the list content already
-            // intersects the selection against the tab's current Ready keys,
+            // intersects the selection against Pending's current importable keys,
             // so a miss here is defensive, not expected.
             var row = TriageListModel.Row(_import.TriageQueue, key);
             if (row?.Claim is not { } claim)
@@ -656,20 +659,6 @@ internal sealed partial class ImportSectionView : UserControl
                 Loc.Chrome("import.error_title"),
                 Loc.Chrome("import.bulk_import_failed", "count", (long)failureCount));
         }
-    }
-
-    private Control RenderNeedsYou()
-    {
-        var sections = TriageListModel.Sections(
-            _import.TriageQueue,
-            BridgeTriageTab.NeedsYou,
-            _import.FilterText,
-            _import.SortOrder);
-        if (sections.Count == 0)
-        {
-            return EmptyState(_import.FilterText.Length > 0);
-        }
-        return RenderReleaseSections(BridgeTriageTab.NeedsYou);
     }
 
     private Control RenderDone()

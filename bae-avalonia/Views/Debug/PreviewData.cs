@@ -33,7 +33,7 @@ internal static class PreviewData
         Sections: new[]
         {
             new BridgeTriageSection(
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 ImportRoot,
                 new BridgeTriageGroup(
                     ImportGroupKey,
@@ -48,7 +48,7 @@ internal static class PreviewData
                         ImportRow("Release 02", "Collection/Release 02")),
                 }),
             new BridgeTriageSection(
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 ImportRoot,
                 null,
                 new BridgeTriageEntry[]
@@ -56,13 +56,6 @@ internal static class PreviewData
                     new BridgeTriageEntry.Candidate(
                         $"{ImportRoot}/Release 03",
                         ImportRow("Release 03", "Release 03")),
-                }),
-            new BridgeTriageSection(
-                BridgeTriageTab.NeedsYou,
-                ImportRoot,
-                null,
-                new BridgeTriageEntry[]
-                {
                     new BridgeTriageEntry.Boundary(
                         $"{ImportRoot}/Archive/Box",
                         new BridgeFolderReleaseBoundary(
@@ -110,8 +103,7 @@ internal static class PreviewData
                 }),
         },
         Counts: new BridgeTriageTabCounts(
-            Ready: 3,
-            NeedsYou: 1,
+            Pending: 4,
             Done: 0,
             Skipped: 0),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
@@ -132,7 +124,7 @@ internal static class PreviewData
         Sections: new[]
         {
             new BridgeTriageSection(
-                BridgeTriageTab.Ready,
+                BridgeTriageTab.Pending,
                 ImportRoot,
                 null,
                 new BridgeTriageEntry[]
@@ -163,8 +155,7 @@ internal static class PreviewData
                 }),
         },
         Counts: new BridgeTriageTabCounts(
-            Ready: 1,
-            NeedsYou: 0,
+            Pending: 1,
             Done: 0,
             Skipped: 0),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());

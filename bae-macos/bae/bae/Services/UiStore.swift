@@ -123,15 +123,14 @@ class UiStore: @unchecked Sendable {
     /// session state, alongside `selectedFolderCandidate` — surviving a
     /// remount so the sidebar doesn't reset to its defaults on every
     /// import-tab switch.
-    var importCandidateTab: BridgeTriageTab = .needsYou
+    var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
 
-    /// Checked candidate keys in the Ready tab's bulk-select — UI state, never
+    /// Checked bulk-importable candidate keys in Pending — UI state, never
     /// persisted, and never crossing the bridge. A key surviving here after
-    /// its row leaves Ready (imported, or reclassified) is harmless: every
-    /// reader intersects this against the tab's *current* Ready keys rather
-    /// than trusting the set on its own, so there is nothing to prune
-    /// proactively.
+    /// its row stops being importable is harmless: every reader intersects
+    /// this against the current importable keys rather than trusting the set
+    /// on its own, so there is nothing to prune proactively.
     var selectedReadyCandidates: Set<String> = []
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
         [:]
@@ -296,7 +295,7 @@ class UiStore: @unchecked Sendable {
         importCandidateFilterText = text
     }
 
-    // MARK: - Ready-tab bulk selection
+    // MARK: - Pending-tab bulk selection
 
     func toggleReadySelection(_ key: String) {
         if selectedReadyCandidates.contains(key) {
@@ -307,7 +306,7 @@ class UiStore: @unchecked Sendable {
         }
     }
 
-    /// Select every key in `keys` (the tab's current Ready rows) — "Select
+    /// Select every key in `keys` (Pending's current importable rows) — "Select
     /// all" reads as "select what's visible now," not "remember these keys
     /// forever," so it replaces rather than unions.
     func selectAllReady(_ keys: [String]) {

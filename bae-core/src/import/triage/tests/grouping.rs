@@ -369,7 +369,7 @@ mod load {
         let queue = fixture.load().await.unwrap();
         assert_eq!(candidate_rows(&queue).len(), 1);
         assert_eq!(candidate_rows(&queue)[0].placement, TriagePlacement::Ready);
-        assert_eq!(queue.counts.ready, 1);
+        assert_eq!(queue.counts.pending, 1);
         assert!(candidate_rows(&queue)[0].selectable);
     }
 
@@ -400,8 +400,7 @@ mod load {
             },
             "a release the library already holds must never be bulk-importable"
         );
-        assert_eq!(queue.counts.ready, 0);
-        assert_eq!(queue.counts.needs_you, 1);
+        assert_eq!(queue.counts.pending, 1);
         assert!(!candidate_rows(&queue)[0].selectable);
     }
 
@@ -496,7 +495,6 @@ mod load {
             }
         );
         assert_eq!(placement_of("fresh"), TriagePlacement::Ready);
-        assert_eq!(queue.counts.ready, 1);
-        assert_eq!(queue.counts.needs_you, 1);
+        assert_eq!(queue.counts.pending, 2);
     }
 }

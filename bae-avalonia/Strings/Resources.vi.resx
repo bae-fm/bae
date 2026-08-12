@@ -375,7 +375,6 @@
   <data name="import.list_menu" xml:space="preserve"><value>Sắp xếp và thư mục theo dõi</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Tên (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Tên (Z–A)</value></data>
-  <data name="import.tab.ready" xml:space="preserve"><value>Sẵn sàng</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Đang chờ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Hoàn tất</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Chọn bản ép</value></data>

@@ -375,7 +375,6 @@
   <data name="import.list_menu" xml:space="preserve"><value>Tri et dossiers surveillés</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Nom (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nom (Z–A)</value></data>
-  <data name="import.tab.ready" xml:space="preserve"><value>Prêts</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>En attente</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Terminés</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Choisir un pressage</value></data>

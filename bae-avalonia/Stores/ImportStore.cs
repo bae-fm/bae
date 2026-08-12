@@ -29,7 +29,7 @@ internal sealed class ImportStore : IDisposable
     // tell them apart.
     public BridgeTriageQueue TriageQueue { get; private set; } = new(
         Sections: Array.Empty<BridgeTriageSection>(),
-        Counts: new BridgeTriageTabCounts(Ready: 0, NeedsYou: 0, Done: 0, Skipped: 0),
+        Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
 
     // The folders being watched for imports, in add order — the sidebar's "+"
@@ -48,7 +48,7 @@ internal sealed class ImportStore : IDisposable
     public (uint Identified, uint Total)? QueueIdentifyProgress { get; private set; }
 
     // The active tab; resets to Pending on each section entry and on teardown.
-    public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.NeedsYou;
+    public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.Pending;
 
     // The live filter query over the candidate list.
     public string FilterText { get; private set; } = string.Empty;
@@ -57,7 +57,7 @@ internal sealed class ImportStore : IDisposable
     // saved whenever the sidebar changes it.
     public CandidateSortOrder SortOrder { get; private set; }
 
-    // Bulk-select state for the Ready tab's foot bar. Selection is view state —
+    // Bulk-select state for Pending's importable rows. Selection is view state —
     // it is not persisted and does not cross the bridge.
     public HashSet<string> SelectedReady { get; } = new();
     public ReleaseQueueInteractionModel Interaction { get; } = new();
@@ -483,18 +483,18 @@ internal sealed class ImportStore : IDisposable
 
     // Scan candidates, watched folders, and selection are per-library in-memory
     // state; clear them on teardown so the next library doesn't inherit the
-    // previous one's list, and reset the tab to Ready. The sort order persists
+    // previous one's list, and reset the tab to Pending. The sort order persists
     // — it's a preference, not library state.
     public void Reset()
     {
         ClearReleaseLibraryStatus();
         TriageQueue = new BridgeTriageQueue(
             Sections: Array.Empty<BridgeTriageSection>(),
-            Counts: new BridgeTriageTabCounts(Ready: 0, NeedsYou: 0, Done: 0, Skipped: 0),
+            Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
             FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
         WatchedFolders = new List<BridgeWatchedFolder>();
         QueueIdentifyProgress = null;
-        ActiveTab = BridgeTriageTab.NeedsYou;
+        ActiveTab = BridgeTriageTab.Pending;
         FilterText = string.Empty;
         SelectedReady.Clear();
         Interaction.RetainGroupDisclosureKeys(

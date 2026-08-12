@@ -4,7 +4,7 @@ import OrderedCollections
 import SwiftUI
 
 /// The sidebar row list's sort order — the only thing left for a surface to
-/// decide once core has placed every row into its tab and, under Needs you,
+/// decide once core has placed every row into its tab and, within Pending,
 /// its group. `ordered(_:by:title:)` below interprets it against whatever
 /// title a row is actually showing (the matched release's, or the folder
 /// name), so the sort matches what a person reads.
@@ -98,8 +98,7 @@ class ImportStore {
     var triageQueue: BridgeTriageQueue = BridgeTriageQueue(
         sections: [],
         counts: BridgeTriageTabCounts(
-            ready: 0,
-            needsYou: 0,
+            pending: 0,
             done: 0,
             skipped: 0
         ),
@@ -382,19 +381,22 @@ extension ImportStore {
             .candidateKey
     }
 
-    /// The cover art of every Ready row, in queue order.
+    /// The cover art of every bulk-importable Pending row, in queue order.
     ///
     /// Identification already fetched these — a row reaches Ready by settling
-    /// on one match, and that match carries the thumbnail URL — so the Ready
-    /// tab has no reason to open on a grid of spinners. Read unfiltered and
+    /// on one match, and that match carries the thumbnail URL — so Pending has
+    /// no reason to open on a grid of spinners. Read unfiltered and
     /// unsorted: what the tab is about to draw does not depend on what the
     /// filter box currently says.
     var readyCoverThumbnailUrls: [String] {
         triageQueue.sections
-            .filter { $0.tab == .ready }
+            .filter { $0.tab == .pending }
             .flatMap(\.entries)
             .compactMap { entry in
-                guard case .candidate(_, let row) = entry else { return nil }
+                guard
+                    case .candidate(_, let row) = entry,
+                    row.selectable
+                else { return nil }
                 return row.matched?.coverThumbnailUrl
             }
     }
@@ -404,7 +406,7 @@ extension ImportStore {
         sortOrder: CandidateSortOrder
     ) -> [BridgeTriageRow] {
         releaseSections(
-            tab: .ready,
+            tab: .pending,
             filterText: filterText,
             sortOrder: sortOrder
         )

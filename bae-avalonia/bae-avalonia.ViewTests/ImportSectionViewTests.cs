@@ -63,8 +63,8 @@ public sealed class ImportSectionViewTests
     {
         var resumed = new List<string>();
         var view = BuildView(
-            MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Ready),
-            BridgeTriageTab.Ready,
+            MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Pending),
+            BridgeTriageTab.Pending,
             resumed);
 
         RaiseTap(CandidateRow(view));
@@ -100,16 +100,16 @@ public sealed class ImportSectionViewTests
                 new BridgeTriagePlacement.NeedsYou(
                     BridgeNeedsYouGroup.StillIdentifying,
                     new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running)),
-                BridgeTriageTab.NeedsYou),
-            BridgeTriageTab.NeedsYou,
+                BridgeTriageTab.Pending),
+            BridgeTriageTab.Pending,
             resumed);
         RaiseTap(CandidateRow(view));
         Assert.Empty(resumed);
 
         app.ImportStore.SeedPreview(
-            MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Ready),
+            MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Pending),
             PreviewData.ImportWatchedFolders,
-            BridgeTriageTab.NeedsYou);
+            BridgeTriageTab.Pending);
 
         Assert.Equal(new[] { CandidateKey }, resumed);
     }
@@ -135,13 +135,13 @@ public sealed class ImportSectionViewTests
 
     private static ImportSectionView BuildView(
         BridgeTriageQueue queue,
-        BridgeTriageTab activeTab = BridgeTriageTab.Ready,
+        BridgeTriageTab activeTab = BridgeTriageTab.Pending,
         List<string>? resumed = null) =>
         BuildSection(queue, activeTab, resumed).View;
 
     private static (ImportSectionView View, AppService App) BuildSection(
         BridgeTriageQueue queue,
-        BridgeTriageTab activeTab = BridgeTriageTab.Ready,
+        BridgeTriageTab activeTab = BridgeTriageTab.Pending,
         List<string>? resumed = null)
     {
         // Everything below constructs controls, which is only legal on the
@@ -255,8 +255,7 @@ public sealed class ImportSectionViewTests
                 }),
         },
         Counts: new BridgeTriageTabCounts(
-            Ready: tab is BridgeTriageTab.Ready ? 1u : 0u,
-            NeedsYou: tab is BridgeTriageTab.NeedsYou ? 1u : 0u,
+            Pending: tab is BridgeTriageTab.Pending ? 1u : 0u,
             Done: tab is BridgeTriageTab.Done ? 1u : 0u,
             Skipped: tab is BridgeTriageTab.Skipped ? 1u : 0u),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());

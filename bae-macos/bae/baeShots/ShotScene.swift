@@ -32,8 +32,8 @@ struct ShotScene {
             AnyView(
                 PreviewScenes.importReleaseQueue(
                     store: PreviewData.releaseQueueImportStore,
-                    tab: .ready,
-                    collapseReadyGroup: false,
+                    tab: .pending,
+                    collapsePendingGroup: false,
                     refreshingWatchedFolderPath: nil
                 )
             )
@@ -45,8 +45,8 @@ struct ShotScene {
             AnyView(
                 PreviewScenes.importReleaseQueue(
                     store: PreviewData.releaseQueueImportStore,
-                    tab: .needsYou,
-                    collapseReadyGroup: false,
+                    tab: .pending,
+                    collapsePendingGroup: false,
                     refreshingWatchedFolderPath: nil
                 )
             )
@@ -58,8 +58,8 @@ struct ShotScene {
             AnyView(
                 PreviewScenes.importReleaseQueue(
                     store: PreviewData.releaseQueueImportStore,
-                    tab: .ready,
-                    collapseReadyGroup: true,
+                    tab: .pending,
+                    collapsePendingGroup: true,
                     refreshingWatchedFolderPath: nil
                 )
             )
@@ -71,8 +71,8 @@ struct ShotScene {
             AnyView(
                 PreviewScenes.importReleaseQueue(
                     store: PreviewData.releaseQueueScanningImportStore(),
-                    tab: .ready,
-                    collapseReadyGroup: false,
+                    tab: .pending,
+                    collapsePendingGroup: false,
                     refreshingWatchedFolderPath:
                         PreviewData.releaseQueueWatchedFolder.path
                 )
@@ -85,8 +85,8 @@ struct ShotScene {
             AnyView(
                 PreviewScenes.importReleaseQueue(
                     store: PreviewData.releaseQueueResolvedImportStore,
-                    tab: .ready,
-                    collapseReadyGroup: false,
+                    tab: .pending,
+                    collapsePendingGroup: false,
                     refreshingWatchedFolderPath: nil
                 )
             )
