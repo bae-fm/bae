@@ -189,6 +189,7 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                             BridgeLiveQueryCause.DATABASE_CHANGED,
                             BridgeLiveQueryCause.REQUEST_AND_DATABASE_CHANGED,
                             -> true
+
                             BridgeLiveQueryCause.INITIAL,
                             BridgeLiveQueryCause.REQUEST_CHANGED,
                             -> false

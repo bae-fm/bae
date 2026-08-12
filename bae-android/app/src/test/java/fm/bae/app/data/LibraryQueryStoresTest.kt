@@ -48,6 +48,5 @@ class LibraryQueryStoresTest {
             scope.cancel()
         }
 
-    private fun queryFailure(): BridgeException =
-        BridgeException.Diagnostic(BridgeErrorCategory.DATABASE, "query failed")
+    private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.DATABASE, "query failed")
 }

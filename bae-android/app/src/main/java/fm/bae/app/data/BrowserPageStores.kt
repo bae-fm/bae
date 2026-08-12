@@ -211,8 +211,7 @@ internal class AlbumPageStore(
                     override fun onValue(value: BridgeAlbumPage) =
                         deliver(offset, generation, identity, value.rows, value.totalCount.toInt())
 
-                    override fun onError(errorValue: BridgeException) =
-                        fail(offset, generation, identity, errorValue)
+                    override fun onError(errorValue: BridgeException) = fail(offset, generation, identity, errorValue)
                 },
             )
         return PageSubscription(subscription::cancel)
@@ -239,8 +238,7 @@ internal class ArtistPageStore(
                     override fun onValue(value: BridgeArtistPage) =
                         deliver(offset, generation, identity, value.rows, value.totalCount.toInt())
 
-                    override fun onError(errorValue: BridgeException) =
-                        fail(offset, generation, identity, errorValue)
+                    override fun onError(errorValue: BridgeException) = fail(offset, generation, identity, errorValue)
                 },
             )
         return PageSubscription(subscription::cancel)
@@ -267,8 +265,7 @@ internal class ComposerPageStore(
                     override fun onValue(value: BridgeComposerPage) =
                         deliver(offset, generation, identity, value.rows, value.totalCount.toInt())
 
-                    override fun onError(errorValue: BridgeException) =
-                        fail(offset, generation, identity, errorValue)
+                    override fun onError(errorValue: BridgeException) = fail(offset, generation, identity, errorValue)
                 },
             )
         return PageSubscription(subscription::cancel)

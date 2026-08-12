@@ -23,7 +23,10 @@ class LibraryStore {
 
     fun albumDetail(albumId: String): BridgeAlbumDetail? = _albumDetails.value[albumId]
 
-    fun applyAlbumDetail(albumId: String, album: BridgeAlbumDetail?) {
+    fun applyAlbumDetail(
+        albumId: String,
+        album: BridgeAlbumDetail?,
+    ) {
         _albumDetails.update { details ->
             if (album == null) {
                 details - albumId
@@ -32,5 +35,4 @@ class LibraryStore {
             }
         }
     }
-
 }
