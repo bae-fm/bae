@@ -40,7 +40,7 @@ internal class BaeLibrarySessionCallback(
         session: MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
         params: LibraryParams?,
-    ): ListenableFuture<LibraryResult<MediaItem>> = scope.future { LibraryResult.ofItem(tree.root(), params) }
+    ): ListenableFuture<LibraryResult<MediaItem>> = scope.future { LibraryResult.ofItem(tree.root, params) }
 
     override fun onGetChildren(
         session: MediaLibrarySession,
@@ -49,8 +49,10 @@ internal class BaeLibrarySessionCallback(
         page: Int,
         pageSize: Int,
         params: LibraryParams?,
-    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
-        getChildren(browser, parentId, page, pageSize, params)
+    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+        val children = getChildren(browser, parentId, page, pageSize, params)
+        return children
+    }
 
     internal fun getChildren(
         browser: MediaSession.ControllerInfo,

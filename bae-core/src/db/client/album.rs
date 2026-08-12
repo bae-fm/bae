@@ -221,20 +221,8 @@ impl Database {
             "{select} FROM albums a {artist_sort_join} ORDER BY {order_by} LIMIT ? OFFSET ?"
         );
         self.inner.handle.subscribe(move |sql| {
-            let rows: Vec<DbAlbumSummary> = sql
-                .query(&query, params![limit as i64, offset as i64], |row| {
-                    Ok(parse_album_summary_row(row))
-                })?
-                .into_iter()
-                .collect::<Result<_, DbError>>()
-                .map_err(CovenError::from)?;
-            let release_ids = rows
-                .iter()
-                .flat_map(|row| row.release_ids.iter().cloned())
-                .collect::<Vec<_>>();
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?;
+            let (rows, cover_versions) =
+                album_rows_with_covers_on(&sql, &query, params![limit as i64, offset as i64])?;
             let total_count = album_count_on(&sql).map_err(CovenError::from)?;
             Ok(AlbumPageProjection {
                 rows,
@@ -244,41 +232,54 @@ impl Database {
         })
     }
 
-    pub(crate) fn subscribe_album_parent_observation(
+    pub(crate) fn subscribe_album_browse(
         &self,
-    ) -> coven::LiveQuery<LibraryParentObservationProjection> {
-        let query = format!(
-            "{},
-             a.created_at AS parent_created_at,
-             (SELECT COALESCE(parent_artist.sort_name, parent_artist.name)
-              FROM artists parent_artist
-              WHERE parent_artist.id = a.artist_id) AS parent_artist_order
-             FROM albums a",
-            album_summary_select()
+        sort: &[AlbumSortCriterion],
+        initial_windows: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, AlbumBrowseProjection>
+    {
+        let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
+        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let page_query = format!(
+            "{} FROM albums a {artist_sort_join} ORDER BY {order_by} LIMIT ? OFFSET ?",
+            album_summary_select(),
         );
-        self.inner.handle.subscribe(move |sql| {
-            let rows = sql
-                .query(&query, [], |row| {
-                    let summary = parse_album_summary_row(row);
-                    let _: String = row.get("parent_created_at")?;
-                    let _: Option<String> = row.get("parent_artist_order")?;
-                    Ok(summary)
-                })?
-                .into_iter()
-                .collect::<Result<Vec<_>, DbError>>()
-                .map_err(CovenError::from)?;
-            let release_ids = rows
-                .iter()
-                .flat_map(|row| row.release_ids.iter().cloned())
-                .collect::<Vec<_>>();
-            drop(
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?,
-            );
-            Ok(LibraryParentObservationProjection {
-                child_count: rows.len() as u64,
+        let dependency_query = format!(
+            "{} FROM albums a {artist_sort_join} ORDER BY {order_by}",
+            album_summary_select(),
+        );
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial_windows, move |requested, sql| {
+                let total_count = album_count_on(&sql).map_err(CovenError::from)?;
+                let dependency_rows = album_rows_on(&sql, &dependency_query, [])?;
+                let release_ids = dependency_rows
+                    .iter()
+                    .flat_map(|row| row.release_ids.iter().cloned())
+                    .collect::<Vec<_>>();
+                let cover_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                        .map_err(CovenError::from)?;
+                let windows = requested
+                    .iter()
+                    .map(|window| {
+                        let rows = album_rows_on(
+                            &sql,
+                            &page_query,
+                            params![window.limit as i64, window.offset as i64],
+                        )?;
+                        Ok(crate::library::LibraryBrowseWindow {
+                            window: window.clone(),
+                            rows,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, CovenError>>()?;
+                Ok(AlbumBrowseProjection {
+                    windows,
+                    cover_versions,
+                    total_count,
+                })
             })
-        })
     }
 
     /// An album's 0-based position under a sort, or `None` when it isn't in the
@@ -604,9 +605,43 @@ fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     .map_err(DbError::from)
 }
 
+fn album_rows_with_covers_on<P: Params>(
+    sql: &SqlReadContext<'_>,
+    query: &str,
+    params: P,
+) -> Result<(Vec<DbAlbumSummary>, HashMap<String, String>), CovenError> {
+    let rows = album_rows_on(sql, query, params)?;
+    let release_ids = rows
+        .iter()
+        .flat_map(|row| row.release_ids.iter().cloned())
+        .collect::<Vec<_>>();
+    let cover_versions =
+        super::blobs::image_versions_on(sql, LibraryImageType::Cover, &release_ids)
+            .map_err(CovenError::from)?;
+    Ok((rows, cover_versions))
+}
+
+fn album_rows_on<P: Params>(
+    sql: &SqlReadContext<'_>,
+    query: &str,
+    params: P,
+) -> Result<Vec<DbAlbumSummary>, CovenError> {
+    sql.query(query, params, |row| Ok(parse_album_summary_row(row)))?
+        .into_iter()
+        .collect::<Result<Vec<_>, DbError>>()
+        .map_err(CovenError::from)
+}
+
 #[derive(Debug, Clone)]
 pub struct AlbumPageProjection {
     pub rows: Vec<DbAlbumSummary>,
+    pub cover_versions: HashMap<String, String>,
+    pub total_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AlbumBrowseProjection {
+    pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumSummary>>,
     pub cover_versions: HashMap<String, String>,
     pub total_count: u64,
 }

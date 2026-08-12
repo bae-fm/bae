@@ -181,7 +181,15 @@ impl Config {
     }
 }
 
-pub use coven::ConfigError;
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("invalid configuration: {0}")]
+    Config(String),
+    #[error("serialize configuration: {0}")]
+    Serialization(String),
+    #[error("configuration file: {0}")]
+    Io(#[from] std::io::Error),
+}
 
 /// bae's application directory (`~/.bae`). The base coven's restore/join build
 /// per-library dirs under (`<app_dir>/libraries/<id>`).

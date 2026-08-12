@@ -44,37 +44,45 @@ impl LibraryManager {
         self.database.subscribe_composer_page(sort, offset, limit)
     }
 
-    pub(crate) fn subscribe_composer_parent_observation(
+    pub(crate) fn subscribe_composer_browse(
         &self,
-    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
-        self.database.subscribe_composer_parent_observation()
+        sort: &[crate::db::ComposerSortCriterion],
+        initial_windows: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        crate::db::ComposerBrowseProjection,
+    > {
+        self.database
+            .subscribe_composer_browse(sort, initial_windows)
     }
 
     pub(crate) fn resolve_composer_page(
         &self,
         projection: crate::db::ComposerPageProjection,
     ) -> (Vec<ComposerSummary>, u64) {
-        let images = projection
-            .image_versions
-            .into_iter()
-            .map(|(id, version)| {
-                let image = ImageRef {
-                    id: id.clone(),
-                    version,
-                    image_type: crate::db::LibraryImageType::Artist,
-                };
-                (id, image)
-            })
-            .collect::<HashMap<_, _>>();
-        let rows = projection
-            .rows
-            .into_iter()
-            .map(|row| {
-                let image = images.get(&row.artist.id).cloned();
-                ComposerSummary::from_raw(row, image)
-            })
-            .collect();
+        let images = composer_image_refs(projection.image_versions);
+        let rows = resolve_composer_rows(projection.rows, &images);
         (rows, projection.total_count)
+    }
+
+    pub(crate) fn resolve_composer_browse(
+        &self,
+        projection: crate::db::ComposerBrowseProjection,
+        request_revision: u64,
+    ) -> crate::library::LibraryBrowseSnapshot<ComposerSummary> {
+        let images = composer_image_refs(projection.image_versions);
+        crate::library::LibraryBrowseSnapshot {
+            windows: projection
+                .windows
+                .into_iter()
+                .map(|window| crate::library::LibraryBrowseWindow {
+                    window: window.window,
+                    rows: resolve_composer_rows(window.rows, &images),
+                })
+                .collect(),
+            total_count: projection.total_count,
+            request_revision,
+        }
     }
 
     pub async fn get_composer_detail(
@@ -319,6 +327,32 @@ impl LibraryManager {
             tracks: raw.tracks,
         })
     }
+}
+
+fn composer_image_refs(versions: HashMap<String, String>) -> HashMap<String, ImageRef> {
+    versions
+        .into_iter()
+        .map(|(id, version)| {
+            let image = ImageRef {
+                id: id.clone(),
+                version,
+                image_type: crate::db::LibraryImageType::Artist,
+            };
+            (id, image)
+        })
+        .collect()
+}
+
+fn resolve_composer_rows(
+    rows: Vec<crate::db::DbComposerSummary>,
+    images: &HashMap<String, ImageRef>,
+) -> Vec<ComposerSummary> {
+    rows.into_iter()
+        .map(|row| {
+            let image = images.get(&row.artist.id).cloned();
+            ComposerSummary::from_raw(row, image)
+        })
+        .collect()
 }
 
 fn work_summary_with_cover(

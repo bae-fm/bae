@@ -52,7 +52,8 @@ internal fun ComposerDetailScreen(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
-    val query by session.libraryQueries.composer.state.collectAsState()
+    val query by session.libraryQueries.composer.state
+        .collectAsState()
     val detail = query.value
     val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(artistId, session) {
@@ -165,7 +166,8 @@ internal fun WorkDetailScreen(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
-    val query by session.libraryQueries.work.state.collectAsState()
+    val query by session.libraryQueries.work.state
+        .collectAsState()
     val detail = query.value
     val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(workId, session) {

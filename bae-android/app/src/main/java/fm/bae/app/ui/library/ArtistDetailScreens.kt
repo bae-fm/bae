@@ -42,7 +42,8 @@ internal fun ArtistDetailScreen(
     onBack: () -> Unit,
     onSelectAlbum: (String) -> Unit,
 ) {
-    val query by session.libraryQueries.artist.state.collectAsState()
+    val query by session.libraryQueries.artist.state
+        .collectAsState()
     val detail = query.value
     val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(artistId, session) {

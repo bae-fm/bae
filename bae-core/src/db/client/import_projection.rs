@@ -19,7 +19,9 @@ impl Database {
             let candidate_states =
                 load_import_candidate_states_on(&sql).map_err(CovenError::from)?;
             let checks = crate::import::triage::library_checks(&snapshot, &candidate_states)
-                .map_err(|error| CovenError::Database(DbError::Message(error.to_string())))?;
+                .map_err(|error| {
+                    CovenError::Database(Box::new(DbError::Message(error.to_string())))
+                })?;
             let library_statuses =
                 check_releases_in_library_on(&sql, &checks).map_err(CovenError::from)?;
             let source_payloads =

@@ -52,7 +52,7 @@ impl LibraryManager {
             .max_concurrent_downloads(max_downloads)
             .open()
             .map_err(|e| match e {
-                coven::CovenError::Database(error) => error,
+                coven::CovenError::Database(error) => *error,
                 other => coven::DbError::Message(other.to_string()),
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
@@ -278,7 +278,11 @@ impl LibraryManager {
         cloud_home: Arc<dyn ExactCloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
-        self.sync.connect_test_cloud_home(cloud_home, cipher).await
+        self.sync
+            .connect_test_cloud_home(cloud_home, cipher)
+            .await?;
+        self.sync_status_values.send_replace(self.get_sync_status());
+        Ok(())
     }
 
     /// The same connection with no sync loop behind it, so an explicitly
@@ -293,7 +297,9 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         self.sync
             .connect_test_cloud_home_caller_driven(cloud_home, cipher)
-            .await
+            .await?;
+        self.sync_status_values.send_replace(self.get_sync_status());
+        Ok(())
     }
 
     /// Set the cloud home's storage mode in config, so a test can exercise the
@@ -442,7 +448,7 @@ impl LibraryManager {
                         | SyncLoopStatus::Blocked { success, .. } => {
                             (Some(None), Some(success.last_sync_time.clone()))
                         }
-                        SyncLoopStatus::Failed { error } => (Some(Some(error.clone())), None),
+                        SyncLoopStatus::Failed { error } => (Some(Some(error.to_string())), None),
                     };
                 let mut changed = false;
                 let mut new_failure = false;

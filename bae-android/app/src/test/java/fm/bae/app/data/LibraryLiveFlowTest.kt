@@ -16,32 +16,33 @@ import uniffi.bae_bridge.NoHandle
 
 class LibraryLiveFlowTest {
     @Test
-    fun album_detail_error_does_not_end_later_value_delivery() = runBlocking {
-        val detail = BridgeFixtures.albumDetail(BridgeFixtures.album("album-1"))
-        val library =
-            Library(
-                object : AppHandle(NoHandle) {
-                    override fun subscribeAlbumDetail(
-                        albumId: String,
-                        callback: AlbumDetailCallback,
-                    ): LiveSubscription {
-                        callback.onError(
-                            BridgeException.Diagnostic(
-                                category = BridgeErrorCategory.DATABASE,
-                                detail = "query failed",
-                            ),
-                        )
-                        callback.onValue(detail)
-                        return TestLiveSubscription()
-                    }
-                },
-            )
+    fun album_detail_error_does_not_end_later_value_delivery() =
+        runBlocking {
+            val detail = BridgeFixtures.albumDetail(BridgeFixtures.album("album-1"))
+            val library =
+                Library(
+                    object : AppHandle(NoHandle) {
+                        override fun subscribeAlbumDetail(
+                            albumId: String,
+                            callback: AlbumDetailCallback,
+                        ): LiveSubscription {
+                            callback.onError(
+                                BridgeException.Diagnostic(
+                                    category = BridgeErrorCategory.DATABASE,
+                                    detail = "query failed",
+                                ),
+                            )
+                            callback.onValue(detail)
+                            return TestLiveSubscription()
+                        }
+                    },
+                )
 
-        val events = library.albumDetails("album-1").take(2).toList()
+            val events = library.albumDetails("album-1").take(2).toList()
 
-        assertTrue(events[0] is LiveQueryEvent.Error)
-        assertEquals(detail, (events[1] as LiveQueryEvent.Value).value)
-    }
+            assertTrue(events[0] is LiveQueryEvent.Error)
+            assertEquals(detail, (events[1] as LiveQueryEvent.Value).value)
+        }
 
     private class TestLiveSubscription : LiveSubscription(NoHandle) {
         override fun cancel() {}

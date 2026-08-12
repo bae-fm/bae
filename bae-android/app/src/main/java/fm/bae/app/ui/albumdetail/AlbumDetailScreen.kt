@@ -51,6 +51,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
@@ -98,7 +99,8 @@ fun AlbumDetailScreen(
     initialReleaseId: String? = null,
     onBack: () -> Unit,
 ) {
-    val query by session.libraryQueries.album.state.collectAsState()
+    val query by session.libraryQueries.album.state
+        .collectAsState()
     val detail = query.value
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
@@ -112,13 +114,7 @@ fun AlbumDetailScreen(
         }
     }
 
-    val loadError =
-        query.error?.message
-            ?: if (query.delivered && detail == null) {
-                appContext.getString(R.string.album_load_failed)
-            } else {
-                null
-            }
+    val loadError = albumLoadError(query, appContext)
 
     LaunchedEffect(detail) {
         if (selectedReleaseId == null && detail != null) {
@@ -160,6 +156,17 @@ fun AlbumDetailScreen(
         NowPlayingBar(session = session)
     }
 }
+
+private fun albumLoadError(
+    query: LiveQueryState<BridgeAlbumDetail>,
+    context: android.content.Context,
+): String? =
+    query.error?.message
+        ?: if (query.delivered && query.value == null) {
+            context.getString(R.string.album_load_failed)
+        } else {
+            null
+        }
 
 @Composable
 private fun BoxScope.AlbumDetailLoadingBox(

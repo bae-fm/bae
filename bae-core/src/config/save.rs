@@ -1,4 +1,4 @@
-use coven::ConfigError;
+use super::ConfigError;
 use serde::{Deserialize, Serialize};
 
 /// One piece of an export filename pattern. A pattern is an ordered token list;

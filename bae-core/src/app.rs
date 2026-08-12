@@ -117,7 +117,7 @@ where
     let config =
         Config::load_registered_library(&library_id, ids.as_ref()).map_err(
             |error| match error {
-                coven::ConfigError::Config(_) => {
+                crate::config::ConfigError::Config(_) => {
                     BootstrapError::LibraryNotFound(library_id.clone())
                 }
                 other => BootstrapError::Config(other.to_string()),

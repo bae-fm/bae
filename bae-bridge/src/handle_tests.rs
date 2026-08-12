@@ -200,6 +200,62 @@ fn fresh_bridge_handle(test_name: &str) -> (super::AppHandle, std::path::PathBuf
 
 #[cfg(not(feature = "desktop"))]
 #[test]
+fn album_browse_subscription_pulls_count_before_any_windows() {
+    let (handle, _root) = fresh_bridge_handle("album-browse-empty-windows");
+    let subscription = handle.subscribe_album_browse(Vec::new());
+
+    let snapshot = handle
+        .runtime
+        .block_on(subscription.next())
+        .expect("album browse snapshot");
+
+    assert_eq!(snapshot.total_count, 0);
+    assert!(snapshot.windows.is_empty());
+    assert_eq!(snapshot.request_revision, 0);
+
+    subscription
+        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
+            offset: 0,
+            limit: 50,
+        }])
+        .expect("request first album window");
+    let requested = handle
+        .runtime
+        .block_on(subscription.next())
+        .expect("requested album browse snapshot");
+    assert_eq!(requested.request_revision, 1);
+    assert_eq!(requested.windows.len(), 1);
+    assert_eq!(requested.windows[0].window.offset, 0);
+    assert_eq!(requested.windows[0].window.limit, 50);
+    assert!(requested.windows[0].rows.is_empty());
+}
+
+#[cfg(not(feature = "desktop"))]
+#[test]
+fn cancelling_album_browse_finishes_pending_next() {
+    let (handle, _root) = fresh_bridge_handle("album-browse-cancel");
+    let subscription = handle.subscribe_album_browse(Vec::new());
+    handle
+        .runtime
+        .block_on(subscription.next())
+        .expect("initial album browse snapshot");
+
+    let pending = handle.runtime.spawn({
+        let subscription = subscription.clone();
+        async move { subscription.next().await }
+    });
+    handle.runtime.block_on(subscription.cancel());
+    let result = handle.runtime.block_on(pending).expect("next task joins");
+
+    assert!(matches!(result, Err(crate::types::BridgeError::Cancelled)));
+    assert!(matches!(
+        subscription.set_windows(Vec::new()),
+        Err(crate::types::BridgeError::Cancelled)
+    ));
+}
+
+#[cfg(not(feature = "desktop"))]
+#[test]
 fn enqueue_export_missing_release_does_not_panic() {
     let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
     let result = handle.runtime.block_on(async {

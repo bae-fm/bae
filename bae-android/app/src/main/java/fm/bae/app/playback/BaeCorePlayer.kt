@@ -369,26 +369,23 @@ class BaeCorePlayer(
             }
 
             is BridgePlaybackValueState.Playing -> {
-                applyPlaying(
-                    state.trackId,
-                    state.trackTitle,
-                    state.artistNames,
-                    state.albumTitle,
-                    state.coverImage,
-                    state.durationMs.toLong(),
+                activate(
+                    Transport.READY,
+                    Current(
+                        meta(
+                            state.trackId,
+                            state.trackTitle,
+                            state.artistNames,
+                            state.albumTitle,
+                            state.coverImage,
+                        ),
+                        state.durationMs.toLong(),
+                    ),
                 )
             }
 
             is BridgePlaybackValueState.Paused -> {
-                applyPaused(
-                    state.trackId,
-                    state.trackTitle,
-                    state.artistNames,
-                    state.albumTitle,
-                    state.coverImage,
-                    state.durationMs.toLong(),
-                    state.reason,
-                )
+                applyPaused(state)
             }
         }
         values.position?.let {
@@ -399,9 +396,16 @@ class BaeCorePlayer(
             }
         }
         lastSeekRevision = values.seekRevision
-        onRepeatModeChanged(values.repeatMode)
-        onVolumeChanged(values.volume)
-        onMuteChanged(values.isMuted)
+        media3RepeatMode =
+            when (values.repeatMode) {
+                BridgeRepeatMode.OFF -> Player.REPEAT_MODE_OFF
+                BridgeRepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+                BridgeRepeatMode.CONTEXT -> Player.REPEAT_MODE_ALL
+            }
+        _repeatMode.value = values.repeatMode
+        _volume.value = values.volume
+        _isMuted.value = values.isMuted
+        publish()
     }
 
     private fun onLoading(
@@ -425,23 +429,6 @@ class BaeCorePlayer(
                 )
             }
         activate(Transport.BUFFERING, current)
-    }
-
-    private fun applyPlaying(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImage: BridgeImageRef?,
-        durationMs: Long,
-    ) {
-        activate(
-            Transport.READY,
-            Current(
-                meta(trackId, trackTitle, artistNames, albumTitle, coverImage),
-                durationMs,
-            ),
-        )
     }
 
     /** The resolved current track an activation swaps in: its display [meta] and
@@ -518,26 +505,25 @@ class BaeCorePlayer(
         }
     }
 
-    private fun applyPaused(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImage: BridgeImageRef?,
-        durationMs: Long,
-        reason: BridgePlaybackPauseReason,
-    ) {
+    private fun applyPaused(state: BridgePlaybackValueState.Paused) {
         positionModel.setActiveTrack(
-            trackChanged = trackId != playingTrackId,
-            rawDurationMs = durationMs,
+            trackChanged = state.trackId != playingTrackId,
+            rawDurationMs = state.durationMs.toLong(),
         )
         transport = Transport.READY
         playWhenReady = false
-        playingTrackId = trackId
-        currentMeta = meta(trackId, trackTitle, artistNames, albumTitle, coverImage)
-        refreshArtwork(coverImage)
+        playingTrackId = state.trackId
+        currentMeta =
+            meta(
+                state.trackId,
+                state.trackTitle,
+                state.artistNames,
+                state.albumTitle,
+                state.coverImage,
+            )
+        refreshArtwork(state.coverImage)
         sidePausePrompt =
-            when (reason) {
+            when (val reason = state.reason) {
                 BridgePlaybackPauseReason.Manual -> null
                 is BridgePlaybackPauseReason.SideEnded -> reason.prompt
             }
@@ -615,25 +601,6 @@ class BaeCorePlayer(
         logger.warning("ignoring playback position for stale track $trackId; current track is $playingTrackId")
     }
 
-    private fun onRepeatModeChanged(mode: BridgeRepeatMode) {
-        media3RepeatMode =
-            when (mode) {
-                BridgeRepeatMode.OFF -> Player.REPEAT_MODE_OFF
-                BridgeRepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                BridgeRepeatMode.CONTEXT -> Player.REPEAT_MODE_ALL
-            }
-        _repeatMode.value = mode
-        publish()
-    }
-
-    private fun onVolumeChanged(volume: Float) {
-        _volume.value = volume
-    }
-
-    private fun onMuteChanged(isMuted: Boolean) {
-        _isMuted.value = isMuted
-    }
-
     override fun onQueueItemsAdded(count: Int) {
         _queueItemsAdded.tryEmit(count)
     }
@@ -694,52 +661,53 @@ class BaeCorePlayer(
     ) {
         val lane = contextLane ?: return
         val end = minOf(offset + limit, lane.upcomingTotal)
-        if (offset >= end) return
         val key = UpcomingPageKey(offset until end, queueRevision)
-        if (upcomingSubscriptions.containsKey(key)) return
-        makeRoomForUpcomingPageNear(key.range)
-        val identity = ++nextUpcomingSubscriptionIdentity
-        upcomingSubscriptions[key] =
-            ActiveQueuePageSubscription(identity, QueuePageSubscription {})
-        val subscription =
-            queuePageSource.subscribe(
-                offset.toUInt(),
-                (end - offset).toUInt(),
-                object : QueueUpcomingCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeQueueUpcomingPage) {
-                        scope.launch {
-                            if (upcomingSubscriptions[key]?.identity != identity) return@launch
-                            if (value.revision != queueRevision) {
-                                logger.warning(
-                                    "dropping upcoming page for [$offset, $end): delivered for a since-superseded revision",
-                                )
-                                return@launch
+        if (offset < end && !upcomingSubscriptions.containsKey(key)) {
+            makeRoomForUpcomingPageNear(key.range)
+            val identity = ++nextUpcomingSubscriptionIdentity
+            upcomingSubscriptions[key] =
+                ActiveQueuePageSubscription(identity, QueuePageSubscription {})
+            val subscription =
+                queuePageSource.subscribe(
+                    offset.toUInt(),
+                    (end - offset).toUInt(),
+                    object : QueueUpcomingCallback {
+                        override fun onValue(value: uniffi.bae_bridge.BridgeQueueUpcomingPage) {
+                            scope.launch {
+                                if (upcomingSubscriptions[key]?.identity != identity) return@launch
+                                if (value.revision != queueRevision) {
+                                    logger.warning(
+                                        "dropping upcoming page for [$offset, $end): " +
+                                            "delivered for a since-superseded revision",
+                                    )
+                                    return@launch
+                                }
+                                val loaded =
+                                    value.entries
+                                        .mapIndexedNotNull { i, entry ->
+                                            entry.toEntry().toQueueItem()?.let { (offset + i) to it }
+                                        }.toMap()
+                                pagedUpcoming = pagedUpcoming + loaded
+                                publish()
                             }
-                            val loaded =
-                                value.entries
-                                    .mapIndexedNotNull { i, entry ->
-                                        entry.toEntry().toQueueItem()?.let { (offset + i) to it }
-                                    }.toMap()
-                            pagedUpcoming = pagedUpcoming + loaded
-                            publish()
                         }
-                    }
 
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch {
-                            if (upcomingSubscriptions[key]?.identity != identity) return@launch
-                            logger.error(
-                                "upcoming range [$offset, $end) subscription failed",
-                                error,
-                            )
+                        override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                            scope.launch {
+                                if (upcomingSubscriptions[key]?.identity != identity) return@launch
+                                logger.error(
+                                    "upcoming range [$offset, $end) subscription failed",
+                                    error,
+                                )
+                            }
                         }
-                    }
-                },
-            )
-        if (upcomingSubscriptions[key]?.identity == identity) {
-            upcomingSubscriptions[key] = ActiveQueuePageSubscription(identity, subscription)
-        } else {
-            subscription.cancel()
+                    },
+                )
+            if (upcomingSubscriptions[key]?.identity == identity) {
+                upcomingSubscriptions[key] = ActiveQueuePageSubscription(identity, subscription)
+            } else {
+                subscription.cancel()
+            }
         }
     }
 
@@ -986,11 +954,8 @@ class BaeCorePlayer(
         return Futures.immediateVoidFuture()
     }
 
-    fun detachSystemHooks() {
+    fun closeSession() {
         systemHooks.detach()
-    }
-
-    fun cancelQueuePageSubscriptions() {
         upcomingSubscriptions.values.forEach { it.subscription.cancel() }
         upcomingSubscriptions.clear()
     }

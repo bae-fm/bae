@@ -59,7 +59,12 @@ class QueuePageWindowTest {
         }
 
         assertTrue(source.maximumActive <= 3)
-        assertTrue(source.cancellations.getValue(0u).first().cancelled)
+        assertTrue(
+            source.cancellations
+                .getValue(0u)
+                .first()
+                .cancelled,
+        )
 
         source.callbacks.getValue(0u).first().onValue(
             BridgeQueueUpcomingPage(revision = 1uL, entries = listOf(entry("evicted"))),
@@ -108,13 +113,21 @@ class QueuePageWindowTest {
             BridgeQueueUpcomingPage(revision = 1uL, entries = listOf(entry("old"))),
         )
         shadowOf(Looper.getMainLooper()).idle()
-        assertNull(player.queue.value.context?.itemAt(0))
+        assertNull(
+            player.queue.value.context
+                ?.itemAt(0),
+        )
 
         source.callback(offset = 0u, subscription = 1).onValue(
             BridgeQueueUpcomingPage(revision = 1uL, entries = listOf(entry("new"))),
         )
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("new", player.queue.value.context?.itemAt(0)?.entryId)
+        assertEquals(
+            "new",
+            player.queue.value.context
+                ?.itemAt(0)
+                ?.entryId,
+        )
     }
 
     private fun entry(id: String) =

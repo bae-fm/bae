@@ -65,7 +65,8 @@ fun SearchResultsScreen(
     onSelectComposer: (String) -> Unit,
     onSelectWork: (String) -> Unit,
 ) {
-    val state by session.libraryQueries.search.state.collectAsState()
+    val state by session.libraryQueries.search.state
+        .collectAsState()
     val appContext = LocalContext.current
 
     DisposableEffect(query, session) {

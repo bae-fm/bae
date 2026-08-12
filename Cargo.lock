@@ -1561,7 +1561,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1584,7 +1584,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1607,7 +1607,7 @@ dependencies = [
 [[package]]
 name = "coven-domain"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "coven-database",
  "coven-foundation",
@@ -1626,7 +1626,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "async-trait",
  "base64",
@@ -1648,7 +1648,7 @@ dependencies = [
 [[package]]
 name = "coven-keys"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1676,7 +1676,7 @@ dependencies = [
 [[package]]
 name = "coven-protocol"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1696,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "coven-replication"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1720,7 +1720,7 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=e01c5f7fe3cf90b28e24934c1324df697069c2c6#e01c5f7fe3cf90b28e24934c1324df697069c2c6"
+source = "git+https://github.com/bae-fm/coven?rev=1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae#1b1bd47fe6d021033fb82b7fe7e5efa4a65108ae"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -2288,7 +2288,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3733,7 +3733,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3920,13 +3920,12 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "open"
-version = "5.3.3"
+version = "5.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43bb73a7fa3799b198970490a51174027ba0d4ec504b03cd08caf513d40024bc"
+checksum = "cd8d3b65c44123a56e0133d2cd06ce4361bd3ca99d41198b2f25e3c3db9b8b4a"
 dependencies = [
  "is-wsl",
  "libc",
- "pathdiff",
 ]
 
 [[package]]
@@ -4020,12 +4019,6 @@ name = "pastey"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ee67f1008b1ba2321834326597b8e186293b049a023cdef258527550b9935b4"
-
-[[package]]
-name = "pathdiff"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "pem-rfc7468"
@@ -4307,7 +4300,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4698,7 +4691,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4757,7 +4750,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5351,7 +5344,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6251,7 +6244,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

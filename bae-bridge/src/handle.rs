@@ -42,12 +42,13 @@ pub struct AppHandle {
 }
 
 mod base;
+mod collection_subscription;
+pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
 mod desktop;
 #[cfg(feature = "desktop")]
 mod editing_projection;
 mod import_projection;
 mod library_projection;
-mod parent_observation;
 mod playback_persistence;
 mod queue_projection;
 mod service_status;

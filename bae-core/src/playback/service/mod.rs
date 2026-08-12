@@ -694,6 +694,8 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::RemoteStatus(_) => None,
         #[cfg(target_os = "macos")]
         PlaybackCommand::OutputDeviceChanged => None,
+        #[cfg(any(test, feature = "test-utils"))]
+        PlaybackCommand::GetQueueProjection(_) => None,
     }
 }
 

@@ -144,10 +144,18 @@ impl AppServices {
         self.inner.manager.subscribe_album_page(sort, offset, limit)
     }
 
-    pub fn subscribe_album_parent_observation(
+    pub fn subscribe_album_browse(
         &self,
-    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
-        self.inner.manager.subscribe_album_parent_observation()
+        sort: &[crate::db::AlbumSortCriterion],
+    ) -> crate::library::AlbumBrowseSubscription {
+        let manager = self.inner.manager.clone();
+        let query = manager.subscribe_album_browse(sort, std::collections::BTreeSet::new());
+        crate::library::LibraryBrowseSubscription::new(
+            query,
+            move |projection, request_revision| {
+                manager.resolve_album_browse(projection, request_revision)
+            },
+        )
     }
 
     pub fn resolve_album_page(
@@ -182,7 +190,7 @@ impl AppServices {
                         }
                         Err(error) => {
                             let error = match error {
-                                coven::CovenError::Database(error) => error,
+                                coven::CovenError::Database(error) => *error,
                                 other => coven::DbError::Message(other.to_string()),
                             };
                             if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
@@ -233,7 +241,7 @@ impl AppServices {
                         }
                         Err(error) => {
                             let error = match error {
-                                coven::CovenError::Database(error) => error,
+                                coven::CovenError::Database(error) => *error,
                                 other => coven::DbError::Message(other.to_string()),
                             };
                             if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
@@ -353,7 +361,7 @@ impl AppServices {
                             if tx.send(value).is_err() { return; }
                         }
                         Err(error) => {
-                            let error = match error { coven::CovenError::Database(error) => error, other => coven::DbError::Message(other.to_string()) };
+                            let error = match error { coven::CovenError::Database(error) => *error, other => coven::DbError::Message(other.to_string()) };
                             if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
                         }
                     },
@@ -427,10 +435,18 @@ impl AppServices {
             .subscribe_composer_page(sort, offset, limit)
     }
 
-    pub fn subscribe_composer_parent_observation(
+    pub fn subscribe_composer_browse(
         &self,
-    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
-        self.inner.manager.subscribe_composer_parent_observation()
+        sort: &[crate::db::ComposerSortCriterion],
+    ) -> crate::library::ComposerBrowseSubscription {
+        let manager = self.inner.manager.clone();
+        let query = manager.subscribe_composer_browse(sort, std::collections::BTreeSet::new());
+        crate::library::LibraryBrowseSubscription::new(
+            query,
+            move |projection, request_revision| {
+                manager.resolve_composer_browse(projection, request_revision)
+            },
+        )
     }
 
     pub fn resolve_composer_page(
@@ -502,7 +518,7 @@ impl AppServices {
                         let value = result
                             .map(|catalog| services.inner.manager.resolve_queue_catalog(projection.clone(), catalog))
                             .map_err(|error| match error {
-                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(error),
+                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(*error),
                                 other => crate::library::LibraryError::Database(coven::DbError::Message(other.to_string())),
                             });
                         if tx.send(value).is_err() {
@@ -555,7 +571,7 @@ impl AppServices {
                                 items: services.inner.manager.resolve_queue_entries(entries.len(), catalog),
                             })
                             .map_err(|error| match error {
-                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(error),
+                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(*error),
                                 other => crate::library::LibraryError::Database(coven::DbError::Message(other.to_string())),
                             });
                         if tx.send(value).is_err() { return; }
@@ -912,7 +928,7 @@ impl AppServices {
                         let value = match result {
                             Ok(projection) => services.inner.manager.resolve_import_triage(snapshot.clone(), projection),
                             Err(error) => Err(crate::library::LibraryError::Database(match error {
-                                coven::CovenError::Database(error) => error,
+                                coven::CovenError::Database(error) => *error,
                                 other => coven::DbError::Message(other.to_string()),
                             })),
                         };

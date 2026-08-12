@@ -24,16 +24,13 @@ use std::sync::{Arc, Mutex};
 use tracing::warn;
 
 mod album;
-pub use album::{AlbumDetailProjection, AlbumPageProjection, LibrarySearchProjection};
-pub use artist::{
-    ArtistDetailProjection, ArtistPageProjection, ComposerDetailProjection, ComposerPageProjection,
-    WorkDetailProjection,
+pub use album::{
+    AlbumBrowseProjection, AlbumDetailProjection, AlbumPageProjection, LibrarySearchProjection,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LibraryParentObservationProjection {
-    pub child_count: u64,
-}
+pub use artist::{
+    ArtistDetailProjection, ArtistPageProjection, ComposerBrowseProjection,
+    ComposerDetailProjection, ComposerPageProjection, WorkDetailProjection,
+};
 mod artist;
 mod blobs;
 mod coven_capabilities;
@@ -123,7 +120,7 @@ impl Database {
 
     fn coven_error(error: CovenError) -> DbError {
         match error {
-            CovenError::Database(error) => error,
+            CovenError::Database(error) => *error,
             other => DbError::Message(other.to_string()),
         }
     }

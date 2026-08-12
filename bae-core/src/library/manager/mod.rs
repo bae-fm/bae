@@ -140,7 +140,7 @@ pub enum LibraryError {
     Keyring(#[from] coven::KeyError),
     /// Reading or writing the on-disk library config failed.
     #[error("Config error: {0}")]
-    Config(#[from] coven::ConfigError),
+    Config(#[from] crate::config::ConfigError),
     /// Building or probing a cloud home failed — bad credentials/config
     /// (`Configuration`) or an unreachable backend (`Transport`).
     #[error("Cloud home error: {0}")]
@@ -245,7 +245,6 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         | SyncError::NotEncryptedHome
         | SyncError::MasterKeyNotEstablished
         | SyncError::Init(_)
-        | SyncError::Protocol(_)
         | SyncError::Store(_)
         | SyncError::Circle(_)
         | SyncError::Database(_)

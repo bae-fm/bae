@@ -118,9 +118,15 @@ internal fun ComposerListContent(
                 }
             }
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                items(page.totalCount, key = { index -> page.rows[index]?.artistId ?: "composer-slot-$index" }) { index ->
+                items(
+                    count = page.totalCount,
+                    key = { index -> page.rows[index]?.artistId ?: "composer-slot-$index" },
+                ) { index ->
                     page.rows[index]?.let { composer ->
-                        ComposerSummaryRow(composer = composer, onClick = { onSelectComposer(composer.artistId) })
+                        ComposerSummaryRow(
+                            composer = composer,
+                            onClick = { onSelectComposer(composer.artistId) },
+                        )
                     }
                 }
             }

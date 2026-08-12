@@ -12,15 +12,36 @@ pub trait AlbumPageCallback: Send + Sync {
     fn on_error(&self, error: BridgeError);
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeLibraryParentObservation {
-    pub child_count: u64,
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLibraryPageWindow {
+    pub offset: u64,
+    pub limit: u64,
 }
 
-#[uniffi::export(callback_interface)]
-pub trait LibraryParentObservationCallback: Send + Sync {
-    fn on_value(&self, value: BridgeLibraryParentObservation);
-    fn on_error(&self, error: BridgeError);
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAlbumBrowseWindow {
+    pub window: BridgeLibraryPageWindow,
+    pub rows: Vec<BridgeAlbum>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAlbumBrowseSnapshot {
+    pub windows: Vec<BridgeAlbumBrowseWindow>,
+    pub total_count: u64,
+    pub request_revision: u64,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeComposerBrowseWindow {
+    pub window: BridgeLibraryPageWindow,
+    pub rows: Vec<BridgeComposerSummary>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeComposerBrowseSnapshot {
+    pub windows: Vec<BridgeComposerBrowseWindow>,
+    pub total_count: u64,
+    pub request_revision: u64,
 }
 
 #[uniffi::export(callback_interface)]

@@ -185,6 +185,10 @@ pub(crate) enum PlaybackCommand {
     SetMuted(bool),
     /// Query current volume. Response sent via oneshot.
     GetVolume(oneshot::Sender<f32>),
+    /// Test-only command-loop barrier that returns the queue after every
+    /// preceding command has finished.
+    #[cfg(any(test, feature = "test-utils"))]
+    GetQueueProjection(oneshot::Sender<PlaybackQueueProjection>),
     /// Graceful shutdown: save state to disk, reply, then stop.
     Shutdown(oneshot::Sender<()>),
     /// Persist the current playback state without tearing down playback. Mobile
@@ -397,7 +401,10 @@ impl PlaybackHandle {
 
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn queue_projection(&self) -> Result<PlaybackQueueProjection, String> {
-        Ok(self.queue_values.borrow().clone())
+        let (tx, rx) = oneshot::channel();
+        dispatch_command(&self.command_tx, PlaybackCommand::GetQueueProjection(tx));
+        rx.await
+            .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))
     }
     pub fn add_to_queue(&self, track_ids: Vec<String>) {
         dispatch_command(&self.command_tx, PlaybackCommand::AddToQueue(track_ids));

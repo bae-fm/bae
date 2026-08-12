@@ -323,15 +323,23 @@ fn setup_failure_classes_map_to_distinct_categories() {
             C::Credentials,
         ),
         (
-            coven::KeyError::Persistence("keyring write failed".into()).into(),
+            coven::KeyError::Custody {
+                operation: "write keyring",
+                source: Box::new(std::io::Error::other("keyring write failed")),
+            }
+            .into(),
             C::Keyring,
         ),
         (
-            coven::ConfigError::Config("config write failed".into()).into(),
+            crate::config::ConfigError::Config("config write failed".into()).into(),
             C::Config,
         ),
         (
-            coven::SyncError::Key(coven::KeyError::Persistence("k".into())).into(),
+            coven::SyncError::Key(coven::KeyError::Custody {
+                operation: "write keyring",
+                source: Box::new(std::io::Error::other("keyring write failed")),
+            })
+            .into(),
             C::Keyring,
         ),
         (

@@ -1,4 +1,5 @@
 pub mod app_services;
+mod browse;
 pub mod download_snapshot;
 mod local_lifecycle;
 pub mod manager;
@@ -12,6 +13,7 @@ pub(crate) mod sync_controller;
 pub mod upload_sessions;
 pub mod upload_throughput;
 pub use app_services::*;
+pub use browse::*;
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
 };

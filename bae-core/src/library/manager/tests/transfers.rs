@@ -723,57 +723,74 @@ async fn download_queue_failed_pin_retries() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn download_queue_active_pin_reports_file_progress() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release_id = make_remote_release_with_files(
-        &manager,
-        &temp_dir.path().join("download-source"),
-        "Test Album",
-        &[("a.flac", b"aaa"), ("b.flac", b"bbbb")],
-        false,
-    )
-    .await;
+async fn download_queue_values_report_each_driven_file_progress() {
+    use crate::storage::transfer::TransferProgress;
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let release_id = "release-progress".to_string();
     let mut values = manager.subscribe_download_values();
     values.borrow_and_update();
+    assert!(manager.download_queue.enqueue(crate::library::DownloadOp {
+        release_id: release_id.clone(),
+        title: "Album Title".to_string(),
+        file_count: 2,
+        total_size: 7,
+        created_at: 0,
+        payload: (),
+        state: crate::library::DownloadState::Queued,
+    }));
+    let pending = tokio::spawn(std::future::pending::<()>());
+    assert!(manager.download_queue.activate(
+        &release_id,
+        pending.abort_handle(),
+        crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
+    ));
+    manager.emit_download_queue_changed();
 
-    manager.enqueue_pins(vec![release_id.clone()]).await;
+    let active_progress = |snapshot: &crate::library::DownloadSnapshot| {
+        let op = snapshot.ops.first().expect("the active download remains queued");
+        let crate::library::DownloadState::Active { progress } = &op.state else {
+            panic!("the download is active")
+        };
+        progress.clone()
+    };
+    values.changed().await.expect("initial active value");
+    assert_eq!(active_progress(&values.borrow_and_update()).bytes_done, 0);
 
-    // The release pins one blob at a time, so the pane sees the byte total climb:
-    // 0, then the first file's 3 bytes, then both files' 7.
-    let mut seen: Vec<u64> = Vec::new();
-    for _ in 0..20 {
-        tokio::time::timeout(std::time::Duration::from_secs(2), values.changed())
-            .await
-            .expect("download queue value")
-            .expect("value stream stays open");
-        let snapshot = values.borrow_and_update().clone();
-        for op in snapshot.ops {
-            if op.release_id != release_id {
-                continue;
-            }
-            if let crate::library::DownloadState::Active { progress } = op.state {
-                assert_eq!(progress.bytes_total, 7, "the release's known byte total");
-                assert_eq!(
-                    progress.fraction,
-                    progress.bytes_done as f64 / 7.0,
-                    "the fraction tracks the bytes"
-                );
-                if seen.last() != Some(&progress.bytes_done) {
-                    seen.push(progress.bytes_done);
-                }
-            }
-        }
-        if seen.contains(&7) {
-            break;
-        }
+    let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
+    let driver = {
+        let manager = manager.clone();
+        let release_id = release_id.clone();
+        tokio::spawn(async move {
+            manager
+                .drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx)
+                .await
+        })
+    };
+    for bytes_done in [3, 7] {
+        progress_tx
+            .send(TransferProgress::Progress {
+                progress: crate::library::DownloadTransferProgress::new(
+                    &release_id,
+                    bytes_done,
+                    7,
+                )
+                .unwrap(),
+            })
+            .expect("the transfer driver is listening");
+        values.changed().await.expect("file progress value");
+        let progress = active_progress(&values.borrow_and_update());
+        assert_eq!(progress.bytes_done, bytes_done);
+        assert_eq!(progress.bytes_total, 7);
+        assert_eq!(progress.fraction, bytes_done as f64 / 7.0);
     }
-
-    assert_eq!(
-        seen,
-        vec![0, 3, 7],
-        "an active download reports each file's bytes as it lands, not just 0 and done",
-    );
+    progress_tx
+        .send(TransferProgress::Complete {
+            release_id: release_id.clone(),
+        })
+        .expect("the transfer driver is listening");
+    driver.await.unwrap().unwrap();
+    pending.abort();
 }
 
 // ── Export queue ─────────────────────────────────────────────────

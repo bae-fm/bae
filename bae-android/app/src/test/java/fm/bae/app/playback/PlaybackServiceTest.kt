@@ -15,6 +15,7 @@ import fm.bae.app.data.SyncStatusStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -25,29 +26,36 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailCallback
 import uniffi.bae_bridge.AlbumPageCallback
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
+import uniffi.bae_bridge.BridgeAlbumBrowseWindow
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumPage
+import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
+import uniffi.bae_bridge.BridgeComposerBrowseWindow
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeLibraryParentObservation
+import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastDevicesCallback
+import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailCallback
 import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
-import uniffi.bae_bridge.LibraryParentObservationCallback
 import uniffi.bae_bridge.LibrarySearchCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
@@ -130,6 +138,7 @@ class PlaybackServiceTest {
         looper: Looper,
     ): OpenLibrary {
         val handle = FakeAppHandle()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         return OpenLibrary(
             libraryId = "lib-1",
             appHandle = handle,
@@ -143,16 +152,19 @@ class PlaybackServiceTest {
                     outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
                     cast = CastStore(),
                 ),
-            playback =
-                BaeCorePlayer(
-                    applicationLooper = looper,
-                    appHandle = handle,
-                    context = context,
-                    scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-                    isAppForeground = { false },
+            runtime =
+                fm.bae.app.OpenLibraryRuntime(
+                    playback =
+                        BaeCorePlayer(
+                            applicationLooper = looper,
+                            appHandle = handle,
+                            context = context,
+                            scope = scope,
+                            isAppForeground = { false },
+                        ),
+                    scope = scope,
                 ),
             appContext = context,
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }
 
@@ -175,7 +187,7 @@ internal class FakeAppHandle(
     private val initialAlbumPageError: uniffi.bae_bridge.BridgeException? = null,
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
     var deliverAlbumPagesImmediately: Boolean = true,
-    var deliverAlbumParentObservationImmediately: Boolean = true,
+    var deliverAlbumBaselineImmediately: Boolean = true,
     var deliverSearchResultsImmediately: Boolean = true,
 ) : AppHandle(NoHandle) {
     var pauseCount = 0
@@ -187,13 +199,11 @@ internal class FakeAppHandle(
     val composerPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
-    val albumPageCallbacks = mutableListOf<AlbumPageCallback>()
+    private val uiAlbumPageCallbacks = mutableListOf<AlbumPageCallback>()
+    private val uiAlbumPageSubscriptions = mutableListOf<FakeLiveSubscription>()
     val searchCallbacks = mutableListOf<LibrarySearchCallback>()
-    val albumParentObservationCallbacks = mutableListOf<LibraryParentObservationCallback>()
-    val composerParentObservationCallbacks = mutableListOf<LibraryParentObservationCallback>()
-    val albumPageSubscriptions = mutableListOf<FakeLiveSubscription>()
-    val albumParentObservationSubscriptions = mutableListOf<FakeLiveSubscription>()
-    val composerParentObservationSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
+    val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeLiveSubscription>()
     val searchSubscriptions = mutableListOf<FakeLiveSubscription>()
 
@@ -236,8 +246,8 @@ internal class FakeAppHandle(
         callback: AlbumPageCallback,
     ): LiveSubscription {
         albumPageWindows.add(offset to limit)
-        albumPageCallbacks += callback
-        val subscription = liveSubscription().also(albumPageSubscriptions::add)
+        uiAlbumPageCallbacks += callback
+        val subscription = liveSubscription().also(uiAlbumPageSubscriptions::add)
         if (!deliverAlbumPagesImmediately) {
             return subscription
         }
@@ -248,38 +258,6 @@ internal class FakeAppHandle(
             callback.onError(initialAlbumPageError)
         }
         return subscription
-    }
-
-    fun emitAlbumPage(
-        subscription: Int,
-        rows: List<BridgeAlbum>,
-        totalCount: ULong = rows.size.toULong(),
-    ) {
-        albumPageCallbacks[subscription].onValue(
-            BridgeAlbumPage(rows, totalCount),
-        )
-    }
-
-    fun emitAlbumParentObservation(childCount: ULong) {
-        albumParentObservationCallbacks.single().onValue(BridgeLibraryParentObservation(childCount))
-    }
-
-    fun failAlbumParentObservation() {
-        albumParentObservationCallbacks.single().onError(
-            uniffi.bae_bridge.BridgeException.Diagnostic(
-                uniffi.bae_bridge.BridgeErrorCategory.INTERNAL,
-                "temporary",
-            ),
-        )
-    }
-
-    fun failAlbumPage(subscription: Int) {
-        albumPageCallbacks[subscription].onError(
-            uniffi.bae_bridge.BridgeException.Diagnostic(
-                uniffi.bae_bridge.BridgeErrorCategory.INTERNAL,
-                "temporary",
-            ),
-        )
     }
 
     fun emitSearchResults(
@@ -301,23 +279,17 @@ internal class FakeAppHandle(
         return liveSubscription()
     }
 
-    override fun subscribeAlbumParentObservation(
-        callback: LibraryParentObservationCallback,
-    ): LiveSubscription {
-        albumParentObservationCallbacks += callback
-        if (deliverAlbumParentObservationImmediately) {
-            callback.onValue(BridgeLibraryParentObservation(0uL))
-        }
-        return liveSubscription().also(albumParentObservationSubscriptions::add)
-    }
+    override fun subscribeAlbumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseSubscription =
+        FakeAlbumBrowseSubscription(
+            albumPages,
+            albumPageWindows,
+            deliverAlbumPagesImmediately,
+            deliverAlbumBaselineImmediately,
+            initialAlbumPageError,
+        ).also(albumBrowseSubscriptions::add)
 
-    override fun subscribeComposerParentObservation(
-        callback: LibraryParentObservationCallback,
-    ): LiveSubscription {
-        composerParentObservationCallbacks += callback
-        callback.onValue(BridgeLibraryParentObservation(0uL))
-        return liveSubscription().also(composerParentObservationSubscriptions::add)
-    }
+    override fun subscribeComposerBrowse(sortCriteria: List<BridgeComposerSortCriterion>): ComposerBrowseSubscription =
+        FakeComposerBrowseSubscription(composerPages).also(composerBrowseSubscriptions::add)
 
     override fun subscribeAlbumDetail(
         albumId: String,
@@ -392,3 +364,106 @@ internal class FakeLiveSubscription : LiveSubscription(NoHandle) {
         cancelled = true
     }
 }
+
+internal class FakeAlbumBrowseSubscription(
+    private val rows: (ULong, ULong) -> List<BridgeAlbum>,
+    private val observedWindows: MutableList<Pair<ULong, ULong>>,
+    private val deliverWindowsImmediately: Boolean,
+    deliverBaselineImmediately: Boolean,
+    private val initialError: BridgeException?,
+) : AlbumBrowseSubscription(NoHandle) {
+    private val events = Channel<Result<BridgeAlbumBrowseSnapshot>>(Channel.UNLIMITED)
+    private var windows = emptyList<BridgeLibraryPageWindow>()
+    private var revision = 0uL
+    var cancelled = false
+    val requestedWindows: List<BridgeLibraryPageWindow>
+        get() = windows
+
+    init {
+        if (deliverBaselineImmediately) emitSnapshot(0uL)
+    }
+
+    override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
+        if (windows == this.windows) return
+        this.windows = windows
+        revision++
+        observedWindows += windows.map { it.offset to it.limit }
+        if (deliverWindowsImmediately) {
+            if (initialError == null) emitSnapshot() else events.trySend(Result.failure(initialError))
+        }
+    }
+
+    override suspend fun next(): BridgeAlbumBrowseSnapshot = events.receive().getOrThrow()
+
+    override suspend fun cancel() {
+        cancelled = true
+        events.close()
+    }
+
+    fun emitRows(
+        rows: List<BridgeAlbum>,
+        totalCount: ULong = rows.size.toULong(),
+    ) {
+        val window = windows.lastOrNull() ?: BridgeLibraryPageWindow(0uL, rows.size.toULong().coerceAtLeast(1uL))
+        events.trySend(
+            Result.success(
+                BridgeAlbumBrowseSnapshot(
+                    windows = listOf(BridgeAlbumBrowseWindow(window, rows)),
+                    totalCount = totalCount,
+                    requestRevision = revision,
+                ),
+            ),
+        )
+    }
+
+    fun emitCount(totalCount: ULong) = emitSnapshot(totalCount)
+
+    private fun emitSnapshot(totalCount: ULong? = null) {
+        val projected =
+            windows.map { window ->
+                val values = rows(window.offset, window.limit)
+                BridgeAlbumBrowseWindow(window, values)
+            }
+        events.trySend(
+            Result.success(
+                BridgeAlbumBrowseSnapshot(
+                    windows = projected,
+                    totalCount = totalCount ?: projected.sumOf { it.rows.size }.toULong(),
+                    requestRevision = revision,
+                ),
+            ),
+        )
+    }
+}
+
+internal class FakeComposerBrowseSubscription(
+    private val rows: (ULong, ULong) -> List<BridgeComposerSummary>,
+) : ComposerBrowseSubscription(NoHandle) {
+    private val events = Channel<BridgeComposerBrowseSnapshot>(Channel.UNLIMITED)
+    private var windows = emptyList<BridgeLibraryPageWindow>()
+    private var revision = 0uL
+    var cancelled = false
+
+    init {
+        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), 0uL, revision))
+    }
+
+    override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
+        if (windows == this.windows) return
+        this.windows = windows
+        revision++
+        val projected = windows.map { BridgeComposerBrowseWindow(it, rows(it.offset, it.limit)) }
+        events.trySend(
+            BridgeComposerBrowseSnapshot(projected, projected.sumOf { it.rows.size }.toULong(), revision),
+        )
+    }
+
+    override suspend fun next(): BridgeComposerBrowseSnapshot = events.receive()
+
+    override suspend fun cancel() {
+        cancelled = true
+        events.close()
+    }
+}
+
+private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "temporary")

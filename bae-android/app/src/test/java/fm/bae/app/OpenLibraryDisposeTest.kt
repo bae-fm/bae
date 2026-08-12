@@ -57,6 +57,7 @@ class OpenLibraryDisposeTest {
     private fun openLibrary(): Pair<OpenLibrary, RecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
         val handle = RecordingHandle()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val session =
             OpenLibrary(
                 libraryId = "lib-1",
@@ -71,16 +72,19 @@ class OpenLibraryDisposeTest {
                         outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
                         cast = CastStore(),
                     ),
-                playback =
-                    BaeCorePlayer(
-                        applicationLooper = Looper.getMainLooper(),
-                        appHandle = handle,
-                        context = context,
-                        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-                        isAppForeground = { false },
+                runtime =
+                    OpenLibraryRuntime(
+                        playback =
+                            BaeCorePlayer(
+                                applicationLooper = Looper.getMainLooper(),
+                                appHandle = handle,
+                                context = context,
+                                scope = scope,
+                                isAppForeground = { false },
+                            ),
+                        scope = scope,
                     ),
                 appContext = context,
-                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             )
         return session to handle
     }

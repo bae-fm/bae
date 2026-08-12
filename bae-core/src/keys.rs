@@ -28,7 +28,7 @@ fn account(ks: &StoreKeys, base: &str) -> String {
 }
 
 fn map_keyring_error(e: keyring_core::Error) -> KeyError {
-    KeyError::Persistence(e.to_string())
+    KeyError::Keyring(e)
 }
 
 fn set_keyring_credential(

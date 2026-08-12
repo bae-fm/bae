@@ -1,5 +1,7 @@
 use super::super::*;
+use crate::library::LibraryPageWindow;
 use coven::SystemClock;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -117,10 +119,19 @@ async fn album_page_subscription_delivers_rows_count_and_cover_versions() {
 }
 
 #[tokio::test]
-async fn album_parent_observation_tracks_count_and_every_child_display_value() {
+async fn album_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_parent_observation();
-    assert_eq!(live.next().await.unwrap().child_count, 1);
+    let sort = [AlbumSortCriterion {
+        field: AlbumSortField::DateAdded,
+        direction: SortDirection::Ascending,
+    }];
+    let mut live = db.subscribe_album_browse(&sort, BTreeSet::new());
+    let requests = live.requests();
+    let initial_event = live.next().await;
+    assert_eq!(initial_event.revision().get(), 0);
+    let initial = initial_event.into_result().unwrap();
+    assert_eq!(initial.total_count, 1);
+    assert!(initial.windows.is_empty());
 
     db.call(|sql| {
         sql.execute_batch(&format!(
@@ -134,7 +145,45 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
     })
     .await
     .unwrap();
-    assert_eq!(live.next().await.unwrap().child_count, 2);
+    let inserted = live.next().await.into_result().unwrap();
+    assert_eq!(inserted.total_count, 2);
+    assert!(inserted.windows.is_empty());
+
+    let first_window = LibraryPageWindow {
+        offset: 0,
+        limit: 1,
+    };
+    let second_window = LibraryPageWindow {
+        offset: 1,
+        limit: 1,
+    };
+    let requested = [first_window.clone(), second_window.clone()]
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let pages_revision = requests.set(requested.clone()).unwrap();
+    let pages_event = live.next().await;
+    assert_eq!(pages_event.request(), &requested);
+    assert_eq!(pages_event.revision(), pages_revision);
+    let pages = pages_event.into_result().unwrap();
+    assert_eq!(
+        pages
+            .windows
+            .iter()
+            .map(|window| (window.window.clone(), window.rows[0].id.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (first_window.clone(), ALBUM_ID),
+            (second_window.clone(), OTHER_ALBUM_ID),
+        ]
+    );
+
+    let second_page = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
+    let second_page_revision = requests.set(second_page.clone()).unwrap();
+    let second_page_event = live.next().await;
+    assert_eq!(second_page_event.request(), &second_page);
+    assert_eq!(second_page_event.revision(), second_page_revision);
+    let second_page_initial = second_page_event.into_result().unwrap();
+    assert_eq!(second_page_initial.windows[0].rows[0].id, OTHER_ALBUM_ID);
 
     db.call(|sql| {
         sql.execute(
@@ -146,18 +195,16 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
     })
     .await
     .unwrap();
-    assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first album metadata wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
-    );
+    let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first album metadata wakes album browse");
+    assert_eq!(renamed_event.revision(), second_page_revision);
+    let renamed = renamed_event.into_result().unwrap();
+    assert_eq!(renamed.windows[0].rows[0].title, "Album Title Renamed");
 
     db.call(|sql| {
         sql.execute(
-            "UPDATE albums SET created_at = '2026-02-01T00:00:00Z' WHERE id = ?1",
+            "UPDATE albums SET created_at = '2025-12-01T00:00:00Z' WHERE id = ?1",
             params![OTHER_ALBUM_ID],
         )
         .map(|_| ())
@@ -165,14 +212,40 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
     })
     .await
     .unwrap();
-    assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first album ordering field wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
-    );
+    let reordered = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first album ordering field wakes album browse")
+        .into_result()
+        .unwrap();
+    assert_eq!(reordered.windows[0].rows[0].id, ALBUM_ID);
+
+    let first_page = [first_window].into_iter().collect::<BTreeSet<_>>();
+    requests.set(first_page).unwrap();
+    let reordered_first = live.next().await.into_result().unwrap();
+    assert_eq!(reordered_first.windows[0].rows[0].id, OTHER_ALBUM_ID);
+
+    requests
+        .set([second_window].into_iter().collect::<BTreeSet<_>>())
+        .unwrap();
+    let hidden_other_album = live.next().await.into_result().unwrap();
+    assert_eq!(hidden_other_album.windows[0].rows[0].id, ALBUM_ID);
+
+    db.call(|sql| {
+        sql.execute(
+            "UPDATE albums SET title = 'Album Title Hidden' WHERE id = ?1",
+            params![OTHER_ALBUM_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    let hidden_metadata = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("unrequested album metadata wakes album browse")
+        .into_result()
+        .unwrap();
+    assert_eq!(hidden_metadata.windows[0].rows[0].id, ALBUM_ID);
 
     db.call(|sql| {
         sql.execute(
@@ -188,25 +261,6 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
         tokio::time::timeout(Duration::from_millis(100), live.next())
             .await
             .is_err()
-    );
-
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE artists SET sort_name = 'Name, Artist' WHERE id = ?1",
-            params![ARTIST_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
-    assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("album artist ordering field wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
     );
 
     let cover_hash = crate::util::fs::hash_bytes(b"other cover fixture");
@@ -226,13 +280,17 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
     })
     .await
     .unwrap();
+    let covered = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first album cover wakes album browse")
+        .into_result()
+        .unwrap();
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first album cover wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
+        covered
+            .cover_versions
+            .get(OTHER_RELEASE_ID)
+            .map(String::as_str),
+        Some("cover-v1")
     );
 
     db.call(|sql| {
@@ -245,13 +303,17 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
     })
     .await
     .unwrap();
+    let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first album cover version wakes album browse")
+        .into_result()
+        .unwrap();
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first album cover version wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
+        cover_updated
+            .cover_versions
+            .get(OTHER_RELEASE_ID)
+            .map(String::as_str),
+        Some("cover-v2")
     );
 
     db.call(|sql| {
@@ -261,11 +323,13 @@ async fn album_parent_observation_tracks_count_and_every_child_display_value() {
     })
     .await
     .unwrap();
-    assert_eq!(live.next().await.unwrap().child_count, 1);
+    let deleted = live.next().await.into_result().unwrap();
+    assert_eq!(deleted.total_count, 1);
+    assert!(deleted.windows[0].rows.is_empty());
 }
 
 #[tokio::test]
-async fn composer_parent_observation_tracks_count_and_every_child_display_value() {
+async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db().await;
     db.call(|sql| {
         sql.execute_batch(&format!(
@@ -283,8 +347,40 @@ async fn composer_parent_observation_tracks_count_and_every_child_display_value(
     })
     .await
     .unwrap();
-    let mut live = db.subscribe_composer_parent_observation();
-    assert_eq!(live.next().await.unwrap().child_count, 2);
+    let sort = [ComposerSortCriterion {
+        field: ComposerSortField::Name,
+        direction: SortDirection::Descending,
+    }];
+    let second_window = LibraryPageWindow {
+        offset: 1,
+        limit: 1,
+    };
+    let initial_request = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
+    let mut live = db.subscribe_composer_browse(&sort, initial_request.clone());
+    let requests = live.requests();
+    let initial_event = live.next().await;
+    assert_eq!(initial_event.request(), &initial_request);
+    assert_eq!(initial_event.revision().get(), 0);
+    let initial = initial_event.into_result().unwrap();
+    assert_eq!(initial.total_count, 2);
+    assert_eq!(initial.windows[0].rows[0].artist.id, COMPOSER_ID);
+
+    let both_pages = [
+        LibraryPageWindow {
+            offset: 0,
+            limit: 1,
+        },
+        second_window.clone(),
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+    let both_pages_revision = requests.set(both_pages.clone()).unwrap();
+    let both_event = live.next().await;
+    assert_eq!(both_event.revision(), both_pages_revision);
+    let both = both_event.into_result().unwrap();
+    assert_eq!(both.windows.len(), 2);
+    assert_eq!(both.windows[0].rows[0].artist.id, OTHER_COMPOSER_ID);
+    assert_eq!(both.windows[1].rows[0].artist.id, COMPOSER_ID);
 
     db.call(|sql| {
         sql.execute(
@@ -296,14 +392,49 @@ async fn composer_parent_observation_tracks_count_and_every_child_display_value(
     })
     .await
     .unwrap();
+    let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first composer metadata wakes composer browse");
+    assert_eq!(renamed_event.revision(), both_pages_revision);
+    let renamed = renamed_event.into_result().unwrap();
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first composer metadata wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
+        renamed
+            .windows
+            .iter()
+            .map(|window| window.rows[0].artist.id.as_str())
+            .collect::<Vec<_>>(),
+        vec![OTHER_COMPOSER_ID, COMPOSER_ID]
     );
+    assert_eq!(
+        renamed.windows[0].rows[0].artist.name,
+        "Composer Name Renamed"
+    );
+
+    requests
+        .set([second_window].into_iter().collect::<BTreeSet<_>>())
+        .unwrap();
+    let hidden_other_composer = live.next().await.into_result().unwrap();
+    assert_eq!(
+        hidden_other_composer.windows[0].rows[0].artist.id,
+        COMPOSER_ID
+    );
+
+    db.call(|sql| {
+        sql.execute(
+            "UPDATE artists SET sort_name = 'Composer Sort Hidden' WHERE id = ?1",
+            params![OTHER_COMPOSER_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    let hidden_metadata = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("unrequested composer metadata wakes composer browse")
+        .into_result()
+        .unwrap();
+    assert_eq!(hidden_metadata.windows[0].rows[0].artist.id, COMPOSER_ID);
 
     let image_hash = crate::util::fs::hash_bytes(b"other artist fixture");
     db.call(move |sql| {
@@ -322,13 +453,17 @@ async fn composer_parent_observation_tracks_count_and_every_child_display_value(
     })
     .await
     .unwrap();
+    let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first composer image wakes composer browse")
+        .into_result()
+        .unwrap();
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first composer image wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
+        imaged
+            .image_versions
+            .get(OTHER_COMPOSER_ID)
+            .map(String::as_str),
+        Some("image-v1")
     );
 
     db.call(|sql| {
@@ -341,14 +476,23 @@ async fn composer_parent_observation_tracks_count_and_every_child_display_value(
     })
     .await
     .unwrap();
+    let image_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("non-first composer image version wakes composer browse")
+        .into_result()
+        .unwrap();
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("non-first composer image version wakes parent observation")
-            .unwrap()
-            .child_count,
-        2
+        image_updated
+            .image_versions
+            .get(OTHER_COMPOSER_ID)
+            .map(String::as_str),
+        Some("image-v2")
     );
+
+    requests.set(BTreeSet::new()).unwrap();
+    let count_only = live.next().await.into_result().unwrap();
+    assert_eq!(count_only.total_count, 2);
+    assert!(count_only.windows.is_empty());
 
     db.call(|sql| {
         sql.execute_batch(&format!(
@@ -363,7 +507,9 @@ async fn composer_parent_observation_tracks_count_and_every_child_display_value(
     })
     .await
     .unwrap();
-    assert_eq!(live.next().await.unwrap().child_count, 3);
+    let inserted = live.next().await.into_result().unwrap();
+    assert_eq!(inserted.total_count, 3);
+    assert!(inserted.windows.is_empty());
 
     db.call(|sql| {
         sql.execute(
@@ -375,7 +521,9 @@ async fn composer_parent_observation_tracks_count_and_every_child_display_value(
     })
     .await
     .unwrap();
-    assert_eq!(live.next().await.unwrap().child_count, 2);
+    let deleted = live.next().await.into_result().unwrap();
+    assert_eq!(deleted.total_count, 2);
+    assert!(deleted.windows.is_empty());
 }
 
 #[tokio::test]

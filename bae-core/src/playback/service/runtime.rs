@@ -642,14 +642,10 @@ impl PlaybackService {
             self.stop().await;
         }
     }
-    /// `restore_playback` is the platform's "Restore on launch" preference:
-    /// `true` restores the saved queue/track/position from the `playback_state`
-    /// row at startup; `false` starts with nothing in playback. The row itself
-    /// is kept current either way (it's the crash-safe resume point): a track
-    /// load, stop, or queue edit writes it immediately, and while a track is
-    /// actually playing `handle_position_event` additionally writes it at
-    /// most once a second, so `position_ms` never goes stale for longer than
-    /// that — so flipping the preference on takes effect at the next launch.
+    /// `restore_playback` controls whether startup restores the saved queue,
+    /// track, and position. The crash-safe row stays current either way: track
+    /// loads, stops, and queue edits write it immediately, and active playback
+    /// writes it at most once a second.
     pub(crate) fn start(
         library_manager: LibraryManager,
         queue_ids: coven::IdRef,
@@ -1172,6 +1168,10 @@ impl PlaybackService {
                 }
                 PlaybackCommand::GetVolume(reply) => {
                     let _ = reply.send(self.audio_output.get_volume());
+                }
+                #[cfg(any(test, feature = "test-utils"))]
+                PlaybackCommand::GetQueueProjection(reply) => {
+                    let _ = reply.send(self.queue_projection());
                 }
                 PlaybackCommand::Shutdown(reply) => {
                     self.persist_playback_state().await;

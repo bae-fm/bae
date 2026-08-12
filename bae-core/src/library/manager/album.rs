@@ -52,34 +52,44 @@ impl LibraryManager {
         self.database.subscribe_album_page(sort, offset, limit)
     }
 
-    pub(crate) fn subscribe_album_parent_observation(
+    pub(crate) fn subscribe_album_browse(
         &self,
-    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
-        self.database.subscribe_album_parent_observation()
+        sort: &[crate::db::AlbumSortCriterion],
+        initial_windows: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        crate::db::AlbumBrowseProjection,
+    > {
+        self.database.subscribe_album_browse(sort, initial_windows)
     }
 
     pub(crate) fn resolve_album_page(
         &self,
         projection: crate::db::AlbumPageProjection,
     ) -> (Vec<AlbumSummary>, u64) {
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                let image = ImageRef {
-                    id: id.clone(),
-                    version,
-                    image_type: crate::db::LibraryImageType::Cover,
-                };
-                (id, image)
-            })
-            .collect::<HashMap<_, _>>();
-        let rows = projection
-            .rows
-            .into_iter()
-            .map(|row| AlbumSummary::from_raw(row, |id| covers.get(id).cloned()))
-            .collect();
+        let covers = album_cover_refs(projection.cover_versions);
+        let rows = resolve_album_rows(projection.rows, &covers);
         (rows, projection.total_count)
+    }
+
+    pub(crate) fn resolve_album_browse(
+        &self,
+        projection: crate::db::AlbumBrowseProjection,
+        request_revision: u64,
+    ) -> crate::library::LibraryBrowseSnapshot<AlbumSummary> {
+        let covers = album_cover_refs(projection.cover_versions);
+        crate::library::LibraryBrowseSnapshot {
+            windows: projection
+                .windows
+                .into_iter()
+                .map(|window| crate::library::LibraryBrowseWindow {
+                    window: window.window,
+                    rows: resolve_album_rows(window.rows, &covers),
+                })
+                .collect(),
+            total_count: projection.total_count,
+            request_revision,
+        }
     }
 
     /// Test-only. Production reads albums through `find_album_detail` /
@@ -253,6 +263,29 @@ impl LibraryManager {
 
         Ok(())
     }
+}
+
+fn album_cover_refs(versions: HashMap<String, String>) -> HashMap<String, ImageRef> {
+    versions
+        .into_iter()
+        .map(|(id, version)| {
+            let image = ImageRef {
+                id: id.clone(),
+                version,
+                image_type: crate::db::LibraryImageType::Cover,
+            };
+            (id, image)
+        })
+        .collect()
+}
+
+fn resolve_album_rows(
+    rows: Vec<crate::db::DbAlbumSummary>,
+    covers: &HashMap<String, ImageRef>,
+) -> Vec<AlbumSummary> {
+    rows.into_iter()
+        .map(|row| AlbumSummary::from_raw(row, |id| covers.get(id).cloned()))
+        .collect()
 }
 
 impl LibraryManager {

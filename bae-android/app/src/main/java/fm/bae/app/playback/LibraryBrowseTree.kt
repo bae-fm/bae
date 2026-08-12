@@ -1,30 +1,28 @@
 package fm.bae.app.playback
 
 import android.net.Uri
-import androidx.annotation.VisibleForTesting
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
 import fm.bae.app.data.LiveQueryEvent
-import fm.bae.app.data.mapValue
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.runBlocking
+import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeException.Diagnostic
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -32,15 +30,11 @@ import uniffi.bae_bridge.BridgeTrack
 import java.util.LinkedHashMap
 
 private const val TAG = "bae.LibraryBrowseTree"
-private const val PARENT_INTEREST_MAP_INITIAL_CAPACITY = 16
-private const val PARENT_INTEREST_MAP_LOAD_FACTOR = 0.75f
+private const val ACCESS_ORDER_INITIAL_CAPACITY = 16
+private const val ACCESS_ORDER_LOAD_FACTOR = 0.75f
+private const val TREE_CLOSED_MESSAGE = "library browse tree is closed"
 private val logger = BaeLogger(TAG)
 
-/**
- * The two top-level category names the root exposes. Resolved by the caller
- * through the platform string catalog (the tree has no locale), so the tree
- * builds every node's user-visible text without touching resources itself.
- */
 internal data class BrowseLabels(
     val albums: String,
     val composers: String,
@@ -51,102 +45,13 @@ private data class BrowsePage(
     val totalCount: Int,
 )
 
-private data class ParentPageKey(
-    val parentId: String,
-    val page: Int,
-    val pageSize: Int,
-)
-
-private class ParentInterest {
-    private val count = AcceptedCount()
-    val identity = Any()
-    val ended = CompletableDeferred<Unit>()
-
-    fun acceptCount(value: AcceptedValue<Int>) {
-        count.acceptRead(value.sequence, value.value)
-    }
-
-    fun acceptPage(value: AcceptedValue<BrowsePage>) {
-        count.acceptRead(value.sequence, value.value.totalCount)
-    }
-
-    fun acceptPage(event: AcceptedEvent<BrowsePage>) {
-        (event.event as? LiveQueryEvent.Value)?.let { value ->
-            count.acceptRead(event.sequence, value.value.totalCount)
-        }
-    }
-
-    fun commitObserver(event: AcceptedEvent<Int>): Int? =
-        when (val value = event.event) {
-            is LiveQueryEvent.Value ->
-                count.commitValue(event.sequence, value.value, event.isInitial)
-
-            is LiveQueryEvent.Error -> count.commitError(event.sequence, event.isInitial)
-        }
-
-    fun end() {
-        ended.complete(Unit)
-    }
-}
-
-internal class AcceptedCount {
-    private val lock = Any()
-    private var readSequence = 0L
-    private var changeSequence = 0L
-    private var count: Int? = null
-
-    fun acceptRead(
-        acceptedSequence: Long,
-        acceptedCount: Int,
-    ) {
-        synchronized(lock) {
-            if (acceptedSequence >= readSequence) {
-                readSequence = acceptedSequence
-                count = acceptedCount
-            }
-        }
-    }
-
-    fun commitValue(
-        acceptedSequence: Long,
-        acceptedCount: Int,
-        isInitial: Boolean,
-    ): Int? =
-        synchronized(lock) {
-            if (acceptedSequence < changeSequence) {
-                null
-            } else {
-                changeSequence = acceptedSequence
-                if (acceptedSequence >= readSequence) {
-                    readSequence = acceptedSequence
-                    count = acceptedCount
-                }
-                acceptedCount.takeUnless { isInitial }
-            }
-        }
-
-    fun commitError(
-        acceptedSequence: Long,
-        isInitial: Boolean,
-    ): Int? =
-        synchronized(lock) {
-            if (acceptedSequence < changeSequence) {
-                null
-            } else {
-                changeSequence = acceptedSequence
-                count?.takeUnless { isInitial }
-            }
-        }
-}
+private class ParentInterest
 
 private data class ParentInterests(
     val explicit: MutableMap<String, ParentInterest> = mutableMapOf(),
     val implicit: LinkedHashMap<String, ParentInterest> =
-        LinkedHashMap(PARENT_INTEREST_MAP_INITIAL_CAPACITY, PARENT_INTEREST_MAP_LOAD_FACTOR, true),
+        LinkedHashMap(ACCESS_ORDER_INITIAL_CAPACITY, ACCESS_ORDER_LOAD_FACTOR, true),
 ) {
-    val parentIds: Set<String>
-        get() = explicit.keys + implicit.keys
-
     val entries: List<Pair<String, ParentInterest>>
         get() = explicit.toList() + implicit.toList()
 
@@ -154,28 +59,41 @@ private data class ParentInterests(
         get() = explicit.isEmpty() && implicit.isEmpty()
 }
 
-/**
- * Builds the media-browse tree Android Auto / Bluetooth head units navigate,
- * served from the same paged library reads the in-app browser uses ([Library]).
- * The shape mirrors the app's browser: root → Albums / Composers; an album
- * drills to its primary release's tracks; a composer drills to its works and
- * credited albums, and a work to its child works and releases.
- *
- * Queries are live and paged: the top-level album and composer lists honor the
- * browser's requested page window without loading the whole library. Active
- * controller interests retain their projections until unsubscribe or
- * disconnect; delivered inactive pages remain in bounded caches. Nodes
- * themselves are built by [BrowseNodeFactory].
- */
+private data class RetainedParent(
+    val interest: ParentInterest,
+    val evictedParentIds: List<String>,
+)
+
+private fun ParentInterests.retain(
+    parentId: String,
+    explicitly: Boolean,
+    maximumImplicitCount: Int,
+): RetainedParent =
+    if (explicitly) {
+        val retained = explicit[parentId] ?: implicit.remove(parentId) ?: ParentInterest()
+        explicit[parentId] = retained
+        RetainedParent(retained, emptyList())
+    } else {
+        val explicitlyRetained = explicit[parentId]
+        if (explicitlyRetained != null) {
+            RetainedParent(explicitlyRetained, emptyList())
+        } else {
+            val retained = implicit[parentId] ?: ParentInterest()
+            implicit[parentId] = retained
+            val evicted = mutableListOf<String>()
+            while (implicit.size > maximumImplicitCount) {
+                implicit.entries.first().key.also {
+                    implicit.remove(it)
+                    evicted += it
+                }
+            }
+            RetainedParent(retained, evicted)
+        }
+    }
+
 internal class LibraryBrowseTree<Owner : Any>(
     private val library: Library,
-    /** The category labels, resolved through the platform string catalog on
-     *  demand (not at construction) so a browse request picks up the current
-     *  locale and the service does no resource work until a client browses. */
     private val labels: () -> BrowseLabels,
-    /** Maps a cover-image id (a release/composer/work cover) to the content URI
-     *  the browse client fetches its bytes from — the same bytes the bridge's
-     *  `fetchLibraryImageBytes` serves. */
     artworkUri: (image: BridgeImageRef) -> Uri,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
@@ -183,138 +101,50 @@ internal class LibraryBrowseTree<Owner : Any>(
         logger.error("library browse live query failed", error)
     },
 ) {
-    private data class SearchInterest(
-        val query: String,
+    private class SearchInterest(
         val identity: Any,
-        val onResultsChanged: (Int) -> Unit,
+        val query: String,
+        val listener: (Int) -> Unit,
+        val projection: FixedProjection<BridgeSearchResults>,
     ) {
-        private val count = AcceptedCount()
-
-        fun acceptRead(value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>) {
-            count.acceptRead(value.sequence, value.value.albums.size)
-        }
-
-        fun commitChange(event: AcceptedEvent<uniffi.bae_bridge.BridgeSearchResults>): Int? =
-            when (val value = event.event) {
-                is LiveQueryEvent.Value ->
-                    count.commitValue(event.sequence, value.value.albums.size, event.isInitial)
-
-                is LiveQueryEvent.Error -> count.commitError(event.sequence, event.isInitial)
-            }
+        var lastCount: Int? = null
     }
 
-    private data class ParentNotification<Owner>(
-        val parentId: String,
-        val count: Int,
-        val recipients: List<NotificationRecipient<Owner>>,
-        val retirePages: () -> Unit,
-    )
-
-    private data class SearchNotification<Owner>(
-        val owner: Owner,
-        val query: String,
-        val identity: Any,
-        val count: Int,
-        val delivered: CompletableDeferred<Unit> = CompletableDeferred(),
-    )
-
     private val nodes = BrowseNodeFactory(artworkUri)
-    private val interestLock = Any()
-    private val notificationCoordinator = OwnerNotificationCoordinator<Owner>(interestLock)
-    private val acceptedEventSequence = AcceptedEventSequence()
+    val root: MediaItem = nodes.browsable(BrowseId.Root, ROOT_TITLE, null, MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+    private val lock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
+    private val fixedParents = mutableMapOf<String, FixedProjection<BrowsePage>>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
-    private val parentNotifications = mutableMapOf<String, ArrayDeque<ParentNotification<Owner>>>()
-    private val drainingParentNotifications = mutableSetOf<String>()
-    private val searchNotifications = mutableMapOf<String, ArrayDeque<SearchNotification<Owner>>>()
-    private val drainingSearchNotifications = mutableSetOf<String>()
-    private val searchDrainingThreads = mutableMapOf<String, Thread>()
-    private val pageProjections =
-        LiveProjectionCache(
-            scope = scope,
-            maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
-            flow = ::pageFlow,
-            isRetained = { false },
-            acceptedEventSequence = acceptedEventSequence,
-            onAcceptedRead = { key, page ->
-                parentInterests(key.parentId).forEach { interest -> interest.acceptPage(page) }
-            },
-            onAcceptedChange = { key, event ->
-                parentInterests(key.parentId).forEach { interest -> interest.acceptPage(event) }
-                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
-            },
-        )
-    private val parentObservers =
-        LiveProjectionCache(
-            scope = scope,
-            maximumCount = Int.MAX_VALUE,
-            flow = ::parentCountFlow,
-            isRetained = ::isParentRetained,
-            acceptedEventSequence = acceptedEventSequence,
-            onAcceptedRead = { parentId, value ->
-                parentInterests(parentId).forEach { interest -> interest.acceptCount(value) }
-            },
-            onAcceptedChange = { parentId, event ->
-                commitParentChange(parentId, event)
-                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
-            },
-        )
-    private val albumDetails = exactProjections(library::albumDetails)
-    private val composerDetails = exactProjections(library::composerDetails)
-    private val workDetails = exactProjections(library::workDetails)
-    private val releaseDetails = exactProjections(library::releaseDetails)
-    private val searchObservers =
-        LiveProjectionCache(
-            scope = scope,
-            maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
-            flow = library::searchResults,
-            isRetained = ::isSearchRetained,
-            acceptedEventSequence = acceptedEventSequence,
-            onAcceptedRead = { query, value -> acceptSearchRead(query, value) },
-            onAcceptedChange = { query, event ->
-                commitSearchChange(query, event)
-                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
-            },
-        )
-    private val spokenSearches = exactProjections(library::searchResults)
+    private val albumDetails = exactProjectionCache(scope, library::albumDetails, onQueryError)
+    private val composerDetails = exactProjectionCache(scope, library::composerDetails, onQueryError)
+    private val workDetails = exactProjectionCache(scope, library::workDetails, onQueryError)
+    private val releaseDetails = exactProjectionCache(scope, library::releaseDetails, onQueryError)
+    private val spokenSearches = exactProjectionCache(scope, library::searchResults, onQueryError)
+    private var albums: CollectionProjection<uniffi.bae_bridge.BridgeAlbum, BridgeAlbumBrowseSnapshot>? = null
+    private var composers:
+        CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, BridgeComposerBrowseSnapshot>? = null
+    private var closed = false
 
-    /** The tree root. Its [children] are the top-level categories. */
-    fun root(): MediaItem =
-        nodes.browsable(
-            id = BrowseId.Root,
-            title = ROOT_TITLE,
-            cover = null,
-            mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
-        )
-
-    /**
-     * Children of [parentId] for the requested page window, or null when the id
-     * names no node in the tree (the caller reports a bad-id error). An empty
-     * list is a valid answer — a node that legitimately has no children.
-     */
     suspend fun children(
         parentId: String,
         page: Int,
         pageSize: Int,
-    ): List<MediaItem>? =
-        when (val id = BrowseId.parse(parentId)) {
+    ): List<MediaItem>? {
+        checkOpen()
+        return when (val id = BrowseId.parse(parentId)) {
             null -> {
                 null
             }
 
             BrowseId.Root -> {
-                val labels = labels()
-                paginate(
+                val names = labels()
+                BrowsePaging.paginate(
                     listOf(
-                        nodes.browsable(
-                            BrowseId.Albums,
-                            labels.albums,
-                            null,
-                            MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS,
-                        ),
+                        nodes.browsable(BrowseId.Albums, names.albums, null, MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
                         nodes.browsable(
                             BrowseId.Composers,
-                            labels.composers,
+                            names.composers,
                             null,
                             MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS,
                         ),
@@ -324,30 +154,38 @@ internal class LibraryBrowseTree<Owner : Any>(
                 )
             }
 
-            BrowseId.Albums,
-            BrowseId.Composers,
+            BrowseId.Albums -> {
+                albumProjection()
+                    .rows(BrowsePaging.window(page, pageSize))
+                    .map { nodes.album(it.id, it.title, it.cover) }
+            }
+
+            BrowseId.Composers -> {
+                composerProjection().rows(BrowsePaging.window(page, pageSize)).map(nodes::composer)
+            }
+
             is BrowseId.Album,
             is BrowseId.Composer,
             is BrowseId.Work,
-            -> pageProjections.value(ParentPageKey(parentId, page, pageSize)).items
+            -> {
+                BrowsePaging.paginate(fixedParent(parentId).value().items, page, pageSize)
+            }
 
             is BrowseId.Track -> {
-                // A track is a leaf (playable, not browsable); a browse client
-                // should never ask for its children.
-                logger.debug("children requested for playable track ${id.releaseId}#${id.index}; none")
                 emptyList()
             }
         }
+    }
 
-    /** The single node [mediaId] names, or null when it names none. */
-    suspend fun item(mediaId: String): MediaItem? =
-        when (val id = BrowseId.parse(mediaId)) {
+    suspend fun item(mediaId: String): MediaItem? {
+        checkOpen()
+        return when (val id = BrowseId.parse(mediaId)) {
             null -> {
                 null
             }
 
             BrowseId.Root -> {
-                root()
+                root
             }
 
             BrowseId.Albums -> {
@@ -359,96 +197,82 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                val detail = albumDetails.value(id.albumId) ?: return null
-                nodes.album(detail.album.id, detail.album.title, detail.album.cover)
+                albumDetails.value(id.albumId)?.let { nodes.album(it.album.id, it.album.title, it.album.cover) }
             }
 
             is BrowseId.Composer -> {
-                val detail = composerDetails.value(id.artistId) ?: return null
-                nodes.composer(detail.composer)
+                composerDetails.value(id.artistId)?.let { nodes.composer(it.composer) }
             }
 
             is BrowseId.Work -> {
-                val detail = workDetails.value(id.workId) ?: return null
-                nodes.work(detail.work)
+                workDetails.value(id.workId)?.let { nodes.work(it.work) }
             }
 
             is BrowseId.Track -> {
-                val release = releaseDetails.value(id.releaseId) ?: return null
-                val track = flatTracks(release).getOrNull(id.index) ?: return null
-                nodes.track(release, track, id.index)
+                releaseDetails.value(id.releaseId)?.let { release ->
+                    flatTracks(release).getOrNull(id.index)?.let { nodes.track(release, it, id.index) }
+                }
             }
         }
+    }
 
-    /**
-     * Search results for the head unit's search screen, as browsable album
-     * nodes (the client drills into one to play its tracks). Sliced to the
-     * requested page window.
-     */
     suspend fun search(
         query: String,
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = searchObservers.value(query).albums.map { nodes.album(it.id, it.title, it.cover) }
-        return paginate(albums, page, pageSize)
+        checkOpen()
+        val projection = synchronized(lock) { searchesByOwner.values.firstOrNull { it.query == query }?.projection }
+        val results = projection?.value() ?: spokenSearches.value(query)
+        return BrowsePaging.paginate(results.albums.map { nodes.album(it.id, it.title, it.cover) }, page, pageSize)
     }
 
     suspend fun subscribeParent(
         owner: Owner,
         parentId: String,
-    ): Boolean {
-        if (BrowseId.parse(parentId) == null) return false
-        val interest =
-            synchronized(interestLock) {
-                parentsByOwner.getOrPut(owner, ::ParentInterests).let { interests ->
-                    interests.explicit[parentId]
-                        ?: interests.implicit.remove(parentId)?.also { interests.explicit[parentId] = it }
-                        ?: ParentInterest().also { interests.explicit[parentId] = it }
-                }
-            }
-        if (isObservableParent(parentId)) {
-            awaitParentObservation(parentId, interest, parentObservers)
-        }
-        return true
-    }
+    ): Boolean = retainParent(owner, parentId, explicit = true)
 
     suspend fun retainImplicitParent(
         owner: Owner,
         parentId: String,
+    ): Boolean = retainParent(owner, parentId, explicit = false)
+
+    private suspend fun retainParent(
+        owner: Owner,
+        parentId: String,
+        explicit: Boolean,
     ): Boolean {
+        checkOpen()
         if (BrowseId.parse(parentId) == null) return false
-        val (interest, evicted) =
-            synchronized(interestLock) {
-                val interests = parentsByOwner.getOrPut(owner, ::ParentInterests)
-                val retained = interests.explicit[parentId]
-                if (retained != null) {
-                    retained to emptyList()
-                } else {
-                    val implicit = interests.implicit[parentId] ?: ParentInterest()
-                    interests.implicit[parentId] = implicit
-                    implicit to
-                        buildList {
-                            while (interests.implicit.size > MAXIMUM_IMPLICIT_PARENT_INTERESTS) {
-                                val eldest = interests.implicit.entries.first()
-                                interests.implicit.remove(eldest.key)
-                                add(eldest.key to eldest.value)
-                            }
-                        }
-                }
+        val retainedParent =
+            synchronized(lock) {
+                parentsByOwner.getOrPut(owner, ::ParentInterests).retain(
+                    parentId,
+                    explicit,
+                    MAXIMUM_IMPLICIT_PARENT_INTERESTS,
+                )
             }
-        evicted.forEach { (evictedParent, evictedInterest) ->
-            evictedInterest.end()
-            if (!isParentRetained(evictedParent)) parentObservers.cancelWhenUnused(evictedParent)
+        retainedParent.evictedParentIds.forEach { closeParentIfUnused(it) }
+        when (BrowseId.parse(parentId)) {
+            BrowseId.Albums -> albumProjection().awaitReady()
+
+            BrowseId.Composers -> composerProjection().awaitReady()
+
+            is BrowseId.Album,
+            is BrowseId.Composer,
+            is BrowseId.Work,
+            -> fixedParent(parentId).value()
+
+            else -> Unit
         }
-        notificationCoordinator.await(
-            synchronized(interestLock) {
-                evicted.flatMap { (_, interest) -> notificationCoordinator.matching(owner, interest.identity) }
-            },
-        )
-        if (isObservableParent(parentId)) {
-            awaitParentObservation(parentId, interest, parentObservers)
-        }
+        val retained =
+            synchronized(lock) {
+                parentsByOwner[owner]?.let { interests ->
+                    interests.explicit[parentId] === retainedParent.interest ||
+                        interests.implicit[parentId] === retainedParent.interest
+                } == true
+            }
+        if (!retained) throw parentInterestEnded()
         return true
     }
 
@@ -456,21 +280,13 @@ internal class LibraryBrowseTree<Owner : Any>(
         owner: Owner,
         parentId: String,
     ) {
-        val (ended, invocations) =
-            synchronized(interestLock) {
-                val ended =
-                    parentsByOwner[owner]?.let { interests ->
-                        interests.explicit.remove(parentId).also {
-                            if (interests.isEmpty) parentsByOwner.remove(owner)
-                        }
-                    }
-                ended to ended?.let { notificationCoordinator.matching(owner, it.identity) }.orEmpty()
+        synchronized(lock) {
+            parentsByOwner[owner]?.let { interests ->
+                interests.explicit.remove(parentId)
+                if (interests.isEmpty) parentsByOwner.remove(owner)
             }
-        ended?.end()
-        notificationCoordinator.awaitBlocking(invocations)
-        if (!isParentRetained(parentId)) {
-            parentObservers.cancelWhenUnused(parentId)
         }
+        runBlocking { closeParentIfUnused(parentId) }
     }
 
     suspend fun subscribeSearch(
@@ -478,158 +294,76 @@ internal class LibraryBrowseTree<Owner : Any>(
         query: String,
         onResultsChanged: (Int) -> Unit,
     ) {
+        checkOpen()
         val identity = Any()
-        val (previousQuery, previousInvocations) =
-            synchronized(interestLock) {
-                val previous = searchesByOwner.put(owner, SearchInterest(query, identity, onResultsChanged))
-                previous?.query to previous?.let { notificationCoordinator.matching(owner, it.identity) }.orEmpty()
-            }
-        notificationCoordinator.await(previousInvocations)
-        searchObservers.ensure(query)
-        if (previousQuery != null && previousQuery != query && !isSearchRetained(previousQuery)) {
-            searchObservers.cancelWhenUnused(previousQuery)
-        }
-        val count = searchObservers.value(query).albums.size
-        val notification = SearchNotification(owner, query, identity, count)
-        val reentrant = enqueueSearchNotifications(query, listOf(notification))
-        if (!reentrant) notification.delivered.await()
-    }
-
-    private fun acceptSearchRead(
-        query: String,
-        value: AcceptedValue<uniffi.bae_bridge.BridgeSearchResults>,
-    ) {
-        synchronized(interestLock) {
-            searchesByOwner.values
-                .filter { it.query == query }
-                .forEach { it.acceptRead(value) }
-        }
-    }
-
-    private fun commitSearchChange(
-        query: String,
-        event: AcceptedEvent<uniffi.bae_bridge.BridgeSearchResults>,
-    ) {
-        val notifications =
-            synchronized(interestLock) {
-                searchesByOwner
-                    .filterValues { it.query == query }
-                    .mapNotNull { (owner, interest) ->
-                        interest.commitChange(event)?.let { count ->
-                            SearchNotification(owner, query, interest.identity, count)
+        val projection =
+            FixedProjection(
+                scope,
+                library.searchResults(query),
+                onChanged = { value ->
+                    val listener =
+                        synchronized(lock) {
+                            searchesByOwner[owner]
+                                ?.takeIf { it.identity === identity }
+                                ?.also {
+                                    it.lastCount = value.albums.size
+                                }?.listener
                         }
-                    }
-            }
-        enqueueSearchNotifications(query, notifications)
-    }
-
-    private fun enqueueSearchNotifications(
-        query: String,
-        notifications: List<SearchNotification<Owner>>,
-    ): Boolean {
-        if (notifications.isEmpty()) return false
-        val (shouldDrain, reentrant) =
-            synchronized(interestLock) {
-                searchNotifications.getOrPut(query, ::ArrayDeque).addAll(notifications)
-                val shouldDrain = drainingSearchNotifications.add(query)
-                if (shouldDrain) searchDrainingThreads[query] = Thread.currentThread()
-                shouldDrain to (!shouldDrain && searchDrainingThreads[query] === Thread.currentThread())
-            }
-        if (shouldDrain) drainSearchNotifications(query)
-        return reentrant
-    }
-
-    private fun beginSearchInvocation(
-        notification: SearchNotification<Owner>,
-    ): OwnerNotificationCoordinator.Invocation<Owner>? =
-        synchronized(interestLock) {
-            val interest =
-                searchesByOwner[notification.owner]?.takeIf {
-                    it.query == notification.query && it.identity === notification.identity
-                }
-                    ?: return@synchronized null
-            notificationCoordinator.begin(
-                recipients = listOf(NotificationRecipient(notification.owner, notification.identity)),
-                callback = { interest.onResultsChanged(notification.count) },
+                    listener?.invoke(value.albums.size)
+                },
+                onError = { error ->
+                    onQueryError(error)
+                    val notification =
+                        synchronized(lock) {
+                            searchesByOwner[owner]?.takeIf { it.identity === identity }?.let { interest ->
+                                interest.lastCount?.let { count -> interest.listener to count }
+                            }
+                        }
+                    notification?.let { (listener, count) -> listener(count) }
+                },
+                notifyInitialValue = true,
+                startImmediately = false,
             )
-        }
-
-    private fun drainSearchNotifications(query: String) {
-        try {
-            while (true) {
-                val notification =
-                    synchronized(interestLock) {
-                        val queue = searchNotifications[query]
-                        if (queue == null || queue.isEmpty()) {
-                            searchNotifications.remove(query)
-                            drainingSearchNotifications.remove(query)
-                            searchDrainingThreads.remove(query)
-                            null
-                        } else {
-                            queue.removeFirst()
-                        }
-                    } ?: return
-                try {
-                    beginSearchInvocation(notification)?.let(notificationCoordinator::invoke)
-                } finally {
-                    notification.delivered.complete(Unit)
-                }
+        val interest = SearchInterest(identity, query, onResultsChanged, projection)
+        val previous =
+            synchronized(lock) {
+                if (closed) throw treeClosedError()
+                searchesByOwner.put(owner, interest)
             }
-        } finally {
-            synchronized(interestLock) {
-                if (searchDrainingThreads[query] === Thread.currentThread()) {
-                    searchDrainingThreads.remove(query)
-                }
-            }
+        previous?.projection?.close()
+        val retained = synchronized(lock) { searchesByOwner[owner] === interest }
+        if (!retained) {
+            projection.close()
+            throw searchInterestEnded()
         }
+        projection.start()
+        projection.value()
     }
 
-    fun disconnect(owner: Owner) {
-        val (parents, search, invocations) =
-            synchronized(interestLock) {
-                val parents = parentsByOwner.remove(owner)?.entries.orEmpty()
-                val search = searchesByOwner.remove(owner)
-                val identities = parents.map { (_, interest) -> interest.identity } + listOfNotNull(search?.identity)
-                Triple(
-                    parents,
-                    search,
-                    identities.flatMap { identity -> notificationCoordinator.matching(owner, identity) },
-                )
-            }
-        notificationCoordinator.awaitBlocking(invocations)
-        parents.forEach { (parentId, interest) ->
-            interest.end()
-            if (!isParentRetained(parentId)) {
-                parentObservers.cancelWhenUnused(parentId)
-            }
+    fun disconnect(owner: Owner) =
+        runBlocking {
+            val (parents, search) =
+                synchronized(lock) {
+                    parentsByOwner
+                        .remove(owner)
+                        ?.entries
+                        .orEmpty()
+                        .map { it.first } to searchesByOwner.remove(owner)
+                }
+            search?.projection?.close()
+            parents.forEach { closeParentIfUnused(it) }
         }
-        search?.query?.let { query ->
-            if (!isSearchRetained(query)) searchObservers.cancelWhenUnused(query)
-        }
-    }
 
-    /**
-     * The track a spoken "play X" should start, or null when the search finds
-     * nothing playable. Prefers a matching track (started in its primary
-     * release); falls back to the top album's first track. A track result
-     * short-circuits: if there is one but its album has no primary release, the
-     * answer is null — the search does not then fall back to the album list.
-     */
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
+        checkOpen()
         val results = spokenSearches.value(query)
         val firstTrack = results.tracks.firstOrNull()
         val firstAlbum = results.albums.firstOrNull()
         return when {
             firstTrack != null -> {
                 albumDetails.value(firstTrack.albumId)?.let(::primaryRelease)?.let { release ->
-                    val index = flatTracks(release).indexOfFirst { it.id == firstTrack.id }
-                    if (index < 0) {
-                        logger.debug(
-                            "spoken-match track ${firstTrack.id} not in primary release " +
-                                "${release.id}; starting the release",
-                        )
-                    }
-                    BrowseId.Track(release.id, index.coerceAtLeast(0))
+                    val index = flatTracks(release).indexOfFirst { it.id == firstTrack.id }.coerceAtLeast(0)
+                    BrowseId.Track(release.id, index)
                 }
             }
 
@@ -643,343 +377,172 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 
-    fun close() {
-        val (parentInterests, invocations) =
-            synchronized(interestLock) {
-                val parentInterests = parentsByOwner.values.flatMap(ParentInterests::entries)
-                val invocations = notificationCoordinator.all()
-                parentsByOwner.clear()
+    fun close() = runBlocking { closeSuspending() }
+
+    private suspend fun closeSuspending() {
+        val state =
+            synchronized(lock) {
+                if (closed) return
+                closed = true
+                val state = Triple(albums to composers, fixedParents.values.toList(), searchesByOwner.values.toList())
+                albums = null
+                composers = null
+                fixedParents.clear()
                 searchesByOwner.clear()
-                parentNotifications.clear()
-                drainingParentNotifications.clear()
-                searchNotifications.values.flatten().forEach { it.delivered.complete(Unit) }
-                searchNotifications.clear()
-                drainingSearchNotifications.clear()
-                searchDrainingThreads.clear()
-                parentInterests to invocations
+                parentsByOwner.clear()
+                state
             }
-        notificationCoordinator.awaitBlocking(invocations)
-        parentInterests.forEach { (_, interest) -> interest.end() }
-        pageProjections.cancelAll()
-        parentObservers.cancelAll()
-        albumDetails.cancelAll()
-        composerDetails.cancelAll()
-        workDetails.cancelAll()
-        releaseDetails.cancelAll()
-        searchObservers.cancelAll()
-        spokenSearches.cancelAll()
+        state.first.first?.close()
+        state.first.second?.close()
+        state.second.forEach { it.close() }
+        state.third.forEach { it.projection.close() }
+        val error = treeClosedError()
+        albumDetails.cancelAll(error)
+        composerDetails.cancelAll(error)
+        workDetails.cancelAll(error)
+        releaseDetails.cancelAll(error)
+        spokenSearches.cancelAll(error)
     }
 
-    private fun isParentRetained(parentId: String): Boolean =
-        synchronized(interestLock) { parentsByOwner.values.any { parentId in it.parentIds } }
+    private fun albumProjection(): CollectionProjection<uniffi.bae_bridge.BridgeAlbum, BridgeAlbumBrowseSnapshot> =
+        synchronized(lock) {
+            check(!closed)
+            albums ?: albumCollectionProjection(
+                scope,
+                library.albumBrowse(listOf(ALBUM_SORT)),
+                onChanged = { count -> notifyParent(BrowseId.Albums.mediaId, count) },
+                onError = onQueryError,
+            ).also { albums = it }
+        }
 
-    private fun parentInterests(parentId: String): List<ParentInterest> =
-        synchronized(interestLock) { parentInterestsLocked(parentId) }
+    private fun composerProjection(): ComposerCollectionProjection =
+        synchronized(lock) {
+            check(!closed)
+            composers ?: composerCollectionProjection(
+                scope,
+                library.composerBrowse(COMPOSER_SORT),
+                onChanged = { count -> notifyParent(BrowseId.Composers.mediaId, count) },
+                onError = onQueryError,
+            ).also { composers = it }
+        }
 
-    private fun isSearchRetained(query: String): Boolean =
-        synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
+    private fun fixedParent(parentId: String): FixedProjection<BrowsePage> =
+        synchronized(lock) {
+            fixedParents[parentId] ?: FixedProjection(
+                scope,
+                parentFlow(parentId),
+                onChanged = { notifyParent(parentId, it.totalCount) },
+                onError = onQueryError,
+            ).also { fixedParents[parentId] = it }
+        }
 
-    private fun commitParentChange(
+    private suspend fun closeParentIfUnused(parentId: String) {
+        val retained =
+            synchronized(lock) {
+                parentsByOwner.values.any { parentId in it.explicit || parentId in it.implicit }
+            }
+        if (retained) return
+        when (BrowseId.parse(parentId)) {
+            BrowseId.Albums -> synchronized(lock) { albums.also { albums = null } }?.close()
+            BrowseId.Composers -> synchronized(lock) { composers.also { composers = null } }?.close()
+            else -> synchronized(lock) { fixedParents.remove(parentId) }?.close()
+        }
+    }
+
+    private fun notifyParent(
         parentId: String,
-        event: AcceptedEvent<Int>,
+        count: Int,
     ) {
-        val shouldDrain =
-            synchronized(interestLock) {
-                val interests = parentInterestEntriesLocked(parentId)
-                val counts = interests.map { (_, interest) -> interest.commitObserver(event) }
-                val count = counts.firstOrNull { it != null }
-                if (count == null) {
-                    false
-                } else {
-                    val retirePages =
-                        pageProjections.prepareRetireWhere(
-                            predicate = { key -> key.parentId == parentId },
-                            error = parentChangedError(),
-                        )
-                    parentNotifications
-                        .getOrPut(parentId, ::ArrayDeque)
-                        .addLast(
-                            ParentNotification(
-                                parentId = parentId,
-                                count = count,
-                                recipients =
-                                    interests.map { (owner, interest) ->
-                                        NotificationRecipient(owner, interest.identity)
-                                    },
-                                retirePages = retirePages,
-                            ),
-                        )
-                    drainingParentNotifications.add(parentId)
-                }
+        val interested =
+            synchronized(lock) {
+                !closed && parentsByOwner.values.any { parentId in it.explicit || parentId in it.implicit }
             }
-        if (shouldDrain) drainParentNotifications(parentId)
-    }
-
-    private fun drainParentNotifications(parentId: String) {
-        while (true) {
-            val notification =
-                synchronized(interestLock) {
-                    val queue = parentNotifications[parentId]
-                    if (queue == null || queue.isEmpty()) {
-                        parentNotifications.remove(parentId)
-                        drainingParentNotifications.remove(parentId)
-                        null
-                    } else {
-                        queue.removeFirst()
-                    }
-                } ?: return
-            val invocation = beginParentInvocation(notification)
-            notification.retirePages()
-            invocation?.let(notificationCoordinator::invoke)
+        if (interested) {
+            val stillInterested =
+                synchronized(lock) {
+                    !closed && parentsByOwner.values.any { parentId in it.explicit || parentId in it.implicit }
+                }
+            if (stillInterested) onChildrenChanged(parentId, count)
         }
     }
 
-    private fun beginParentInvocation(
-        notification: ParentNotification<Owner>,
-    ): OwnerNotificationCoordinator.Invocation<Owner>? =
-        synchronized(interestLock) {
-            val currentRecipients =
-                notification.recipients.filter { recipient ->
-                    currentParentInterestLocked(recipient.owner, notification.parentId)?.identity === recipient.identity
-                }
-            if (currentRecipients.isEmpty()) {
-                null
-            } else {
-                notificationCoordinator.begin(currentRecipients) {
-                    onChildrenChanged(notification.parentId, notification.count)
-                }
-            }
-        }
-
-    private fun parentInterestsLocked(parentId: String): List<ParentInterest> =
-        parentInterestEntriesLocked(parentId).map { (_, interest) -> interest }
-
-    private fun parentInterestEntriesLocked(parentId: String): List<Pair<Owner, ParentInterest>> =
-        parentsByOwner.mapNotNull { (owner, interests) ->
-            (interests.explicit[parentId] ?: interests.implicit[parentId])?.let { owner to it }
-        }
-
-    private fun currentParentInterestLocked(
-        owner: Owner,
-        parentId: String,
-    ): ParentInterest? =
-        parentsByOwner[owner]?.let { interests ->
-            interests.explicit[parentId] ?: interests.implicit[parentId]
-        }
-
-    private fun <Key, Value> exactProjections(
-        flow: (Key) -> Flow<LiveQueryEvent<Value>>,
-    ): LiveProjectionCache<Key, Value> =
-        LiveProjectionCache(
-            scope,
-            MAXIMUM_EXACT_SUBSCRIPTIONS,
-            flow,
-            isRetained = { false },
-            onAcceptedChange = { _, event ->
-                (event.event as? LiveQueryEvent.Error)?.let { error -> onQueryError(error.error) }
-            },
-        )
-
-    private fun parentCountFlow(parentId: String): Flow<LiveQueryEvent<Int>> =
+    private fun parentFlow(parentId: String): Flow<LiveQueryEvent<BrowsePage>> =
         when (val id = checkNotNull(BrowseId.parse(parentId))) {
-            BrowseId.Albums ->
-                library.albumParentObservation().map { event ->
-                    event.mapValue { it.childCount.toInt() }
+            is BrowseId.Album -> {
+                library.albumDetails(id.albumId).mapBrowse { detail ->
+                    detail
+                        ?.let(::primaryRelease)
+                        ?.let { release ->
+                            flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
+                        }.orEmpty()
                 }
+            }
 
-            BrowseId.Composers ->
-                library.composerParentObservation().map { event ->
-                    event.mapValue { it.childCount.toInt() }
+            is BrowseId.Composer -> {
+                library.composerDetails(id.artistId).mapBrowse { detail ->
+                    detail
+                        ?.let {
+                            it.workGroups
+                                .flatMap { group -> listOfNotNull(group.parent) + group.works }
+                                .map(nodes::work) +
+                                it.unlinkedReleaseRoles.map { role -> nodes.album(role.albumId, role.albumTitle, null) }
+                        }.orEmpty()
                 }
+            }
 
-            is BrowseId.Album ->
-                library.albumDetails(id.albumId).map { event ->
-                    event.mapValue { detail -> detail?.let(::primaryRelease)?.let(::flatTracks)?.size ?: 0 }
+            is BrowseId.Work -> {
+                library.workDetails(id.workId).mapBrowse { detail ->
+                    detail
+                        ?.let {
+                            it.childWorks.map(nodes::work) +
+                                it.releases.map { release ->
+                                    nodes.album(release.albumId, release.albumTitle, release.cover)
+                                }
+                        }.orEmpty()
                 }
+            }
 
-            is BrowseId.Composer ->
-                library.composerDetails(id.artistId).map { event ->
-                    event.mapValue { detail ->
-                        detail?.let { value ->
-                            value.workGroups.sumOf { group -> group.works.size + if (group.parent == null) 0 else 1 } +
-                                value.unlinkedReleaseRoles.size
-                        } ?: 0
-                    }
-                }
-
-            is BrowseId.Work ->
-                library.workDetails(id.workId).map { event ->
-                    event.mapValue { detail -> detail?.let { it.childWorks.size + it.releases.size } ?: 0 }
-                }
-
-            BrowseId.Root,
-            is BrowseId.Track,
-            -> error("static browse id $parentId cannot create a parent observation")
+            else -> {
+                error("$parentId has no fixed parent query")
+            }
         }
 
-    private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
-        when (val id = checkNotNull(BrowseId.parse(key.parentId))) {
-            BrowseId.Albums ->
-                library
-                    .albumPages(listOf(ALBUM_SORT), offsetOf(key.page, key.pageSize), limitOf(key.pageSize))
-                    .map { event ->
-                        event.mapValue { page ->
-                            BrowsePage(
-                                page.rows.map { nodes.album(it.id, it.title, it.cover) },
-                                page.totalCount.toInt(),
-                            )
-                        }
-                    }
-
-            BrowseId.Composers ->
-                library
-                    .composerPages(COMPOSER_SORT, offsetOf(key.page, key.pageSize), limitOf(key.pageSize))
-                    .map { event ->
-                        event.mapValue { page ->
-                            BrowsePage(page.rows.map(nodes::composer), page.totalCount.toInt())
-                        }
-                    }
-
-            is BrowseId.Album ->
-                library.albumDetails(id.albumId).map { event ->
-                    event.mapValue { detail ->
-                        val items =
-                            detail?.let(::primaryRelease)?.let { release ->
-                                flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
-                            }.orEmpty()
-                        BrowsePage(paginate(items, key.page, key.pageSize), items.size)
-                    }
-                }
-
-            is BrowseId.Composer ->
-                library.composerDetails(id.artistId).map { event ->
-                    event.mapValue { detail ->
-                        val items =
-                            if (detail == null) {
-                                logger.warning("composer ${id.artistId} has no detail; no browse children")
-                                emptyList()
-                            } else {
-                                val works = detail.workGroups.flatMap { group -> listOfNotNull(group.parent) + group.works }
-                                works.map(nodes::work) +
-                                    detail.unlinkedReleaseRoles.map { nodes.album(it.albumId, it.albumTitle, null) }
-                            }
-                        BrowsePage(paginate(items, key.page, key.pageSize), items.size)
-                    }
-                }
-
-            is BrowseId.Work ->
-                library.workDetails(id.workId).map { event ->
-                    event.mapValue { detail ->
-                        val items =
-                            if (detail == null) {
-                                logger.warning("work ${id.workId} has no detail; no browse children")
-                                emptyList()
-                            } else {
-                                detail.childWorks.map(nodes::work) +
-                                    detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover) }
-                            }
-                        BrowsePage(paginate(items, key.page, key.pageSize), items.size)
-                    }
-                }
-
-            BrowseId.Root,
-            is BrowseId.Track,
-            -> error("static browse id ${key.parentId} cannot create a live page")
+    private fun checkOpen() {
+        synchronized(lock) {
+            if (closed) throw treeClosedError()
         }
+    }
 
     private companion object {
         const val ROOT_TITLE = "bae"
-
-        // The browser's default album and composer orderings — newest albums
-        // first, composers by name — matching the in-app browser's defaults.
         val ALBUM_SORT = BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)
         val COMPOSER_SORT = BridgeComposerSortCriterion(BridgeComposerSortField.NAME, BridgeSortDirection.ASCENDING)
-
-        // Upper bound on how many rows one page read pulls. A browse client that
-        // subscribes without paging asks for Int.MAX_VALUE; cap it so a browse
-        // read never pulls the whole library.
-        const val MAX_PAGE_SIZE = 500
-        const val MAXIMUM_PAGE_SUBSCRIPTIONS = 12
-        const val MAXIMUM_EXACT_SUBSCRIPTIONS = 24
-        const val MAXIMUM_SEARCH_SUBSCRIPTIONS = 8
         const val MAXIMUM_IMPLICIT_PARENT_INTERESTS = 12
-
-        fun limitOf(pageSize: Int): ULong = pageSize.coerceIn(1, MAX_PAGE_SIZE).toULong()
-
-        fun offsetOf(
-            page: Int,
-            pageSize: Int,
-        ): ULong = (page.toLong().coerceAtLeast(0) * pageSize.toLong().coerceAtLeast(0)).toULong()
-
-        @VisibleForTesting
-        fun paginate(
-            items: List<MediaItem>,
-            page: Int,
-            pageSize: Int,
-        ): List<MediaItem> {
-            val limit = pageSize.coerceIn(1, MAX_PAGE_SIZE)
-            val start = (page.toLong().coerceAtLeast(0) * pageSize.toLong().coerceAtLeast(0))
-            if (start >= items.size) return emptyList()
-            return items.drop(start.toInt()).take(limit)
-        }
     }
 }
 
-/** The album's primary release, or its first release when the primary id names
- *  none — the release a browse drill or spoken match starts from. */
-private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
-    detail.releases.firstOrNull { it.id == detail.album.primaryReleaseId }
-        ?: detail.releases.firstOrNull()
+private typealias OptionalLiveQuery<Value> = Flow<LiveQueryEvent<Value?>>
+private typealias BrowsePageQuery = Flow<LiveQueryEvent<BrowsePage>>
 
-/** The release-wide flat track order (across track groups) — the same
- *  flattening the album-detail screen taps into, so a track's position here is
- *  the start index `play_release` expects. */
+private fun <Value> OptionalLiveQuery<Value>.mapBrowse(rows: (Value?) -> List<MediaItem>): BrowsePageQuery =
+    map { event ->
+        event.mapValue { value -> rows(value).let { BrowsePage(it, it.size) } }
+    }
+
+private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
+    detail.releases.firstOrNull { it.id == detail.album.primaryReleaseId } ?: detail.releases.firstOrNull()
+
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
-private fun parentChangedError(): BridgeException =
-    BridgeException.Diagnostic(
-        category = BridgeErrorCategory.DATABASE,
-        detail = "browse parent changed; retry the requested page",
-    )
+internal fun windowEvicted(): BridgeException =
+    BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "browse window was replaced by a newer request")
 
-private fun isObservableParent(parentId: String): Boolean =
-    when (BrowseId.parse(parentId)) {
-        BrowseId.Albums,
-        BrowseId.Composers,
-        is BrowseId.Album,
-        is BrowseId.Composer,
-        is BrowseId.Work,
-        -> true
-
-        null,
-        BrowseId.Root,
-        is BrowseId.Track,
-        -> false
-    }
-
-private suspend fun <Value> awaitParentObservation(
-    parentId: String,
-    interest: ParentInterest,
-    parentObservers: LiveProjectionCache<String, Value>,
-) {
-    coroutineScope {
-        val observation =
-            async(start = CoroutineStart.UNDISPATCHED) {
-                parentObservers.event(parentId)
-            }
-        select {
-            observation.onAwait {}
-            interest.ended.onAwait {
-                observation.cancel()
-                throw parentInterestEnded()
-            }
-        }
-    }
-    if (interest.ended.isCompleted) throw parentInterestEnded()
-}
+internal fun treeClosedError(): BridgeException = browseDiagnostic(TREE_CLOSED_MESSAGE)
 
 private fun parentInterestEnded(): BridgeException =
-    BridgeException.Diagnostic(
-        category = BridgeErrorCategory.INTERNAL,
-        detail = "browse parent interest ended before its observation became ready",
-    )
+    BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "library browse parent interest ended")
+
+private fun searchInterestEnded(): BridgeException =
+    BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "library browse search interest ended")
+
+private fun browseDiagnostic(message: String): BridgeException = Diagnostic(BridgeErrorCategory.INTERNAL, message)

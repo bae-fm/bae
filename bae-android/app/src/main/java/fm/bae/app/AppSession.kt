@@ -13,8 +13,8 @@ import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
-import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryQueryStores
+import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SyncStatusStore
@@ -72,20 +72,20 @@ private const val POSITION_UPDATE_INTERVAL_MS = 200u
  * wired around it. Built by [AppSessionHolder.openLibrary] after `initApp`
  * succeeds and the encryption key is present. Mirrors the macOS `AppService`.
  */
-class OpenLibrary(
+class OpenLibrary internal constructor(
     val libraryId: String,
     val appHandle: AppHandle,
     val diagnostics: BridgeDiagnostics,
     private val stores: OpenLibraryStores,
-    val playback: BaeCorePlayer,
+    private val runtime: OpenLibraryRuntime,
     private val appContext: Context,
-    scope: CoroutineScope,
 ) {
     // Library is always a thin wrapper around appHandle; construct it here rather
     // than requiring callers to pass a separately-constructed instance.
     val library = Library(appHandle)
-    internal val browserPages = BrowserPageStores(library, appContext, scope)
-    internal val libraryQueries = LibraryQueryStores(library, scope)
+    internal val browserPages = BrowserPageStores(library, appContext, runtime.scope)
+    internal val libraryQueries = LibraryQueryStores(library, runtime.scope)
+    val playback: BaeCorePlayer get() = runtime.playback
 
     // Every image the app shows resolves through this store, and its cache entries
     // are keyed on this library's image ids — so it lives and dies with the
@@ -276,8 +276,7 @@ class OpenLibrary(
         // service's onDestroy releases the MediaSession but not the player (the
         // player outlives the service), so this is the only place the player's
         // system hooks come off — do it before close().
-        playback.detachSystemHooks()
-        playback.cancelQueuePageSubscriptions()
+        playback.closeSession()
         eventJob?.cancel()
         widgetJob?.cancel()
         eventChannel?.close()
@@ -289,6 +288,11 @@ class OpenLibrary(
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
     }
 }
+
+internal data class OpenLibraryRuntime(
+    val playback: BaeCorePlayer,
+    val scope: CoroutineScope,
+)
 
 /**
  * Local libraries discovered on this device — drives the Settings library
@@ -493,14 +497,7 @@ object AppSessionHolder {
                     libraryId,
                     handle,
                     diagnostics,
-                    OpenLibraryStores(
-                        library = LibraryStore(),
-                        config = ConfigStore(config),
-                        syncStatus = SyncStatusStore(),
-                        downloads = DownloadStore(handle.getDownloadSnapshot()),
-                        outbox = OutboxStore(initialOutbox),
-                        cast = CastStore(),
-                    ),
+                    buildStores(config, handle, initialOutbox),
                     context.applicationContext,
                 )
             current = session
@@ -533,20 +530,36 @@ object AppSessionHolder {
             appHandle = handle,
             diagnostics = diagnostics,
             stores = stores,
-            playback =
-                BaeCorePlayer(
-                    applicationLooper = Looper.getMainLooper(),
-                    appHandle = handle,
-                    context = appContext,
+            runtime =
+                OpenLibraryRuntime(
+                    playback =
+                        BaeCorePlayer(
+                            applicationLooper = Looper.getMainLooper(),
+                            appHandle = handle,
+                            context = appContext,
+                            scope = appScope,
+                            isAppForeground = {
+                                ProcessLifecycleOwner
+                                    .get()
+                                    .lifecycle.currentState
+                                    .isAtLeast(Lifecycle.State.STARTED)
+                            },
+                        ),
                     scope = appScope,
-                    isAppForeground = {
-                        ProcessLifecycleOwner
-                            .get()
-                            .lifecycle.currentState
-                            .isAtLeast(Lifecycle.State.STARTED)
-                    },
                 ),
             appContext = appContext,
-            scope = appScope,
         )
+
+    private fun buildStores(
+        config: BridgeConfig,
+        handle: AppHandle,
+        initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
+    ) = OpenLibraryStores(
+        library = LibraryStore(),
+        config = ConfigStore(config),
+        syncStatus = SyncStatusStore(),
+        downloads = DownloadStore(handle.getDownloadSnapshot()),
+        outbox = OutboxStore(initialOutbox),
+        cast = CastStore(),
+    )
 }

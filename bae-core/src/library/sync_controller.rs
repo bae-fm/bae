@@ -468,10 +468,10 @@ impl SyncController {
             // library back. Report that over the probe failure — it is the state
             // the user has to fix first.
             restored.map_err(|error| {
-                coven::KeyError::Persistence(format!(
-                    "the S3 credentials failed their probe ({probe_failure}) \
-                     and could not be taken back out of the keyring: {error}"
-                ))
+                coven::KeyError::Custody {
+                    operation: "restore previous S3 credentials after the proposed credentials failed their probe",
+                    source: Box::new(error),
+                }
             })?;
             return Err(probe_failure);
         }

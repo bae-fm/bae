@@ -15,6 +15,8 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeWorkDetail
 
+private const val SEARCH_DEBOUNCE_MS = 300L
+
 internal data class LiveQueryState<Value>(
     val value: Value? = null,
     val delivered: Boolean = false,
@@ -99,7 +101,7 @@ internal class SearchQueryStore(
         mutableState.value = LiveQueryState()
         job =
             scope.launch {
-                delay(300)
+                delay(SEARCH_DEBOUNCE_MS)
                 library.searchResults(value).collect { event ->
                     if (generation == currentGeneration) {
                         mutableState.apply(event)

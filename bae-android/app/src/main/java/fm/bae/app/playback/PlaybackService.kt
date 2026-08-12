@@ -91,13 +91,13 @@ class PlaybackService : MediaLibraryService() {
         // system can kill the service on its own. Releasing the player here would
         // break the in-app UI, which holds the same instance, and a later restart
         // would build a session over a released player.
+        browseTree?.close()
+        browseTree = null
         mediaSession?.run {
             removeSession(this)
             release()
         }
         mediaSession = null
-        browseTree?.close()
-        browseTree = null
         browseScope.cancel()
         super.onDestroy()
     }
