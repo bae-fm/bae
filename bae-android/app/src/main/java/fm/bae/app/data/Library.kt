@@ -15,11 +15,13 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibraryParentObservation
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.LibrarySearchCallback
+import uniffi.bae_bridge.LibraryParentObservationCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.ReleaseDetailCallback
 import uniffi.bae_bridge.WorkDetailCallback
@@ -81,6 +83,9 @@ class Library(private val handle: AppHandle) {
             awaitClose(subscription::cancel)
         }
 
+    internal fun albumParentObservation(): Flow<LiveQueryEvent<BridgeLibraryParentObservation>> =
+        parentObservation(handle::subscribeAlbumParentObservation)
+
     internal fun albumDetails(
         albumId: String,
     ): Flow<LiveQueryEvent<BridgeAlbumDetail?>> =
@@ -131,6 +136,9 @@ class Library(private val handle: AppHandle) {
                 )
             awaitClose(subscription::cancel)
         }
+
+    internal fun composerParentObservation(): Flow<LiveQueryEvent<BridgeLibraryParentObservation>> =
+        parentObservation(handle::subscribeComposerParentObservation)
 
     internal fun composerDetails(
         artistId: String,
@@ -228,6 +236,25 @@ class Library(private val handle: AppHandle) {
                     query,
                     object : LibrarySearchCallback {
                         override fun onValue(value: BridgeSearchResults) {
+                            trySend(LiveQueryEvent.Value(value))
+                        }
+
+                        override fun onError(error: BridgeException) {
+                            trySend(LiveQueryEvent.Error(error))
+                        }
+                    },
+                )
+            awaitClose(subscription::cancel)
+        }
+
+    private fun parentObservation(
+        subscribe: (LibraryParentObservationCallback) -> LiveSubscription,
+    ): Flow<LiveQueryEvent<BridgeLibraryParentObservation>> =
+        callbackFlow {
+            val subscription =
+                subscribe(
+                    object : LibraryParentObservationCallback {
+                        override fun onValue(value: BridgeLibraryParentObservation) {
                             trySend(LiveQueryEvent.Value(value))
                         }
 

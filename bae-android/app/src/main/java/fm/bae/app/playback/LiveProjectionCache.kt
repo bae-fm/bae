@@ -2,7 +2,6 @@ package fm.bae.app.playback
 
 import fm.bae.app.data.LiveQueryEvent
 import java.util.LinkedHashMap
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -65,9 +64,7 @@ internal class LiveProjectionCache<Key, Value>(
     private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
     private val isRetained: (Key) -> Boolean,
     private val onChanged: (Key, Value) -> Unit = { _, _ -> },
-    private val onError: (Key, previousValue: Value?, BridgeException) -> Unit,
-    private val onEntryCreated: (Key) -> Unit = {},
-    private val onEntryRemoved: (Key) -> Unit = {},
+    private val onError: (Key, previousValue: Value?, BridgeException, isUpdate: Boolean) -> Unit,
 ) {
     private class Entry<Value>(
         val identity: Any,
@@ -77,6 +74,12 @@ internal class LiveProjectionCache<Key, Value>(
         var delivered: Delivered<Value>? = null,
         var latest: LiveQueryEvent<Value>? = null,
         var changed: CompletableDeferred<Unit> = CompletableDeferred(),
+        var retiredError: BridgeException? = null,
+    )
+
+    private data class Awaited<Value>(
+        val event: LiveQueryEvent<Value>?,
+        val changed: CompletableDeferred<Unit>,
     )
 
     private data class Delivered<Value>(val value: Value)
@@ -89,7 +92,7 @@ internal class LiveProjectionCache<Key, Value>(
     suspend fun value(key: Key): Value {
         val entry = acquire(key)
         return try {
-            awaitValue(key, entry)
+            awaitValue(entry)
         } finally {
             release(key, entry.identity)
         }
@@ -102,7 +105,6 @@ internal class LiveProjectionCache<Key, Value>(
                 (projections[key]
                     ?: createEntry(key).also {
                         projections[key] = it
-                        onEntryCreated(key)
                         created = true
                     }).also { it.cancelWhenUnused = false }
             }
@@ -125,15 +127,37 @@ internal class LiveProjectionCache<Key, Value>(
                     }
                 }
             }
-        cancelled?.let { remove(key, it) }
+        cancelled?.let(::cancel)
     }
 
     fun cancelAll() {
         val cancelled =
             synchronized(lock) {
-                projections.toList().also { projections.clear() }
+                projections.values.toList().also { projections.clear() }
             }
-        cancelled.forEach { (key, entry) -> remove(key, entry) }
+        cancelled.forEach(::cancel)
+    }
+
+    fun retireWhere(
+        predicate: (Key) -> Boolean,
+        error: BridgeException,
+    ) {
+        val retired =
+            synchronized(lock) {
+                projections.entries
+                    .filter { predicate(it.key) }
+                    .map { (key, entry) ->
+                        val signal = entry.changed
+                        entry.retiredError = error
+                        entry.changed = CompletableDeferred()
+                        projections.remove(key)
+                        entry to signal
+                    }
+            }
+        retired.forEach { (entry, signal) ->
+            signal.complete(Unit)
+            cancel(entry)
+        }
     }
 
     private fun acquire(key: Key): Entry<Value> {
@@ -143,7 +167,6 @@ internal class LiveProjectionCache<Key, Value>(
                 (projections[key]
                     ?: createEntry(key).also {
                         projections[key] = it
-                        onEntryCreated(key)
                         created = true
                     }).also { it.waiters++ }
             }
@@ -167,7 +190,8 @@ internal class LiveProjectionCache<Key, Value>(
     ) {
         val cancelled =
             synchronized(lock) {
-                projections[key]?.takeIf { it.identity === identity }?.let { entry ->
+                val entry = projections[key]?.takeIf { it.identity === identity }
+                if (entry != null) {
                     check(entry.waiters > 0)
                     entry.waiters--
                     if (entry.waiters == 0 && entry.cancelWhenUnused && !isRetained(key)) {
@@ -175,30 +199,29 @@ internal class LiveProjectionCache<Key, Value>(
                     } else {
                         null
                     }
+                } else {
+                    null
                 }
             }
-        cancelled?.let { remove(key, it) }
+        cancelled?.let(::cancel)
         trimAndCancel()
     }
 
-    private suspend fun awaitValue(
-        key: Key,
-        entry: Entry<Value>,
-    ): Value {
+    private suspend fun awaitValue(entry: Entry<Value>): Value {
         while (true) {
-            val (event, changed) =
+            val awaited =
                 synchronized(lock) {
-                    val current = projections[key]?.takeIf { it.identity === entry.identity }
-                        ?: throw CancellationException("live projection removed")
-                    current.latest to current.changed
+                    entry.retiredError?.let { throw it }
+                    Awaited(entry.latest, entry.changed)
                 }
-            if (event != null) {
+            if (awaited.event != null) {
+                val event = checkNotNull(awaited.event)
                 return when (event) {
                     is LiveQueryEvent.Value -> event.value
                     is LiveQueryEvent.Error -> throw event.error
                 }
             }
-            changed.await()
+            awaited.changed.await()
         }
     }
 
@@ -214,6 +237,7 @@ internal class LiveProjectionCache<Key, Value>(
         var callbackPinned = false
         synchronized(lock) {
             val entry = projections[key]?.takeIf { it.identity === identity } ?: return
+            if (entry.retiredError != null) return
             when (event) {
                 is LiveQueryEvent.Value -> {
                     entry.delivered = Delivered(event.value)
@@ -232,7 +256,7 @@ internal class LiveProjectionCache<Key, Value>(
         changedSignal?.complete(Unit)
         try {
             changedValue?.let { onChanged(key, it.value) }
-            error?.let { (previous, exception) -> onError(key, previous, exception) }
+            error?.let { (previous, exception) -> onError(key, previous, exception, isUpdate) }
         } finally {
             if (callbackPinned) release(key, identity)
         }
@@ -247,19 +271,14 @@ internal class LiveProjectionCache<Key, Value>(
                             projections.entries.firstOrNull { (key, entry) ->
                                 entry.waiters == 0 && !isRetained(key)
                             } ?: break
-                        projections.remove(candidate.key)?.let { add(candidate.key to it) }
+                        projections.remove(candidate.key)?.let(::add)
                     }
                 }
             }
-        evicted.forEach { (key, entry) -> remove(key, entry) }
+        evicted.forEach(::cancel)
     }
 
-    private fun remove(
-        key: Key,
-        entry: Entry<Value>,
-    ) {
-        entry.changed.cancel()
+    private fun cancel(entry: Entry<Value>) {
         entry.projection.cancel()
-        onEntryRemoved(key)
     }
 }

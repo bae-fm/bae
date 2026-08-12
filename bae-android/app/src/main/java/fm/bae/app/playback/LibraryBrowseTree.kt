@@ -11,6 +11,7 @@ import fm.bae.app.data.mapValue
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
@@ -23,8 +24,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 private const val TAG = "bae.LibraryBrowseTree"
@@ -101,27 +100,13 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val interestLock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
-
-    // A requested page includes both its rows and the parent's total count, so
-    // it is authoritative for notifications while retained. The count-only
-    // observer serves interests that have not requested (or no longer retain)
-    // a page.
-    private val pageCountsByParent = mutableMapOf<String, Int>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
             isRetained = { false },
-            onChanged = { key, page ->
-                onChildrenChanged(key.parentId, page.totalCount)
-            },
-            onError = { key, previous, error ->
-                onQueryError(error)
-                onChildrenChanged(key.parentId, previous?.totalCount ?: 0)
-            },
-            onEntryCreated = { key -> changePageCount(key.parentId, 1) },
-            onEntryRemoved = { key -> changePageCount(key.parentId, -1) },
+            onError = { _, _, error, _ -> onQueryError(error) },
         )
     private val parentObservers =
         LiveProjectionCache(
@@ -130,9 +115,12 @@ internal class LibraryBrowseTree<Owner : Any>(
             flow = ::parentCountFlow,
             isRetained = ::isParentRetained,
             onChanged = { parentId, count ->
-                if (!hasPage(parentId)) onChildrenChanged(parentId, count)
+                retirePagesAndNotify(parentId, count)
             },
-            onError = { _, _, error -> onQueryError(error) },
+            onError = { parentId, previous, error, isUpdate ->
+                onQueryError(error)
+                if (isUpdate) retirePagesAndNotify(parentId, previous ?: 0)
+            },
         )
     private val albumDetails = exactProjections(library::albumDetails)
     private val composerDetails = exactProjections(library::composerDetails)
@@ -145,9 +133,9 @@ internal class LibraryBrowseTree<Owner : Any>(
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
             onChanged = { query, results -> notifySearchResults(query, results.albums.size) },
-            onError = { query, previous, error ->
+            onError = { query, previous, error, isUpdate ->
                 onQueryError(error)
-                notifySearchResults(query, previous?.albums?.size ?: 0)
+                if (isUpdate) notifySearchResults(query, previous?.albums?.size ?: 0)
             },
         )
     private val spokenSearches = exactProjections(library::searchResults)
@@ -421,18 +409,19 @@ internal class LibraryBrowseTree<Owner : Any>(
     private fun isSearchRetained(query: String): Boolean =
         synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
 
-    private fun hasPage(parentId: String): Boolean =
-        synchronized(interestLock) { pageCountsByParent[parentId]?.let { it > 0 } == true }
-
-    private fun changePageCount(
+    private fun retirePagesAndNotify(
         parentId: String,
-        delta: Int,
+        count: Int,
     ) {
-        synchronized(interestLock) {
-            val count = (pageCountsByParent[parentId] ?: 0) + delta
-            check(count >= 0)
-            if (count == 0) pageCountsByParent.remove(parentId) else pageCountsByParent[parentId] = count
-        }
+        pageProjections.retireWhere(
+            predicate = { key -> key.parentId == parentId },
+            error =
+                BridgeException.Diagnostic(
+                    category = BridgeErrorCategory.DATABASE,
+                    detail = "browse parent changed; retry the requested page",
+                ),
+        )
+        onChildrenChanged(parentId, count)
     }
 
     private fun ensureParentObserver(parentId: String) {
@@ -468,7 +457,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             MAXIMUM_EXACT_SUBSCRIPTIONS,
             flow,
             isRetained = { false },
-            onError = { _, _, error -> onQueryError(error) },
+            onError = { _, _, error, _ -> onQueryError(error) },
         )
 
     private fun isObservableParent(parentId: String): Boolean =
@@ -489,13 +478,13 @@ internal class LibraryBrowseTree<Owner : Any>(
     private fun parentCountFlow(parentId: String): Flow<LiveQueryEvent<Int>> =
         when (val id = checkNotNull(BrowseId.parse(parentId))) {
             BrowseId.Albums ->
-                library.albumPages(listOf(ALBUM_SORT), offset = 0uL, limit = 0uL).map { event ->
-                    event.mapValue { it.totalCount.toInt() }
+                library.albumParentObservation().map { event ->
+                    event.mapValue { it.childCount.toInt() }
                 }
 
             BrowseId.Composers ->
-                library.composerPages(COMPOSER_SORT, offset = 0uL, limit = 0uL).map { event ->
-                    event.mapValue { it.totalCount.toInt() }
+                library.composerParentObservation().map { event ->
+                    event.mapValue { it.childCount.toInt() }
                 }
 
             is BrowseId.Album ->
@@ -521,7 +510,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Root,
             is BrowseId.Track,
             -> error("static browse id $parentId cannot create a parent observation")
-        }.distinctLiveValues()
+        }
 
     private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
         when (val id = checkNotNull(BrowseId.parse(key.parentId))) {
@@ -630,25 +619,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 }
-
-private fun <Value> Flow<LiveQueryEvent<Value>>.distinctLiveValues(): Flow<LiveQueryEvent<Value>> =
-    flow {
-        var delivered = false
-        var lastValue: Value? = null
-        collect { event ->
-            when (event) {
-                is LiveQueryEvent.Value -> {
-                    if (!delivered || event.value != lastValue) {
-                        delivered = true
-                        lastValue = event.value
-                        emit(event)
-                    }
-                }
-
-                is LiveQueryEvent.Error -> emit(event)
-            }
-        }
-    }
 
 /** The album's primary release, or its first release when the primary id names
  *  none — the release a browse drill or spoken match starts from. */

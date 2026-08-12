@@ -12,6 +12,17 @@ pub trait AlbumPageCallback: Send + Sync {
     fn on_error(&self, error: BridgeError);
 }
 
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeLibraryParentObservation {
+    pub child_count: u64,
+}
+
+#[uniffi::export(callback_interface)]
+pub trait LibraryParentObservationCallback: Send + Sync {
+    fn on_value(&self, value: BridgeLibraryParentObservation);
+    fn on_error(&self, error: BridgeError);
+}
+
 #[uniffi::export(callback_interface)]
 pub trait AlbumDetailCallback: Send + Sync {
     fn on_value(&self, value: Option<BridgeAlbumDetail>);

@@ -144,6 +144,12 @@ impl AppServices {
         self.inner.manager.subscribe_album_page(sort, offset, limit)
     }
 
+    pub fn subscribe_album_parent_observation(
+        &self,
+    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
+        self.inner.manager.subscribe_album_parent_observation()
+    }
+
     pub fn resolve_album_page(
         &self,
         projection: crate::db::AlbumPageProjection,
@@ -419,6 +425,12 @@ impl AppServices {
         self.inner
             .manager
             .subscribe_composer_page(sort, offset, limit)
+    }
+
+    pub fn subscribe_composer_parent_observation(
+        &self,
+    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
+        self.inner.manager.subscribe_composer_parent_observation()
     }
 
     pub fn resolve_composer_page(

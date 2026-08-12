@@ -68,14 +68,11 @@ class BaeLibrarySessionCallbackTest {
                 )
                 .get(1, TimeUnit.SECONDS)
         }
-        handle.emitAlbumPage(
-            subscription = 1,
-            rows = listOf(BridgeFixtures.album(id = "album-updated")),
-        )
+        handle.emitAlbumParentObservation(1uL)
 
         assertEquals(listOf(BrowseId.Albums.mediaId to 1), notifications)
-        assertEquals(2, handle.albumPageCallbacks.size)
-        assertTrue(handle.albumPageSubscriptions.all { !it.cancelled })
+        assertEquals(1, handle.albumPageCallbacks.size)
+        assertTrue(handle.albumPageSubscriptions.single().cancelled)
         tree.close()
         session.release()
         player.release()
@@ -109,10 +106,6 @@ class BaeLibrarySessionCallbackTest {
 
         handle.emitAlbumPage(
             subscription = 0,
-            rows = listOf(BridgeFixtures.album(id = "album-recovered")),
-        )
-        handle.emitAlbumPage(
-            subscription = 1,
             rows = listOf(BridgeFixtures.album(id = "album-recovered")),
         )
         val recovered =

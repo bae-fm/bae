@@ -37,6 +37,7 @@ import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLibraryParentObservation
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -47,6 +48,7 @@ import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.LibrarySearchCallback
+import uniffi.bae_bridge.LibraryParentObservationCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OutboxCallback
@@ -186,7 +188,11 @@ internal class FakeAppHandle(
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
     val albumPageCallbacks = mutableListOf<AlbumPageCallback>()
     val searchCallbacks = mutableListOf<LibrarySearchCallback>()
+    val albumParentObservationCallbacks = mutableListOf<LibraryParentObservationCallback>()
+    val composerParentObservationCallbacks = mutableListOf<LibraryParentObservationCallback>()
     val albumPageSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val albumParentObservationSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val composerParentObservationSubscriptions = mutableListOf<FakeLiveSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeLiveSubscription>()
     val searchSubscriptions = mutableListOf<FakeLiveSubscription>()
 
@@ -253,6 +259,19 @@ internal class FakeAppHandle(
         )
     }
 
+    fun emitAlbumParentObservation(childCount: ULong) {
+        albumParentObservationCallbacks.single().onValue(BridgeLibraryParentObservation(childCount))
+    }
+
+    fun failAlbumParentObservation() {
+        albumParentObservationCallbacks.single().onError(
+            uniffi.bae_bridge.BridgeException.Diagnostic(
+                uniffi.bae_bridge.BridgeErrorCategory.INTERNAL,
+                "temporary",
+            ),
+        )
+    }
+
     fun failAlbumPage(subscription: Int) {
         albumPageCallbacks[subscription].onError(
             uniffi.bae_bridge.BridgeException.Diagnostic(
@@ -279,6 +298,22 @@ internal class FakeAppHandle(
         val rows = composerPages(offset, limit)
         callback.onValue(BridgeComposerPage(rows, rows.size.toULong()))
         return liveSubscription()
+    }
+
+    override fun subscribeAlbumParentObservation(
+        callback: LibraryParentObservationCallback,
+    ): LiveSubscription {
+        albumParentObservationCallbacks += callback
+        callback.onValue(BridgeLibraryParentObservation(0uL))
+        return liveSubscription().also(albumParentObservationSubscriptions::add)
+    }
+
+    override fun subscribeComposerParentObservation(
+        callback: LibraryParentObservationCallback,
+    ): LiveSubscription {
+        composerParentObservationCallbacks += callback
+        callback.onValue(BridgeLibraryParentObservation(0uL))
+        return liveSubscription().also(composerParentObservationSubscriptions::add)
     }
 
     override fun subscribeAlbumDetail(

@@ -52,6 +52,12 @@ impl LibraryManager {
         self.database.subscribe_album_page(sort, offset, limit)
     }
 
+    pub(crate) fn subscribe_album_parent_observation(
+        &self,
+    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
+        self.database.subscribe_album_parent_observation()
+    }
+
     pub(crate) fn resolve_album_page(
         &self,
         projection: crate::db::AlbumPageProjection,

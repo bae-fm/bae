@@ -185,6 +185,28 @@ impl Database {
         })
     }
 
+    pub(crate) fn subscribe_composer_parent_observation(
+        &self,
+    ) -> coven::LiveQuery<LibraryParentObservationProjection> {
+        let query = composer_summary_query(None, None);
+        self.inner.handle.subscribe(move |sql| {
+            let rows = sql
+                .query(&query, [], row_to_composer_summary)
+                .map_err(CovenError::from)?;
+            let artist_ids = rows
+                .iter()
+                .map(|row| row.artist.id.clone())
+                .collect::<Vec<_>>();
+            drop(
+                super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                    .map_err(CovenError::from)?,
+            );
+            Ok(LibraryParentObservationProjection {
+                child_count: rows.len() as u64,
+            })
+        })
+    }
+
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {
         self.read(|sql| artist_count_on(&sql)).await
     }

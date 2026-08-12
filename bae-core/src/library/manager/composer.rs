@@ -44,6 +44,12 @@ impl LibraryManager {
         self.database.subscribe_composer_page(sort, offset, limit)
     }
 
+    pub(crate) fn subscribe_composer_parent_observation(
+        &self,
+    ) -> coven::LiveQuery<crate::db::LibraryParentObservationProjection> {
+        self.database.subscribe_composer_parent_observation()
+    }
+
     pub(crate) fn resolve_composer_page(
         &self,
         projection: crate::db::ComposerPageProjection,

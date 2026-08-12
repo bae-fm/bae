@@ -244,6 +244,30 @@ impl Database {
         })
     }
 
+    pub(crate) fn subscribe_album_parent_observation(
+        &self,
+    ) -> coven::LiveQuery<LibraryParentObservationProjection> {
+        let query = format!("{} FROM albums a", album_summary_select());
+        self.inner.handle.subscribe(move |sql| {
+            let rows = sql
+                .query(&query, [], |row| Ok(parse_album_summary_row(row)))?
+                .into_iter()
+                .collect::<Result<Vec<_>, DbError>>()
+                .map_err(CovenError::from)?;
+            let release_ids = rows
+                .iter()
+                .flat_map(|row| row.release_ids.iter().cloned())
+                .collect::<Vec<_>>();
+            drop(
+                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                    .map_err(CovenError::from)?,
+            );
+            Ok(LibraryParentObservationProjection {
+                child_count: rows.len() as u64,
+            })
+        })
+    }
+
     /// An album's 0-based position under a sort, or `None` when it isn't in the
     /// library. Wraps the *identical* `build_order_by` + `album_summary_artist_join`
     /// that `get_album_page` uses in a `ROW_NUMBER() OVER (ORDER BY …)` window, so

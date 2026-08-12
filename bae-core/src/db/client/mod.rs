@@ -29,6 +29,11 @@ pub use artist::{
     ArtistDetailProjection, ArtistPageProjection, ComposerDetailProjection, ComposerPageProjection,
     WorkDetailProjection,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LibraryParentObservationProjection {
+    pub child_count: u64,
+}
 mod artist;
 mod blobs;
 mod coven_capabilities;
