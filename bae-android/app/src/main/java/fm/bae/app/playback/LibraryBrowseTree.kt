@@ -25,6 +25,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -58,6 +60,17 @@ private data class SearchPageKey(
     val page: Int,
     val pageSize: Int,
 )
+
+private data class ParentInterests(
+    val explicit: MutableSet<String> = mutableSetOf(),
+    val implicit: LinkedHashMap<String, Unit> = LinkedHashMap(16, 0.75f, true),
+) {
+    val parentIds: Set<String>
+        get() = explicit + implicit.keys
+
+    val isEmpty: Boolean
+        get() = explicit.isEmpty() && implicit.isEmpty()
+}
 
 private class LiveProjection<T>(
     private val scope: CoroutineScope,
@@ -129,7 +142,7 @@ private class LiveProjectionCache<Key, Value>(
     private val maximumCount: Int,
     private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
     private val isRetained: (Key) -> Boolean,
-    private val onChanged: (Key, Value) -> Unit = { _, _ -> },
+    private val onChanged: (Key, previous: Value?, current: Value) -> Unit = { _, _, _ -> },
     private val onError: (Key, BridgeException) -> Unit,
 ) {
     private class Entry<Value>(
@@ -137,7 +150,10 @@ private class LiveProjectionCache<Key, Value>(
         val projection: LiveProjection<Value>,
         var waiters: Int = 0,
         var cancelWhenUnused: Boolean = false,
+        var delivered: Delivered<Value>? = null,
     )
+
+    private data class Delivered<Value>(val value: Value)
 
     private val lock = Any()
     private val projections = LinkedHashMap<Key, Entry<Value>>(16, 0.75f, true)
@@ -242,9 +258,13 @@ private class LiveProjectionCache<Key, Value>(
         isUpdate: Boolean,
     ) {
         synchronized(lock) {
-            if (projections[key]?.identity !== identity) return
+            val entry = projections[key]?.takeIf { it.identity === identity } ?: return
             when (event) {
-                is LiveQueryEvent.Value -> if (isUpdate) onChanged(key, event.value)
+                is LiveQueryEvent.Value -> {
+                    val previous = entry.delivered?.value
+                    entry.delivered = Delivered(event.value)
+                    if (isUpdate) onChanged(key, previous, event.value)
+                }
                 is LiveQueryEvent.Error -> onError(key, event.error)
             }
         }
@@ -304,7 +324,7 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     private val nodes = BrowseNodeFactory(artworkUri)
     private val interestLock = Any()
-    private val parentsByOwner = mutableMapOf<Owner, MutableSet<String>>()
+    private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
     private val pageProjections =
         LiveProjectionCache(
@@ -312,15 +332,20 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
             isRetained = { false },
+            onChanged = { key, previous, current ->
+                if (previous?.totalCount == current.totalCount) {
+                    onChildrenChanged(key.parentId, current.totalCount)
+                }
+            },
             onError = { _, error -> onQueryError(error) },
         )
     private val parentObservers =
         LiveProjectionCache(
             scope = scope,
             maximumCount = Int.MAX_VALUE,
-            flow = ::pageFlow,
-            isRetained = { key -> isParentRetained(key.parentId) },
-            onChanged = { key, value -> onChildrenChanged(key.parentId, value.totalCount) },
+            flow = ::parentCountFlow,
+            isRetained = ::isParentRetained,
+            onChanged = { parentId, _, count -> onChildrenChanged(parentId, count) },
             onError = { _, error -> onQueryError(error) },
         )
     private val albumDetails = exactProjections(library::albumDetails)
@@ -341,7 +366,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = Int.MAX_VALUE,
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
-            onChanged = { query, value -> notifySearchResults(query, value.albums.size) },
+            onChanged = { query, _, value -> notifySearchResults(query, value.albums.size) },
             onError = { _, error -> onQueryError(error) },
         )
     private val spokenSearches = exactProjections(library::searchResults)
@@ -467,9 +492,40 @@ internal class LibraryBrowseTree<Owner : Any>(
     ): Boolean {
         if (BrowseId.parse(parentId) == null) return false
         synchronized(interestLock) {
-            parentsByOwner.getOrPut(owner, ::mutableSetOf).add(parentId)
+            parentsByOwner.getOrPut(owner, ::ParentInterests).let { interests ->
+                interests.implicit.remove(parentId)
+                interests.explicit.add(parentId)
+            }
         }
-        parentObservationKey(parentId)?.let(parentObservers::ensure)
+        ensureParentObserver(parentId)
+        return true
+    }
+
+    fun retainImplicitParent(
+        owner: Owner,
+        parentId: String,
+    ): Boolean {
+        if (BrowseId.parse(parentId) == null) return false
+        val evicted =
+            synchronized(interestLock) {
+                val interests = parentsByOwner.getOrPut(owner, ::ParentInterests)
+                if (parentId in interests.explicit) {
+                    emptyList()
+                } else {
+                    interests.implicit[parentId] = Unit
+                    buildList {
+                        while (interests.implicit.size > MAXIMUM_IMPLICIT_PARENT_INTERESTS) {
+                            val eldest = interests.implicit.entries.first().key
+                            interests.implicit.remove(eldest)
+                            add(eldest)
+                        }
+                    }
+                }
+            }
+        ensureParentObserver(parentId)
+        evicted.forEach { evictedParent ->
+            if (!isParentRetained(evictedParent)) parentObservers.cancelWhenUnused(evictedParent)
+        }
         return true
     }
 
@@ -479,14 +535,14 @@ internal class LibraryBrowseTree<Owner : Any>(
     ) {
         val retained =
             synchronized(interestLock) {
-                parentsByOwner[owner]?.let { parents ->
-                    parents.remove(parentId)
-                    if (parents.isEmpty()) parentsByOwner.remove(owner)
+                parentsByOwner[owner]?.let { interests ->
+                    interests.explicit.remove(parentId)
+                    if (interests.isEmpty) parentsByOwner.remove(owner)
                 }
-                parentsByOwner.values.any { parentId in it }
+                parentsByOwner.values.any { parentId in it.parentIds }
             }
         if (!retained) {
-            parentObservationKey(parentId)?.let(parentObservers::cancelWhenUnused)
+            parentObservers.cancelWhenUnused(parentId)
         }
     }
 
@@ -515,11 +571,11 @@ internal class LibraryBrowseTree<Owner : Any>(
     fun disconnect(owner: Owner) {
         val (parents, query) =
             synchronized(interestLock) {
-                parentsByOwner.remove(owner).orEmpty() to searchesByOwner.remove(owner)?.query
+                parentsByOwner.remove(owner)?.parentIds.orEmpty() to searchesByOwner.remove(owner)?.query
             }
         parents.forEach { parentId ->
             if (!isParentRetained(parentId)) {
-                parentObservationKey(parentId)?.let(parentObservers::cancelWhenUnused)
+                parentObservers.cancelWhenUnused(parentId)
             }
         }
         query?.let { query ->
@@ -579,10 +635,16 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     private fun isParentRetained(parentId: String): Boolean =
-        synchronized(interestLock) { parentsByOwner.values.any { parentId in it } }
+        synchronized(interestLock) { parentsByOwner.values.any { parentId in it.parentIds } }
 
     private fun isSearchRetained(query: String): Boolean =
         synchronized(interestLock) { searchesByOwner.values.any { it.query == query } }
+
+    private fun ensureParentObserver(parentId: String) {
+        if (!isObservableParent(parentId)) return
+        parentObservers.ensure(parentId)
+        if (!isParentRetained(parentId)) parentObservers.cancelWhenUnused(parentId)
+    }
 
     private fun notifySearchResults(
         query: String,
@@ -614,20 +676,57 @@ internal class LibraryBrowseTree<Owner : Any>(
             onError = { _, error -> onQueryError(error) },
         )
 
-    private fun parentObservationKey(parentId: String): ParentPageKey? =
+    private fun isObservableParent(parentId: String): Boolean =
         when (BrowseId.parse(parentId)) {
             BrowseId.Albums,
             BrowseId.Composers,
             is BrowseId.Album,
             is BrowseId.Composer,
             is BrowseId.Work,
-            -> ParentPageKey(parentId, page = 0, pageSize = 1)
+            -> true
 
             null,
             BrowseId.Root,
             is BrowseId.Track,
-            -> null
+            -> false
         }
+
+    private fun parentCountFlow(parentId: String): Flow<LiveQueryEvent<Int>> =
+        when (val id = checkNotNull(BrowseId.parse(parentId))) {
+            BrowseId.Albums ->
+                library.albumPages(listOf(ALBUM_SORT), offset = 0uL, limit = 0uL).map { event ->
+                    event.mapValue { it.totalCount.toInt() }
+                }
+
+            BrowseId.Composers ->
+                library.composerPages(COMPOSER_SORT, offset = 0uL, limit = 0uL).map { event ->
+                    event.mapValue { it.totalCount.toInt() }
+                }
+
+            is BrowseId.Album ->
+                library.albumDetails(id.albumId).map { event ->
+                    event.mapValue { detail -> detail?.let(::primaryRelease)?.let(::flatTracks)?.size ?: 0 }
+                }
+
+            is BrowseId.Composer ->
+                library.composerDetails(id.artistId).map { event ->
+                    event.mapValue { detail ->
+                        detail?.let { value ->
+                            value.workGroups.sumOf { group -> group.works.size + if (group.parent == null) 0 else 1 } +
+                                value.unlinkedReleaseRoles.size
+                        } ?: 0
+                    }
+                }
+
+            is BrowseId.Work ->
+                library.workDetails(id.workId).map { event ->
+                    event.mapValue { detail -> detail?.let { it.childWorks.size + it.releases.size } ?: 0 }
+                }
+
+            BrowseId.Root,
+            is BrowseId.Track,
+            -> error("static browse id $parentId cannot create a parent observation")
+        }.distinctLiveValues()
 
     private fun searchPageFlow(key: SearchPageKey): Flow<LiveQueryEvent<BrowsePage>> =
         library.searchResults(key.query).map { event ->
@@ -722,6 +821,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         const val MAXIMUM_PAGE_SUBSCRIPTIONS = 12
         const val MAXIMUM_EXACT_SUBSCRIPTIONS = 24
         const val MAXIMUM_SEARCH_SUBSCRIPTIONS = 8
+        const val MAXIMUM_IMPLICIT_PARENT_INTERESTS = 12
 
         fun limitOf(pageSize: Int): ULong = pageSize.coerceIn(1, MAX_PAGE_SIZE).toULong()
 
@@ -743,6 +843,25 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 }
+
+private fun <Value> Flow<LiveQueryEvent<Value>>.distinctLiveValues(): Flow<LiveQueryEvent<Value>> =
+    flow {
+        var delivered = false
+        var lastValue: Value? = null
+        collect { event ->
+            when (event) {
+                is LiveQueryEvent.Value -> {
+                    if (!delivered || event.value != lastValue) {
+                        delivered = true
+                        lastValue = event.value
+                        emit(event)
+                    }
+                }
+
+                is LiveQueryEvent.Error -> emit(event)
+            }
+        }
+    }
 
 /** The album's primary release, or its first release when the primary id names
  *  none — the release a browse drill or spoken match starts from. */

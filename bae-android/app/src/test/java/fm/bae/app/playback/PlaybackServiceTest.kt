@@ -187,6 +187,7 @@ internal class FakeAppHandle(
     val albumPageCallbacks = mutableListOf<AlbumPageCallback>()
     val searchCallbacks = mutableListOf<LibrarySearchCallback>()
     val albumPageSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val albumDetailSubscriptions = mutableListOf<FakeLiveSubscription>()
     val searchSubscriptions = mutableListOf<FakeLiveSubscription>()
 
     private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
@@ -245,9 +246,10 @@ internal class FakeAppHandle(
     fun emitAlbumPage(
         subscription: Int,
         rows: List<BridgeAlbum>,
+        totalCount: ULong = rows.size.toULong(),
     ) {
         albumPageCallbacks[subscription].onValue(
-            BridgeAlbumPage(rows, rows.size.toULong()),
+            BridgeAlbumPage(rows, totalCount),
         )
     }
 
@@ -284,7 +286,7 @@ internal class FakeAppHandle(
         callback: AlbumDetailCallback,
     ): LiveSubscription {
         callback.onValue(albumDetails[albumId])
-        return liveSubscription()
+        return liveSubscription().also(albumDetailSubscriptions::add)
     }
 
     override fun subscribeComposerDetail(

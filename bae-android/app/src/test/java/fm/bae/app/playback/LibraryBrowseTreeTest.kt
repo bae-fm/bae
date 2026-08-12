@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.data.Library
+import fm.bae.app.testCoverRef
 import kotlinx.coroutines.async
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
@@ -163,6 +164,85 @@ class LibraryBrowseTreeTest {
             assertEquals(BrowseId.Albums.mediaId to 1, notifications.single())
             assertEquals(1, handle.albumPageCallbacks.size)
         }
+
+    @Test
+    fun albumParentObservationUsesACountOnlyQueryAndReportsCountChanges() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parentId, count -> notifications += parentId to count }
+            tree.subscribeParent(Any(), BrowseId.Albums.mediaId)
+
+            assertEquals(0uL to 0uL, handle.albumPageWindows.single())
+            handle.emitAlbumPage(subscription = 0, rows = emptyList(), totalCount = 3uL)
+            handle.emitAlbumPage(subscription = 0, rows = emptyList(), totalCount = 1uL)
+
+            assertEquals(
+                listOf(BrowseId.Albums.mediaId to 3, BrowseId.Albums.mediaId to 1),
+                notifications,
+            )
+        }
+
+    @Test
+    fun retainedNonFirstPageImageChangeNotifiesItsParent() =
+        runBlocking {
+            val oldAlbum = BridgeFixtures.album(id = "album-page").copy(cover = testCoverRef("cover-old"))
+            val handle =
+                FakeAppHandle(
+                    albumPages = { offset, _ -> if (offset == 40uL) listOf(oldAlbum) else emptyList() },
+                )
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parentId, count -> notifications += parentId to count }
+            tree.subscribeParent(Any(), BrowseId.Albums.mediaId)
+            tree.children(BrowseId.Albums.mediaId, page = 2, pageSize = 20)
+            handle.emitAlbumPage(
+                subscription = 1,
+                rows = listOf(oldAlbum),
+                totalCount = 41uL,
+            )
+            notifications.clear()
+
+            handle.emitAlbumPage(
+                subscription = 1,
+                rows = listOf(oldAlbum.copy(cover = testCoverRef("cover-new"))),
+                totalCount = 41uL,
+            )
+
+            assertEquals(listOf(BrowseId.Albums.mediaId to 41), notifications)
+        }
+
+    @Test
+    fun implicitParentInterestsAreBoundedPerOwner() {
+        val handle = FakeAppHandle()
+        val tree = tree(handle)
+        val controller = Any()
+
+        repeat(13) { index ->
+            tree.retainImplicitParent(controller, BrowseId.Album("album-$index").mediaId)
+        }
+
+        assertEquals(12, handle.albumDetailSubscriptions.count { !it.cancelled })
+        assertTrue(handle.albumDetailSubscriptions.first().cancelled)
+        assertFalse(handle.albumDetailSubscriptions.last().cancelled)
+    }
+
+    @Test
+    fun explicitParentPromotionSurvivesImplicitPressure() {
+        val handle = FakeAppHandle()
+        val tree = tree(handle)
+        val controller = Any()
+        val promotedParent = BrowseId.Album("album-promoted").mediaId
+        tree.retainImplicitParent(controller, promotedParent)
+        tree.subscribeParent(controller, promotedParent)
+
+        repeat(13) { index ->
+            tree.retainImplicitParent(controller, BrowseId.Album("album-$index").mediaId)
+        }
+
+        assertFalse(handle.albumDetailSubscriptions.first().cancelled)
+        tree.unsubscribeParent(controller, promotedParent)
+        assertTrue(handle.albumDetailSubscriptions.first().cancelled)
+    }
 
     @Test
     fun activeParentObservationDoesNotExemptRequestedPagesFromTheCacheBound() =
@@ -474,9 +554,24 @@ class LibraryBrowseTreeTest {
 
             handle.emitAlbumPage(
                 subscription = 13,
-                rows = listOf(BridgeFixtures.album(id = "album-current")),
+                rows =
+                    listOf(
+                        BridgeFixtures.album(id = "album-current").copy(
+                            cover = testCoverRef("cover-current"),
+                        ),
+                    ),
             )
-            assertTrue(notifications.isEmpty())
+            notifications.clear()
+            handle.emitAlbumPage(
+                subscription = 13,
+                rows =
+                    listOf(
+                        BridgeFixtures.album(id = "album-current").copy(
+                            cover = testCoverRef("cover-updated"),
+                        ),
+                    ),
+            )
+            assertEquals(listOf(BrowseId.Albums.mediaId to 1), notifications)
             assertEquals(
                 BrowseId.Album("album-current").mediaId,
                 tree.children(BrowseId.Albums.mediaId, page = 0, pageSize = 20)!!.single().mediaId,
