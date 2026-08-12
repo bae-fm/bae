@@ -59,6 +59,7 @@ private data class ParentPageKey(
 
 private class ParentInterest {
     private val count = AcceptedCount()
+    val identity = Any()
     val ended = CompletableDeferred<Unit>()
 
     fun acceptCount(value: AcceptedValue<Int>) {
@@ -202,25 +203,32 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
     }
 
-    private data class ParentNotification(
+    private data class ParentNotification<Owner>(
+        val parentId: String,
         val count: Int,
+        val recipients: List<NotificationRecipient<Owner>>,
         val retirePages: () -> Unit,
     )
 
-    private data class SearchNotification(
+    private data class SearchNotification<Owner>(
+        val owner: Owner,
+        val query: String,
+        val identity: Any,
         val count: Int,
-        val listeners: List<(Int) -> Unit>,
+        val delivered: CompletableDeferred<Unit> = CompletableDeferred(),
     )
 
     private val nodes = BrowseNodeFactory(artworkUri)
     private val interestLock = Any()
+    private val notificationCoordinator = OwnerNotificationCoordinator<Owner>(interestLock)
     private val acceptedEventSequence = AcceptedEventSequence()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val searchesByOwner = mutableMapOf<Owner, SearchInterest>()
-    private val parentNotifications = mutableMapOf<String, ArrayDeque<ParentNotification>>()
+    private val parentNotifications = mutableMapOf<String, ArrayDeque<ParentNotification<Owner>>>()
     private val drainingParentNotifications = mutableSetOf<String>()
-    private val searchNotifications = mutableMapOf<String, ArrayDeque<SearchNotification>>()
+    private val searchNotifications = mutableMapOf<String, ArrayDeque<SearchNotification<Owner>>>()
     private val drainingSearchNotifications = mutableSetOf<String>()
+    private val searchDrainingThreads = mutableMapOf<String, Thread>()
     private val pageProjections =
         LiveProjectionCache(
             scope = scope,
@@ -433,6 +441,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             evictedInterest.end()
             if (!isParentRetained(evictedParent)) parentObservers.cancelWhenUnused(evictedParent)
         }
+        notificationCoordinator.await(
+            synchronized(interestLock) {
+                evicted.flatMap { (_, interest) -> notificationCoordinator.matching(owner, interest.identity) }
+            },
+        )
         if (isObservableParent(parentId)) {
             awaitParentObservation(parentId, interest, parentObservers)
         }
@@ -443,7 +456,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         owner: Owner,
         parentId: String,
     ) {
-        val (ended, retained) =
+        val (ended, invocations) =
             synchronized(interestLock) {
                 val ended =
                     parentsByOwner[owner]?.let { interests ->
@@ -451,10 +464,11 @@ internal class LibraryBrowseTree<Owner : Any>(
                             if (interests.isEmpty) parentsByOwner.remove(owner)
                         }
                     }
-                ended to parentsByOwner.values.any { parentId in it.parentIds }
+                ended to ended?.let { notificationCoordinator.matching(owner, it.identity) }.orEmpty()
             }
         ended?.end()
-        if (!retained) {
+        notificationCoordinator.awaitBlocking(invocations)
+        if (!isParentRetained(parentId)) {
             parentObservers.cancelWhenUnused(parentId)
         }
     }
@@ -465,22 +479,20 @@ internal class LibraryBrowseTree<Owner : Any>(
         onResultsChanged: (Int) -> Unit,
     ) {
         val identity = Any()
-        val previousQuery =
+        val (previousQuery, previousInvocations) =
             synchronized(interestLock) {
-                searchesByOwner.put(owner, SearchInterest(query, identity, onResultsChanged))?.query
+                val previous = searchesByOwner.put(owner, SearchInterest(query, identity, onResultsChanged))
+                previous?.query to previous?.let { notificationCoordinator.matching(owner, it.identity) }.orEmpty()
             }
+        notificationCoordinator.await(previousInvocations)
         searchObservers.ensure(query)
         if (previousQuery != null && previousQuery != query && !isSearchRetained(previousQuery)) {
             searchObservers.cancelWhenUnused(previousQuery)
         }
         val count = searchObservers.value(query).albums.size
-        val initialListener =
-            synchronized(interestLock) {
-                searchesByOwner[owner]
-                    ?.takeIf { it.identity === identity }
-                    ?.onResultsChanged
-            }
-        initialListener?.invoke(count)
+        val notification = SearchNotification(owner, query, identity, count)
+        val reentrant = enqueueSearchNotifications(query, listOf(notification))
+        if (!reentrant) notification.delivered.await()
     }
 
     private fun acceptSearchRead(
@@ -498,52 +510,100 @@ internal class LibraryBrowseTree<Owner : Any>(
         query: String,
         event: AcceptedEvent<uniffi.bae_bridge.BridgeSearchResults>,
     ) {
-        val shouldDrain =
+        val notifications =
             synchronized(interestLock) {
-                val interests = searchesByOwner.values.filter { it.query == query }
-                val counts = interests.map { it.commitChange(event) }
-                val count = counts.firstOrNull { it != null }
-                if (count == null) {
-                    false
-                } else {
-                    searchNotifications
-                        .getOrPut(query, ::ArrayDeque)
-                        .addLast(SearchNotification(count, interests.map { it.onResultsChanged }))
-                    drainingSearchNotifications.add(query)
-                }
+                searchesByOwner
+                    .filterValues { it.query == query }
+                    .mapNotNull { (owner, interest) ->
+                        interest.commitChange(event)?.let { count ->
+                            SearchNotification(owner, query, interest.identity, count)
+                        }
+                    }
             }
-        if (shouldDrain) drainSearchNotifications(query)
+        enqueueSearchNotifications(query, notifications)
     }
 
+    private fun enqueueSearchNotifications(
+        query: String,
+        notifications: List<SearchNotification<Owner>>,
+    ): Boolean {
+        if (notifications.isEmpty()) return false
+        val (shouldDrain, reentrant) =
+            synchronized(interestLock) {
+                searchNotifications.getOrPut(query, ::ArrayDeque).addAll(notifications)
+                val shouldDrain = drainingSearchNotifications.add(query)
+                if (shouldDrain) searchDrainingThreads[query] = Thread.currentThread()
+                shouldDrain to (!shouldDrain && searchDrainingThreads[query] === Thread.currentThread())
+            }
+        if (shouldDrain) drainSearchNotifications(query)
+        return reentrant
+    }
+
+    private fun beginSearchInvocation(
+        notification: SearchNotification<Owner>,
+    ): OwnerNotificationCoordinator.Invocation<Owner>? =
+        synchronized(interestLock) {
+            val interest =
+                searchesByOwner[notification.owner]?.takeIf {
+                    it.query == notification.query && it.identity === notification.identity
+                }
+                    ?: return@synchronized null
+            notificationCoordinator.begin(
+                recipients = listOf(NotificationRecipient(notification.owner, notification.identity)),
+                callback = { interest.onResultsChanged(notification.count) },
+            )
+        }
+
     private fun drainSearchNotifications(query: String) {
-        while (true) {
-            val notification =
-                synchronized(interestLock) {
-                    val queue = searchNotifications[query]
-                    if (queue == null || queue.isEmpty()) {
-                        searchNotifications.remove(query)
-                        drainingSearchNotifications.remove(query)
-                        null
-                    } else {
-                        queue.removeFirst()
-                    }
-                } ?: return
-            notification.listeners.forEach { listener -> listener(notification.count) }
+        try {
+            while (true) {
+                val notification =
+                    synchronized(interestLock) {
+                        val queue = searchNotifications[query]
+                        if (queue == null || queue.isEmpty()) {
+                            searchNotifications.remove(query)
+                            drainingSearchNotifications.remove(query)
+                            searchDrainingThreads.remove(query)
+                            null
+                        } else {
+                            queue.removeFirst()
+                        }
+                    } ?: return
+                try {
+                    beginSearchInvocation(notification)?.let(notificationCoordinator::invoke)
+                } finally {
+                    notification.delivered.complete(Unit)
+                }
+            }
+        } finally {
+            synchronized(interestLock) {
+                if (searchDrainingThreads[query] === Thread.currentThread()) {
+                    searchDrainingThreads.remove(query)
+                }
+            }
         }
     }
 
     fun disconnect(owner: Owner) {
-        val (parents, query) =
+        val (parents, search, invocations) =
             synchronized(interestLock) {
-                parentsByOwner.remove(owner)?.entries.orEmpty() to searchesByOwner.remove(owner)?.query
+                val parents = parentsByOwner.remove(owner)?.entries.orEmpty()
+                val search = searchesByOwner.remove(owner)
+                val identities = parents.map { (_, interest) -> interest.identity } + listOfNotNull(search?.identity)
+                Triple(
+                    parents,
+                    search,
+                    identities.flatMap { identity -> notificationCoordinator.matching(owner, identity) },
+                )
             }
+        notificationCoordinator.awaitBlocking(invocations)
         parents.forEach { (parentId, interest) ->
             interest.end()
             if (!isParentRetained(parentId)) {
                 parentObservers.cancelWhenUnused(parentId)
             }
         }
-        query?.let { query ->
+        search?.query?.let { query ->
             if (!isSearchRetained(query)) searchObservers.cancelWhenUnused(query)
         }
     }
@@ -584,17 +644,21 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     fun close() {
-        val parentInterests =
+        val (parentInterests, invocations) =
             synchronized(interestLock) {
-                parentsByOwner.values.flatMap(ParentInterests::entries).also {
-                    parentsByOwner.clear()
-                    searchesByOwner.clear()
-                    parentNotifications.clear()
-                    drainingParentNotifications.clear()
-                    searchNotifications.clear()
-                    drainingSearchNotifications.clear()
-                }
+                val parentInterests = parentsByOwner.values.flatMap(ParentInterests::entries)
+                val invocations = notificationCoordinator.all()
+                parentsByOwner.clear()
+                searchesByOwner.clear()
+                parentNotifications.clear()
+                drainingParentNotifications.clear()
+                searchNotifications.values.flatten().forEach { it.delivered.complete(Unit) }
+                searchNotifications.clear()
+                drainingSearchNotifications.clear()
+                searchDrainingThreads.clear()
+                parentInterests to invocations
             }
+        notificationCoordinator.awaitBlocking(invocations)
         parentInterests.forEach { (_, interest) -> interest.end() }
         pageProjections.cancelAll()
         parentObservers.cancelAll()
@@ -621,8 +685,8 @@ internal class LibraryBrowseTree<Owner : Any>(
     ) {
         val shouldDrain =
             synchronized(interestLock) {
-                val interests = parentInterestsLocked(parentId)
-                val counts = interests.map { it.commitObserver(event) }
+                val interests = parentInterestEntriesLocked(parentId)
+                val counts = interests.map { (_, interest) -> interest.commitObserver(event) }
                 val count = counts.firstOrNull { it != null }
                 if (count == null) {
                     false
@@ -634,7 +698,17 @@ internal class LibraryBrowseTree<Owner : Any>(
                         )
                     parentNotifications
                         .getOrPut(parentId, ::ArrayDeque)
-                        .addLast(ParentNotification(count, retirePages))
+                        .addLast(
+                            ParentNotification(
+                                parentId = parentId,
+                                count = count,
+                                recipients =
+                                    interests.map { (owner, interest) ->
+                                        NotificationRecipient(owner, interest.identity)
+                                    },
+                                retirePages = retirePages,
+                            ),
+                        )
                     drainingParentNotifications.add(parentId)
                 }
             }
@@ -654,13 +728,42 @@ internal class LibraryBrowseTree<Owner : Any>(
                         queue.removeFirst()
                     }
                 } ?: return
+            val invocation = beginParentInvocation(notification)
             notification.retirePages()
-            onChildrenChanged(parentId, notification.count)
+            invocation?.let(notificationCoordinator::invoke)
         }
     }
 
+    private fun beginParentInvocation(
+        notification: ParentNotification<Owner>,
+    ): OwnerNotificationCoordinator.Invocation<Owner>? =
+        synchronized(interestLock) {
+            val currentRecipients =
+                notification.recipients.filter { recipient ->
+                    currentParentInterestLocked(recipient.owner, notification.parentId)?.identity === recipient.identity
+                }
+            if (currentRecipients.isEmpty()) {
+                null
+            } else {
+                notificationCoordinator.begin(currentRecipients) {
+                    onChildrenChanged(notification.parentId, notification.count)
+                }
+            }
+        }
+
     private fun parentInterestsLocked(parentId: String): List<ParentInterest> =
-        parentsByOwner.values.mapNotNull { interests ->
+        parentInterestEntriesLocked(parentId).map { (_, interest) -> interest }
+
+    private fun parentInterestEntriesLocked(parentId: String): List<Pair<Owner, ParentInterest>> =
+        parentsByOwner.mapNotNull { (owner, interests) ->
+            (interests.explicit[parentId] ?: interests.implicit[parentId])?.let { owner to it }
+        }
+
+    private fun currentParentInterestLocked(
+        owner: Owner,
+        parentId: String,
+    ): ParentInterest? =
+        parentsByOwner[owner]?.let { interests ->
             interests.explicit[parentId] ?: interests.implicit[parentId]
         }
 
