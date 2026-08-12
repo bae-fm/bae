@@ -121,7 +121,15 @@ internal class LibraryBrowseTree<Owner : Any>(
         val query: String,
         val identity: Any,
         val onResultsChanged: (Int) -> Unit,
-    )
+    ) {
+        private var lastKnownCount: Int? = null
+
+        fun recordCount(count: Int) {
+            lastKnownCount = count
+        }
+
+        fun knownCount(): Int? = lastKnownCount
+    }
 
     private val nodes = BrowseNodeFactory(artworkUri)
     private val interestLock = Any()
@@ -133,6 +141,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = MAXIMUM_PAGE_SUBSCRIPTIONS,
             flow = ::pageFlow,
             isRetained = { false },
+            onAcceptedValue = { key, page -> parentInterests(key.parentId).recordCount(page.totalCount) },
             onError = { _, _, error, _ -> onQueryError(error) },
         )
     private val parentObservers =
@@ -141,13 +150,14 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = Int.MAX_VALUE,
             flow = ::parentCountFlow,
             isRetained = ::isParentRetained,
+            onAcceptedValue = { parentId, count -> parentInterests(parentId).recordCount(count) },
             onChanged = { parentId, count ->
                 retirePagesAndNotify(parentId, count)
             },
             onError = { parentId, _, error, _ ->
                 onQueryError(error)
                 parentInterests(parentId)
-                    .firstNotNullOfOrNull(ParentInterest::knownCount)
+                    .firstNotNullOfOrNull { it.knownCount() }
                     ?.let { count -> retirePagesAndNotify(parentId, count) }
             },
         )
@@ -161,10 +171,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             maximumCount = MAXIMUM_SEARCH_SUBSCRIPTIONS,
             flow = library::searchResults,
             isRetained = ::isSearchRetained,
+            onAcceptedValue = { query, results -> recordSearchCount(query, results.albums.size) },
             onChanged = { query, results -> notifySearchResults(query, results.albums.size) },
-            onError = { query, previous, error, isUpdate ->
+            onError = { query, _, error, _ ->
                 onQueryError(error)
-                if (isUpdate) notifySearchResults(query, previous?.albums?.size ?: 0)
+                knownSearchCount(query)?.let { count -> notifySearchResults(query, count) }
             },
         )
     private val spokenSearches = exactProjections(library::searchResults)
@@ -220,11 +231,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             is BrowseId.Album,
             is BrowseId.Composer,
             is BrowseId.Work,
-            -> {
-                val deliveredPage = pageProjections.value(ParentPageKey(parentId, page, pageSize))
-                parentInterests(parentId).recordCount(deliveredPage.totalCount)
-                deliveredPage.items
-            }
+            -> pageProjections.value(ParentPageKey(parentId, page, pageSize)).items
 
             is BrowseId.Track -> {
                 // A track is a leaf (playable, not browsable); a browse client
@@ -303,8 +310,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                 }
             }
         if (isObservableParent(parentId)) {
-            val event = awaitParentObservation(parentId, interest, parentObservers)
-            if (event is LiveQueryEvent.Value) interest.recordCount(event.value)
+            awaitParentObservation(parentId, interest, parentObservers)
         }
         return true
     }
@@ -338,8 +344,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             if (!isParentRetained(evictedParent)) parentObservers.cancelWhenUnused(evictedParent)
         }
         if (isObservableParent(parentId)) {
-            val event = awaitParentObservation(parentId, interest, parentObservers)
-            if (event is LiveQueryEvent.Value) interest.recordCount(event.value)
+            awaitParentObservation(parentId, interest, parentObservers)
         }
         return true
     }
@@ -385,6 +390,22 @@ internal class LibraryBrowseTree<Owner : Any>(
                 ?.onResultsChanged(count)
         }
     }
+
+    private fun recordSearchCount(
+        query: String,
+        count: Int,
+    ) {
+        synchronized(interestLock) {
+            searchesByOwner.values.filter { it.query == query }.forEach { it.recordCount(count) }
+        }
+    }
+
+    private fun knownSearchCount(query: String): Int? =
+        synchronized(interestLock) {
+            searchesByOwner.values
+                .filter { it.query == query }
+                .firstNotNullOfOrNull(SearchInterest::knownCount)
+        }
 
     fun disconnect(owner: Owner) {
         val (parents, query) =
@@ -549,11 +570,6 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Root,
             is BrowseId.Track,
             -> error("static browse id $parentId cannot create a parent observation")
-        }.map { event ->
-            event.mapValue { count ->
-                parentInterests(parentId).recordCount(count)
-                count
-            }
         }
 
     private fun pageFlow(key: ParentPageKey): Flow<LiveQueryEvent<BrowsePage>> =
@@ -624,11 +640,6 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Root,
             is BrowseId.Track,
             -> error("static browse id ${key.parentId} cannot create a live page")
-        }.map { event ->
-            event.mapValue { page ->
-                parentInterests(key.parentId).recordCount(page.totalCount)
-                page
-            }
         }
 
     private companion object {
@@ -703,23 +714,21 @@ private suspend fun <Value> awaitParentObservation(
     parentId: String,
     interest: ParentInterest,
     parentObservers: LiveProjectionCache<String, Value>,
-): LiveQueryEvent<Value> {
-    val event =
-        coroutineScope {
-            val observation =
-                async(start = CoroutineStart.UNDISPATCHED) {
-                    parentObservers.event(parentId)
-                }
-            select {
-                observation.onAwait { it }
-                interest.ended.onAwait {
-                    observation.cancel()
-                    throw parentInterestEnded()
-                }
+) {
+    coroutineScope {
+        val observation =
+            async(start = CoroutineStart.UNDISPATCHED) {
+                parentObservers.event(parentId)
+            }
+        select {
+            observation.onAwait {}
+            interest.ended.onAwait {
+                observation.cancel()
+                throw parentInterestEnded()
             }
         }
+    }
     if (interest.ended.isCompleted) throw parentInterestEnded()
-    return event
 }
 
 private fun parentInterestEnded(): BridgeException =

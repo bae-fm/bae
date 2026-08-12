@@ -63,6 +63,7 @@ internal class LiveProjectionCache<Key, Value>(
     private val maximumCount: Int,
     private val flow: (Key) -> Flow<LiveQueryEvent<Value>>,
     private val isRetained: (Key) -> Boolean,
+    private val onAcceptedValue: ((Key, Value) -> Unit)? = null,
     private val onChanged: (Key, Value) -> Unit = { _, _ -> },
     private val onError: (Key, previousValue: Value?, BridgeException, isUpdate: Boolean) -> Unit,
 ) {
@@ -92,7 +93,7 @@ internal class LiveProjectionCache<Key, Value>(
     suspend fun event(key: Key): LiveQueryEvent<Value> {
         val entry = acquire(key)
         return try {
-            awaitEvent(entry)
+            awaitAcceptedEvent(key, entry)
         } finally {
             release(key, entry.identity)
         }
@@ -227,6 +228,40 @@ internal class LiveProjectionCache<Key, Value>(
         }
     }
 
+    private suspend fun awaitAcceptedEvent(
+        key: Key,
+        entry: Entry<Value>,
+    ): LiveQueryEvent<Value> {
+        while (true) {
+            val event = awaitEvent(entry)
+            if (acceptCurrentRead(key, entry, event)) return event
+        }
+    }
+
+    private fun acceptCurrentRead(
+        key: Key,
+        entry: Entry<Value>,
+        event: LiveQueryEvent<Value>,
+    ): Boolean {
+        var acceptedValue: Delivered<Value>? = null
+        val accepted =
+            synchronized(lock) {
+                entry.retiredError?.let { throw it }
+                val current = projections[key]?.takeIf { it.identity === entry.identity }
+                checkNotNull(current) { "live projection disappeared while it had an active waiter" }
+                if (entry.latest !== event) {
+                    false
+                } else {
+                    if (event is LiveQueryEvent.Value && onAcceptedValue != null) {
+                        acceptedValue = Delivered(event.value)
+                    }
+                    true
+                }
+            }
+        acceptedValue?.let { delivered -> onAcceptedValue?.invoke(key, delivered.value) }
+        return accepted
+    }
+
     private fun apply(
         key: Key,
         identity: Any,
@@ -234,6 +269,7 @@ internal class LiveProjectionCache<Key, Value>(
         isUpdate: Boolean,
     ) {
         var changedSignal: CompletableDeferred<Unit>? = null
+        var acceptedValue: Delivered<Value>? = null
         var changedValue: Changed<Value>? = null
         var error: Pair<Value?, BridgeException>? = null
         var callbackPinned = false
@@ -243,6 +279,9 @@ internal class LiveProjectionCache<Key, Value>(
             when (event) {
                 is LiveQueryEvent.Value -> {
                     entry.delivered = Delivered(event.value)
+                    if (onAcceptedValue != null) {
+                        acceptedValue = Delivered(event.value)
+                    }
                     if (isUpdate) {
                         changedValue = Changed(event.value)
                     }
@@ -252,14 +291,15 @@ internal class LiveProjectionCache<Key, Value>(
             entry.latest = event
             changedSignal = entry.changed
             entry.changed = CompletableDeferred()
-            callbackPinned = changedValue != null || error != null
+            callbackPinned = acceptedValue != null || changedValue != null || error != null
             if (callbackPinned) entry.waiters++
         }
-        changedSignal?.complete(Unit)
         try {
+            acceptedValue?.let { delivered -> onAcceptedValue?.invoke(key, delivered.value) }
             changedValue?.let { onChanged(key, it.value) }
             error?.let { (previous, exception) -> onError(key, previous, exception, isUpdate) }
         } finally {
+            changedSignal?.complete(Unit)
             if (callbackPinned) release(key, identity)
         }
     }
