@@ -417,7 +417,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         ImportFolderRegistry::from_stored(vec![root.to_string_lossy().into_owned()], Vec::new())
             .unwrap(),
     ));
-    let state = Arc::new(Mutex::new(ImportCandidateState::default()));
+    let state = CandidateStore::default();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -442,8 +442,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     scan.task.await.unwrap();
 
     assert!(state
-        .lock()
-        .unwrap()
         .snapshot(Vec::new())
         .folder_scan_statuses
         .is_empty());
@@ -518,7 +516,7 @@ async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_co
         })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
-    harness.candidate_state.lock().unwrap().remove_root(&root);
+    harness.candidate_state.remove_root(&root);
     drop(commit);
 
     assert_eq!(
@@ -597,7 +595,7 @@ async fn a_db_accepted_failure_that_memory_rejects_is_an_internal_error() {
         .begin_folder_scan(root.to_str().unwrap())
         .await
         .unwrap();
-    let candidate_state = Arc::new(Mutex::new(ImportCandidateState::default()));
+    let candidate_state = CandidateStore::default();
     let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
 
     let error = ImportService::record_scan_failure(

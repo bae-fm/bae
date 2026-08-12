@@ -245,9 +245,3 @@ fn seed_per_track_artist_override() {
         vec!["Guest Artist".to_string()]
     );
 }
-
-// ── ImportCandidateState reducer ────────────────────────────────────
-
-use crate::import::folder_scanner::{CategorizedFiles, InvalidReason};
-use crate::import::types::{ImportPhase, ImportProgress};
-use std::path::{Path, PathBuf};

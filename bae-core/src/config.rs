@@ -1,29 +1,27 @@
-use coven::StoreDir;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
-use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
 mod dev;
+mod handle;
 mod keyring;
 mod save;
+mod server;
 
 pub use dev::seed_dev_keyring;
+pub use handle::ConfigHandle;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
 pub use keyring::install_test_keyring;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
+pub use server::{
+    McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
+};
 
 use coven::{write_atomic, WriteError};
 use dev::dev_mode_enabled;
 use save::default_save_presets;
-
-pub const MCP_DEFAULT_PORT: u16 = 47777;
-
-/// The port Subsonic clients default to. bae's Subsonic server binds it unless
-/// the user picks another.
-pub const SUBSONIC_DEFAULT_PORT: u16 = 4533;
 
 /// Blob transfers bae runs at once, per direction, on a fresh library. Serial
 /// (1) is safe but slow; a small burst keeps a single stalled transfer from
@@ -109,106 +107,6 @@ pub enum DiscogsTokenStatus {
     Valid,
     Unvalidated,
     Rejected,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct McpConfig {
-    pub enabled: bool,
-    pub port: u16,
-}
-
-/// The single login the Subsonic/OpenSubsonic server (bae-subsonic) accepts, as
-/// the server's auth uses it at request time. A third-party client authenticates
-/// with `username` plus a salted-token derivation of `password`
-/// (`t = md5(password + salt)`); the server checks the supplied username and
-/// token against this credential. Empty strings mean no credential is
-/// configured — no client can authenticate.
-///
-/// This is the *runtime* credential, assembled by the server controller from the
-/// on-disk [`SubsonicConfig`] username plus the keyring password; it is not
-/// stored on disk itself (the password never touches config).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SubsonicCredential {
-    pub username: String,
-    pub password: String,
-}
-
-impl SubsonicCredential {
-    /// The unset credential: empty username and password. No client login
-    /// matches it, so the server rejects every request until one is configured.
-    pub fn empty() -> Self {
-        Self {
-            username: String::new(),
-            password: String::new(),
-        }
-    }
-}
-
-/// On-disk Subsonic server settings. The password is keyring-only (like the MCP
-/// bearer token), so it is not here; only the non-secret `enabled`, `port`,
-/// `username`, and `bind_address` persist. The server controller combines this
-/// `username` with the keyring password into the runtime [`SubsonicCredential`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SubsonicConfig {
-    pub enabled: bool,
-    pub port: u16,
-    pub username: String,
-    /// The IP address the server binds. `127.0.0.1` (the default) keeps it on
-    /// this machine; `0.0.0.0` opens it to other devices on the network. Stored
-    /// as a string but validated to parse as an [`std::net::IpAddr`].
-    pub bind_address: String,
-}
-
-impl SubsonicConfig {
-    pub fn disabled_default() -> Self {
-        Self {
-            enabled: false,
-            port: SUBSONIC_DEFAULT_PORT,
-            username: String::new(),
-            bind_address: "127.0.0.1".to_string(),
-        }
-    }
-
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.port == 0 {
-            return Err(ConfigError::Config(
-                "Subsonic port must be between 1 and 65535".to_string(),
-            ));
-        }
-        // An enabled server with no username can authenticate no client — the
-        // salted-token check compares against this username. Refuse to enable a
-        // server that would reject every login.
-        if self.enabled && self.username.is_empty() {
-            return Err(ConfigError::Config(
-                "Subsonic server requires a username when enabled".to_string(),
-            ));
-        }
-        if self.bind_address.parse::<std::net::IpAddr>().is_err() {
-            return Err(ConfigError::Config(format!(
-                "Subsonic bind address {:?} is not a valid IP address",
-                self.bind_address
-            )));
-        }
-        Ok(())
-    }
-}
-
-impl McpConfig {
-    pub fn disabled_default() -> Self {
-        Self {
-            enabled: false,
-            port: MCP_DEFAULT_PORT,
-        }
-    }
-
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.port == 0 {
-            return Err(ConfigError::Config(
-                "MCP port must be between 1 and 65535".to_string(),
-            ));
-        }
-        Ok(())
-    }
 }
 
 impl DiscogsTokenStatus {
@@ -749,110 +647,6 @@ fn discover_libraries_from_bae_dir(
     });
 
     Ok(libraries)
-}
-
-/// Reactive config state for the running app — the single source of truth.
-///
-/// Holds the live `Config` in a `watch` channel: readers borrow the current
-/// value via `config()`, and subscribers receive the whole latest `Config` on
-/// every change via `subscribe()`. Every mutation goes through `update`, which
-/// edits the value, persists it to disk, and publishes it — so the UI reacts
-/// without polling, re-reading, or a restart.
-pub struct ConfigHandle {
-    state: watch::Sender<Config>,
-    store_dir: StoreDir,
-}
-
-impl ConfigHandle {
-    pub fn new(config: Config) -> Self {
-        let store_dir = StoreDir::new(config.library_path.clone());
-        let (state, _) = watch::channel(config);
-        Self { state, store_dir }
-    }
-
-    /// Borrow the current config.
-    pub fn config(&self) -> watch::Ref<'_, Config> {
-        self.state.borrow()
-    }
-
-    /// Subscribe to the config-state stream. Each change yields the whole latest
-    /// `Config`; the channel coalesces to the most recent value.
-    pub fn subscribe(&self) -> watch::Receiver<Config> {
-        self.state.subscribe()
-    }
-
-    /// Begin constructing Coven over this config's retained library directory
-    /// and live config stream. The directory itself never leaves this owner.
-    pub(crate) fn coven_builder(self: &std::sync::Arc<Self>) -> coven::CovenBuilder {
-        let config_handle = std::sync::Arc::clone(self);
-        coven::Coven::builder(self.store_dir.clone(), move || {
-            config_handle.config().to_coven()
-        })
-    }
-
-    #[cfg(test)]
-    pub(crate) fn local_blob_exists_for_test(
-        &self,
-        namespace: &str,
-        blob_id: &str,
-    ) -> Result<bool, String> {
-        self.store_dir
-            .local_blob_path(namespace, blob_id)
-            .map(|path| path.exists())
-            .map_err(|error| error.to_string())
-    }
-
-    /// Edit the config, persist it to disk, and publish the new state to
-    /// subscribers. The single write path for every config change.
-    pub fn update(&self, edit: impl FnOnce(&mut Config)) -> Result<(), ConfigError> {
-        let mut save_err = None;
-        self.state.send_if_modified(|config| {
-            let mut edited = config.clone();
-            edit(&mut edited);
-            match edited.write_config_yaml() {
-                Ok(()) => {
-                    *config = edited;
-                    true
-                }
-                Err(e) => {
-                    let committed = e.committed();
-                    save_err = Some(e.into_inner());
-                    if committed {
-                        *config = edited;
-                    }
-                    committed
-                }
-            }
-        });
-        match save_err {
-            Some(e) => Err(e),
-            None => Ok(()),
-        }
-    }
-
-    pub fn has_discogs_key(&self) -> bool {
-        self.config().discogs.is_some()
-    }
-
-    /// Record that an encryption key now exists, with its fingerprint. Used
-    /// after creating the key on first sync setup.
-    pub fn record_encryption_key_fingerprint(
-        &self,
-        fingerprint: String,
-    ) -> Result<(), ConfigError> {
-        self.update(|c| {
-            c.encryption_key_stored = true;
-            c.encryption_key_fingerprint = Some(fingerprint);
-        })
-    }
-
-    /// Rename the library. The name is already validated non-blank by its type.
-    pub fn rename_library(
-        &self,
-        name: &crate::library_name::LibraryName,
-    ) -> Result<(), ConfigError> {
-        self.update(|c| c.store_name = name.as_str().to_string())
-    }
 }
 
 /// Rename a library by id without loading it into memory: locate its directory,

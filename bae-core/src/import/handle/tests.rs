@@ -11,6 +11,7 @@ use crate::db::{Database, DbArtist};
 use crate::test_logs::capture_warn_logs_async;
 use chrono::Utc;
 use serial_test::serial;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;
 

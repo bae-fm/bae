@@ -3,6 +3,8 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_names;
 mod assemble;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod candidate_store;
 // Reads the identify state and the picked release's detail, both desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod claim;
@@ -88,6 +90,11 @@ pub struct ParsedAlbum {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use candidate_store::{
+    CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
+    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot, WatchedFolderScanStatus,
+};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -99,10 +106,8 @@ pub use folder_scanner::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
-    parsed_album_to_user_edit, shape_user_edit_for_choice, CandidateImportStatusSnapshot,
-    CandidateRuntimeSnapshot, DiscogsSaveOutcome, FolderImportCandidateSnapshot, FolderScanStatus,
-    GroupedSearchResults, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportEvent,
-    ImportServiceHandle, ScanEvent, SearchQuery, WatchedFolderScanStatus,
+    parsed_album_to_user_edit, shape_user_edit_for_choice, DiscogsSaveOutcome,
+    GroupedSearchResults, ImportEvent, ImportServiceHandle, ScanEvent, SearchQuery,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use mapping::{

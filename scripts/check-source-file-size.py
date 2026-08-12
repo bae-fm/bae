@@ -9,8 +9,17 @@ import sys
 from pathlib import Path
 
 
-MAX_SOURCE_LINES = 1_500
+MAX_SOURCE_LINES = 1_000
 INLINE_RUST_TEST_LIMIT = 1_000
+# These files each contain one owner and cannot be split without dividing its
+# inherent implementation or widening private state. Their current lengths are
+# frozen: growth must first extract a real responsibility.
+SOURCE_LINE_LIMIT_EXCEPTIONS = {
+    "BaeKit/Sources/AppleHost/CloudKitService.swift": 1_209,
+    "bae-core/src/db/client/release.rs": 1_140,
+    "bae-core/src/import/service/scanning.rs": 1_145,
+    "bae-core/src/playback/service/runtime.rs": 1_209,
+}
 SOURCE_SUFFIXES = {
     ".astro",
     ".c",
@@ -67,9 +76,10 @@ def main() -> int:
             continue
         contents = path.read_bytes()
         lines = line_count(contents)
-        if lines > MAX_SOURCE_LINES:
+        limit = SOURCE_LINE_LIMIT_EXCEPTIONS.get(path.as_posix(), MAX_SOURCE_LINES)
+        if lines > limit:
             failures.append(
-                f"{path}: {lines} lines; source files may not exceed {MAX_SOURCE_LINES} lines"
+                f"{path}: {lines} lines; source files may not exceed {limit} lines"
             )
         if (
             path.suffix.lower() == ".rs"

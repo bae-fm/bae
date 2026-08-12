@@ -12,8 +12,7 @@ use crate::import::cover_art::RemoteCover;
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, InvalidReason, ScannedFile,
 };
-use crate::import::handle::CandidateRuntimeSnapshot;
-use crate::import::WatchedFolder;
+use crate::import::{CandidateRuntimeSnapshot, WatchedFolder};
 use std::path::PathBuf;
 
 // ── Fixtures ────────────────────────────────────────────────────────────────

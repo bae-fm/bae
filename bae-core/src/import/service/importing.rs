@@ -30,15 +30,13 @@ impl ImportService {
             .load_folder_scan_snapshots()
             .await?;
         let imported_content_hashes = library_manager_for_handle.imported_content_hashes().await?;
-        let mut loaded_candidates = ImportCandidateState::default();
-        loaded_candidates.restore_folder_scans(
+        let candidate_store = CandidateStore::restore(
             persisted_scans,
             &watched_roots,
             &loaded_registry,
             &imported_content_hashes,
         )?;
         let folder_registry = Arc::new(Mutex::new(loaded_registry));
-        let candidate_state = Arc::new(Mutex::new(loaded_candidates));
         let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
 
         // Constructed before the watcher task spawns; the task doesn't need the
@@ -51,7 +49,7 @@ impl ImportService {
             event_tx.clone(),
             library_manager_for_handle.clone(),
             folder_registry.clone(),
-            candidate_state.clone(),
+            candidate_store.clone(),
             folder_state_commit.clone(),
             folder_watcher.clone(),
         );
@@ -95,7 +93,7 @@ impl ImportService {
             watcher_tx,
             event_tx,
             folder_registry,
-            candidate_state,
+            candidate_store,
             folder_state_commit,
         ))
     }

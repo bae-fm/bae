@@ -1,5 +1,6 @@
 use crate::diagnostics::TelemetryEvent;
-use crate::import::handle::{ImportCandidateState, ImportServiceHandle};
+use crate::import::candidate_store::CandidateStore;
+use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{ImportCommand, ImportProgress, MetadataRef, StorageMode};
 use crate::library::LibraryManager;
@@ -283,7 +284,7 @@ fn spawn_root_scan(
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-    candidate_state: Arc<Mutex<ImportCandidateState>>,
+    candidate_state: CandidateStore,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     folder_watcher: Arc<FolderWatcher>,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,

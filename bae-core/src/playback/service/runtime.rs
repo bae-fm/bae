@@ -699,11 +699,11 @@ impl PlaybackService {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
         let thread_slot = Arc::new(Mutex::new(None));
-        let handle = PlaybackHandle {
-            command_tx: command_tx.clone(),
-            progress_handle: progress_handle.clone(),
-            thread: thread_slot.clone(),
-        };
+        let handle = PlaybackHandle::new(
+            command_tx.clone(),
+            progress_handle.clone(),
+            thread_slot.clone(),
+        );
         let command_tx_for_completion = command_tx.clone();
         let progress_handle_for_completion = progress_handle.clone();
         runtime_handle.spawn(async move {

@@ -11,7 +11,7 @@ impl ImportServiceHandle {
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
-        let watched_folder_path = match self.candidate_state.lock().unwrap().get(&path) {
+        let watched_folder_path = match self.candidate_store.get(&path) {
             Some(ImportCandidateSnapshot::Folder {
                 candidate,
                 actionable: true,
@@ -37,10 +37,7 @@ impl ImportServiceHandle {
                 relative_candidate_path,
                 skipped,
             );
-            self.candidate_state
-                .lock()
-                .unwrap()
-                .set_skipped(&path, skipped);
+            self.candidate_store.set_skipped(&path, skipped);
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
@@ -348,9 +345,7 @@ impl ImportServiceHandle {
         decide(&mut edits);
 
         let matching_files = self
-            .candidate_state
-            .lock()
-            .unwrap()
+            .candidate_store
             .files_for_identity(&content_hash, expected_revision);
         let (settled, edits) = tokio::task::spawn_blocking(move || {
             let mut settled = Vec::with_capacity(matching_files.len());
@@ -379,7 +374,7 @@ impl ImportServiceHandle {
             )
             .await?;
 
-        let Some(candidates) = self.candidate_state.lock().unwrap().set_files_for_identity(
+        let Some(candidates) = self.candidate_store.set_files_for_identity(
             &content_hash,
             expected_revision,
             settled,
@@ -408,7 +403,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
     ) -> Option<(crate::import::folder_scanner::CategorizedFiles, u64)> {
-        match self.candidate_state.lock().unwrap().get(candidate_key) {
+        match self.candidate_store.get(candidate_key) {
             Some(ImportCandidateSnapshot::Folder {
                 candidate,
                 actionable: true,

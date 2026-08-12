@@ -33,10 +33,14 @@ fn scan_projected_items_with_decisions(
 ) -> Vec<ScanItem> {
     let watched_folder =
         crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-    let mut state = crate::import::handle::ImportCandidateState::default();
+    let state = crate::import::candidate_store::CandidateStore::default();
+    let state_root = root.clone();
+    state.begin_root_scan(&state_root, 0);
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
         if !matches!(item, ScanItem::Discovered(_)) {
-            state.apply_scan_item(item, false, false);
+            state
+                .apply_scan_item_if_current(&state_root, 0, item, false, false)
+                .unwrap();
         }
     })
     .unwrap();

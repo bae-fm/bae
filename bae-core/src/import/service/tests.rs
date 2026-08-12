@@ -188,7 +188,7 @@ struct CoordinatorHarness {
     fs_events: tokio::sync::mpsc::UnboundedSender<DebounceEventResult>,
     scans: FakeScanStarter,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-    candidate_state: Arc<Mutex<ImportCandidateState>>,
+    candidate_state: CandidateStore,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     removal_backend: Arc<FakeRemovalBackend>,
     coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
@@ -217,19 +217,26 @@ impl CoordinatorHarness {
         let registry = Arc::new(Mutex::new(
             ImportFolderRegistry::from_stored(roots.clone(), Vec::new()).unwrap(),
         ));
-        let state = Arc::new(Mutex::new(ImportCandidateState::default()));
+        let state = CandidateStore::default();
         if let Some(root) = roots.first() {
+            let root_path = PathBuf::from(root);
+            state.begin_root_scan(&root_path, 0);
             state
-                .lock()
-                .unwrap()
-                .upsert_invalid(crate::import::InvalidCandidate {
-                    path: PathBuf::from(root).join("Group/Release"),
-                    name: "Release".to_string(),
-                    watched_folder_path: root.clone(),
-                    display_path: "Group/Release".to_string(),
-                    resolved_boundaries: Vec::new(),
-                    reason: crate::import::InvalidReason::NoValidAudio,
-                });
+                .apply_scan_item_if_current(
+                    &root_path,
+                    0,
+                    ScanItem::Invalid(crate::import::InvalidCandidate {
+                        path: root_path.join("Group/Release"),
+                        name: "Release".to_string(),
+                        watched_folder_path: root.clone(),
+                        display_path: "Group/Release".to_string(),
+                        resolved_boundaries: Vec::new(),
+                        reason: crate::import::InvalidReason::NoValidAudio,
+                    }),
+                    false,
+                    false,
+                )
+                .unwrap();
         }
         let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
         let (scans, starter) = FakeScanStarter::new();

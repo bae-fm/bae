@@ -7,7 +7,7 @@ impl ImportService {
         message: String,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
-        candidate_state: &Arc<Mutex<ImportCandidateState>>,
+        candidate_state: &CandidateStore,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
     ) -> Result<bool, crate::import::ImportError> {
         let _commit = folder_state_commit.lock().await;
@@ -17,11 +17,7 @@ impl ImportService {
         {
             return Ok(false);
         }
-        if !candidate_state
-            .lock()
-            .unwrap()
-            .fail_root_scan(root, generation, message.clone())
-        {
+        if !candidate_state.fail_root_scan(root, generation, message.clone()) {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
                     "failed scan generation {generation} for {} was not current in memory",
@@ -34,10 +30,10 @@ impl ImportService {
         send_event(
             event_tx,
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-                status: crate::import::handle::WatchedFolderScanStatus {
+                status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
-                    status: crate::import::handle::FolderScanStatus::Failed { error: message },
+                    status: crate::import::FolderScanStatus::Failed { error: message },
                 },
             }),
         );
@@ -50,7 +46,7 @@ impl ImportService {
         item: &ScanItem,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
-        candidate_state: &Arc<Mutex<ImportCandidateState>>,
+        candidate_state: &CandidateStore,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
     ) -> Result<Option<(tokio::sync::OwnedMutexGuard<()>, ScanItem)>, crate::import::ImportError>
     {
@@ -64,10 +60,7 @@ impl ImportService {
             candidate.files.apply_candidate_file_edits(&edits)?;
             candidate.file_edit_revision = edits.revision;
         }
-        let removed_keys = candidate_state
-            .lock()
-            .unwrap()
-            .persisted_removals_for_item(root, &item);
+        let removed_keys = candidate_state.persisted_removals_for_item(root, &item);
         match library_manager
             .save_folder_scan_item(&root.to_string_lossy(), generation, &item, &removed_keys)
             .await
@@ -141,7 +134,7 @@ impl ImportService {
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-        candidate_state: Arc<Mutex<ImportCandidateState>>,
+        candidate_state: CandidateStore,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         folder_watcher: Arc<FolderWatcher>,
     ) -> std::thread::JoinHandle<()> {
@@ -187,7 +180,7 @@ impl ImportService {
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-        candidate_state: Arc<Mutex<ImportCandidateState>>,
+        candidate_state: CandidateStore,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
@@ -306,10 +299,7 @@ impl ImportService {
                                         .append(&mut schedule.current_waiters);
                                 }
                                 let _commit = folder_state_commit.lock().await;
-                                let Some(ancestor_separate_keys) = candidate_state
-                                    .lock()
-                                    .unwrap()
-                                    .release_boundary_ancestor_keys(&target.0)
+                                let Some(ancestor_separate_keys) = candidate_state.release_boundary_ancestor_keys(&target.0)
                                 else {
                                     if completion
                                         .send(Err(format!(
@@ -334,10 +324,12 @@ impl ImportService {
                                     .await
                                 {
                                     Ok((invalidation_generation, _)) => {
-                                        let mut state = candidate_state.lock().unwrap();
-                                        state.begin_root_scan(&path, invalidation_generation);
-                                        let superseded = state.apply_release_decisions(&decisions);
-                                        drop(state);
+                                        let superseded = candidate_state
+                                            .begin_root_scan_with_release_decisions(
+                                                &path,
+                                                invalidation_generation,
+                                                &decisions,
+                                            );
                                         for candidate_key in superseded {
                                             send_event(
                                                 &event_tx,
@@ -485,10 +477,7 @@ impl ImportService {
                                     registry.apply_removed(&completion.path.to_string_lossy());
                                     registry.watched_folders()
                                 };
-                                let removed_keys = candidate_state
-                                    .lock()
-                                    .unwrap()
-                                    .remove_root(&completion.path);
+                                let removed_keys = candidate_state.remove_root(&completion.path);
                                 for candidate_key in removed_keys {
                                     send_event(
                                         &event_tx,
@@ -685,7 +674,7 @@ impl ImportService {
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
-        candidate_state: &Arc<Mutex<ImportCandidateState>>,
+        candidate_state: &CandidateStore,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
         folder_watcher: &Arc<FolderWatcher>,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
@@ -694,18 +683,15 @@ impl ImportService {
         let generation = {
             let _commit = folder_state_commit.lock().await;
             let generation = library_manager.begin_folder_scan(&root_key).await?;
-            candidate_state
-                .lock()
-                .unwrap()
-                .begin_root_scan(root, generation);
+            candidate_state.begin_root_scan(root, generation);
             let watched_folder = crate::import::WatchedFolder::from_path(root_key.clone());
             send_event(
                 event_tx,
                 crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-                    status: crate::import::handle::WatchedFolderScanStatus {
+                    status: crate::import::WatchedFolderScanStatus {
                         watched_folder_path: watched_folder.path,
                         watched_folder_name: watched_folder.name,
-                        status: crate::import::handle::FolderScanStatus::Scanning,
+                        status: crate::import::FolderScanStatus::Scanning,
                     },
                 }),
             );
@@ -821,11 +807,7 @@ impl ImportService {
         let mut seen_keys: HashSet<String> = HashSet::new();
         let mut seen_boundaries = HashSet::new();
         while let Some(item) = item_rx.recv().await {
-            if !candidate_state
-                .lock()
-                .unwrap()
-                .generation_is_current(root, generation)
-            {
+            if !candidate_state.generation_is_current(root, generation) {
                 debug!(
                     "discarding scan generation {generation} for removed root {}",
                     root.display()
@@ -880,15 +862,13 @@ impl ImportService {
                     let is_added = library_manager
                         .is_content_hash_imported(&candidate.files.content_hash())
                         .await?;
-                    let Some(superseded) =
-                        candidate_state.lock().unwrap().apply_scan_item_if_current(
-                            root,
-                            generation,
-                            persisted_item,
-                            skipped,
-                            is_added,
-                        )
-                    else {
+                    let Some(superseded) = candidate_state.apply_scan_item_if_current(
+                        root,
+                        generation,
+                        persisted_item,
+                        skipped,
+                        is_added,
+                    ) else {
                         drop(commit);
                         Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
                             .await?;
@@ -947,7 +927,7 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
-                    let Some(removed) = candidate_state.lock().unwrap().apply_scan_item_if_current(
+                    let Some(removed) = candidate_state.apply_scan_item_if_current(
                         root,
                         generation,
                         persisted_item,
@@ -997,7 +977,7 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
-                    let Some(removed) = candidate_state.lock().unwrap().apply_scan_item_if_current(
+                    let Some(removed) = candidate_state.apply_scan_item_if_current(
                         root,
                         generation,
                         persisted_item,
@@ -1042,10 +1022,7 @@ impl ImportService {
             Ok((Ok(()), seen_directories)) => seen_directories,
             Ok((Err(e), _)) => {
                 if cancellation.is_cancelled()
-                    || !candidate_state
-                        .lock()
-                        .unwrap()
-                        .generation_is_current(root, generation)
+                    || !candidate_state.generation_is_current(root, generation)
                 {
                     return Ok(());
                 }
@@ -1086,11 +1063,7 @@ impl ImportService {
             }
         };
 
-        if !candidate_state
-            .lock()
-            .unwrap()
-            .generation_is_current(root, generation)
-        {
+        if !candidate_state.generation_is_current(root, generation) {
             return Ok(());
         }
         drop(seen_directories);
@@ -1131,12 +1104,9 @@ impl ImportService {
 
         // The generation check, pruning, and status change share one lock: a
         // newer decision or scan cannot be pruned by this completed DB write.
-        let Some(removed) = candidate_state.lock().unwrap().finish_root_scan(
-            root,
-            generation,
-            &seen_keys,
-            &seen_boundaries,
-        ) else {
+        let Some(removed) =
+            candidate_state.finish_root_scan(root, generation, &seen_keys, &seen_boundaries)
+        else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
                     "completed scan generation {generation} for {} was not current in memory",
@@ -1157,10 +1127,10 @@ impl ImportService {
         send_event(
             event_tx,
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-                status: crate::import::handle::WatchedFolderScanStatus {
+                status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
-                    status: crate::import::handle::FolderScanStatus::Complete,
+                    status: crate::import::FolderScanStatus::Complete,
                 },
             }),
         );

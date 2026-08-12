@@ -262,16 +262,14 @@ async fn rescan_seeded_root(
     root: &Path,
 ) -> (
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
-    Arc<Mutex<crate::import::handle::ImportCandidateState>>,
+    crate::import::candidate_store::CandidateStore,
     Result<(), crate::import::ImportError>,
 ) {
     let (event_tx, events) = tokio::sync::broadcast::channel(16);
     let folder_registry = Arc::new(Mutex::new(
         crate::import::folder_registry::ImportFolderRegistry::default(),
     ));
-    let candidate_state = Arc::new(Mutex::new(
-        crate::import::handle::ImportCandidateState::default(),
-    ));
+    let candidate_state = crate::import::candidate_store::CandidateStore::default();
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
@@ -284,17 +282,23 @@ async fn rescan_seeded_root(
         .lock()
         .unwrap()
         .apply_added(root.to_string_lossy().into_owned());
+    candidate_state.begin_root_scan(root, 0);
     candidate_state
-        .lock()
-        .unwrap()
-        .upsert_invalid(crate::import::InvalidCandidate {
+        .apply_scan_item_if_current(
+            root,
+            0,
+            ScanItem::Invalid(crate::import::InvalidCandidate {
             path: root.join("old-key"),
             name: "Old Candidate".to_string(),
             watched_folder_path: root.to_string_lossy().into_owned(),
             display_path: "old-key".to_string(),
             resolved_boundaries: Vec::new(),
             reason: crate::import::InvalidReason::NoValidAudio,
-        });
+            }),
+            false,
+            false,
+        )
+        .unwrap();
 
     let result = ImportService::rescan_and_reconcile(
         root,
@@ -322,8 +326,8 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
         match events.recv().await.unwrap() {
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
-                    crate::import::handle::WatchedFolderScanStatus {
-                        status: crate::import::handle::FolderScanStatus::Failed { error },
+                    crate::import::WatchedFolderScanStatus {
+                        status: crate::import::FolderScanStatus::Failed { error },
                         ..
                     },
             }) => break error,
@@ -342,10 +346,7 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
         "{failed}"
     );
     assert_eq!(
-        candidate_state
-            .lock()
-            .unwrap()
-            .snapshot(vec![crate::import::WatchedFolder::from_path(
+        candidate_state.snapshot(vec![crate::import::WatchedFolder::from_path(
                 root.to_string_lossy().into_owned(),
             )])
             .invalid_candidates
@@ -366,8 +367,8 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
         match events.recv().await.unwrap() {
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
-                    crate::import::handle::WatchedFolderScanStatus {
-                        status: crate::import::handle::FolderScanStatus::Failed { error },
+                    crate::import::WatchedFolderScanStatus {
+                        status: crate::import::FolderScanStatus::Failed { error },
                         ..
                     },
             }) => {
@@ -384,10 +385,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
         }
     }
     assert_eq!(
-        candidate_state
-            .lock()
-            .unwrap()
-            .snapshot(vec![crate::import::WatchedFolder::from_path(
+        candidate_state.snapshot(vec![crate::import::WatchedFolder::from_path(
                 root.to_string_lossy().into_owned(),
             )])
             .invalid_candidates

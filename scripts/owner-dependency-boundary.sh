@@ -58,6 +58,7 @@ capability_types=(
   CancellationRegistry
   CancellationToken
   CandidateDriver
+  CandidateStore
   CastController
   CloudKitDriver
   ConfigHandle
@@ -122,6 +123,7 @@ capability_types=(
   SparseStreamingBuffer
   SrpClient
   StorageManager
+  StoreDir
   StoreKeys
   SubsonicPasswordProvider
   SubsonicServerController

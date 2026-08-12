@@ -44,6 +44,9 @@ jobs:
     - name: Check source file layout
       run: scripts/check-source-file-size.py
 
+    - name: Check restricted-path Rust visibility
+      run: scripts/check-rust-visibility.sh
+
     - name: Check owner dependency boundaries
       run: scripts/owner-dependency-boundary.sh
 
