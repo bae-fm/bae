@@ -355,7 +355,7 @@ struct ImportView: View {
         ImportView()
             .importTabPreviewEnvironment(
                 uiStore: uiStore,
-                importStore: PreviewData.releaseQueueImportStore
+                importStore: PreviewData.releaseBoundaryPreviewImportStore
             )
     }
 

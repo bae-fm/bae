@@ -610,4 +610,22 @@ extension ImportCandidateListContent {
         .padding()
         .windowBackground()
     }
+
+    #Preview("Release Boundaries — Mixed Trees") {
+        ImportCandidateListContent(
+            importStore: PreviewData.releaseBoundaryPreviewImportStore,
+            selectedKey: .constant(nil),
+            onAddFolder: {},
+            onRemoveFolder: { _ in },
+            onRefreshFolder: { _ in },
+            onReleaseDecision: { _, _ in },
+            onSkip: { _, _ in },
+            onImportSelected: { _ in }
+        )
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(UiStore())
+        .environment(PreviewData.artImageStore())
+        .frame(width: 520, height: 900)
+        .windowBackground()
+    }
 #endif

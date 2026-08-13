@@ -668,6 +668,50 @@ struct ImportStoreTriageRenderingTests {
 @Suite("Import preview data")
 struct ImportPreviewDataTests {
     @MainActor
+    @Test("boundary preview covers several trees and every child kind")
+    func boundaryPreviewCoversProductionShapes() {
+        let entries = PreviewData.releaseBoundaryPreviewImportStore.triageQueue
+            .sections
+            .flatMap(\.entries)
+        let boundaries = entries.compactMap {
+            entry -> BridgeFolderReleaseBoundary? in
+            guard case .boundary(_, let boundary) = entry else {
+                return nil
+            }
+            return boundary
+        }
+        let kinds = boundaries.flatMap(\.treeRows).map(\.kind)
+        let invalidReasons = kinds.compactMap {
+            kind -> BridgeInvalidReason? in
+            guard case .invalid(let reason) = kind else { return nil }
+            return reason
+        }
+
+        #expect(boundaries.count == 4)
+        #expect(boundaries.contains { $0.sharedFileCount > 0 })
+        #expect(boundaries.flatMap(\.treeRows).contains { $0.depth == 2 })
+        #expect(
+            kinds.contains {
+                if case .folder = $0 { return true }
+                return false
+            }
+        )
+        #expect(
+            kinds.contains {
+                if case .candidate = $0 { return true }
+                return false
+            }
+        )
+        #expect(
+            invalidReasons.contains(
+                .corruptAudioFile(path: "Album 02.flac")
+            )
+        )
+        #expect(invalidReasons.contains(.corruptImage(path: "Front.png")))
+        #expect(invalidReasons.contains(.noValidAudio))
+    }
+
+    @MainActor
     @Test("every preview queue row opens its production candidate")
     func everyCandidateRowResolves() {
         let stores = [
