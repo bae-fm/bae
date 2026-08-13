@@ -139,169 +139,6 @@
             )
         }
 
-        private static let folderImportQueue: BridgeTriageQueue = {
-            let rows = [
-                triageRow(
-                    for: folderCandidates[0],
-                    placement: .ready,
-                    // The row states the pressing the pane behind it settled
-                    // on, so the two halves cannot read differently.
-                    matched: triageMatch(
-                        releaseId: releaseDetailBridge.releaseId,
-                        title: releaseDetailBridge.title,
-                        artist: releaseDetailBridge.artist,
-                        year: releaseDetailBridge.year,
-                        format: releaseDetailBridge.format,
-                        trackCount: releaseDetailBridge.trackCount
-                    ),
-                    selectable: true,
-                    importStatus: nil,
-                    // Ready means identification settled on one match, which
-                    // is a pick — the record a bulk import commits from.
-                    picked: .release(
-                        source: releaseDetailBridge.source,
-                        releaseId: releaseDetailBridge.releaseId,
-                        claim: .exact
-                    ),
-                    claim: claimBridge.choice
-                ),
-                triageRow(
-                    for: folderCandidates[1],
-                    placement: .skipped,
-                    matched: nil,
-                    selectable: false
-                ),
-                triageRow(
-                    for: folderCandidates[2],
-                    placement: .done,
-                    matched: triageMatch(
-                        releaseId: "rel-preview-three",
-                        title: "Compilation Vol. 3",
-                        trackCount: 15
-                    ),
-                    selectable: false,
-                    importStatus: importStatuses[folderCandidates[2].key],
-                    picked: nil,
-                    claim: nil
-                ),
-                triageRow(
-                    for: folderCandidates[3],
-                    placement: .done,
-                    matched: triageMatch(
-                        releaseId: "rel-preview-four",
-                        title: "EP Release",
-                        trackCount: 5
-                    ),
-                    selectable: false,
-                    importStatus: importStatuses[folderCandidates[3].key],
-                    picked: nil,
-                    claim: nil
-                ),
-                triageRow(
-                    for: folderCandidates[4],
-                    placement: .done,
-                    matched: triageMatch(
-                        releaseId: "rel-preview-five",
-                        title: "Live Recording 2023",
-                        trackCount: 18
-                    ),
-                    selectable: false
-                ),
-                triageRow(
-                    for: folderCandidates[5],
-                    placement: .ready,
-                    matched: triageMatch(
-                        releaseId: "rel-preview-six",
-                        title: "Album Title Three",
-                        year: 2002,
-                        trackCount: 11
-                    ),
-                    selectable: true
-                ),
-                triageRow(
-                    for: folderCandidates[6],
-                    placement: .ready,
-                    matched: triageMatch(
-                        releaseId: "rel-preview-seven",
-                        title: "Single Release",
-                        year: 1984,
-                        format: "7\u{2033}",
-                        trackCount: 2,
-                        source: .discogs,
-                        signal: .barcode
-                    ),
-                    selectable: true
-                ),
-            ]
-            return BridgeTriageQueue(
-                sections: [
-                    // Two of the three importable rows sit under a folder the scan
-                    // read as one release's worth of subfolders; the third is
-                    // its own folder and sits at the same leading edge.
-                    BridgeTriageSection(
-                        tab: .pending,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: BridgeTriageGroup(
-                            key: folderReleaseBoundaryKey,
-                            name: "Collection"
-                        ),
-                        entries: [rows[0], rows[5]].map(candidateEntry)
-                    ),
-                    BridgeTriageSection(
-                        tab: .pending,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [
-                            candidateEntry(rows[6]),
-                            boundaryEntry(folderReleaseBoundary),
-                        ]
-                    ),
-                    BridgeTriageSection(
-                        tab: .done,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: rows[2...4].map(candidateEntry)
-                    ),
-                    BridgeTriageSection(
-                        tab: .skipped,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [
-                            candidateEntry(rows[1]),
-                            invalidEntry(invalidCandidates[0]),
-                        ]
-                    ),
-                ],
-                counts: BridgeTriageTabCounts(
-                    pending: 4,
-                    done: 3,
-                    skipped: 1 + UInt32(invalidCandidates.count)
-                ),
-                folderScanStatuses: []
-            )
-        }()
-
-        /// Seeded ImportStore for the ImportView whole-view preview — the
-        /// watched folder, every folder candidate, and a triage queue keyed to
-        /// the same five so the sidebar and the detail pane agree. ImportStore
-        /// is a non-Sendable `@Observable`, so construction is `@MainActor`.
-        @MainActor
-        static func folderImportStore() -> ImportStore {
-            let s = ImportStore()
-            s.watchedFolders = [importWatchedFolder]
-            for candidate in folderCandidates {
-                s.folderCandidates[candidate.key] = candidate
-            }
-            // The row the preview selects is the settled one, so the pane
-            // behind the sidebar is the pane a picked release draws.
-            s.folderCandidates[importTabCandidate.key] = importTabCandidate
-            s.triageQueue = folderImportQueue
-            // Mid-sweep, so the header's progress line is drawn rather than
-            // being the nothing-left-to-say state that hides it.
-            s.queueIdentifyProgress = (identified: 112, total: 130)
-            return s
-        }
-
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/Album Title One",
@@ -373,18 +210,6 @@
         ]
         .map(Candidate.init(bridge:))
 
-        static let importStatuses: [String: BridgeCandidateImportStatus] = [
-            "/Music/Downloads/Compilation Vol. 3": .importing(
-                progressPercent: 45,
-                step: .running(phase: .measuringLoudness)
-            ),
-            // A completed import — tabs under Added via its import status.
-            "/Music/Downloads/EP Release": .complete(
-                releaseId: "preview-release",
-                albumId: "preview-album"
-            ),
-        ]
-
         /// Folders that look like a release but failed validation — surface under
         /// the Skipped tab with a warning and reason.
         static let invalidCandidates: [BridgeInvalidCandidate] = [
@@ -395,7 +220,23 @@
                 displayPath: "Broken Rip",
                 resolvedBoundaries: [],
                 reason: .corruptAudioFile(path: "03.flac")
-            )
+            ),
+            BridgeInvalidCandidate(
+                folderPath: "/Music/Downloads/Damaged Artwork",
+                sourceFolderName: "Damaged Artwork",
+                watchedFolderPath: "/Music/Downloads",
+                displayPath: "Damaged Artwork",
+                resolvedBoundaries: [],
+                reason: .corruptImage(path: "Back.png")
+            ),
+            BridgeInvalidCandidate(
+                folderPath: "/Music/Downloads/Documents Only",
+                sourceFolderName: "Documents Only",
+                watchedFolderPath: "/Music/Downloads",
+                displayPath: "Documents Only",
+                resolvedBoundaries: [],
+                reason: .noValidAudio
+            ),
         ]
 
         static let folderReleaseBoundaryKey = BridgeFolderReleaseDecisionKey(
@@ -589,6 +430,23 @@
             ),
         ]
 
+        private static let releaseQueueCandidates = releaseQueueRows.map {
+            row -> Candidate in
+            var candidate = Candidate(
+                bridge: BridgeFolderCandidate(
+                    folderPath: row.candidateKey,
+                    sourceFolderName: row.folderName,
+                    watchedFolderPath: releaseQueueRoot,
+                    files: candidateFilesTracks,
+                    trackCount: 9,
+                    skipped: false,
+                    isAdded: false
+                )
+            )
+            candidate.mapping = awaitingPickTable
+            return candidate
+        }
+
         private static let releaseQueue = BridgeTriageQueue(
             sections: [
                 BridgeTriageSection(
@@ -668,6 +526,9 @@
         ) -> ImportStore {
             let store = ImportStore()
             store.watchedFolders = [releaseQueueWatchedFolder]
+            for candidate in releaseQueueCandidates {
+                store.folderCandidates[candidate.key] = candidate
+            }
             store.triageQueue = queue
             return store
         }

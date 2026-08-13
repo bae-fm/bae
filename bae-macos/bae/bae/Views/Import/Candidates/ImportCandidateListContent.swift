@@ -546,7 +546,7 @@ extension ImportCandidateListContent {
     // MARK: - Previews
 
     #Preview("Candidate List") {
-        let store = PreviewData.triageImportStore()
+        let store = PreviewData.importTabStore()
         return ImportCandidateListContent(
             importStore: store,
             selectedKey: .constant(
@@ -572,7 +572,7 @@ extension ImportCandidateListContent {
     }
 
     #Preview("Candidate List Narrow") {
-        let store = PreviewData.triageImportStore()
+        let store = PreviewData.importTabStore()
         let uiStore = UiStore()
         uiStore.setReleaseGroupExpanded(
             releaseGroupDisclosureID(

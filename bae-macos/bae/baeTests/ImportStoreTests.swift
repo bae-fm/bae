@@ -259,7 +259,9 @@ struct ImportStoreBatchSnapshotTests {
     }
 
     @MainActor
-    @Test("takes runtime state from each snapshot while preserving editor state")
+    @Test(
+        "takes runtime state from each snapshot while preserving editor state"
+    )
     func refreshesRuntimeAndCarriesEditorState() throws {
         let store = ImportStore()
         var existing = folderCandidate(
@@ -660,5 +662,75 @@ struct ImportStoreTriageRenderingTests {
             groupRelativeFolderPath: "b|c"
         )
         #expect(first != second)
+    }
+}
+
+@Suite("Import preview data")
+struct ImportPreviewDataTests {
+    @MainActor
+    @Test("every preview queue row opens its production candidate")
+    func everyCandidateRowResolves() {
+        let stores = [
+            PreviewData.importTabStore(),
+            PreviewData.releaseQueueImportStore,
+        ]
+        for store in stores {
+            let rows = store.triageQueue.sections.flatMap(\.entries)
+                .compactMap {
+                    entry -> BridgeTriageRow? in
+                    guard case .candidate(_, let row) = entry else {
+                        return nil
+                    }
+                    return row
+                }
+
+            #expect(!rows.isEmpty)
+            #expect(
+                rows.allSatisfy {
+                    store.folderCandidates[$0.candidateKey] != nil
+                }
+            )
+        }
+    }
+
+    @MainActor
+    @Test("preview queue covers every pending question and terminal shape")
+    func queueCoversProductionShapes() {
+        let store = PreviewData.importTabStore()
+        let entries = store.triageQueue.sections.flatMap(\.entries)
+        let rows = entries.compactMap { entry -> BridgeTriageRow? in
+            guard case .candidate(_, let row) = entry else { return nil }
+            return row
+        }
+        let needsYouGroups = rows.compactMap { row -> BridgeNeedsYouGroup? in
+            guard case .needsYou(let group, _) = row.placement else {
+                return nil
+            }
+            return group
+        }
+
+        #expect(rows.contains { $0.placement == .ready })
+        #expect(rows.contains { $0.placement == .importing })
+        #expect(rows.contains { $0.placement == .done })
+        #expect(rows.contains { $0.placement == .skipped })
+        #expect(needsYouGroups.contains(.pickAPressing))
+        #expect(needsYouGroups.contains(.signalsDisagree))
+        #expect(needsYouGroups.contains(.countsOrLengthsDisagree))
+        #expect(needsYouGroups.contains(.alreadyInLibrary))
+        #expect(needsYouGroups.contains(.noMatch))
+        #expect(needsYouGroups.contains(.stillIdentifying))
+        #expect(
+            entries.contains {
+                if case .boundary = $0 { return true }
+                return false
+            }
+        )
+        #expect(
+            entries.filter {
+                if case .invalid = $0 { return true }
+                return false
+            }
+            .count == 3
+        )
     }
 }

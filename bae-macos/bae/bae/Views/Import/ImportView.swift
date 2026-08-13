@@ -259,7 +259,10 @@ struct ImportView: View {
     }
 
     extension View {
-        fileprivate func importTabPreviewEnvironment(uiStore: UiStore)
+        fileprivate func importTabPreviewEnvironment(
+            uiStore: UiStore,
+            importStore: ImportStore
+        )
             -> some View
         {
             self
@@ -267,8 +270,8 @@ struct ImportView: View {
                 .importPreviewEnvironment()
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
-                .environment(PreviewData.folderImportStore())
-                .environment(Importer())
+                .environment(importStore)
+                .environment(PreviewData.importTabImporter())
                 .frame(width: 1440, height: 900)
                 .preferredColorScheme(.dark)
         }
@@ -280,11 +283,97 @@ struct ImportView: View {
             selected: PreviewData.importTabCandidate.key,
             ticked: [PreviewData.importTabCandidate.key]
         )
-        ImportView().importTabPreviewEnvironment(uiStore: uiStore)
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
     }
 
-    #Preview("Import tab — nothing selected") {
+    #Preview("Import tab — multiple pressings") {
+        let uiStore = ImportTabPreview.uiStore(
+            tab: .pending,
+            selected: PreviewData.importTabSeveralMatchesCandidate.key
+        )
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
+    }
+
+    #Preview("Import tab — identity signals disagree") {
+        let uiStore = ImportTabPreview.uiStore(
+            tab: .pending,
+            selected: PreviewData.importTabConflictCandidate.key
+        )
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
+    }
+
+    #Preview("Import tab — track counts disagree") {
+        let uiStore = ImportTabPreview.uiStore(
+            tab: .pending,
+            selected: PreviewData.importTabTrackMismatchCandidate.key
+        )
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
+    }
+
+    #Preview("Import tab — release already in library") {
+        let uiStore = ImportTabPreview.uiStore(
+            tab: .pending,
+            selected: PreviewData.importTabAlreadyInLibraryCandidate.key
+        )
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
+    }
+
+    #Preview("Import tab — no release matched") {
+        let uiStore = ImportTabPreview.uiStore(
+            tab: .pending,
+            selected: PreviewData.importTabNoMatchCandidate.key
+        )
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
+    }
+
+    #Preview("Import tab — folder boundaries") {
         let uiStore = ImportTabPreview.uiStore(tab: .pending)
-        ImportView().importTabPreviewEnvironment(uiStore: uiStore)
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.releaseQueueImportStore
+            )
+    }
+
+    #Preview("Import tab — completed imports") {
+        let uiStore = ImportTabPreview.uiStore(tab: .done)
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
+    }
+
+    #Preview("Import tab — skipped and invalid folders") {
+        let uiStore = ImportTabPreview.uiStore(tab: .skipped)
+        ImportView()
+            .importTabPreviewEnvironment(
+                uiStore: uiStore,
+                importStore: PreviewData.importTabStore()
+            )
     }
 #endif

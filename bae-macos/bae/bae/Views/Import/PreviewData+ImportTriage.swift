@@ -36,9 +36,8 @@
             )
         }
 
-        /// A `BridgeTriageRow` fixture keyed to an existing `Candidate` fixture
-        /// (`folderImportStore`'s roster), so the sidebar and the detail pane
-        /// agree on the same folder.
+        /// A `BridgeTriageRow` fixture keyed to an existing `Candidate` fixture,
+        /// so the sidebar and the detail pane agree on the same folder.
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
@@ -65,40 +64,160 @@
             )
         }
 
-        static let triageRowReady = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/1997 - album title (192 kbps)",
-            folderName: "1997 - album title (192 kbps)",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "1997 - album title (192 kbps)",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
-            placement: .ready,
-            matched: triageMatch(releaseId: "rel-ready", title: "Album Title"),
-            selectable: true,
-            importStatus: nil,
-            // Ready means identification settled on one match, which is a
-            // pick — the record a bulk import of this row commits from.
-            picked: .release(
-                source: .musicBrainz,
-                releaseId: "rel-ready",
-                claim: .exact
+        private static func importTabFolder(
+            path: String,
+            name: String,
+            trackCount: UInt32 = 9,
+            identifyState: IdentifyState,
+            signalsToolbar: BridgeSignalsToolbar
+        ) -> Candidate {
+            var candidate = Candidate(
+                bridge: BridgeFolderCandidate(
+                    folderPath: "\(importWatchedFolder.path)/\(path)",
+                    sourceFolderName: name,
+                    watchedFolderPath: importWatchedFolder.path,
+                    files: bridgeCandidateFiles,
+                    trackCount: trackCount,
+                    skipped: false,
+                    isAdded: false
+                )
+            )
+            candidate.identifyState = identifyState
+            candidate.signalsToolbar = signalsToolbar
+            candidate.mapping = awaitingPickTable
+            return candidate
+        }
+
+        static let importTabSeveralMatchesCandidate = importTabFolder(
+            path: "Album Title Five",
+            name: "Album Title Five",
+            trackCount: 12,
+            identifyState: .found(
+                group: searchGroupExact,
+                libraryStatuses: [:],
+                trackCount: 12,
+                provenance: searchProvenanceExact
             ),
-            claim: .exact(releaseId: "rel-ready", source: .musicBrainz)
+            signalsToolbar: searchStateFoundExact.signalsToolbar
         )
 
-        static let triageRowPickAPressing = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/1966 - album title five",
-            folderName: "1966 - album title five",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "1966 - album title five",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
+        static let importTabConflictCandidate = importTabFolder(
+            path: "Album Title Six - Remaster",
+            name: "Album Title Six - Remaster",
+            trackCount: 11,
+            identifyState: searchStateConflict.identifyState,
+            signalsToolbar: searchStateConflict.signalsToolbar
+        )
+
+        private static let trackMismatchGroup = ReleaseGroup(
+            bridge: BridgeReleaseGroup(
+                id: "group-track-mismatch",
+                sourceGroupId: "group-track-mismatch",
+                title: "Album Title Seven",
+                artist: "Artist Name",
+                coverArt: nil,
+                sourceLabel: "MusicBrainz",
+                groupUrl:
+                    "https://musicbrainz.org/release-group/group-track-mismatch",
+                yearMin: 1994,
+                yearMax: 1994,
+                pressings: [exactPressings[0]]
+            )
+        )
+
+        static let importTabTrackMismatchCandidate = importTabFolder(
+            path: "Album Title Seven - Partial",
+            name: "Album Title Seven - Partial",
+            trackCount: 1,
+            identifyState: .found(
+                group: trackMismatchGroup,
+                libraryStatuses: [:],
+                trackCount: 1,
+                provenance: [:]
+            ),
+            signalsToolbar: searchStateFoundExact.signalsToolbar
+        )
+
+        private static let importTabAlreadyInLibraryStatus =
+            BridgeLibraryStatus(
+                releaseId: releaseDetailBridge.releaseId,
+                releaseInLibrary: true,
+                albumInLibrary: true,
+                albumTitle: releaseDetailBridge.title,
+                albumId: "album-in-library"
+            )
+
+        static let importTabAlreadyInLibraryCandidate = importTabFolder(
+            path: "Album Title Eight - Reissue",
+            name: "Album Title Eight - Reissue",
+            trackCount: 14,
+            identifyState: .found(
+                group: searchGroupExact,
+                libraryStatuses: [
+                    releaseDetailBridge.releaseId:
+                        importTabAlreadyInLibraryStatus
+                ],
+                trackCount: 14,
+                provenance: searchProvenanceExact
+            ),
+            signalsToolbar: searchStateFoundExact.signalsToolbar
+        )
+
+        static let importTabNoMatchCandidate = importTabFolder(
+            path: "Unmatched Folder",
+            name: "Unmatched Folder",
+            identifyState: searchStateNotFound.identifyState,
+            signalsToolbar: searchStateNotFound.signalsToolbar
+        )
+
+        static let importTabIdentifyingCandidate = importTabFolder(
+            path: "Queued Folder",
+            name: "Queued Folder",
+            identifyState: searchStateTriangulating.identifyState,
+            signalsToolbar: searchStateTriangulating.signalsToolbar
+        )
+
+        private static let importTabGroupedCandidates = [
+            importTabFolder(
+                path: "Artist Collection/Album Title Nine",
+                name: "Album Title Nine",
+                identifyState: searchStateNotFound.identifyState,
+                signalsToolbar: searchStateNotFound.signalsToolbar
+            ),
+            importTabFolder(
+                path: "Artist Collection/Album Title Ten",
+                name: "Album Title Ten",
+                identifyState: searchStateNotFound.identifyState,
+                signalsToolbar: searchStateNotFound.signalsToolbar
+            ),
+        ]
+
+        static let triageRowReady = triageRow(
+            for: importTabCandidate,
+            placement: .ready,
+            matched: triageMatch(
+                releaseId: releaseDetailBridge.releaseId,
+                title: releaseDetailBridge.title,
+                artist: releaseDetailBridge.artist,
+                year: releaseDetailBridge.year,
+                format: releaseDetailBridge.format,
+                trackCount: releaseDetailBridge.trackCount
+            ),
+            selectable: true,
+            picked: .release(
+                source: releaseDetailBridge.source,
+                releaseId: releaseDetailBridge.releaseId,
+                claim: .exact
+            ),
+            claim: claimBridge.choice
+        )
+
+        static let triageRowPickAPressing = triageRow(
+            for: importTabSeveralMatchesCandidate,
             placement: .needsYou(
                 group: .pickAPressing,
                 reason: .disagreement(
-                    disagreement: .severalMatches(count: 4)
+                    disagreement: .severalMatches(count: 2)
                 )
             ),
             // Several matches — the pressing is exactly what's unsettled, so
@@ -116,163 +235,178 @@
                 )
             ),
             selectable: false,
-            importStatus: nil,
-            picked: nil,
-            claim: nil
+            importStatus: nil
         )
 
-        static let triageRowSignalsConflict = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/album title six - remaster",
-            folderName: "album title six - remaster",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "album title six - remaster",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
+        static let triageRowSignalsConflict = triageRow(
+            for: importTabConflictCandidate,
             placement: .needsYou(
                 group: .signalsDisagree,
                 reason: .disagreement(disagreement: .signalsConflict)
             ),
             matched: nil,
-            selectable: false,
-            importStatus: nil,
-            picked: nil,
-            claim: nil
+            selectable: false
         )
 
-        static let triageRowAlreadyInLibrary = BridgeTriageRow(
-            candidateKey:
-                "/Music/Downloads/artist name - album ti\u{2026}INT 846.104 germany",
-            folderName:
-                "artist name - album ti\u{2026}INT 846.104 germany",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath:
-                "artist name - album ti\u{2026}INT 846.104 germany",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
+        static let triageRowTrackMismatch = triageRow(
+            for: importTabTrackMismatchCandidate,
+            placement: .needsYou(
+                group: .countsOrLengthsDisagree,
+                reason: .disagreement(
+                    disagreement: .trackCountDisagrees(local: 1, source: 10)
+                )
+            ),
+            matched: triageMatch(
+                releaseId: "rel-track-mismatch",
+                title: "Album Title Seven",
+                year: 1994,
+                trackCount: 10
+            ),
+            selectable: false
+        )
+
+        static let triageRowAlreadyInLibrary = triageRow(
+            for: importTabAlreadyInLibraryCandidate,
             placement: .needsYou(
                 group: .alreadyInLibrary,
                 reason: .disagreement(disagreement: .alreadyInLibrary)
             ),
             matched: triageMatch(
-                releaseId: "rel-reissue",
+                releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
                 year: 2004,
                 trackCount: 14,
                 signal: .barcode
             ),
-            selectable: false,
-            importStatus: nil,
-            picked: nil,
-            claim: nil
+            selectable: false
         )
 
-        static let triageRowNoMatch = BridgeTriageRow(
-            candidateKey: "/Media/rips/album title seven (bootleg)",
-            folderName: "album title seven (bootleg)",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "album title seven (bootleg)",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
+        static let triageRowNoMatch = triageRow(
+            for: importTabNoMatchCandidate,
             placement: .needsYou(
                 group: .noMatch,
                 reason: .disagreement(disagreement: .noMatch)
             ),
             matched: nil,
-            selectable: false,
-            importStatus: nil,
-            picked: nil,
-            claim: nil
+            selectable: false
         )
 
-        static let triageRowStillIdentifying = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/1972 - album title (192 kbps)",
-            folderName: "1972 - album title (192 kbps)",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "1972 - album title (192 kbps)",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
+        static let triageRowStillIdentifying = triageRow(
+            for: importTabIdentifyingCandidate,
             placement: .needsYou(
                 group: .stillIdentifying,
                 reason: .stillIdentifying(phase: .running)
             ),
             matched: nil,
-            selectable: false,
-            importStatus: nil,
-            picked: nil,
-            claim: nil
+            selectable: false
         )
 
-        static let triageRowSkipped = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/Album Title Two",
-            folderName: "Album Title Two",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "Album Title Two",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
-            placement: .skipped,
-            matched: nil,
-            selectable: false,
-            importStatus: nil,
-            picked: nil,
-            claim: nil
+        private static func candidate(
+            _ candidate: Candidate,
+            withImportStatus importStatus: BridgeCandidateImportStatus
+        ) -> Candidate {
+            var candidate = candidate
+            candidate.importStatus = importStatus
+            return candidate
+        }
+
+        private static let importTabImportingCandidate = candidate(
+            folderCandidates[2],
+            withImportStatus: .importing(
+                progressPercent: 45,
+                step: .running(phase: .measuringLoudness)
+            )
         )
 
-        static let triageRowDoneImported = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/Album Title Ten",
-            folderName: "Album Title Ten",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "Album Title Ten",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
-            placement: .done,
-            matched: triageMatch(
-                releaseId: "rel-ten",
-                title: "Album Title Ten",
-                year: 1995,
-                trackCount: 10
-            ),
-            selectable: false,
-            importStatus: .complete(
-                releaseId: "rel-ten",
-                albumId: "album-ten"
-            ),
-            picked: nil,
-            claim: nil
+        private static let importTabDoneCandidate = candidate(
+            folderCandidates[3],
+            withImportStatus: .complete(
+                releaseId: "preview-release",
+                albumId: "preview-album"
+            )
         )
 
-        static let triageRowDoneFailed = BridgeTriageRow(
-            candidateKey: "/Music/Downloads/Album Title Twelve",
-            folderName: "Album Title Twelve",
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: "Album Title Twelve",
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
-            placement: .done,
-            matched: triageMatch(
-                releaseId: "rel-twelve",
-                title: "Album Title Twelve",
-                year: 2011,
-                trackCount: 9,
-                source: .discogs,
-                signal: .barcode
-            ),
-            selectable: false,
-            importStatus: .error(
+        private static let importTabFailedCandidate = candidate(
+            folderCandidates[4],
+            withImportStatus: .error(
                 error: .Diagnostic(
                     category: .import,
                     detail: "track 7 is truncated"
                 )
-            ),
-            picked: nil,
-            claim: nil
+            )
         )
+
+        static let triageRowImporting = triageRow(
+            for: importTabImportingCandidate,
+            placement: .importing,
+            matched: triageMatch(
+                releaseId: "rel-importing",
+                title: importTabImportingCandidate.displayName,
+                trackCount: 15
+            ),
+            selectable: false,
+            importStatus: importTabImportingCandidate.importStatus
+        )
+
+        static let triageRowSkipped = triageRow(
+            for: folderCandidates[1],
+            placement: .skipped,
+            matched: nil,
+            selectable: false
+        )
+
+        static let triageRowDoneImported = triageRow(
+            for: importTabDoneCandidate,
+            placement: .done,
+            matched: triageMatch(
+                releaseId: "preview-release",
+                title: importTabDoneCandidate.displayName,
+                trackCount: 5
+            ),
+            selectable: false,
+            importStatus: importTabDoneCandidate.importStatus
+        )
+
+        static let triageRowDoneFailed = triageRow(
+            for: importTabFailedCandidate,
+            placement: .done,
+            matched: triageMatch(
+                releaseId: "rel-failed",
+                title: importTabFailedCandidate.displayName,
+                trackCount: 18,
+                source: .discogs,
+                signal: .barcode
+            ),
+            selectable: false,
+            importStatus: importTabFailedCandidate.importStatus
+        )
+
+        private static let triageGroupedRows = importTabGroupedCandidates.map {
+            triageRow(
+                for: $0,
+                placement: .needsYou(
+                    group: .noMatch,
+                    reason: .disagreement(disagreement: .noMatch)
+                ),
+                matched: nil,
+                selectable: false
+            )
+        }
+
+        static let importTabCandidates =
+            [
+                importTabCandidate,
+                importTabSeveralMatchesCandidate,
+                importTabConflictCandidate,
+                importTabTrackMismatchCandidate,
+                importTabAlreadyInLibraryCandidate,
+                importTabNoMatchCandidate,
+                importTabIdentifyingCandidate,
+                importTabImportingCandidate,
+                importTabDoneCandidate,
+                importTabFailedCandidate,
+                folderCandidates[1],
+            ] + importTabGroupedCandidates
 
         private static let triageImportQueue: BridgeTriageQueue = {
             BridgeTriageQueue(
@@ -285,11 +419,25 @@
                             triageRowReady,
                             triageRowPickAPressing,
                             triageRowSignalsConflict,
+                            triageRowTrackMismatch,
                             triageRowAlreadyInLibrary,
                             triageRowNoMatch,
                             triageRowStillIdentifying,
+                            triageRowImporting,
                         ]
                         .map(candidateEntry)
+                    ),
+                    BridgeTriageSection(
+                        tab: .pending,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: BridgeTriageGroup(
+                            key: BridgeFolderReleaseDecisionKey(
+                                watchedFolderPath: importWatchedFolder.path,
+                                relativeFolderPath: "Artist Collection"
+                            ),
+                            name: "Artist Collection"
+                        ),
+                        entries: triageGroupedRows.map(candidateEntry)
                     ),
                     BridgeTriageSection(
                         tab: .pending,
@@ -316,14 +464,12 @@
                         tab: .skipped,
                         watchedFolderPath: importWatchedFolder.path,
                         group: nil,
-                        entries: [
-                            candidateEntry(triageRowSkipped),
-                            invalidEntry(invalidCandidates[0]),
-                        ]
+                        entries: [candidateEntry(triageRowSkipped)]
+                            + invalidCandidates.map(invalidEntry)
                     ),
                 ],
                 counts: BridgeTriageTabCounts(
-                    pending: 7,
+                    pending: 11,
                     done: 2,
                     skipped: 1 + UInt32(invalidCandidates.count)
                 ),
@@ -331,19 +477,33 @@
             )
         }()
 
-        /// Seeded ImportStore for the standalone sidebar preview
-        /// (`ImportCandidateListContent`) — one row per state the row view
-        /// renders differently, so the preview exercises every tab and every
-        /// Needs-you group. Independent of `folderImportStore`'s roster; no
-        /// detail pane sits behind this preview, so the keys don't need to
-        /// match a `Candidate`.
+        /// One store for the sidebar and whole Import-tab previews. Every
+        /// candidate row resolves to the candidate the detail pane opens, while
+        /// boundary and invalid entries exercise the two non-candidate shapes.
         @MainActor
-        static func triageImportStore() -> ImportStore {
+        static func importTabStore() -> ImportStore {
             let s = ImportStore()
             s.watchedFolders = [importWatchedFolder]
+            for candidate in importTabCandidates {
+                s.folderCandidates[candidate.key] = candidate
+            }
             s.triageQueue = triageImportQueue
             s.queueIdentifyProgress = (identified: 112, total: 130)
             return s
+        }
+
+        static func importTabImporter() -> Importer {
+            let mapping = awaitingPickTable
+            let optionsBySheet = sheetBindingOptions
+            return Importer(
+                sheetBindingOptions: { _, sheetFileId in
+                    guard let options = optionsBySheet[sheetFileId] else {
+                        throw StubError.notImplemented
+                    }
+                    return options
+                },
+                candidateMapping: { _ in mapping }
+            )
         }
 
         private static func previewFile(
