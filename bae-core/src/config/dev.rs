@@ -60,8 +60,8 @@ pub fn seed_dev_keyring(library_id: &str) {
         }
     }
 
-    // A bae-domain credential: no coven setter, so it goes through bae's own
-    // keyring extension trait.
+    // A bae-domain credential goes through bae's StoreKeys extension, which
+    // stores the named host secret through coven's keyring worker.
     if let Some(discogs) = dev_env_secret("BAE_DISCOGS_API_KEY") {
         use crate::keys::BaeStoreKeysExt;
         match keys.set_discogs_key(&discogs) {

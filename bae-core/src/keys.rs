@@ -11,74 +11,11 @@
 //! store-scoped keyring credential via the extension trait below, under the same
 //! `base:store_id` account scheme. In dev mode `config::seed_dev_keyring` bridges
 //! `BAE_DISCOGS_API_KEY` into that account, as it does coven's own env vars.
-use tracing::{info, warn};
-
 pub use coven::{CloudHomeCredentials, KeyError, StoreKeys};
-// `keyring_service` names the keyring service the bae-domain credentials below
-// (Discogs key, MCP token, encryption-key forget) live under; used only here, so
-// it stays a private import rather than re-exported `bae_core::keys` surface.
-// coven's own keyring read/write is a closed typed-slot API (`KeyringSlot`) that
-// can't name bae's accounts, so bae reads and writes its accounts through
-// `keyring_core` directly against that same service name.
-use coven::keyring_service;
 
-/// A namespaced keyring account, matching coven's own `base:store_id` scheme.
-fn account(ks: &StoreKeys, base: &str) -> String {
-    format!("{}:{}", base, ks.store_id())
-}
-
-fn map_keyring_error(e: keyring_core::Error) -> KeyError {
-    KeyError::Keyring(e)
-}
-
-fn set_keyring_credential(
-    ks: &StoreKeys,
-    account_base: &str,
-    value: &str,
-    saved_message: &'static str,
-) -> Result<(), KeyError> {
-    keyring_core::Entry::new(keyring_service()?, &account(ks, account_base))
-        .map_err(map_keyring_error)?
-        .set_password(value)
-        .map_err(map_keyring_error)?;
-    info!("{saved_message}");
-    Ok(())
-}
-
-fn delete_keyring_credential(
-    ks: &StoreKeys,
-    account_base: &str,
-    deleted_message: &'static str,
-    missing_message: Option<&'static str>,
-) -> Result<(), KeyError> {
-    match keyring_core::Entry::new(keyring_service()?, &account(ks, account_base))
-        .map_err(map_keyring_error)?
-        .delete_credential()
-    {
-        Ok(()) => {
-            info!("{deleted_message}");
-            Ok(())
-        }
-        Err(keyring_core::Error::NoEntry) => {
-            if let Some(message) = missing_message {
-                warn!("{message}");
-            }
-            Ok(())
-        }
-        Err(e) => Err(map_keyring_error(e)),
-    }
-}
-
-fn read_keyring_credential(ks: &StoreKeys, account_base: &str) -> Result<Option<String>, KeyError> {
-    match keyring_core::Entry::new(keyring_service()?, &account(ks, account_base))
-        .map_err(map_keyring_error)?
-        .get_password()
-    {
-        Ok(value) => Ok(Some(value)),
-        Err(keyring_core::Error::NoEntry) => Ok(None),
-        Err(e) => Err(map_keyring_error(e)),
-    }
-}
+const DISCOGS_API_KEY: &str = "discogs_api_key";
+const MCP_BEARER_TOKEN: &str = "mcp_bearer_token";
+const SUBSONIC_PASSWORD: &str = "subsonic_password";
 
 /// bae-domain credentials layered on coven's `StoreKeys`: the Discogs API key,
 /// the local MCP bearer token, and the Subsonic server password. Bring this
@@ -105,59 +42,38 @@ pub trait BaeStoreKeysExt {
 
 impl BaeStoreKeysExt for StoreKeys {
     fn get_discogs_key(&self) -> Result<Option<String>, KeyError> {
-        read_keyring_credential(self, "discogs_api_key")
+        self.get_host_secret(DISCOGS_API_KEY)
     }
 
     fn set_discogs_key(&self, value: &str) -> Result<(), KeyError> {
-        set_keyring_credential(
-            self,
-            "discogs_api_key",
-            value,
-            "Discogs API key saved to keyring",
-        )
+        self.set_host_secret(DISCOGS_API_KEY, value)
     }
 
     fn delete_discogs_key(&self) -> Result<(), KeyError> {
-        delete_keyring_credential(
-            self,
-            "discogs_api_key",
-            "Discogs API key deleted from keyring",
-            Some("Tried to delete Discogs key but none was stored"),
-        )
+        self.delete_host_secret(DISCOGS_API_KEY)
     }
 
     fn get_mcp_token(&self) -> Result<Option<String>, KeyError> {
-        read_keyring_credential(self, "mcp_bearer_token")
+        self.get_host_secret(MCP_BEARER_TOKEN)
     }
 
     fn set_mcp_token(&self, value: &str) -> Result<(), KeyError> {
-        set_keyring_credential(
-            self,
-            "mcp_bearer_token",
-            value,
-            "MCP bearer token saved to keyring",
-        )
+        self.set_host_secret(MCP_BEARER_TOKEN, value)
     }
 
     fn get_subsonic_password(&self) -> Result<Option<String>, KeyError> {
-        read_keyring_credential(self, "subsonic_password")
+        self.get_host_secret(SUBSONIC_PASSWORD)
     }
 
     fn set_subsonic_password(&self, value: &str) -> Result<(), KeyError> {
-        set_keyring_credential(
-            self,
-            "subsonic_password",
-            value,
-            "Subsonic server password saved to keyring",
-        )
+        self.set_host_secret(SUBSONIC_PASSWORD, value)
     }
 
     fn forget_encryption_key(&self) -> Result<(), KeyError> {
-        delete_keyring_credential(
-            self,
-            "encryption_master_key",
-            "Forgot encryption key for active library",
-            None,
-        )
+        self.delete_encryption_key()
     }
 }
+
+#[cfg(test)]
+#[path = "keys_tests.rs"]
+mod tests;
