@@ -53,18 +53,19 @@ internal sealed class ReleaseActionDialogs
     // The seed is read before the dialog opens; Save commits (shaping and validation
     // happen in core — a validation error keeps the dialog open with the reason),
     // and Reset re-seeds from the release's stored source without writing.
-    public Task ShowEditMetadata(string releaseId)
+    public async Task ShowEditMetadata(string releaseId)
     {
-        var (current, result) = _app.ReleaseEditor.ReleaseEditSeed(releaseId);
+        var (current, result) = await _app.ReleaseEditor.ReleaseEditSeed(releaseId);
         if (!current)
         {
-            return Task.CompletedTask;
+            return;
         }
         if (result.Edit is not { } seed)
         {
-            return ShowMessage(Loc.Chrome("album.edit.title"), Loc.Chrome("album.edit.load_failed"));
+            await ShowMessage(Loc.Chrome("album.edit.title"), Loc.Chrome("album.edit.load_failed"));
+            return;
         }
-        return _host.Show(close => BuildEditMetadata(releaseId, seed, close));
+        await _host.Show(close => BuildEditMetadata(releaseId, seed, close));
     }
 
     private Control BuildEditMetadata(string releaseId, BridgeRawReleaseEdit seed, Action close)
@@ -76,9 +77,9 @@ internal sealed class ReleaseActionDialogs
         column.Children.Add(new ScrollViewer { Content = form.Panel, MaxHeight = 460 });
 
         var save = DialogUi.Primary(Loc.Chrome("action.save"));
-        save.Click += (_, _) =>
+        save.Click += async (_, _) =>
         {
-            var (current, error) = _app.ReleaseEditor.ApplyReleaseEdit(releaseId, form.ReadBack());
+            var (current, error) = await _app.ReleaseEditor.ApplyReleaseEdit(releaseId, form.ReadBack());
             if (!current)
             {
                 return;

@@ -258,8 +258,11 @@ class OpenLibrary internal constructor(
      */
     suspend fun dispose() {
         stopSessionServices()
-        appHandle.shutdown()
-        appHandle.close()
+        try {
+            appHandle.shutdown()
+        } finally {
+            appHandle.close()
+        }
     }
 
     suspend fun closeForgottenLibrary() {
@@ -472,7 +475,7 @@ object AppSessionHolder {
                         diagnostics,
                     )
                 }
-            val config: BridgeConfig = withContext(Dispatchers.IO) { handle.getConfig() }
+            val config: BridgeConfig = handle.getConfig()
 
             if (config.encryptionKeyStored && !handle.hasEncryptionKey()) {
                 handle.close()
@@ -486,7 +489,7 @@ object AppSessionHolder {
                 return
             }
 
-            val initialOutbox = withContext(Dispatchers.IO) { handle.getOutboxSnapshot() }
+            val initialOutbox = handle.getOutboxSnapshot()
 
             // A different library was open: tear it down before swapping.
             current?.dispose()

@@ -267,13 +267,20 @@ fn onboarding_runtime() -> Result<&'static tokio::runtime::Runtime, BridgeError>
     Ok(RT.get_or_init(|| rt))
 }
 
-fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut) -> Result<T, BridgeError>
+pub(crate) fn onboarding_runtime_handle() -> Result<tokio::runtime::Handle, BridgeError> {
+    Ok(onboarding_runtime()?.handle().clone())
+}
+
+fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut + Send + 'static) -> Result<T, BridgeError>
 where
     Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
     T: Send + 'static,
 {
     let rt = onboarding_runtime()?;
-    match rt.block_on(rt.spawn(make_fut())) {
+    match rt.block_on(crate::operation_runtime::spawn(
+        rt.handle().clone(),
+        make_fut,
+    )) {
         Ok(result) => result,
         Err(join_err) => Err(BridgeError::internal(format!(
             "onboarding worker task panicked: {join_err}"
@@ -944,5 +951,20 @@ mod tests {
             }
             other => panic!("expected diagnostic bridge error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn on_worker_constructs_the_future_on_its_runtime() {
+        let caller = std::thread::current().id();
+        let constructed = on_worker(move || {
+            let construction_thread = std::thread::current().id();
+            async move { Ok::<_, BridgeError>(construction_thread) }
+        })
+        .expect("worker returns its construction thread");
+
+        assert_ne!(
+            constructed, caller,
+            "the operation future must be constructed after entering the owned runtime"
+        );
     }
 }

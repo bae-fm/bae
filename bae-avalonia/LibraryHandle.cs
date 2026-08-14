@@ -84,16 +84,32 @@ internal sealed class LibraryHandle
         _callGate.EnterWriteLock();
         try
         {
-            NativeBae.Shutdown(_handle);
-            NativeBae.HandleFree(_handle);
-            lock (_stateGate)
-            {
-                _isFreed = true;
-            }
+            CompleteTeardown(
+                () => NativeBae.Shutdown(_handle),
+                () =>
+                {
+                    NativeBae.HandleFree(_handle);
+                    lock (_stateGate)
+                    {
+                        _isFreed = true;
+                    }
+                });
         }
         finally
         {
             _callGate.ExitWriteLock();
+        }
+    }
+
+    internal static void CompleteTeardown(Action shutdown, Action free)
+    {
+        try
+        {
+            shutdown();
+        }
+        finally
+        {
+            free();
         }
     }
 }

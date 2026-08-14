@@ -13,9 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import fm.bae.app.ui.ContentView
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private const val TAG = "bae.MainActivity"
 private val logger = BaeLogger(TAG)
@@ -72,10 +70,15 @@ class MainActivity : ComponentActivity() {
         // Persist playback so the queue, current track, and position survive
         // process death while backgrounded. We can't shut core down (that would
         // stop the background audio), so this is the save point on Android.
-        val handle = AppSessionHolder.currentSession()?.appHandle ?: return
+        val session = AppSessionHolder.currentSession() ?: return
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                handle.savePlaybackState()
+            performBridgeAction(
+                logger = logger,
+                operation = "save playback state",
+                errors = LocaleErrorLines(this@MainActivity),
+                showError = session.configStore::showError,
+            ) {
+                session.appHandle.savePlaybackState()
             }
         }
     }

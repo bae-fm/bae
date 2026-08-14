@@ -82,25 +82,25 @@ internal sealed class QueuePane : IDisposable
             e.DragEffects = e.Data.Contains(DataFormats.Text) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         });
-        target.AddHandler(DragDrop.DropEvent, (_, e) =>
+        target.AddHandler(DragDrop.DropEvent, async (_, e) =>
         {
             if (!e.Data.Contains(DataFormats.Text))
             {
                 return;
             }
             e.Handled = true;
-            HandleQueueDrop(e.Data.GetText());
+            await HandleQueueDrop(e.Data.GetText());
         });
     }
 
-    private void HandleQueueDrop(string? payload)
+    private async Task HandleQueueDrop(string? payload)
     {
         if (_app.Session.CurrentHandleOrNull() is null || string.IsNullOrEmpty(payload))
         {
             return;
         }
         var albumIds = QueueDragPayload.Decode(payload);
-        var (current, resolved) = _app.Library.ResolveToTrackIds(albumIds);
+        var (current, resolved) = await _app.Library.ResolveToTrackIds(albumIds);
         if (!current)
         {
             return;

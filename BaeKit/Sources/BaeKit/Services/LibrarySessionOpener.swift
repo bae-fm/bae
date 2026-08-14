@@ -13,7 +13,7 @@ public protocol LibrarySessionHandle: Sendable {
     func hasEncryptionKey() -> Bool
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot
     func isSyncReady() -> Bool
-    func shutdown() async
+    func shutdown() async throws
 }
 
 extension AppHandle: LibrarySessionHandle {}
@@ -118,7 +118,15 @@ public final class LibrarySessionOpener<
                 // Seeding the outbox mirror failed: tear the just-opened core
                 // down before surfacing, rather than leaving it half-open.
                 logger.error("Failed to seed outbox snapshot: \(error)")
-                await handle.shutdown()
+                do {
+                    try await handle.shutdown()
+                }
+                catch {
+                    logger.error(
+                        "Failed to shut down after outbox seeding failed: \(error)"
+                    )
+                    return .failed(error)
+                }
                 return .failed(error)
             }
             let service = makeService(handle, config, initialOutbox)

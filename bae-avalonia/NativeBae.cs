@@ -52,8 +52,9 @@ internal static partial class NativeBae
             : new BridgeDiagnosticsConfig.Disabled();
 
     /// <summary>Flush buffered telemetry through the standalone sink.</summary>
-    internal static string? FlushDiagnostics(BridgeDiagnostics diagnostics) =>
-        CaptureError(() => Await(() => diagnostics.Flush()));
+    internal static System.Threading.Tasks.Task<string?> FlushDiagnostics(
+        BridgeDiagnostics diagnostics) =>
+        CaptureError(() => diagnostics.Flush());
 
     /// <summary>Report a host UI screen open as a typed telemetry event through
     /// the standalone sink. Infallible; the core owns every other event.</summary>
@@ -337,18 +338,6 @@ internal static partial class NativeBae
     internal static string? SetPrimaryRelease(AppHandle handle, string albumId, string releaseId) =>
         CaptureError(() => Await(() => handle.SetPrimaryRelease(albumId, releaseId)));
 
-    internal static string? SaveTrack(AppHandle handle, string trackId, string outputPath, string presetId) =>
-        CaptureError(() => Await(() => handle.SaveTrack(trackId, outputPath, presetId)));
-
-    internal static string? ExportRelease(AppHandle handle, string releaseId, string targetDir) =>
-        CaptureError(() => Await(() => handle.EnqueueExport(releaseId, targetDir)));
-
-    internal static string? SaveRelease(AppHandle handle, string releaseId, string targetDir, string presetId) =>
-        CaptureError(() => Await(() => handle.EnqueueReleaseSave(releaseId, targetDir, presetId)));
-
-    internal static string? SaveTrackSuggestedName(AppHandle handle, string trackId, string presetId) =>
-        CaptureValue(() => Await(() => handle.SaveTrackSuggestedName(trackId, presetId)));
-
     internal static (BridgeRemoteCover[]? Covers, string? Error) FetchRemoteCovers(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() => Await(() => handle.FetchRemoteCovers(releaseId)));
 
@@ -508,9 +497,6 @@ internal static partial class NativeBae
         _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown sort direction"),
     };
 
-
-    internal static string? PinRelease(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(() => handle.QueuePinReleases([releaseId])));
 
     // The album grid's bulk pin: the same enqueue as PinRelease, over every
     // targeted album's primary release.

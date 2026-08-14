@@ -142,7 +142,7 @@ fn queue_entry_precomputes_duration_clock() {
 }
 
 #[cfg(not(feature = "desktop"))]
-fn fresh_bridge_handle(test_name: &str) -> (super::AppHandle, std::path::PathBuf) {
+fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
@@ -189,11 +189,11 @@ fn fresh_bridge_handle(test_name: &str) -> (super::AppHandle, std::path::PathBuf
         let playback = manager.start_playback_service(runtime.handle().clone(), 50, true);
         bae_core::library::AppServices::new(manager, playback)
     };
-    let handle = super::AppHandle {
+    let handle = Arc::new(super::AppHandle {
         runtime,
         services,
         ui_event_bus: bae_core::ui::UiEventBus::new(),
-    };
+    });
 
     (handle, root)
 }
@@ -206,7 +206,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 
     let snapshot = handle
         .runtime
-        .block_on(subscription.next())
+        .block_on(subscription.clone().next())
         .expect("album browse snapshot");
 
     assert_eq!(snapshot.total_count, 0);
@@ -222,7 +222,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
         .expect("request first album window");
     let requested = handle
         .runtime
-        .block_on(subscription.next())
+        .block_on(subscription.clone().next())
         .expect("requested album browse snapshot");
     assert_eq!(
         requested.cause,
@@ -242,14 +242,17 @@ fn cancelling_album_browse_finishes_pending_next() {
     let subscription = handle.subscribe_album_browse(Vec::new());
     handle
         .runtime
-        .block_on(subscription.next())
+        .block_on(subscription.clone().next())
         .expect("initial album browse snapshot");
 
     let pending = handle.runtime.spawn({
         let subscription = subscription.clone();
         async move { subscription.next().await }
     });
-    handle.runtime.block_on(subscription.cancel());
+    handle
+        .runtime
+        .block_on(subscription.clone().cancel())
+        .expect("cancel album browse subscription");
     let result = handle.runtime.block_on(pending).expect("next task joins");
 
     assert!(matches!(result, Err(crate::types::BridgeError::Cancelled)));
@@ -308,7 +311,7 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
 fn enqueue_export_missing_release_does_not_panic() {
     let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
     let result = handle.runtime.block_on(async {
-        handle
+        Arc::clone(&handle)
             .enqueue_export(
                 "missing-release".to_string(),
                 root.join("exports").to_string_lossy().into_owned(),

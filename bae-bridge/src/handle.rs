@@ -42,7 +42,9 @@ pub struct AppHandle {
 }
 
 mod base;
+mod cloud_operations;
 mod collection_subscription;
+mod configuration;
 pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
 mod desktop;
 #[cfg(feature = "desktop")]
@@ -52,6 +54,7 @@ mod library_projection;
 mod playback_persistence;
 mod queue_projection;
 mod service_status;
+mod ui_events;
 use import_projection::convert_ui_event;
 use queue_projection::pump_ui_events;
 
@@ -59,6 +62,47 @@ use queue_projection::pump_ui_events;
 pub use editing_projection::{
     bridge_validation_reason_key, raw_release_edit_from_user_edit, shape_release_edit,
 };
+
+impl AppHandle {
+    pub(crate) fn start(
+        services: AppServices,
+        ui_event_bus: bae_core::ui::UiEventBus,
+        runtime: tokio::runtime::Runtime,
+    ) -> Self {
+        #[cfg(feature = "desktop")]
+        let desktop =
+            bae_desktop::DesktopServices::start(services.clone(), runtime.handle().clone());
+        #[cfg(feature = "cast")]
+        let cast = bae_cast::CastController::start(
+            services.clone(),
+            runtime.handle().clone(),
+            bae_core::renderer::RendererDiscovery::for_host(),
+        );
+
+        Self {
+            services,
+            ui_event_bus,
+            #[cfg(feature = "desktop")]
+            desktop,
+            #[cfg(feature = "cast")]
+            cast,
+            runtime,
+        }
+    }
+
+    async fn run_exported<T, Build, Fut>(
+        self: std::sync::Arc<Self>,
+        build: Build,
+    ) -> Result<T, BridgeError>
+    where
+        T: Send + 'static,
+        Build: FnOnce(std::sync::Arc<Self>) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
+    {
+        let runtime = self.runtime.handle().clone();
+        crate::operation_runtime::run(runtime, move || build(self)).await
+    }
+}
 
 #[cfg(test)]
 #[path = "handle_tests.rs"]

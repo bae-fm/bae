@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -46,6 +47,17 @@ class OpenLibraryDisposeTest {
     }
 
     @Test
+    fun disposeClosesWhenGracefulShutdownFails() {
+        val (session, handle) = openLibrary(failShutdown = true)
+
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { session.dispose() }
+        }
+
+        assertEquals(listOf("shutdown", "close"), handle.calls)
+    }
+
+    @Test
     fun closeForgottenLibraryClosesWithoutShuttingDown() {
         val (session, handle) = openLibrary()
 
@@ -54,9 +66,9 @@ class OpenLibraryDisposeTest {
         assertEquals(listOf("close"), handle.calls)
     }
 
-    private fun openLibrary(): Pair<OpenLibrary, RecordingHandle> {
+    private fun openLibrary(failShutdown: Boolean = false): Pair<OpenLibrary, RecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
-        val handle = RecordingHandle()
+        val handle = RecordingHandle(failShutdown)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val session =
             OpenLibrary(
@@ -89,11 +101,16 @@ class OpenLibraryDisposeTest {
         return session to handle
     }
 
-    private class RecordingHandle : AppHandle(NoHandle) {
+    private class RecordingHandle(
+        private val failShutdown: Boolean,
+    ) : AppHandle(NoHandle) {
         val calls = mutableListOf<String>()
 
         override suspend fun shutdown() {
             calls.add("shutdown")
+            if (failShutdown) {
+                throw IllegalStateException("shutdown failed")
+            }
         }
 
         override fun close() {

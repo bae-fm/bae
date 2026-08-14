@@ -33,9 +33,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.localizedLine
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.downloads.DownloadProgressBytes
@@ -82,7 +84,18 @@ internal fun ReleaseDownloadControl(
             // Fire-and-forget: progress and queue state arrive via the download
             // snapshot. Re-enqueuing is idempotent — core skips ids already
             // queued or pinned.
-            onDownload = { scope.launch { session.appHandle.queuePinReleases(listOf(release.id)) } },
+            onDownload = {
+                scope.launch {
+                    performBridgeAction(
+                        logger = logger,
+                        operation = "queue release download",
+                        errors = LocaleErrorLines(context),
+                        showError = session.configStore::showError,
+                    ) {
+                        session.appHandle.queuePinReleases(listOf(release.id))
+                    }
+                }
+            },
             onCancel = { session.appHandle.cancelDownload(release.id) },
             onRetry = { session.appHandle.retryDownloads() },
             onRemove = {

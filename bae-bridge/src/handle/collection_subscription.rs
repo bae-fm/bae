@@ -4,11 +4,13 @@ use std::collections::BTreeSet;
 #[derive(uniffi::Object)]
 pub struct AlbumBrowseSubscription {
     inner: bae_core::library::AlbumBrowseSubscription,
+    runtime: tokio::runtime::Handle,
 }
 
 #[derive(uniffi::Object)]
 pub struct ComposerBrowseSubscription {
     inner: bae_core::library::ComposerBrowseSubscription,
+    runtime: tokio::runtime::Handle,
 }
 
 #[uniffi::export]
@@ -23,6 +25,7 @@ impl AppHandle {
             .collect::<Vec<_>>();
         std::sync::Arc::new(AlbumBrowseSubscription {
             inner: self.services.subscribe_album_browse(&sort),
+            runtime: self.runtime.handle().clone(),
         })
     }
 
@@ -36,6 +39,7 @@ impl AppHandle {
             .collect::<Vec<_>>();
         std::sync::Arc::new(ComposerBrowseSubscription {
             inner: self.services.subscribe_composer_browse(&sort),
+            runtime: self.runtime.handle().clone(),
         })
     }
 }
@@ -51,16 +55,27 @@ impl AlbumBrowseSubscription {
             .map_err(browse_error)
     }
 
-    pub async fn next(&self) -> Result<crate::types::BridgeAlbumBrowseSnapshot, BridgeError> {
-        self.inner
-            .next()
-            .await
-            .map(crate::types::BridgeAlbumBrowseSnapshot::from_core)
-            .map_err(browse_error)
+    pub async fn next(
+        self: std::sync::Arc<Self>,
+    ) -> Result<crate::types::BridgeAlbumBrowseSnapshot, BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            self.inner
+                .next()
+                .await
+                .map(crate::types::BridgeAlbumBrowseSnapshot::from_core)
+                .map_err(browse_error)
+        })
+        .await
     }
 
-    pub async fn cancel(&self) {
-        self.inner.cancel().await;
+    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            self.inner.cancel().await;
+            Ok(())
+        })
+        .await
     }
 }
 
@@ -75,16 +90,27 @@ impl ComposerBrowseSubscription {
             .map_err(browse_error)
     }
 
-    pub async fn next(&self) -> Result<crate::types::BridgeComposerBrowseSnapshot, BridgeError> {
-        self.inner
-            .next()
-            .await
-            .map(crate::types::BridgeComposerBrowseSnapshot::from_core)
-            .map_err(browse_error)
+    pub async fn next(
+        self: std::sync::Arc<Self>,
+    ) -> Result<crate::types::BridgeComposerBrowseSnapshot, BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            self.inner
+                .next()
+                .await
+                .map(crate::types::BridgeComposerBrowseSnapshot::from_core)
+                .map_err(browse_error)
+        })
+        .await
     }
 
-    pub async fn cancel(&self) {
-        self.inner.cancel().await;
+    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            self.inner.cancel().await;
+            Ok(())
+        })
+        .await
     }
 }
 

@@ -22,10 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.localizedLine
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineDispatcher
@@ -34,6 +37,8 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSyncConfig
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncProvider
+
+private val logger = BaeLogger("bae.SyncConnectedControls")
 
 /**
  * The sync row's rendered state, derived from the runtime sync snapshot. A
@@ -82,6 +87,7 @@ internal fun SyncConnectedControls(
     syncError: String?,
     ioDispatcher: CoroutineDispatcher,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val outbox by session.outboxStore.snapshot.collectAsState()
     val flow = rememberDisconnectSyncFlow(session, ioDispatcher)
@@ -101,7 +107,18 @@ internal fun SyncConnectedControls(
         Text(stringResource(R.string.settings_pause_uploads), modifier = Modifier.weight(1f))
         Switch(
             checked = outbox.paused,
-            onCheckedChange = { paused -> scope.launch { session.appHandle.setSyncPaused(paused) } },
+            onCheckedChange = { paused ->
+                scope.launch {
+                    performBridgeAction(
+                        logger = logger,
+                        operation = "set sync pause state",
+                        errors = LocaleErrorLines(context),
+                        showError = session.configStore::showError,
+                    ) {
+                        session.appHandle.setSyncPaused(paused)
+                    }
+                }
+            },
         )
     }
     Text(

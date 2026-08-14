@@ -52,7 +52,7 @@ internal sealed class LibraryService
     /// <summary>Expand album/track ids to flat track-id lists (album ids resolve to
     /// their primary release's tracks), for a queue insert carrying a drag
     /// payload.</summary>
-    public Func<IReadOnlyList<string>, (bool Current, (List<string>? Value, string? Error) Result)> ResolveToTrackIds { get; init; }
+    public Func<IReadOnlyList<string>, Task<(bool Current, (List<string>? Value, string? Error) Result)>> ResolveToTrackIds { get; init; }
         = _ => throw new InvalidOperationException("LibraryService stub: ResolveToTrackIds not wired");
 
     /// <summary>Whether the library page spans the window's full width instead of a
@@ -96,7 +96,7 @@ internal sealed class LibraryService
             return current ? subscription : null;
         },
         ResolveToTrackIds = ids =>
-            session.WithCurrentHandle(handle => NativeBae.ResolveToTrackIds(handle, ids)),
+            session.RunForCurrentHandle(handle => NativeBae.ResolveToTrackIds(handle, ids)),
         SetLibraryFullWidth = enabled =>
             session.WithCurrentHandle(handle => NativeBae.SetLibraryFullWidth(handle, enabled)),
     };

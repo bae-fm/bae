@@ -86,9 +86,9 @@ internal static class BaeDiagnostics
             AppMetadata.ConfiguredString("BaeGitCommit"));
     }
 
-    internal static void Flush()
+    internal static async System.Threading.Tasks.Task Flush()
     {
-        var error = NativeBae.FlushDiagnostics(Handle);
+        var error = await NativeBae.FlushDiagnostics(Handle);
         if (error is not null)
         {
             Trace.TraceError($"Failed to flush diagnostics: {error}");

@@ -31,14 +31,13 @@ internal sealed class ReleaseEditorService
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ChangeCover not wired");
 
     /// <summary>The editable metadata seed for a release — album/pressing fields and
-    /// the per-track table — the edit form populates from. Synchronous (a local
-    /// read) so the dialog opens at once.</summary>
-    public Func<string, (bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)> ReleaseEditSeed { get; init; }
+    /// the per-track table — the edit form populates from.</summary>
+    public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ReleaseEditSeed { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ReleaseEditSeed not wired");
 
     /// <summary>Commit the edited metadata. Shaping and validation happen in core;
     /// a validation error keeps the dialog open with the reason.</summary>
-    public Func<string, BridgeRawReleaseEdit, (bool Current, string? Error)> ApplyReleaseEdit { get; init; }
+    public Func<string, BridgeRawReleaseEdit, Task<(bool Current, string? Error)>> ApplyReleaseEdit { get; init; }
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ApplyReleaseEdit not wired");
 
     /// <summary>Discard in-progress edits and re-seed the form from the release's
@@ -76,9 +75,9 @@ internal sealed class ReleaseEditorService
         ChangeCover = (releaseId, selection) =>
             session.RunForCurrentHandle(handle => NativeBae.ChangeCover(handle, releaseId, selection)),
         ReleaseEditSeed = releaseId =>
-            session.WithCurrentHandle(handle => NativeBae.ReleaseEditSeed(handle, releaseId)),
+            session.RunForCurrentHandle(handle => NativeBae.ReleaseEditSeed(handle, releaseId)),
         ApplyReleaseEdit = (releaseId, edit) =>
-            session.WithCurrentHandle(handle => NativeBae.ApplyReleaseEdit(handle, releaseId, edit)),
+            session.RunForCurrentHandle(handle => NativeBae.ApplyReleaseEdit(handle, releaseId, edit)),
         ResetMetadataToSource = releaseId =>
             session.RunForCurrentHandle(handle => NativeBae.ResetMetadataToSource(handle, releaseId)),
         ReidentifyRelease = (releaseId, choice) =>

@@ -178,6 +178,7 @@ check "cargo fmt"                   cargo fmt --all -- --check
 check "source file layout"          scripts/check-source-file-size.py
 check "restricted-path visibility"  scripts/check-rust-visibility.sh
 check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
+check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "clippy (workspace)"          cargo clippy --workspace -- -D warnings
 check "clippy (bae-core + test-utils)" \
   cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings

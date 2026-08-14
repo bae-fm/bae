@@ -37,41 +37,6 @@ pub enum DeviceJoinOutcome {
 
 use crate::sync::device_join_timing;
 
-/// Construct and run a sync operation to completion on a stack bae controls,
-/// then hand back its `Send` result.
-///
-/// Sync futures include nested provider and custody operations; some are also
-/// `!Send` because they hold coven custody trait objects across awaits. The
-/// builder crosses to the dedicated thread before constructing the future, so
-/// neither construction nor polling depends on a foreign runtime's stack.
-/// `label` names the operation in a failure message.
-async fn run_sync_operation<T, F, Fut>(label: &'static str, build: F) -> Result<T, LibraryError>
-where
-    T: Send + 'static,
-    F: FnOnce() -> Fut + Send + 'static,
-    Fut: std::future::Future<Output = Result<T, LibraryError>>,
-{
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    std::thread::Builder::new()
-        .name(format!("bae-{label}"))
-        .stack_size(64 * 1024 * 1024)
-        .spawn(move || {
-            let result = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| {
-                    LibraryError::Internal(format!("failed to build {label} runtime: {e}"))
-                })
-                .and_then(|runtime| runtime.block_on(Box::pin(build())));
-            // The receiver is gone only if the caller stopped waiting; the
-            // operation still completes atomically on its owner thread.
-            let _ = tx.send(result);
-        })
-        .map_err(|e| LibraryError::Internal(format!("failed to spawn {label} thread: {e}")))?;
-    rx.await
-        .map_err(|_| LibraryError::Internal(format!("{label} task failed to complete")))?
-}
-
 /// Owns the sync/upload state and the cloud-connection lifecycle. Holds clones of
 /// the handles the sync paths need (coven handle, config, keys, clock, event bus,
 /// database) plus the transient upload-pipeline state. Cloned alongside the
@@ -324,18 +289,14 @@ impl SyncController {
         &self,
         join_request_code: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        let database = self.database.clone();
-        let join_request_code = join_request_code.to_string();
-        run_sync_operation("device-invite", move || async move {
-            Ok(database
-                .begin_device_invite(
-                    &join_request_code,
-                    crate::sync::membership::MemberRole::Member,
-                )
-                .await?
-                .to_bytes())
-        })
-        .await
+        Ok(self
+            .database
+            .begin_device_invite(
+                join_request_code,
+                crate::sync::membership::MemberRole::Member,
+            )
+            .await?
+            .to_bytes())
     }
 
     /// Drive this device's side of a join it invited, to the attempt's end.
@@ -356,23 +317,20 @@ impl SyncController {
         &self,
         invite_bytes: Vec<u8>,
     ) -> Result<DeviceJoinOutcome, LibraryError> {
-        let database = self.database.clone();
-        run_sync_operation("device-join drive", move || async move {
-            let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
-                .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
-            let outcome = database
-                .drive_device_join(
-                    &invite,
-                    coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
-                    device_join_timing(),
-                )
-                .await?;
-            Ok(match outcome {
-                coven::DeviceJoinDriveOutcome::Activated(_) => DeviceJoinOutcome::Joined,
-                coven::DeviceJoinDriveOutcome::Abandoned(_) => DeviceJoinOutcome::Abandoned,
-            })
+        let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
+            .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
+        let outcome = self
+            .database
+            .drive_device_join(
+                &invite,
+                coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
+                device_join_timing(),
+            )
+            .await?;
+        Ok(match outcome {
+            coven::DeviceJoinDriveOutcome::Activated(_) => DeviceJoinOutcome::Joined,
+            coven::DeviceJoinDriveOutcome::Abandoned(_) => DeviceJoinOutcome::Abandoned,
         })
-        .await
     }
 
     /// Withdraw an invite this device minted, unwinding the attempt through the
@@ -381,46 +339,19 @@ impl SyncController {
         &self,
         invite_bytes: Vec<u8>,
     ) -> Result<(), LibraryError> {
-        let database = self.database.clone();
-        run_sync_operation("device-invite cancel", move || async move {
-            let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
-                .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
-            database
-                .cancel_device_invite(&invite, device_join_timing())
-                .await?;
-            Ok(())
-        })
-        .await
+        let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
+            .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
+        self.database
+            .cancel_device_invite(&invite, device_join_timing())
+            .await?;
+        Ok(())
     }
 
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), LibraryError> {
-        // coven's `remove_member` future is `!Send`: internally it holds coven's
-        // keyring trait object (`dyn KeyPersistence`, which carries no `Sync`
-        // bound) across its awaits while it rotates and re-adopts the library
-        // key. uniffi's async bridge export requires the whole call chain to be
-        // `Send`, so this future can't be `.await`ed inline. Drive it to
-        // completion on a blocking-pool thread via a private current-thread
-        // runtime — the same block-on shape coven's own sync loop uses for its
-        // cloud work — and hand back only the `Send` fingerprint string.
-        let database = self.database.clone();
-        let public_key_hex = public_key_hex.to_string();
-        let fingerprint = tokio::task::spawn_blocking(move || -> Result<String, LibraryError> {
-            tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| {
-                    LibraryError::Internal(format!("failed to build member-removal runtime: {e}"))
-                })?
-                .block_on(database.remove_member(&public_key_hex))
-                .map_err(LibraryError::from)
-        })
-        .await
-        .map_err(|e| {
-            LibraryError::Internal(format!("member-removal task failed to complete: {e}"))
-        })??;
+        let fingerprint = self.database.remove_member(public_key_hex).await?;
         self.config_handle
             .record_encryption_key_fingerprint(fingerprint)?;
         Ok(())
@@ -428,17 +359,6 @@ impl SyncController {
 
     /// Probe, persist, and connect an S3 cloud home.
     pub(crate) async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
-        let controller = self.clone();
-        run_sync_operation("s3-configuration", move || async move {
-            controller.save_s3_config_on_operation_thread(data).await
-        })
-        .await
-    }
-
-    async fn save_s3_config_on_operation_thread(
-        &self,
-        data: S3ConfigData,
-    ) -> Result<(), LibraryError> {
         use crate::keys::CloudHomeCredentials;
 
         // The cloud-home settings the form proposes, decided once here so the

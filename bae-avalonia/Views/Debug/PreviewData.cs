@@ -171,6 +171,7 @@ internal static class PreviewData
             CombineAncestorKey: null,
             Actionable: true,
             Placement: new BridgeTriagePlacement.Ready(),
+            SkipAction: BridgeTriageSkipAction.Skip,
             Matched: null,
             Selectable: true,
             ImportStatus: null,

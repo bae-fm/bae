@@ -21,17 +21,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
-import fm.bae.app.localizedLine
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeException
 
 private val logger = BaeLogger("bae.SettingsPlaybackSection")
 
@@ -80,18 +79,15 @@ private fun PauseBetweenSidesRow(
             checked = config.pauseBetweenSides,
             onCheckedChange = { enabled ->
                 scope.launch {
-                    try {
+                    performBridgeAction(
+                        logger = logger,
+                        operation = "update pause-between-sides setting",
+                        errors = LocaleErrorLines(context),
+                        showError = session.configStore::showError,
+                    ) {
                         withContext(ioDispatcher) {
                             session.appHandle.setPauseBetweenSides(enabled)
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: BridgeException) {
-                        logger.error("Failed to update pause-between-sides setting", e)
-                        session.configStore.showError(context.localizedLine(e))
-                    } catch (e: Exception) {
-                        logger.error("Failed to update pause-between-sides setting", e)
-                        session.configStore.showError(e.toString())
                     }
                 }
             },

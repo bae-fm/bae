@@ -149,7 +149,7 @@ public sealed partial class App : Application
         MediaControl.Deactivate();
         // Flush buffered telemetry through the process-lifetime sink before the
         // library handle it was carrying events for is freed below.
-        BaeDiagnostics.Flush();
+        await BaeDiagnostics.Flush();
         // The handle's graceful shutdown is what persists playback state for the
         // next launch. A no-op when no library is open.
         await Session.ShutdownAndFreeCurrentHandle();

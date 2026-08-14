@@ -7,25 +7,40 @@ namespace Bae.Desktop;
 
 internal static partial class NativeBae
 {
-    // Start the bridge call on a threadpool thread and block until it finishes.
-    // The call must NOT start on the blocking thread: the generated async
-    // bindings' internal awaits capture the caller's SynchronizationContext, so
-    // a bridge call started on the UI thread posts its completion to the UI
-    // dispatcher — which a blocking wait on that same thread starves (observed
-    // as a permanent hang opening a library from the welcome chooser). Task.Run
-    // starts the call with no context, so completions never need the blocked
-    // thread.
+    // AppHandle operations reach this adapter only from the session's worker.
+    // Block that worker until UniFFI completes so LibraryHandle keeps the native
+    // handle borrowed for the operation's full lifetime. The caller owns the
+    // only UI-to-worker dispatch; adding another Task.Run here would duplicate
+    // that boundary for every generated async method.
     private static T Await<T>(Func<System.Threading.Tasks.Task<T>> call) =>
-        System.Threading.Tasks.Task.Run(call).GetAwaiter().GetResult();
+        call().GetAwaiter().GetResult();
 
     private static void Await(Func<System.Threading.Tasks.Task> call) =>
-        System.Threading.Tasks.Task.Run(call).GetAwaiter().GetResult();
+        call().GetAwaiter().GetResult();
 
     private static string? CaptureError(Action action)
     {
         try
         {
             action();
+            return null;
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return null;
+        }
+        catch (BridgeException exception)
+        {
+            return exception.Message;
+        }
+    }
+
+    private static async System.Threading.Tasks.Task<string?> CaptureError(
+        Func<System.Threading.Tasks.Task> action)
+    {
+        try
+        {
+            await action();
             return null;
         }
         catch (BridgeException.Cancelled)

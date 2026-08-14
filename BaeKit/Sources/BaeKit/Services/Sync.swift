@@ -151,21 +151,24 @@ public final class Sync: Sendable, Observable {
     #endif
 
     /// Generate a fresh restore code and persist it to iCloud Keychain
-    /// against `libraryId`. Background-detached; errors surface through
-    /// `onError` on the main actor. Called on startup (via
-    /// `BaeApp.openLibrary` when `isSyncReady`) and from
+    /// against `libraryId`. The bridge owns the asynchronous generation
+    /// runtime; only the synchronous Keychain write moves to a detached
+    /// worker. Errors surface through `onError` on the main actor. Called on
+    /// startup (via `BaeApp.openLibrary` when `isSyncReady`) and from
     /// `LibrarySettingsTab` after every successful sync-config change.
     public func storeRestoreCodeInKeychain(
         libraryId: String,
         onError: @escaping @Sendable (String) -> Void
     ) {
-        Task.detached { [generateRestoreCode] in
+        Task { [generateRestoreCode] in
             do {
                 let code = try await generateRestoreCode()
-                KeychainService.saveRestoreCode(
-                    libraryId: libraryId,
-                    code: code
-                )
+                try await DetachedWork.run {
+                    KeychainService.saveRestoreCode(
+                        libraryId: libraryId,
+                        code: code
+                    )
+                }
             }
             catch {
                 await MainActor.run {

@@ -104,6 +104,10 @@ run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {
     exit 1
 }
 
+run_check "UniFFI runtime boundary" scripts/check-uniffi-runtime-boundary.py || {
+    exit 1
+}
+
 # bae-core checks. bae-test-support compiles into bae-core's integration tests,
 # so a change there has to re-run them even when bae-core itself is untouched.
 if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then

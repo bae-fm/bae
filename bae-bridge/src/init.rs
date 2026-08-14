@@ -82,11 +82,17 @@ impl BridgeDiagnostics {
 
     /// Flush any buffered telemetry now. Hosts call this at exit so the last
     /// events reach Datadog before the process ends.
-    pub async fn flush(&self) -> Result<(), BridgeError> {
-        self.inner
-            .flush()
-            .await
-            .map_err(diagnostics_error_to_bridge)
+    pub async fn flush(self: Arc<Self>) -> Result<(), BridgeError> {
+        crate::operation_runtime::run(
+            crate::setup::onboarding_runtime_handle()?,
+            move || async move {
+                self.inner
+                    .flush()
+                    .await
+                    .map_err(diagnostics_error_to_bridge)
+            },
+        )
+        .await
     }
 }
 

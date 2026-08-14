@@ -9,22 +9,30 @@ use super::*;
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     /// Graceful shutdown: saves playback state to disk, then stops playback.
-    pub async fn shutdown(&self) {
-        #[cfg(feature = "desktop")]
-        {
-            self.desktop.shutdown_mcp();
-            self.desktop.shutdown_subsonic();
-            self.services.playback_shutdown().await;
-        }
-        #[cfg(not(feature = "desktop"))]
-        self.services.playback_shutdown().await;
+    pub async fn shutdown(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            #[cfg(feature = "desktop")]
+            {
+                this.desktop.shutdown_mcp();
+                this.desktop.shutdown_subsonic();
+                this.services.playback_shutdown().await;
+            }
+            #[cfg(not(feature = "desktop"))]
+            this.services.playback_shutdown().await;
+            Ok(())
+        })
+        .await
     }
 
     /// Persist the current playback state without stopping playback. Mobile
     /// calls this when the app is backgrounded so the queue, current track, and
     /// position survive a later cold launch — it can't call `shutdown`, which
     /// would stop the background audio.
-    pub async fn save_playback_state(&self) {
-        self.services.playback_save_state().await;
+    pub async fn save_playback_state(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services.playback_save_state().await;
+            Ok(())
+        })
+        .await
     }
 }

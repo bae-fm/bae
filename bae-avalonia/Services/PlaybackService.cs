@@ -44,9 +44,6 @@ internal sealed class PlaybackService
     public Func<float, bool> SetVolume { get; init; }
         = _ => throw new InvalidOperationException("PlaybackService stub: SetVolume not wired");
 
-    public Func<(bool Current, float Volume)> GetVolume { get; init; }
-        = () => throw new InvalidOperationException("PlaybackService stub: GetVolume not wired");
-
     public Func<bool, bool> SetMuted { get; init; }
         = _ => throw new InvalidOperationException("PlaybackService stub: SetMuted not wired");
 
@@ -103,7 +100,6 @@ internal sealed class PlaybackService
         SeekByRatio = ratio => session.WithCurrentHandle(handle => NativeBae.SeekByRatio(handle, ratio)),
         PreviewSeekByRatio = ratio => session.WithCurrentHandle(handle => NativeBae.PreviewSeekByRatio(handle, ratio)),
         SetVolume = volume => session.WithCurrentHandle(handle => NativeBae.SetVolume(handle, volume)),
-        GetVolume = () => session.WithCurrentHandle(handle => NativeBae.GetVolume(handle)),
         SetMuted = muted => session.WithCurrentHandle(handle => NativeBae.SetMuted(handle, muted)),
         SetRepeatMode = mode => session.WithCurrentHandle(handle => NativeBae.SetRepeatMode(handle, mode)),
         NextRepeatMode = mode => NativeBae.NextRepeatMode(mode),

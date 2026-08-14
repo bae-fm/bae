@@ -34,8 +34,6 @@ internal static partial class NativeBae
 
     internal static void SetMuted(AppHandle handle, bool muted) => handle.SetMuted(muted);
 
-    internal static float GetVolume(AppHandle handle) => Await(() => handle.GetVolume());
-
     // -- Cast --
 
     internal static void StartCastDiscovery(AppHandle handle) => handle.StartCastDiscovery();
@@ -114,9 +112,6 @@ internal static partial class NativeBae
     // Insert tracks into the manual lane at index (core clamps to the lane length).
     internal static void InsertInQueue(AppHandle handle, IReadOnlyList<string> trackIds, int index) =>
         handle.InsertInQueue(trackIds.ToArray(), checked((uint)index));
-
-    internal static string? DeleteRelease(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(() => handle.DeleteRelease(releaseId)));
 
     internal static void Shutdown(AppHandle handle) => Await(() => handle.Shutdown());
 }

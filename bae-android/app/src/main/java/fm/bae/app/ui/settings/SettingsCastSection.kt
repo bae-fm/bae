@@ -23,16 +23,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
-import fm.bae.app.localizedLine
-import kotlinx.coroutines.CancellationException
+import fm.bae.app.performBridgeAction
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeException
 
 private val logger = BaeLogger("bae.SettingsCastSection")
 
@@ -82,16 +81,13 @@ internal fun SettingsCastSection(
 
     fun setEnabled(enabled: Boolean) {
         scope.launch {
-            try {
+            performBridgeAction(
+                logger = logger,
+                operation = "update casting setting",
+                errors = LocaleErrorLines(context),
+                showError = session.configStore::showError,
+            ) {
                 withContext(ioDispatcher) { session.cast.setEnabled(enabled) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("Failed to update the casting setting", e)
-                session.configStore.showError(context.localizedLine(e))
-            } catch (e: Exception) {
-                logger.error("Failed to update the casting setting", e)
-                session.configStore.showError(e.toString())
             }
         }
     }

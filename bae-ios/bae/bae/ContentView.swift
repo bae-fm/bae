@@ -107,7 +107,12 @@ struct ContentView: View {
                 Task { [service = holder.appService] in
                     let task = BackgroundSaveTask(name: "SavePlaybackState")
                     defer { task.end() }
-                    await service?.savePlaybackState()
+                    do {
+                        try await service?.savePlaybackState()
+                    }
+                    catch {
+                        service?.showError(error)
+                    }
                 }
             }
         }

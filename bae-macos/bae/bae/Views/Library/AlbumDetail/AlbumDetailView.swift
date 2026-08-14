@@ -549,19 +549,17 @@ extension AlbumDetailView {
     private func setPrimaryRelease(releaseId: String) {
         let releaseEditor = releaseEditor
         let albumId = albumId
-        Task.detached {
+        Task {
             do {
                 try await releaseEditor.setPrimaryRelease(albumId, releaseId)
             }
             catch {
-                await MainActor.run {
-                    uiStore.showError(
-                        String(
-                            localized:
-                                "Failed to set primary release: \(error.displayLine)"
-                        )
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Failed to set primary release: \(error.displayLine)"
                     )
-                }
+                )
             }
         }
     }

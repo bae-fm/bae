@@ -49,9 +49,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.decodeJoinRequest
 
 private const val TAG = "bae.AddDeviceFlow"
@@ -88,7 +86,7 @@ private sealed interface AddDeviceStep {
 
 /**
  * Drives the owner's approve-a-device flow: decode the captured request code into
- * the confirm step, then mint the invite code off the main thread. Refreshes the
+ * the confirm step, then mint the invite code through the bridge runtime. Refreshes the
  * member list on a successful invite ([onInvited]) so a newly-approved device
  * shows up. Created once per sheet via [remember]; the screen reads [step]/[error]
  * and the dialog calls [capture]/[approve].
@@ -126,12 +124,10 @@ private class AddDeviceModel(
         step = AddDeviceStep.Inviting
         val inviteCode =
             try {
-                withContext(Dispatchers.IO) {
-                    session.appHandle.inviteMember(
-                        publicKeyHex = device.pubkey,
-                        providerAccountEmail = device.providerAccountEmail,
-                    )
-                }
+                session.appHandle.inviteMember(
+                    publicKeyHex = device.pubkey,
+                    providerAccountEmail = device.providerAccountEmail,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

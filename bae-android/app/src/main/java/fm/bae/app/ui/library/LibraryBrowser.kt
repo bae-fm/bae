@@ -30,9 +30,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.downloads.DownloadsSummaryStrip
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -145,9 +143,7 @@ private fun OpenLibrary.playLibraryShuffledOrReport(
 ) {
     coroutineScope.launch {
         try {
-            withContext(Dispatchers.IO) {
-                appHandle.playLibraryShuffled()
-            }
+            appHandle.playLibraryShuffled()
         } catch (e: Exception) {
             logger.error("playLibraryShuffled failed", e)
             configStore.showError(appContext.getString(R.string.library_load_failed))

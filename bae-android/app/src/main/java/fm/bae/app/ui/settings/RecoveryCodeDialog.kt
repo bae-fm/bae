@@ -34,8 +34,6 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private val logger = BaeLogger("bae.RecoveryCodeDialog")
 
@@ -56,7 +54,7 @@ internal fun RecoveryCodeDialog(
 
     LaunchedEffect(Unit) {
         try {
-            code = withContext(Dispatchers.IO) { session.appHandle.generateRestoreCode() }
+            code = session.appHandle.generateRestoreCode()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

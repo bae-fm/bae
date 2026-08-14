@@ -1,6 +1,7 @@
 package fm.bae.app
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.bridgeErrorLineKey
@@ -66,4 +67,28 @@ class LocaleErrorLines(
     override fun line(reason: BridgePlaybackErrorReason) = context.localizedLine(reason)
 
     override fun line(error: BridgeException) = context.localizedLine(error)
+}
+
+/**
+ * Run a user-triggered bridge action, preserving coroutine cancellation while
+ * turning every operation failure into the library's visible error state.
+ */
+internal suspend fun performBridgeAction(
+    logger: BaeLogger,
+    operation: String,
+    errors: ErrorLines,
+    showError: (String?) -> Unit,
+    action: suspend () -> Unit,
+) {
+    try {
+        action()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: BridgeException) {
+        logger.error("$operation failed", e)
+        showError(errors.line(e))
+    } catch (e: Exception) {
+        logger.error("$operation failed", e)
+        showError(e.toString())
+    }
 }

@@ -1,77 +1,5 @@
 use super::*;
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    /// Bytes of a curated library image (a release cover or an artist portrait),
-    /// read through coven's locality-aware read (local store while Local,
-    /// cache/cloud while Remote). `None` when no such image exists. The
-    /// `BridgeImageRef` carries the image kind, so core reads the known image
-    /// namespace directly. A read error surfaces, not masked.
-    pub async fn fetch_library_image_bytes(
-        &self,
-        image: crate::types::BridgeImageRef,
-    ) -> Result<Option<Vec<u8>>, BridgeError> {
-        self.services
-            .read_image_blob(&image.into_core())
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    /// Bytes of one slot in a release's image strip. The lightbox calls this for
-    /// EVERY item, passing the `source` it received; core dispatches the read on
-    /// the variant (the cover by its image ref, a release's own image file by
-    /// file id), so the UI never picks the byte source itself. A read error
-    /// surfaces, not masked.
-    pub async fn fetch_release_image_bytes(
-        &self,
-        release_id: String,
-        source: BridgeGallerySource,
-    ) -> Result<Vec<u8>, BridgeError> {
-        self.services
-            .read_gallery_bytes(&release_id, &source.into_core())
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-}
-
-// =========================================================================
-// Apple-only: CloudKit
-// =========================================================================
-
-#[cfg(feature = "cloudkit")]
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    pub async fn use_cloudkit(&self, storage: BridgeHomeStorage) -> Result<(), BridgeError> {
-        let storage = crate::types::BridgeHomeStorage::into_core(storage);
-        self.services.use_cloudkit(storage).await?;
-        Ok(())
-    }
-}
-
-// =========================================================================
-// OAuth-only: consumer-cloud sign-in (Google Drive, Dropbox, OneDrive)
-// =========================================================================
-
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    pub async fn sign_in_cloud_provider(
-        &self,
-        provider: BridgeCloudProvider,
-        storage: BridgeHomeStorage,
-    ) -> Result<(), BridgeError> {
-        // OAuth + cloud-folder setup then starts sync. Cancellation (the Swift
-        // Task dropping this future) tears down the OAuth listener via coven's
-        // own drop guard.
-        let core_provider = crate::types::BridgeCloudProvider::into_core(provider);
-        let storage = crate::types::BridgeHomeStorage::into_core(storage);
-        self.services
-            .sign_in_cloud_provider(core_provider, storage)
-            .await?;
-        Ok(())
-    }
-}
-
 // =========================================================================
 // Casting to a network receiver (Cast, UPnP, AirPlay)
 // =========================================================================
@@ -128,8 +56,10 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::CastDevicesCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let mut devices = self.cast.subscribe_devices();
-        let task = self.runtime.handle().spawn(async move {
+        let cast = self.cast.clone();
+        let runtime = self.runtime.handle().clone();
+        let task = crate::operation_runtime::spawn(runtime, move || async move {
+            let mut devices = cast.subscribe_devices();
             callback.on_value(
                 devices
                     .borrow_and_update()
@@ -243,24 +173,30 @@ impl AppHandle {
     /// (identification). Mobile reads token status via `get_config` but never
     /// writes.
     pub async fn save_discogs_token(
-        &self,
+        self: std::sync::Arc<Self>,
         token: String,
     ) -> Result<BridgeDiscogsSaveOutcome, BridgeError> {
-        self.services
-            .import_save_discogs_token(&token)
-            .await
-            .map(BridgeDiscogsSaveOutcome::from_core)
-            .map_err(BridgeError::config)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_save_discogs_token(&token)
+                .await
+                .map(BridgeDiscogsSaveOutcome::from_core)
+                .map_err(BridgeError::config)
+        })
+        .await
     }
 
     /// Re-check a stored `Unvalidated` key against Discogs. No-op when no key is
     /// stored or it's already settled. Called at app launch and settings-tab
     /// open for the offline-saved case.
-    pub async fn revalidate_discogs_token(&self) -> Result<(), BridgeError> {
-        self.services
-            .import_revalidate_discogs_token()
-            .await
-            .map_err(BridgeError::config)
+    pub async fn revalidate_discogs_token(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_revalidate_discogs_token()
+                .await
+                .map_err(BridgeError::config)
+        })
+        .await
     }
 
     pub fn remove_discogs_token(&self) -> Result<(), BridgeError> {
@@ -347,31 +283,37 @@ impl AppHandle {
     /// record itself when a verdict settles on exactly one match; this is the
     /// path for the choices only a person can make.
     pub async fn pick_candidate_identity(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
         pick: crate::types::BridgeIdentityPick,
     ) -> Result<crate::types::BridgeDecidedIdentity, BridgeError> {
-        let answer = self
-            .services
-            .import_pick_candidate_identity(candidate_key, pick.into_core())
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeDecidedIdentity::from_core(answer))
+        self.run_exported(move |this| async move {
+            let answer = this
+                .services
+                .import_pick_candidate_identity(candidate_key, pick.into_core())
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeDecidedIdentity::from_core(answer))
+        })
+        .await
     }
 
     /// The candidate's decided identity read back, or `None` while nothing is
     /// decided — what selecting a row asks, and the whole of "resume": a
     /// stored decision answers exactly like the click that made it did.
     pub async fn candidate_decided_identity(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
     ) -> Result<Option<crate::types::BridgeDecidedIdentity>, BridgeError> {
-        let answer = self
-            .services
-            .import_candidate_answer(candidate_key)
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(answer.map(crate::types::BridgeDecidedIdentity::from_core))
+        self.run_exported(move |this| async move {
+            let answer = this
+                .services
+                .import_candidate_answer(candidate_key)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(answer.map(crate::types::BridgeDecidedIdentity::from_core))
+        })
+        .await
     }
 
     /// Re-identify commit. Translates the user's `IdentityChoice` into a fully
@@ -384,27 +326,32 @@ impl AppHandle {
     /// (`set_identity` move semantics). Reseeding metadata is the caller's call:
     /// `reset_metadata_to_source` + `update_release_metadata_user_edit`.
     pub async fn re_identify_release(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
         identity_choice: crate::types::BridgeIdentityChoice,
     ) -> Result<String, BridgeError> {
-        let core_choice = identity_choice.into_core();
-        self.services
-            .re_identify_release(&release_id, core_choice)
-            .await
-            .map_err(BridgeError::import)?;
-        self.services
-            .get_album_id_for_release(&release_id)
-            .await
-            .map_err(BridgeError::database)
+        self.run_exported(move |this| async move {
+            let core_choice = identity_choice.into_core();
+            this.services
+                .re_identify_release(&release_id, core_choice)
+                .await
+                .map_err(BridgeError::import)?;
+            this.services
+                .get_album_id_for_release(&release_id)
+                .await
+                .map_err(BridgeError::database)
+        })
+        .await
     }
 
     pub fn subscribe_import_candidates(
         &self,
         callback: Box<dyn crate::types::ImportCandidatesCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let mut values = self.services.subscribe_import_candidates();
-        let task = self.runtime.handle().spawn(async move {
+        let services = self.services.clone();
+        let runtime = self.runtime.handle().clone();
+        let task = crate::operation_runtime::spawn(runtime, move || async move {
+            let mut values = services.subscribe_import_candidates();
             callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
                 values.borrow_and_update().clone(),
             ));
@@ -421,10 +368,11 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::ImportTriageCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let mut values = self
-            .services
-            .subscribe_import_triage_values(self.runtime.handle());
-        let task = self.runtime.handle().spawn(async move {
+        let services = self.services.clone();
+        let runtime = self.runtime.handle().clone();
+        let service_runtime = runtime.clone();
+        let task = crate::operation_runtime::spawn(runtime, move || async move {
+            let mut values = services.subscribe_import_triage_values(&service_runtime);
             while let Some(value) = values.recv().await {
                 match value {
                     Ok(value) => {
@@ -444,14 +392,15 @@ impl AppHandle {
         source_group_id: Option<String>,
         callback: Box<dyn crate::types::ReleaseLibraryStatusCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let mut values =
-            self.services
-                .subscribe_release_library_status(bae_core::db::LibraryCheck {
+        let services = self.services.clone();
+        let runtime = self.runtime.handle().clone();
+        let task = crate::operation_runtime::spawn(runtime, move || async move {
+            let mut values =
+                services.subscribe_release_library_status(bae_core::db::LibraryCheck {
                     release_id,
                     source: source.into_core(),
                     source_group_id,
                 });
-        let task = self.runtime.handle().spawn(async move {
             loop {
                 match values.next().await {
                     Ok(value) => {
@@ -464,49 +413,73 @@ impl AppHandle {
         std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    pub async fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
-        self.services
-            .import_add_watched_folder(path)
-            .await
-            .map_err(BridgeError::import)
+    pub async fn add_watched_folder(
+        self: std::sync::Arc<Self>,
+        path: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_add_watched_folder(path)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
-    pub async fn remove_watched_folder(&self, path: String) -> Result<(), BridgeError> {
-        self.services
-            .import_remove_watched_folder(path)
-            .await
-            .map_err(BridgeError::import)
+    pub async fn remove_watched_folder(
+        self: std::sync::Arc<Self>,
+        path: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_remove_watched_folder(path)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
-    pub async fn refresh_watched_folder(&self, path: String) -> Result<(), BridgeError> {
-        self.services
-            .import_refresh_watched_folder(path)
-            .await
-            .map_err(BridgeError::import)
+    pub async fn refresh_watched_folder(
+        self: std::sync::Arc<Self>,
+        path: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_refresh_watched_folder(path)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     pub async fn set_folder_release_decision(
-        &self,
+        self: std::sync::Arc<Self>,
         key: crate::types::BridgeFolderReleaseDecisionKey,
         decision: crate::types::BridgeFolderReleaseDecision,
     ) -> Result<(), BridgeError> {
-        self.services
-            .import_set_folder_release_decision(key.into_core(), decision.into_core())
-            .await
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_folder_release_decision(key.into_core(), decision.into_core())
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// Mark the candidate at `path` skipped or unskipped. Persists the change;
     /// the candidate subscription carries the new row to the import view.
     pub async fn set_candidate_skipped(
-        &self,
+        self: std::sync::Arc<Self>,
         path: String,
         skipped: bool,
     ) -> Result<(), BridgeError> {
-        self.services
-            .import_set_candidate_skipped(path, skipped)
-            .await
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_skipped(path, skipped)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// What the track sheet `sheet_file_id` on candidate `candidate_key` can be
@@ -518,18 +491,21 @@ impl AppHandle {
     /// Core probes each file to decide, so ask for this when a picker opens
     /// rather than holding it alongside the candidate.
     pub async fn sheet_binding_options(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
         sheet_file_id: String,
     ) -> Result<Vec<crate::types::BridgeSheetBindingOption>, BridgeError> {
-        Ok(self
-            .services
-            .import_sheet_binding_options(candidate_key, sheet_file_id)
-            .await
-            .map_err(BridgeError::import)?
-            .into_iter()
-            .map(crate::types::BridgeSheetBindingOption::from_core)
-            .collect())
+        self.run_exported(move |this| async move {
+            Ok(this
+                .services
+                .import_sheet_binding_options(candidate_key, sheet_file_id)
+                .await
+                .map_err(BridgeError::import)?
+                .into_iter()
+                .map(crate::types::BridgeSheetBindingOption::from_core)
+                .collect())
+        })
+        .await
     }
 
     /// Bind a candidate's track sheet to one of its audio files, or clear the
@@ -544,15 +520,18 @@ impl AppHandle {
     /// verdict, because a bound sheet is a different disc. The candidate
     /// subscription carries the new roles to the import view.
     pub async fn set_sheet_binding(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
         sheet_file_id: String,
         audio_file_id: Option<String>,
     ) -> Result<(), BridgeError> {
-        self.services
-            .import_set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
-            .await
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// Say which disc of the release one of a candidate's track sheets holds,
@@ -566,15 +545,18 @@ impl AppHandle {
     /// verdict, because a re-assigned or ignored sheet is a different
     /// tracklist. The candidate subscription carries it to the import view.
     pub async fn set_sheet_disc(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
         sheet_file_id: String,
         disc: crate::types::BridgeSheetDisc,
     ) -> Result<(), BridgeError> {
-        self.services
-            .import_set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
-            .await
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// Put one of a candidate's files in a role, or put it back in the one the
@@ -590,15 +572,18 @@ impl AppHandle {
     /// verdict, because a folder with one fewer track is a different disc. The
     /// candidate subscription carries the new roles to the import view.
     pub async fn set_file_role(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
         file_id: String,
         choice: crate::types::BridgeFileRoleChoice,
     ) -> Result<(), BridgeError> {
-        self.services
-            .import_set_file_role(candidate_key, file_id, choice.into_core())
-            .await
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_file_role(candidate_key, file_id, choice.into_core())
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// Scan every watched folder. The import-candidate subscription carries the
@@ -614,57 +599,60 @@ impl AppHandle {
     /// cancellation to the Rust future, which drops the in-flight HTTP
     /// request before it completes.
     pub async fn search_for_candidate(
-        &self,
+        self: std::sync::Arc<Self>,
         query: crate::types::BridgeSearchQuery,
     ) -> Result<crate::types::BridgeCandidateSearchResults, BridgeError> {
-        use bae_core::import::SearchQuery;
+        self.run_exported(move |this| async move {
+            use bae_core::import::SearchQuery;
 
-        let (core_query, tab, bridge_source) = match query {
-            crate::types::BridgeSearchQuery::General {
-                artist,
-                album,
-                source,
-            } => (
-                SearchQuery::General {
+            let (core_query, tab, bridge_source) = match query {
+                crate::types::BridgeSearchQuery::General {
                     artist,
                     album,
-                    source: source.into_core(),
-                },
-                crate::types::BridgeSearchQueryKind::General,
-                source,
-            ),
-            crate::types::BridgeSearchQuery::CatalogNumber {
-                catalog_number,
-                source,
-            } => (
-                SearchQuery::CatalogNumber {
+                    source,
+                } => (
+                    SearchQuery::General {
+                        artist,
+                        album,
+                        source: source.into_core(),
+                    },
+                    crate::types::BridgeSearchQueryKind::General,
+                    source,
+                ),
+                crate::types::BridgeSearchQuery::CatalogNumber {
                     catalog_number,
-                    source: source.into_core(),
-                },
-                crate::types::BridgeSearchQueryKind::CatalogNumber,
-                source,
-            ),
-            crate::types::BridgeSearchQuery::Barcode { barcode, source } => (
-                SearchQuery::Barcode {
-                    barcode,
-                    source: source.into_core(),
-                },
-                crate::types::BridgeSearchQueryKind::Barcode,
-                source,
-            ),
-        };
+                    source,
+                } => (
+                    SearchQuery::CatalogNumber {
+                        catalog_number,
+                        source: source.into_core(),
+                    },
+                    crate::types::BridgeSearchQueryKind::CatalogNumber,
+                    source,
+                ),
+                crate::types::BridgeSearchQuery::Barcode { barcode, source } => (
+                    SearchQuery::Barcode {
+                        barcode,
+                        source: source.into_core(),
+                    },
+                    crate::types::BridgeSearchQueryKind::Barcode,
+                    source,
+                ),
+            };
 
-        let grouped = self
-            .services
-            .import_search_with_status(core_query)
-            .await
-            .map_err(BridgeError::import)?;
+            let grouped = this
+                .services
+                .import_search_with_status(core_query)
+                .await
+                .map_err(BridgeError::import)?;
 
-        Ok(crate::types::BridgeCandidateSearchResults::from_core(
-            grouped,
-            tab,
-            bridge_source,
-        ))
+            Ok(crate::types::BridgeCandidateSearchResults::from_core(
+                grouped,
+                tab,
+                bridge_source,
+            ))
+        })
+        .await
     }
 
     /// The claim line for holding `result` at `level` under `candidate_key`,
@@ -705,7 +693,7 @@ impl AppHandle {
     // primitives across the FFI per Swift idiom, not per Rust idiom.
     #[allow(clippy::too_many_arguments)]
     pub async fn start_import(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
         selected_cover: Option<BridgeCoverSelection>,
         storage_mode: BridgeStorageMode,
@@ -713,22 +701,25 @@ impl AppHandle {
         identity_choice: crate::types::BridgeIdentityChoice,
         user_edit: Option<crate::types::BridgeReleaseUserEdit>,
     ) -> Result<(), BridgeError> {
-        let cover = selected_cover.map(crate::types::BridgeCoverSelection::into_core);
+        self.run_exported(move |this| async move {
+            let cover = selected_cover.map(crate::types::BridgeCoverSelection::into_core);
 
-        let user_edit = user_edit.map(crate::types::BridgeReleaseUserEdit::into_core);
+            let user_edit = user_edit.map(crate::types::BridgeReleaseUserEdit::into_core);
 
-        self.services
-            .import_start_import(
-                &candidate_key,
-                cover,
-                storage_mode.into_core(),
-                pin,
-                identity_choice.into_core(),
-                user_edit,
-            )
-            .await
-            .map(|_| ())
-            .map_err(BridgeError::import)
+            this.services
+                .import_start_import(
+                    &candidate_key,
+                    cover,
+                    storage_mode.into_core(),
+                    pin,
+                    identity_choice.into_core(),
+                    user_edit,
+                )
+                .await
+                .map(|_| ())
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// Project the embedded tags of a folder's audio files into the
@@ -737,15 +728,18 @@ impl AppHandle {
     /// the user verifies/edits and commits with
     /// `BridgeIdentityChoice::Unknown`.
     pub async fn preview_file_tags_for_folder(
-        &self,
+        self: std::sync::Arc<Self>,
         candidate_key: String,
     ) -> Result<crate::types::BridgeReleaseUserEdit, BridgeError> {
-        let edit = self
-            .services
-            .import_preview_file_tags_for_folder(candidate_key)
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
+        self.run_exported(move |this| async move {
+            let edit = this
+                .services
+                .import_preview_file_tags_for_folder(candidate_key)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
+        })
+        .await
     }
 
     /// The mapping table for a candidate nobody has picked a release for:
@@ -765,30 +759,36 @@ impl AppHandle {
     /// release. Writes the user's edited values directly without touching
     /// identity, `metadata_source`, or cached source payloads.
     pub async fn update_release_metadata_user_edit(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
         edit: crate::types::BridgeReleaseUserEdit,
     ) -> Result<(), BridgeError> {
-        let core_edit = crate::types::BridgeReleaseUserEdit::into_core(edit);
-        self.services
-            .apply_release_metadata_user_edit(&release_id, &core_edit)
-            .await
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            let core_edit = crate::types::BridgeReleaseUserEdit::into_core(edit);
+            this.services
+                .apply_release_metadata_user_edit(&release_id, &core_edit)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 
     /// Seed the EditMetadataSheet's raw form from a library release's current
     /// metadata. bae-core does the projection (current state → wire edit → raw
     /// form); this is pure type translation around the result.
     pub async fn seed_release_edit(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
     ) -> Result<crate::types::BridgeRawReleaseEdit, BridgeError> {
-        let raw = self
-            .services
-            .release_edit_seed(&release_id)
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeRawReleaseEdit::from_core(raw))
+        self.run_exported(move |this| async move {
+            let raw = this
+                .services
+                .release_edit_seed(&release_id)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeRawReleaseEdit::from_core(raw))
+        })
+        .await
     }
 
     /// Re-project a release's metadata from its `metadata_source` /
@@ -798,30 +798,36 @@ impl AppHandle {
     /// `update_release_metadata_user_edit`. Identity rows and the
     /// metadata-source columns are not touched.
     pub async fn reset_metadata_to_source(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
     ) -> Result<crate::types::BridgeReleaseUserEdit, BridgeError> {
-        let edit = self
-            .services
-            .reset_metadata_to_source(&release_id)
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
+        self.run_exported(move |this| async move {
+            let edit = this
+                .services
+                .reset_metadata_to_source(&release_id)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
+        })
+        .await
     }
 
     pub async fn fetch_remote_covers(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
     ) -> Result<Vec<BridgeRemoteCover>, BridgeError> {
-        let covers = self
-            .services
-            .import_fetch_remote_covers(&release_id)
-            .await
-            .map_err(BridgeError::import)?;
-        Ok(covers
-            .into_iter()
-            .map(crate::types::BridgeRemoteCover::from_core)
-            .collect())
+        self.run_exported(move |this| async move {
+            let covers = this
+                .services
+                .import_fetch_remote_covers(&release_id)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(covers
+                .into_iter()
+                .map(crate::types::BridgeRemoteCover::from_core)
+                .collect())
+        })
+        .await
     }
 
     /// Bytes of provider art at `url` — art from Cover Art Archive or Discogs
@@ -835,14 +841,17 @@ impl AppHandle {
     /// are derived from a release's ids, so an offered one can turn out to hold
     /// nothing. That is the slot having no image, not a failed load.
     pub async fn fetch_remote_image_bytes(
-        &self,
+        self: std::sync::Arc<Self>,
         url: String,
     ) -> Result<Option<crate::types::BridgeRemoteImage>, BridgeError> {
-        self.services
-            .import_fetch_remote_image_bytes(url)
-            .await
-            .map(|image| image.map(crate::types::BridgeRemoteImage::from_core))
-            .map_err(BridgeError::import)
+        self.run_exported(move |this| async move {
+            this.services
+                .import_fetch_remote_image_bytes(url)
+                .await
+                .map(|image| image.map(crate::types::BridgeRemoteImage::from_core))
+                .map_err(BridgeError::import)
+        })
+        .await
     }
 }
 
@@ -867,8 +876,10 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutputCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let mut values = self.services.subscribe_output_values();
-        let task = self.runtime.handle().spawn(async move {
+        let services = self.services.clone();
+        let runtime = self.runtime.handle().clone();
+        let task = crate::operation_runtime::spawn(runtime, move || async move {
+            let mut values = services.subscribe_output_values();
             callback.on_value(crate::types::BridgeOutputSnapshot::from_core(
                 values.borrow_and_update().clone(),
             ));
@@ -886,33 +897,39 @@ impl AppHandle {
     /// storage-summary lookup (resolving the pane row's title/size) happens here;
     /// the deep cloud read + copy runs on the queue worker.
     pub async fn enqueue_export(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
         target_dir: String,
     ) -> Result<(), BridgeError> {
-        self.services
-            .enqueue_export(&release_id, std::path::PathBuf::from(target_dir))
-            .await
-            .map_err(BridgeError::export)
+        self.run_exported(move |this| async move {
+            this.services
+                .enqueue_export(&release_id, std::path::PathBuf::from(target_dir))
+                .await
+                .map_err(BridgeError::export)
+        })
+        .await
     }
 
     /// Enqueue a release-level save to `target_dir` under the preset named by
     /// `preset_id`. The preset is resolved and captured whole at enqueue time,
     /// so a later config edit can't change or break this queued save.
     pub async fn enqueue_release_save(
-        &self,
+        self: std::sync::Arc<Self>,
         release_id: String,
         target_dir: String,
         preset_id: String,
     ) -> Result<(), BridgeError> {
-        self.services
-            .enqueue_release_save(
-                &release_id,
-                std::path::PathBuf::from(target_dir),
-                &preset_id,
-            )
-            .await
-            .map_err(BridgeError::save)
+        self.run_exported(move |this| async move {
+            this.services
+                .enqueue_release_save(
+                    &release_id,
+                    std::path::PathBuf::from(target_dir),
+                    &preset_id,
+                )
+                .await
+                .map_err(BridgeError::save)
+        })
+        .await
     }
 
     /// Pause or resume the export queue. The in-flight export finishes; the queue
@@ -939,15 +956,18 @@ impl AppHandle {
     /// (must apply to track saves). Always a constructed file — decoded, encoded
     /// to the preset codec, tagged, cover embedded — never a verbatim copy.
     pub async fn save_track(
-        &self,
+        self: std::sync::Arc<Self>,
         track_id: String,
         output_path: String,
         preset_id: String,
     ) -> Result<(), BridgeError> {
-        self.services
-            .save_track(&track_id, std::path::Path::new(&output_path), &preset_id)
-            .await
-            .map_err(|e| BridgeError::save(format!("{e}")))
+        self.run_exported(move |this| async move {
+            this.services
+                .save_track(&track_id, std::path::Path::new(&output_path), &preset_id)
+                .await
+                .map_err(|e| BridgeError::save(format!("{e}")))
+        })
+        .await
     }
 
     /// The default filename stem (no extension) a single-track "Save As…"
@@ -955,30 +975,16 @@ impl AppHandle {
     /// from that preset's token pattern. Reads only the database — no audio or
     /// cover — while seeding a save panel.
     pub async fn save_track_suggested_name(
-        &self,
+        self: std::sync::Arc<Self>,
         track_id: String,
         preset_id: String,
     ) -> Result<String, BridgeError> {
-        self.services
-            .save_track_suggested_name(&track_id, &preset_id)
-            .await
-            .map_err(|e| BridgeError::save(format!("{e}")))
-    }
-}
-
-// =========================================================================
-// UI events (all platforms — the synced library drives the UI everywhere)
-// =========================================================================
-
-#[uniffi::export]
-impl AppHandle {
-    /// Subscribe to the unified UI event stream. One subscription for everything.
-    ///
-    /// Mobile receives library/config/sync/playback events (desktop-only
-    /// import/identify events simply never fire there, since those services
-    /// aren't started).
-    pub fn subscribe_ui_events(&self, callback: Box<dyn crate::types::UiEventCallback>) {
-        let rx = self.ui_event_bus.subscribe();
-        self.runtime.spawn(pump_ui_events(rx, callback));
+        self.run_exported(move |this| async move {
+            this.services
+                .save_track_suggested_name(&track_id, &preset_id)
+                .await
+                .map_err(|e| BridgeError::save(format!("{e}")))
+        })
+        .await
     }
 }

@@ -165,8 +165,11 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                 }
             }
         if (!shouldClose) return
-        query.cancel()
-        consumer.cancelAndJoin()
+        try {
+            query.cancel()
+        } finally {
+            consumer.cancelAndJoin()
+        }
     }
 
     private suspend fun consume() {

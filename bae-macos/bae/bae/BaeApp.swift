@@ -640,7 +640,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         forgetSlot.cancel()
         service.deactivateMediaControls()
         Task { [service] in
-            await service.shutdown()
+            do {
+                try await service.shutdown()
+            }
+            catch {
+                logger.error(
+                    "Failed to shut down library: \(error.localizedDescription)"
+                )
+                self.loadError = DisplayError(error)
+            }
         }
         appService = nil
         uiStore = UiStore()
@@ -780,14 +788,20 @@ private actor ShutdownRace {
     /// `onTimeout` runs (synchronously, from this actor) only if the timeout
     /// wins the race — the caller uses it to log.
     func run(
-        operation: @escaping @Sendable () async -> Void,
+        operation: @escaping @Sendable () async throws -> Void,
         timeout: Duration,
+        onError: @Sendable @escaping (any Error) -> Void,
         onTimeout: @Sendable @escaping () -> Void
     ) async {
         await withCheckedContinuation { continuation in
             self.continuation = continuation
             Task {
-                await operation()
+                do {
+                    try await operation()
+                }
+                catch {
+                    onError(error)
+                }
                 self.finish()
             }
             Task {
@@ -825,8 +839,13 @@ extension AppDelegate {
         Task { [appService] in
             await ShutdownRace()
                 .run(
-                    operation: { await appService.shutdown() },
-                    timeout: .seconds(5)
+                    operation: { try await appService.shutdown() },
+                    timeout: .seconds(5),
+                    onError: {
+                        logger.error(
+                            "Shutdown on quit failed: \($0.localizedDescription)"
+                        )
+                    }
                 ) {
                     logger.warning(
                         "Shutdown on quit timed out after 5s; terminating anyway"

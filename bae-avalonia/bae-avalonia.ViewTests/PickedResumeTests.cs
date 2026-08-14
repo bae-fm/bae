@@ -119,6 +119,12 @@ public sealed class PickedResumeTests
         CombineAncestorKey: null,
         Actionable: true,
         Placement: placement,
+        SkipAction: placement switch
+        {
+            BridgeTriagePlacement.Skipped => BridgeTriageSkipAction.Unskip,
+            BridgeTriagePlacement.Done => null,
+            _ => BridgeTriageSkipAction.Skip,
+        },
         Matched: null,
         Selectable: placement is BridgeTriagePlacement.Ready,
         ImportStatus: null,

@@ -17,15 +17,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.localizedLine
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.BridgeException
 
 private val logger = BaeLogger("bae.DownloadConcurrency")
 
@@ -93,17 +92,14 @@ private suspend fun setDownloadConcurrency(
     context: Context,
     value: UInt,
 ) {
-    try {
+    performBridgeAction(
+        logger = logger,
+        operation = "set download concurrency",
+        errors = LocaleErrorLines(context),
+        showError = session.configStore::showError,
+    ) {
         withContext(Dispatchers.IO) {
             session.appHandle.setMaxConcurrentDownloads(value)
         }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: BridgeException) {
-        logger.error("Failed to set download concurrency", e)
-        session.configStore.showError(context.localizedLine(e))
-    } catch (e: Exception) {
-        logger.error("Failed to set download concurrency", e)
-        session.configStore.showError(e.toString())
     }
 }

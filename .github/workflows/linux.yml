@@ -50,6 +50,9 @@ jobs:
     - name: Check owner dependency boundaries
       run: scripts/owner-dependency-boundary.sh
 
+    - name: Check UniFFI runtime boundaries
+      run: scripts/check-uniffi-runtime-boundary.py
+
     - name: Check for unused Rust dependencies
       run: |
         cargo binstall cargo-machete --no-confirm

@@ -47,9 +47,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
@@ -60,7 +58,7 @@ private val logger = BaeLogger(TAG)
 /**
  * Loads and holds the library's membership: its devices and whether this device
  * is the owner (the gate for inviting and removing). Reading the chain hits cloud
- * storage, so the load runs off the main thread; the screen refreshes after every
+ * storage through the bridge runtime; the screen refreshes after every
  * approve or remove so the list reflects the new membership.
  */
 private class MembersModel(
@@ -82,7 +80,7 @@ private class MembersModel(
         loading = true
         error = null
         try {
-            membership = withContext(Dispatchers.IO) { session.appHandle.getMembers() }
+            membership = session.appHandle.getMembers()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -96,7 +94,7 @@ private class MembersModel(
     suspend fun remove(member: BridgeMember) {
         actionError = null
         try {
-            withContext(Dispatchers.IO) { session.appHandle.removeMember(member.pubkey) }
+            session.appHandle.removeMember(member.pubkey)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -207,16 +207,16 @@ open class AppService: @unchecked Sendable, Observable {
         playbackStore.playbackPositionPublisher
     }
 
-    public func savePlaybackState() async {
-        await appHandle.savePlaybackState()
+    public func savePlaybackState() async throws {
+        try await appHandle.savePlaybackState()
     }
 
     public nonisolated func forgetLibrary() throws {
         try appHandle.forgetLibrary()
     }
 
-    public func shutdown() async {
-        await appHandle.shutdown()
+    public func shutdown() async throws {
+        try await appHandle.shutdown()
     }
 
     public func triggerSync() {
