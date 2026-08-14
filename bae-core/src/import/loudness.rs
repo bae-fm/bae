@@ -54,11 +54,16 @@ struct MeterState {
 struct LoudnessProgressSink {
     state: Option<MeterState>,
     error: Option<String>,
-    /// This track's total frame count, used to fill its bar segment. `None` when
-    /// neither the sample window nor a track duration is known — the segment then
-    /// only advances at the post-track tick.
+    /// This track's total frame count, used for decode verification and as its
+    /// share of overall progress. `None` when neither the sample window nor a
+    /// track duration is known; that makes overall progress indeterminate.
     total_frames: Option<u64>,
     done_frames: u64,
+    /// Expected frames in tracks completed before this one, and across the
+    /// whole candidate. The whole-candidate value is absent if any track's
+    /// frame count cannot be established.
+    frames_done_before: u64,
+    scan_total_frames: Option<u64>,
     /// Fatal FFmpeg errors reported by the decoder after the stream ends (0 for a
     /// clean decode). Set once via `set_decode_error_count`; a non-zero count
     /// flags the track as broken for import decode-verify.
@@ -71,16 +76,20 @@ struct LoudnessProgressSink {
 }
 
 impl LoudnessProgressSink {
-    /// Overall scan `fraction` (0..1): this track is the `idx`-th of
-    /// `tracks_total` equal segments, filled by `done_frames / total_frames`.
+    /// Overall scan `fraction` (0..1) when the current track's frame count is
+    /// known. Without that denominator the progress is indeterminate.
     fn emit(&self) {
-        let within = match self.total_frames {
-            Some(total) if total > 0 => (self.done_frames as f32 / total as f32).min(1.0),
-            _ => 0.0,
+        let frames_done = match self.scan_total_frames {
+            Some(_) => {
+                let track_total = self
+                    .total_frames
+                    .expect("a known scan total requires every track total");
+                let current_done = self.done_frames.min(track_total);
+                self.frames_done_before.saturating_add(current_done)
+            }
+            None => self.frames_done_before,
         };
-        // `within` is already clamped to 0..1 above and `idx < tracks_total`, so
-        // `fraction` is in 0..1 by construction — consumers render it as-is.
-        let fraction = (self.idx as f32 + within) / self.tracks_total as f32;
+        let fraction = progress_fraction(frames_done, self.scan_total_frames);
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportLoudnessProgress {
@@ -128,6 +137,10 @@ impl LoudnessProgressSink {
             .ok_or_else(|| "decode produced no audio format".to_string())?;
         state.meter.finish()
     }
+}
+
+fn progress_fraction(frames_done: u64, total_frames: Option<u64>) -> Option<f32> {
+    total_frames.and_then(|total| (total > 0).then(|| frames_done.min(total) as f32 / total as f32))
 }
 
 impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
@@ -238,17 +251,55 @@ pub(super) async fn measure_loudness(
         });
     }
 
-    // Every track is one unit of progress, counted done even when unmeasurable,
-    // so the bar still reaches N/N.
+    // The label counts tracks, including unmeasurable ones. The bar uses actual
+    // frame work rather than equal track slices: a candidate is determinate only
+    // when every track provides a usable sample-window or duration denominator.
     let tracks_total = audio_formats.len() as u32;
     let mut tracks_done: u32 = 0;
+    let track_total_frames: Vec<Option<u64>> = audio_formats
+        .iter()
+        .zip(tracks_to_files)
+        .map(|(audio_format, track_file)| {
+            let sample_rate = audio_format.sample_rate as u64;
+            audio_segments
+                .iter()
+                .filter(|segment| segment.audio_format_id == audio_format.id)
+                .try_fold(0u64, |total, segment| {
+                    segment.end_sample.map(|end| {
+                        total.saturating_add(
+                            (end as u64).saturating_sub(segment.start_sample as u64),
+                        )
+                    })
+                })
+                .or_else(|| {
+                    track_file
+                        .db_track()
+                        .duration_ms
+                        .filter(|&ms| ms > 0 && sample_rate > 0)
+                        .map(|ms| ms as u64 * sample_rate / 1000)
+                })
+        })
+        .collect();
+    let scan_total_frames = track_total_frames
+        .iter()
+        .copied()
+        .try_fold(0u64, |total, track_total| {
+            track_total.map(|frames| total.saturating_add(frames))
+        });
+    let mut frames_done_before = 0u64;
 
-    emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, 0.0);
+    emit_loudness_progress(
+        event_tx,
+        candidate_key,
+        tracks_done,
+        tracks_total,
+        progress_fraction(0, scan_total_frames),
+    );
 
     // Decode + measure ONE track at a time: each decode runs on a blocking thread
     // but is awaited before the next starts, so the machine never runs N
-    // concurrent decodes — one core's worth of work, and the bar advances per
-    // track instead of jumping at the end. `audio_formats` and `tracks_to_files`
+    // concurrent decodes — one core's worth of work, and the bar advances as
+    // frames are decoded. `audio_formats` and `tracks_to_files`
     // are index-aligned (the formats are built from the same tracks), so `idx`
     // keys both.
     let mut meters: Vec<EbuR128> = Vec::new();
@@ -267,27 +318,16 @@ pub(super) async fn measure_loudness(
                 format_id
             );
             tracks_done += 1;
-            let fraction = tracks_done as f32 / tracks_total as f32;
+            if let Some(track_total) = track_total_frames[idx] {
+                frames_done_before = frames_done_before.saturating_add(track_total);
+            }
+            let fraction = progress_fraction(frames_done_before, scan_total_frames);
             emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, fraction);
             continue;
         }
-        // Frames in this track's window, filling its bar segment as the decode
-        // streams: the sample window when known, else duration × sample rate.
-        // With neither, the segment only steps at the post-track tick.
-        let sample_rate = audio_formats[idx].sample_rate as u64;
-        let total_frames = segments
-            .iter()
-            .try_fold(0u64, |total, segment| {
-                segment.end_sample.map(|end| {
-                    total.saturating_add((end as u64).saturating_sub(segment.start_sample as u64))
-                })
-            })
-            .or_else(|| {
-                tf.db_track()
-                    .duration_ms
-                    .filter(|&ms| ms > 0 && sample_rate > 0)
-                    .map(|ms| ms as u64 * sample_rate / 1000)
-            });
+        // Frames in this track's window: the sample window when known, else
+        // duration × sample rate. With neither, the whole bar is indeterminate.
+        let total_frames = track_total_frames[idx];
         let mut decode_segments = Vec::new();
         let mut missing_segment = false;
         for segment in &segments {
@@ -308,7 +348,10 @@ pub(super) async fn measure_loudness(
         }
         if missing_segment {
             tracks_done += 1;
-            let fraction = tracks_done as f32 / tracks_total as f32;
+            if let Some(track_total) = total_frames {
+                frames_done_before = frames_done_before.saturating_add(track_total);
+            }
+            let fraction = progress_fraction(frames_done_before, scan_total_frames);
             emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, fraction);
             continue;
         }
@@ -322,6 +365,8 @@ pub(super) async fn measure_loudness(
                 error: None,
                 total_frames,
                 done_frames: 0,
+                frames_done_before,
+                scan_total_frames,
                 decode_error_count: 0,
                 frames_since_emit: 0,
                 event_tx: task_event_tx,
@@ -396,7 +441,10 @@ pub(super) async fn measure_loudness(
             Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
         }
         tracks_done += 1;
-        let fraction = tracks_done as f32 / tracks_total as f32;
+        if let Some(track_total) = total_frames {
+            frames_done_before = frames_done_before.saturating_add(track_total);
+        }
+        let fraction = progress_fraction(frames_done_before, scan_total_frames);
         emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, fraction);
     }
 
@@ -412,13 +460,13 @@ pub(super) async fn measure_loudness(
 /// Emit a loudness-measurement tick for the candidate's confirm pane. It routes
 /// to a native leaf view, not the coarse candidate row, so the sub-track cadence
 /// never churns the row. `fraction` is overall scan progress (0..1) for the
-/// determinate bar; `tracks_done`/`tracks_total` label which track.
+/// determinate bar when available; `None` renders indeterminate.
 fn emit_loudness_progress(
     event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
     candidate_key: &str,
     tracks_done: u32,
     tracks_total: u32,
-    fraction: f32,
+    fraction: Option<f32>,
 ) {
     send_event(
         event_tx,
@@ -442,6 +490,8 @@ mod tests {
             error: None,
             total_frames: total,
             done_frames: done,
+            frames_done_before: 0,
+            scan_total_frames: total,
             decode_error_count: errors,
             frames_since_emit: 0,
             event_tx,
@@ -449,6 +499,47 @@ mod tests {
             idx: 0,
             tracks_total: 1,
         }
+    }
+
+    #[test]
+    fn measured_frames_control_progress_value_and_determinacy() {
+        let (event_tx, mut rx) = broadcast::channel(16);
+        let emit = |total_frames, done_frames, frames_done_before, scan_total_frames| {
+            LoudnessProgressSink {
+                state: None,
+                error: None,
+                total_frames,
+                done_frames,
+                frames_done_before,
+                scan_total_frames,
+                decode_error_count: 0,
+                frames_since_emit: 0,
+                event_tx: event_tx.clone(),
+                candidate_key: "test".to_string(),
+                idx: 1,
+                tracks_total: 3,
+            }
+            .emit();
+        };
+
+        emit(Some(900), 450, 100, Some(1_000));
+        emit(None, 44_100, 100, None);
+
+        let mut progress = || {
+            let crate::import::handle::ImportEvent::ImportLoudnessProgress {
+                tracks_done,
+                tracks_total,
+                fraction,
+                ..
+            } = rx.try_recv().expect("progress event")
+            else {
+                panic!("expected loudness progress event");
+            };
+            (tracks_done, tracks_total, fraction)
+        };
+
+        assert_eq!(progress(), (1, 3, Some(0.55)));
+        assert_eq!(progress(), (1, 3, None));
     }
 
     /// The broken signature: a gross frame shortfall (a truncated body under a
@@ -619,8 +710,8 @@ mod tests {
         assert!(audio_formats[0].track_loudness_lufs.is_none());
         assert!(audio_formats[0].track_peak_linear.is_none());
 
-        // The skipped track is still counted done, so the bar reaches N/N: a
-        // completion tick (1 of 1, fraction 1.0) rides the progress channel.
+        // The skipped track is still counted done, while its absent duration
+        // leaves the percentage indeterminate.
         let mut ticks = Vec::new();
         while let Ok(event) = rx.try_recv() {
             if let crate::import::handle::ImportEvent::ImportLoudnessProgress {
@@ -636,8 +727,8 @@ mod tests {
         assert!(
             ticks
                 .iter()
-                .any(|&(done, total, fraction)| done == 1 && total == 1 && fraction == 1.0),
-            "the skipped track still emits its completion progress, got {ticks:?}",
+                .any(|&(done, total, fraction)| done == 1 && total == 1 && fraction.is_none()),
+            "the skipped track emits indeterminate completion progress, got {ticks:?}",
         );
     }
 
@@ -697,6 +788,51 @@ mod tests {
             "one measured track yields an album aggregate"
         );
         assert!(result.album_peak_linear.is_some());
+    }
+
+    #[tokio::test]
+    async fn measure_loudness_progress_weights_tracks_by_frames() {
+        crate::audio_codec::init();
+        let (event_tx, mut rx) = broadcast::channel(32);
+        let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
+        let mut audio_formats = vec![
+            audio_format("track-0", "af-0"),
+            audio_format("track-1", "af-1"),
+        ];
+        let mut short = whole_file_main_segment("af-0", "file-0");
+        short.end_sample = Some(2_205);
+        let mut long = whole_file_main_segment("af-1", "file-0");
+        long.end_sample = Some(6_615);
+        let audio_segments = vec![short, long];
+        let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
+        let tracks = vec![
+            standalone_track("track-0", &path),
+            standalone_track("track-1", &path),
+        ];
+
+        measure_loudness(
+            &event_tx,
+            &mut audio_formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+            "cand",
+        )
+        .await;
+
+        let mut first_track_completion = None;
+        while let Ok(event) = rx.try_recv() {
+            if let crate::import::handle::ImportEvent::ImportLoudnessProgress {
+                tracks_done: 1,
+                fraction,
+                ..
+            } = event
+            {
+                first_track_completion = Some(fraction);
+                break;
+            }
+        }
+        assert_eq!(first_track_completion, Some(Some(0.25)));
     }
 
     /// A window shorter than one EBU R128 gated block (400 ms) produces no

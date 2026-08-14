@@ -26,7 +26,7 @@ final class DesktopEventHandler {
                     key: key,
                     tracksDone: tracksDone,
                     tracksTotal: tracksTotal,
-                    fraction: Double(fraction)
+                    fraction: fraction.map(Double.init)
                 )
             )
 

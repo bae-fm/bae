@@ -6,7 +6,8 @@ import AppKit
 /// observation entirely — same pattern as `SeekBarNSView`, so the
 /// high-frequency sub-track ticks never re-render the confirm pane tree. The
 /// label is the localized `ui.import.loudness_progress` line ("Measuring
-/// loudness — N/M"); the bar is the overall scan `fraction`.
+/// loudness — N/M"); the bar is determinate when the event carries an overall
+/// scan `fraction`, and indeterminate when that value cannot be measured.
 class ImportLoudnessProgressNSView: NSView {
     private let label: NSTextField
     private let bar: ProgressTrackNSView
@@ -18,7 +19,7 @@ class ImportLoudnessProgressNSView: NSView {
         label.translatesAutoresizingMaskIntoConstraints = false
 
         bar = ProgressTrackNSView()
-        bar.progress = 0
+        bar.progress = nil
         bar.translatesAutoresizingMaskIntoConstraints = false
 
         super.init(frame: frame)
@@ -46,7 +47,7 @@ class ImportLoudnessProgressNSView: NSView {
 
     // MARK: - Direct updates (called from DesktopUiEvents, not SwiftUI)
 
-    func setProgress(tracksDone: UInt32, tracksTotal: UInt32, fraction: Double)
+    func setProgress(tracksDone: UInt32, tracksTotal: UInt32, fraction: Double?)
     {
         label.stringValue = String(
             format: NSLocalizedString(

@@ -109,8 +109,8 @@ class ImportStore {
     >(.reset)
 
     /// Per-track loudness measurement progress during an import. High-frequency
-    /// (one per track), published as a Combine signal so only the leaf bar in
-    /// the confirm pane re-renders — never the candidate row. Carries the
+    /// while each track decodes, published as a Combine signal so only the leaf
+    /// bar in the confirm pane re-renders — never the candidate row. Carries the
     /// candidate key so a leaf filters to its own import; `nil` until the first
     /// tick. Buffers the latest value for a leaf created mid-pass.
     @ObservationIgnored

@@ -120,13 +120,13 @@ pub enum UiBusEvent {
     /// High-frequency loudness-measurement tick — goes to a native leaf view, not
     /// the @Observable store, so the sub-track cadence never churns the candidate
     /// row. `key` routes it to the importing candidate's confirm pane; `fraction`
-    /// (0..1) drives the determinate bar and `tracks_done`/`tracks_total` label
-    /// which track ("N / M").
+    /// drives the determinate bar when available and `tracks_done`/`tracks_total`
+    /// label which track ("N / M").
     CandidateImportLoudnessProgress {
         key: String,
         tracks_done: u32,
         tracks_total: u32,
-        fraction: f32,
+        fraction: Option<f32>,
     },
     /// How much of the import queue the background sweep has answered. The
     /// sidebar header renders it as a line and a bar. Both numbers are the

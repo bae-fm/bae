@@ -49,13 +49,13 @@ pub enum BridgeUiEvent {
 
     // ── Import live progress ───────────────────────────────────────
     /// High-frequency loudness-measurement tick — the UI routes it to a native
-    /// leaf view (a determinate bar driven by `fraction`, labelled "N / M"), not
-    /// the coarse candidate row.
+    /// leaf view (a determinate bar when `fraction` is available, labelled
+    /// "N / M"), not the coarse candidate row.
     CandidateImportLoudnessProgress {
         key: String,
         tracks_done: u32,
         tracks_total: u32,
-        fraction: f32,
+        fraction: Option<f32>,
     },
     /// How much of the import queue the background sweep has answered — the
     /// sidebar header's line and bar. Both numbers are the queue's; a view

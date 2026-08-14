@@ -184,9 +184,9 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
     }
 }
 
-/// The loudness pass emits a continuous `fraction` (0 → 1) as it scans, ticking
-/// ~0.1s of audio at a time rather than once per track, so the import UI bar
-/// advances during a track's measure span, not only at track boundaries.
+/// With every track length known, the loudness pass emits a continuous
+/// `fraction` (0 → 1) as it scans, ticking ~0.1s of audio at a time rather than
+/// once per track, so the import UI bar advances during a track's measure span.
 #[tokio::test]
 async fn loudness_pass_emits_within_track_progress() {
     use bae_core::import::ImportEvent;
@@ -235,7 +235,7 @@ async fn loudness_pass_emits_within_track_progress() {
 
     // Drain the buffered events; keep the loudness ticks for our candidate in
     // arrival order.
-    let mut ticks: Vec<(u32, u32, f32)> = Vec::new();
+    let mut ticks: Vec<(u32, u32, Option<f32>)> = Vec::new();
     while let Ok(event) = event_rx.try_recv() {
         if let ImportEvent::ImportLoudnessProgress {
             candidate_key,
@@ -263,7 +263,12 @@ async fn loudness_pass_emits_within_track_progress() {
         ticks.iter().all(|(_, total, _)| *total == 3),
         "every tick reports total=3: {ticks:?}"
     );
-    let fractions: Vec<f32> = ticks.iter().map(|(_, _, f)| *f).collect();
+    let fractions: Vec<f32> = ticks
+        .iter()
+        .map(|(_, _, fraction)| {
+            fraction.expect("generated tracks provide determinate frame totals")
+        })
+        .collect();
     assert!(
         fractions.windows(2).all(|w| w[1] >= w[0]),
         "fraction is monotonic non-decreasing: {fractions:?}"

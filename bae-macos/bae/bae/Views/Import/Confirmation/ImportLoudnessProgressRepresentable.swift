@@ -84,11 +84,12 @@ struct ImportLoudnessProgressRepresentable: NSViewRepresentable {
 #endif
 
 /// Loudness-measurement tick for an importing candidate. `key` routes it to that
-/// candidate's confirm pane; `fraction` (0...1) drives the determinate bar as the
-/// scan creeps through each track, and `tracksDone`/`tracksTotal` label "N / M".
+/// candidate's confirm pane; `fraction` drives the determinate bar when the
+/// candidate's track lengths are known, and `tracksDone`/`tracksTotal` label
+/// "N / M".
 struct ImportLoudnessProgressEvent {
     let key: String
     let tracksDone: UInt32
     let tracksTotal: UInt32
-    let fraction: Double
+    let fraction: Double?
 }
