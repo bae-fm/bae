@@ -8,7 +8,6 @@ import SwiftUI
 /// link or the toolbar toggle) to re-derive without it. Replaces the standard
 /// banner + results layout in `ImportSearchPane` while active.
 struct ImportConflictView: View {
-    let results: ConflictResults
     let state: ImportSearchState
     let onToggle: (BridgeExcludedSignal) -> Void
     let onRerun: () -> Void
@@ -17,18 +16,6 @@ struct ImportConflictView: View {
     /// to seed an Unknown import until it's ripped.
     let onAddAsUnknown: (() -> Void)?
     let onSelect: (BridgeMetadataResult) -> Void
-
-    /// The per-signal results that disagree, destructured from the `.conflict`
-    /// identify state: the disc-id and barcode releases with their library
-    /// statuses, the source the disc-id lookup consulted, and the matched
-    /// barcode value (for the section subtitles).
-    struct ConflictResults {
-        let discidResults: [BridgeMetadataResult]
-        let discidLibraryStatuses: [String: BridgeLibraryStatus]
-        let barcodeResults: [BridgeMetadataResult]
-        let barcodeLibraryStatuses: [String: BridgeLibraryStatus]
-        let matchedBarcode: String?
-    }
 
     /// The signals toolbar, shown once core has emitted a transition.
     @ViewBuilder
@@ -47,50 +34,113 @@ struct ImportConflictView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             toolbar
+            ImportConflictResolutionView(
+                identifyState: state.identifyState,
+                isImporting: state.isImporting,
+                selectedReleaseId: state.selectedReleaseId,
+                error: state.error,
+                scrollsResults: true,
+                onToggle: onToggle,
+                onSelect: onSelect,
+            )
+        }
+    }
+}
 
-            conflictBannerLarge
+/// The conflict explanation and its per-signal release choices. Search owns a
+/// viewport, while the mapping pane already has one, so the same content can
+/// either scroll its results or join its parent's scroll.
+struct ImportConflictResolutionView: View {
+    let identifyState: IdentifyState
+    let isImporting: Bool
+    let selectedReleaseId: String?
+    let error: String?
+    let scrollsResults: Bool
+    let onToggle: (BridgeExcludedSignal) -> Void
+    let onSelect: (BridgeMetadataResult) -> Void
 
-            if let error = state.error {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                    Text(error)
+    var body: some View {
+        if case .conflict(
+            let discidResults,
+            let discidLibraryStatuses,
+            let barcodeResults,
+            let barcodeLibraryStatuses,
+            let matchedBarcode,
+            _
+        ) = identifyState {
+            VStack(alignment: .leading, spacing: 0) {
+                conflictBannerLarge
+
+                if let error {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text(error)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 6)
                 }
-                .font(.caption)
-                .foregroundStyle(.red)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 6)
-            }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    if !results.discidResults.isEmpty {
-                        conflictSection(
-                            signal: .disc,
-                            title: "DiscID",
-                            subtitle: discidSectionSubtitle(
-                                count: results.discidResults.count
-                            ),
-                            results: results.discidResults,
-                            libraryStatuses: results.discidLibraryStatuses,
+                if scrollsResults {
+                    ScrollView {
+                        sections(
+                            discidResults: discidResults,
+                            discidLibraryStatuses: discidLibraryStatuses,
+                            barcodeResults: barcodeResults,
+                            barcodeLibraryStatuses: barcodeLibraryStatuses,
+                            matchedBarcode: matchedBarcode
                         )
                     }
-                    if !results.barcodeResults.isEmpty {
-                        conflictSection(
-                            signal: .barcode,
-                            title: "Barcode",
-                            subtitle: barcodeSectionSubtitle(
-                                count: results.barcodeResults.count,
-                                matchedBarcode: results.matchedBarcode
-                            ),
-                            results: results.barcodeResults,
-                            libraryStatuses: results.barcodeLibraryStatuses,
-                        )
-                    }
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 16)
+                else {
+                    sections(
+                        discidResults: discidResults,
+                        discidLibraryStatuses: discidLibraryStatuses,
+                        barcodeResults: barcodeResults,
+                        barcodeLibraryStatuses: barcodeLibraryStatuses,
+                        matchedBarcode: matchedBarcode
+                    )
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private func sections(
+        discidResults: [BridgeMetadataResult],
+        discidLibraryStatuses: [String: BridgeLibraryStatus],
+        barcodeResults: [BridgeMetadataResult],
+        barcodeLibraryStatuses: [String: BridgeLibraryStatus],
+        matchedBarcode: String?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if !discidResults.isEmpty {
+                conflictSection(
+                    signal: .disc,
+                    title: "DiscID",
+                    subtitle: discidSectionSubtitle(
+                        count: discidResults.count
+                    ),
+                    results: discidResults,
+                    libraryStatuses: discidLibraryStatuses,
+                )
+            }
+            if !barcodeResults.isEmpty {
+                conflictSection(
+                    signal: .barcode,
+                    title: "Barcode",
+                    subtitle: barcodeSectionSubtitle(
+                        count: barcodeResults.count,
+                        matchedBarcode: matchedBarcode
+                    ),
+                    results: barcodeResults,
+                    libraryStatuses: barcodeLibraryStatuses,
+                )
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.bottom, 16)
     }
 
     /// "Signals disagree on identity" banner — warm-amber tint, two-line copy
@@ -149,7 +199,7 @@ struct ImportConflictView: View {
                 }
                 .buttonStyle(.link)
                 .font(.caption)
-                .disabled(state.isImporting)
+                .disabled(isImporting)
             }
             .padding(.top, 8)
             .padding(.bottom, 6)
@@ -160,9 +210,9 @@ struct ImportConflictView: View {
                 ForEach(results, id: \.releaseId) { result in
                     ImportSearchResultRow(
                         result: result,
-                        isImporting: state.isImporting,
+                        isImporting: isImporting,
                         libraryStatus: libraryStatuses[result.releaseId],
-                        isSelected: result.releaseId == state.selectedReleaseId,
+                        isSelected: result.releaseId == selectedReleaseId,
                         onSelect: { onSelect(result) },
                     )
                     Rectangle().fill(.white.opacity(0.05)).frame(height: 1)
@@ -212,13 +262,6 @@ struct ImportConflictView: View {
 #if DEBUG
     #Preview("Conflict surface") {
         ImportConflictView(
-            results: ImportConflictView.ConflictResults(
-                discidResults: PreviewData.conflictDiscidResults,
-                discidLibraryStatuses: [:],
-                barcodeResults: PreviewData.conflictBarcodeResults,
-                barcodeLibraryStatuses: [:],
-                matchedBarcode: "5051961234567"
-            ),
             state: PreviewData.searchStateConflict,
             onToggle: { _ in },
             onRerun: {},

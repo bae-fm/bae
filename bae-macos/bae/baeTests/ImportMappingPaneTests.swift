@@ -1,4 +1,6 @@
+import AppKit
 import BaeKit
+import SwiftUI
 import Testing
 
 @testable import bae
@@ -108,6 +110,83 @@ private final class Recorder {
 
 @Suite("Import mapping pane")
 struct ImportMappingPaneTests {
+    @MainActor
+    @Test(
+        "restored and arriving conflicts appear inline until identity settles"
+    )
+    func conflictsAppearInlineUntilIdentitySettles() async throws {
+        let store = PreviewData.importTabStore()
+        let key = PreviewData.importTabConflictCandidate.key
+        let uiStore = UiStore()
+        uiStore.setImportCandidateTab(.pending)
+        uiStore.setFolderCandidateSelection([key])
+        let size = NSSize(width: 1200, height: 760)
+        let (_, host) = SnapshotTestSupport.hostInWindow(
+            ImportView()
+                .environment(uiStore)
+                .importPreviewEnvironment()
+                .environment(uiStore)
+                .environment(Library.stub())
+                .environment(PreviewAudio.stub())
+                .environment(store)
+                .environment(PreviewData.importTabImporter()),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let restoredConflict = try await SnapshotTestSupport.capturePNG(
+            host,
+            size: size
+        )
+
+        store.mutateCandidate(forKey: key) {
+            $0.identifyState = .manualOnly(trackCount: 11)
+        }
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let before = try await SnapshotTestSupport.capturePNG(host, size: size)
+
+        #expect(restoredConflict != before)
+
+        store.mutateCandidate(forKey: key) {
+            $0.identifyState = PreviewData.searchStateConflict.identifyState
+        }
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let conflict = try await SnapshotTestSupport.capturePNG(
+            host,
+            size: size
+        )
+
+        #expect(conflict != before)
+
+        store.mutateCandidate(forKey: key) {
+            $0.identityChoice = .exact(
+                releaseId: "restored-release",
+                source: .musicBrainz
+            )
+        }
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let settledConflict = try await SnapshotTestSupport.capturePNG(
+            host,
+            size: size
+        )
+
+        store.mutateCandidate(forKey: key) {
+            $0.identifyState = .manualOnly(trackCount: 11)
+        }
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let settledWithoutConflict = try await SnapshotTestSupport.capturePNG(
+            host,
+            size: size
+        )
+
+        #expect(settledConflict == settledWithoutConflict)
+    }
+
     // 1. Binding a track sheet turns one container into the release's twelve
     //    entries. The pane re-reads the mapping the pick produces, so the
     //    folder goes from one row carrying audio to twelve without leaving the

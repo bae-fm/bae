@@ -33,6 +33,9 @@ struct ImportMappingPane: View {
     /// Pick one of identification's matched pressings from the inline options
     /// — the same pick a search-sheet row click runs.
     let onPickRelease: (BridgeMetadataResult) -> Void
+    /// Exclude one of the signals whose release choices disagree, then let
+    /// identification derive the candidate again from the remaining signals.
+    let onToggleSignal: (BridgeExcludedSignal) -> Void
     let onEditCover: () -> Void
     /// Set how far the claim on the picked release reaches — the claim line's
     /// own control.
@@ -48,6 +51,7 @@ struct ImportMappingPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 identitySection
+                conflictResolution
                 banners
                 ImportMappingTable(
                     table: mapping,
@@ -57,6 +61,24 @@ struct ImportMappingPane: View {
                 )
             }
             .padding(20)
+        }
+    }
+
+    @ViewBuilder
+    private var conflictResolution: some View {
+        if candidate.identityChoice == nil,
+            case .conflict = candidate.identifyState
+        {
+            ImportConflictResolutionView(
+                identifyState: candidate.identifyState,
+                isImporting: ImportSearchFlow.isImporting(candidate),
+                selectedReleaseId: candidate.prefetchTask != nil
+                    ? candidate.pick?.releaseId : nil,
+                error: nil,
+                scrollsResults: false,
+                onToggle: onToggleSignal,
+                onSelect: onPickRelease,
+            )
         }
     }
 

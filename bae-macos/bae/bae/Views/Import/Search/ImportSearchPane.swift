@@ -107,22 +107,8 @@ struct ImportSearchPane: View {
         // toggle a signal. `showManualSearch` skips it — the user
         // explicitly asked for the manual form. `notFoundAnywhere` keeps
         // the flat banner for the truly-empty case.
-        if case .conflict(
-            let discidResults,
-            let discidLibraryStatuses,
-            let barcodeResults,
-            let barcodeLibraryStatuses,
-            let matchedBarcode,
-            _
-        ) = state.identifyState, !state.showManualSearch {
+        if case .conflict = state.identifyState, !state.showManualSearch {
             ImportConflictView(
-                results: ImportConflictView.ConflictResults(
-                    discidResults: discidResults,
-                    discidLibraryStatuses: discidLibraryStatuses,
-                    barcodeResults: barcodeResults,
-                    barcodeLibraryStatuses: barcodeLibraryStatuses,
-                    matchedBarcode: matchedBarcode
-                ),
                 state: state,
                 onToggle: onToggleSignal,
                 onRerun: onRerun,

@@ -56,6 +56,9 @@ extension ImportView {
                     )
                 )
             },
+            onToggleSignal: { signal in
+                importer.toggleSignalForCandidate(candidate.key, signal)
+            },
             onEditCover: { presentCoverPicker(for: candidate) },
             onSetClaimLevel: { level in
                 setClaimLevel(level, for: candidate)
