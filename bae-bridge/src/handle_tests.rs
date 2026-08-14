@@ -261,6 +261,50 @@ fn cancelling_album_browse_finishes_pending_next() {
 
 #[cfg(not(feature = "desktop"))]
 #[test]
+fn save_sync_config_survives_the_uniffi_worker_stack() {
+    const CHILD: &str = "BAE_BRIDGE_SAVE_SYNC_CONFIG_STACK_CHILD";
+
+    if std::env::var_os(CHILD).is_some() {
+        let (handle, _root) = fresh_bridge_handle("save-sync-config-stack");
+        let caller_runtime = tokio::runtime::Runtime::new().expect("create caller runtime");
+        std::thread::Builder::new()
+            .name("uniffi-worker".to_string())
+            .stack_size(544 * 1024)
+            .spawn(move || {
+                caller_runtime
+                    .block_on(handle.save_sync_config(crate::types::BridgeSaveSyncConfig {
+                        bucket: "bucket".to_string(),
+                        region: "us-east-1".to_string(),
+                        endpoint: Some("http://127.0.0.1:1".to_string()),
+                        key_prefix: None,
+                        access_key: "access-key".to_string(),
+                        secret_key: "secret-key".to_string(),
+                        storage: crate::types::BridgeHomeStorage::Opaque,
+                    }))
+                    .expect_err("an unreachable endpoint must fail the probe");
+            })
+            .expect("start UniFFI-sized worker")
+            .join()
+            .expect("UniFFI-sized worker survives the sync configuration call");
+        return;
+    }
+
+    let status = std::process::Command::new(
+        std::env::current_exe().expect("locate bae-bridge test executable"),
+    )
+    .arg("save_sync_config_survives_the_uniffi_worker_stack")
+    .arg("--nocapture")
+    .env(CHILD, "1")
+    .status()
+    .expect("run sync configuration stack subprocess");
+    assert!(
+        status.success(),
+        "sync configuration exhausted the UniFFI-sized worker stack: {status}"
+    );
+}
+
+#[cfg(not(feature = "desktop"))]
+#[test]
 fn enqueue_export_missing_release_does_not_panic() {
     let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
     let result = handle.runtime.block_on(async {
