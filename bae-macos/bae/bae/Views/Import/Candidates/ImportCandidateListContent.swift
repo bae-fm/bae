@@ -12,10 +12,10 @@ func releaseGroupDisclosureID(
 /// The import sidebar: three tabs over one triage queue. Every row, its tab,
 /// its Pending group, and the tab counts come from
 /// `ImportStore.triageQueue` — core's projection — read through
-/// `ImportStore`'s filtering/sorting helpers. This view iterates and renders;
+/// `ImportStore`'s filtering helpers. This view iterates and renders;
 /// it decides nothing about where a row belongs.
 struct ImportCandidateListContent: View {
-    /// Read at the leaf: the triage queue and its grouping/filtering/sorting
+    /// Read at the leaf: the triage queue and its grouping/filtering
     /// come from the store.
     let importStore: ImportStore
     @Binding
@@ -41,9 +41,6 @@ struct ImportCandidateListContent: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
-    @AppStorage("importCandidateSort")
-    private var sortOrder: CandidateSortOrder = .nameAZ
-
     private var filterTextBinding: Binding<String> {
         Binding(
             get: { uiStore.importCandidateFilterText },
@@ -60,16 +57,14 @@ struct ImportCandidateListContent: View {
 
     private var readyRows: [BridgeTriageRow] {
         importStore.selectableReadyRows(
-            filterText: uiStore.importCandidateFilterText,
-            sortOrder: sortOrder
+            filterText: uiStore.importCandidateFilterText
         )
     }
 
     private func sections(_ tab: BridgeTriageTab) -> [ReleaseQueueSection] {
         importStore.releaseSections(
             tab: tab,
-            filterText: uiStore.importCandidateFilterText,
-            sortOrder: sortOrder
+            filterText: uiStore.importCandidateFilterText
         )
     }
 
@@ -119,7 +114,6 @@ struct ImportCandidateListContent: View {
                         .buttonStyle(.plain)
                     }
                     CandidateListMenu(
-                        sortOrder: $sortOrder,
                         watchedFolders: importStore.watchedFolders,
                         refreshingFolders: uiStore.refreshingWatchedFolders,
                         onAddFolder: onAddFolder,
@@ -550,8 +544,7 @@ extension ImportCandidateListContent {
             importStore: store,
             selectedKey: .constant(
                 store.selectableReadyRows(
-                    filterText: "",
-                    sortOrder: .nameAZ
+                    filterText: ""
                 )
                 .first?
                 .candidateKey

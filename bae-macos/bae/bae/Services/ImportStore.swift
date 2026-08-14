@@ -3,21 +3,6 @@ import Combine
 import OrderedCollections
 import SwiftUI
 
-/// The sidebar row list's sort order — the only thing left for a surface to
-/// decide once core has placed every row into its tab and, within Pending,
-/// its group. `ordered(_:by:title:)` below interprets it against whatever
-/// title a row is actually showing (the matched release's, or the folder
-/// name), so the sort matches what a person reads.
-///
-/// Only name order survives this redesign: `TriageRow` carries no discovery
-/// timestamp, so a "date added" option would
-/// silently degrade into an alias for name order. Better to drop it than keep
-/// a control that lies about what it does.
-enum CandidateSortOrder: String, CaseIterable {
-    case nameAZ
-    case nameZA
-}
-
 struct ReleaseQueueEntry: Identifiable {
     let id: String
     let bridge: BridgeTriageEntry
@@ -273,16 +258,14 @@ class ImportStore {
 extension ImportStore {
     func releaseSections(
         tab: BridgeTriageTab,
-        filterText: String,
-        sortOrder: CandidateSortOrder
+        filterText: String
     ) -> [ReleaseQueueSection] {
         triageQueue.sections
             .filter { $0.tab == tab }
             .compactMap { section in
                 let entries = filteredEntries(
                     section.entries,
-                    filterText: filterText,
-                    sortOrder: sortOrder
+                    filterText: filterText
                 )
                 guard !entries.isEmpty else { return nil }
                 return ReleaseQueueSection(
@@ -296,8 +279,7 @@ extension ImportStore {
 
     private func filteredEntries(
         _ entries: [BridgeTriageEntry],
-        filterText: String,
-        sortOrder: CandidateSortOrder
+        filterText: String
     ) -> [BridgeTriageEntry] {
         let query = filterText.lowercased()
         let matching = entries.filter { entry in
@@ -317,21 +299,7 @@ extension ImportStore {
                     || candidate.displayPath.lowercased().contains(query)
             }
         }
-        return matching.sorted { left, right in
-            let leftTitle = entryTitle(left)
-            let rightTitle = entryTitle(right)
-            let order = leftTitle.localizedCaseInsensitiveCompare(rightTitle)
-            return sortOrder == .nameAZ
-                ? order == .orderedAscending : order == .orderedDescending
-        }
-    }
-
-    private func entryTitle(_ entry: BridgeTriageEntry) -> String {
-        switch entry {
-        case .candidate(_, let row): Self.displayTitle(row)
-        case .boundary(_, let boundary): boundary.name
-        case .invalid(_, let candidate): candidate.sourceFolderName
-        }
+        return matching
     }
 
     /// The title a row leads with — the matched release's, or the folder name
@@ -409,13 +377,11 @@ extension ImportStore {
     }
 
     func selectableReadyRows(
-        filterText: String,
-        sortOrder: CandidateSortOrder
+        filterText: String
     ) -> [BridgeTriageRow] {
         releaseSections(
             tab: .pending,
-            filterText: filterText,
-            sortOrder: sortOrder
+            filterText: filterText
         )
         .flatMap(\.entries)
         .compactMap { entry in
