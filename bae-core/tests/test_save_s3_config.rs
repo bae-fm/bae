@@ -20,14 +20,8 @@ use bae_core::sync::S3ConfigData;
 use bae_core::ui::UiErrorCategory;
 use support::setup_fresh_library;
 
-#[test]
-fn probe_failure_persists_nothing_and_surfaces_as_network() {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (lm, _tmp) = setup_fresh_library(&runtime);
-
-    // Nothing listens on port 1, so the probe fails with connection-refused
-    // before `save_s3_config` reaches any of its persisting steps.
-    let unreachable = S3ConfigData {
+fn unreachable_s3_config() -> S3ConfigData {
+    S3ConfigData {
         bucket: "any-bucket".to_string(),
         region: "us-east-1".to_string(),
         endpoint: Some("http://127.0.0.1:1".to_string()),
@@ -35,10 +29,18 @@ fn probe_failure_persists_nothing_and_surfaces_as_network() {
         access_key: "any-key".to_string(),
         secret_key: "any-secret".to_string(),
         storage: HomeStorage::Opaque,
-    };
+    }
+}
 
+#[test]
+fn probe_failure_persists_nothing_and_surfaces_as_network() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (lm, _tmp) = setup_fresh_library(&runtime);
+
+    // Nothing listens on port 1, so the probe fails with connection-refused
+    // before `save_s3_config` reaches any of its persisting steps.
     let err = runtime
-        .block_on(lm.save_s3_config(unreachable))
+        .block_on(lm.save_s3_config(unreachable_s3_config()))
         .expect_err("an unreachable endpoint must fail the probe");
     // An unreachable backend is the transient network class the UI offers a
     // retry for — distinct from the credentials class a rejected bucket/secret
@@ -56,5 +58,39 @@ fn probe_failure_persists_nothing_and_surfaces_as_network() {
     assert!(
         stored.is_none(),
         "a failed probe must leave no credentials behind"
+    );
+}
+
+#[test]
+fn save_s3_config_survives_a_narrow_host_stack() {
+    const CHILD: &str = "BAE_S3_NARROW_STACK_CHILD";
+    if std::env::var_os(CHILD).is_some() {
+        let runtime = tokio::runtime::Runtime::new().expect("build test runtime");
+        let (manager, _library) = setup_fresh_library(&runtime);
+        std::thread::scope(|scope| {
+            std::thread::Builder::new()
+                .name("narrow-s3-host".to_string())
+                .stack_size(512 * 1024)
+                .spawn_scoped(scope, move || {
+                    runtime
+                        .block_on(manager.save_s3_config(unreachable_s3_config()))
+                        .expect_err("an unreachable endpoint must fail the probe");
+                })
+                .expect("spawn narrow S3 host")
+                .join()
+                .expect("narrow S3 host completes");
+        });
+        return;
+    }
+
+    let status = std::process::Command::new(std::env::current_exe().expect("test executable"))
+        .arg("save_s3_config_survives_a_narrow_host_stack")
+        .arg("--nocapture")
+        .env(CHILD, "1")
+        .status()
+        .expect("run narrow-stack S3 subprocess");
+    assert!(
+        status.success(),
+        "saving S3 configuration overflowed its host stack: {status}"
     );
 }
