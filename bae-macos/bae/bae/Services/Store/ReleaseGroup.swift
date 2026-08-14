@@ -19,7 +19,7 @@ struct ReleaseGroup: Equatable, Identifiable {
     let pressings: [BridgeMetadataResult]
 
     var coverImageContent: ImageContent? {
-        coverArt.map { ImageContent(bridge: $0.coverChoice.thumbnailSource) }
+        coverArt?.coverChoice.thumbnailContent
     }
 
     init(bridge: BridgeReleaseGroup) {

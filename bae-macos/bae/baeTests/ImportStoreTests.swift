@@ -116,7 +116,8 @@ private func invalidEntry(
 private func matchedRelease(
     releaseId: String,
     title: String,
-    trackCount: UInt32? = 10
+    trackCount: UInt32? = 10,
+    coverThumbnailUrl: String? = nil
 ) -> BridgeMatchedRelease {
     BridgeMatchedRelease(
         releaseId: releaseId,
@@ -125,13 +126,17 @@ private func matchedRelease(
         pressing: trackCount.map {
             BridgeMatchedPressing(year: 2000, format: "CD", trackCount: $0)
         },
-        coverThumbnailUrl: nil,
+        coverThumbnailUrl: coverThumbnailUrl,
         evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId)
     )
 }
 
 /// A Ready row: matched, selectable, no import status.
-private func readyRow(_ key: String, title: String) -> BridgeTriageRow {
+private func readyRow(
+    _ key: String,
+    title: String,
+    coverThumbnailUrl: String? = nil
+) -> BridgeTriageRow {
     BridgeTriageRow(
         candidateKey: key,
         folderName: title,
@@ -141,7 +146,11 @@ private func readyRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .ready,
-        matched: matchedRelease(releaseId: "rel-\(key)", title: title),
+        matched: matchedRelease(
+            releaseId: "rel-\(key)",
+            title: title,
+            coverThumbnailUrl: coverThumbnailUrl
+        ),
         selectable: true,
         importStatus: nil,
         picked: nil,
@@ -662,6 +671,88 @@ struct ImportStoreTriageRenderingTests {
             groupRelativeFolderPath: "b|c"
         )
         #expect(first != second)
+    }
+}
+
+@Suite("ImportStore sidebar covers")
+struct ImportStoreSidebarCoverTests {
+    @MainActor
+    @Test("the sidebar uses every user-chosen cover")
+    func selectedCoversWinOverQueueThumbnail() throws {
+        let store = ImportStore()
+        let key = "/w/subject"
+        var candidate = folderCandidate(
+            folderPath: key,
+            watchedFolderPath: "/w",
+            name: "Subject"
+        )
+        let row = readyRow(
+            key,
+            title: "Subject",
+            coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
+        )
+
+        let remoteCover = try #require(PreviewData.remoteCovers.last)
+        let localArtwork = try #require(
+            PreviewData.bridgeCandidateFiles.images.last
+        )
+        let choices = [
+            remoteCover.coverChoice,
+            try #require(localArtwork.coverChoice),
+        ]
+        for choice in choices {
+            candidate.coverPick = choice
+            store.folderCandidates[key] = candidate
+
+            #expect(
+                store.sidebarCover(for: row)
+                    == ImageContent(bridge: choice.thumbnailSource)
+            )
+        }
+    }
+
+    @MainActor
+    @Test("the sidebar uses the automatically selected default cover")
+    func defaultCoverWinsOverQueueThumbnail() throws {
+        let store = ImportStore()
+        let key = "/w/subject"
+        var candidate = folderCandidate(
+            folderPath: key,
+            watchedFolderPath: "/w",
+            name: "Subject"
+        )
+        candidate.releaseDetailBridge = PreviewData.releaseDetailBridge
+        store.folderCandidates[key] = candidate
+
+        let row = readyRow(
+            key,
+            title: "Subject",
+            coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
+        )
+
+        let releaseDetail = try #require(candidate.releaseDetailBridge)
+        let defaultCover = try #require(releaseDetail.defaultCover)
+        #expect(
+            store.sidebarCover(for: row)
+                == ImageContent(bridge: defaultCover.thumbnailSource)
+        )
+    }
+
+    @MainActor
+    @Test(
+        "the sidebar retains the queue thumbnail before a candidate has a cover"
+    )
+    func queueThumbnailRendersBeforeCoverResolution() {
+        let row = readyRow(
+            "/w/subject",
+            title: "Subject",
+            coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
+        )
+
+        #expect(
+            ImportStore().sidebarCover(for: row)
+                == .remote(url: "https://example.com/queue-thumbnail.jpg")
+        )
     }
 }
 

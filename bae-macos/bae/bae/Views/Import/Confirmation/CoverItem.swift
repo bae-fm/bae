@@ -10,11 +10,11 @@ struct CoverItem: Identifiable, Equatable {
     var id: BridgeCoverSelection { selection }
     var selection: BridgeCoverSelection { coverChoice.selection }
     var previewContent: ImageContent {
-        ImageContent(bridge: coverChoice.previewSource)
+        coverChoice.previewContent
     }
 
     var thumbnailContent: ImageContent {
-        ImageContent(bridge: coverChoice.thumbnailSource)
+        coverChoice.thumbnailContent
     }
 
     let coverChoice: BridgeCoverChoice
@@ -26,5 +26,15 @@ struct CoverItem: Identifiable, Equatable {
     ) {
         self.coverChoice = coverChoice
         self.label = label
+    }
+}
+
+extension BridgeCoverChoice {
+    var previewContent: ImageContent {
+        ImageContent(bridge: previewSource)
+    }
+
+    var thumbnailContent: ImageContent {
+        ImageContent(bridge: thumbnailSource)
     }
 }
