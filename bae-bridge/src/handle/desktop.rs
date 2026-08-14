@@ -82,23 +82,6 @@ impl AppHandle {
         std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// Cast playback to the device with `device_id`.
-    pub fn cast_to(&self, device_id: String) -> Result<(), BridgeError> {
-        self.cast.cast_to(&device_id).map_err(|e| {
-            let detail = e.to_string();
-            match e {
-                // AirPlay receivers the sender can't drive get their own localized
-                // picker line, not the generic internal-error one.
-                bae_cast::CastError::AirPlayPinRequired
-                | bae_cast::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
-                    crate::types::BridgeErrorCategory::AirPlayUnsupported,
-                    detail,
-                ),
-                _ => BridgeError::internal(detail),
-            }
-        })
-    }
-
     /// Stop casting and return playback to local output.
     pub fn stop_casting(&self) {
         self.cast.stop_casting();
@@ -110,6 +93,30 @@ impl AppHandle {
     }
 }
 
+#[cfg(feature = "cast")]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
+impl AppHandle {
+    /// Cast playback to the device with `device_id`.
+    pub async fn cast_to(self: std::sync::Arc<Self>, device_id: String) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.cast.cast_to(&device_id).await.map_err(|error| {
+                let detail = error.to_string();
+                match error {
+                    // AirPlay receivers the sender can't drive get their own localized
+                    // picker line, not the generic internal-error one.
+                    bae_cast::CastError::AirPlayPinRequired
+                    | bae_cast::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
+                        crate::types::BridgeErrorCategory::AirPlayUnsupported,
+                        detail,
+                    ),
+                    _ => BridgeError::internal(detail),
+                }
+            })
+        })
+        .await
+    }
+}
+
 // =========================================================================
 // Desktop-only: Import, Cover fetching
 // =========================================================================
@@ -117,94 +124,6 @@ impl AppHandle {
 #[cfg(feature = "desktop")]
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
-    pub fn set_mcp_server_config(&self, enabled: bool, port: u16) -> Result<(), BridgeError> {
-        self.desktop
-            .set_mcp_config(bae_core::config::McpConfig { enabled, port })
-            .map_err(BridgeError::config)
-    }
-
-    pub fn get_mcp_server_status(&self) -> BridgeMcpServerStatus {
-        BridgeMcpServerStatus::from_core(self.desktop.mcp_server_status())
-    }
-
-    pub fn get_mcp_token(&self) -> Result<String, BridgeError> {
-        Ok(self.services.ensure_mcp_token()?)
-    }
-
-    pub fn generate_mcp_token(&self) -> String {
-        bae_core::library::generate_mcp_token()
-    }
-
-    pub fn set_mcp_token(&self, token: String) -> Result<(), BridgeError> {
-        self.services.set_mcp_token(token)?;
-        Ok(())
-    }
-
-    pub fn set_subsonic_server_config(
-        &self,
-        enabled: bool,
-        port: u16,
-        username: String,
-        bind_address: String,
-    ) -> Result<(), BridgeError> {
-        self.desktop
-            .set_subsonic_config(bae_core::config::SubsonicConfig {
-                enabled,
-                port,
-                username,
-                bind_address,
-            })
-            .map_err(BridgeError::config)
-    }
-
-    pub fn get_subsonic_server_status(&self) -> BridgeSubsonicServerStatus {
-        BridgeSubsonicServerStatus::from_core(self.desktop.subsonic_server_status())
-    }
-
-    pub fn set_subsonic_password(&self, password: String) -> Result<(), BridgeError> {
-        self.desktop
-            .set_subsonic_password(&password)
-            .map_err(BridgeError::config)
-    }
-
-    /// Validate then persist a Discogs API token, returning what happened so the
-    /// UI can react (keep the draft on `Rejected`, show the optimistic-save note
-    /// on `Unvalidated`). Lives on the import service, which only runs on desktop
-    /// (identification). Mobile reads token status via `get_config` but never
-    /// writes.
-    pub async fn save_discogs_token(
-        self: std::sync::Arc<Self>,
-        token: String,
-    ) -> Result<BridgeDiscogsSaveOutcome, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .import_save_discogs_token(&token)
-                .await
-                .map(BridgeDiscogsSaveOutcome::from_core)
-                .map_err(BridgeError::config)
-        })
-        .await
-    }
-
-    /// Re-check a stored `Unvalidated` key against Discogs. No-op when no key is
-    /// stored or it's already settled. Called at app launch and settings-tab
-    /// open for the offline-saved case.
-    pub async fn revalidate_discogs_token(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .import_revalidate_discogs_token()
-                .await
-                .map_err(BridgeError::config)
-        })
-        .await
-    }
-
-    pub fn remove_discogs_token(&self) -> Result<(), BridgeError> {
-        self.services
-            .import_remove_discogs_token()
-            .map_err(BridgeError::config)
-    }
-
     /// Register the platform artwork analyzer. Called once at app boot
     /// (e.g. from `BaeApp`'s startup path) by the platforms that have one.
     /// Extraction owns artwork OCR and streams its barcode/text signals to

@@ -387,7 +387,7 @@ impl CastController {
     /// the device's connection (Cast or UPnP), ensure the ephemeral server is
     /// serving, and hand the playback service the channel plus the URL providers
     /// and the flavor's stream-format gate.
-    pub fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
+    pub async fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
         if !self.enabled() {
             return Err(CastError::Disabled);
         }
@@ -414,27 +414,24 @@ impl CastController {
             return Ok(());
         }
 
-        self.start_fetch_renderer(device)
+        self.start_fetch_renderer(device).await
     }
 
     /// Build the control channel for a device, and the stream-format gate its
     /// flavor uses. Cast connects over the network (run off the runtime so it
     /// never stalls a runtime thread); UPnP has no handshake — each SOAP action
     /// is its own request.
-    fn start_fetch_renderer(&self, device: RendererDevice) -> Result<(), CastError> {
+    async fn start_fetch_renderer(&self, device: RendererDevice) -> Result<(), CastError> {
         let (channel, stream_format): (Box<dyn RendererChannel>, StreamFormatFn) = match &device
             .connection
         {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
-                let channel = self
-                    .runtime
-                    .block_on(async move {
-                        tokio::task::spawn_blocking(move || RustCastChannel::connect(addr, port))
-                            .await
-                    })
-                    .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
-                    .map_err(|e| CastError::Connect(e.to_string()))?;
+                let channel =
+                    tokio::task::spawn_blocking(move || RustCastChannel::connect(addr, port))
+                        .await
+                        .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
+                        .map_err(|e| CastError::Connect(e.to_string()))?;
                 (Box::new(channel), cast_stream_format)
             }
             RendererConnection::Dlna {
@@ -455,7 +452,7 @@ impl CastController {
             }
         };
 
-        self.ensure_server()?;
+        self.ensure_server().await?;
         let (stream_provider, cover_provider) = {
             let inner = self.inner.lock().unwrap();
             let server = inner
@@ -487,13 +484,12 @@ impl CastController {
         self.services.playback_stop_remote();
     }
 
-    fn ensure_server(&self) -> Result<(), CastError> {
+    async fn ensure_server(&self) -> Result<(), CastError> {
         if self.inner.lock().unwrap().server.is_some() {
             return Ok(());
         }
-        let server = self
-            .runtime
-            .block_on(EphemeralServer::start(self.services.clone()))
+        let server = EphemeralServer::start(self.services.clone())
+            .await
             .map_err(CastError::Serving)?;
         self.inner.lock().unwrap().server = Some(server);
         Ok(())
@@ -628,7 +624,10 @@ mod tests {
         controller.start_discovery();
         assert!(!browsing(&controller), "casting is off: nothing may browse");
         assert!(
-            matches!(controller.cast_to("some-device"), Err(CastError::Disabled)),
+            matches!(
+                runtime.block_on(controller.cast_to("some-device")),
+                Err(CastError::Disabled)
+            ),
             "casting is off: a session must be refused"
         );
 
@@ -638,7 +637,7 @@ mod tests {
         // The device is not on this test's network, so the request reaches the
         // real lookup and fails there rather than at the gate.
         assert!(matches!(
-            controller.cast_to("some-device"),
+            runtime.block_on(controller.cast_to("some-device")),
             Err(CastError::DeviceNotFound)
         ));
 
@@ -713,9 +712,26 @@ mod tests {
         // Casting to a reported device reaches the real connect (there is no such
         // device on this test's network) rather than stopping at the gate.
         assert!(matches!(
-            controller.cast_to("cast-2"),
+            runtime.block_on(controller.cast_to("cast-2")),
             Err(CastError::Connect(_))
         ));
+    }
+
+    #[test]
+    fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (controller, _services, _tmp) =
+            test_controller(&runtime, RendererDiscovery::reported());
+
+        runtime.block_on(async {
+            controller
+                .ensure_server()
+                .await
+                .expect("server starts from the controller runtime");
+        });
     }
 
     /// A raw serve carries `format=raw`; a transcode carries

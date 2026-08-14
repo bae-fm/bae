@@ -14,6 +14,8 @@ struct CastButton: View {
 
     @State
     private var showPicker = false
+    @State
+    private var castTask: Task<Void, Never>?
 
     var body: some View {
         let castingName = castStore.castingDeviceName
@@ -54,15 +56,23 @@ struct CastButton: View {
                 cast.stopDiscovery()
             }
         }
+        .onDisappear { castTask?.cancel() }
     }
 
     private func castTo(_ deviceId: String) {
-        do {
-            try cast.castTo(deviceId)
-            showPicker = false
-        }
-        catch {
-            uiStore.showError(error)
+        castTask?.cancel()
+        let cast = cast
+        castTask = Task {
+            do {
+                try await cast.castTo(deviceId)
+                showPicker = false
+            }
+            catch is CancellationError {
+                return
+            }
+            catch {
+                uiStore.showError(error)
+            }
         }
     }
 

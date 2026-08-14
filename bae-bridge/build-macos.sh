@@ -11,6 +11,8 @@ cd "$(dirname "$0")/.."
 # bindings for a bridge nobody asked for, and it surfaces later as a Swift or
 # C# compile error nowhere near its cause. Local and unconditional on purpose.
 export CARGO_TARGET_DIR="target-macos"
+
+RUST_HOST="$(rustc -vV | sed -n 's/^host: //p')"
 MACOS_TARGET="aarch64-apple-darwin"
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -30,6 +32,12 @@ CARGO_FLAGS=""
 if [[ "${1:-}" == "--release" ]]; then
     CARGO_PROFILE="release"
     CARGO_FLAGS="--release"
+fi
+
+if [[ "$RUST_HOST" == "$MACOS_TARGET" ]]; then
+    CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$CARGO_PROFILE"
+else
+    CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE"
 fi
 
 # The cargo feature set the bridge compiles with. The Swift bindings only
@@ -66,8 +74,15 @@ if [ -z "${RUSTC_WRAPPER+x}" ] && command -v sccache &> /dev/null; then
 fi
 
 echo "Building for macOS (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
-cargo build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
-    --lib --bin uniffi-bindgen --features "$BAE_BRIDGE_FEATURES"
+if [[ "$RUST_HOST" == "$MACOS_TARGET" ]]; then
+    cargo build $CARGO_FLAGS -p bae-bridge \
+        --lib --bin uniffi-bindgen --features "$BAE_BRIDGE_FEATURES"
+else
+    cargo build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
+        --lib --features "$BAE_BRIDGE_FEATURES"
+    cargo build $CARGO_FLAGS -p bae-bridge \
+        --bin uniffi-bindgen --features "$BAE_BRIDGE_FEATURES"
+fi
 
 # Write the Swift compilation conditions derived from the feature set. The
 # Xcode project includes this file (via Signing.xcconfig) so the #if guards in
@@ -90,8 +105,8 @@ else
 fi
 
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
-STATIC_LIB="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE/libbae_bridge.a"
-BINDGEN="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE/uniffi-bindgen"
+STATIC_LIB="$CARGO_ARTIFACT_DIR/libbae_bridge.a"
+BINDGEN="$CARGO_TARGET_DIR/$CARGO_PROFILE/uniffi-bindgen"
 INSTALLED_BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
 XCFRAMEWORK="BaeKit/Frameworks/BaeBridgeFFI.xcframework"
 COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
@@ -157,7 +172,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
 fi
 
 echo "Generating localization String Catalog (Apple)..."
-cargo run -q $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-loc --bin loc-gen -- \
+cargo run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir bae-macos/bae/bae
 
 echo ""

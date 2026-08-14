@@ -76,14 +76,22 @@ async fn import_progress_names_every_operation_before_loudness() {
 
     support::tracing_init();
 
-    let release = discogs_release("Album Title", &["Track Title"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
     let mut events = f.handle.subscribe_events();
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track Title.flac"]);
+    generate_tagged_album_files(
+        &album_dir,
+        "Album Title",
+        "Artist Name",
+        Some(2024),
+        &[TaggedTrack {
+            filename: "01 Track Title.flac",
+            title: "Track Title",
+            track_number: 1,
+        }],
+    );
 
     let import_id = f.ids.new_id();
     f.handle
@@ -95,9 +103,7 @@ async fn import_progress_names_every_operation_before_loudness() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
-            },
+            identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
         .await
@@ -131,7 +137,11 @@ async fn import_progress_names_every_operation_before_loudness() {
         };
         if let Some(step) = step {
             if steps.last() != Some(&step) {
+                let reached_finalizing = step == ImportStep::Running(ImportPhase::Finalizing);
                 steps.push(step);
+                if reached_finalizing {
+                    break;
+                }
             }
         }
     }

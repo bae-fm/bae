@@ -4,8 +4,8 @@ use super::*;
 ///
 /// Both writes must run to completion: dropping the future partway leaves the
 /// queue, current track, and position unwritten, so the next cold launch restores
-/// stale state. `BaeApp`'s `ShutdownRace` lets the losing task keep running rather
-/// than cancelling it.
+/// stale state. The application termination delegate waits for this operation
+/// and cancels termination if it fails.
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     /// Graceful shutdown: saves playback state to disk, then stops playback.
@@ -13,8 +13,8 @@ impl AppHandle {
         self.run_exported(move |this| async move {
             #[cfg(feature = "desktop")]
             {
-                this.desktop.shutdown_mcp();
-                this.desktop.shutdown_subsonic();
+                this.desktop.shutdown_mcp().await;
+                this.desktop.shutdown_subsonic().await;
                 this.services.playback_shutdown().await;
             }
             #[cfg(not(feature = "desktop"))]

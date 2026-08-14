@@ -39,7 +39,7 @@ class Cast(
     }
 
     /** Switch playback to the device with this id. */
-    fun castTo(deviceId: String) = appHandle.castTo(deviceId)
+    suspend fun castTo(deviceId: String) = appHandle.castTo(deviceId)
 
     /** Stop casting and return playback to local output. */
     fun stopCasting() = appHandle.stopCasting()

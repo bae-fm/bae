@@ -64,7 +64,9 @@ mod tests {
     impl Drop for DropSignal {
         fn drop(&mut self) {
             if let Some(sender) = self.0.take() {
-                let _ = sender.send(());
+                sender
+                    .send(())
+                    .expect("test observes the owned task being dropped");
             }
         }
     }

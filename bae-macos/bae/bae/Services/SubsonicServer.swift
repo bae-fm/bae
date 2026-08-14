@@ -11,7 +11,7 @@ final class SubsonicServer: Sendable, Observable {
             _ bindAddress: String
         )
             async throws -> Void
-    let getServerStatus: @Sendable () async -> BridgeSubsonicServerStatus
+    let getServerStatus: @Sendable () async throws -> BridgeSubsonicServerStatus
     let setPassword: @Sendable (_ password: String) async throws -> Void
 
     init(
@@ -19,7 +19,7 @@ final class SubsonicServer: Sendable, Observable {
             @escaping @Sendable (Bool, String, String, String) async throws ->
             Void,
         getServerStatus:
-            @escaping @Sendable () async -> BridgeSubsonicServerStatus,
+            @escaping @Sendable () async throws -> BridgeSubsonicServerStatus,
         setPassword: @escaping @Sendable (String) async throws -> Void
     ) {
         self.setServerConfig = setServerConfig
@@ -33,15 +33,15 @@ final class SubsonicServer: Sendable, Observable {
                 guard let port = UInt16($1), port > 0 else {
                     throw SubsonicValidationError.invalidPort
                 }
-                try handle.setSubsonicServerConfig(
+                try await handle.setSubsonicServerConfig(
                     enabled: $0,
                     port: port,
                     username: $2,
                     bindAddress: $3
                 )
             },
-            getServerStatus: { handle.getSubsonicServerStatus() },
-            setPassword: { try handle.setSubsonicPassword(password: $0) }
+            getServerStatus: { try await handle.getSubsonicServerStatus() },
+            setPassword: { try await handle.setSubsonicPassword(password: $0) }
         )
     }
 }

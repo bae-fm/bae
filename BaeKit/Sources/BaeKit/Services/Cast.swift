@@ -10,7 +10,7 @@ public final class Cast: Sendable, Observable {
     /// Stop browsing for devices (the picker closed).
     public let stopDiscovery: @Sendable () -> Void
     /// Switch playback to the device with this id.
-    public let castTo: @Sendable (_ deviceId: String) throws -> Void
+    public let castTo: @Sendable (_ deviceId: String) async throws -> Void
     /// Stop casting and return playback to local output.
     public let stopCasting: @Sendable () -> Void
     /// Whether casting is available at all. Turning it off is what stops
@@ -21,7 +21,7 @@ public final class Cast: Sendable, Observable {
     public init(
         startDiscovery: @escaping @Sendable () -> Void = {},
         stopDiscovery: @escaping @Sendable () -> Void = {},
-        castTo: @escaping @Sendable (String) throws -> Void = { _ in },
+        castTo: @escaping @Sendable (String) async throws -> Void = { _ in },
         stopCasting: @escaping @Sendable () -> Void = {},
         setEnabled: @escaping @Sendable (Bool) throws -> Void = { _ in }
     ) {
@@ -36,7 +36,7 @@ public final class Cast: Sendable, Observable {
         self.init(
             startDiscovery: { handle.startCastDiscovery() },
             stopDiscovery: { handle.stopCastDiscovery() },
-            castTo: { try handle.castTo(deviceId: $0) },
+            castTo: { try await handle.castTo(deviceId: $0) },
             stopCasting: { handle.stopCasting() },
             setEnabled: { try handle.setCastEnabled(enabled: $0) }
         )

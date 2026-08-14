@@ -85,13 +85,13 @@ struct BaeApp: App {
             let controller = SPUStandardUpdaterController(
                 startingUpdater: false,
                 updaterDelegate: nil,
-                userDriverDelegate: nil,
+                userDriverDelegate: nil
             )
         #else
             let controller = SPUStandardUpdaterController(
                 startingUpdater: startUpdater,
                 updaterDelegate: nil,
-                userDriverDelegate: nil,
+                userDriverDelegate: nil
             )
         #endif
         updaterController = controller
@@ -124,14 +124,14 @@ struct BaeApp: App {
                 WelcomeView(
                     onLibraryReady: { lib in appDelegate.openLibrary(lib) },
                     initialMode: mode,
-                    canDeleteActiveLibrary: !appDelegate.hasShell,
+                    canDeleteActiveLibrary: !appDelegate.hasShell
                 )
             }
             else {
                 WelcomeView(
                     onLibraryReady: { lib in appDelegate.openLibrary(lib) },
                     loadError: loadError,
-                    canDeleteActiveLibrary: !appDelegate.hasShell,
+                    canDeleteActiveLibrary: !appDelegate.hasShell
                 )
             }
         }
@@ -149,9 +149,12 @@ struct BaeApp: App {
         case .welcome:
             ProgressView()
         case .unlock(
-            let libraryId,
-            let libraryName,
-            let fingerprint
+            let
+                libraryId,
+            let
+                libraryName,
+            let
+                fingerprint
         ):
             UnlockView(
                 libraryId: libraryId,
@@ -159,12 +162,12 @@ struct BaeApp: App {
                 fingerprint: fingerprint,
                 onUnlocked: {
                     appDelegate.openLocalLibrary(
-                        id: libraryId,
+                        id: libraryId
                     )
                 },
                 // Cancelling a switch-to-locked-library returns to the
                 // library that's still open.
-                onCancel: { appDelegate.screen = .library },
+                onCancel: { appDelegate.screen = .library }
             )
         case .library:
             MainAppView()
@@ -205,7 +208,7 @@ struct BaeApp: App {
                     onCancel: { appDelegate.renameLibrarySheet = nil },
                     onCommit: { newName in
                         appDelegate.renameLibrary(sheet.id, to: newName)
-                    },
+                    }
                 )
             }
             .alert(
@@ -250,9 +253,12 @@ struct BaeApp: App {
         case .welcome:
             welcomeView(loadError: appDelegate.loadError)
         case .unlock(
-            let libraryId,
-            let libraryName,
-            let fingerprint
+            let
+                libraryId,
+            let
+                libraryName,
+            let
+                fingerprint
         ):
             UnlockView(
                 libraryId: libraryId,
@@ -260,12 +266,12 @@ struct BaeApp: App {
                 fingerprint: fingerprint,
                 onUnlocked: {
                     appDelegate.openLocalLibrary(
-                        id: libraryId,
+                        id: libraryId
                     )
                 },
                 // No shell yet (first launch, or opening from the welcome
                 // chooser): cancelling returns to the welcome.
-                onCancel: { appDelegate.screen = .welcome },
+                onCancel: { appDelegate.screen = .welcome }
             )
         case .library:
             // The instant between the shell opening and the window swap
@@ -352,7 +358,7 @@ extension BaeApp {
                 ContentUnavailableView(
                     "No library loaded",
                     systemImage: "internaldrive",
-                    description: Text("Open a library first"),
+                    description: Text("Open a library first")
                 )
                 .frame(width: 300, height: 200)
             }
@@ -378,7 +384,7 @@ extension BaeApp {
                         systemImage: "books.vertical",
                         description: Text(
                             "Open a library first to access settings"
-                        ),
+                        )
                     )
                     .frame(width: 300, height: 200)
                 }
@@ -509,6 +515,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let lockSlot = CancellableTaskSlot()
     /// In-flight forget, cancelled on library close.
     private let forgetSlot = CancellableTaskSlot()
+    /// The one graceful shutdown for the open library. Close and Quit share
+    /// its result instead of starting competing shutdowns.
+    @ObservationIgnored
+    private let shutdownCoordinator =
+        LibraryShutdownCoordinator<AppService>()
 
     private var skipsApplicationServices: Bool {
         AppRuntime.skipsApplicationServices(
@@ -583,7 +594,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.screen = .unlock(
                     libraryId: libraryId,
                     libraryName: config.libraryName,
-                    fingerprint: config.encryptionKeyFingerprint,
+                    fingerprint: config.encryptionKeyFingerprint
                 )
             case .superseded:
                 // Superseded by a newer open (or a close); that call owns
@@ -623,33 +634,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return service
     }
 
-    /// Close the open library and return to the welcome chooser. Stops
-    /// playback, drops the `AppService` — which releases the `AppHandle` and
-    /// ends the core's UI-event subscription as the broadcast sender drops —
-    /// and replaces `uiStore` so the next library opens with fresh navigation
-    /// state. Flipping `hasShell` back to false routes the window from the
-    /// main content back to the bootstrap `WelcomeView`.
+    /// Close the open library and return to the welcome chooser after its
+    /// graceful shutdown completes. A failure leaves the live service and
+    /// shell in place so the user can see the error and retry.
     func closeLibrary() {
         guard let service = appService else { return }
-        // Cancel any open still in flight so a parked `initApp` can't resume past
-        // its post-await cancellation check and write `.library`/`appService`
-        // back after the close.
+        prepareForLibraryShutdown()
+        screen = .loading
+        beginLibraryShutdown(service)
+    }
+
+    @discardableResult
+    private func beginLibraryShutdown(_ service: AppService)
+        -> Task<LibraryShutdownResult, Never>
+    {
+        let attempt = shutdownCoordinator.begin(for: service) {
+            try await service.shutdown()
+        }
+        if attempt.started {
+            Task { [weak self, service, task = attempt.task] in
+                let result = await task.value
+                self?.finishLibraryShutdown(service, result: result)
+            }
+        }
+        return attempt.task
+    }
+
+    private func finishLibraryShutdown(
+        _ service: AppService,
+        result: LibraryShutdownResult
+    ) {
+        guard shutdownCoordinator.hasPendingShutdown(for: service) else {
+            return
+        }
+        shutdownCoordinator.finish(for: service)
+        switch result {
+        case .completed:
+            releaseLibrarySession(service)
+        case .failed(let failure):
+            logger.error("Failed to shut down library: \(failure.diagnostic)")
+            loadError = failure.displayedError
+            screen = .library
+        }
+    }
+
+    private func prepareForLibraryShutdown() {
+        // Cancel any open still in flight so a parked `initApp` can't resume
+        // past its post-await cancellation check and replace this session.
         opener.cancel()
         renameSlot.cancel()
         lockSlot.cancel()
         forgetSlot.cancel()
+    }
+
+    private func releaseLibrarySession(_ service: AppService) {
+        guard appService === service else { return }
         service.deactivateMediaControls()
-        Task { [service] in
-            do {
-                try await service.shutdown()
-            }
-            catch {
-                logger.error(
-                    "Failed to shut down library: \(error.localizedDescription)"
-                )
-                self.loadError = DisplayError(error)
-            }
-        }
         appService = nil
         uiStore = UiStore()
         welcomeInitialMode = nil
@@ -757,7 +797,11 @@ extension AppDelegate {
             "forget",
             work: { try service.forgetLibrary() },
             onSuccess: {
-                self.closeLibrary()
+                // `forgetLibrary` is this handle's final operation because it
+                // removes the database directory. Release it without asking
+                // the deleted database to perform a later graceful shutdown.
+                self.prepareForLibraryShutdown()
+                self.releaseLibrarySession(service)
                 self.reloadLibraries()
             },
             onError: {
@@ -775,59 +819,14 @@ extension AppDelegate {
     }
 }
 
-/// Races `handle.shutdown()` against a fixed timeout so a hung shutdown can't
-/// hang Quit forever. An actor, not a lock, guards "resume the continuation
-/// exactly once": whichever of the two racing tasks finishes first resumes
-/// it; the other keeps running to completion in the background (shutdown
-/// isn't cancellable, and the timeout task is just a sleep) but is never
-/// awaited again.
-private actor ShutdownRace {
-    private var resumed = false
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    /// `onTimeout` runs (synchronously, from this actor) only if the timeout
-    /// wins the race — the caller uses it to log.
-    func run(
-        operation: @escaping @Sendable () async throws -> Void,
-        timeout: Duration,
-        onError: @Sendable @escaping (any Error) -> Void,
-        onTimeout: @Sendable @escaping () -> Void
-    ) async {
-        await withCheckedContinuation { continuation in
-            self.continuation = continuation
-            Task {
-                do {
-                    try await operation()
-                }
-                catch {
-                    onError(error)
-                }
-                self.finish()
-            }
-            Task {
-                try? await Task.sleep(for: timeout)
-                self.finish(onTimeout: onTimeout)
-            }
-        }
-    }
-
-    private func finish(onTimeout: (@Sendable () -> Void)? = nil) {
-        guard !resumed, let continuation else { return }
-        resumed = true
-        self.continuation = nil
-        onTimeout?()
-        continuation.resume()
-    }
-}
-
 extension AppDelegate {
     /// AppKit's deferred-terminate flow, replacing the old fire-and-forget
     /// `applicationWillTerminate`: that method fired a detached `Task` and
     /// returned immediately, so the process could exit before the shutdown
     /// task's `persist_playback_state` write landed — losing the resume
     /// position on every quit that raced it. Returning `.terminateLater` here
-    /// and replying only after `shutdown()` (or a 5s timeout) actually runs
-    /// makes Quit wait for the save.
+    /// and replying only after `shutdown()` succeeds makes Quit wait for the
+    /// save. A failure cancels termination and leaves the library open.
     func applicationShouldTerminate(_ sender: NSApplication)
         -> NSApplication.TerminateReply
     {
@@ -836,24 +835,18 @@ extension AppDelegate {
             // (or none was ever opened), so there's nothing left to save.
             return .terminateNow
         }
-        Task { [appService] in
-            await ShutdownRace()
-                .run(
-                    operation: { try await appService.shutdown() },
-                    timeout: .seconds(5),
-                    onError: {
-                        logger.error(
-                            "Shutdown on quit failed: \($0.localizedDescription)"
-                        )
-                    }
-                ) {
-                    logger.warning(
-                        "Shutdown on quit timed out after 5s; terminating anyway"
-                    )
-                }
-            await MainActor.run {
-                sender.reply(toApplicationShouldTerminate: true)
+        prepareForLibraryShutdown()
+        let shutdown = beginLibraryShutdown(appService)
+        Task {
+            let result = await shutdown.value
+            let shouldTerminate: Bool
+            switch result {
+            case .completed:
+                shouldTerminate = true
+            case .failed:
+                shouldTerminate = false
             }
+            sender.reply(toApplicationShouldTerminate: shouldTerminate)
         }
         return .terminateLater
     }

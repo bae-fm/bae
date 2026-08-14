@@ -48,6 +48,8 @@ mod configuration;
 pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
 mod desktop;
 #[cfg(feature = "desktop")]
+mod desktop_services;
+#[cfg(feature = "desktop")]
 mod editing_projection;
 mod import_projection;
 mod library_projection;
@@ -68,10 +70,22 @@ impl AppHandle {
         services: AppServices,
         ui_event_bus: bae_core::ui::UiEventBus,
         runtime: tokio::runtime::Runtime,
-    ) -> Self {
+    ) -> Result<Self, bae_core::app::BootstrapError> {
         #[cfg(feature = "desktop")]
-        let desktop =
-            bae_desktop::DesktopServices::start(services.clone(), runtime.handle().clone());
+        let desktop = {
+            let runtime_handle = runtime.handle().clone();
+            let services = services.clone();
+            runtime
+                .block_on(crate::operation_runtime::spawn(
+                    runtime_handle.clone(),
+                    move || bae_desktop::DesktopServices::start(services, runtime_handle),
+                ))
+                .map_err(|error| {
+                    bae_core::app::BootstrapError::Internal(format!(
+                        "desktop services failed to start: {error}"
+                    ))
+                })?
+        };
         #[cfg(feature = "cast")]
         let cast = bae_cast::CastController::start(
             services.clone(),
@@ -79,7 +93,7 @@ impl AppHandle {
             bae_core::renderer::RendererDiscovery::for_host(),
         );
 
-        Self {
+        Ok(Self {
             services,
             ui_event_bus,
             #[cfg(feature = "desktop")]
@@ -87,7 +101,7 @@ impl AppHandle {
             #[cfg(feature = "cast")]
             cast,
             runtime,
-        }
+        })
     }
 
     async fn run_exported<T, Build, Fut>(

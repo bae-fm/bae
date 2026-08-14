@@ -52,7 +52,9 @@ pub fn bootstrap<T, F>(
 ) -> Result<T, BootstrapError>
 where
     T: Send + 'static,
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>
+        + Send
+        + 'static,
 {
     bootstrap_on_thread(
         library_id,
@@ -74,13 +76,15 @@ fn bootstrap_on_thread<T, F>(
 ) -> Result<T, BootstrapError>
 where
     T: Send + 'static,
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T + Send + 'static,
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>
+        + Send
+        + 'static,
 {
     // Building the sync manager and `block_on`-ing the async setup uses a deep
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
     // overflow there — so run the whole thing on a thread with a large stack.
-    std::thread::Builder::new()
+    let bootstrap_thread = std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
         .spawn(move || {
@@ -93,9 +97,20 @@ where
                 compose,
             )
         })
-        .expect("spawn bae-bootstrap thread")
-        .join()
-        .expect("bae-bootstrap thread panicked")
+        .map_err(|error| {
+            BootstrapError::Internal(format!("Failed to spawn bootstrap thread: {error}"))
+        })?;
+
+    bootstrap_thread.join().map_err(|panic| {
+        let message = if let Some(message) = panic.downcast_ref::<&str>() {
+            *message
+        } else if let Some(message) = panic.downcast_ref::<String>() {
+            message.as_str()
+        } else {
+            "non-string panic payload"
+        };
+        BootstrapError::Internal(format!("Bootstrap thread panicked: {message}"))
+    })?
 }
 
 fn bootstrap_inner<T, F>(
@@ -107,7 +122,7 @@ fn bootstrap_inner<T, F>(
     compose: F,
 ) -> Result<T, BootstrapError>
 where
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> T,
+    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>,
 {
     // The injected wall clock + id source are built before loading the config so
     // device-id auto-generation draws from the injected source too.
@@ -277,14 +292,15 @@ where
         .import_scan_watched_folders()
         .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
+    let owner = compose(app_services, ui_event_bus, runtime)?;
+
     // The durable active-library pointer names the library the user last actually
     // landed in, so launch ordering (discovery sorts active-first) and
     // forget_library's pointer check both refer to a library that opens. It
-    // advances only over a fully-realized open: written
-    // after every fallible step above has succeeded, and never for a locked
-    // library — cancelling the unlock screen must leave the previously-active
-    // library in charge. A successful unlock re-runs bootstrap unlocked and
-    // advances the pointer then.
+    // advances only over a fully-realized open: written after the frontend owner
+    // has started, and never for a locked library — cancelling the unlock screen
+    // must leave the previously-active library in charge. A successful unlock
+    // re-runs bootstrap unlocked and advances the pointer then.
     if advance_active_pointer {
         config_handle
             .config()
@@ -292,5 +308,5 @@ where
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }
 
-    Ok(compose(app_services, ui_event_bus, runtime))
+    Ok(owner)
 }

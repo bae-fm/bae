@@ -109,7 +109,15 @@ struct AutomationSettingsContent: View {
         .formStyle(.grouped)
         .task(id: configStore.config.mcp) {
             syncFromConfig(configStore.config.mcp)
-            status = await automation.getMcpServerStatus()
+            do {
+                status = try await automation.getMcpServerStatus()
+            }
+            catch is CancellationError {
+                logger.debug("MCP status task cancelled")
+            }
+            catch {
+                showError(error)
+            }
         }
         .onDisappear { mutationTask?.cancel() }
     }
@@ -167,16 +175,17 @@ struct AutomationSettingsContent: View {
             defer { mutationTask = nil }
             do {
                 try await automation.setMcpServerConfig(targetEnabled, portText)
-                status = await automation.getMcpServerStatus()
+                status = try await automation.getMcpServerStatus()
             }
             catch is CancellationError {
                 logger.debug("MCP settings update task cancelled")
             }
             catch {
+                guard let line = error.displayLine else { return }
                 message = .error(
                     String(
                         localized:
-                            "Couldn't update MCP settings: \(error.displayLine)"
+                            "Couldn't update MCP settings: \(line)"
                     )
                 )
             }
@@ -195,8 +204,21 @@ struct AutomationSettingsContent: View {
         let automation = automation
         mutationTask = Task {
             defer { mutationTask = nil }
-            status = await automation.getMcpServerStatus()
+            do {
+                status = try await automation.getMcpServerStatus()
+            }
+            catch is CancellationError {
+                logger.debug("MCP status task cancelled")
+            }
+            catch {
+                showError(error)
+            }
         }
+    }
+
+    private func showError(_ error: any Error) {
+        guard let line = error.displayLine else { return }
+        message = .error(line)
     }
 
     private func copyToken() {
@@ -241,19 +263,20 @@ struct AutomationSettingsContent: View {
                 logger.debug("MCP token task cancelled")
             }
             catch {
+                guard let line = error.displayLine else { return }
                 switch action {
                 case .copy:
                     message = .error(
                         String(
                             localized:
-                                "Couldn't copy MCP token: \(error.displayLine)"
+                                "Couldn't copy MCP token: \(line)"
                         )
                     )
                 case .rotate:
                     message = .error(
                         String(
                             localized:
-                                "Couldn't rotate MCP token: \(error.displayLine)"
+                                "Couldn't rotate MCP token: \(line)"
                         )
                     )
                 }

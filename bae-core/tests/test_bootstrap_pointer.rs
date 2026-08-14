@@ -124,12 +124,12 @@ impl TestApp {
         services: bae_core::library::AppServices,
         ui_event_bus: bae_core::ui::UiEventBus,
         runtime: tokio::runtime::Runtime,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, bae_core::app::BootstrapError> {
+        Ok(Self {
             services,
             _ui_event_bus: ui_event_bus,
             _runtime: runtime,
-        }
+        })
     }
 }
 
@@ -234,6 +234,71 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         active_pointer().as_deref(),
         Some(a_id.as_str()),
         "a failed open must not advance the active pointer"
+    );
+}
+
+/// A frontend owner is part of the running application, so failure while
+/// constructing it must not record the library as successfully opened.
+#[test]
+#[serial]
+fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
+    let _home = fake_home();
+    let a = create_library(
+        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
+    let a_id = a.store_id.clone();
+    let b_id = write_plain_library(_home.path(), "Library B");
+
+    let result: Result<(), _> = bootstrap(
+        b_id,
+        200,
+        true,
+        bae_core::diagnostics::Diagnostics::noop(),
+        None,
+        |_services, _ui_event_bus, _runtime| {
+            Err(bae_core::app::BootstrapError::Internal(
+                "frontend owner failed to start".to_string(),
+            ))
+        },
+    );
+
+    assert!(
+        result.is_err(),
+        "frontend construction failure must surface"
+    );
+    assert_eq!(
+        active_pointer().as_deref(),
+        Some(a_id.as_str()),
+        "a failed frontend owner must not advance the active pointer"
+    );
+}
+
+/// A frontend panic is contained by the bootstrap thread boundary and returned
+/// to the host as a normal bootstrap failure.
+#[test]
+#[serial]
+fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
+    let home = fake_home();
+    let id = write_plain_library(home.path(), "Library A");
+
+    let result: Result<(), _> = bootstrap(
+        id,
+        200,
+        true,
+        bae_core::diagnostics::Diagnostics::noop(),
+        None,
+        |_services, _ui_event_bus, _runtime| panic!("frontend owner panicked"),
+    );
+
+    assert!(
+        matches!(
+            result,
+            Err(bae_core::app::BootstrapError::Internal(message))
+                if message.contains("frontend owner panicked")
+        ),
+        "a frontend panic must cross the bootstrap boundary as an error"
     );
 }
 

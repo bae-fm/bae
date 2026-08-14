@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,8 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.localizedLine
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRendererKind
@@ -105,9 +108,15 @@ private fun CastPickerSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var castJob by remember { mutableStateOf<Job?>(null) }
     val devices by session.castStore.devices.collectAsState()
     val sheetState = rememberModalBottomSheetState()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    DisposableEffect(Unit) {
+        onDispose { castJob?.cancel() }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -143,12 +152,15 @@ private fun CastPickerSheet(
                         device = device,
                         isActive = device.name == castingTo,
                         onCast = {
-                            try {
-                                session.cast.castTo(device.id)
-                                onDismiss()
-                            } catch (e: BridgeException) {
-                                logger.error("Failed to cast to ${device.id}", e)
-                                session.configStore.showError(context.localizedLine(e))
+                            castJob?.cancel()
+                            castJob = scope.launch {
+                                try {
+                                    session.cast.castTo(device.id)
+                                    onDismiss()
+                                } catch (e: BridgeException) {
+                                    logger.error("Failed to cast to ${device.id}", e)
+                                    session.configStore.showError(context.localizedLine(e))
+                                }
                             }
                         },
                     )

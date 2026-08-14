@@ -130,7 +130,15 @@ struct SubsonicSettingsContent: View {
         .formStyle(.grouped)
         .task(id: configStore.config.subsonic) {
             syncFromConfig(configStore.config.subsonic)
-            status = await subsonic.getServerStatus()
+            do {
+                status = try await subsonic.getServerStatus()
+            }
+            catch is CancellationError {
+                logger.debug("Subsonic status task cancelled")
+            }
+            catch {
+                showError(error)
+            }
         }
         .onDisappear { mutationTask?.cancel() }
     }
@@ -201,16 +209,17 @@ struct SubsonicSettingsContent: View {
                     username,
                     bindAddress
                 )
-                status = await subsonic.getServerStatus()
+                status = try await subsonic.getServerStatus()
             }
             catch is CancellationError {
                 logger.debug("Subsonic settings update task cancelled")
             }
             catch {
+                guard let line = error.displayLine else { return }
                 message = .error(
                     String(
                         localized:
-                            "Couldn't update Subsonic settings: \(error.displayLine)"
+                            "Couldn't update Subsonic settings: \(line)"
                     )
                 )
             }
@@ -226,17 +235,18 @@ struct SubsonicSettingsContent: View {
             defer { mutationTask = nil }
             do {
                 try await subsonic.setPassword(password)
-                status = await subsonic.getServerStatus()
+                status = try await subsonic.getServerStatus()
                 message = .feedback(String(localized: "Password saved"))
             }
             catch is CancellationError {
                 logger.debug("Subsonic password task cancelled")
             }
             catch {
+                guard let line = error.displayLine else { return }
                 message = .error(
                     String(
                         localized:
-                            "Couldn't save Subsonic password: \(error.displayLine)"
+                            "Couldn't save Subsonic password: \(line)"
                     )
                 )
             }
@@ -255,8 +265,21 @@ struct SubsonicSettingsContent: View {
         let subsonic = subsonic
         mutationTask = Task {
             defer { mutationTask = nil }
-            status = await subsonic.getServerStatus()
+            do {
+                status = try await subsonic.getServerStatus()
+            }
+            catch is CancellationError {
+                logger.debug("Subsonic status task cancelled")
+            }
+            catch {
+                showError(error)
+            }
         }
+    }
+
+    private func showError(_ error: any Error) {
+        guard let line = error.displayLine else { return }
+        message = .error(line)
     }
 }
 
