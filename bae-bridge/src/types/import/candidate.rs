@@ -274,21 +274,23 @@ pub struct BridgeCandidateFiles {
 /// localizes each variant via its catalog key (`bridge_prepare_step_key`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePrepareStep {
+    Queued,
+    ReadingFolder,
     ParsingMetadata,
     WritingCoverArt,
     DiscoveringFiles,
     ValidatingTracks,
-    SavingToDatabase,
 }
 
 impl BridgePrepareStep {
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
+            Self::Queued => "core.import.prepare.queued",
+            Self::ReadingFolder => "core.import.prepare.reading_folder",
             Self::ParsingMetadata => "core.import.prepare.parsing_metadata",
             Self::WritingCoverArt => "core.import.prepare.writing_cover_art",
             Self::DiscoveringFiles => "core.import.prepare.discovering_files",
             Self::ValidatingTracks => "core.import.prepare.validating_tracks",
-            Self::SavingToDatabase => "core.import.prepare.saving_to_database",
         }
     }
 }
@@ -297,7 +299,7 @@ impl BridgePrepareStep {
 /// `bridge_import_phase_key`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeImportPhase {
-    ReferencingFiles,
+    ReadingFiles,
     MeasuringLoudness,
     Finalizing,
 }
@@ -305,7 +307,7 @@ pub enum BridgeImportPhase {
 impl BridgeImportPhase {
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
-            Self::ReferencingFiles => "core.import.phase.referencing_files",
+            Self::ReadingFiles => "core.import.phase.reading_files",
             Self::MeasuringLoudness => "core.import.phase.measuring_loudness",
             Self::Finalizing => "core.import.phase.finalizing",
         }
@@ -326,16 +328,17 @@ impl BridgeImportStep {
         match s {
             ImportStep::Preparing(p) => BridgeImportStep::Preparing {
                 step: match p {
+                    PrepareStep::Queued => BridgePrepareStep::Queued,
+                    PrepareStep::ReadingFolder => BridgePrepareStep::ReadingFolder,
                     PrepareStep::ParsingMetadata => BridgePrepareStep::ParsingMetadata,
                     PrepareStep::WritingCoverArt => BridgePrepareStep::WritingCoverArt,
                     PrepareStep::DiscoveringFiles => BridgePrepareStep::DiscoveringFiles,
                     PrepareStep::ValidatingTracks => BridgePrepareStep::ValidatingTracks,
-                    PrepareStep::SavingToDatabase => BridgePrepareStep::SavingToDatabase,
                 },
             },
             ImportStep::Running(phase) => BridgeImportStep::Running {
                 phase: match phase {
-                    ImportPhase::ReferencingFiles => BridgeImportPhase::ReferencingFiles,
+                    ImportPhase::ReadingFiles => BridgeImportPhase::ReadingFiles,
                     ImportPhase::MeasuringLoudness => BridgeImportPhase::MeasuringLoudness,
                     ImportPhase::Finalizing => BridgeImportPhase::Finalizing,
                 },

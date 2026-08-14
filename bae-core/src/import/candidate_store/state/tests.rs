@@ -1,9 +1,7 @@
 use super::*;
 use crate::import::folder_scanner::{CategorizedFiles, InvalidReason};
-use crate::import::types::{ImportPhase, ImportProgress};
+use crate::import::types::{ImportPhase, ImportProgress, PrepareStep};
 use std::path::{Path, PathBuf};
-
-const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882";
 
 /// An empty file set — the reducer only reads a candidate's identity and
 /// grouping fields, never its files.
@@ -230,6 +228,24 @@ fn set_skipped_round_trips_on_folder_candidate() {
 }
 
 #[test]
+fn claiming_a_candidate_reports_that_the_import_is_queued() {
+    let mut state = CandidateState::default();
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
+
+    state.claim_for_import("/watch/a/rel1");
+
+    assert!(matches!(
+        state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+            .runtime
+            .import_status,
+        Some(CandidateImportStatusSnapshot::Importing {
+            progress_percent: 0,
+            step: Some(ImportStep::Preparing(PrepareStep::Queued)),
+        })
+    ));
+}
+
+#[test]
 fn record_event_overlays_import_progress_onto_folder_runtime() {
     let mut state = CandidateState::default();
     state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
@@ -336,9 +352,11 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
     // recording an event against it.
     state.record_event(&ImportEvent::ImportProgress {
         candidate_key: "reidentify:rel-1".to_string(),
-        progress: ImportProgress::Started {
-            id: REL_1.to_string(),
+        progress: ImportProgress::Preparing {
             import_id: "imp-1".to_string(),
+            step: PrepareStep::ReadingFolder,
+            album_title: String::new(),
+            artist_name: String::new(),
         },
     });
     match state.get("reidentify:rel-1") {

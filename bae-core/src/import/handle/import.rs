@@ -340,7 +340,6 @@ impl ImportServiceHandle {
                         }
                         let matches = match &progress {
                             ImportProgress::Preparing { import_id: iid, .. }
-                            | ImportProgress::Started { import_id: iid, .. }
                             | ImportProgress::Progress { import_id: iid, .. }
                             | ImportProgress::Complete { import_id: iid, .. }
                             | ImportProgress::RemoteUploadQueued { import_id: iid, .. }

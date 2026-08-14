@@ -568,18 +568,19 @@ pub struct AutomationImportStarted {
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationPrepareStep {
+    Queued,
+    ReadingFolder,
     ParsingMetadata,
     WritingCoverArt,
     DiscoveringFiles,
     ValidatingTracks,
-    SavingToDatabase,
 }
 
 /// Mirrors bae-core's `import::ImportPhase`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationImportPhase {
-    ReferencingFiles,
+    ReadingFiles,
     MeasuringLoudness,
     Finalizing,
 }
@@ -592,10 +593,6 @@ pub enum AutomationImportProgress {
         step: AutomationPrepareStep,
         album_title: String,
         artist_name: String,
-    },
-    Started {
-        id: String,
-        import_id: String,
     },
     Progress {
         id: String,

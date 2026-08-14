@@ -9,9 +9,9 @@
 //!    samples. A one-file-per-track release emits one `TrackFile::Standalone`
 //!    per track; a CUE-backed release emits a `TrackFile::CueBacked` per track,
 //!    all sharing the container's parsed CUE sheet and probe.
-//! 2. **Running** ([`ImportPhase`]) — reference each file where it already sits
-//!    (no bytes move, no transcode), measure per-track loudness by decoding, and
-//!    write every row in one transaction.
+//! 2. **Running** ([`ImportPhase`]) — read and hash each file where it already
+//!    sits (no bytes move, no transcode), measure per-track loudness by decoding,
+//!    and write every row in one transaction.
 //!
 //! An import always lands as a local, playable release. A [`StorageMode::Remote`]
 //! import then uploads to the cloud in the background.
@@ -721,15 +721,11 @@ pub enum ImportProgress {
         album_title: String,
         artist_name: String,
     },
-    Started {
-        id: String,
-        import_id: String,
-    },
     Progress {
         id: String,
         percent: u8,
         /// Which running phase this progress belongs to. The phases run in order:
-        /// reference the files in place, measure loudness, finalize.
+        /// read and register the files in place, measure loudness, finalize.
         phase: ImportPhase,
         import_id: String,
     },
@@ -751,14 +747,13 @@ pub enum ImportProgress {
 
 /// The running phase of an import, after phase-0 preparation. Emitted as each
 /// transition begins so the UI can name the work in progress. Every import is
-/// local-in-place: the source files are referenced where they sit, then each
-/// track is decoded to measure loudness (the long pole), then the rows are
-/// written.
+/// local-in-place: the source files are read and hashed where they sit, then
+/// each track is decoded to measure loudness, then the rows are written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportPhase {
-    /// Recording each source file's row and referencing it in place. No bytes
-    /// move; per-file progress fills the percent.
-    ReferencingFiles,
+    /// Reading and hashing each source file before it is registered. Per-file
+    /// progress fills the percent.
+    ReadingFiles,
     /// Decoding each track to measure its loudness and true peak. Per-track
     /// progress arrives on the dedicated `ImportLoudnessProgress` event, not the
     /// coarse percent.
@@ -771,11 +766,12 @@ pub enum ImportPhase {
 /// ([`ImportPhase`]) begin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrepareStep {
+    Queued,
+    ReadingFolder,
     ParsingMetadata,
     WritingCoverArt,
     DiscoveringFiles,
     ValidatingTracks,
-    SavingToDatabase,
 }
 
 /// Which step of an import is in progress, for the candidate progress UI. The

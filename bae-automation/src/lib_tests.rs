@@ -209,23 +209,23 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
 fn import_progress_step_and_phase_serialize_snake_case() {
     let preparing = automation_import_progress(ImportProgress::Preparing {
         import_id: "imp-1".to_string(),
-        step: PrepareStep::ParsingMetadata,
+        step: PrepareStep::ReadingFolder,
         album_title: "Album Title".to_string(),
         artist_name: "Artist Name".to_string(),
     });
     let json = serde_json::to_value(preparing).unwrap();
     assert_eq!(json["kind"], "preparing");
-    assert_eq!(json["step"], "parsing_metadata");
+    assert_eq!(json["step"], "reading_folder");
 
     let progress = automation_import_progress(ImportProgress::Progress {
         id: "id-1".to_string(),
         percent: 50,
-        phase: ImportPhase::ReferencingFiles,
+        phase: ImportPhase::ReadingFiles,
         import_id: "imp-1".to_string(),
     });
     let json = serde_json::to_value(progress).unwrap();
     assert_eq!(json["kind"], "progress");
-    assert_eq!(json["phase"], "referencing_files");
+    assert_eq!(json["phase"], "reading_files");
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

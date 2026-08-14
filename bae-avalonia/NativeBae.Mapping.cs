@@ -353,18 +353,19 @@ internal static partial class NativeBae
     private static string PrepareStepTag(BridgePrepareStep step) =>
         step switch
         {
+            BridgePrepareStep.Queued => "queued",
+            BridgePrepareStep.ReadingFolder => "reading_folder",
             BridgePrepareStep.ParsingMetadata => "parsing_metadata",
             BridgePrepareStep.WritingCoverArt => "writing_cover_art",
             BridgePrepareStep.DiscoveringFiles => "discovering_files",
             BridgePrepareStep.ValidatingTracks => "validating_tracks",
-            BridgePrepareStep.SavingToDatabase => "saving_to_database",
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown prepare step"),
         };
 
     private static string ImportPhaseTag(BridgeImportPhase phase) =>
         phase switch
         {
-            BridgeImportPhase.ReferencingFiles => "referencing_files",
+            BridgeImportPhase.ReadingFiles => "reading_files",
             BridgeImportPhase.MeasuringLoudness => "measuring_loudness",
             BridgeImportPhase.Finalizing => "finalizing",
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown import phase"),

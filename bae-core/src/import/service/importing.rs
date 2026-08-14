@@ -161,6 +161,19 @@ impl ImportService {
         let mut step_times: Vec<(&str, std::time::Duration)> = Vec::new();
         let mut last_step_start = import_start;
 
+        send_event(
+            &self.event_tx,
+            crate::import::handle::ImportEvent::ImportProgress {
+                candidate_key: candidate_key.clone(),
+                progress: ImportProgress::Preparing {
+                    import_id: import_id.clone(),
+                    step: PrepareStep::ReadingFolder,
+                    album_title: String::new(),
+                    artist_name: String::new(),
+                },
+            },
+        );
+
         // Re-walk the folder. Scan and commit are separated by user interaction,
         // and the user can move, rename, or reorganize in that window — so the
         // worker treats the disk at commit time as the source of truth. Their
@@ -393,14 +406,9 @@ impl ImportService {
         step_times.push(("validate_tracks", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
-        emit_preparing(PrepareStep::SavingToDatabase);
-
         // No storage yet: the winning cover's bytes go to coven's local store below
         // and its row is written by finalize.
         prepared.remote_cover_image = remote_cover_data;
-
-        step_times.push(("save_to_database", last_step_start.elapsed()));
-        last_step_start = std::time::Instant::now();
 
         debug!(
             "Prepared album '{}' (release: {}) with {} tracks",
@@ -522,7 +530,6 @@ impl ImportService {
         let new_album = existing_album_id.is_none().then_some(&*db_album);
         let album_id = existing_album_id.as_deref().unwrap_or(&db_album.id);
 
-        self.emit_started(candidate_key, &db_release.id, import_id);
         debug!(
             "Starting {} import for release {} ({} files)",
             storage_mode_label(storage_mode),
@@ -535,7 +542,23 @@ impl ImportService {
         let files_now = library_manager.now();
         let mut db_files: Vec<DbFile> = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
-        for file in discovered_files.iter() {
+        let file_to_tracks: HashMap<PathBuf, Vec<String>> = {
+            let mut map: HashMap<PathBuf, Vec<String>> = HashMap::new();
+            for tf in tracks_to_files {
+                map.entry(tf.file_path().to_path_buf())
+                    .or_default()
+                    .push(tf.db_track().id.clone());
+            }
+            map
+        };
+        self.emit_phase_progress(
+            candidate_key,
+            &db_release.id,
+            0,
+            ImportPhase::ReadingFiles,
+            import_id,
+        );
+        for (idx, file) in discovered_files.iter().enumerate() {
             // coven verifies this blob's bytes against this hash on every
             // cloud fetch — required so a later make-Remote + pin round trip
             // (or another device's download) can ever read it back. See
@@ -556,6 +579,31 @@ impl ImportService {
             );
             file_ids.insert(file.path.clone(), db_file.id.clone());
             db_files.push(db_file);
+            if let Some(track_ids) = file_to_tracks.get(&file.path) {
+                for track_id in track_ids {
+                    self.emit_phase_progress(
+                        candidate_key,
+                        track_id,
+                        100,
+                        ImportPhase::ReadingFiles,
+                        import_id,
+                    );
+                }
+            }
+            let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
+            self.emit_phase_progress(
+                candidate_key,
+                &db_release.id,
+                release_percent,
+                ImportPhase::ReadingFiles,
+                import_id,
+            );
+            debug!(
+                "Read file {}/{}: {}",
+                idx + 1,
+                total_files,
+                file.relative_path,
+            );
         }
 
         // Every import lands LOCAL: reference the files in place and record their
@@ -586,45 +634,6 @@ impl ImportService {
                 detail: format!("Cannot convert path to string: {:?}", local_root),
             })?
             .to_string();
-
-        // Per-track progress jumps to 100% immediately — files are referenced in
-        // place, no bytes move.
-        let file_to_tracks: HashMap<PathBuf, Vec<String>> = {
-            let mut map: HashMap<PathBuf, Vec<String>> = HashMap::new();
-            for tf in tracks_to_files {
-                map.entry(tf.file_path().to_path_buf())
-                    .or_default()
-                    .push(tf.db_track().id.clone());
-            }
-            map
-        };
-        for (idx, file) in discovered_files.iter().enumerate() {
-            if let Some(track_ids) = file_to_tracks.get(&file.path) {
-                for track_id in track_ids {
-                    self.emit_phase_progress(
-                        candidate_key,
-                        track_id,
-                        100,
-                        ImportPhase::ReferencingFiles,
-                        import_id,
-                    );
-                }
-            }
-            let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
-            self.emit_phase_progress(
-                candidate_key,
-                &db_release.id,
-                release_percent,
-                ImportPhase::ReferencingFiles,
-                import_id,
-            );
-            debug!(
-                "Recorded file {}/{}: {}",
-                idx + 1,
-                total_files,
-                file.relative_path,
-            );
-        }
 
         let mut built_audio = Self::build_audio_formats(
             tracks_to_files,

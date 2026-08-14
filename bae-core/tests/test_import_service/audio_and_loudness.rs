@@ -70,6 +70,86 @@ async fn local_folder_import() {
 
 }
 
+#[tokio::test]
+async fn import_progress_names_every_operation_before_loudness() {
+    use bae_core::import::{ImportEvent, ImportPhase, ImportProgress, ImportStep, PrepareStep};
+
+    support::tracing_init();
+
+    let release = discogs_release("Album Title", &["Track Title"]);
+    let release_id_key = seed_discogs_test_release(release);
+    let f = ImportFixture::new().await;
+    let mut events = f.handle.subscribe_events();
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(&album_dir, &["01 Track Title.flac"]);
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .await
+        .unwrap();
+
+    let mut steps = Vec::new();
+    loop {
+        let event = tokio::time::timeout(std::time::Duration::from_secs(20), events.recv())
+            .await
+            .expect("import progress arrives")
+            .expect("import event stream remains open");
+        let ImportEvent::ImportProgress {
+            candidate_key,
+            progress,
+        } = event
+        else {
+            continue;
+        };
+        if candidate_key != "test" {
+            continue;
+        }
+        let step = match progress {
+            ImportProgress::Preparing { step, .. } => Some(ImportStep::Preparing(step)),
+            ImportProgress::Progress { phase, .. } => Some(ImportStep::Running(phase)),
+            ImportProgress::Complete { import_id: completed, .. } if completed == import_id => {
+                break;
+            }
+            ImportProgress::Failed { error, .. } => panic!("import failed: {error}"),
+            ImportProgress::RemoteUploadQueued { .. } => None,
+            ImportProgress::Complete { .. } => None,
+        };
+        if let Some(step) = step {
+            if steps.last() != Some(&step) {
+                steps.push(step);
+            }
+        }
+    }
+
+    assert_eq!(
+        steps,
+        vec![
+            ImportStep::Preparing(PrepareStep::ReadingFolder),
+            ImportStep::Preparing(PrepareStep::ParsingMetadata),
+            ImportStep::Preparing(PrepareStep::DiscoveringFiles),
+            ImportStep::Preparing(PrepareStep::ValidatingTracks),
+            ImportStep::Running(ImportPhase::ReadingFiles),
+            ImportStep::Running(ImportPhase::MeasuringLoudness),
+            ImportStep::Running(ImportPhase::Finalizing),
+        ]
+    );
+}
+
 /// 4. Import produces correct audio format records.
 #[tokio::test]
 async fn import_produces_audio_format_records() {

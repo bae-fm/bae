@@ -139,11 +139,12 @@ internal static partial class NativeBae
     {
         BridgePrepareStep? bridgeStep = step switch
         {
+            "queued" => BridgePrepareStep.Queued,
+            "reading_folder" => BridgePrepareStep.ReadingFolder,
             "parsing_metadata" => BridgePrepareStep.ParsingMetadata,
             "writing_cover_art" => BridgePrepareStep.WritingCoverArt,
             "discovering_files" => BridgePrepareStep.DiscoveringFiles,
             "validating_tracks" => BridgePrepareStep.ValidatingTracks,
-            "saving_to_database" => BridgePrepareStep.SavingToDatabase,
             _ => null,
         };
         return bridgeStep is null ? null : BaeBridgeMethods.BridgePrepareStepKey(bridgeStep.Value);
@@ -155,7 +156,7 @@ internal static partial class NativeBae
     {
         BridgeImportPhase? bridgePhase = phase switch
         {
-            "referencing_files" => BridgeImportPhase.ReferencingFiles,
+            "reading_files" => BridgeImportPhase.ReadingFiles,
             "measuring_loudness" => BridgeImportPhase.MeasuringLoudness,
             "finalizing" => BridgeImportPhase.Finalizing,
             _ => null,

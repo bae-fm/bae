@@ -325,18 +325,20 @@ mod loc_key_coverage {
 
         // bridge_prepare_step_key — every variant carries a key.
         for step in [
+            BridgePrepareStep::Queued,
+            BridgePrepareStep::ReadingFolder,
             BridgePrepareStep::ParsingMetadata,
             BridgePrepareStep::WritingCoverArt,
             BridgePrepareStep::DiscoveringFiles,
             BridgePrepareStep::ValidatingTracks,
-            BridgePrepareStep::SavingToDatabase,
         ] {
             let expected = match step {
+                BridgePrepareStep::Queued => "core.import.prepare.queued",
+                BridgePrepareStep::ReadingFolder => "core.import.prepare.reading_folder",
                 BridgePrepareStep::ParsingMetadata => "core.import.prepare.parsing_metadata",
                 BridgePrepareStep::WritingCoverArt => "core.import.prepare.writing_cover_art",
                 BridgePrepareStep::DiscoveringFiles => "core.import.prepare.discovering_files",
                 BridgePrepareStep::ValidatingTracks => "core.import.prepare.validating_tracks",
-                BridgePrepareStep::SavingToDatabase => "core.import.prepare.saving_to_database",
             };
             assert_eq!(bridge_prepare_step_key(step), expected);
             keys.push(expected.to_string());
@@ -344,12 +346,12 @@ mod loc_key_coverage {
 
         // bridge_import_phase_key — every variant carries a key.
         for phase in [
-            BridgeImportPhase::ReferencingFiles,
+            BridgeImportPhase::ReadingFiles,
             BridgeImportPhase::MeasuringLoudness,
             BridgeImportPhase::Finalizing,
         ] {
             let expected = match phase {
-                BridgeImportPhase::ReferencingFiles => "core.import.phase.referencing_files",
+                BridgeImportPhase::ReadingFiles => "core.import.phase.reading_files",
                 BridgeImportPhase::MeasuringLoudness => "core.import.phase.measuring_loudness",
                 BridgeImportPhase::Finalizing => "core.import.phase.finalizing",
             };

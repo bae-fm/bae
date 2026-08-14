@@ -4,7 +4,7 @@ use super::folder_scanner::{
     FolderReleaseDecisionKey, InvalidCandidate, ScanItem,
 };
 use super::handle::ImportEvent;
-use super::types::{ImportProgress, ImportStep};
+use super::types::{ImportProgress, ImportStep, PrepareStep};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};

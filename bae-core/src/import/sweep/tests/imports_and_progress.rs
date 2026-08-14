@@ -1,9 +1,7 @@
 /// What starting an import does to a candidate, in the order the import
 /// service does it: [`ImportServiceHandle::claim_candidate_for_import`] before
-/// the command is queued, and the worker's first `ImportProgress` some time
-/// after that — after the folder re-walk, and behind every import already
-/// queued ahead of it. Tests that model the start as the event alone are
-/// modelling the second half of it only.
+/// the command is queued, and the worker's first `ImportProgress` after it
+/// dequeues the command.
 async fn start_import_for(fixture: &Fixture, candidate: &Path) {
     let candidate_key = candidate.to_string_lossy().into_owned();
     fixture
@@ -14,11 +12,42 @@ async fn start_import_for(fixture: &Fixture, candidate: &Path) {
         .import
         .emit_event_for_test(ImportEvent::ImportProgress {
             candidate_key,
-            progress: crate::import::ImportProgress::Started {
-                id: "release-importing".to_string(),
+            progress: crate::import::ImportProgress::Preparing {
                 import_id: "import-running".to_string(),
+                step: crate::import::PrepareStep::ReadingFolder,
+                album_title: String::new(),
+                artist_name: String::new(),
             },
         });
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn claiming_an_import_publishes_queued_status_immediately() {
+    let fixture = Fixture::new("import-queued-status").await;
+    let candidate = fixture.disc_id_candidate("Album Title");
+    fixture.scan(1).await;
+    let mut candidates = fixture.import.subscribe_import_candidates();
+
+    fixture
+        .import
+        .claim_candidate_for_import(&candidate.to_string_lossy())
+        .await;
+
+    tokio::time::timeout(Duration::from_secs(1), candidates.changed())
+        .await
+        .expect("the queued status is published")
+        .expect("candidate stream remains open");
+    let snapshot = candidates.borrow_and_update();
+    assert!(matches!(
+        snapshot.folder_candidates[0].runtime.import_status,
+        Some(crate::import::CandidateImportStatusSnapshot::Importing {
+            progress_percent: 0,
+            step: Some(crate::import::ImportStep::Preparing(
+                crate::import::PrepareStep::Queued
+            )),
+        })
+    ));
 }
 
 /// An import started mid-pass takes its candidate away from the sweep: no

@@ -431,11 +431,20 @@ impl ImportServiceHandle {
     pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str) {
         let _commit = self.folder_state_commit.lock().await;
         self.candidate_store.claim_for_import(candidate_key);
+        self.publish_candidate_values();
     }
 
     async fn release_import_claim(&self, candidate_key: &str) {
         let _commit = self.folder_state_commit.lock().await;
         self.candidate_store.release_import_claim(candidate_key);
+        self.publish_candidate_values();
+    }
+
+    fn publish_candidate_values(&self) {
+        let snapshot = self
+            .candidate_store
+            .snapshot(self.folder_registry.lock().unwrap().watched_folders());
+        self.candidate_values.send_replace(snapshot);
     }
 
     /// Store one candidate's verdict, unless the candidate has moved on from

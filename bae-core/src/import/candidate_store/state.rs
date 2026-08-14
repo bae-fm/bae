@@ -536,7 +536,7 @@ impl CandidateState {
         self.runtime_entry(candidate_key).import_status =
             Some(CandidateImportStatusSnapshot::Importing {
                 progress_percent: 0,
-                step: None,
+                step: Some(ImportStep::Preparing(PrepareStep::Queued)),
             });
     }
 
@@ -682,12 +682,6 @@ impl CandidateState {
                         Some(CandidateImportStatusSnapshot::Importing {
                             progress_percent: 0,
                             step: Some(ImportStep::Preparing(*step)),
-                        })
-                    }
-                    ImportProgress::Started { .. } => {
-                        Some(CandidateImportStatusSnapshot::Importing {
-                            progress_percent: 0,
-                            step: None,
                         })
                     }
                     ImportProgress::Progress { percent, phase, .. } => {

@@ -723,17 +723,18 @@ pub(super) fn automation_identify_state(
 
 pub(super) fn automation_prepare_step(step: PrepareStep) -> AutomationPrepareStep {
     match step {
+        PrepareStep::Queued => AutomationPrepareStep::Queued,
+        PrepareStep::ReadingFolder => AutomationPrepareStep::ReadingFolder,
         PrepareStep::ParsingMetadata => AutomationPrepareStep::ParsingMetadata,
         PrepareStep::WritingCoverArt => AutomationPrepareStep::WritingCoverArt,
         PrepareStep::DiscoveringFiles => AutomationPrepareStep::DiscoveringFiles,
         PrepareStep::ValidatingTracks => AutomationPrepareStep::ValidatingTracks,
-        PrepareStep::SavingToDatabase => AutomationPrepareStep::SavingToDatabase,
     }
 }
 
 pub(super) fn automation_import_phase(phase: ImportPhase) -> AutomationImportPhase {
     match phase {
-        ImportPhase::ReferencingFiles => AutomationImportPhase::ReferencingFiles,
+        ImportPhase::ReadingFiles => AutomationImportPhase::ReadingFiles,
         ImportPhase::MeasuringLoudness => AutomationImportPhase::MeasuringLoudness,
         ImportPhase::Finalizing => AutomationImportPhase::Finalizing,
     }
@@ -752,9 +753,6 @@ pub(super) fn automation_import_progress(progress: ImportProgress) -> Automation
             album_title,
             artist_name,
         },
-        ImportProgress::Started { id, import_id } => {
-            AutomationImportProgress::Started { id, import_id }
-        }
         ImportProgress::Progress {
             id,
             percent,
