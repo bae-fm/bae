@@ -310,10 +310,9 @@ pub fn mapping_table(
     };
     let mut rows = Vec::with_capacity(files.files.len());
     let mut opened: BTreeSet<&str> = BTreeSet::new();
-    // The folder's images, and where among the rows their one gallery row
-    // goes: where the first of them would have been.
+    // The folder's images become one gallery that leads the pane regardless of
+    // where their names sort among the source files.
     let mut images: Vec<MappingImage> = Vec::new();
-    let mut images_at: Option<usize> = None;
 
     for entry in &files.files {
         if let Some(directory) = collapsed_row(&collapsed, entry) {
@@ -372,7 +371,6 @@ pub fn mapping_table(
             // has to be picked to know it — the role says so on its own. The
             // folder is the release, so all of it is still carried.
             FileRole::Cover | FileRole::Artwork => {
-                images_at.get_or_insert(rows.len());
                 images.push(mapping_image(entry, matches!(entry.role, FileRole::Cover)));
             }
             FileRole::Document => rows.push(carried(entry, MappingRole::Document)),
@@ -380,8 +378,8 @@ pub fn mapping_table(
         }
     }
 
-    if let Some(index) = images_at {
-        rows.insert(index, MappingRow::Images(images));
+    if !images.is_empty() {
+        rows.insert(0, MappingRow::Images(images));
     }
 
     // The tracks the source names and the folder has nothing for. They sit past
