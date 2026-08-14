@@ -192,6 +192,8 @@ struct MainAppMenuCommands: Commands {
     private var playback
     @Environment(Importer.self)
     private var importer
+    @Environment(ImportStore.self)
+    private var importStore
     @Environment(Library.self)
     private var library
     @Environment(LibraryStore.self)
@@ -221,6 +223,14 @@ struct MainAppMenuCommands: Commands {
     var focusSearch
 
     var body: some Commands {
+        CommandGroup(after: .pasteboard) {
+            Button("Skip All") {
+                Task { await importCandidateSkipAction.perform() }
+            }
+            .keyboardShortcut("e", modifiers: .command)
+            .disabled(!canSkipSelectedImportCandidates)
+        }
+
         CommandGroup(after: .newItem) {
             Button("New Library...") { onNewLibrary(nil) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
@@ -374,5 +384,18 @@ struct MainAppMenuCommands: Commands {
             }
             .disabled((libraryStore.albumTotal ?? 0) == 0)
         }
+    }
+
+    private var importCandidateSkipAction: ImportCandidateSkipAction {
+        ImportCandidateSkipAction(
+            importer: importer,
+            importStore: importStore,
+            uiStore: uiStore
+        )
+    }
+
+    private var canSkipSelectedImportCandidates: Bool {
+        guard case .importing = uiStore.activeSection else { return false }
+        return importCandidateSkipAction.isEnabled
     }
 }

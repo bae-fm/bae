@@ -37,7 +37,9 @@ struct ImportView: View {
     var uiStore
 
     var selectedCandidate: Candidate? {
-        guard let key = uiStore.selectedFolderCandidate else {
+        guard uiStore.selectedFolderCandidates.count == 1,
+            let key = uiStore.selectedFolderCandidates.first
+        else {
             return nil
         }
         return importStore.folderCandidates[key]
@@ -56,7 +58,7 @@ struct ImportView: View {
 
                 documentOverlay
             }
-            .onChange(of: uiStore.selectedFolderCandidate) { _, _ in
+            .onChange(of: uiStore.selectedFolderCandidates) { _, _ in
                 uiStore.lightbox = nil
             }
             // Fires on both paths to a seedable pane: selecting a row whose
@@ -172,11 +174,13 @@ struct ImportView: View {
         Task {
             do {
                 try await importer.removeWatchedFolder(path)
-                if let key = uiStore.selectedFolderCandidate,
-                    importStore.folderCandidates[key]?.watchedFolderPath == path
-                {
-                    uiStore.selectFolderCandidate(nil)
-                }
+                let removed = Set(
+                    uiStore.selectedFolderCandidates.filter {
+                        importStore.folderCandidates[$0]?.watchedFolderPath
+                            == path
+                    }
+                )
+                uiStore.removeFolderCandidateSelection(removed)
             }
             catch {
                 uiStore.showError(
@@ -215,7 +219,7 @@ struct ImportView: View {
         _ key: BridgeFolderReleaseDecisionKey,
         _ decision: BridgeFolderReleaseDecision
     ) {
-        uiStore.selectFolderCandidate(nil)
+        uiStore.setFolderCandidateSelection([])
         Task {
             do {
                 try await importer.setFolderReleaseDecision(key, decision)
@@ -252,7 +256,7 @@ struct ImportView: View {
         ) -> UiStore {
             let store = UiStore()
             store.setImportCandidateTab(tab)
-            store.selectFolderCandidate(selected)
+            store.setFolderCandidateSelection(selected.map { [$0] } ?? [])
             store.selectAllReady(ticked)
             return store
         }

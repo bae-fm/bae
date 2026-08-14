@@ -425,6 +425,21 @@ fn tab_counts_equal_the_rows_in_each_tab() {
     );
     assert_eq!(candidate_rows(&queue).len(), 7);
     assert_eq!(invalid_candidates(&queue).len(), 1);
+    assert_eq!(
+        candidate_rows(&queue)
+            .into_iter()
+            .map(|row| (row.folder_name.as_str(), row.skip_action))
+            .collect::<Vec<_>>(),
+        vec![
+            ("added", None),
+            ("skipped", Some(TriageSkipAction::Unskip)),
+            ("importing", None),
+            ("needs-you", Some(TriageSkipAction::Skip)),
+            ("ready-one", Some(TriageSkipAction::Skip)),
+            ("ready-two", Some(TriageSkipAction::Skip)),
+            ("unanswered", Some(TriageSkipAction::Skip)),
+        ]
+    );
     // Only the Ready rows take a checkbox.
     assert_eq!(
         candidate_rows(&queue)

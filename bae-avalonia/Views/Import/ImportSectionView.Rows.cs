@@ -623,14 +623,19 @@ internal sealed partial class ImportSectionView
     private ContextMenu? BuildRowContextMenu(BridgeTriageRow row)
     {
         var items = new List<Control>();
-        // Skipping is a decision about a candidate nobody has committed to
-        // yet: an import already running or already finished is past the point
-        // where setting it aside means anything.
-        if (row.Placement is not (BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done))
+        if (row.SkipAction is { } skipAction)
         {
-            var skipped = row.Placement is BridgeTriagePlacement.Skipped;
-            var toggle = new MenuItem { Header = Loc.Chrome(skipped ? "import.candidate.unskip" : "import.candidate.skip") };
-            toggle.Click += (_, _) => _import.SetCandidateSkipped(row.CandidateKey, !skipped);
+            var shouldSkip = skipAction is BridgeTriageSkipAction.Skip;
+            var toggle = new MenuItem
+            {
+                Header = Loc.Chrome(
+                    shouldSkip
+                        ? "import.candidate.skip"
+                        : "import.candidate.unskip"),
+            };
+            toggle.Click += (_, _) => _import.SetCandidateSkipped(
+                row.CandidateKey,
+                shouldSkip);
             items.Add(toggle);
             items.Add(new Separator());
         }

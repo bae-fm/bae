@@ -19,7 +19,7 @@ struct ImportCandidateListContent: View {
     /// come from the store.
     let importStore: ImportStore
     @Binding
-    var selectedKey: String?
+    var selectedKeys: Set<String>
     let onAddFolder: () -> Void
     /// Stop watching `path`. Reached from the watched-folders menu; release
     /// groups inside each root are rendered by the queue sections below.
@@ -135,7 +135,7 @@ struct ImportCandidateListContent: View {
                             .map { key in
                                 {
                                     uiStore.setImportCandidateTab(.pending)
-                                    selectedKey = key
+                                    selectedKeys = [key]
                                 }
                             }
                     )
@@ -374,7 +374,7 @@ extension ImportCandidateListContent {
 
     private var pendingList: some View {
         VStack(spacing: 0) {
-            List(selection: $selectedKey) {
+            List(selection: $selectedKeys) {
                 ForEach(sections(.pending)) { section in
                     releaseSection(section)
                 }
@@ -396,7 +396,7 @@ extension ImportCandidateListContent {
     // MARK: - Done
 
     private var doneList: some View {
-        List(selection: $selectedKey) {
+        List(selection: $selectedKeys) {
             ForEach(sections(.done)) { section in
                 releaseSection(section)
             }
@@ -413,7 +413,7 @@ extension ImportCandidateListContent {
     /// their key is a no-op upstream (they aren't a real candidate), so they
     /// carry no `.tag()`.
     private var skippedList: some View {
-        List(selection: $selectedKey) {
+        List(selection: $selectedKeys) {
             ForEach(sections(.skipped)) { section in
                 releaseSection(section)
             }
@@ -490,7 +490,7 @@ extension ImportCandidateListContent {
                             uiStore.toggleReadySelection(row.candidateKey)
                         }
                     ) : nil,
-                onSelect: { selectedKey = row.candidateKey },
+                onSelect: { selectedKeys = [row.candidateKey] },
                 onSkip: { onSkip(row.candidateKey, $0) },
                 onReleaseDecision: onReleaseDecision
             )
@@ -542,12 +542,12 @@ extension ImportCandidateListContent {
         let store = PreviewData.importTabStore()
         return ImportCandidateListContent(
             importStore: store,
-            selectedKey: .constant(
-                store.selectableReadyRows(
-                    filterText: ""
+            selectedKeys: .constant(
+                Set(
+                    store.selectableReadyRows(filterText: "")
+                        .prefix(1)
+                        .map(\.candidateKey)
                 )
-                .first?
-                .candidateKey
             ),
             onAddFolder: {},
             onRemoveFolder: { _ in },
@@ -578,7 +578,7 @@ extension ImportCandidateListContent {
         )
         return ImportCandidateListContent(
             importStore: store,
-            selectedKey: .constant(nil),
+            selectedKeys: .constant([]),
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },
@@ -606,7 +606,7 @@ extension ImportCandidateListContent {
     #Preview("Release Boundaries — Mixed Trees") {
         ImportCandidateListContent(
             importStore: PreviewData.releaseBoundaryPreviewImportStore,
-            selectedKey: .constant(nil),
+            selectedKeys: .constant([]),
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },

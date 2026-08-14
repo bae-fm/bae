@@ -25,11 +25,13 @@ struct ImportSearchFlowPickedResumeTests {
     private func pickedRow(
         for candidate: Candidate,
         placement: BridgeTriagePlacement,
+        skipAction: BridgeTriageSkipAction?,
         picked: BridgeIdentityPick?
     ) -> BridgeTriageRow {
         PreviewData.triageRow(
             for: candidate,
             placement: placement,
+            skipAction: skipAction,
             matched: PreviewData.triageMatch(
                 releaseId: "rel-picked",
                 title: "Album Title"
@@ -46,6 +48,7 @@ struct ImportSearchFlowPickedResumeTests {
         let row = pickedRow(
             for: candidate,
             placement: .ready,
+            skipAction: .skip,
             picked: releasePick
         )
         #expect(
@@ -64,6 +67,7 @@ struct ImportSearchFlowPickedResumeTests {
                     disagreement: .severalMatches(count: 4)
                 )
             ),
+            skipAction: .skip,
             picked: releasePick
         )
         #expect(
@@ -80,6 +84,7 @@ struct ImportSearchFlowPickedResumeTests {
                 group: .noMatch,
                 reason: .disagreement(disagreement: .noMatch)
             ),
+            skipAction: .skip,
             picked: .unknown
         )
         #expect(
@@ -98,6 +103,7 @@ struct ImportSearchFlowPickedResumeTests {
                     disagreement: .severalMatches(count: 4)
                 )
             ),
+            skipAction: .skip,
             picked: nil
         )
         #expect(
@@ -112,10 +118,15 @@ struct ImportSearchFlowPickedResumeTests {
         // at launch starts back with nothing settled — placement is the only
         // thing standing between an imported row and a re-opened commit-able
         // pane.
-        for placement: BridgeTriagePlacement in [.done, .skipped] {
+        let terminalRows: [(BridgeTriagePlacement, BridgeTriageSkipAction?)] = [
+            (.done, nil),
+            (.skipped, .unskip),
+        ]
+        for (placement, skipAction) in terminalRows {
             let row = pickedRow(
                 for: candidate,
                 placement: placement,
+                skipAction: skipAction,
                 picked: releasePick
             )
             #expect(
@@ -136,6 +147,7 @@ struct ImportSearchFlowPickedResumeTests {
         let row = pickedRow(
             for: picked,
             placement: .ready,
+            skipAction: .skip,
             picked: releasePick
         )
         #expect(
@@ -158,6 +170,7 @@ struct ImportSearchFlowPickedResumeTests {
             let row = pickedRow(
                 for: advanced,
                 placement: .ready,
+                skipAction: .skip,
                 picked: releasePick
             )
             #expect(
@@ -177,6 +190,7 @@ struct ImportSearchFlowPickedResumeTests {
         let row = pickedRow(
             for: failed,
             placement: .ready,
+            skipAction: .skip,
             picked: releasePick
         )
         #expect(

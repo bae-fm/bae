@@ -46,6 +46,23 @@ impl TriagePlacement {
             Self::Skipped => TriageTab::Skipped,
         }
     }
+
+    pub fn skip_action(&self) -> Option<TriageSkipAction> {
+        match self {
+            Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
+            Self::Skipped => Some(TriageSkipAction::Unskip),
+            Self::Importing | Self::Done => None,
+        }
+    }
+}
+
+/// The absolute skip-state command available for a row, or absent after an
+/// import has started. Carrying the command keeps every surface from deriving
+/// lifecycle rules from placement independently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriageSkipAction {
+    Skip,
+    Unskip,
 }
 
 /// The Needs-you groups, in the order the sidebar stacks them. Declaration
@@ -366,6 +383,7 @@ pub struct TriageRow {
     pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: TriagePlacement,
+    pub skip_action: Option<TriageSkipAction>,
     /// The release the row leads with. `None` and the folder name is the title.
     pub matched: Option<MatchedRelease>,
     /// Whether this row takes a bulk-import checkbox — exactly the Ready rows,

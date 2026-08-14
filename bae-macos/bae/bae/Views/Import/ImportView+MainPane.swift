@@ -10,7 +10,7 @@ extension ImportView {
     var candidateList: some View {
         ImportCandidateListContent(
             importStore: importStore,
-            selectedKey: candidateSelectionBinding,
+            selectedKeys: candidateSelectionBinding,
             onAddFolder: { pickFolderAndAdd() },
             onRemoveFolder: { path in removeWatchedFolder(path) },
             onRefreshFolder: { folder in refreshWatchedFolder(folder) },
@@ -61,7 +61,7 @@ extension ImportView {
                 setClaimLevel(level, for: candidate)
             },
         )
-        .animation(nil, value: uiStore.selectedFolderCandidate)
+        .animation(nil, value: uiStore.selectedFolderCandidates)
         // Keyed on the folder's files, not on the candidate: what a sheet may
         // be bound to changes when the folder's audio does, and the identify
         // phase's table changes with it for the same reason. Neither changes

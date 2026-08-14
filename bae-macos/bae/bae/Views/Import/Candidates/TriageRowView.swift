@@ -84,8 +84,13 @@ struct TriageRowView: View {
         .opacity(isPending ? 0.6 : 1)
         .contentShape(Rectangle())
         .contextMenu {
-            if canSkip {
-                Button(skipped ? "Unskip" : "Skip") { onSkip(!skipped) }
+            if let skipAction = row.skipAction {
+                switch skipAction {
+                case .skip:
+                    Button("Skip") { onSkip(true) }
+                case .unskip:
+                    Button("Unskip") { onSkip(false) }
+                }
                 Divider()
             }
             Button("Reveal in Finder") {
@@ -119,20 +124,6 @@ struct TriageRowView: View {
                     }
                 }
             }
-        }
-    }
-
-    private var skipped: Bool {
-        row.placement == .skipped
-    }
-
-    /// Skipping is a decision about a candidate nobody has committed to yet:
-    /// an import already running or already finished is past the point where
-    /// setting it aside means anything.
-    private var canSkip: Bool {
-        switch row.placement {
-        case .importing, .done: false
-        case .ready, .needsYou, .skipped: true
         }
     }
 

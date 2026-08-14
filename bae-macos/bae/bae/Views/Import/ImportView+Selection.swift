@@ -4,26 +4,24 @@ import SwiftUI
 // MARK: - Candidate selection
 
 extension ImportView {
-    var candidateSelectionBinding: Binding<String?> {
+    var candidateSelectionBinding: Binding<Set<String>> {
         Binding(
-            get: { uiStore.selectedFolderCandidate },
-            set: { key in
-                guard let key,
+            get: { uiStore.selectedFolderCandidates },
+            set: { keys in
+                uiStore.setFolderCandidateSelection(keys)
+                guard keys.count == 1,
+                    let key = keys.first,
                     let candidate = importStore.folderCandidates[key]
-                else {
-                    return
-                }
-                selectCandidate(candidate)
+                else { return }
+                identifyCandidateOnFirstSelection(candidate)
             },
         )
     }
 
-    private func selectCandidate(_ candidate: Candidate) {
+    private func identifyCandidateOnFirstSelection(_ candidate: Candidate) {
         guard case .folder = candidate.source else {
             return
         }
-
-        uiStore.selectFolderCandidate(candidate.key)
 
         // Identify gate: only kick off on the first selection. Subsequent
         // re-selects (including back-to-identify from Confirming) keep the
@@ -50,7 +48,9 @@ extension ImportView {
     /// Apply the row's decided identity — the query half of the flow, seeding
     /// the pane from the stored decision without re-persisting it.
     func applyPickedResume(_ picked: BridgeIdentityPick) {
-        guard let key = uiStore.selectedFolderCandidate else {
+        guard uiStore.selectedFolderCandidates.count == 1,
+            let key = uiStore.selectedFolderCandidates.first
+        else {
             return
         }
         ImportSearchFlow.refreshDecidedIdentity(

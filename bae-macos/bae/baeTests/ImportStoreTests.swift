@@ -165,6 +165,7 @@ private func readyRow(
         combineAncestorKey: nil,
         actionable: true,
         placement: .ready,
+        skipAction: .skip,
         matched: matchedRelease(
             releaseId: "rel-\(key)",
             title: title,
@@ -193,6 +194,7 @@ private func needsYouRow(
         combineAncestorKey: nil,
         actionable: true,
         placement: .needsYou(group: group, reason: reason),
+        skipAction: .skip,
         matched: nil,
         selectable: false,
         importStatus: nil,
@@ -211,6 +213,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .done,
+        skipAction: nil,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
@@ -229,6 +232,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .skipped,
+        skipAction: .unskip,
         matched: nil,
         selectable: false,
         importStatus: nil,
@@ -742,6 +746,30 @@ struct ImportStoreTriageRenderingTests {
                 .folderName == "Second"
         )
         #expect(seededStore().triageRow(forKey: "/w/missing") == nil)
+    }
+
+    @MainActor
+    @Test("bulk skip keeps queue order and excludes ineligible or stale picks")
+    func skippableSelectionUsesLiveQueueRows() {
+        let keys = seededStore().skippableCandidateKeys(
+            in: [
+                "/w/ready-a",
+                "/w/ready-b",
+                "/w/collection/second",
+                "/w/done",
+                "/w/skipped",
+                "/w/missing",
+            ]
+        )
+
+        #expect(
+            keys
+                == [
+                    "/w/ready-b",
+                    "/w/ready-a",
+                    "/w/collection/second",
+                ]
+        )
     }
 
     @Test("section identity keeps path components distinct")

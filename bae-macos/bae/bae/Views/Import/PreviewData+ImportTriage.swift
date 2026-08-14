@@ -41,6 +41,7 @@
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
+            skipAction: BridgeTriageSkipAction?,
             matched: BridgeMatchedRelease?,
             selectable: Bool,
             importStatus: BridgeCandidateImportStatus? = nil,
@@ -56,6 +57,7 @@
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: placement,
+                skipAction: skipAction,
                 matched: matched,
                 selectable: selectable,
                 importStatus: importStatus,
@@ -195,6 +197,7 @@
         static let triageRowReady = triageRow(
             for: importTabCandidate,
             placement: .ready,
+            skipAction: .skip,
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: releaseDetailBridge.title,
@@ -220,6 +223,7 @@
                     disagreement: .severalMatches(count: 2)
                 )
             ),
+            skipAction: .skip,
             // Several matches — the pressing is exactly what's unsettled, so
             // there is no `pressing` to show yet, only the lead's title and
             // artist.
@@ -244,6 +248,7 @@
                 group: .signalsDisagree,
                 reason: .disagreement(disagreement: .signalsConflict)
             ),
+            skipAction: .skip,
             matched: nil,
             selectable: false
         )
@@ -256,6 +261,7 @@
                     disagreement: .trackCountDisagrees(local: 1, source: 10)
                 )
             ),
+            skipAction: .skip,
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
                 title: "Album Title Seven",
@@ -271,6 +277,7 @@
                 group: .alreadyInLibrary,
                 reason: .disagreement(disagreement: .alreadyInLibrary)
             ),
+            skipAction: .skip,
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -287,6 +294,7 @@
                 group: .noMatch,
                 reason: .disagreement(disagreement: .noMatch)
             ),
+            skipAction: .skip,
             matched: nil,
             selectable: false
         )
@@ -297,6 +305,7 @@
                 group: .stillIdentifying,
                 reason: .stillIdentifying(phase: .running)
             ),
+            skipAction: .skip,
             matched: nil,
             selectable: false
         )
@@ -339,6 +348,7 @@
         static let triageRowImporting = triageRow(
             for: importTabImportingCandidate,
             placement: .importing,
+            skipAction: nil,
             matched: triageMatch(
                 releaseId: "rel-importing",
                 title: importTabImportingCandidate.displayName,
@@ -351,6 +361,7 @@
         static let triageRowSkipped = triageRow(
             for: folderCandidates[1],
             placement: .skipped,
+            skipAction: .unskip,
             matched: nil,
             selectable: false
         )
@@ -358,6 +369,7 @@
         static let triageRowDoneImported = triageRow(
             for: importTabDoneCandidate,
             placement: .done,
+            skipAction: nil,
             matched: triageMatch(
                 releaseId: "preview-release",
                 title: importTabDoneCandidate.displayName,
@@ -370,6 +382,7 @@
         static let triageRowDoneFailed = triageRow(
             for: importTabFailedCandidate,
             placement: .done,
+            skipAction: nil,
             matched: triageMatch(
                 releaseId: "rel-failed",
                 title: importTabFailedCandidate.displayName,
@@ -388,6 +401,7 @@
                     group: .noMatch,
                     reason: .disagreement(disagreement: .noMatch)
                 ),
+                skipAction: .skip,
                 matched: nil,
                 selectable: false
             )

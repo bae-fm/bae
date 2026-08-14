@@ -581,6 +581,7 @@
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: .ready,
+                skipAction: .skip,
                 matched: nil,
                 selectable: true,
                 importStatus: nil,

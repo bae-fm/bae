@@ -4,26 +4,56 @@ import Testing
 
 @Suite("UiStore import candidate selection")
 struct UiStoreImportCandidateSelectionTests {
-    @Test("a folder decision preserves a candidate retained by its snapshot")
-    func retainedCandidatePreservesSelection() {
+    @Test("a snapshot retains every selected candidate it still contains")
+    func retainedCandidatesPreserveSelection() {
         let store = UiStore()
-        store.selectFolderCandidate("/music/group/release")
+        store.setFolderCandidateSelection([
+            "/music/group/release-1",
+            "/music/group/release-2",
+        ])
 
         store.retainFolderCandidateSelection(
-            in: ["/music/group/release", "/music/other"]
+            in: [
+                "/music/group/release-1",
+                "/music/group/release-2",
+                "/music/other",
+            ]
         )
 
-        #expect(store.selectedFolderCandidate == "/music/group/release")
+        #expect(
+            store.selectedFolderCandidates
+                == [
+                    "/music/group/release-1",
+                    "/music/group/release-2",
+                ]
+        )
     }
 
-    @Test("a folder decision clears a candidate replaced by its snapshot")
-    func replacedCandidateClearsSelection() {
+    @Test("a snapshot removes only selected candidates it replaced")
+    func replacedCandidatesAreRemovedFromSelection() {
         let store = UiStore()
-        store.selectFolderCandidate("/music/group/disc-1")
+        store.setFolderCandidateSelection([
+            "/music/group/disc-1",
+            "/music/group/disc-2",
+        ])
 
-        store.retainFolderCandidateSelection(in: ["/music/group"])
+        store.retainFolderCandidateSelection(
+            in: ["/music/group/disc-2", "/music/group"]
+        )
 
-        #expect(store.selectedFolderCandidate == nil)
+        #expect(store.selectedFolderCandidates == ["/music/group/disc-2"])
+    }
+
+    @Test("finishing an action removes its targets but preserves a newer pick")
+    func completedTargetsDoNotClearNewSelection() {
+        let store = UiStore()
+        store.setFolderCandidateSelection(["first", "second"])
+        let actionTargets = store.selectedFolderCandidates
+        store.setFolderCandidateSelection(["first", "second", "new"])
+
+        store.removeFolderCandidateSelection(actionTargets)
+
+        #expect(store.selectedFolderCandidates == ["new"])
     }
 }
 

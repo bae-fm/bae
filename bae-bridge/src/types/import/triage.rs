@@ -224,6 +224,13 @@ pub enum BridgeTriagePlacement {
     Skipped,
 }
 
+/// The absolute skip-state command available for a sidebar row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTriageSkipAction {
+    Skip,
+    Unskip,
+}
+
 /// The Needs-you group headers. Each UI localizes the variant from its own
 /// catalog; the stacking order comes from
 /// [`bridge_needs_you_groups_in_order`].
@@ -521,6 +528,7 @@ pub struct BridgeTriageRow {
     pub combine_ancestor_key: Option<BridgeFolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
+    pub skip_action: Option<BridgeTriageSkipAction>,
     pub matched: Option<BridgeMatchedRelease>,
     /// Whether this row takes a bulk-import checkbox.
     pub selectable: bool,

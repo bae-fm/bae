@@ -326,6 +326,22 @@ extension ImportStore {
             .first { $0.candidateKey == key }
     }
 
+    /// Selected rows that currently accept the absolute Skip command, in the
+    /// queue's authoritative order. Looking at the live projection here makes
+    /// stale selections and rows whose import has started ineligible without
+    /// teaching either action surface lifecycle rules.
+    func skippableCandidateKeys(in selectedKeys: Set<String>) -> [String] {
+        triageQueue.sections
+            .flatMap(\.entries)
+            .compactMap { entry in
+                guard case .candidate(_, let row) = entry,
+                    selectedKeys.contains(row.candidateKey),
+                    row.skipAction == .skip
+                else { return nil }
+                return row.candidateKey
+            }
+    }
+
     /// The candidate's selected/default cover, or the queue's match thumbnail
     /// before identification has supplied one.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {

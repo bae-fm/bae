@@ -63,7 +63,10 @@ public sealed class ImportSectionViewTests
     {
         var resumed = new List<string>();
         var view = BuildView(
-            MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Pending),
+            MatchedQueue(
+                new BridgeTriagePlacement.Ready(),
+                BridgeTriageSkipAction.Skip,
+                BridgeTriageTab.Pending),
             BridgeTriageTab.Pending,
             resumed);
 
@@ -79,7 +82,10 @@ public sealed class ImportSectionViewTests
     {
         var resumed = new List<string>();
         var view = BuildView(
-            MatchedQueue(new BridgeTriagePlacement.Done(), BridgeTriageTab.Done),
+            MatchedQueue(
+                new BridgeTriagePlacement.Done(),
+                null,
+                BridgeTriageTab.Done),
             BridgeTriageTab.Done,
             resumed);
 
@@ -100,6 +106,7 @@ public sealed class ImportSectionViewTests
                 new BridgeTriagePlacement.NeedsYou(
                     BridgeNeedsYouGroup.StillIdentifying,
                     new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running)),
+                BridgeTriageSkipAction.Skip,
                 BridgeTriageTab.Pending),
             BridgeTriageTab.Pending,
             resumed);
@@ -107,7 +114,10 @@ public sealed class ImportSectionViewTests
         Assert.Empty(resumed);
 
         app.ImportStore.SeedPreview(
-            MatchedQueue(new BridgeTriagePlacement.Ready(), BridgeTriageTab.Pending),
+            MatchedQueue(
+                new BridgeTriagePlacement.Ready(),
+                BridgeTriageSkipAction.Skip,
+                BridgeTriageTab.Pending),
             PreviewData.ImportWatchedFolders,
             BridgeTriageTab.Pending);
 
@@ -206,6 +216,7 @@ public sealed class ImportSectionViewTests
     // is asking about — the shape only the placement distinguishes.
     private static BridgeTriageQueue MatchedQueue(
         BridgeTriagePlacement placement,
+        BridgeTriageSkipAction? skipAction,
         BridgeTriageTab tab) => new(
         Sections: new[]
         {
@@ -226,6 +237,7 @@ public sealed class ImportSectionViewTests
                             CombineAncestorKey: null,
                             Actionable: true,
                             Placement: placement,
+                            SkipAction: skipAction,
                             Matched: new BridgeMatchedRelease(
                                 ReleaseId: "rel-matched",
                                 Title: "Album Title",

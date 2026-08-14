@@ -61,7 +61,9 @@ struct ImportReleaseBoundaryViewTests {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         uiStore.setImportCandidateFilterText("Box")
-        uiStore.selectFolderCandidate("candidate:selected-before-decision")
+        uiStore.setFolderCandidateSelection([
+            "candidate:selected-before-decision"
+        ])
         let importer = Importer(
             setFolderReleaseDecision: { _, _ in
                 try await Task.sleep(for: .seconds(30))
@@ -100,7 +102,7 @@ struct ImportReleaseBoundaryViewTests {
             )
             window.sendEvent(event)
         }
-        #expect(uiStore.selectedFolderCandidate == nil)
+        #expect(uiStore.selectedFolderCandidates.isEmpty)
     }
 
     @Test("scan status is translated in every shipping locale")

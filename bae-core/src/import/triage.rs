@@ -134,6 +134,11 @@ fn row(
         &known,
     );
     let picked = picked.filter(|_| snapshot.actionable);
+    let skip_action = if snapshot.actionable {
+        placement.skip_action()
+    } else {
+        None
+    };
     TriageRow {
         candidate_key: path.to_string_lossy().into_owned(),
         folder_name: name.clone(),
@@ -142,6 +147,7 @@ fn row(
         resolved_boundaries: resolved_boundaries.clone(),
         combine_ancestor_key: combine_ancestor_key.clone(),
         actionable: snapshot.actionable,
+        skip_action,
         selectable: snapshot.actionable && matches!(placement, TriagePlacement::Ready),
         // The identity the candidate is settled on, which is the user's pick
         // wherever they made one and identification's own answer otherwise.

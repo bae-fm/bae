@@ -113,14 +113,13 @@ class UiStore: @unchecked Sendable {
 
     // ── Import candidate selection ──────────────────────────────────────
 
-    /// The selected row in the import candidate list, or `nil` before any
-    /// selection. UI-originated session state — which folder the user is
-    /// looking at, not anything core produces — so it survives an import-tab
-    /// remount instead of resetting to "Select a folder".
-    var selectedFolderCandidate: String?
+    /// The selected rows in the import candidate list. UI-originated session
+    /// state — which folders the user is acting on, not anything core produces
+    /// — so it survives an import-tab remount.
+    private(set) var selectedFolderCandidates: Set<String> = []
 
     /// The candidate list sidebar's active tab and filter text. UI-originated
-    /// session state, alongside `selectedFolderCandidate` — surviving a
+    /// session state, alongside `selectedFolderCandidates` — surviving a
     /// remount so the sidebar doesn't reset to its defaults on every
     /// import-tab switch.
     var importCandidateTab: BridgeTriageTab = .pending
@@ -274,17 +273,16 @@ class UiStore: @unchecked Sendable {
 
     // MARK: - Import candidate selection methods
 
-    func selectFolderCandidate(_ key: String?) {
-        selectedFolderCandidate = key
+    func setFolderCandidateSelection(_ keys: Set<String>) {
+        selectedFolderCandidates = keys
     }
 
     func retainFolderCandidateSelection(in candidateKeys: Set<String>) {
-        guard let selectedFolderCandidate,
-            !candidateKeys.contains(selectedFolderCandidate)
-        else {
-            return
-        }
-        self.selectedFolderCandidate = nil
+        selectedFolderCandidates.formIntersection(candidateKeys)
+    }
+
+    func removeFolderCandidateSelection(_ keys: Set<String>) {
+        selectedFolderCandidates.subtract(keys)
     }
 
     func setImportCandidateTab(_ tab: BridgeTriageTab) {

@@ -129,7 +129,7 @@ pub use track_slots::{
 pub use triage::{
     Answered, CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease,
     MatchedSignal, NeedsYouGroup, NeedsYouReason, TriageEntry, TriageGroup, TriagePlacement,
-    TriageQueue, TriageRow, TriageSection, TriageTab, TriageTabCounts,
+    TriageQueue, TriageRow, TriageSection, TriageSkipAction, TriageTab, TriageTabCounts,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::DecidedIdentity;

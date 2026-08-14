@@ -118,7 +118,7 @@
             }
             return ImportCandidateListContent(
                 importStore: store,
-                selectedKey: .constant(nil),
+                selectedKeys: .constant([]),
                 onAddFolder: {},
                 onRemoveFolder: { _ in },
                 onRefreshFolder: { _ in },

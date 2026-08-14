@@ -334,6 +334,7 @@ impl crate::types::BridgeTriageRow {
             combine_ancestor_key,
             actionable,
             placement,
+            skip_action,
             matched,
             selectable,
             import_status,
@@ -353,6 +354,7 @@ impl crate::types::BridgeTriageRow {
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
+            skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
@@ -414,6 +416,16 @@ impl crate::types::BridgeTriageTab {
             bae_core::import::TriageTab::Pending => Self::Pending,
             bae_core::import::TriageTab::Done => Self::Done,
             bae_core::import::TriageTab::Skipped => Self::Skipped,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriageSkipAction {
+    pub(crate) fn from_core(action: bae_core::import::TriageSkipAction) -> Self {
+        match action {
+            bae_core::import::TriageSkipAction::Skip => Self::Skip,
+            bae_core::import::TriageSkipAction::Unskip => Self::Unskip,
         }
     }
 }

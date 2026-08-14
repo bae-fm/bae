@@ -12,7 +12,22 @@ extension ImportView {
                 // badges need on one line in English; wider locales get the
                 // labels' scale-down allowance on top.
                 .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
-            if let candidate = selectedCandidate {
+            if uiStore.selectedFolderCandidates.count > 1 {
+                ImportCandidateBulkSelectionPane(
+                    selectedCount: uiStore.selectedFolderCandidates.count,
+                    skipAction: ImportCandidateSkipAction(
+                        importer: importer,
+                        importStore: importStore,
+                        uiStore: uiStore
+                    )
+                )
+                .frame(
+                    minWidth: 620,
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
+            }
+            else if let candidate = selectedCandidate {
                 mainPane(for: candidate)
                     // The floor is the identity card's and the commit bar's.
                     // The mapping table keeps its own — it is laid out at
