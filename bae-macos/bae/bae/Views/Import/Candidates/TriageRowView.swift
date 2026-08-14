@@ -16,6 +16,7 @@ struct TriageRowView: View {
     static let coverPointSize: CGFloat = 44
 
     let row: BridgeTriageRow
+    let coverContent: ImageContent?
     /// Non-nil exactly when `row.selectable` — the checkbox's checked state
     /// and toggle. Passed in rather than read off `row` again so the list
     /// content is the one place selection state (`UiStore`) meets the row.
@@ -36,6 +37,7 @@ struct TriageRowView: View {
 
     init(
         row: BridgeTriageRow,
+        coverContent: ImageContent?,
         selection: (isSelected: Bool, toggle: () -> Void)?,
         onSelect: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
@@ -46,6 +48,7 @@ struct TriageRowView: View {
             ) -> Void = { _, _ in }
     ) {
         self.row = row
+        self.coverContent = coverContent
         self.selection = selection
         self.onSelect = onSelect
         self.onSkip = onSkip
@@ -177,7 +180,7 @@ struct TriageRowView: View {
 
     private var cover: some View {
         ImageView(
-            content: row.matched?.coverThumbnailUrl.map { .remote(url: $0) },
+            content: coverContent,
             pointSize: Self.coverPointSize
         )
         .frame(width: Self.coverPointSize, height: Self.coverPointSize)
@@ -541,51 +544,76 @@ extension BridgeMatchedSignal {
     // MARK: - Previews
 
     #Preview("Triage rows") {
+        let importStore = ImportStore()
         VStack(alignment: .leading, spacing: 0) {
             TriageRowView(
                 row: PreviewData.triageRowReady,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowReady
+                ),
                 selection: (isSelected: true, toggle: {}),
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowPickAPressing,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowPickAPressing
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowSignalsConflict,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowSignalsConflict
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowAlreadyInLibrary,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowAlreadyInLibrary
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowNoMatch,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowNoMatch
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowStillIdentifying,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowStillIdentifying
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowDoneImported
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
                 row: PreviewData.triageRowDoneFailed,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowDoneFailed
+                ),
                 selection: nil,
                 onSelect: {},
                 onSkip: { _ in }

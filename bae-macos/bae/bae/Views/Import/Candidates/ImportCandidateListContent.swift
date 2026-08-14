@@ -167,11 +167,9 @@ struct ImportCandidateListContent: View {
         // Importable rows are covers this app has already downloaded once.
         // Decoding them as the queue lands keeps Pending's first frame from
         // being a grid of spinners.
-        .task(id: importStore.readyCoverThumbnailUrls) {
+        .task(id: importStore.readyCoverContents) {
             await imageStore.warm(
-                importStore.readyCoverThumbnailUrls.map {
-                    .remote(url: $0)
-                },
+                importStore.readyCoverContents,
                 pointSize: TriageRowView.coverPointSize,
                 displayScale: displayScale
             )
@@ -489,6 +487,7 @@ extension ImportCandidateListContent {
         case .candidate(_, let row):
             TriageRowView(
                 row: row,
+                coverContent: importStore.sidebarCover(for: row),
                 selection: row.selectable
                     ? (
                         isSelected: uiStore.selectedReadyCandidates

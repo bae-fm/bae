@@ -358,6 +358,13 @@ extension ImportStore {
             .first { $0.candidateKey == key }
     }
 
+    /// The candidate's selected/default cover, or the queue's match thumbnail
+    /// before identification has supplied one.
+    func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
+        candidate(forKey: row.candidateKey)?.coverFace?.thumbnailContent
+            ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
+    }
+
     /// The first row the identify count is still waiting on — a candidate with
     /// no verdict yet, whichever phase it is in. `nil` when the count has
     /// nothing left to wait on.
@@ -388,7 +395,7 @@ extension ImportStore {
     /// no reason to open on a grid of spinners. Read unfiltered and
     /// unsorted: what the tab is about to draw does not depend on what the
     /// filter box currently says.
-    var readyCoverThumbnailUrls: [String] {
+    var readyCoverContents: [ImageContent] {
         triageQueue.sections
             .filter { $0.tab == .pending }
             .flatMap(\.entries)
@@ -397,7 +404,7 @@ extension ImportStore {
                     case .candidate(_, let row) = entry,
                     row.selectable
                 else { return nil }
-                return row.matched?.coverThumbnailUrl
+                return sidebarCover(for: row)
             }
     }
 

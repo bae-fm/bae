@@ -33,9 +33,7 @@ extension ImportView {
             previewingPath: importStore.previewState.active?.path,
             libraryStatus: libraryStatus(for: candidate),
             hasCoverOptions: hasCoverOptions(candidate),
-            coverContent: candidate.coverFace.map {
-                ImageContent(bridge: $0.thumbnailSource)
-            },
+            coverContent: candidate.coverFace?.thumbnailContent,
             editor: editorBinding(for: candidate),
             storageManaged: $storageManaged,
             storagePinned: $storagePinned,
