@@ -111,6 +111,25 @@ private func invalidEntry(
     )
 }
 
+private func boundaryEntry(
+    key: String,
+    displayPath: String
+) -> BridgeTriageEntry {
+    .boundary(
+        stableKey: "boundary:\(key)",
+        boundary: BridgeFolderReleaseBoundary(
+            key: BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: "/w",
+                relativeFolderPath: key
+            ),
+            name: key,
+            displayPath: displayPath,
+            sharedFileCount: 0,
+            treeRows: []
+        )
+    )
+}
+
 // MARK: - Triage row builders
 
 private func matchedRelease(
@@ -486,14 +505,70 @@ struct ImportStoreTriageRenderingTests {
     }
 
     @MainActor
-    @Test("sections preserve grouping while sorting entries")
+    @Test("filtering preserves core order when matched titles change")
+    func filteringPreservesCoreOrderAcrossSnapshots() {
+        let store = ImportStore()
+        let firstEntries: [BridgeTriageEntry] = [
+            candidateEntry(readyRow("/w/01", title: "Zulu Common")),
+            boundaryEntry(key: "02 Common", displayPath: "02 Common"),
+            candidateEntry(readyRow("/w/03", title: "Alpha Common")),
+        ]
+        store.triageQueue = BridgeTriageQueue(
+            sections: [
+                BridgeTriageSection(
+                    tab: .pending,
+                    watchedFolderPath: "/w",
+                    group: nil,
+                    entries: firstEntries
+                )
+            ],
+            counts: BridgeTriageTabCounts(pending: 3, done: 0, skipped: 0),
+            folderScanStatuses: []
+        )
+
+        #expect(
+            store.releaseSections(
+                tab: .pending,
+                filterText: "common"
+            ).flatMap(\.entries).map(\.id)
+                == firstEntries.map(ReleaseQueueEntry.init).map(\.id)
+        )
+
+        let secondEntries: [BridgeTriageEntry] = [
+            candidateEntry(readyRow("/w/01", title: "Alpha Common")),
+            boundaryEntry(key: "02 Common", displayPath: "02 Common"),
+            candidateEntry(readyRow("/w/03", title: "Zulu Common")),
+        ]
+        store.triageQueue = BridgeTriageQueue(
+            sections: [
+                BridgeTriageSection(
+                    tab: .pending,
+                    watchedFolderPath: "/w",
+                    group: nil,
+                    entries: secondEntries
+                )
+            ],
+            counts: BridgeTriageTabCounts(pending: 3, done: 0, skipped: 0),
+            folderScanStatuses: []
+        )
+
+        #expect(
+            store.releaseSections(
+                tab: .pending,
+                filterText: "common"
+            ).flatMap(\.entries).map(\.id)
+                == secondEntries.map(ReleaseQueueEntry.init).map(\.id)
+        )
+    }
+
+    @MainActor
+    @Test("sections preserve grouping and entry order")
     func sectionsPreserveGrouping() throws {
         let store = seededStore()
         let importable = try #require(
             store.releaseSections(
                 tab: .pending,
-                filterText: "",
-                sortOrder: .nameAZ
+                filterText: ""
             )
             .first { $0.group == nil }
         )
@@ -504,40 +579,26 @@ struct ImportStoreTriageRenderingTests {
                 else { return nil }
                 return row.folderName
             }
-                == ["Alpha", "Beta"]
+                == ["Beta", "Alpha"]
         )
         #expect(
             importable.entries.map(\.id)
                 == [
-                    "candidate:/w/ready-a",
                     "candidate:/w/ready-b",
+                    "candidate:/w/ready-a",
                 ]
         )
 
         let grouped = try #require(
             store.releaseSections(
                 tab: .pending,
-                filterText: "",
-                sortOrder: .nameAZ
+                filterText: ""
             )
             .first { $0.group != nil }
         )
         #expect(grouped.group?.name == "Collection")
         #expect(
             grouped.group?.key.relativeFolderPath == "collection"
-        )
-
-        let descending = try #require(
-            store.releaseSections(
-                tab: .pending,
-                filterText: "",
-                sortOrder: .nameZA
-            )
-            .first { $0.group == nil }
-        )
-        #expect(
-            descending.entries.map(\.id)
-                == importable.entries.reversed().map(\.id)
         )
     }
 
@@ -548,8 +609,7 @@ struct ImportStoreTriageRenderingTests {
             seededStore()
                 .releaseSections(
                     tab: .skipped,
-                    filterText: "bad",
-                    sortOrder: .nameAZ
+                    filterText: "bad"
                 )
                 .first
         )
@@ -598,8 +658,7 @@ struct ImportStoreTriageRenderingTests {
         #expect(
             store.releaseSections(
                 tab: .pending,
-                filterText: "",
-                sortOrder: .nameAZ
+                filterText: ""
             )
             .count == 1
         )
@@ -628,13 +687,12 @@ struct ImportStoreTriageRenderingTests {
         #expect(
             store.releaseSections(
                 tab: .pending,
-                filterText: "",
-                sortOrder: .nameAZ
+                filterText: ""
             )
             .count == 1
         )
         #expect(
-            store.selectableReadyRows(filterText: "", sortOrder: .nameAZ)
+            store.selectableReadyRows(filterText: "")
                 .map(\.candidateKey) == ["/w/subject"]
         )
     }
