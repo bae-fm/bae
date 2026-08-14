@@ -107,21 +107,22 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     let table = mapping_table(&scan(tmp.path()), None);
 
     assert!(table.reconciliation.is_none());
-    assert!(matches!(
-        becomes(&table.rows[0])[0],
-        MappingBecomes::AwaitingPick
-    ));
-    assert_eq!(file_row(&table.rows[0]).name, "01.flac");
+    assert!(matches!(table.rows[0], MappingRow::Images(_)));
     assert!(matches!(
         becomes(&table.rows[1])[0],
         MappingBecomes::AwaitingPick
     ));
-    assert_eq!(file_row(&table.rows[1]).name, "02.flac");
+    assert_eq!(file_row(&table.rows[1]).name, "01.flac");
+    assert!(matches!(
+        becomes(&table.rows[2])[0],
+        MappingBecomes::AwaitingPick
+    ));
+    assert_eq!(file_row(&table.rows[2]).name, "02.flac");
     assert!(matches!(becomes(&table.rows[3])[0], MappingBecomes::Kept));
     assert_eq!(file_row(&table.rows[3]).name, "rip.log");
     // A row nothing has opened has no probed length to show.
-    assert_eq!(file_row(&table.rows[0]).probed_duration_ms, None);
-    assert_eq!(file_row(&table.rows[0]).role, MappingRole::Audio);
+    assert_eq!(file_row(&table.rows[1]).probed_duration_ms, None);
+    assert_eq!(file_row(&table.rows[1]).role, MappingRole::Audio);
     assert_eq!(file_row(&table.rows[3]).role, MappingRole::Document);
 }
 
@@ -139,6 +140,11 @@ fn the_folder_s_images_are_one_gallery_row() {
     }
 
     let table = mapping_table(&scan(tmp.path()), None);
+
+    assert!(
+        matches!(table.rows.first(), Some(MappingRow::Images(_))),
+        "the image gallery leads the pane even when audio sorts before it on disk"
+    );
 
     let images: Vec<&MappingImage> = table
         .rows
