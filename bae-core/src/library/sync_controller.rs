@@ -90,6 +90,9 @@ impl SyncController {
     }
 
     pub(crate) fn cloud_home_key_state(&self) -> Result<coven::CloudHomeKeyState, LibraryError> {
+        if self.config_handle.config().cloud_home.provider.is_none() {
+            return Ok(coven::CloudHomeKeyState::NotRequired);
+        }
         Ok(self
             .database
             .cloud_home_key_state(self.config_handle.config().cloud_home.storage)?)

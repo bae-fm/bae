@@ -553,9 +553,23 @@ async fn a_failed_connect_commits_neither_provider_nor_master_key() {
 
     assert_eq!(manager.get_config().cloud_home.provider, None);
     assert_eq!(
-        manager.cloud_home_key_state().unwrap(),
+        manager
+            .database
+            .cloud_home_key_state(crate::config::HomeStorage::Opaque)
+            .unwrap(),
         coven::CloudHomeKeyState::Locked,
         "a generated master key is not retained after connection failure"
+    );
+}
+
+#[tokio::test]
+async fn a_local_library_without_a_cloud_provider_does_not_require_a_master_key() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    assert_eq!(manager.get_config().cloud_home.provider, None);
+    assert_eq!(
+        manager.cloud_home_key_state().unwrap(),
+        coven::CloudHomeKeyState::NotRequired,
     );
 }
 
