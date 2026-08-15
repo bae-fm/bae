@@ -1097,7 +1097,6 @@ dependencies = [
  "axum 0.7.9",
  "bae-core",
  "coven",
- "hex",
  "image",
  "lofty",
  "serde_json",

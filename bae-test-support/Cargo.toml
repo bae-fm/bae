@@ -25,7 +25,6 @@ bae-core = { path = "../bae-core", features = ["test-utils"] }
 # a test that wants bytes at one has to answer it.
 axum = "0.7"
 coven = { workspace = true, features = ["test-utils"] }
-hex = "0.4"
 # For synthesizing a folder-cover image in tests that need a release with art.
 image = { version = "0.25", default-features = false, features = ["png"] }
 lofty = "0.24"
