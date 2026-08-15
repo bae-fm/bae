@@ -209,14 +209,6 @@ async fn setup_forget_library_manager_at(
     library_dir: std::path::PathBuf,
     home: &std::path::Path,
 ) -> LibraryManager {
-    let db_path = home.join("manager.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
     let mut config = Config::with_defaults(
         library_id.to_string(),
         "test-device".to_string(),
@@ -224,9 +216,17 @@ async fn setup_forget_library_manager_at(
         "Test Library".to_string(),
     );
     config.cloud_home.provider = Some(crate::config::CloudProvider::CloudKit);
-    let cloud_home = config.cloud_home.clone();
-    let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
+    let database = Database::open(
+        StoreDir::new(home.to_path_buf()),
+        config.inner.clone(),
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::UuidProvider),
+        crate::sync::synced_tables(),
+        None,
+    )
+    .unwrap();
+    let config_handle = Arc::new(ConfigHandle::new(config));
     let manager = LibraryManager::new(
         database,
         config_handle,
@@ -237,10 +237,9 @@ async fn setup_forget_library_manager_at(
         crate::import::cover_art::RemoteImageCache::for_test(),
     );
     manager
-        .database
-        .setup_cloud_home_with_test_home(
-            cloud_home,
+        .connect_test_cloud_home(
             Arc::new(coven::InMemoryCloudHome::new()),
+            crate::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key([7u8; 32])),
         )
         .await
         .unwrap();

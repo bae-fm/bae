@@ -82,18 +82,6 @@ impl Database {
             .await
     }
 
-    #[cfg(test)]
-    pub(crate) async fn setup_cloud_home_with_test_home(
-        &self,
-        cloud_home: coven::CloudHomeConfig,
-        home: Arc<dyn coven::ExactCloudHome>,
-    ) -> Result<coven::ConnectedCloudHome, coven::CloudHomeSetupError> {
-        self.inner
-            .handle
-            .setup_cloud_home_with_test_home(cloud_home, home, None)
-            .await
-    }
-
     pub(crate) async fn setup_s3_cloud_home(
         &self,
         cloud_home: coven::CloudHomeConfig,
@@ -146,11 +134,11 @@ impl Database {
             .await
     }
 
-    pub(crate) async fn disconnect_cloud_home(&self) -> Result<(), coven::KeyError> {
+    pub(crate) async fn disconnect_cloud_home(&self) -> Result<(), coven::SyncError> {
         self.inner.handle.disconnect_cloud_home().await
     }
 
-    pub(crate) async fn forget_master_key(&self) -> Result<(), coven::KeyError> {
+    pub(crate) async fn forget_master_key(&self) -> Result<(), coven::SyncError> {
         self.inner.handle.forget_master_key().await
     }
 
