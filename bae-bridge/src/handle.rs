@@ -46,6 +46,7 @@ mod cloud_operations;
 mod collection_subscription;
 mod configuration;
 pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
+#[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]
 mod desktop;
 #[cfg(feature = "desktop")]
 mod desktop_services;
