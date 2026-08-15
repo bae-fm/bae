@@ -14,10 +14,24 @@
         private static let containerIdentifier = "iCloud.fm.bae.desktop"
         private static let zoneName = "bae-library"
 
-        private let container = CKContainer(
-            identifier: CloudKitService.containerIdentifier
-        )
+        private let containerLock = NSLock()
+        private var retainedContainer: CKContainer?
         private let recordType = "BaeFile"
+
+        private var container: CKContainer {
+            containerLock.lock()
+            defer { containerLock.unlock() }
+
+            if let retainedContainer {
+                return retainedContainer
+            }
+
+            let container = CKContainer(
+                identifier: CloudKitService.containerIdentifier
+            )
+            retainedContainer = container
+            return container
+        }
 
         /// Set once `ensureZone` has created (or confirmed) the library zone,
         /// so later writes skip the round trip. Stored here rather than beside
@@ -56,45 +70,8 @@
             CloudKitService()
         }
 
-        /// Pre-flight check the sync setup wizard runs before persisting CloudKit
-        /// as the provider. Throws if iCloud isn't available — most often "the
-        /// user has iCloud signed out on this device", which the system-level
-        /// `accountStatus()` API is exactly designed to report. Without this
-        /// check, `useCloudkit()` happily writes `provider: CloudKit` to YAML and
-        /// the user discovers via the reconnect banner after the first failed
-        /// sync cycle.
-        public func checkAccountAvailable() async throws {
-            let status: CKAccountStatus
-            do {
-                status = try await container.accountStatus()
-            }
-            catch {
-                throw CloudKitError.Storage(
-                    msg:
-                        "Couldn't check iCloud account status: \(error.displayLine)"
-                )
-            }
-            let unavailableReason: String
-            switch status {
-            case .available:
-                return
-            case .noAccount:
-                unavailableReason =
-                    "No iCloud account is signed in on this device. Open System Settings → Apple ID to sign in, then try again."
-            case .restricted:
-                unavailableReason =
-                    "iCloud is restricted on this device (parental controls or MDM). bae can't use it for sync."
-            case .couldNotDetermine:
-                unavailableReason =
-                    "Couldn't determine iCloud account status. Check your network and try again."
-            case .temporarilyUnavailable:
-                unavailableReason =
-                    "iCloud is temporarily unavailable. Try again in a moment."
-            @unknown default:
-                unavailableReason =
-                    "Unexpected iCloud account status (\(status.rawValue))."
-            }
-            throw CloudKitError.Storage(msg: unavailableReason)
+        func accountStatus() async throws -> CKAccountStatus {
+            try await container.accountStatus()
         }
 
         // MARK: - Provider identity and accepted share

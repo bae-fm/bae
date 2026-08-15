@@ -37,6 +37,7 @@ targets:
         excludes:
           - bae_bridge.swift
       - path: ../../BaeKit/Sources/AppleHost/CloudKitService.swift
+      - path: ../../BaeKit/Sources/AppleHost/CloudKitService+Account.swift
     info:
       path: bae/Info.plist
       properties:
