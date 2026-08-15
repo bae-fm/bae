@@ -2,7 +2,7 @@ import XCTest
 
 final class MainMenuTests: XCTestCase {
     @MainActor
-    func testOpenLibraryWindowExposesCloseLibraryCommand() throws {
+    func testCloseLibraryCommandReturnsToTheWelcomeChooser() throws {
         let testHome = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(
@@ -29,6 +29,11 @@ final class MainMenuTests: XCTestCase {
         closeLibrary.click()
 
         XCTAssertEqual(app.state, .runningForeground)
-        XCTAssertFalse(fileMenu.exists)
+        XCTAssertTrue(
+            app.staticTexts["Get started with your music library."]
+                .waitForExistence(timeout: 20)
+        )
+        fileMenu.click()
+        XCTAssertFalse(app.menuItems["Close Library"].exists)
     }
 }
