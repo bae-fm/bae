@@ -98,18 +98,33 @@ impl TestApp {
     }
 }
 
+fn create_and_open_library(name: &str) -> String {
+    let config = create_library(
+        bae_core::library_name::LibraryName::parse(name).unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
+    let id = config.store_id.clone();
+    let app = bootstrap(
+        id.clone(),
+        200,
+        true,
+        bae_core::diagnostics::Diagnostics::noop(),
+        None,
+        TestApp::start,
+    )
+    .expect("created library opens");
+    drop(app);
+    id
+}
+
 /// Bootstrapping a locked library succeeds with sync deferred, but leaves the
 /// active pointer naming the library the user last actually opened.
 #[test]
 #[serial]
 fn bootstrap_of_locked_library_leaves_active_pointer() {
     let home = fake_home();
-    let a = create_library(
-        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
-        &UuidProvider,
-    )
-    .unwrap();
-    let a_id = a.store_id.clone();
+    let a_id = create_and_open_library("Library A");
     let b_id = write_locked_library(home.path(), "Library B");
 
     let app = bootstrap(
@@ -140,11 +155,6 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
 #[serial]
 fn bootstrap_of_unlocked_library_advances_active_pointer() {
     let home = fake_home();
-    create_library(
-        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
-        &UuidProvider,
-    )
-    .unwrap();
     let b_id = write_plain_library(home.path(), "Library B");
 
     let app = bootstrap(
@@ -171,12 +181,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
 #[serial]
 fn bootstrap_that_fails_leaves_active_pointer() {
     let home = fake_home();
-    let a = create_library(
-        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
-        &UuidProvider,
-    )
-    .unwrap();
-    let a_id = a.store_id.clone();
+    let a_id = create_and_open_library("Library A");
     let b_id = write_plain_library(home.path(), "Library B");
 
     // A directory where the SQLite file belongs makes the DB open fail.
@@ -208,12 +213,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
 #[serial]
 fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
     let _home = fake_home();
-    let a = create_library(
-        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
-        &UuidProvider,
-    )
-    .unwrap();
-    let a_id = a.store_id.clone();
+    let a_id = create_and_open_library("Library A");
     let b_id = write_plain_library(_home.path(), "Library B");
 
     let result: Result<(), _> = bootstrap(

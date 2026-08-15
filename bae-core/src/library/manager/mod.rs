@@ -240,6 +240,9 @@ fn cloud_unlock_category(error: &coven::CloudHomeUnlockError) -> crate::ui::UiEr
 fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
     use crate::ui::UiErrorCategory as C;
     use coven::SyncError;
+    if error.is_retryable() {
+        return C::Network;
+    }
     match error {
         SyncError::Key(_) => C::Keyring,
         SyncError::CloudHome(e) => cloud_home_category(e),

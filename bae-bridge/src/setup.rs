@@ -212,7 +212,8 @@ pub fn remove_local_library(library_id: String) -> Result<(), BridgeError> {
     bae_core::library::remove_local_library(&library_id).map_err(BridgeError::from)
 }
 
-/// Create a new library. The library is set as the active library.
+/// Create a new library and establish its device identity. The library becomes
+/// active after the frontend opens it successfully.
 #[uniffi::export]
 pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError> {
     let ids = std::sync::Arc::new(coven::UuidProvider);
@@ -226,7 +227,7 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
         }
         None => bae_core::library::create_library_default(ids.as_ref()),
     }
-    .map_err(|e| BridgeError::config(format!("{e}")))?;
+    .map_err(BridgeError::from)?;
 
     BridgeLibrary::from_core(&config)
 }

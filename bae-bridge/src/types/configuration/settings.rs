@@ -426,6 +426,15 @@ impl From<bae_core::library::LibraryError> for BridgeError {
     }
 }
 
+impl From<bae_core::library::CreateLibraryError> for BridgeError {
+    fn from(error: bae_core::library::CreateLibraryError) -> Self {
+        BridgeError::Diagnostic {
+            category: BridgeErrorCategory::from_core(error.category()),
+            detail: error.to_string(),
+        }
+    }
+}
+
 impl BridgePlaybackErrorReason {
     pub(crate) fn from_core(reason: bae_core::ui::PlaybackErrorReason) -> Self {
         use bae_core::ui::PlaybackErrorReason;

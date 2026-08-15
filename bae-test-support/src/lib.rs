@@ -508,27 +508,20 @@ pub fn test_config(
     std::sync::Arc::new(bae_core::config::ConfigHandle::new(config))
 }
 
-/// Set up a fresh library + LibraryManager using the real codepath
-/// (StoreDir::create + active-library pointer + saved config.yaml). No sync
-/// manager — tests configure sync themselves via connect_*/save_s3_config.
+/// Set up a fresh library + LibraryManager through the production creation and
+/// open paths. No sync manager — tests configure sync themselves via
+/// connect_*/save_s3_config.
 pub fn setup_fresh_library(
     runtime: &tokio::runtime::Runtime,
 ) -> (bae_core::library::LibraryManager, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
-    let library_id = uuid::Uuid::new_v4().to_string();
-    let device_id = uuid::Uuid::new_v4().to_string();
-    let library_dir = coven::StoreDir::new(tmp.path().join("libraries").join(&library_id));
-    std::fs::create_dir_all(&*library_dir).expect("create library dir");
-    let config = bae_core::config::Config::with_defaults(
-        library_id.clone(),
-        device_id,
-        &library_dir,
-        "Test Library".to_string(),
-    );
-    config.save_to_config_yaml().expect("save config");
-    config.save_active_library().expect("save active library");
-
     bae_core::config::install_test_keyring();
+    let config = bae_core::library::create_library_in_bae_dir_for_test(
+        tmp.path(),
+        bae_core::library_name::LibraryName::parse("Test Library").unwrap(),
+        &coven::UuidProvider,
+    )
+    .expect("create fresh library");
     let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
     let lm = bae_core::library::LibraryManager::open(
         config_handle,

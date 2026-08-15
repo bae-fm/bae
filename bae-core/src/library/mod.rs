@@ -35,6 +35,8 @@ pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
 #[cfg(test)]
+mod creation_tests;
+#[cfg(test)]
 mod local_lifecycle_tests;
 
 use crate::config::{Config, ConfigError};
@@ -81,6 +83,44 @@ pub enum RestoreFromCodeError {
 }
 
 #[derive(Debug, thiserror::Error)]
+pub enum CreateLibraryError {
+    #[error("library configuration: {0}")]
+    Config(#[from] ConfigError),
+    #[error("open new library: {0}")]
+    Open(#[source] Box<coven::CovenError>),
+    #[error("establish new library identity: {0}")]
+    Identity(#[source] Box<coven::IdentityError>),
+    #[error("{failure}; removing the partial library also failed: {rollback}")]
+    Rollback {
+        failure: Box<CreateLibraryError>,
+        #[source]
+        rollback: std::io::Error,
+    },
+}
+
+impl CreateLibraryError {
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        use crate::ui::UiErrorCategory;
+        match self {
+            Self::Config(_) => UiErrorCategory::Config,
+            Self::Open(_) => UiErrorCategory::Database,
+            Self::Identity(_) => UiErrorCategory::Keyring,
+            Self::Rollback { failure, .. } => failure.category(),
+        }
+    }
+
+    fn with_rollback(self, rollback: Result<(), std::io::Error>) -> Self {
+        match rollback {
+            Ok(()) => self,
+            Err(rollback) => Self::Rollback {
+                failure: Box::new(self),
+                rollback,
+            },
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
 enum LibraryCodeOperationError {
     #[error("operation cancelled")]
     Cancelled,
@@ -97,36 +137,61 @@ impl From<LibraryCodeOperationError> for RestoreFromCodeError {
     }
 }
 
-/// Create a library under a generated name and make it active.
-pub fn create_library_default(ids: &dyn coven::IdProvider) -> Result<Config, ConfigError> {
+/// Create a library under a generated name and establish its device identity.
+pub fn create_library_default(ids: &dyn coven::IdProvider) -> Result<Config, CreateLibraryError> {
     create_library(crate::library_name::generate_library_name(), ids)
 }
 
 pub fn create_library(
     name: crate::library_name::LibraryName,
     ids: &dyn coven::IdProvider,
-) -> Result<Config, ConfigError> {
+) -> Result<Config, CreateLibraryError> {
     let home_dir = dirs::home_dir().ok_or_else(|| {
-        ConfigError::Io(std::io::Error::new(
+        CreateLibraryError::Config(ConfigError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "Failed to get home directory",
-        ))
+        )))
     })?;
     let bae_dir = home_dir.join(".bae");
+    create_library_in_bae_dir(&bae_dir, name, ids)
+}
+
+fn create_library_in_bae_dir(
+    bae_dir: &std::path::Path,
+    name: crate::library_name::LibraryName,
+    ids: &dyn coven::IdProvider,
+) -> Result<Config, CreateLibraryError> {
     let library_id = ids.new_id();
 
-    // coven's StoreDir::create returns coven's Config; bae's Config adds its own
-    // fields (Discogs), so build and persist the bae one here.
-    let library_dir = StoreDir::new(crate::config::registered_library_path(
-        &bae_dir,
-        &library_id,
-    ));
-    std::fs::create_dir_all(&*library_dir)?;
+    let library_dir = StoreDir::new(crate::config::registered_library_path(bae_dir, &library_id));
     let device_id = ids.new_id();
     let config = Config::with_defaults(library_id, device_id, &library_dir, name.into_string());
-    config.save_to_config_yaml()?;
-    config.save_active_library()?;
-    Ok(config)
+    let creation: Result<Config, CreateLibraryError> = (|| {
+        config.save_to_config_yaml()?;
+        let config_handle = Arc::new(crate::config::ConfigHandle::new(config.clone()));
+        let handle = config_handle
+            .coven_builder()
+            .synced_tables(crate::sync::synced_tables())
+            .oauth_clients(crate::oauth::clients())
+            .migrations(crate::migrations::all())
+            .open()
+            .map_err(|error| CreateLibraryError::Open(Box::new(error)))?;
+        handle
+            .initialize_identity()
+            .map_err(|error| CreateLibraryError::Identity(Box::new(error)))?;
+        Ok(config)
+    })();
+
+    creation.map_err(|failure| failure.with_rollback(library_dir.remove_tree()))
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+pub fn create_library_in_bae_dir_for_test(
+    bae_dir: &std::path::Path,
+    name: crate::library_name::LibraryName,
+    ids: &dyn coven::IdProvider,
+) -> Result<Config, CreateLibraryError> {
+    create_library_in_bae_dir(bae_dir, name, ids)
 }
 
 /// coven's restore/join returns the recovered Config; wrap it in bae's Config
