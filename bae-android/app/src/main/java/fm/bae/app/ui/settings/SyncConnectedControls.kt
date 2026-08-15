@@ -31,7 +31,6 @@ import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSyncConfig
@@ -85,12 +84,11 @@ internal fun SyncConnectedControls(
     sync: BridgeSyncConfig,
     indicator: BridgeSyncIndicator,
     syncError: String?,
-    ioDispatcher: CoroutineDispatcher,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val outbox by session.outboxStore.snapshot.collectAsState()
-    val flow = rememberDisconnectSyncFlow(session, ioDispatcher)
+    val flow = rememberDisconnectSyncFlow(session)
     val flowState by flow.state.collectAsState()
 
     SyncProviderRows(sync = sync)
@@ -260,10 +258,7 @@ private fun LabeledSettingRow(
 }
 
 @Composable
-private fun rememberDisconnectSyncFlow(
-    session: OpenLibrary,
-    ioDispatcher: CoroutineDispatcher,
-): DisconnectSyncFlow {
+private fun rememberDisconnectSyncFlow(session: OpenLibrary): DisconnectSyncFlow {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     return remember(session) {
@@ -292,7 +287,6 @@ private fun rememberDisconnectSyncFlow(
                         }
                     },
                 ),
-            ioDispatcher = ioDispatcher,
         )
     }
 }

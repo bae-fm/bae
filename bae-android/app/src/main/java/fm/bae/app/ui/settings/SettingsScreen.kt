@@ -156,7 +156,6 @@ private fun SettingsSections(
             config = config,
             syncIndicator = syncIndicator,
             syncError = syncError,
-            ioDispatcher = ioDispatcher,
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         SettingsPlaybackSection(
@@ -301,7 +300,6 @@ private fun SettingsConfigSection(
     config: BridgeConfig,
     syncIndicator: BridgeSyncIndicator,
     syncError: String?,
-    ioDispatcher: CoroutineDispatcher,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -319,7 +317,6 @@ private fun SettingsConfigSection(
                 sync = sync,
                 indicator = syncIndicator,
                 syncError = syncError,
-                ioDispatcher = ioDispatcher,
             )
         }
     }

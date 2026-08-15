@@ -24,7 +24,7 @@ class DisconnectSyncFlowTest {
     private fun makeFlow(
         cloudOnlyReleaseCount: suspend () -> ULong = { 0uL },
         atRiskLine: (ULong) -> String = { "$it at risk." },
-        disconnect: () -> Unit = {},
+        disconnect: suspend () -> Unit = {},
         warningFailedLine: (Throwable) -> String = { "warning check failed" },
         disconnectFailedLine: (Throwable) -> String = { "disconnect failed" },
     ): DisconnectSyncFlow =
@@ -38,7 +38,6 @@ class DisconnectSyncFlowTest {
                     warningFailedLine = warningFailedLine,
                     disconnectFailedLine = disconnectFailedLine,
                 ),
-            ioDispatcher = Dispatchers.Unconfined,
         )
 
     @Test

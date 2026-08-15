@@ -2,16 +2,13 @@ package fm.bae.app.ui.settings
 
 import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private const val TAG = "bae.DisconnectSyncFlow"
 private val logger = BaeLogger(TAG)
@@ -61,18 +58,14 @@ internal data class DisconnectStrings(
  * Drives the disconnect confirmation and execution with injected bridge calls so
  * the screen supplies the live handle and tests supply stubs.
  *
- * Two invariants:
- * - the disconnect runs off the main thread, because bae-core joins the
- *   sync-loop thread and can block for the remainder of an in-flight cycle;
- * - a failed at-risk check still opens the confirmation, surfacing the failure
+ * A failed at-risk check still opens the confirmation, surfacing the failure
  *   inline so the user sees the data-loss check didn't run yet can still proceed.
  */
 internal class DisconnectSyncFlow(
     private val scope: CoroutineScope,
     private val cloudOnlyReleaseCount: suspend () -> ULong,
-    private val disconnect: () -> Unit,
+    private val disconnect: suspend () -> Unit,
     private val strings: DisconnectStrings,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val _state = MutableStateFlow(DisconnectSyncState())
     val state: StateFlow<DisconnectSyncState> = _state.asStateFlow()
@@ -110,14 +103,14 @@ internal class DisconnectSyncFlow(
     }
 
     /**
-     * Disconnect off the main thread. On success the sync config is cleared by
-     * core and the whole connected section falls away via the config subscription;
-     * on failure the error shows inline and nothing durable changed.
+     * On success the sync config is cleared by core and the whole connected
+     * section falls away via the config subscription; on failure the error
+     * shows inline and nothing durable changed.
      */
     suspend fun confirm() {
         _state.value =
             try {
-                withContext(ioDispatcher) { disconnect() }
+                disconnect()
                 DisconnectSyncState()
             } catch (e: CancellationException) {
                 throw e
