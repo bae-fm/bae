@@ -71,9 +71,11 @@ struct CastButton: View {
             do {
                 try await cast.castTo(deviceId)
                 showPicker = false
-            } catch is CancellationError {
+            }
+            catch is CancellationError {
                 return
-            } catch {
+            }
+            catch {
                 configStore.showError(error)
             }
         }

@@ -130,43 +130,55 @@ private fun CastPickerSheet(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
-            if (castingTo != null) {
-                CastingRow(
-                    deviceName = castingTo,
-                    onDisconnect = {
-                        session.cast.stopCasting()
-                        onDismiss()
-                    },
-                )
-            }
-            if (devices.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.cast_no_devices),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            } else {
-                devices.forEach { device ->
-                    DeviceRow(
-                        device = device,
-                        isActive = device.name == castingTo,
-                        onCast = {
-                            castJob?.cancel()
-                            castJob =
-                                scope.launch {
-                                    try {
-                                        session.cast.castTo(device.id)
-                                        onDismiss()
-                                    } catch (e: BridgeException) {
-                                        logger.error("Failed to cast to ${device.id}", e)
-                                        session.configStore.showError(context.localizedLine(e))
-                                    }
-                                }
-                        },
-                    )
-                }
-            }
+            CastDeviceRows(
+                devices = devices,
+                castingTo = castingTo,
+                onDisconnect = {
+                    session.cast.stopCasting()
+                    onDismiss()
+                },
+                onCast = { device ->
+                    castJob?.cancel()
+                    castJob =
+                        scope.launch {
+                            try {
+                                session.cast.castTo(device.id)
+                                onDismiss()
+                            } catch (e: BridgeException) {
+                                logger.error("Failed to cast to ${device.id}", e)
+                                session.configStore.showError(context.localizedLine(e))
+                            }
+                        }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CastDeviceRows(
+    devices: List<BridgeCastDevice>,
+    castingTo: String?,
+    onDisconnect: () -> Unit,
+    onCast: (BridgeCastDevice) -> Unit,
+) {
+    if (castingTo != null) {
+        CastingRow(deviceName = castingTo, onDisconnect = onDisconnect)
+    }
+    if (devices.isEmpty()) {
+        Text(
+            text = stringResource(R.string.cast_no_devices),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+    } else {
+        devices.forEach { device ->
+            DeviceRow(
+                device = device,
+                isActive = device.name == castingTo,
+                onCast = { onCast(device) },
+            )
         }
     }
 }

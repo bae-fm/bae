@@ -285,10 +285,12 @@ struct MainAppView: View {
         )
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
+        let libraryProjections = LibraryProjectionStore(library: library)
         return MainAppView()
             .environment(library)
             .environment(session)
             .environment(libraryStore)
+            .environment(libraryProjections)
             .environment(uiStore)
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())

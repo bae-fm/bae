@@ -50,7 +50,7 @@ struct AlbumDetailView: View {
                     )
                 }
                 else {
-                    detailPlaceholder(releaseId: selectedReleaseId)
+                    detailPlaceholder()
                 }
             }
             else if let summary = libraryStore.albumSummaries[albumId] {
@@ -64,11 +64,11 @@ struct AlbumDetailView: View {
                     )
                 }
                 else {
-                    detailPlaceholder(releaseId: releaseId)
+                    detailPlaceholder()
                 }
             }
             else {
-                detailPlaceholder(releaseId: nil)
+                detailPlaceholder()
             }
         }
         .background(Theme.background)
@@ -95,7 +95,7 @@ struct AlbumDetailView: View {
     /// an error + Retry once its load has failed, otherwise a spinner. Retry
     /// re-runs the on-demand load for that release.
     @ViewBuilder
-    private func detailPlaceholder(releaseId: String?) -> some View {
+    private func detailPlaceholder() -> some View {
         if let error = libraryStore.albumDetailErrors[albumId] {
             LoadFailureView(line: error.line) {
                 libraryStore.retryAlbumDetail(

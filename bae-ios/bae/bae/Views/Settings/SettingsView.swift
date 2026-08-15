@@ -265,8 +265,6 @@ struct SettingsView: View {
 private struct SyncConnectedControls: View {
     let config: BridgeSyncConfig
 
-    @Environment(ConfigStore.self)
-    private var configStore
     @Environment(SyncStatusStore.self)
     private var syncStatusStore
     @Environment(OutboxStore.self)

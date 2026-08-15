@@ -9,7 +9,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,13 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.localizedLine
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.launch
@@ -36,8 +32,6 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSyncConfig
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncProvider
-
-private val logger = BaeLogger("bae.SyncConnectedControls")
 
 /**
  * The sync row's rendered state, derived from the runtime sync snapshot. A
@@ -85,9 +79,7 @@ internal fun SyncConnectedControls(
     indicator: BridgeSyncIndicator,
     syncError: String?,
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val outbox by session.outboxStore.snapshot.collectAsState()
     val flow = rememberDisconnectSyncFlow(session)
     val flowState by flow.state.collectAsState()
 
@@ -98,32 +90,7 @@ internal fun SyncConnectedControls(
         onReconnect = { session.appHandle.triggerSync() },
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(stringResource(R.string.settings_pause_uploads), modifier = Modifier.weight(1f))
-        Switch(
-            checked = outbox.paused,
-            onCheckedChange = { paused ->
-                scope.launch {
-                    performBridgeAction(
-                        logger = logger,
-                        operation = "set sync pause state",
-                        errors = LocaleErrorLines(context),
-                        showError = session.configStore::showError,
-                    ) {
-                        session.appHandle.setSyncPaused(paused)
-                    }
-                }
-            },
-        )
-    }
-    Text(
-        text = stringResource(R.string.settings_pause_uploads_footer),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    SyncUploadPauseControl(session)
 
     flowState.error?.let { error ->
         Text(
