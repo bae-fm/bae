@@ -295,12 +295,12 @@ class UiStore: @unchecked Sendable {
 
     // MARK: - Pending-tab bulk selection
 
-    func toggleReadySelection(_ key: String) {
-        if selectedReadyCandidates.contains(key) {
-            selectedReadyCandidates.remove(key)
+    func setReadySelection(_ key: String, selected: Bool) {
+        if selected {
+            selectedReadyCandidates.insert(key)
         }
         else {
-            selectedReadyCandidates.insert(key)
+            selectedReadyCandidates.remove(key)
         }
     }
 

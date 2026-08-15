@@ -483,11 +483,16 @@ extension ImportCandidateListContent {
                 row: row,
                 coverContent: importStore.sidebarCover(for: row),
                 selection: row.selectable
-                    ? (
-                        isSelected: uiStore.selectedReadyCandidates
-                            .contains(row.candidateKey),
-                        toggle: {
-                            uiStore.toggleReadySelection(row.candidateKey)
+                    ? Binding(
+                        get: {
+                            uiStore.selectedReadyCandidates
+                                .contains(row.candidateKey)
+                        },
+                        set: {
+                            uiStore.setReadySelection(
+                                row.candidateKey,
+                                selected: $0
+                            )
                         }
                     ) : nil,
                 onSelect: { selectedKeys = [row.candidateKey] },
