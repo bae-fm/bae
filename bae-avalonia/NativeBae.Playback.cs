@@ -43,7 +43,7 @@ internal static partial class NativeBae
     // Returns a localized error line on failure (connect/serving), or null on
     // success.
     internal static string? CastTo(AppHandle handle, string deviceId) =>
-        CaptureError(() => handle.CastTo(deviceId));
+        CaptureError(() => Await(() => handle.CastTo(deviceId)));
 
     internal static void StopCasting(AppHandle handle) => handle.StopCasting();
 

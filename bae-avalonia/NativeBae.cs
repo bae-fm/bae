@@ -553,12 +553,15 @@ internal static partial class NativeBae
     {
         return Settings(
             handle.GetConfig(),
-            handle.GetMcpServerStatus(),
-            handle.GetSubsonicServerStatus());
+            Await(handle.GetMcpServerStatus),
+            Await(handle.GetSubsonicServerStatus));
     }
 
     internal static Settings SettingsFromConfig(AppHandle handle, BridgeConfig config) =>
-        Settings(config, handle.GetMcpServerStatus(), handle.GetSubsonicServerStatus());
+        Settings(
+            config,
+            Await(handle.GetMcpServerStatus),
+            Await(handle.GetSubsonicServerStatus));
 
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
@@ -594,9 +597,10 @@ internal static partial class NativeBae
         CaptureError(() => handle.SetDefaultReleaseSavePreset(presetId));
 
     internal static string? SetMcpServerConfig(AppHandle handle, bool enabled, ushort port) =>
-        CaptureError(() => handle.SetMcpServerConfig(enabled, port));
+        CaptureError(() => Await(() => handle.SetMcpServerConfig(enabled, port)));
 
-    internal static BridgeMcpServerStatus McpServerStatus(AppHandle handle) => handle.GetMcpServerStatus();
+    internal static BridgeMcpServerStatus McpServerStatus(AppHandle handle) =>
+        Await(handle.GetMcpServerStatus);
 
     internal static string? GetMcpToken(AppHandle handle) => CaptureValue(handle.GetMcpToken);
 
@@ -606,12 +610,13 @@ internal static partial class NativeBae
         CaptureError(() => handle.SetMcpToken(token));
 
     internal static string? SetSubsonicServerConfig(AppHandle handle, bool enabled, ushort port, string username, string bindAddress) =>
-        CaptureError(() => handle.SetSubsonicServerConfig(enabled, port, username, bindAddress));
+        CaptureError(() => Await(() => handle.SetSubsonicServerConfig(enabled, port, username, bindAddress)));
 
-    internal static BridgeSubsonicServerStatus SubsonicServerStatus(AppHandle handle) => handle.GetSubsonicServerStatus();
+    internal static BridgeSubsonicServerStatus SubsonicServerStatus(AppHandle handle) =>
+        Await(handle.GetSubsonicServerStatus);
 
     internal static string? SetSubsonicPassword(AppHandle handle, string password) =>
-        CaptureError(() => handle.SetSubsonicPassword(password));
+        CaptureError(() => Await(() => handle.SetSubsonicPassword(password)));
 
     internal static string? SaveDiscogsToken(AppHandle handle, string token) =>
         CaptureValue(() => DiscogsSaveOutcomeTag(Await(() => handle.SaveDiscogsToken(token))));
