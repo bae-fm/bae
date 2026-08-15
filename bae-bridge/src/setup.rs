@@ -192,6 +192,15 @@ pub fn init_keyring(diagnostics: Arc<crate::init::BridgeDiagnostics>) {
     diagnostics.init_keyring();
 }
 
+/// Install the in-memory keyring used by debug UI-test app processes. The test
+/// launches the real application flow without a signed keychain entitlement,
+/// so its key custody is injected before library creation and opening.
+#[cfg(debug_assertions)]
+#[uniffi::export]
+pub fn init_test_keyring() {
+    bae_core::config::install_test_keyring();
+}
+
 /// Discover local libraries in ~/.bae/libraries/, returning each as a
 /// `BridgeLibrary` — the libraries created on this device or restored from
 /// another of the owner's devices. Both the welcome flow (no active library

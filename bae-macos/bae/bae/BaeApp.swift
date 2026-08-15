@@ -34,6 +34,10 @@ private enum AppRuntime {
     }
 
     #if DEBUG
+        static func usesTestKeyring(environment: [String: String]) -> Bool {
+            environment["BAE_UI_TESTING"] == "1"
+        }
+
         static func createsLibraryForUITesting(
             environment: [String: String]
         ) -> Bool {
@@ -522,25 +526,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let shutdownCoordinator =
         LibraryShutdownCoordinator<AppService>()
 
-    func applicationDidFinishLaunching(_: Notification) {
-        if !skipsApplicationServices {
-            // Telemetry is already up (built at delegate construction, from
-            // compiled-in values only), so every step from here on has a sink
-            // for any failure it reports.
-            BaeCrashReporting.configure(edition: appEdition)
-            logger.info("application launched")
-            initKeyring(diagnostics: diagnostics)
-            // Hand Rust the CloudKit driver once. It can't build the driver
-            // itself (it needs the platform CloudKit APIs); installing it is
-            // idempotent and harmless for libraries that sync elsewhere, so it
-            // belongs here at the composition root rather than at each open.
-            #if BAE_CLOUDKIT
-                setCloudkitDriver(driver: CloudKitService.bae())
-            #endif
-        }
-        loadInitialState()
-    }
-
     // MARK: - Library lifecycle
 
     private func loadInitialState() {
@@ -824,6 +809,36 @@ extension AppDelegate {
 }
 
 extension AppDelegate {
+    func applicationDidFinishLaunching(_: Notification) {
+        if !skipsApplicationServices {
+            // Telemetry is already up (built at delegate construction, from
+            // compiled-in values only), so every step from here on has a sink
+            // for any failure it reports.
+            BaeCrashReporting.configure(edition: appEdition)
+            logger.info("application launched")
+            #if DEBUG
+                if AppRuntime.usesTestKeyring(
+                    environment: appProcessEnvironment
+                ) {
+                    initTestKeyring()
+                }
+                else {
+                    initKeyring(diagnostics: diagnostics)
+                }
+            #else
+                initKeyring(diagnostics: diagnostics)
+            #endif
+            // Hand Rust the CloudKit driver once. It can't build the driver
+            // itself (it needs the platform CloudKit APIs); installing it is
+            // idempotent and harmless for libraries that sync elsewhere, so it
+            // belongs here at the composition root rather than at each open.
+            #if BAE_CLOUDKIT
+                setCloudkitDriver(driver: CloudKitService.bae())
+            #endif
+        }
+        loadInitialState()
+    }
+
     /// AppKit's deferred-terminate flow, replacing the old fire-and-forget
     /// `applicationWillTerminate`: that method fired a detached `Task` and
     /// returned immediately, so the process could exit before the shutdown

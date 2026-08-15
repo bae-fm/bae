@@ -130,14 +130,14 @@ pub fn init_keyring(diagnostics: &Diagnostics) {
 /// Install an in-memory keyring store and set coven's keyring service for tests.
 ///
 /// Coven's custody owners read and write the keyring only after this service is
-/// set. Tests don't run `init_keyring` (which would install the OS
-/// store and prompt), so every test needing a key calls this instead.
+/// set. Rust tests and debug UI-test app processes cannot use the signed app's
+/// OS keyring, so their composition roots call this instead of `init_keyring`.
 ///
 /// Set-once, and it must stay that way: the store is one process-global
 /// namespace, so re-installing it on a later call would wipe entries parallel
 /// tests already wrote. Tests stay isolated by library id, not by a fresh store
 /// each.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub fn install_test_keyring() {
     use std::sync::Once;
     static INIT: Once = Once::new();

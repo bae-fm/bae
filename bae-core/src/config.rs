@@ -12,7 +12,7 @@ mod server;
 pub(crate) use dev::dev_secrets;
 pub use handle::ConfigHandle;
 pub use keyring::init_keyring;
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use keyring::install_test_keyring;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 pub use server::{
