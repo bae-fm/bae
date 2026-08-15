@@ -65,33 +65,6 @@ private func discoverInitialLibraries(
     return libraries
 }
 
-/// Swaps the welcome and main windows as the shell comes and goes. Sits in
-/// both windows' backgrounds — whichever window is up when the shell state
-/// flips performs the swap (opening an already-open window and dismissing an
-/// absent one are no-ops).
-private struct WindowSwapDriver: View {
-    let hasShell: Bool
-
-    @Environment(\.openWindow)
-    private var openWindow
-    @Environment(\.dismissWindow)
-    private var dismissWindow
-
-    var body: some View {
-        Color.clear
-            .onChange(of: hasShell) { _, hasShell in
-                if hasShell {
-                    openWindow(id: "main")
-                    dismissWindow(id: "welcome")
-                }
-                else {
-                    openWindow(id: "welcome")
-                    dismissWindow(id: "main")
-                }
-            }
-    }
-}
-
 enum AppScreen {
     case loading
     case welcome
@@ -280,19 +253,25 @@ struct BaeApp: App {
                 onCancel: { appDelegate.screen = .welcome }
             )
         case .library:
-            // The instant between the shell opening and the window swap
-            // dismissing this window. Never MainAppView here — the shell's
-            // service environments live only in the main window's subtree,
-            // and rendering it without them crashes.
+            // The service environment arrives with the library branch;
+            // bootstrap content must remain independent of it.
             Spacer()
             ProgressView()
             Spacer()
         }
     }
 
+    /// Opening adopts the library's preferred size before its shell mounts.
+    /// The chooser and unlock flow use the fixed welcome size.
+    private var bootstrapWindowSize: CGSize {
+        if case .loading = appDelegate.screen {
+            return MainWindow.defaultSize
+        }
+        return WelcomeWindow.size
+    }
+
     var body: some Scene {
-        welcomeWindow
-        mainWindow
+        primaryWindow
         storageManagerWindow
         settingsWindow
     }
@@ -304,55 +283,54 @@ extension BaeApp {
         CommandGroup(after: .appInfo) {
             CheckForUpdatesView(viewModel: checkForUpdatesViewModel)
         }
-        if let appService = appDelegate.appService {
-            MainAppMenuCommands(
-                libraries: appDelegate.libraries,
-                onNewLibrary: { mode in
-                    appDelegate.welcomeInitialMode = mode
-                    appDelegate.showAddLibrarySheet = true
-                },
-                onOpenLibrary: { appDelegate.openLibrary($0) },
-                onSwitchOffset: {
-                    appDelegate.switchLibrary(byOffset: $0)
-                },
-                onRenameLibrary: {
-                    appDelegate.renameLibrarySheet = RenameLibrarySheetState(
-                        id: appService.libraryId,
-                        newName: appService.libraryName
-                    )
-                },
-                onLockLibrary: {
-                    appDelegate.confirmLockLibrary = true
-                },
-                onSyncNow: { appService.triggerSync() },
-                onRevealLibrary: {
-                    SystemActions.revealInFinder(
-                        path: appService.libraryPath
-                    )
-                },
-                onCopyLibraryId: {
-                    SystemActions.copyToPasteboard(appService.libraryId)
-                },
-                onCloseLibrary: { appDelegate.closeLibrary() }
-            )
-        }
+        LibraryFileMenuCommands(
+            libraries: appDelegate.libraries,
+            onNewLibrary: { appDelegate.presentWelcome(mode: $0) },
+            onOpenLibrary: { appDelegate.openLibrary($0) },
+            onSwitchOffset: { appDelegate.switchLibrary(byOffset: $0) },
+            onRenameLibrary: { appDelegate.presentRenameLibrary() },
+            onLockLibrary: { appDelegate.presentLockLibraryConfirmation() },
+            onSyncNow: { appDelegate.syncNow() },
+            onRevealLibrary: { appDelegate.revealLibraryInFinder() },
+            onCopyLibraryId: { appDelegate.copyLibraryId() },
+            onCloseLibrary: { appDelegate.closeLibrary() }
+        )
+        MainAppMenuCommands()
     }
 
-    /// The bootstrap window: fixed-size, presented at launch, dismissed once
-    /// a library opens (and re-presented when the last one closes). Loading,
-    /// welcome, and unlock all render here — pre-shell, there is no other
-    /// window.
-    private var welcomeWindow: some Scene {
-        Window("bae", id: "welcome") {
-            WelcomeWindowChrome {
-                // Bootstrap screens lay out as a vertical stack (the loading
-                // case centers a spinner between two Spacers).
-                VStack(spacing: 0) {
-                    bootstrapContent
+    /// One primary WindowGroup changes content and content-driven size as the
+    /// library opens and closes; the window itself is never replaced.
+    private var primaryWindow: some Scene {
+        WindowGroup("bae", id: MainWindow.sceneID) {
+            Group {
+                if appDelegate.hasShell,
+                    let appService = appDelegate.appService
+                {
+                    appService.installEnvironment(
+                        libraryModals(
+                            MainWindowChrome(loadError: appDelegate.loadError) {
+                                detailContent
+                            }
+                            .navigationTitle(windowTitle)
+                        )
+                        // Window commands follow the focused library content;
+                        // the WindowGroup itself keeps a stable identity.
+                        .focusedSceneValue(
+                            \.mainAppMenuTarget,
+                            appService.mainAppMenuTarget
+                        )
+                    )
+                }
+                else {
+                    WelcomeWindowChrome(size: bootstrapWindowSize) {
+                        // A stack lets loading center its spinner with Spacers.
+                        VStack(spacing: 0) {
+                            bootstrapContent
+                        }
+                    }
                 }
             }
-            .navigationTitle("bae")
-            .background(WindowSwapDriver(hasShell: appDelegate.hasShell))
+            .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
             .onAppear {
                 #if !DEBUG
                     updaterController.updater.checkForUpdatesInBackground()
@@ -361,38 +339,14 @@ extension BaeApp {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .restorationBehavior(.disabled)
-        .defaultLaunchBehavior(.presented)
-    }
-
-    private var mainWindow: some Scene {
-        AppService.installEnvironment(
-            Window("bae", id: "main") {
-                Group {
-                    if appDelegate.appService != nil {
-                        libraryModals(
-                            MainWindowChrome(loadError: appDelegate.loadError) {
-                                detailContent
-                            }
-                            .navigationTitle(windowTitle)
-                        )
-                    }
-                    else {
-                        ProgressView()
-                    }
-                }
-                .background(WindowSwapDriver(hasShell: appDelegate.hasShell))
-            }
-            .windowStyle(.hiddenTitleBar)
-            .defaultSize(
-                width: MainWindow.defaultSize.width,
-                height: MainWindow.defaultSize.height
-            )
-            .restorationBehavior(.disabled)
-            .defaultLaunchBehavior(.suppressed)
-            .commands { applicationCommands },
-            from: appDelegate.appService
+        .defaultSize(
+            width: MainWindow.defaultSize.width,
+            height: MainWindow.defaultSize.height
         )
+        .restorationBehavior(.disabled)
+        // Launch and Dock reopen always present the primary app surface.
+        .defaultLaunchBehavior(.presented)
+        .commands { applicationCommands }
     }
 
     private var storageManagerWindow: some Scene {
@@ -527,6 +481,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LibraryShutdownCoordinator<AppService>()
 
     // MARK: - Library lifecycle
+
+    func presentWelcome(mode: WelcomeView.Mode?) {
+        welcomeInitialMode = mode
+        if hasShell {
+            showAddLibrarySheet = true
+        }
+        else {
+            screen = .welcome
+        }
+    }
+
+    func presentRenameLibrary() {
+        guard let appService else {
+            preconditionFailure("Rename Library is disabled without a library")
+        }
+        renameLibrarySheet = RenameLibrarySheetState(
+            id: appService.libraryId,
+            newName: appService.libraryName
+        )
+    }
+
+    func presentLockLibraryConfirmation() {
+        guard appService != nil else {
+            preconditionFailure("Lock Library is disabled without a library")
+        }
+        confirmLockLibrary = true
+    }
+
+    func syncNow() {
+        guard let appService else {
+            preconditionFailure("Sync Now is disabled without a library")
+        }
+        appService.triggerSync()
+    }
+
+    func revealLibraryInFinder() {
+        guard let appService else {
+            preconditionFailure("Reveal Library is disabled without a library")
+        }
+        SystemActions.revealInFinder(path: appService.libraryPath)
+    }
+
+    func copyLibraryId() {
+        guard let appService else {
+            preconditionFailure("Copy Library ID is disabled without a library")
+        }
+        SystemActions.copyToPasteboard(appService.libraryId)
+    }
 
     private func loadInitialState() {
         if skipsApplicationServices {

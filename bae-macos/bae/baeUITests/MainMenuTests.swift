@@ -21,17 +21,30 @@ final class MainMenuTests: XCTestCase {
         app.activate()
         addTeardownBlock { app.terminate() }
 
+        let primaryWindow = app.windows.firstMatch
+        if !primaryWindow.waitForExistence(timeout: 2) {
+            app.typeKey("n", modifierFlags: .command)
+        }
+        XCTAssertTrue(primaryWindow.waitForExistence(timeout: 20))
+        XCTAssertEqual(primaryWindow.frame.width, 1_350, accuracy: 2)
+
         let fileMenu = app.menuBars.menuBarItems["File"]
         XCTAssertTrue(fileMenu.waitForExistence(timeout: 20))
+        let editMenu = app.menuBars.menuBarItems["Edit"]
+        XCTAssertTrue(editMenu.exists)
+        XCTAssertLessThan(fileMenu.frame.minX, editMenu.frame.minX)
         fileMenu.click()
         let closeLibrary = app.menuItems["Close Library"]
         XCTAssertTrue(closeLibrary.exists)
-        closeLibrary.click()
+        closeLibrary.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)
+        ).click()
 
         XCTAssertEqual(app.state, .runningForeground)
         XCTAssertTrue(
             app.staticTexts["Get started with your music library."]
                 .waitForExistence(timeout: 20)
         )
+        XCTAssertEqual(primaryWindow.frame.width, 900, accuracy: 2)
     }
 }

@@ -2,12 +2,61 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-struct ImportFolderButton: View {
-    let importer: Importer
+/// The existing library services a focused window exposes to app commands.
+/// Commands receive live stores instead of copying their current values.
+@MainActor
+final class MainAppMenuTarget {
+    let playbackStore: PlaybackStore
+    let configStore: ConfigStore
+    let libraryStore: LibraryStore
+    let importStore: ImportStore
     let uiStore: UiStore
+    let library: Library
+    let playback: Playback
+    let importer: Importer
+
+    init(
+        playbackStore: PlaybackStore,
+        configStore: ConfigStore,
+        libraryStore: LibraryStore,
+        importStore: ImportStore,
+        uiStore: UiStore,
+        library: Library,
+        playback: Playback,
+        importer: Importer
+    ) {
+        self.playbackStore = playbackStore
+        self.configStore = configStore
+        self.libraryStore = libraryStore
+        self.importStore = importStore
+        self.uiStore = uiStore
+        self.library = library
+        self.playback = playback
+        self.importer = importer
+    }
+}
+
+private struct MainAppMenuTargetKey: FocusedValueKey {
+    typealias Value = MainAppMenuTarget
+}
+
+extension FocusedValues {
+    var mainAppMenuTarget: MainAppMenuTarget? {
+        get { self[MainAppMenuTargetKey.self] }
+        set { self[MainAppMenuTargetKey.self] = newValue }
+    }
+}
+
+struct ImportFolderButton: View {
+    let target: MainAppMenuTarget?
 
     var body: some View {
         Button("Import Folder...") {
+            guard let target else {
+                preconditionFailure(
+                    "Import Folder is disabled without an open library"
+                )
+            }
             let panel = NSOpenPanel()
             panel.canCreateDirectories = false
             panel.canChooseDirectories = true
@@ -22,11 +71,11 @@ struct ImportFolderButton: View {
             }
             Task {
                 do {
-                    try await importer.addWatchedFolder(url.path)
-                    uiStore.navigateToImport()
+                    try await target.importer.addWatchedFolder(url.path)
+                    target.uiStore.navigateToImport()
                 }
                 catch {
-                    uiStore.showError(
+                    target.uiStore.showError(
                         String(
                             localized:
                                 "Couldn't add folder: \(error.displayLine)"
@@ -36,17 +85,71 @@ struct ImportFolderButton: View {
             }
         }
         .keyboardShortcut("i", modifiers: .command)
+        .disabled(target == nil)
     }
 }
 
 struct CloseLibraryButton: View {
     let onClose: () -> Void
+    let isEnabled: Bool
 
     var body: some View {
         Button("Close Library") {
             onClose()
         }
         .keyboardShortcut("w", modifiers: [.command, .shift])
+        .disabled(!isEnabled)
+    }
+}
+
+/// File commands use native placements and disable when no library is open.
+/// Close Library precedes `.saveItem`, which retains the native Close item.
+struct LibraryFileMenuCommands: Commands {
+    @FocusedValue(\.mainAppMenuTarget) private var target
+    let libraries: [BridgeLibrary]
+    let onNewLibrary: (WelcomeView.Mode?) -> Void
+    let onOpenLibrary: (BridgeLibrary) -> Void
+    let onSwitchOffset: (Int) -> Void
+    let onRenameLibrary: () -> Void
+    let onLockLibrary: () -> Void
+    let onSyncNow: () -> Void
+    let onRevealLibrary: () -> Void
+    let onCopyLibraryId: () -> Void
+    let onCloseLibrary: () -> Void
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("New Library...") { onNewLibrary(nil) }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+            Button("Join a Library...") { onNewLibrary(.join) }
+            Button("Restore from Code...") { onNewLibrary(.restore) }
+            Menu("Open Library") {
+                OpenLibrarySubmenu(libraries: libraries, onOpen: onOpenLibrary)
+                Divider()
+                Button("Previous Library") { onSwitchOffset(-1) }
+                    .keyboardShortcut("[", modifiers: [.command, .shift])
+                    .disabled(target == nil)
+                Button("Next Library") { onSwitchOffset(1) }
+                    .keyboardShortcut("]", modifiers: [.command, .shift])
+                    .disabled(target == nil)
+            }
+        }
+        CommandGroup(after: .importExport) {
+            ImportFolderButton(target: target)
+        }
+        CommandGroup(before: .saveItem) {
+            Button("Rename Library...") { onRenameLibrary() }
+                .disabled(target == nil)
+            Button("Lock Library...") { onLockLibrary() }
+                .disabled(target == nil)
+            Button("Sync Now") { onSyncNow() }
+                .disabled(target == nil)
+            Button("Reveal Library in Finder") { onRevealLibrary() }
+                .disabled(target == nil)
+            Button("Copy Library ID") { onCopyLibraryId() }
+                .disabled(target == nil)
+            CloseLibraryButton(onClose: onCloseLibrary, isEnabled: target != nil)
+        }
     }
 }
 
@@ -100,30 +203,38 @@ struct OpenLibrarySubmenu: View {
 }
 
 struct OpenLibraryButton: View {
-    let uiStore: UiStore
+    let target: MainAppMenuTarget?
     @Environment(\.openWindow)
     private var openWindow
 
     var body: some View {
         Button("Library") {
-            openWindow(id: "main")
-            uiStore.navigateToLibraryRoot()
+            guard let target else {
+                preconditionFailure("Library is disabled without an open library")
+            }
+            openWindow(id: MainWindow.sceneID)
+            target.uiStore.navigateToLibraryRoot()
         }
         .keyboardShortcut("1", modifiers: .command)
+        .disabled(target == nil)
     }
 }
 
 struct OpenImportButton: View {
-    let uiStore: UiStore
+    let target: MainAppMenuTarget?
     @Environment(\.openWindow)
     private var openWindow
 
     var body: some View {
         Button("Import") {
-            openWindow(id: "main")
-            uiStore.navigateToImport()
+            guard let target else {
+                preconditionFailure("Import is disabled without an open library")
+            }
+            openWindow(id: MainWindow.sceneID)
+            target.uiStore.navigateToImport()
         }
         .keyboardShortcut("2", modifiers: .command)
+        .disabled(target == nil)
     }
 }
 
@@ -143,15 +254,15 @@ struct OpenStorageManagerButton: View {
 /// navigates to the library section before setting the mode, so the item works
 /// from any window (matching `OpenLibraryButton`).
 struct LibraryModeCommandButtons: View {
-    let uiStore: UiStore
+    let target: MainAppMenuTarget
     @Environment(\.openWindow)
     private var openWindow
 
     var body: some View {
-        LibraryModeButtons(uiStore: uiStore) { mode in
-            openWindow(id: "main")
-            uiStore.navigateToLibraryRoot()
-            uiStore.setLibraryBrowserMode(mode)
+        LibraryModeButtons(uiStore: target.uiStore) { mode in
+            openWindow(id: MainWindow.sceneID)
+            target.uiStore.navigateToLibraryRoot()
+            target.uiStore.setLibraryBrowserMode(mode)
         }
     }
 }
@@ -160,7 +271,7 @@ struct LibraryModeCommandButtons: View {
 /// each setting the mode absolutely. The active mode carries a leading
 /// checkmark. The now-playing bar's single button cycles instead.
 struct RepeatModeMenuItems: View {
-    let current: BridgeRepeatMode
+    let current: BridgeRepeatMode?
     let onSelect: (BridgeRepeatMode) -> Void
 
     private static let items:
@@ -188,214 +299,198 @@ struct RepeatModeMenuItems: View {
 }
 
 struct MainAppMenuCommands: Commands {
-    @Environment(Playback.self)
-    private var playback
-    @Environment(Importer.self)
-    private var importer
-    @Environment(ImportStore.self)
-    private var importStore
-    @Environment(Library.self)
-    private var library
-    @Environment(LibraryStore.self)
-    private var libraryStore
-    @Environment(PlaybackStore.self)
-    private var playbackStore
-    @Environment(UiStore.self)
-    private var uiStore
-    @Environment(ConfigStore.self)
-    private var configStore
-    /// Every library on this device, for the Open Library submenu. The active
-    /// one is marked; the rest are switch targets.
-    let libraries: [BridgeLibrary]
-    /// Present the welcome flow at the given mode (`nil` = the default chooser,
-    /// `.restore` = restore-from-code, `.join` = join-a-library).
-    let onNewLibrary: (WelcomeView.Mode?) -> Void
-    let onOpenLibrary: (BridgeLibrary) -> Void
-    /// Switch to the library `offset` positions from the active one (wraps).
-    let onSwitchOffset: (Int) -> Void
-    let onRenameLibrary: () -> Void
-    let onLockLibrary: () -> Void
-    let onSyncNow: () -> Void
-    let onRevealLibrary: () -> Void
-    let onCopyLibraryId: () -> Void
-    let onCloseLibrary: () -> Void
+    @FocusedValue(\.mainAppMenuTarget) private var target
     @FocusedValue(\.focusSearch)
     var focusSearch
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
             Button("Skip All") {
-                Task { await importCandidateSkipAction.perform() }
+                let action = requireImportCandidateSkipAction()
+                Task { await action.perform() }
             }
             .keyboardShortcut("e", modifiers: .command)
             .disabled(!canSkipSelectedImportCandidates)
         }
 
-        CommandMenu("File") {
-            Button("New Library...") { onNewLibrary(nil) }
-                .keyboardShortcut("n", modifiers: [.command, .option])
-            Button("Join a Library...") { onNewLibrary(.join) }
-            Button("Restore from Code...") { onNewLibrary(.restore) }
-
-            Menu("Open Library") {
-                OpenLibrarySubmenu(
-                    libraries: libraries,
-                    onOpen: onOpenLibrary
-                )
-                Divider()
-                Button("Previous Library") { onSwitchOffset(-1) }
-                    .keyboardShortcut("[", modifiers: [.command, .shift])
-                Button("Next Library") { onSwitchOffset(1) }
-                    .keyboardShortcut("]", modifiers: [.command, .shift])
-            }
-
-            Divider()
-            ImportFolderButton(importer: importer, uiStore: uiStore)
-            Divider()
-            Button("Rename Library...") { onRenameLibrary() }
-            Button("Lock Library...") { onLockLibrary() }
-            Button("Sync Now") { onSyncNow() }
-            Button("Reveal Library in Finder") { onRevealLibrary() }
-            Button("Copy Library ID") { onCopyLibraryId() }
-            Divider()
-            CloseLibraryButton(onClose: onCloseLibrary)
-        }
-
         CommandGroup(before: .toolbar) {
-            OpenLibraryButton(uiStore: uiStore)
-            OpenImportButton(uiStore: uiStore)
+            OpenLibraryButton(target: target)
+            OpenImportButton(target: target)
             OpenStorageManagerButton()
 
-            Divider()
-
-            LibraryModeCommandButtons(uiStore: uiStore)
-
-            Divider()
-
-            // Reads the synced `libraryFullWidth` config; the write goes
-            // through the bridge, and the config subscription refreshes
-            // `configStore` — which is what re-checks this item.
-            Toggle(
-                "Full-Width Library",
-                isOn: Binding(
-                    get: { configStore.config.libraryFullWidth },
-                    set: { enabled in
-                        do {
-                            try library.setLibraryFullWidth(enabled)
+            if let target {
+                Divider()
+                LibraryModeCommandButtons(target: target)
+                Divider()
+                // Reads the live config and writes through the same library
+                // services installed in the focused window.
+                Toggle(
+                    "Full-Width Library",
+                    isOn: Binding(
+                        get: { target.configStore.config.libraryFullWidth },
+                        set: { enabled in
+                            do {
+                                try target.library.setLibraryFullWidth(enabled)
+                            }
+                            catch {
+                                target.uiStore.showError(error)
+                            }
                         }
-                        catch {
-                            uiStore.showError(error)
-                        }
-                    }
+                    )
                 )
-            )
-
-            Divider()
+                Divider()
+            }
 
             Button("Search") {
-                focusSearch?()
+                guard let focusSearch else {
+                    preconditionFailure(
+                        "Search is disabled without a focused search field"
+                    )
+                }
+                focusSearch()
             }
             .keyboardShortcut("/", modifiers: [])
+            .disabled(focusSearch == nil)
 
             Divider()
 
-            if let albumId = playbackStore.nowPlaying.track?.albumId {
-                Button("Go to Now Playing") {
-                    let trackId = playbackStore.nowPlaying.track?.trackId
-                    // Only store a per-album override when the playing track's
-                    // release isn't the album's primary — primary is the default.
-                    // Looks through already-loaded release details; if none match,
-                    // leaves releaseId nil and the detail view picks the default.
-                    let releaseId: String? = {
-                        guard let tId = trackId,
-                            let summary = libraryStore.albumSummaries[albumId]
-                        else {
-                            return nil
-                        }
-                        let matchingReleaseId = summary.releaseIds.first { id in
-                            libraryStore.releaseDetails[id]?.tracks
-                                .contains(where: {
-                                    $0.id == tId
-                                }) ?? false
-                        }
-                        guard let matchingReleaseId else {
-                            return nil
-                        }
-                        return matchingReleaseId == summary.primaryReleaseId
-                            ? nil : matchingReleaseId
-                    }()
-                    uiStore.navigateToAlbum(
-                        albumId,
-                        trackId: trackId,
-                        releaseId: releaseId
-                    )
-                }
-                .keyboardShortcut("l", modifiers: .command)
+            Button("Go to Now Playing") {
+                goToNowPlaying()
             }
+            .keyboardShortcut("l", modifiers: .command)
+            .disabled(target?.playbackStore.nowPlaying.track?.albumId == nil)
 
             Button("Toggle Queue") {
-                uiStore.toggleQueue()
+                requireTarget().uiStore.toggleQueue()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
+            .disabled(target == nil)
 
             Divider()
         }
 
         CommandMenu("Playback") {
             Button("Play / Pause") {
-                playback.playPause(for: playbackStore.nowPlaying)
+                let target = requireTarget()
+                target.playback.playPause(for: target.playbackStore.nowPlaying)
             }
             .keyboardShortcut(.space, modifiers: [])
+            .disabled(target == nil)
 
             Button("Next Track") {
-                playback.nextTrack()
+                requireTarget().playback.nextTrack()
             }
             .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+            .disabled(target == nil)
 
             Button("Previous Track") {
-                playback.previousTrack()
+                requireTarget().playback.previousTrack()
             }
             .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+            .disabled(target == nil)
 
             Button("Mute") {
-                playback.setMuted(!playbackStore.isMuted)
+                let target = requireTarget()
+                target.playback.setMuted(!target.playbackStore.isMuted)
             }
             .keyboardShortcut("m", modifiers: [.command, .option])
+            .disabled(target == nil)
 
             Divider()
 
             Button("Cycle Repeat Mode") {
-                playback.setRepeatMode(
-                    bridgeNextRepeatMode(mode: playbackStore.repeatMode)
+                let target = requireTarget()
+                target.playback.setRepeatMode(
+                    bridgeNextRepeatMode(mode: target.playbackStore.repeatMode)
                 )
             }
             .keyboardShortcut("r", modifiers: .command)
+            .disabled(target == nil)
 
             Menu("Repeat") {
-                RepeatModeMenuItems(current: playbackStore.repeatMode) { mode in
-                    playback.setRepeatMode(mode)
+                RepeatModeMenuItems(
+                    current: target?.playbackStore.repeatMode
+                ) { mode in
+                    requireTarget().playback.setRepeatMode(mode)
                 }
             }
+            .disabled(target == nil)
 
             Divider()
 
             Button("Shuffle Library") {
-                playback.playLibraryShuffled()
+                requireTarget().playback.playLibraryShuffled()
             }
-            .disabled((libraryStore.albumTotal ?? 0) == 0)
+            .disabled(!canShuffleLibrary)
         }
     }
 
-    private var importCandidateSkipAction: ImportCandidateSkipAction {
-        ImportCandidateSkipAction(
-            importer: importer,
-            importStore: importStore,
-            uiStore: uiStore
+    private func requireTarget() -> MainAppMenuTarget {
+        guard let target else {
+            preconditionFailure("Library command invoked without its target")
+        }
+        return target
+    }
+
+    private func requireImportCandidateSkipAction()
+        -> ImportCandidateSkipAction
+    {
+        let target = requireTarget()
+        return ImportCandidateSkipAction(
+            importer: target.importer,
+            importStore: target.importStore,
+            uiStore: target.uiStore
         )
     }
 
     private var canSkipSelectedImportCandidates: Bool {
-        guard case .importing = uiStore.activeSection else { return false }
-        return importCandidateSkipAction.isEnabled
+        guard let target, case .importing = target.uiStore.activeSection else {
+            return false
+        }
+        return ImportCandidateSkipAction(
+            importer: target.importer,
+            importStore: target.importStore,
+            uiStore: target.uiStore
+        ).isEnabled
+    }
+
+    private var canShuffleLibrary: Bool {
+        guard let albumTotal = target?.libraryStore.albumTotal else {
+            return false
+        }
+        return albumTotal > 0
+    }
+
+    private func goToNowPlaying() {
+        let target = requireTarget()
+        guard let albumId = target.playbackStore.nowPlaying.track?.albumId else {
+            preconditionFailure(
+                "Go to Now Playing is disabled without a playing album"
+            )
+        }
+        let trackId = target.playbackStore.nowPlaying.track?.trackId
+        // Store an override only when the playing track's release is not the
+        // album default; unloaded details leave the default unchanged.
+        let releaseId: String? = {
+            guard let trackId,
+                let summary = target.libraryStore.albumSummaries[albumId]
+            else {
+                return nil
+            }
+            let matchingReleaseId = summary.releaseIds.first { id in
+                target.libraryStore.releaseDetails[id]?.tracks
+                    .contains(where: { $0.id == trackId }) ?? false
+            }
+            guard let matchingReleaseId else {
+                return nil
+            }
+            return matchingReleaseId == summary.primaryReleaseId
+                ? nil : matchingReleaseId
+        }()
+        target.uiStore.navigateToAlbum(
+            albumId,
+            trackId: trackId,
+            releaseId: releaseId
+        )
     }
 }

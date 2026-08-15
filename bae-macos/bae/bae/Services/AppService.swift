@@ -26,6 +26,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// gets a new `UiStore`.
     private let uiStore: UiStore
 
+    /// The focused receiver for menu commands that act on this library.
+    /// It holds the same service and store instances installed in the view tree.
+    let mainAppMenuTarget: MainAppMenuTarget
+
     /// In-memory export queue mirror — per-release state and summary. The export
     /// value stream is the sole writer; the Storage Manager's Exporting pane reads
     /// it.
@@ -83,14 +87,16 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let sync = Sync(handle: appHandle)
         let downloads = Downloads(handle: appHandle)
         let cast = Cast(handle: appHandle)
+        let importStore = ImportStore()
+        let importer = Importer(handle: appHandle)
         self.uiStore = uiStore
-        importStore = ImportStore()
+        self.importStore = importStore
         // Seed the Exporting pane from the in-memory export queue.
         // `getOutputSnapshot` is infallible — no fallback.
         outputStore = OutputStore(snapshot: appHandle.getOutputSnapshot())
         previewAudio = PreviewAudio(handle: appHandle)
         releaseEditor = ReleaseEditor(handle: appHandle)
-        importer = Importer(handle: appHandle)
+        self.importer = importer
         outputs = Outputs(handle: appHandle)
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
@@ -118,6 +124,16 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         desktopEvents = DesktopEventHandler(
             importStore: importStore,
             mediaControlService: mediaControlService
+        )
+        mainAppMenuTarget = MainAppMenuTarget(
+            playbackStore: playbackStore,
+            configStore: configStore,
+            libraryStore: libraryStore,
+            importStore: importStore,
+            uiStore: uiStore,
+            library: library,
+            playback: playback,
+            importer: importer
         )
         let components = AppServiceComponents(
             playbackStore: playbackStore,
