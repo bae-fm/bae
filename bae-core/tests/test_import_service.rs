@@ -68,6 +68,7 @@ impl ImportFixture {
             tokio::runtime::Handle::current(),
             bae_core::import::cover_art::RemoteImageCache::for_test(),
         );
+        support::configure_test_discogs(&library_manager);
 
         let handle = library_manager
             .start_import_service(tokio::runtime::Handle::current())

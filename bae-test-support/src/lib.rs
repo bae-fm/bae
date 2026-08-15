@@ -297,10 +297,22 @@ pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: bae_core::library::LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
+    configure_test_discogs(&library_manager);
     library_manager
         .start_import_service(runtime_handle.clone())
         .await
         .expect("test import service starts")
+}
+
+/// Configure the provider credential used by seeded Discogs fixtures through
+/// the same library-manager capability production uses.
+pub fn configure_test_discogs(library_manager: &bae_core::library::LibraryManager) {
+    library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            bae_core::config::DiscogsValidation::Valid,
+        )
+        .expect("test Discogs key is stored through the library manager");
 }
 
 /// confirmation.
