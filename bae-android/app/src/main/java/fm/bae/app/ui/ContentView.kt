@@ -47,17 +47,23 @@ import uniffi.bae_bridge.BridgeLibrary
 fun ContentView(
     oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
+    startupError: String?,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var screen by remember { mutableStateOf<AppScreen>(AppScreen.Loading) }
+    var screen by remember(startupError) {
+        mutableStateOf<AppScreen>(
+            startupError?.let(AppScreen::Failed) ?: AppScreen.Loading,
+        )
+    }
 
     // On launch, go straight to an already-open session (e.g. after the
     // composition is recreated), else open the first discovered library or fall
     // through to onboarding.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(startupError) {
+        if (startupError != null) return@LaunchedEffect
         val open = AppSessionHolder.currentSession()
         if (open != null) {
             screen = AppScreen.LibraryOpen(open)

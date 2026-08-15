@@ -26,7 +26,7 @@ class BridgeActionTest {
                 errors = TestErrorLines,
                 showError = { shown.add(it) },
             ) {
-                throw BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "diagnostic detail")
+                throw BridgeException.Diagnostic(BridgeErrorCategory.Internal, "diagnostic detail")
             }
         }
 

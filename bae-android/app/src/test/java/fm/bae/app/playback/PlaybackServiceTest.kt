@@ -480,4 +480,4 @@ internal class FakeComposerBrowseSubscription(
     }
 }
 
-private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "temporary")
+private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.Internal, "temporary")

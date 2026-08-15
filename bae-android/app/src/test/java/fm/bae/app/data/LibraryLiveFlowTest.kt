@@ -28,7 +28,7 @@ class LibraryLiveFlowTest {
                         ): LiveSubscription {
                             callback.onError(
                                 BridgeException.Diagnostic(
-                                    category = BridgeErrorCategory.DATABASE,
+                                    category = BridgeErrorCategory.Database,
                                     detail = "query failed",
                                 ),
                             )

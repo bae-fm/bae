@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
             ContentView(
                 oauthLinking = app.oauthLinking,
                 oauthLinkingError = app.oauthLinkingError,
+                startupError = app.startupError?.let { localizedLine(it) ?: it.toString() },
                 shortcutAction = pendingShortcut,
                 onShortcutHandled = { pendingShortcut = null },
             )

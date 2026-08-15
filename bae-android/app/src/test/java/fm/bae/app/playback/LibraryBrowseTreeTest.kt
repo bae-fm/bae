@@ -292,5 +292,5 @@ class LibraryBrowseTreeTest {
             assertNull(tree(FakeAppHandle()).children("unknown", 0, 20))
         }
 
-    private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.DATABASE, "query failed")
+    private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.Database, "query failed")
 }

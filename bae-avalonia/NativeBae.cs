@@ -14,8 +14,8 @@ internal static partial class NativeBae
     /// <summary>One-time startup: register the OS credential store. Takes the
     /// telemetry sink so a store-creation failure ships
     /// <c>keyring_init_failed</c>.</summary>
-    internal static void Startup(BridgeDiagnostics diagnostics) =>
-        BaeBridgeMethods.InitKeyring(diagnostics);
+    internal static string? Startup(BridgeDiagnostics diagnostics) =>
+        CaptureError(() => BaeBridgeMethods.InitKeyring(diagnostics));
 
     /// <summary>
     /// Construct the telemetry sink and install the core's tracing subscriber.
@@ -251,7 +251,7 @@ internal static partial class NativeBae
         catch (FormatException)
         {
             throw new BridgeException.Diagnostic(
-                BridgeErrorCategory.Config,
+                new BridgeErrorCategory.Config(),
                 "the pasted invite is not base64 an invite bundle could be read from");
         }
     }

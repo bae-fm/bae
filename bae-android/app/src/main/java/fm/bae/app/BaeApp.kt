@@ -3,6 +3,7 @@ package fm.bae.app
 import android.app.Application
 import io.crates.keyring.Keyring
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.initKeyring
 import uniffi.bae_bridge.setCaCertDir
 import uniffi.bae_bridge.setDataDir
@@ -23,6 +24,9 @@ class BaeApp : Application() {
         private set
 
     var oauthLinkingError: String? = null
+        private set
+
+    var startupError: BridgeException? = null
         private set
 
     override fun onCreate() {
@@ -48,7 +52,13 @@ class BaeApp : Application() {
         // Must be called before initKeyring() so the Rust side has
         // access to the Android Context for SharedPreferences / KeyStore.
         Keyring.initializeNdkContext(this)
-        initKeyring(diagnostics)
+        try {
+            initKeyring(diagnostics)
+        } catch (error: BridgeException) {
+            startupError = error
+            logger.error("Failed to initialize secure storage", error)
+            return
+        }
         // Register the host's OAuth client creds (if a creds file is bundled) so
         // coven can build authorization URLs and refresh provider tokens during
         // sync. Null in the baeium edition (no OAuth) or when no creds file is

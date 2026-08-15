@@ -182,14 +182,12 @@ pub fn set_ca_cert_dir(dirs: String) {
     std::env::set_var("SSL_CERT_DIR", dirs);
 }
 
-/// Initialize the platform keyring. Call once at app startup, after
-/// `configure_diagnostics` (whose handle it passes down so a store-creation
-/// failure ships `keyring_init_failed`) and before any bridge function that
-/// touches the keyring (e.g. `unlockLibrary`, `initApp`). Safe to call again —
-/// it just replaces the store.
+/// Initialize coven's platform keyring. Call once at app startup, after
+/// `configure_diagnostics` and before any bridge function that touches the
+/// keyring. A failure is returned so the host stops startup and displays it.
 #[uniffi::export]
-pub fn init_keyring(diagnostics: Arc<crate::init::BridgeDiagnostics>) {
-    diagnostics.init_keyring();
+pub fn init_keyring(diagnostics: Arc<crate::init::BridgeDiagnostics>) -> Result<(), BridgeError> {
+    diagnostics.init_keyring()
 }
 
 /// Install the in-memory keyring used by debug UI-test app processes. The test

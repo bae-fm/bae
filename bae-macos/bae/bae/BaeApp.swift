@@ -820,18 +820,14 @@ extension AppDelegate {
             // for any failure it reports.
             BaeCrashReporting.configure(edition: appEdition)
             logger.info("application launched")
-            #if DEBUG
-                if AppRuntime.usesTestKeyring(
-                    environment: appProcessEnvironment
-                ) {
-                    initTestKeyring()
-                }
-                else {
-                    initKeyring(diagnostics: diagnostics)
-                }
-            #else
-                initKeyring(diagnostics: diagnostics)
-            #endif
+            do {
+                try initializeKeyring()
+            }
+            catch {
+                loadError = DisplayError(error)
+                screen = .welcome
+                return
+            }
             // Hand Rust the CloudKit driver once. It can't build the driver
             // itself (it needs the platform CloudKit APIs); installing it is
             // idempotent and harmless for libraries that sync elsewhere, so it
@@ -841,6 +837,18 @@ extension AppDelegate {
             #endif
         }
         loadInitialState()
+    }
+
+    private func initializeKeyring() throws {
+        #if DEBUG
+            if AppRuntime.usesTestKeyring(
+                environment: appProcessEnvironment
+            ) {
+                initTestKeyring()
+                return
+            }
+        #endif
+        try initKeyring(diagnostics: diagnostics)
     }
 
     /// AppKit's deferred-terminate flow, replacing the old fire-and-forget

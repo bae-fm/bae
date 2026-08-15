@@ -90,7 +90,7 @@ class BrowserPageStoresTest {
                     generation,
                     identity,
                     uniffi.bae_bridge.BridgeException.Diagnostic(
-                        uniffi.bae_bridge.BridgeErrorCategory.INTERNAL,
+                        uniffi.bae_bridge.BridgeErrorCategory.Internal,
                         "old failure",
                     ),
                 )

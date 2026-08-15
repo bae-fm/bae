@@ -47,7 +47,7 @@ struct BaeApp: App {
             // HOME, so it must run before `initKeyring`.
             setDataDir(path: try Self.dataDirectory())
             // No `setCaCertDir` on iOS — the TLS stack uses Apple's trust roots.
-            initKeyring(diagnostics: diagnostics)
+            try initKeyring(diagnostics: diagnostics)
             // Hand Rust the CloudKit driver once. It can't build the driver itself
             // (it needs the platform CloudKit APIs); installing it is idempotent and
             // harmless for libraries that sync elsewhere, so it belongs here at the

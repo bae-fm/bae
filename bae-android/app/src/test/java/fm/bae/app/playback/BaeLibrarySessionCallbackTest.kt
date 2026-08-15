@@ -125,7 +125,7 @@ class BaeLibrarySessionCallbackTest {
 
     private fun queryFailure() =
         uniffi.bae_bridge.BridgeException.Diagnostic(
-            uniffi.bae_bridge.BridgeErrorCategory.DATABASE,
+            uniffi.bae_bridge.BridgeErrorCategory.Database,
             "query failed",
         )
 }

@@ -61,8 +61,11 @@ pub struct BridgeDiagnostics {
 }
 
 impl BridgeDiagnostics {
-    pub(crate) fn init_keyring(&self) {
-        bae_core::config::init_keyring(&self.inner);
+    pub(crate) fn init_keyring(&self) -> Result<(), BridgeError> {
+        bae_core::config::init_keyring(&self.inner).map_err(|error| BridgeError::Diagnostic {
+            category: crate::types::BridgeErrorCategory::Keyring,
+            detail: error.to_string(),
+        })
     }
 
     fn emit_app_start_failed(&self, error: &BootstrapError) {

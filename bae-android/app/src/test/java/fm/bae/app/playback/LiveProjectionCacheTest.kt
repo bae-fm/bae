@@ -70,5 +70,5 @@ class LiveProjectionCacheTest {
             assertTrue(99 !in accepted)
         }
 
-    private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.DATABASE, "query failed")
+    private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.Database, "query failed")
 }

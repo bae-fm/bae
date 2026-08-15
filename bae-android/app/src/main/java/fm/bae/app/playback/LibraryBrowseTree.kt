@@ -535,14 +535,14 @@ private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
 internal fun windowEvicted(): BridgeException =
-    BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "browse window was replaced by a newer request")
+    BridgeException.Diagnostic(BridgeErrorCategory.Internal, "browse window was replaced by a newer request")
 
 internal fun treeClosedError(): BridgeException = browseDiagnostic(TREE_CLOSED_MESSAGE)
 
 private fun parentInterestEnded(): BridgeException =
-    BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "library browse parent interest ended")
+    BridgeException.Diagnostic(BridgeErrorCategory.Internal, "library browse parent interest ended")
 
 private fun searchInterestEnded(): BridgeException =
-    BridgeException.Diagnostic(BridgeErrorCategory.INTERNAL, "library browse search interest ended")
+    BridgeException.Diagnostic(BridgeErrorCategory.Internal, "library browse search interest ended")
 
-private fun browseDiagnostic(message: String): BridgeException = Diagnostic(BridgeErrorCategory.INTERNAL, message)
+private fun browseDiagnostic(message: String): BridgeException = Diagnostic(BridgeErrorCategory.Internal, message)

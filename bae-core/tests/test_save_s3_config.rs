@@ -29,7 +29,7 @@ fn unreachable_s3_config() -> S3ConfigData {
 }
 
 #[test]
-fn probe_failure_persists_nothing_and_surfaces_as_network() {
+fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (lm, _tmp) = setup_fresh_library(&runtime);
 
@@ -38,10 +38,13 @@ fn probe_failure_persists_nothing_and_surfaces_as_network() {
     let err = runtime
         .block_on(lm.save_s3_config(unreachable_s3_config()))
         .expect_err("an unreachable endpoint must fail the probe");
-    // An unreachable backend is the transient network class the UI offers a
-    // retry for — distinct from the credentials class a rejected bucket/secret
-    // maps to.
-    assert_eq!(err.category(), UiErrorCategory::Network, "got: {err}");
+    // An unreachable backend is the network case within the cloud-setup
+    // category, distinct from the authentication and permission cases.
+    assert_eq!(
+        err.category(),
+        UiErrorCategory::CloudSetup(coven::CloudHomeSetupFailure::Network),
+        "got: {err}"
+    );
 
     // The library is untouched: no provider recorded and sync is unconfigured.
     let config = lm.get_config();

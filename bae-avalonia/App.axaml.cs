@@ -175,18 +175,6 @@ public sealed partial class App : Application
         BaeDiagnostics.Configure();
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
-        NativeBae.Startup(BaeDiagnostics.Handle);
-        OAuthCreds.Register();
-
-        // Assert this app as the OS handler for bae:// links and folders, gated to
-        // a real Velopack install so a dev run or a loose copy never points the
-        // user's desktop at build output. Asserting it on every launch is what keeps
-        // the command naming where the app is now, and re-resolves the labels that
-        // are localized after a locale change.
-        if (UpdateService.IsInstalled)
-        {
-            ProtocolRegistration.Register();
-        }
 
         _session = new SessionStore(Dispatcher.UIThread);
         // The OS now-playing surface is process-scoped, like the session it reads
@@ -213,6 +201,24 @@ public sealed partial class App : Application
         // window checks too.
         _updateService = new UpdateService();
         _ = _updateService.CheckInBackgroundAsync();
+
+        var keyringError = NativeBae.Startup(BaeDiagnostics.Handle);
+        if (keyringError is not null)
+        {
+            GoToWelcome(keyringError);
+            return;
+        }
+        OAuthCreds.Register();
+
+        // Assert this app as the OS handler for bae:// links and folders, gated to
+        // a real Velopack install so a dev run or a loose copy never points the
+        // user's desktop at build output. Asserting it on every launch is what keeps
+        // the command naming where the app is now, and re-resolves the labels that
+        // are localized after a locale change.
+        if (UpdateService.IsInstalled)
+        {
+            ProtocolRegistration.Register();
+        }
 
         var libraries = LibraryDiscovery.Load(_ => { }).Where(library => library.Error is null).ToList();
         var openable = libraries.FirstOrDefault(library => library.IsActive)

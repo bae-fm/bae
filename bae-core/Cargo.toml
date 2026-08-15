@@ -22,7 +22,6 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 tokio = { version = "1.0", features = ["full"] }
 thiserror = "1.0"
-keyring-core = "0.7"
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
@@ -105,9 +104,6 @@ roxmltree = "0.20"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
 
-[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-apple-native-keyring-store = { version = "0.2", features = ["protected"] }
-
 # CoreAudio bindings for the default-output-device change listener
 # (src/playback/cpal_output.rs, macOS only): re-resolves the default device and
 # rebuilds the persistent output stream when the user switches outputs. Pinned to
@@ -116,26 +112,8 @@ apple-native-keyring-store = { version = "0.2", features = ["protected"] }
 coreaudio-sys = "0.2"
 
 [target.'cfg(target_os = "android")'.dependencies]
-android-native-keyring-store = "0.5"
 # AAudio output sink for the in-core decode path (src/playback/aaudio_output.rs).
 ndk = { version = "0.9", features = ["audio"] }
-
-# Windows Credential Manager store for keyring-core (encryption key, Discogs
-# token). 0.5.x targets keyring-core ^0.7 to match
-# the rest of the workspace. Without this, `init_keyring` registers no default
-# store on Windows and every credential read fails.
-[target.'cfg(target_os = "windows")'.dependencies]
-windows-native-keyring-store = "0.5.1"
-
-# Secret Service (D-Bus) store for keyring-core on Linux, the store many Linux
-# password keepers implement. 0.3.x targets keyring-core ^0.7 to match the rest
-# of the workspace. Pure-Rust zbus + RustCrypto with the tokio runtime the bridge
-# already runs on — no OpenSSL or libdbus C linkage. Without this, `init_keyring`
-# registers no default store on Linux and every credential read fails.
-[target.'cfg(target_os = "linux")'.dependencies]
-zbus-secret-service-keyring-store = { version = "0.3", default-features = false, features = [
-    "rt-tokio-crypto-rust",
-] }
 
 # The import pipeline's dependencies. The predicate is the pipeline's own — a
 # mobile build is a sync/playback client and compiles none of this — and it is
