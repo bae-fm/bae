@@ -10,6 +10,12 @@ pub enum UiErrorCategory {
     Import,
     Export,
     Save,
+    /// A failed cloud-home installation keeps Coven's exact reason so every UI
+    /// can tell the user what must change before retrying.
+    CloudSetup(coven::CloudHomeSetupFailure),
+    /// The local store has no device identity. Create, join, and restore establish
+    /// that identity before exposing a library.
+    DeviceIdentityMissing,
     /// A cloud provider rejected the request or the setup is misconfigured: bad
     /// credentials, denied permission, a bucket/folder that isn't set. The user
     /// fixes the cloud settings; retrying unchanged won't help.

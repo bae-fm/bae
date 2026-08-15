@@ -335,7 +335,7 @@ fn setup_failure_classes_map_to_distinct_categories() {
                     "oauth denied".into(),
                 )),
             ))),
-            C::Credentials,
+            C::CloudSetup(coven::CloudHomeSetupFailure::InvalidConfiguration),
         ),
         (
             coven::KeyError::Custody {
@@ -358,6 +358,10 @@ fn setup_failure_classes_map_to_distinct_categories() {
             C::Keyring,
         ),
         (
+            coven::SyncError::Key(coven::KeyError::NoDeviceIdentity).into(),
+            C::DeviceIdentityMissing,
+        ),
+        (
             coven::SyncError::CloudHome(coven::CloudHomeError::Transport("t".into())).into(),
             C::Network,
         ),
@@ -377,6 +381,29 @@ fn setup_failure_classes_map_to_distinct_categories() {
 
     for (error, expected) in &cases {
         assert_eq!(error.category(), *expected, "{error}");
+    }
+}
+
+#[test]
+fn every_cloud_setup_failure_keeps_its_exact_user_action() {
+    use coven::CloudHomeSetupFailure as F;
+
+    for failure in [
+        F::Authentication,
+        F::PermissionDenied,
+        F::ContainerNotFound,
+        F::RegionMismatch,
+        F::QuotaExceeded,
+        F::InvalidConfiguration,
+        F::LocationOccupied,
+        F::Network,
+        F::SecureStorage,
+        F::Internal,
+    ] {
+        assert_eq!(
+            cloud_setup_failure_category(failure),
+            crate::ui::UiErrorCategory::CloudSetup(failure),
+        );
     }
 }
 

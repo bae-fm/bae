@@ -213,14 +213,13 @@ fn cloud_home_category(error: &coven::CloudHomeError) -> crate::ui::UiErrorCateg
 }
 
 fn cloud_setup_category(error: &coven::CloudHomeSetupError) -> crate::ui::UiErrorCategory {
-    use coven::CloudHomeSetupError;
-    match error {
-        CloudHomeSetupError::Connection(error) => sync_category(error),
-        CloudHomeSetupError::Rollback { failure, .. } => cloud_setup_category(failure),
-        CloudHomeSetupError::MasterKey(_) | CloudHomeSetupError::Commit { .. } => {
-            crate::ui::UiErrorCategory::Keyring
-        }
-    }
+    cloud_setup_failure_category(error.failure())
+}
+
+fn cloud_setup_failure_category(
+    failure: coven::CloudHomeSetupFailure,
+) -> crate::ui::UiErrorCategory {
+    crate::ui::UiErrorCategory::CloudSetup(failure)
 }
 
 fn cloud_unlock_category(error: &coven::CloudHomeUnlockError) -> crate::ui::UiErrorCategory {
@@ -244,6 +243,7 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         return C::Network;
     }
     match error {
+        SyncError::Key(coven::KeyError::NoDeviceIdentity) => C::DeviceIdentityMissing,
         SyncError::Key(_) => C::Keyring,
         SyncError::CloudHome(e) => cloud_home_category(e),
         SyncError::Setup(_) => C::Credentials,

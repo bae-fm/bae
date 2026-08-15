@@ -404,6 +404,37 @@ mod loc_key_coverage {
             BridgeErrorCategory::Import,
             BridgeErrorCategory::Export,
             BridgeErrorCategory::Save,
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::Authentication,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::PermissionDenied,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::ContainerNotFound,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::RegionMismatch,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::QuotaExceeded,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::InvalidConfiguration,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::LocationOccupied,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::Network,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::SecureStorage,
+            },
+            BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::Internal,
+            },
+            BridgeErrorCategory::DeviceIdentityMissing,
             BridgeErrorCategory::Credentials,
             BridgeErrorCategory::Network,
             BridgeErrorCategory::Keyring,
@@ -417,6 +448,33 @@ mod loc_key_coverage {
                 BridgeErrorCategory::Import => "core.error.category.import",
                 BridgeErrorCategory::Export => "core.error.category.export",
                 BridgeErrorCategory::Save => "core.error.category.save",
+                BridgeErrorCategory::CloudSetup { failure } => match failure {
+                    BridgeCloudHomeSetupFailure::Authentication => {
+                        "core.error.category.credentials"
+                    }
+                    BridgeCloudHomeSetupFailure::PermissionDenied => {
+                        "core.error.cloud_setup.permission_denied"
+                    }
+                    BridgeCloudHomeSetupFailure::ContainerNotFound => {
+                        "core.error.cloud_setup.container_not_found"
+                    }
+                    BridgeCloudHomeSetupFailure::RegionMismatch => {
+                        "core.error.cloud_setup.region_mismatch"
+                    }
+                    BridgeCloudHomeSetupFailure::QuotaExceeded => {
+                        "core.error.cloud_setup.quota_exceeded"
+                    }
+                    BridgeCloudHomeSetupFailure::InvalidConfiguration => {
+                        "core.error.cloud_setup.invalid_configuration"
+                    }
+                    BridgeCloudHomeSetupFailure::LocationOccupied => {
+                        "core.error.cloud_setup.location_occupied"
+                    }
+                    BridgeCloudHomeSetupFailure::Network => "core.error.category.network",
+                    BridgeCloudHomeSetupFailure::SecureStorage => "core.error.category.keyring",
+                    BridgeCloudHomeSetupFailure::Internal => "core.error.category.internal",
+                },
+                BridgeErrorCategory::DeviceIdentityMissing => "core.error.identity_missing",
                 BridgeErrorCategory::Credentials => "core.error.category.credentials",
                 BridgeErrorCategory::Network => "core.error.category.network",
                 BridgeErrorCategory::Keyring => "core.error.category.keyring",
@@ -602,6 +660,59 @@ mod triage_tests {
 #[cfg(test)]
 mod conversion_roundtrip {
     use super::*;
+
+    #[test]
+    fn cloud_setup_failure_reason_crosses_the_bridge_unchanged() {
+        use bae_core::ui::UiErrorCategory;
+        use coven::CloudHomeSetupFailure as Core;
+
+        for (core, bridge) in [
+            (
+                Core::Authentication,
+                BridgeCloudHomeSetupFailure::Authentication,
+            ),
+            (
+                Core::PermissionDenied,
+                BridgeCloudHomeSetupFailure::PermissionDenied,
+            ),
+            (
+                Core::ContainerNotFound,
+                BridgeCloudHomeSetupFailure::ContainerNotFound,
+            ),
+            (
+                Core::RegionMismatch,
+                BridgeCloudHomeSetupFailure::RegionMismatch,
+            ),
+            (
+                Core::QuotaExceeded,
+                BridgeCloudHomeSetupFailure::QuotaExceeded,
+            ),
+            (
+                Core::InvalidConfiguration,
+                BridgeCloudHomeSetupFailure::InvalidConfiguration,
+            ),
+            (
+                Core::LocationOccupied,
+                BridgeCloudHomeSetupFailure::LocationOccupied,
+            ),
+            (Core::Network, BridgeCloudHomeSetupFailure::Network),
+            (
+                Core::SecureStorage,
+                BridgeCloudHomeSetupFailure::SecureStorage,
+            ),
+            (Core::Internal, BridgeCloudHomeSetupFailure::Internal),
+        ] {
+            assert_eq!(
+                BridgeErrorCategory::from_core(UiErrorCategory::CloudSetup(core)),
+                BridgeErrorCategory::CloudSetup { failure: bridge },
+            );
+        }
+
+        assert_eq!(
+            BridgeErrorCategory::from_core(UiErrorCategory::DeviceIdentityMissing),
+            BridgeErrorCategory::DeviceIdentityMissing,
+        );
+    }
 
     #[test]
     fn image_ref_round_trips() {

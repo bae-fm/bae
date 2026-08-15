@@ -157,6 +157,22 @@ pub struct BridgeSavePreset {
     pub embed_cover: bool,
 }
 
+/// A cloud-home setup failure mirrored across UniFFI. Coven's original enum is
+/// used inside bae-core; this mirror exists only for the language boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCloudHomeSetupFailure {
+    Authentication,
+    PermissionDenied,
+    ContainerNotFound,
+    RegionMismatch,
+    QuotaExceeded,
+    InvalidConfiguration,
+    LocationOccupied,
+    Network,
+    SecureStorage,
+    Internal,
+}
+
 /// The kind of diagnostic failure. The UI shows one generic localized line per
 /// category; `detail` is the underlying Rust error chain — logged and offered in
 /// a copyable disclosure, never translated.
@@ -168,6 +184,10 @@ pub enum BridgeErrorCategory {
     Import,
     Export,
     Save,
+    CloudSetup {
+        failure: BridgeCloudHomeSetupFailure,
+    },
+    DeviceIdentityMissing,
     /// A cloud provider rejected the request or the setup is misconfigured (bad
     /// credentials, denied permission, a bucket/folder that isn't set).
     Credentials,
@@ -281,6 +301,27 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Import => "core.error.category.import",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
+        BridgeErrorCategory::CloudSetup { failure } => match failure {
+            BridgeCloudHomeSetupFailure::Authentication => "core.error.category.credentials",
+            BridgeCloudHomeSetupFailure::PermissionDenied => {
+                "core.error.cloud_setup.permission_denied"
+            }
+            BridgeCloudHomeSetupFailure::ContainerNotFound => {
+                "core.error.cloud_setup.container_not_found"
+            }
+            BridgeCloudHomeSetupFailure::RegionMismatch => "core.error.cloud_setup.region_mismatch",
+            BridgeCloudHomeSetupFailure::QuotaExceeded => "core.error.cloud_setup.quota_exceeded",
+            BridgeCloudHomeSetupFailure::InvalidConfiguration => {
+                "core.error.cloud_setup.invalid_configuration"
+            }
+            BridgeCloudHomeSetupFailure::LocationOccupied => {
+                "core.error.cloud_setup.location_occupied"
+            }
+            BridgeCloudHomeSetupFailure::Network => "core.error.category.network",
+            BridgeCloudHomeSetupFailure::SecureStorage => "core.error.category.keyring",
+            BridgeCloudHomeSetupFailure::Internal => "core.error.category.internal",
+        },
+        BridgeErrorCategory::DeviceIdentityMissing => "core.error.identity_missing",
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
@@ -376,10 +417,32 @@ impl BridgeErrorCategory {
             UiErrorCategory::Import => BridgeErrorCategory::Import,
             UiErrorCategory::Export => BridgeErrorCategory::Export,
             UiErrorCategory::Save => BridgeErrorCategory::Save,
+            UiErrorCategory::CloudSetup(failure) => BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::from_core(failure),
+            },
+            UiErrorCategory::DeviceIdentityMissing => BridgeErrorCategory::DeviceIdentityMissing,
             UiErrorCategory::Credentials => BridgeErrorCategory::Credentials,
             UiErrorCategory::Network => BridgeErrorCategory::Network,
             UiErrorCategory::Keyring => BridgeErrorCategory::Keyring,
             UiErrorCategory::Membership => BridgeErrorCategory::Membership,
+        }
+    }
+}
+
+impl BridgeCloudHomeSetupFailure {
+    fn from_core(failure: coven::CloudHomeSetupFailure) -> Self {
+        use coven::CloudHomeSetupFailure;
+        match failure {
+            CloudHomeSetupFailure::Authentication => Self::Authentication,
+            CloudHomeSetupFailure::PermissionDenied => Self::PermissionDenied,
+            CloudHomeSetupFailure::ContainerNotFound => Self::ContainerNotFound,
+            CloudHomeSetupFailure::RegionMismatch => Self::RegionMismatch,
+            CloudHomeSetupFailure::QuotaExceeded => Self::QuotaExceeded,
+            CloudHomeSetupFailure::InvalidConfiguration => Self::InvalidConfiguration,
+            CloudHomeSetupFailure::LocationOccupied => Self::LocationOccupied,
+            CloudHomeSetupFailure::Network => Self::Network,
+            CloudHomeSetupFailure::SecureStorage => Self::SecureStorage,
+            CloudHomeSetupFailure::Internal => Self::Internal,
         }
     }
 }
