@@ -368,20 +368,20 @@ extension BaeApp {
     private var mainWindow: some Scene {
         AppService.installEnvironment(
             Window("bae", id: "main") {
-                if appDelegate.appService != nil {
-                    libraryModals(
-                        MainWindowChrome(loadError: appDelegate.loadError) {
-                            detailContent
-                        }
-                        .navigationTitle(windowTitle)
-                        .background(
-                            WindowSwapDriver(hasShell: appDelegate.hasShell)
+                Group {
+                    if appDelegate.appService != nil {
+                        libraryModals(
+                            MainWindowChrome(loadError: appDelegate.loadError) {
+                                detailContent
+                            }
+                            .navigationTitle(windowTitle)
                         )
-                    )
+                    }
+                    else {
+                        ProgressView()
+                    }
                 }
-                else {
-                    ProgressView()
-                }
+                .background(WindowSwapDriver(hasShell: appDelegate.hasShell))
             }
             .windowStyle(.hiddenTitleBar)
             .defaultSize(
