@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use support::start_test_import;
 use support::{
     assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
-    test_config_and_keys, tracing_init, wait_for_import_complete,
+    test_config, tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
 use tokio::time::{sleep, timeout};
@@ -119,11 +119,10 @@ async fn test_cue_ape_records_correct_durations() {
     .await
     .expect("database");
     let library_dir = StoreDir::new(db_dir.clone());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -309,11 +308,10 @@ async fn test_cue_ape_records_track_timing() {
     .await
     .expect("database");
     let library_dir = StoreDir::new(db_dir.clone());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -442,11 +440,10 @@ impl CueApeTestFixture {
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let config_handle = test_config(&library_dir);
         let library_manager = LibraryManager::new(
             database.clone(),
             config_handle,
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

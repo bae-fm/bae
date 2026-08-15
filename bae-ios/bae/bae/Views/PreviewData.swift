@@ -18,8 +18,6 @@ enum PreviewData {
                     libraryId: "lib-preview",
                     libraryName: "Preview Library",
                     libraryPath: "/preview",
-                    encryptionKeyStored: false,
-                    encryptionKeyFingerprint: nil,
                     pauseBetweenSides: false,
                     maxConcurrentUploads: 3,
                     maxConcurrentDownloads: 3,

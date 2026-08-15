@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Prikažite pozivni kod s uređaja s kojeg se pridružujete</string>
     <string name="qr_scanner_join_request_instructions">Prikažite kod novog uređaja sa zaslona “Pridruži se fonoteci”</string>
     <string name="unlock_title">Fonoteka zaključana</string>
-    <string name="unlock_key_fingerprint">Otisak ključa: %1$s</string>
     <string name="unlock_explanation">Ključ za šifriranje ove fonoteke nije u privjesku ključeva. Unesite 64-znamenkasti heksadecimalni ključ za otključavanje.</string>
     <string name="unlock_key_label">Ključ za šifriranje (64 heksadecimalna znaka)</string>
     <string name="unlock_failed">Otključavanje nije uspjelo</string>

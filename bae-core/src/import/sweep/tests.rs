@@ -15,7 +15,6 @@ use crate::config::{Config, ConfigHandle};
 use crate::db::{Database, DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::keys::StoreKeys;
 use crate::library::LibraryManager;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use serial_test::serial;
@@ -323,7 +322,6 @@ impl Fixture {
         let manager = LibraryManager::new(
             database,
             Arc::new(ConfigHandle::new(config)),
-            StoreKeys::bind(library_id),
             clock,
             ids,
             crate::diagnostics::Diagnostics::noop(),

@@ -5,8 +5,6 @@ pub struct BridgeConfig {
     pub library_id: String,
     pub library_name: String,
     pub library_path: String,
-    pub encryption_key_stored: bool,
-    pub encryption_key_fingerprint: Option<String>,
     pub pause_between_sides: bool,
     /// How many blob uploads run at once. Device-local; range 1..=8. Desktop
     /// exposes a control for it, mobile does not (mobile makes no uploads).
@@ -46,6 +44,23 @@ pub struct BridgeConfig {
     /// broken. Does not imply sync is working: runtime status lives in
     /// `BridgeSyncStatusSnapshot`, not config.
     pub sync: Option<BridgeSyncConfig>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCloudHomeKeyState {
+    NotRequired,
+    Available,
+    Locked,
+}
+
+impl From<coven::CloudHomeKeyState> for BridgeCloudHomeKeyState {
+    fn from(value: coven::CloudHomeKeyState) -> Self {
+        match value {
+            coven::CloudHomeKeyState::NotRequired => Self::NotRequired,
+            coven::CloudHomeKeyState::Available => Self::Available,
+            coven::CloudHomeKeyState::Locked => Self::Locked,
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

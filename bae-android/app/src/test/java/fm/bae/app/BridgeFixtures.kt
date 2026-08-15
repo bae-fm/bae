@@ -251,8 +251,6 @@ object BridgeFixtures {
             libraryId = libraryId,
             libraryName = "bae Library",
             libraryPath = "/tmp/lib",
-            encryptionKeyStored = false,
-            encryptionKeyFingerprint = null,
             pauseBetweenSides = false,
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,

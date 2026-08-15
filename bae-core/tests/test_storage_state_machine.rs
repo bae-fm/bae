@@ -71,7 +71,7 @@ async fn setup_manager(
     EncryptionService,
 ) {
     let library_dir = StoreDir::new(tmp.path());
-    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+    let config_handle = support::test_config(&library_dir);
     let db_path = tmp.path().join("test.db");
     let db = Database::new_test(
         db_path.to_str().unwrap(),
@@ -83,7 +83,6 @@ async fn setup_manager(
     let mgr = LibraryManager::new(
         db.clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

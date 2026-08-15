@@ -41,8 +41,6 @@ use crate::db::{
     DbLibraryImage, DbRelease, DbTrack, DeleteCleanupPlan, LibraryImageType, Pressing,
 };
 use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
-use crate::keys::BaeStoreKeysExt;
-use crate::keys::StoreKeys;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
@@ -145,11 +143,10 @@ pub enum LibraryError {
     /// (`Configuration`) or an unreachable backend (`Transport`).
     #[error("Cloud home error: {0}")]
     CloudHome(#[from] coven::CloudHomeError),
-    /// Consumer-cloud OAuth sign-in failed. Carries coven's setup-error
-    /// message as a string: coven's `SetupError` type is not part of its
-    /// curated public API, so the sign-in call sites map it here by display.
     #[error("Cloud setup error: {0}")]
-    CloudSetup(String),
+    CloudSetup(#[from] coven::CloudHomeSetupError),
+    #[error("Cloud unlock error: {0}")]
+    CloudUnlock(#[from] coven::CloudHomeUnlockError),
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
@@ -187,7 +184,8 @@ impl LibraryError {
             LibraryError::Config(_) | LibraryError::Validation(_) => C::Config,
             LibraryError::Keyring(_) => C::Keyring,
             LibraryError::CloudHome(e) => cloud_home_category(e),
-            LibraryError::CloudSetup(_) => C::Credentials,
+            LibraryError::CloudSetup(error) => cloud_setup_category(error),
+            LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::Export(_) => C::Export,
@@ -211,6 +209,29 @@ fn cloud_home_category(error: &coven::CloudHomeError) -> crate::ui::UiErrorCateg
         C::Network
     } else {
         C::Credentials
+    }
+}
+
+fn cloud_setup_category(error: &coven::CloudHomeSetupError) -> crate::ui::UiErrorCategory {
+    use coven::CloudHomeSetupError;
+    match error {
+        CloudHomeSetupError::Connection(error) => sync_category(error),
+        CloudHomeSetupError::Rollback { failure, .. } => cloud_setup_category(failure),
+        CloudHomeSetupError::MasterKey(_) | CloudHomeSetupError::Commit { .. } => {
+            crate::ui::UiErrorCategory::Keyring
+        }
+    }
+}
+
+fn cloud_unlock_category(error: &coven::CloudHomeUnlockError) -> crate::ui::UiErrorCategory {
+    use coven::CloudHomeUnlockError;
+    match error {
+        CloudHomeUnlockError::Connection(error) => sync_category(error),
+        CloudHomeUnlockError::Rollback { failure, .. } => cloud_unlock_category(failure),
+        CloudHomeUnlockError::KeyNotRequired => crate::ui::UiErrorCategory::Config,
+        CloudHomeUnlockError::MasterKey(_) | CloudHomeUnlockError::Commit(_) => {
+            crate::ui::UiErrorCategory::Keyring
+        }
     }
 }
 
@@ -721,7 +742,6 @@ pub enum LibraryEvent {
 pub struct LibraryManager {
     database: Database,
     config_handle: Arc<ConfigHandle>,
-    key_service: StoreKeys,
     clock: ClockRef,
     ids: IdRef,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id

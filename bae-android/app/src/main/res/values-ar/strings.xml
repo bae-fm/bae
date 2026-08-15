@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">اعرض رمز الدعوة من الجهاز الذي تنضم منه</string>
     <string name="qr_scanner_join_request_instructions">اعرض رمز الجهاز الجديد من شاشة “الانضمام إلى مكتبة”</string>
     <string name="unlock_title">المكتبة مقفلة</string>
-    <string name="unlock_key_fingerprint">بصمة المفتاح: %1$s</string>
     <string name="unlock_explanation">مفتاح التشفير لهذه المكتبة غير موجود في حلقة المفاتيح. أدخل المفتاح السداسي العشري المكوّن من 64 حرفًا لإلغاء القفل.</string>
     <string name="unlock_key_label">مفتاح التشفير (64 حرفًا سداسيًا عشريًا)</string>
     <string name="unlock_failed">فشل إلغاء القفل</string>

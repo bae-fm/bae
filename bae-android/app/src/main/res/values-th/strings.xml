@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">แสดงรหัสเชิญจากอุปกรณ์ที่คุณกำลังเข้าร่วมจาก</string>
     <string name="qr_scanner_join_request_instructions">แสดงรหัสของอุปกรณ์ใหม่จากหน้าจอ “เข้าร่วมคลัง”</string>
     <string name="unlock_title">คลังถูกล็อก</string>
-    <string name="unlock_key_fingerprint">การเข้ารหัส: %1$s</string>
     <string name="unlock_explanation">คีย์เข้ารหัสสำหรับคลังนี้ไม่อยู่ในพวงกุญแจ ป้อนคีย์เลขฐานสิบหก 64 อักขระเพื่อปลดล็อก</string>
     <string name="unlock_key_label">คีย์เข้ารหัส (เลขฐานสิบหก 64 อักขระ)</string>
     <string name="unlock_failed">ปลดล็อก · ข้อผิดพลาด</string>

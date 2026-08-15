@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">جس آلے سے آپ شامل ہو رہے ہیں اس کا دعوتی رمز دکھائیں</string>
     <string name="qr_scanner_join_request_instructions">نئے آلے کی “کتب خانے میں شامل ہوں” اسکرین سے اس کا رمز دکھائیں</string>
     <string name="unlock_title">لائبریری مقفل ہے</string>
-    <string name="unlock_key_fingerprint">خفیہ کاری: %1$s</string>
     <string name="unlock_explanation">اس لائبریری کی خفیہ کاری کلید کی رنگ میں نہیں ہے۔ کھولنے کے لیے 64 حروف والی hex کلید درج کریں۔</string>
     <string name="unlock_key_label">خفیہ کاری کلید (64 hex حروف)</string>
     <string name="unlock_failed">کھولیں · خرابی</string>

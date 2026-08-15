@@ -75,8 +75,14 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
-        self.sync.disconnect_cloud_provider()
+    pub async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
+        self.sync.disconnect_cloud_provider().await
+    }
+
+    pub async fn unlock_cloud_home(&self, serialized_master_key: &str) -> Result<(), LibraryError> {
+        self.sync.unlock_cloud_home(serialized_master_key).await?;
+        self.config_handle.config().save_active_library()?;
+        Ok(())
     }
 
     /// How many releases are reachable only through cloud sync — remote and not

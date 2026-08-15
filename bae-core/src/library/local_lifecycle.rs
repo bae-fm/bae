@@ -1,4 +1,3 @@
-use crate::keys::StoreKeys;
 use crate::library::LibraryError;
 use std::ffi::OsStr;
 use std::path::{Component, Path};
@@ -9,25 +8,38 @@ pub(crate) enum ActiveLibraryExpectation {
     MustNotNameAnotherLibrary,
 }
 
+pub(crate) struct PreparedLocalLibraryRemoval {
+    library_dir: std::path::PathBuf,
+    active_pointer: std::path::PathBuf,
+    clears_active_pointer: bool,
+}
+
 /// Remove a registered library without opening its database first. This is the
 /// welcome screen's path for a library whose database cannot be opened.
 pub fn remove_local_library(library_id: &str) -> Result<(), LibraryError> {
     let bae_dir = crate::config::bae_dir()?;
-    let keys = StoreKeys::bind(library_id.to_string());
     remove_local_library_from_bae_dir(
         &bae_dir,
         library_id,
-        &keys,
         ActiveLibraryExpectation::MayBeInactive,
-    )
+    )?;
+    coven::Coven::forget_keyring_master_key(library_id)?;
+    Ok(())
 }
 
 pub(crate) fn remove_local_library_from_bae_dir(
     bae_dir: &Path,
     library_id: &str,
-    keys: &StoreKeys,
     active_expectation: ActiveLibraryExpectation,
 ) -> Result<(), LibraryError> {
+    prepare_local_library_removal(bae_dir, library_id, active_expectation)?.remove()
+}
+
+pub(crate) fn prepare_local_library_removal(
+    bae_dir: &Path,
+    library_id: &str,
+    active_expectation: ActiveLibraryExpectation,
+) -> Result<PreparedLocalLibraryRemoval, LibraryError> {
     validate_library_id(library_id)?;
     let active_pointer = bae_dir.join("active-library");
     let active_library_id = read_active_pointer(&active_pointer)?;
@@ -45,32 +57,48 @@ pub(crate) fn remove_local_library_from_bae_dir(
     }
 
     let library_dir = crate::config::registered_library_path(bae_dir, library_id);
-    match std::fs::remove_dir_all(&library_dir) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(LibraryError::Internal(format!(
-                "Failed to remove library data at {}: {error}",
-                library_dir.display()
-            )));
-        }
+    if library_dir.exists() && !library_dir.is_dir() {
+        return Err(LibraryError::Internal(format!(
+            "Failed to remove library data at {}: path is not a directory",
+            library_dir.display()
+        )));
     }
 
-    if active_library_id.as_deref() == Some(library_id) {
-        match std::fs::remove_file(&active_pointer) {
+    Ok(PreparedLocalLibraryRemoval {
+        library_dir,
+        active_pointer,
+        clears_active_pointer: active_library_id.as_deref() == Some(library_id),
+    })
+}
+
+impl PreparedLocalLibraryRemoval {
+    pub(crate) fn remove(self) -> Result<(), LibraryError> {
+        match std::fs::remove_dir_all(&self.library_dir) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => {
                 return Err(LibraryError::Internal(format!(
-                    "Failed to clear active-library pointer at {}: {error}",
-                    active_pointer.display()
+                    "Failed to remove library data at {}: {error}",
+                    self.library_dir.display()
                 )));
             }
         }
-    }
 
-    keys.delete_encryption_key()?;
-    Ok(())
+        if self.clears_active_pointer {
+            match std::fs::remove_file(&self.active_pointer) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(LibraryError::Internal(format!(
+                        "Failed to clear active-library pointer at {}: {error}",
+                        self.active_pointer.display()
+                    )));
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn validate_library_id(library_id: &str) -> Result<(), LibraryError> {

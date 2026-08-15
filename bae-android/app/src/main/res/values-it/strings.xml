@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Mostra il codice invito dal dispositivo da cui ti stai unendo</string>
     <string name="qr_scanner_join_request_instructions">Mostra il codice del nuovo dispositivo dalla schermata “Unisciti a una libreria”</string>
     <string name="unlock_title">Libreria bloccata</string>
-    <string name="unlock_key_fingerprint">Crittografia: %1$s</string>
     <string name="unlock_explanation">La chiave di crittografia per questa libreria non è nel portachiavi. Inserisci la chiave esadecimale a 64 caratteri per sbloccare.</string>
     <string name="unlock_key_label">Crittografia (64 hex)</string>
     <string name="unlock_failed">Sblocco non riuscito</string>

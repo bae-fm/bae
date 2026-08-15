@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">显示你要从中加入的设备上的邀请码</string>
     <string name="qr_scanner_join_request_instructions">显示新设备“加入曲库”屏幕上的代码</string>
     <string name="unlock_title">库已锁定</string>
-    <string name="unlock_key_fingerprint">密钥指纹：%1$s</string>
     <string name="unlock_explanation">此库的加密密钥不在密钥环中。请输入 64 位十六进制密钥以解锁。</string>
     <string name="unlock_key_label">加密密钥（64 位十六进制）</string>
     <string name="unlock_failed">解锁失败</string>

@@ -127,13 +127,13 @@ private fun AppScreenRouter(
 
         is AppScreen.Unlock -> {
             UnlockScreen(
-                libraryId = current.libraryId,
                 libraryName = current.libraryName,
-                fingerprint = current.fingerprint,
-                onUnlocked = {
-                    scope.launch { AppSessionHolder.openLibrary(context, current.libraryId, onScreen) }
+                onUnlock = { key ->
+                    val session = AppSessionHolder.unlock(key)
+                    onScreen(AppScreen.LibraryOpen(session))
                 },
                 onCancel = {
+                    AppSessionHolder.cancelUnlock()
                     val open = AppSessionHolder.currentSession()
                     onScreen(if (open != null) AppScreen.LibraryOpen(open) else AppScreen.Onboarding)
                 },

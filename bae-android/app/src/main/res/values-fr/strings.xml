@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Afficher le code d’invitation de l’appareil depuis lequel vous rejoignez</string>
     <string name="qr_scanner_join_request_instructions">Afficher le code du nouvel appareil depuis son écran « Rejoindre une bibliothèque »</string>
     <string name="unlock_title">Bibliothèque verrouillée</string>
-    <string name="unlock_key_fingerprint">Empreinte de la clé : %1$s</string>
     <string name="unlock_explanation">La clé de chiffrement de cette bibliothèque n\'est pas dans le trousseau. Saisissez la clé hexadécimale de 64 caractères pour déverrouiller.</string>
     <string name="unlock_key_label">Clé de chiffrement (64 caractères hex)</string>
     <string name="unlock_failed">Échec du déverrouillage</string>

@@ -26,7 +26,11 @@ internal sealed class WelcomeWindow : Window
     // openLibrary is the coordinator's open (App.OpenLibrary): every path here —
     // the chooser, create, restore, join, and unlock — hands it a library id and
     // lets the coordinator swap to the main window.
-    public WelcomeWindow(Action<string> openLibrary)
+    public WelcomeWindow(
+        Action<string> openLibrary,
+        Func<string, Task<string?>> unlock,
+        Action onUnlocked,
+        Func<Task> cancelUnlock)
     {
         Title = "bae";
         Width = WidthDips;
@@ -47,7 +51,7 @@ internal sealed class WelcomeWindow : Window
 
         _joinDialog = new JoinLibraryDialog(dismissWelcome: () => { }, openLibrary);
         _restoreDialog = new RestoreFromCloudDialog(dismissWelcome: () => { }, openLibrary);
-        _unlockDialog = new UnlockDialog(SetStatus, openLibrary);
+        _unlockDialog = new UnlockDialog(SetStatus, unlock, onUnlocked, cancelUnlock);
 
         var welcomeView = new WelcomeView(
             SetStatus,
@@ -71,6 +75,6 @@ internal sealed class WelcomeWindow : Window
 
     // Prompt for the encryption key of a locked library. On success the unlock
     // dialog re-opens the library through the coordinator.
-    public Task ShowUnlock(string libraryId) =>
-        _modalHost.Show(close => _unlockDialog.Build(libraryId, close));
+    public Task ShowUnlock() =>
+        _modalHost.Show(_unlockDialog.Build);
 }

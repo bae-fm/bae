@@ -252,8 +252,6 @@
 
     <!-- Unlock -->
     <string name="unlock_title">Library Locked</string>
-    <!-- %1$s = key fingerprint hex -->
-    <string name="unlock_key_fingerprint">Key fingerprint: %1$s</string>
     <string name="unlock_explanation">The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock.</string>
     <string name="unlock_key_label">Encryption key (64 hex characters)</string>
     <string name="unlock_failed">Failed to unlock</string>

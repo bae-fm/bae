@@ -24,11 +24,10 @@ impl HighSampleRateTestFixture {
         .await?;
         let database_arc = Arc::new(database.clone());
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let config_handle = test_config(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),
             config_handle,
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
@@ -479,11 +478,10 @@ async fn test_restore_emits_seeked_at_saved_position() {
     .unwrap();
     let database_arc = Arc::new(database.clone());
     let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -574,11 +572,10 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     .unwrap();
     let database_arc = Arc::new(database.clone());
     let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Zeige den Einladungscode des Geräts, von dem aus du beitrittst</string>
     <string name="qr_scanner_join_request_instructions">Zeige den Code des neuen Geräts aus dem Bildschirm „Mediathek beitreten“</string>
     <string name="unlock_title">Bibliothek gesperrt</string>
-    <string name="unlock_key_fingerprint">Schlüssel-Fingerabdruck: %1$s</string>
     <string name="unlock_explanation">Der Verschlüsselungsschlüssel für diese Bibliothek ist nicht im Schlüsselbund. Gib den 64-stelligen Hex-Schlüssel zum Entsperren ein.</string>
     <string name="unlock_key_label">Verschlüsselungsschlüssel (64 Hex-Zeichen)</string>
     <string name="unlock_failed">Entsperren fehlgeschlagen</string>

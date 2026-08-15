@@ -36,9 +36,7 @@ use serial_test::serial;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use support::start_test_import;
-use support::{
-    seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
-};
+use support::{seed_discogs_test_release, test_config, tracing_init, wait_for_import_complete};
 use tempfile::TempDir;
 use tokio::time::timeout;
 
@@ -362,11 +360,10 @@ impl PlaybackTestFixture {
         .await?;
         let database_arc = Arc::new(database.clone());
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let config_handle = test_config(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),
             config_handle,
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

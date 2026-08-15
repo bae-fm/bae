@@ -25,6 +25,7 @@ internal sealed class SessionStore
     private readonly object _handleGate = new();
     private readonly Dispatcher _dispatcher;
     private LibraryHandle? _handle;
+    private LibraryHandle? _lockedHandle;
     private int _sessionGeneration;
 
     // Held for the subscription's lifetime; the generated callback map keeps the
@@ -40,10 +41,8 @@ internal sealed class SessionStore
         _dispatcher = dispatcher;
     }
 
-    // Open the library's handle. A locked library (encrypted, key absent on this
-    // device) frees the handle it just made and reports NeedsUnlock: the handle
-    // works locally but sync is deferred, so the caller prompts for the key
-    // rather than show a half-open library.
+    // Open the library's handle. A locked handle remains owned here so the
+    // unlock operation completes that same Coven owner.
     public OpenHandleResult OpenHandle(string libraryId)
     {
         // The restore-on-launch preference gates the startup restore in the core;
@@ -60,13 +59,14 @@ internal sealed class SessionStore
             return OpenHandleResult.Failed;
         }
 
-        // Locked means a key was established for this library but this device's
-        // keyring lacks it — the encryptionKeyStored config gate, as on macOS
-        // (LibrarySessionOpener). A fresh library has no key until cloud setup
-        // mints one; key absence alone is its normal unlocked state.
-        if (NativeBae.GetConfig(handle).EncryptionKeyStored && !NativeBae.HasEncryptionKey(handle))
+        if (NativeBae.CloudHomeKeyState(handle) == BridgeCloudHomeKeyState.Locked)
         {
-            NativeBae.HandleFree(handle);
+            lock (_handleGate)
+            {
+                _lockedHandle?.ShutdownAndFree();
+                _lockedHandle = new LibraryHandle(handle);
+                _sessionGeneration++;
+            }
             return OpenHandleResult.NeedsUnlock;
         }
 
@@ -77,6 +77,66 @@ internal sealed class SessionStore
         }
 
         return OpenHandleResult.Opened;
+    }
+
+    public async System.Threading.Tasks.Task<string?> Unlock(string serializedMasterKey)
+    {
+        LibraryHandle pending;
+        int generation;
+        lock (_handleGate)
+        {
+            if (_lockedHandle == null)
+            {
+                throw new System.OperationCanceledException();
+            }
+
+            pending = _lockedHandle;
+            generation = _sessionGeneration;
+        }
+
+        var response = await System.Threading.Tasks.Task.Run(() =>
+        {
+            return pending.TryUse(
+                handle => NativeBae.UnlockCloudHome(handle, serializedMasterKey),
+                out var error)
+                ? error
+                : throw new System.OperationCanceledException();
+        });
+        if (response is not null)
+        {
+            return response;
+        }
+
+        lock (_handleGate)
+        {
+            if (_lockedHandle != pending || _sessionGeneration != generation)
+            {
+                throw new System.OperationCanceledException();
+            }
+
+            _lockedHandle = null;
+            _handle = pending;
+            _sessionGeneration++;
+        }
+        return null;
+    }
+
+    public async System.Threading.Tasks.Task CancelUnlock()
+    {
+        LibraryHandle? pending;
+        lock (_handleGate)
+        {
+            pending = _lockedHandle;
+            _lockedHandle = null;
+            if (pending is not null)
+            {
+                _sessionGeneration++;
+            }
+        }
+        if (pending is not null)
+        {
+            await System.Threading.Tasks.Task.Run(pending.ShutdownAndFree);
+        }
     }
 
     // Subscribe to core's UI events for the current session. The generation is
@@ -103,22 +163,26 @@ internal sealed class SessionStore
 
     public async System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle()
     {
-        LibraryHandle handle;
+        LibraryHandle? handle;
+        LibraryHandle? lockedHandle;
         lock (_handleGate)
         {
-            if (_handle == null)
+            if (_handle == null && _lockedHandle == null)
             {
                 return;
             }
 
             handle = _handle;
+            lockedHandle = _lockedHandle;
             _handle = null;
+            _lockedHandle = null;
             _sessionGeneration++;
         }
 
         await System.Threading.Tasks.Task.Run(() =>
         {
-            handle.ShutdownAndFree();
+            handle?.ShutdownAndFree();
+            lockedHandle?.ShutdownAndFree();
         });
         _eventCallback = null;
     }

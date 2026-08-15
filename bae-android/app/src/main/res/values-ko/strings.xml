@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">참여하려는 기기의 초대 코드를 표시하세요</string>
     <string name="qr_scanner_join_request_instructions">새 기기의 “라이브러리 참여” 화면에서 코드를 표시하세요</string>
     <string name="unlock_title">라이브러리 잠김</string>
-    <string name="unlock_key_fingerprint">키 지문: %1$s</string>
     <string name="unlock_explanation">이 라이브러리의 암호화 키가 키링에 없습니다. 잠금을 해제하려면 64자 16진수 키를 입력하세요.</string>
     <string name="unlock_key_label">암호화 키(64자 16진수)</string>
     <string name="unlock_failed">잠금 해제 실패</string>

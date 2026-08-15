@@ -9,7 +9,7 @@ mod keyring;
 mod save;
 mod server;
 
-pub use dev::seed_dev_keyring;
+pub(crate) use dev::dev_secrets;
 pub use handle::ConfigHandle;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
@@ -162,11 +162,7 @@ impl Config {
 
     /// Wrap coven's config, filling bae-only fields with defaults. Used after a
     /// restore where coven produced the synced/cloud config.
-    pub fn from_coven(
-        c: coven::Config,
-        library_path: PathBuf,
-        encryption_key_fingerprint: Option<String>,
-    ) -> Self {
+    pub fn from_coven(c: coven::Config, library_path: PathBuf) -> Self {
         let mut cfg = Self::with_defaults(
             c.store_id.clone(),
             c.device_id.clone(),
@@ -174,8 +170,6 @@ impl Config {
             c.store_name.clone(),
         );
         cfg.inner = c;
-        cfg.encryption_key_stored = encryption_key_fingerprint.is_some();
-        cfg.encryption_key_fingerprint = encryption_key_fingerprint;
         cfg.mcp = McpConfig::disabled_default();
         cfg
     }
@@ -232,12 +226,6 @@ pub struct ConfigYaml {
     /// so the settings screen renders without a keyring read.
     #[serde(deserialize_with = "deserialize_some")]
     pub discogs: Option<DiscogsValidation>,
-    /// Whether an encryption key is stored in the keyring (hint flag, avoids keyring read)
-    pub encryption_key_stored: bool,
-    /// SHA-256 fingerprint of the encryption key (32 bytes, lowercase hex).
-    /// Used to detect wrong key without attempting decryption.
-    #[serde(deserialize_with = "deserialize_some")]
-    pub encryption_key_fingerprint: Option<String>,
     /// How loudness normalization is applied at playback.
     pub replay_gain_mode: ReplayGainMode,
     /// Configured export presets offered by release and track export.
@@ -291,8 +279,6 @@ impl ConfigYaml {
                 cloud_home: self.cloud_home,
             },
             library_path,
-            encryption_key_stored: self.encryption_key_stored,
-            encryption_key_fingerprint: self.encryption_key_fingerprint,
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
             save_presets: self.save_presets,
@@ -318,8 +304,6 @@ impl From<&Config> for ConfigYaml {
             library_name: config.store_name.clone(),
             device_id: Some(config.device_id.clone()),
             discogs: config.discogs,
-            encryption_key_stored: config.encryption_key_stored,
-            encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
             save_presets: config.save_presets.clone(),
             default_track_save_preset: config.default_track_save_preset.clone(),
@@ -368,12 +352,6 @@ pub struct Config {
     /// Runtime location of this library. It is host context rather than synced
     /// configuration, so it stays outside `coven::Config` and off the wire.
     library_path: PathBuf,
-    /// Whether an encryption key has been established for this library. This is
-    /// bae's persisted unlock hint; coven derives storage behavior from
-    /// `cloud_home.storage` and does not retain host UI state.
-    pub encryption_key_stored: bool,
-    /// Fingerprint used to reject a wrong key before importing it into custody.
-    pub encryption_key_fingerprint: Option<String>,
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
@@ -535,8 +513,6 @@ impl Config {
         Self {
             inner: coven::Config::with_defaults(library_id, device_id, library_name),
             library_path: library_path.as_ref().to_path_buf(),
-            encryption_key_stored: false,
-            encryption_key_fingerprint: None,
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
             save_presets: default_save_presets(),

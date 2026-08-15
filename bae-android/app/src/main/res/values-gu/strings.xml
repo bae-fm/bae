@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">તમે જ્યાંથી જોડાઈ રહ્યા છો તે ઉપકરણનો આમંત્રણ કોડ બતાવો</string>
     <string name="qr_scanner_join_request_instructions">નવા ઉપકરણની “લાઇબ્રેરીમાં જોડાઓ” સ્ક્રીન પરથી તેનો કોડ બતાવો</string>
     <string name="unlock_title">લાઇબ્રેરી લૉક છે</string>
-    <string name="unlock_key_fingerprint">એન્ક્રિપ્શન: %1$s</string>
     <string name="unlock_explanation">આ લાઇબ્રેરી માટેની એન્ક્રિપ્શન કી કીરિંગમાં નથી. અનલૉક કરવા માટે 64 અક્ષરની હેક્સ કી દાખલ કરો.</string>
     <string name="unlock_key_label">એન્ક્રિપ્શન કી (64 હેક્સ અક્ષરો)</string>
     <string name="unlock_failed">અનલોક · ભૂલ</string>

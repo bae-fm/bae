@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Покажете кода за покана от устройството, от което се присъединявате</string>
     <string name="qr_scanner_join_request_instructions">Покажете кода на новото устройство от екрана му „Присъединяване към библиотека“</string>
     <string name="unlock_title">Библиотеката е заключена</string>
-    <string name="unlock_key_fingerprint">Отпечатък на ключа: %1$s</string>
     <string name="unlock_explanation">Ключът за шифроване на тази библиотека не е в ключодържателя. Въведете 64-знаковия шестнадесетичен ключ за отключване.</string>
     <string name="unlock_key_label">Ключ за шифроване (64 шестнадесетични знака)</string>
     <string name="unlock_failed">Отключването не бе успешно</string>

@@ -239,10 +239,15 @@ public sealed partial class App : Application
             case OpenHandleResult.NeedsUnlock:
                 EnsureWelcome();
                 CloseMain();
-                _ = _welcome!.ShowUnlock(libraryId);
+                _ = _welcome!.ShowUnlock();
                 return;
         }
 
+        FinishOpenLibrary();
+    }
+
+    private void FinishOpenLibrary()
+    {
         var main = new MainWindow(
             Session, MediaControl, Updates, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
         _main = main;
@@ -328,7 +333,11 @@ public sealed partial class App : Application
             return;
         }
 
-        var welcome = new WelcomeWindow(OpenLibrary);
+        var welcome = new WelcomeWindow(
+            OpenLibrary,
+            Session.Unlock,
+            FinishOpenLibrary,
+            Session.CancelUnlock);
         _welcome = welcome;
         welcome.Show();
     }

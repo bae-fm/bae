@@ -227,8 +227,6 @@ impl BridgeConfig {
         let cloud_account_display = config.cloud_account_display();
         let bae_core::config::Config {
             inner,
-            encryption_key_stored,
-            encryption_key_fingerprint,
             // Read via the derived `discogs_token_status()` above.
             discogs: _,
             // Playback loudness policy; not surfaced on the config screen.
@@ -261,8 +259,6 @@ impl BridgeConfig {
             library_id: inner.store_id.clone(),
             library_name: inner.store_name.clone(),
             library_path: config.library_path().to_string_lossy().to_string(),
-            encryption_key_stored: *encryption_key_stored,
-            encryption_key_fingerprint: encryption_key_fingerprint.clone(),
             pause_between_sides: *pause_between_sides,
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),

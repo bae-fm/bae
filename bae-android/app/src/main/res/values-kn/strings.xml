@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">ನೀವು ಸೇರುತ್ತಿರುವ ಸಾಧನದ ಆಹ್ವಾನ ಕೋಡ್ ತೋರಿಸಿ</string>
     <string name="qr_scanner_join_request_instructions">ಹೊಸ ಸಾಧನದ “ಲೈಬ್ರರಿಗೆ ಸೇರ್ಪಡೆ” ಪರದಿಯಿಂದ ಅದರ ಕೋಡ್ ತೋರಿಸಿ</string>
     <string name="unlock_title">ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಆಗಿದೆ</string>
-    <string name="unlock_key_fingerprint">ಎನ್‌ಕ್ರಿಪ್ಷನ್: %1$s</string>
     <string name="unlock_explanation">ಈ ಗ್ರಂಥಾಲಯದ ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಕೀಲಿ ಕೀರಿಂಗ್‌ನಲ್ಲಿಲ್ಲ. ಅನ್ಲಾಕ್ ಮಾಡಲು 64 ಅಕ್ಷರಗಳ ಹೆಕ್ಸ್ ಕೀಲಿಯನ್ನು ನಮೂದಿಸಿ.</string>
     <string name="unlock_key_label">ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಕೀಲಿ (64 ಹೆಕ್ಸ್ ಅಕ್ಷರಗಳು)</string>
     <string name="unlock_failed">ಅನ್‌ಲಾಕ್ · ದೋಷ</string>

@@ -222,8 +222,6 @@ fn subsonic_config_allows_disabled_without_username() {
 fn config_yaml_requires_every_bae_field() {
     for key in [
         "discogs",
-        "encryption_key_stored",
-        "encryption_key_fingerprint",
         "replay_gain_mode",
         "save_presets",
         "default_track_save_preset",
@@ -520,7 +518,6 @@ fn discover_libraries_finds_dirs_with_config() {
     let lib2_path = libraries_dir.join("lib-2");
     let mut lib2 = make_test_config("lib-2", lib2_path.clone());
     lib2.store_name = "Second Library".to_string();
-    lib2.encryption_key_fingerprint = Some("fingerprint-2".to_string());
     lib2.save_to_config_yaml().unwrap();
 
     // Create an invalid dir (no config.yaml)
@@ -542,10 +539,6 @@ fn discover_libraries_finds_dirs_with_config() {
         .unwrap();
     let lib2_yaml = lib2_entry.1.as_ref().unwrap();
     assert_eq!(lib2_yaml.library_name, "Second Library");
-    assert_eq!(
-        lib2_yaml.encryption_key_fingerprint.as_deref(),
-        Some("fingerprint-2")
-    );
 }
 
 #[test]
@@ -674,7 +667,7 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
     coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
     coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
     coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
-    let config = Config::from_coven(coven_config, library_path.clone(), None);
+    let config = Config::from_coven(coven_config, library_path.clone());
 
     assert_eq!(config.store_id, library_id);
     assert_eq!(config.store_name, "Test Library");

@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Hiển thị mã mời từ thiết bị bạn đang tham gia từ đó</string>
     <string name="qr_scanner_join_request_instructions">Hiển thị mã của thiết bị mới từ màn hình “Tham gia thư viện”</string>
     <string name="unlock_title">Thư viện bị khóa</string>
-    <string name="unlock_key_fingerprint">Mã hóa: %1$s</string>
     <string name="unlock_explanation">Khóa mã hóa của thư viện này không có trong chuỗi khóa. Nhập khóa thập lục phân 64 ký tự để mở khóa.</string>
     <string name="unlock_key_label">Mã hóa (64 hex)</string>
     <string name="unlock_failed">Mở khóa thất bại</string>

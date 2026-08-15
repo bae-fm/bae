@@ -15,8 +15,8 @@ private let logger = Logger.bae("DisconnectSyncFlow")
 /// bae-core supplies the count, the app pluralizes it for its locale.
 ///
 /// Two ordering invariants the flow enforces:
-/// - the disconnect runs off the main actor, because bae-core joins the
-///   sync-loop thread and can block for the remainder of an in-flight cycle;
+/// - the disconnect suspends through the bridge while bae-core stops the sync
+///   loop on its owned runtime;
 /// - the restore code is deleted from the iCloud keychain only after a
 ///   successful disconnect — the code embeds the cloud-home connection that
 ///   disconnect invalidates, so a failed disconnect must leave it in place.
@@ -29,9 +29,8 @@ public final class DisconnectSyncFlow {
     /// Renders that count as the localized at-risk sentence, with the app's own
     /// plural rules (`core.sync.cloud_only_releases`). Only called for counts > 0.
     private let atRiskMessage: (UInt64) -> String
-    /// Disconnects the provider. Synchronous and join-blocking, so callers run
-    /// it off the main actor.
-    private let disconnect: @Sendable () throws -> Void
+    /// Disconnects the provider through bae-core's owned runtime.
+    private let disconnect: @Sendable () async throws -> Void
     /// Removes this library's restore code from the iCloud keychain.
     private let deleteRestoreCode: () -> Void
     /// The platform's base confirmation sentence, resolved against the app's
@@ -58,7 +57,7 @@ public final class DisconnectSyncFlow {
     public init(
         cloudOnlyReleaseCount: @escaping @Sendable () async throws -> UInt64,
         atRiskMessage: @escaping (UInt64) -> String,
-        disconnect: @escaping @Sendable () throws -> Void,
+        disconnect: @escaping @Sendable () async throws -> Void,
         deleteRestoreCode: @escaping () -> Void,
         baseMessage: @escaping () -> String,
         warningCheckFailedMessage: @escaping (String) -> String,
@@ -112,13 +111,11 @@ public final class DisconnectSyncFlow {
         warningTask?.cancel()
     }
 
-    /// Disconnect off the main actor, then — only on success — delete the
-    /// restore code. On failure the code is left untouched and the error is
-    /// shown inline.
+    /// Disconnect, then — only on success — delete the restore code. On failure
+    /// the code is left untouched and the error is shown inline.
     public func confirm() async {
-        let disconnect = disconnect
         do {
-            try await DetachedWork.run { try disconnect() }
+            try await disconnect()
             error = nil
             deleteRestoreCode()
         }

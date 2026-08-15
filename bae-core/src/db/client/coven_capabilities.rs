@@ -44,10 +44,6 @@ impl Database {
         self.inner.handle.sync_now();
     }
 
-    pub(crate) fn disconnect_sync(&self) {
-        self.inner.handle.disconnect_sync();
-    }
-
     pub(crate) async fn connect_sync(&self) -> Result<(), coven::SyncError> {
         self.inner.handle.connect_sync().await
     }
@@ -67,8 +63,11 @@ impl Database {
         &self,
         home: Arc<dyn coven::ExactCloudHome>,
         cipher: coven::CloudCipher,
-    ) -> Result<(), coven::SyncError> {
-        Box::pin(self.inner.handle.connect_sync_with_test_home(home, cipher)).await
+    ) -> Result<(), coven::CloudHomeSetupError> {
+        self.inner
+            .handle
+            .connect_sync_with_test_home(home, cipher)
+            .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -76,40 +75,95 @@ impl Database {
         &self,
         home: Arc<dyn coven::ExactCloudHome>,
         cipher: coven::CloudCipher,
-    ) -> Result<(), coven::SyncError> {
-        Box::pin(
-            self.inner
-                .handle
-                .connect_sync_with_test_home_caller_driven(home, cipher),
-        )
-        .await
+    ) -> Result<(), coven::CloudHomeSetupError> {
+        self.inner
+            .handle
+            .connect_sync_with_test_home_caller_driven(home, cipher)
+            .await
     }
 
-    pub(crate) async fn start_sync(&self) -> Result<(), coven::SyncError> {
-        self.inner.handle.start_sync().await
-    }
-
-    pub(crate) async fn probe_cloud_home(
+    #[cfg(test)]
+    pub(crate) async fn setup_cloud_home_with_test_home(
         &self,
-        config: &coven::Config,
-    ) -> Result<(), coven::SyncError> {
-        self.inner.handle.probe_cloud_home(config).await
+        cloud_home: coven::CloudHomeConfig,
+        home: Arc<dyn coven::ExactCloudHome>,
+    ) -> Result<coven::ConnectedCloudHome, coven::CloudHomeSetupError> {
+        self.inner
+            .handle
+            .setup_cloud_home_with_test_home(cloud_home, home, None)
+            .await
     }
 
-    pub(crate) fn master_key_fingerprint(&self) -> Result<Option<String>, coven::KeyError> {
-        self.inner.handle.master_key_fingerprint()
+    pub(crate) async fn setup_s3_cloud_home(
+        &self,
+        cloud_home: coven::CloudHomeConfig,
+        access_key: String,
+        secret_key: String,
+    ) -> Result<coven::ConnectedCloudHome, coven::CloudHomeSetupError> {
+        self.inner
+            .handle
+            .setup_s3_cloud_home(cloud_home, access_key, secret_key)
+            .await
     }
 
-    pub(crate) fn initialize_master_key(&self) -> Result<String, coven::MasterKeyError> {
-        self.inner.handle.initialize_master_key()
+    pub(crate) async fn setup_cloudkit_cloud_home(
+        &self,
+        cloud_home: coven::CloudHomeConfig,
+        cloudkit_ops: Arc<dyn coven::CloudKitOps>,
+    ) -> Result<coven::ConnectedCloudHome, coven::CloudHomeSetupError> {
+        self.inner
+            .handle
+            .setup_cloudkit_cloud_home(cloud_home, cloudkit_ops)
+            .await
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn establish_test_master_key(&self) -> Result<(), coven::MasterKeyError> {
-        match self.inner.handle.initialize_master_key() {
-            Ok(_) | Err(coven::MasterKeyError::AlreadyEstablished) => Ok(()),
-            Err(error) => Err(error),
-        }
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) async fn setup_oauth_cloud_home(
+        &self,
+        cloud_home: coven::CloudHomeConfig,
+        cancel: tokio::sync::watch::Receiver<bool>,
+    ) -> Result<coven::ConnectedCloudHome, coven::CloudHomeSetupError> {
+        self.inner
+            .handle
+            .setup_oauth_cloud_home(cloud_home, cancel)
+            .await
+    }
+
+    pub(crate) fn cloud_home_key_state(
+        &self,
+        storage: coven::HomeStorage,
+    ) -> Result<coven::CloudHomeKeyState, coven::KeyError> {
+        self.inner.handle.cloud_home_key_state(storage)
+    }
+
+    pub(crate) async fn unlock_cloud_home(
+        &self,
+        serialized_master_key: &str,
+    ) -> Result<coven::ConnectedCloudHome, coven::CloudHomeUnlockError> {
+        self.inner
+            .handle
+            .unlock_cloud_home(serialized_master_key)
+            .await
+    }
+
+    pub(crate) async fn disconnect_cloud_home(&self) -> Result<(), coven::KeyError> {
+        self.inner.handle.disconnect_cloud_home().await
+    }
+
+    pub(crate) async fn forget_master_key(&self) -> Result<(), coven::KeyError> {
+        self.inner.handle.forget_master_key().await
+    }
+
+    pub(crate) fn host_secret(&self, name: &str) -> Result<Option<String>, coven::KeyError> {
+        self.inner.handle.host_secret(name)
+    }
+
+    pub(crate) fn set_host_secret(&self, name: &str, value: &str) -> Result<(), coven::KeyError> {
+        self.inner.handle.set_host_secret(name, value)
+    }
+
+    pub(crate) fn delete_host_secret(&self, name: &str) -> Result<(), coven::KeyError> {
+        self.inner.handle.delete_host_secret(name)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -291,10 +345,7 @@ impl Database {
         self.inner.handle.cancel_device_invite(invite, timing).await
     }
 
-    pub(crate) async fn remove_member(
-        &self,
-        public_key_hex: &str,
-    ) -> Result<String, coven::SyncError> {
+    pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), coven::SyncError> {
         self.inner.handle.remove_member(public_key_hex).await
     }
 }

@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Zobrazte zvací kód ze zařízení, ze kterého se připojujete</string>
     <string name="qr_scanner_join_request_instructions">Zobrazte kód nového zařízení z jeho obrazovky „Připojit se ke knihovně“</string>
     <string name="unlock_title">Knihovna zamčena</string>
-    <string name="unlock_key_fingerprint">Otisk klíče: %1$s</string>
     <string name="unlock_explanation">Šifrovací klíč této knihovny není v klíčence. Pro odemčení zadejte šestnáctkový klíč o 64 znacích.</string>
     <string name="unlock_key_label">Šifrovací klíč (64 šestnáctkových znaků)</string>
     <string name="unlock_failed">Odemčení selhalo</string>

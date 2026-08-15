@@ -59,11 +59,7 @@ private struct WindowSwapDriver: View {
 enum AppScreen {
     case loading
     case welcome
-    case unlock(
-        libraryId: String,
-        libraryName: String,
-        fingerprint: String?
-    )
+    case unlock(libraryName: String)
     case library
 }
 
@@ -148,23 +144,10 @@ struct BaeApp: App {
             ProgressView("Switching libraries...")
         case .welcome:
             ProgressView()
-        case .unlock(
-            let
-                libraryId,
-            let
-                libraryName,
-            let
-                fingerprint
-        ):
+        case .unlock(let libraryName):
             UnlockView(
-                libraryId: libraryId,
                 libraryName: libraryName,
-                fingerprint: fingerprint,
-                onUnlocked: {
-                    appDelegate.openLocalLibrary(
-                        id: libraryId
-                    )
-                },
+                onUnlock: appDelegate.unlock,
                 // Cancelling a switch-to-locked-library returns to the
                 // library that's still open.
                 onCancel: { appDelegate.screen = .library }
@@ -252,23 +235,10 @@ struct BaeApp: App {
             Spacer()
         case .welcome:
             welcomeView(loadError: appDelegate.loadError)
-        case .unlock(
-            let
-                libraryId,
-            let
-                libraryName,
-            let
-                fingerprint
-        ):
+        case .unlock(let libraryName):
             UnlockView(
-                libraryId: libraryId,
                 libraryName: libraryName,
-                fingerprint: fingerprint,
-                onUnlocked: {
-                    appDelegate.openLocalLibrary(
-                        id: libraryId
-                    )
-                },
+                onUnlock: appDelegate.unlock,
                 // No shell yet (first launch, or opening from the welcome
                 // chooser): cancelling returns to the welcome.
                 onCancel: { appDelegate.screen = .welcome }
@@ -584,18 +554,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             switch outcome {
             case .opened(let service):
-                self.appService = service
-                self.screen = .library
-                service.reportScreen(.library)
-                self.reloadLibraries()
-                self.hasShell = true
-                self.showAddLibrarySheet = false
+                self.landOpenedService(service)
             case .needsUnlock(let config):
-                self.screen = .unlock(
-                    libraryId: libraryId,
-                    libraryName: config.libraryName,
-                    fingerprint: config.encryptionKeyFingerprint
-                )
+                self.screen = .unlock(libraryName: config.libraryName)
             case .superseded:
                 // Superseded by a newer open (or a close); that call owns
                 // screen/appService.
@@ -614,6 +575,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    func unlock(serializedCloudKey: String) async throws {
+        let service = try await opener.unlock(
+            serializedCloudKey: serializedCloudKey
+        )
+        landOpenedService(service)
+    }
+
+    private func landOpenedService(_ service: AppService) {
+        appService = service
+        screen = .library
+        service.reportScreen(.library)
+        reloadLibraries()
+        hasShell = true
+        showAddLibrarySheet = false
     }
 
     private func makeService(
@@ -763,7 +740,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let appService else { return }
         lockSlot.replace(
             "lock",
-            work: { try appService.lockActiveLibrary() },
+            work: { try await appService.lockActiveLibrary() },
             onSuccess: {},
             onError: {
                 logger.error(
@@ -795,7 +772,7 @@ extension AppDelegate {
         }
         forgetSlot.replace(
             "forget",
-            work: { try service.forgetLibrary() },
+            work: { try await service.forgetLibrary() },
             onSuccess: {
                 // `forgetLibrary` is this handle's final operation because it
                 // removes the database directory. Release it without asking

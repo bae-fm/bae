@@ -211,8 +211,8 @@ open class AppService: @unchecked Sendable, Observable {
         try await appHandle.savePlaybackState()
     }
 
-    public nonisolated func forgetLibrary() throws {
-        try appHandle.forgetLibrary()
+    public nonisolated func forgetLibrary() async throws {
+        try await appHandle.forgetLibrary()
     }
 
     public func shutdown() async throws {
@@ -230,8 +230,8 @@ open class AppService: @unchecked Sendable, Observable {
         try sync.renameLibrary(libraryId, name)
     }
 
-    public nonisolated func lockActiveLibrary() throws {
-        try sync.lockActiveLibrary()
+    public nonisolated func lockActiveLibrary() async throws {
+        try await sync.lockActiveLibrary()
     }
 
     public func storeRestoreCodeInKeychain(

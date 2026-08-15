@@ -13,7 +13,7 @@ use bae_core::db::{
 };
 use bae_core::import::{PressingEdit, ReleaseUserEdit, TrackUserEdit};
 use bae_core::library::{LibraryError, LibraryManager};
-use bae_test_support::{test_config_and_keys, tracing_init};
+use bae_test_support::{test_config, tracing_init};
 use chrono::Utc;
 use coven::StoreDir;
 use tempfile::TempDir;
@@ -31,11 +31,10 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
     )
     .await
     .unwrap();
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let manager = LibraryManager::new(
         database.clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

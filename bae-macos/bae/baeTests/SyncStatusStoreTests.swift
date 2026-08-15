@@ -31,8 +31,6 @@ struct SyncStatusStoreTests {
             libraryId: "test-library",
             libraryName: "Test Library",
             libraryPath: "/test",
-            encryptionKeyStored: false,
-            encryptionKeyFingerprint: nil,
             pauseBetweenSides: false,
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,

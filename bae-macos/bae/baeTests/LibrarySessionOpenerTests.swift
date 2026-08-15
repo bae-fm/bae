@@ -13,13 +13,11 @@ import Testing
 struct LibrarySessionOpenerTests {
     private typealias TestOpener = LibrarySessionOpener<FakeHandle, AppService>
 
-    @Test(
-        "a locked target yields .needsUnlock without building or tearing down"
-    )
+    @Test("a locked target stays retained for unlock")
     func lockedTargetNeedsUnlock() async {
         let handle = FakeHandle(
-            config: makeConfig(encryptionKeyStored: true, fingerprint: "fp-1"),
-            hasEncryptionKey: false
+            config: makeConfig(),
+            keyState: .locked
         )
         let opener = TestOpener(
             makeHandle: { _ in handle },
@@ -39,10 +37,47 @@ struct LibrarySessionOpenerTests {
             )
             return
         }
-        #expect(config.encryptionKeyStored)
-        // The locked path drops the handle by releasing it, not by shutting it
-        // down; an unlock retry then reopens the same library.
+        #expect(config.libraryId == "lib-test")
         #expect(!handle.didShutdown)
+    }
+
+    @Test("unlock acts on the retained handle and a wrong key can be retried")
+    func unlockUsesRetainedHandle() async {
+        struct WrongKey: Error {}
+        let handle = FakeHandle(
+            config: makeConfig(),
+            keyState: .locked,
+            unlockResults: [.failure(WrongKey()), .success(())],
+            outbox: .failure(WrongKey())
+        )
+        let makeHandleCount = Counter()
+        let opener = TestOpener(
+            makeHandle: { _ in
+                makeHandleCount.increment()
+                return handle
+            },
+            makeService: { _, _, _ in
+                Issue.record("outbox failure must precede service creation")
+                fatalError("unreachable")
+            }
+        )
+
+        let open = OutcomeWaiter()
+        opener.open(libraryId: "lib-1") { open.record($0) }
+        guard case .needsUnlock = await open.value() else {
+            Issue.record("locked target did not request unlock")
+            return
+        }
+
+        await #expect(throws: WrongKey.self) {
+            _ = try await opener.unlock(serializedCloudKey: "wrong")
+        }
+        await #expect(throws: WrongKey.self) {
+            _ = try await opener.unlock(serializedCloudKey: "correct")
+        }
+        #expect(makeHandleCount.value == 1)
+        #expect(handle.unlockKeys == ["wrong", "correct"])
+        #expect(handle.didShutdown)
     }
 
     @Test("a superseding open cancels the first, which reports .superseded")
@@ -51,12 +86,12 @@ struct LibrarySessionOpenerTests {
         // second open reliably supersedes it before it can land.
         let gate = DispatchSemaphore(value: 0)
         let parked = FakeHandle(
-            config: makeConfig(encryptionKeyStored: false),
-            hasEncryptionKey: true
+            config: makeConfig(),
+            keyState: .notRequired
         )
         let locked = FakeHandle(
-            config: makeConfig(encryptionKeyStored: true, fingerprint: "fp-2"),
-            hasEncryptionKey: false
+            config: makeConfig(),
+            keyState: .locked
         )
         let opener = TestOpener(
             makeHandle: { libraryId in
@@ -98,8 +133,8 @@ struct LibrarySessionOpenerTests {
     func outboxSeedFailureShutsDown() async {
         struct SeedError: Error {}
         let handle = FakeHandle(
-            config: makeConfig(encryptionKeyStored: false),
-            hasEncryptionKey: true,
+            config: makeConfig(),
+            keyState: .notRequired,
             outbox: .failure(SeedError())
         )
         let opener = TestOpener(
@@ -128,16 +163,11 @@ struct LibrarySessionOpenerTests {
 
     // MARK: - Fixtures
 
-    private func makeConfig(
-        encryptionKeyStored: Bool,
-        fingerprint: String? = nil
-    ) -> BridgeConfig {
+    private func makeConfig() -> BridgeConfig {
         BridgeConfig(
             libraryId: "lib-test",
             libraryName: "Test Library",
             libraryPath: "/tmp/test",
-            encryptionKeyStored: encryptionKeyStored,
-            encryptionKeyFingerprint: fingerprint,
             pauseBetweenSides: false,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
@@ -189,34 +219,63 @@ struct LibrarySessionOpenerTests {
 /// paths, didn't).
 private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     let config: BridgeConfig
-    let encryptionKeyPresent: Bool
     let outbox: Result<BridgeOutboxSnapshot, any Error>
     let syncReadyValue: Bool
     private let shutdownFlag = Flag()
+    private let state = NSLock()
+    private var keyState: BridgeCloudHomeKeyState
+    private var unlockResults: [Result<Void, any Error>]
+    private var recordedUnlockKeys: [String] = []
 
     init(
         config: BridgeConfig,
-        hasEncryptionKey: Bool,
+        keyState: BridgeCloudHomeKeyState,
+        unlockResults: [Result<Void, any Error>] = [],
         outbox: Result<BridgeOutboxSnapshot, any Error> = .success(
             OutboxStore.emptySnapshot
         ),
         syncReady: Bool = false
     ) {
         self.config = config
-        encryptionKeyPresent = hasEncryptionKey
+        self.keyState = keyState
+        self.unlockResults = unlockResults
         self.outbox = outbox
         syncReadyValue = syncReady
     }
 
     var didShutdown: Bool { shutdownFlag.isSet }
+    var unlockKeys: [String] {
+        state.withLock { recordedUnlockKeys }
+    }
 
     func getConfig() -> BridgeConfig { config }
-    func hasEncryptionKey() -> Bool { encryptionKeyPresent }
+    func cloudHomeKeyState() throws -> BridgeCloudHomeKeyState {
+        state.withLock { keyState }
+    }
+    func unlockCloudHome(serializedCloudKey: String) async throws {
+        let result = state.withLock {
+            recordedUnlockKeys.append(serializedCloudKey)
+            return unlockResults.removeFirst()
+        }
+        try result.get()
+        state.withLock { keyState = .available }
+    }
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot {
         try outbox.get()
     }
     func isSyncReady() -> Bool { syncReadyValue }
     func shutdown() async { shutdownFlag.set() }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func increment() {
+        lock.withLock { count += 1 }
+    }
+
+    var value: Int { lock.withLock { count } }
 }
 
 /// A one-way flag settable from any thread — the opener awaits `shutdown()` off

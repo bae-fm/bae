@@ -66,10 +66,8 @@ struct ContentView: View {
 
                 case .unlock(let lockedLibrary):
                     UnlockView(
-                        libraryId: lockedLibrary.config.libraryId,
-                        libraryName: lockedLibrary.config.libraryName,
-                        fingerprint: lockedLibrary.config.encryptionKeyFingerprint,
-                        onUnlocked: holder.retryUnlock,
+                        libraryName: lockedLibrary.library.name,
+                        onUnlock: holder.unlock,
                         onCancel: holder.cancelUnlock
                     )
 

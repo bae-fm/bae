@@ -57,12 +57,11 @@ impl ImportFixture {
         .await
         .unwrap();
         let library_dir = StoreDir::new(db_dir.clone());
-        let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+        let config_handle = support::test_config(&library_dir);
         let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
         let library_manager = LibraryManager::new(
             db.clone(),
             config_handle.clone(),
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             ids.clone(),
             bae_core::diagnostics::Diagnostics::noop(),

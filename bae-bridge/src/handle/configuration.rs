@@ -62,8 +62,8 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    pub fn has_encryption_key(&self) -> bool {
-        self.services.has_encryption()
+    pub fn cloud_home_key_state(&self) -> Result<BridgeCloudHomeKeyState, BridgeError> {
+        Ok(self.services.cloud_home_key_state()?.into())
     }
 
     pub fn rename_library(&self, library_id: String, name: String) -> Result<(), BridgeError> {
@@ -73,9 +73,25 @@ impl AppHandle {
         Ok(())
     }
 
-    pub fn lock_active_library(&self) -> Result<(), BridgeError> {
-        self.services.forget_encryption_key()?;
-        Ok(())
+    pub async fn lock_active_library(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services.forget_encryption_key().await?;
+            Ok(())
+        })
+        .await
+    }
+
+    pub async fn unlock_cloud_home(
+        self: std::sync::Arc<Self>,
+        serialized_master_key: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .unlock_cloud_home(&serialized_master_key)
+                .await?;
+            Ok(())
+        })
+        .await
     }
 
     pub fn get_discogs_token(&self) -> Result<Option<String>, BridgeError> {

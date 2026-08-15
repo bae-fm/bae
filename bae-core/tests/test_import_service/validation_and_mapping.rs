@@ -32,14 +32,13 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     .await
     .unwrap();
     let library_dir = StoreDir::new(db_dir.clone());
-    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+    let config_handle = support::test_config(&library_dir);
     config_handle
         .update(|c| c.verify_decode_on_import = verify)
         .expect("set verify_decode_on_import");
     let library_manager = LibraryManager::new(
         db.clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

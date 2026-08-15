@@ -38,10 +38,7 @@ pub use upload_throughput::UploadThroughput;
 mod local_lifecycle_tests;
 
 use crate::config::{Config, ConfigError};
-use crate::keys::StoreKeys;
 use coven::StoreDir;
-use coven::{EncryptionError, MasterKeyring};
-use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::watch;
 
@@ -135,26 +132,7 @@ pub fn create_library(
 /// coven's restore/join returns the recovered Config; wrap it in bae's Config
 /// (which adds Discogs fields) and persist it.
 fn save_coven_library(coven_config: coven::Config, store_dir: StoreDir) -> Result<Config, String> {
-    let encryption_key_fingerprint = if coven_config.cloud_home.storage.is_opaque() {
-        let serialized = StoreKeys::bind(coven_config.store_id.clone())
-            .get_encryption_key()
-            .map_err(|error| error.to_string())?
-            .ok_or_else(|| {
-                "coven completed an opaque restore without establishing its master key".to_string()
-            })?;
-        Some(
-            MasterKeyring::from_serialized(&serialized)
-                .map_err(|error| error.to_string())?
-                .fingerprint(),
-        )
-    } else {
-        None
-    };
-    let config = Config::from_coven(
-        coven_config,
-        store_dir.to_path_buf(),
-        encryption_key_fingerprint,
-    );
+    let config = Config::from_coven(coven_config, store_dir.to_path_buf());
     config.save_to_config_yaml().map_err(|e| e.to_string())?;
     Ok(config)
 }
@@ -428,110 +406,4 @@ fn classify_join_error(error: coven::BootstrapError) -> JoinFromCodeError {
         return JoinFromCodeError::OwnerOffline;
     }
     JoinFromCodeError::Join(error.to_string())
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum UnlockError {
-    #[error("{0}")]
-    Validation(String),
-    #[error("library not found: {0}")]
-    NotFound(String),
-    #[error("config: {0}")]
-    Config(String),
-    #[error("encryption: {0}")]
-    Encryption(#[from] EncryptionError),
-    #[error("keyring: {0}")]
-    Key(#[from] crate::keys::KeyError),
-}
-
-/// Unlock a library by validating the encryption key against the stored
-/// fingerprint, then saving it to the keyring.
-pub fn unlock_library(library_id: &str, key_hex: &str) -> Result<(), UnlockError> {
-    let bae_dir = crate::config::bae_dir().map_err(|e| UnlockError::Config(e.to_string()))?;
-    unlock_library_in_dir(&bae_dir, library_id, key_hex, &coven::UuidProvider)
-}
-
-fn unlock_library_in_dir(
-    bae_dir: &Path,
-    library_id: &str,
-    key_hex: &str,
-    ids: &dyn coven::IdProvider,
-) -> Result<(), UnlockError> {
-    // `MasterKeyring::from_serialized` parses coven's stored keyring format and
-    // returns `EncryptionError::KeyManagement` with the specific cause, so a
-    // malformed key surfaces as `UnlockError::Encryption` rather than
-    // collapsing into "no fingerprint computed". `MasterKeyring` (not
-    // `EncryptionService`, which is test-only reachable from production code)
-    // is coven's production-facing master-key value type — the same one
-    // `CovenHandle::import_master_key` computes its own fingerprint from.
-    let fingerprint = MasterKeyring::from_serialized(key_hex)?.fingerprint();
-
-    let config =
-        Config::load_registered_library_from_bae_dir(bae_dir, library_id, ids).map_err(|e| {
-            if matches!(e, ConfigError::Io(ref io) if io.kind() == std::io::ErrorKind::NotFound) {
-                UnlockError::NotFound(library_id.to_string())
-            } else {
-                UnlockError::Config(e.to_string())
-            }
-        })?;
-
-    if let Some(ref stored_fp) = config.encryption_key_fingerprint {
-        if *stored_fp != fingerprint {
-            return Err(UnlockError::Validation(
-                "Encryption key fingerprint mismatch".to_string(),
-            ));
-        }
-    }
-
-    let key_service = StoreKeys::bind(library_id.to_string());
-    key_service.set_encryption_key(key_hex)?;
-
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serial_test::serial;
-    use tempfile::TempDir;
-
-    #[test]
-    #[serial]
-    fn unlock_library_uses_requested_library_not_active_pointer() {
-        crate::config::install_test_keyring();
-        let tmp = TempDir::new().unwrap();
-        let library_id = "library-to-unlock";
-        // The stored master key is coven's keyring format, not a bare hex key —
-        // a keyring carries every generation, so it is what both the unlock's
-        // validation and the keyring entry round-trip through.
-        let stored_key = MasterKeyring::generate().to_serialized();
-        let bae_dir = tmp.path().join(".bae");
-        let library_path = crate::config::registered_library_path(&bae_dir, library_id);
-        let mut config = Config::with_defaults(
-            library_id.to_string(),
-            "device-id".to_string(),
-            StoreDir::new(library_path),
-            "Library Name".to_string(),
-        );
-        config.encryption_key_fingerprint = Some(
-            MasterKeyring::from_serialized(&stored_key)
-                .unwrap()
-                .fingerprint(),
-        );
-        config.save_to_config_yaml().unwrap();
-        std::fs::create_dir(bae_dir.join("active-library")).unwrap();
-
-        unlock_library_in_dir(
-            &bae_dir,
-            library_id,
-            &stored_key,
-            &coven::SequentialIdProvider::new("generated-device"),
-        )
-        .unwrap();
-
-        let stored = StoreKeys::bind(library_id.to_string())
-            .get_encryption_key()
-            .unwrap();
-        assert_eq!(stored.as_deref(), Some(stored_key.as_str()));
-    }
 }

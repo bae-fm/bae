@@ -15,12 +15,7 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-fn test_config_and_keys(
-    library_dir: &coven::StoreDir,
-) -> (
-    std::sync::Arc<crate::config::ConfigHandle>,
-    crate::keys::StoreKeys,
-) {
+fn test_config(library_dir: &coven::StoreDir) -> std::sync::Arc<crate::config::ConfigHandle> {
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
@@ -31,10 +26,7 @@ fn test_config_and_keys(
         "Test Library".to_string(),
     );
     crate::config::install_test_keyring();
-    (
-        std::sync::Arc::new(crate::config::ConfigHandle::new(config)),
-        crate::keys::StoreKeys::bind(library_id),
-    )
+    std::sync::Arc::new(crate::config::ConfigHandle::new(config))
 }
 
 async fn setup_test_manager() -> (LibraryManager, TempDir) {
@@ -48,11 +40,10 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
     .await
     .unwrap();
     let library_dir = coven::StoreDir::new(temp_dir.path());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let manager = LibraryManager::new(
         database,
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),

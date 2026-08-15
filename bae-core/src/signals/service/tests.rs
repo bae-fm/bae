@@ -122,11 +122,9 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     );
     let config_handle = Arc::new(crate::config::ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = crate::keys::StoreKeys::bind(library_id);
     let manager = crate::library::LibraryManager::new(
         database,
         config_handle,
-        key_service,
         clock,
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),

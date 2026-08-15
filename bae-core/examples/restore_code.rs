@@ -4,9 +4,7 @@
 //!
 //! The encryption key and Ed25519 signing key live in the data-protection
 //! keychain under the `*.fm.bae.desktop` access group, so the built binary must
-//! be code-signed into that group to read them. Run from a directory without a
-//! `.env` so `seed_dev_keyring` leaves the OS keyring alone (production mode)
-//! rather than seeding it from `BAE_*` env vars.
+//! be code-signed into that group to read them.
 
 fn main() {
     // This example ships no telemetry; a no-op sink satisfies init_keyring.
@@ -38,10 +36,6 @@ fn main() {
         "active library: {} ({}), dev_mode={dev_mode}",
         config.store_name, config.store_id,
     );
-
-    // In dev mode bae's secrets are in `BAE_*` env vars; bridge them into the
-    // keyring coven's StoreKeys reads. No-op in production.
-    bae_core::config::seed_dev_keyring(&config.store_id);
 
     // Minting a restore code needs a connected sync manager: coven seeds it
     // from the store's CURRENT membership-head floor, read live from the

@@ -1,11 +1,7 @@
 #![cfg(feature = "test-utils")]
-//! `save_s3_config` probes the bucket with the proposed credentials before it
-//! records the provider. Reaching the bucket at all means staging those
-//! credentials in the keyring first — coven builds a cloud home from a store's
-//! config plus its key service — so a failed probe puts the previous keyring
-//! entry back before returning. Either way the library is left exactly as it
-//! was: no half-configured cloud home the UI would show as "Connected" while
-//! the first sync cycle silently fails.
+//! `save_s3_config` asks Coven to prepare the provider and persists the returned
+//! config only after Coven installs the connection. A failed probe therefore
+//! leaves bae's config unchanged; Coven's own setup tests cover custody rollback.
 //!
 //! Hermetic: pointing the probe at an address nothing listens on
 //! (`127.0.0.1:1`) fails the probe with connection-refused — no server, no
@@ -47,18 +43,10 @@ fn probe_failure_persists_nothing_and_surfaces_as_network() {
     // maps to.
     assert_eq!(err.category(), UiErrorCategory::Network, "got: {err}");
 
-    // The library is untouched: no provider recorded, sync still unconfigured,
-    // and the credentials the probe staged rolled back off the keyring.
+    // The library is untouched: no provider recorded and sync is unconfigured.
     let config = lm.get_config();
     assert_eq!(config.cloud_home.provider, None);
     assert!(!lm.is_sync_configured());
-    let stored = bae_core::keys::StoreKeys::bind(config.store_id.clone())
-        .get_cloud_home_credentials()
-        .expect("read the library's cloud-home credentials");
-    assert!(
-        stored.is_none(),
-        "a failed probe must leave no credentials behind"
-    );
 }
 
 #[test]

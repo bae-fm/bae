@@ -3,7 +3,7 @@ import Foundation
 /// Cloud sync connection management and sync-config writes plus the
 /// restore-code generator used by the settings UI.
 public final class Sync: Sendable, Observable {
-    public let disconnectCloudProvider: @Sendable () throws -> Void
+    public let disconnectCloudProvider: @Sendable () async throws -> Void
     public let saveSyncConfig:
         @Sendable (_ configData: BridgeSaveSyncConfig) async throws -> Void
     public let generateRestoreCode: @Sendable () async throws -> String
@@ -47,7 +47,7 @@ public final class Sync: Sendable, Observable {
     /// Delete the active library's encryption key from the OS keyring.
     /// The current session keeps working (the key stays in memory);
     /// the next launch lands on the unlock screen.
-    public let lockActiveLibrary: @Sendable () throws -> Void
+    public let lockActiveLibrary: @Sendable () async throws -> Void
     /// How many blob uploads the sync drain runs at once (1...8). A persisted
     /// device-local config write, unlike the runtime pause control: it throws on
     /// an out-of-range value or a failed write, so the picker can snap back.
@@ -55,7 +55,8 @@ public final class Sync: Sendable, Observable {
     public let setMaxConcurrentUploads: @Sendable (_ n: UInt32) throws -> Void
 
     public init(
-        disconnectCloudProvider: @escaping @Sendable () throws -> Void = {},
+        disconnectCloudProvider: @escaping @Sendable () async throws -> Void = {
+        },
         saveSyncConfig:
             @escaping @Sendable (BridgeSaveSyncConfig) async throws -> Void = {
                 _ in
@@ -90,7 +91,7 @@ public final class Sync: Sendable, Observable {
         setSyncPaused: @escaping @Sendable (Bool) async throws -> Void = { _ in
         },
         triggerSync: @escaping @Sendable () -> Void = {},
-        lockActiveLibrary: @escaping @Sendable () throws -> Void = {
+        lockActiveLibrary: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
         setMaxConcurrentUploads: @escaping @Sendable (UInt32) throws -> Void = {
@@ -115,7 +116,9 @@ public final class Sync: Sendable, Observable {
 
     public convenience init(handle: any AppHandleProtocol) {
         self.init(
-            disconnectCloudProvider: { try handle.disconnectCloudProvider() },
+            disconnectCloudProvider: {
+                try await handle.disconnectCloudProvider()
+            },
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
             generateRestoreCode: { try await handle.generateRestoreCode() },
             getMembers: { try await handle.getMembers() },
@@ -138,7 +141,7 @@ public final class Sync: Sendable, Observable {
             },
             setSyncPaused: { try await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
-            lockActiveLibrary: { try handle.lockActiveLibrary() },
+            lockActiveLibrary: { try await handle.lockActiveLibrary() },
             setMaxConcurrentUploads: {
                 try handle.setMaxConcurrentUploads(n: $0)
             }

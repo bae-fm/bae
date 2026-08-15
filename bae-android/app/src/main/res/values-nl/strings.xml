@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Toon de uitnodigingscode van het apparaat waarmee je deelneemt</string>
     <string name="qr_scanner_join_request_instructions">Toon de code van het nieuwe apparaat vanuit het scherm “Aan een bibliotheek deelnemen”</string>
     <string name="unlock_title">Bibliotheek vergrendeld</string>
-    <string name="unlock_key_fingerprint">Versleuteling: %1$s</string>
     <string name="unlock_explanation">De versleutelingssleutel voor deze bibliotheek staat niet in de sleutelhanger. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen.</string>
     <string name="unlock_key_label">Versleuteling (64 hex)</string>
     <string name="unlock_failed">Ontgrendelen mislukt</string>

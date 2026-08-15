@@ -172,10 +172,9 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     }
 
     let library_dir = StoreDir::new(db_dir.clone());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::open(
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

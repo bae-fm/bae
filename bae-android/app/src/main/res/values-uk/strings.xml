@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Покажіть код запрошення з пристрою, з якого ви приєднуєтеся</string>
     <string name="qr_scanner_join_request_instructions">Покажіть код нового пристрою з його екрана «Приєднатися до бібліотеки»</string>
     <string name="unlock_title">Бібліотеку заблоковано</string>
-    <string name="unlock_key_fingerprint">Відбиток ключа: %1$s</string>
     <string name="unlock_explanation">Ключа шифрування цієї бібліотеки немає у сховищі ключів. Введіть 64-символьний шістнадцятковий ключ, щоб розблокувати.</string>
     <string name="unlock_key_label">Ключ шифрування (64 шістнадцяткові символи)</string>
     <string name="unlock_failed">Не вдалося розблокувати</string>

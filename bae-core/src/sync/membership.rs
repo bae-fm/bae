@@ -76,7 +76,7 @@ pub struct JoinRequest {
 /// `email` is the OAuth account address the joiner authenticated as, baked into
 /// the code so the approver can share the OAuth folder to it; `None` for S3,
 /// which shares no folder to an email.
-pub fn generate_join_request(email: Option<String>) -> Result<JoinRequest, crate::keys::KeyError> {
+pub fn generate_join_request(email: Option<String>) -> Result<JoinRequest, coven::KeyError> {
     let code = coven::generate_join_request(email)?;
     let pubkey = coven::decode_join_request(&code)
         .expect("a code this device just encoded decodes")

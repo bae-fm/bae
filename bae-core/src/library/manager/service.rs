@@ -6,7 +6,6 @@ impl LibraryManager {
     #[allow(clippy::too_many_arguments)]
     pub fn open(
         config_handle: Arc<ConfigHandle>,
-        key_service: StoreKeys,
         clock: ClockRef,
         ids: IdRef,
         diagnostics: Diagnostics,
@@ -81,8 +80,6 @@ impl LibraryManager {
 
         let sync = SyncController::new(
             config_handle.clone(),
-            key_service.clone(),
-            clock.clone(),
             outbox_values.clone(),
             database.clone(),
             outbox_in_flight,
@@ -96,7 +93,6 @@ impl LibraryManager {
         let manager = LibraryManager {
             database,
             config_handle,
-            key_service,
             remote_images,
             clock,
             ids,
@@ -131,7 +127,6 @@ impl LibraryManager {
     pub fn new(
         database: Database,
         config_handle: Arc<ConfigHandle>,
-        key_service: StoreKeys,
         clock: ClockRef,
         ids: IdRef,
         diagnostics: Diagnostics,
@@ -174,8 +169,6 @@ impl LibraryManager {
 
         let sync = SyncController::new(
             config_handle.clone(),
-            key_service.clone(),
-            clock.clone(),
             outbox_values.clone(),
             database.clone(),
             outbox_in_flight,
@@ -188,7 +181,6 @@ impl LibraryManager {
         let manager = LibraryManager {
             database,
             config_handle,
-            key_service,
             remote_images,
             clock,
             ids,

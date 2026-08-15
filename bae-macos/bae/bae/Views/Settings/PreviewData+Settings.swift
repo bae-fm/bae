@@ -102,8 +102,6 @@
             libraryId: "lib-preview",
             libraryName: "Preview Library",
             libraryPath: "/preview",
-            encryptionKeyStored: true,
-            encryptionKeyFingerprint: "abcd1234",
             pauseBetweenSides: false,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,

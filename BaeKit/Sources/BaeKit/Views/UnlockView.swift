@@ -1,25 +1,19 @@
 import SwiftUI
 
 public struct UnlockView: View {
-    public let libraryId: String
     public let libraryName: String
-    public let fingerprint: String?
-    public let onUnlocked: () -> Void
+    public let onUnlock: @MainActor (String) async throws -> Void
     /// Back out without unlocking — returns to wherever the unlock was entered
     /// from (the welcome chooser, or the previously-open library on a switch).
     public let onCancel: () -> Void
 
     public init(
-        libraryId: String,
         libraryName: String,
-        fingerprint: String?,
-        onUnlocked: @escaping () -> Void,
+        onUnlock: @escaping @MainActor (String) async throws -> Void,
         onCancel: @escaping () -> Void
     ) {
-        self.libraryId = libraryId
         self.libraryName = libraryName
-        self.fingerprint = fingerprint
-        self.onUnlocked = onUnlocked
+        self.onUnlock = onUnlock
         self.onCancel = onCancel
     }
 
@@ -46,12 +40,6 @@ public struct UnlockView: View {
                 Text(libraryName)
                     .font(.title3)
                     .foregroundStyle(.secondary)
-                if let fp = fingerprint {
-                    Text("Key fingerprint: \(fp)")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .monospaced()
-                }
             }
             Text(
                 "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
@@ -96,19 +84,14 @@ public struct UnlockView: View {
     private func unlock() {
         isUnlocking = true
         error = nil
-        Task.detached { [libraryId, keyHex] in
+        Task { @MainActor in
             do {
-                try unlockLibrary(libraryId: libraryId, keyHex: keyHex)
-                await MainActor.run {
-                    isUnlocking = false
-                    onUnlocked()
-                }
+                try await onUnlock(keyHex)
+                isUnlocking = false
             }
             catch {
-                await MainActor.run {
-                    isUnlocking = false
-                    self.error = error.displayLine
-                }
+                isUnlocking = false
+                self.error = error.displayLine
             }
         }
     }

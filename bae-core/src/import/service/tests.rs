@@ -3,7 +3,6 @@ use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::import::folder_registry::host_root;
 use crate::import::MetadataSource;
-use crate::keys::StoreKeys;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
 use std::time::Duration;
@@ -40,7 +39,6 @@ async fn setup_import_service() -> (ImportService, TempDir) {
     let manager = LibraryManager::new(
         database,
         Arc::new(ConfigHandle::new(config)),
-        StoreKeys::bind(library_id),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),

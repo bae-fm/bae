@@ -26,12 +26,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Forget the active library's encryption key — the sidebar's "Lock Library".
-    /// The running sync manager still holds the key in memory, so this session keeps
-    /// working; the next launch lands on `UnlockView` because the keyring is empty.
-    pub fn forget_encryption_key(&self) -> Result<(), LibraryError> {
-        self.key_service.forget_encryption_key()?;
-        Ok(())
+    /// Lock the active library by asking Coven to stop every operation retaining
+    /// the master key before removing it from custody.
+    pub async fn forget_encryption_key(&self) -> Result<(), LibraryError> {
+        self.sync.forget_master_key().await
     }
 
     /// Forget this library on this device: remove its data directory, clear the
@@ -42,16 +40,33 @@ impl LibraryManager {
     /// the directory being removed, so this has to be the handle's last operation.
     /// With the active pointer gone, the next launch re-discovers and opens another
     /// library, or onboards.
-    pub fn forget_library(&self) -> Result<(), LibraryError> {
-        let config = self.config_handle.config();
-        let library_id = config.store_id.clone();
-        let bae_dir = registered_bae_dir(config.library_path(), &library_id)?;
-        crate::library::local_lifecycle::remove_local_library_from_bae_dir(
+    pub async fn forget_library(&self) -> Result<(), LibraryError> {
+        let (library_id, library_path, has_cloud_provider) = {
+            let config = self.config_handle.config();
+            (
+                config.store_id.clone(),
+                config.library_path().to_path_buf(),
+                config.cloud_home.provider.is_some(),
+            )
+        };
+        let bae_dir = registered_bae_dir(&library_path, &library_id)?;
+        let removal = crate::library::local_lifecycle::prepare_local_library_removal(
             &bae_dir,
             &library_id,
-            &self.key_service,
             crate::library::local_lifecycle::ActiveLibraryExpectation::MustNotNameAnotherLibrary,
-        )
+        )?;
+        if has_cloud_provider {
+            self.database.disconnect_cloud_home().await?;
+        }
+        for name in [
+            crate::keys::DISCOGS_API_KEY,
+            crate::keys::MCP_BEARER_TOKEN,
+            crate::keys::SUBSONIC_PASSWORD,
+        ] {
+            self.database.delete_host_secret(name)?;
+        }
+        self.database.forget_master_key().await?;
+        removal.remove()
     }
 }
 

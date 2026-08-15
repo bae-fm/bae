@@ -316,7 +316,8 @@ internal static partial class NativeBae
         }
     }
 
-    internal static bool HasEncryptionKey(AppHandle handle) => handle.HasEncryptionKey();
+    internal static BridgeCloudHomeKeyState CloudHomeKeyState(AppHandle handle) =>
+        handle.CloudHomeKeyState();
 
     internal static void HandleFree(AppHandle handle) => handle.Dispose();
 
@@ -324,13 +325,13 @@ internal static partial class NativeBae
         handle.SubscribeUiEvents(callback);
 
     internal static string? LockActiveLibrary(AppHandle handle) =>
-        CaptureError(() => handle.LockActiveLibrary());
+        CaptureError(() => Await(handle.LockActiveLibrary));
 
     internal static string? ForgetLibrary(AppHandle handle) =>
-        CaptureError(() => handle.ForgetLibrary());
+        CaptureError(() => Await(handle.ForgetLibrary));
 
-    internal static string? UnlockLibrary(string libraryId, string keyHex) =>
-        CaptureError(() => BaeBridgeMethods.UnlockLibrary(libraryId, keyHex));
+    internal static string? UnlockCloudHome(AppHandle handle, string serializedMasterKey) =>
+        CaptureError(() => Await(() => handle.UnlockCloudHome(serializedMasterKey)));
 
     internal static string? RenameLibrary(AppHandle handle, string libraryId, string name) =>
         CaptureError(() => handle.RenameLibrary(libraryId, name));
@@ -661,7 +662,7 @@ internal static partial class NativeBae
 #endif
 
     internal static string? DisconnectCloud(AppHandle handle) =>
-        CaptureError(handle.DisconnectCloudProvider);
+        CaptureError(() => Await(handle.DisconnectCloudProvider));
 
     internal static void TriggerSync(AppHandle handle) => handle.TriggerSync();
 

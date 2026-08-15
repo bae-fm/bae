@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">మీరు చేరుతున్న పరికరం నుంచి ఆహ్వాన కోడ్ చూపించండి</string>
     <string name="qr_scanner_join_request_instructions">కొత్త పరికరం “లైబ్రరీలో చేరు” స్క్రీన్ నుంచి దాని కోడ్ చూపించండి</string>
     <string name="unlock_title">లైబ్రరీ లాక్ చేయబడింది</string>
-    <string name="unlock_key_fingerprint">ఎన్‌క్రిప్షన్: %1$s</string>
     <string name="unlock_explanation">ఈ లైబ్రరీకి గుప్తీకరణ కీ కీరింగ్‌లో లేదు. అన్‌లాక్ చేయడానికి 64-అక్షరాల హెక్స్ కీని నమోదు చేయండి.</string>
     <string name="unlock_key_label">గుప్తీకరణ కీ (64 హెక్స్ అక్షరాలు)</string>
     <string name="unlock_failed">అన్‌లాక్ · లోపం</string>

@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">参加元のデバイスの招待コードを表示</string>
     <string name="qr_scanner_join_request_instructions">新しいデバイスの「ライブラリに参加」画面にあるコードを表示</string>
     <string name="unlock_title">ライブラリはロックされています</string>
-    <string name="unlock_key_fingerprint">キーのフィンガープリント: %1$s</string>
     <string name="unlock_explanation">このライブラリの暗号化キーがキーリングにありません。ロックを解除するには16進数64文字のキーを入力してください。</string>
     <string name="unlock_key_label">暗号化キー（16進数64文字）</string>
     <string name="unlock_failed">ロック解除に失敗しました</string>

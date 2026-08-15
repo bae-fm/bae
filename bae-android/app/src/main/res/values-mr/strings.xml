@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">ज्या डिव्हाइसवरून जोडत आहात त्याचा आमंत्रण संकेत दाखवा</string>
     <string name="qr_scanner_join_request_instructions">नवीन डिव्हाइसच्या “संग्रहालयात जोडा” पडद्यावरील संकेत दाखवा</string>
     <string name="unlock_title">लायब्ररी लॉक आहे</string>
-    <string name="unlock_key_fingerprint">कूटबद्धीकरण: %1$s</string>
     <string name="unlock_explanation">या लायब्ररीची कूटबद्धीकरण कळ कीरिंगमध्ये नाही. अनलॉक करण्यासाठी 64-अक्षरी hex कळ द्या.</string>
     <string name="unlock_key_label">कूटबद्धीकरण कळ (64 hex अक्षरे)</string>
     <string name="unlock_failed">अनलॉक · त्रुटी</string>

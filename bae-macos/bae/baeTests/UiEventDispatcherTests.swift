@@ -135,8 +135,6 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             libraryId: "lib-test",
             libraryName: "Test Library",
             libraryPath: "/tmp/test",
-            encryptionKeyStored: false,
-            encryptionKeyFingerprint: nil,
             pauseBetweenSides: false,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,

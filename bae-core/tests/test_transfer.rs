@@ -48,10 +48,9 @@ async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState
 
 async fn setup(tmp: &TempDir) -> LibraryManager {
     let library_dir = StoreDir::new(tmp.path());
-    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+    let config_handle = support::test_config(&library_dir);
     LibraryManager::open(
         config_handle,
-        key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

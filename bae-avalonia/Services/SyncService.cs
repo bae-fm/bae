@@ -23,7 +23,7 @@ internal sealed class SyncService
     public Func<string, string, Task<(bool Current, string? Error)>> SignInCloudProvider { get; init; }
         = (_, _) => throw new InvalidOperationException("SyncService stub: SignInCloudProvider not wired");
 
-    public Func<(bool Current, string? Error)> DisconnectCloudProvider { get; init; }
+    public Func<Task<(bool Current, string? Error)>> DisconnectCloudProvider { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: DisconnectCloudProvider not wired");
 
     /// <summary>Connect an S3-compatible bucket as the sync home: the bucket probe
@@ -79,7 +79,7 @@ internal sealed class SyncService
 
     /// <summary>Delete the active library's encryption key from the OS keyring; the
     /// current session keeps working, the next launch lands on unlock.</summary>
-    public Func<(bool Current, string? Error)> LockActiveLibrary { get; init; }
+    public Func<Task<(bool Current, string? Error)>> LockActiveLibrary { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: LockActiveLibrary not wired");
 
     /// <summary>Remove the active library from this device: delete its local data
@@ -121,7 +121,7 @@ internal sealed class SyncService
     {
         SignInCloudProvider = (provider, storage) =>
             session.RunForCurrentHandle(handle => NativeBae.SignInCloud(handle, provider, storage)),
-        DisconnectCloudProvider = () => session.WithCurrentHandle(NativeBae.DisconnectCloud),
+        DisconnectCloudProvider = () => session.RunForCurrentHandle(NativeBae.DisconnectCloud),
         SaveSyncConfig = (bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.SaveSyncConfig(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage)),
@@ -139,7 +139,7 @@ internal sealed class SyncService
             session.RunForCurrentHandle(handle => NativeBae.CancelReleaseTransition(handle, releaseId)),
         SetSyncPaused = paused => session.RunForCurrentHandle(handle => NativeBae.SetSyncPaused(handle, paused)),
         TriggerSync = () => session.WithCurrentHandle(NativeBae.TriggerSync),
-        LockActiveLibrary = () => session.WithCurrentHandle(NativeBae.LockActiveLibrary),
+        LockActiveLibrary = () => session.RunForCurrentHandle(NativeBae.LockActiveLibrary),
         ForgetLibrary = () => session.RunForCurrentHandle(NativeBae.ForgetLibrary),
         SetMaxConcurrentUploads = n => session.WithCurrentHandle(handle => NativeBae.SetMaxConcurrentUploads(handle, n)),
         SyncStatus = () => session.WithCurrentHandle(NativeBae.SyncStatus),

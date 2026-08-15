@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">நீங்கள் சேரும் சாதனத்திலிருந்து அழைப்புக் குறியீட்டை காட்டு</string>
     <string name="qr_scanner_join_request_instructions">புதிய சாதனத்தின் “நூலகத்தில் சேர்” திரையிலிருந்து அதன் குறியீட்டை காட்டு</string>
     <string name="unlock_title">நூலகம் பூட்டப்பட்டுள்ளது</string>
-    <string name="unlock_key_fingerprint">குறியாக்கம்: %1$s</string>
     <string name="unlock_explanation">இந்த நூலகத்திற்கான குறியாக்க விசை சாவிக்கொத்தில் இல்லை. திறக்க 64 எழுத்துகள் கொண்ட hex விசையை உள்ளிடவும்.</string>
     <string name="unlock_key_label">குறியாக்க விசை (64 hex எழுத்துகள்)</string>
     <string name="unlock_failed">திற · பிழை</string>

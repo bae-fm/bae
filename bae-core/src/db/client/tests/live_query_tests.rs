@@ -687,7 +687,7 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     seed.connect_sync_with_test_home(home.clone(), coven::CloudCipher::Plaintext)
         .await
         .unwrap();
-    seed.disconnect_sync();
+    seed.disconnect_cloud_home().await.unwrap();
     drop(seed);
     copy_store(seed_dir.path(), writer_dir.path());
     copy_store(seed_dir.path(), reader_dir.path());

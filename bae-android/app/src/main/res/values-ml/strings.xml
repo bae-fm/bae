@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">നിങ്ങൾ ചേരുന്ന ഉപകരണത്തിലെ ക്ഷണ കോഡ് കാണിക്കുക</string>
     <string name="qr_scanner_join_request_instructions">പുതിയ ഉപകരണത്തിന്റെ “ശേഖരത്തിൽ ചേരുക” സ്ക്രീനിൽ നിന്നുള്ള കോഡ് കാണിക്കുക</string>
     <string name="unlock_title">ലൈബ്രറി ലോക്ക് ചെയ്തിരിക്കുന്നു</string>
-    <string name="unlock_key_fingerprint">എൻക്രിപ്ഷൻ: %1$s</string>
     <string name="unlock_explanation">ഈ ലൈബ്രറിയുടെ എൻക്രിപ്ഷൻ കീ കീരിംഗിൽ ഇല്ല. അൺലോക്ക് ചെയ്യാൻ 64 അക്ഷരമുള്ള ഹെക്സ് കീ നൽകുക.</string>
     <string name="unlock_key_label">എൻക്രിപ്ഷൻ കീ (64 ഹെക്സ് അക്ഷരങ്ങൾ)</string>
     <string name="unlock_failed">അൺലോക്ക് · പിശക്</string>

@@ -66,11 +66,10 @@ impl ExportFixture {
         .await
         .unwrap();
         let library_dir = StoreDir::new(db_dir.clone());
-        let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+        let config_handle = support::test_config(&library_dir);
         let mgr = LibraryManager::new(
             db.clone(),
             config_handle,
-            key_service,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

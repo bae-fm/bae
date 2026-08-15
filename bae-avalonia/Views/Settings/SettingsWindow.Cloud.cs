@@ -55,7 +55,7 @@ internal sealed partial class SettingsWindow
             }
 
             disconnectArmed = false;
-            var (disconnectCurrent, error) = _app.Sync.DisconnectCloudProvider();
+            var (disconnectCurrent, error) = await _app.Sync.DisconnectCloudProvider();
             if (!disconnectCurrent)
             {
                 return;

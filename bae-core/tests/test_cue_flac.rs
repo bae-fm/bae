@@ -19,8 +19,8 @@ use std::path::Path;
 use std::time::Duration;
 use support::start_test_import;
 use support::{
-    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
-    test_config_and_keys, tracing_init, wait_for_import_complete,
+    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release, test_config,
+    tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
 use tokio::time::timeout;
@@ -371,11 +371,10 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     .await
     .expect("database");
     let library_dir = StoreDir::new(db_dir);
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         database,
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -447,11 +446,10 @@ impl CueFlacCaptureFixture {
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let config_handle = test_config(&library_dir);
         let library_manager = LibraryManager::new(
             database.clone(),
             config_handle,
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

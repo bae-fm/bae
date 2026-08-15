@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">যে ডিভাইস থেকে যোগ দিচ্ছেন তার আমন্ত্রণ কোড দেখান</string>
     <string name="qr_scanner_join_request_instructions">নতুন ডিভাইসের “লাইব্রেরিতে যোগ দিন” স্ক্রিন থেকে তার কোড দেখান</string>
     <string name="unlock_title">লাইব্রেরি লক করা</string>
-    <string name="unlock_key_fingerprint">এনক্রিপশন: %1$s</string>
     <string name="unlock_explanation">এই লাইব্রেরির এনক্রিপশন কী কীরিংয়ে নেই। আনলক করতে ৬৪-অক্ষরের হেক্স কী লিখুন।</string>
     <string name="unlock_key_label">এনক্রিপশন কী (৬৪ হেক্স অক্ষর)</string>
     <string name="unlock_failed">আনলক · ত্রুটি</string>

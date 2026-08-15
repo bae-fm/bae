@@ -129,8 +129,8 @@ pub fn init_keyring(diagnostics: &Diagnostics) {
 
 /// Install an in-memory keyring store and set coven's keyring service for tests.
 ///
-/// coven's `StoreKeys` reads and writes the keyring, and its getters panic unless
-/// the service is set. Tests don't run `init_keyring` (which would install the OS
+/// Coven's custody owners read and write the keyring only after this service is
+/// set. Tests don't run `init_keyring` (which would install the OS
 /// store and prompt), so every test needing a key calls this instead.
 ///
 /// Set-once, and it must stay that way: the store is one process-global

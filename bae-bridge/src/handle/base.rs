@@ -645,9 +645,12 @@ impl AppHandle {
         .await
     }
 
-    pub fn disconnect_cloud_provider(&self) -> Result<(), BridgeError> {
-        self.services.disconnect_cloud_provider()?;
-        Ok(())
+    pub async fn disconnect_cloud_provider(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services.disconnect_cloud_provider().await?;
+            Ok(())
+        })
+        .await
     }
 
     /// How many releases live only in the cloud and would become unplayable if
@@ -765,11 +768,13 @@ impl AppHandle {
     /// active pointer, and remove its data directory (the owner's cloud copy is
     /// untouched). The caller must drop this handle right after — the database
     /// lives in the removed directory — and re-open / onboard from scratch.
-    pub fn forget_library(&self) -> Result<(), BridgeError> {
-        self.services.forget_library()?;
-
-        info!("Forgot local library");
-        Ok(())
+    pub async fn forget_library(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services.forget_library().await?;
+            info!("Forgot local library");
+            Ok(())
+        })
+        .await
     }
 
     pub fn trigger_sync(&self) {

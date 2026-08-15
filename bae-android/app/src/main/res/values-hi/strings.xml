@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">जिस उपकरण से आप जुड़ रहे हैं उसका आमंत्रण कोड दिखाएं</string>
     <string name="qr_scanner_join_request_instructions">नए उपकरण की “लाइब्रेरी से जुड़ें” स्क्रीन से उसका कोड दिखाएं</string>
     <string name="unlock_title">लाइब्रेरी लॉक है</string>
-    <string name="unlock_key_fingerprint">एन्क्रिप्शन: %1$s</string>
     <string name="unlock_explanation">इस लाइब्रेरी की एन्क्रिप्शन कुंजी कीरिंग में नहीं है। अनलॉक करने के लिए 64-वर्ण वाली हेक्स कुंजी दर्ज करें।</string>
     <string name="unlock_key_label">एन्क्रिप्शन कुंजी (64 हेक्स वर्ण)</string>
     <string name="unlock_failed">अनलॉक · त्रुटि</string>

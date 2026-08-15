@@ -3,20 +3,24 @@ import OSLog
 
 private let logger = Logger.bae("LibrarySessionOpener")
 
-/// The slice of an open `AppHandle` the session opener drives: read the config,
-/// gate on the stored encryption key, seed the outbox, check sync readiness, and
-/// tear the core down on a failed open. `AppHandle` satisfies it directly; the
-/// narrow shape is the seam a unit test fakes, since the global `initApp` the
-/// opener runs can't otherwise be stood up in a test.
-public protocol LibrarySessionHandle: Sendable {
+/// The slice of an open `AppHandle` the session opener drives: read the config
+/// and Coven-owned cloud-key state, unlock that same handle, seed the outbox,
+/// check sync readiness, and tear the core down on a failed open. `AppHandle`
+/// satisfies it directly; the narrow shape is the seam a unit test fakes.
+public protocol LibrarySessionHandle: AnyObject, Sendable {
     func getConfig() -> BridgeConfig
-    func hasEncryptionKey() -> Bool
+    func cloudHomeKeyState() throws -> BridgeCloudHomeKeyState
+    func unlockCloudHome(serializedCloudKey: String) async throws
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot
     func isSyncReady() -> Bool
     func shutdown() async throws
 }
 
-extension AppHandle: LibrarySessionHandle {}
+extension AppHandle: LibrarySessionHandle {
+    public func unlockCloudHome(serializedCloudKey: String) async throws {
+        try await unlockCloudHome(serializedMasterKey: serializedCloudKey)
+    }
+}
 
 /// Opens a local library into a wired `AppService`, superseding any open still
 /// in flight. This is the platform-shared half of the launch / switch / unlock
@@ -27,11 +31,10 @@ extension AppHandle: LibrarySessionHandle {}
 /// restore code once sync is ready.
 ///
 /// Each platform keeps its own shell (an `NSApplicationDelegate` vs an
-/// `@Observable` holder) and maps the `Outcome` onto its own screen model. The
-/// two seams are the `makeService` factory (which builds and wires the platform
-/// `AppService` subclass) and the injected `makeHandle` (which wraps the global
-/// `initApp`, so the opener never calls it directly and a test can stand in a
-/// fake).
+/// `@Observable` holder) and maps the `Outcome` onto its own screen model. A
+/// locked handle remains owned here so entering a key completes the already
+/// open Coven owner instead of constructing a second owner around the same
+/// library.
 @MainActor
 public final class LibrarySessionOpener<
     Handle: LibrarySessionHandle,
@@ -61,6 +64,16 @@ public final class LibrarySessionOpener<
     /// `cancel`) so its now-stale result never lands on the caller's screen.
     private let slot = CancellableTaskSlot()
 
+    private struct LockedSession {
+        let id: UUID
+        let handle: Handle
+        let config: BridgeConfig
+    }
+
+    /// The one locked core awaiting its key. A switch or cancel releases it;
+    /// an unlock failure retains it so the user can correct the key and retry.
+    private var lockedSession: LockedSession?
+
     public init(
         makeHandle: @escaping @Sendable (String) throws -> Handle,
         makeService:
@@ -79,10 +92,32 @@ public final class LibrarySessionOpener<
         libraryId: String,
         onOutcome: @escaping @MainActor (Outcome) -> Void
     ) {
+        lockedSession = nil
         slot.replace {
             let outcome = await self.run(libraryId: libraryId)
             onOutcome(outcome)
         }
+    }
+
+    /// Unlock the retained core and finish opening it. The handle that reported
+    /// `.locked` performs the operation; no global key write or second
+    /// `initApp` participates.
+    public func unlock(serializedCloudKey: String) async throws -> Service {
+        guard let locked = lockedSession else {
+            throw CancellationError()
+        }
+        try await locked.handle.unlockCloudHome(
+            serializedCloudKey: serializedCloudKey
+        )
+        try Task.checkCancellation()
+        guard lockedSession?.id == locked.id else {
+            throw CancellationError()
+        }
+        lockedSession = nil
+        return try await finish(
+            handle: locked.handle,
+            config: locked.config
+        )
     }
 
     /// Cancel any open still in flight without starting a new one — used when
@@ -90,6 +125,7 @@ public final class LibrarySessionOpener<
     /// resume past its cancellation check and land a library after the close.
     public func cancel() {
         slot.cancel()
+        lockedSession = nil
     }
 
     private func run(libraryId: String) async -> Outcome {
@@ -103,44 +139,15 @@ public final class LibrarySessionOpener<
             // caller would act on; `handle` drops here, freeing the core.
             try Task.checkCancellation()
             let config = handle.getConfig()
-            if config.encryptionKeyStored, !handle.hasEncryptionKey() {
-                // Drop the handle before the caller shows the unlock gate:
-                // releasing the only strong reference runs the core's teardown,
-                // so an unlock retry spins a fresh `initApp` on the same library
-                // rather than racing a still-live one.
+            if try handle.cloudHomeKeyState() == .locked {
+                lockedSession = LockedSession(
+                    id: UUID(),
+                    handle: handle,
+                    config: config
+                )
                 return .needsUnlock(config)
             }
-            let initialOutbox: BridgeOutboxSnapshot
-            do {
-                initialOutbox = try await handle.getOutboxSnapshot()
-            }
-            catch {
-                // Seeding the outbox mirror failed: tear the just-opened core
-                // down before surfacing, rather than leaving it half-open.
-                logger.error("Failed to seed outbox snapshot: \(error)")
-                do {
-                    try await handle.shutdown()
-                }
-                catch {
-                    logger.error(
-                        "Failed to shut down after outbox seeding failed: \(error)"
-                    )
-                    return .failed(error)
-                }
-                return .failed(error)
-            }
-            let service = makeService(handle, config, initialOutbox)
-            if handle.isSyncReady() {
-                service.storeRestoreCodeInKeychain(
-                    libraryId: config.libraryId,
-                    onError: { [weak service] message in
-                        Task { @MainActor in
-                            service?.showError(DisplayError(line: message))
-                        }
-                    }
-                )
-            }
-            return .opened(service)
+            return .opened(try await finish(handle: handle, config: config))
         }
         catch is CancellationError {
             return .superseded
@@ -148,5 +155,40 @@ public final class LibrarySessionOpener<
         catch {
             return .failed(error)
         }
+    }
+
+    private func finish(
+        handle: Handle,
+        config: BridgeConfig
+    ) async throws -> Service {
+        let initialOutbox: BridgeOutboxSnapshot
+        do {
+            initialOutbox = try await handle.getOutboxSnapshot()
+        }
+        catch {
+            logger.error("Failed to seed outbox snapshot: \(error)")
+            do {
+                try await handle.shutdown()
+            }
+            catch {
+                logger.error(
+                    "Failed to shut down after outbox seeding failed: \(error)"
+                )
+                throw error
+            }
+            throw error
+        }
+        let service = makeService(handle, config, initialOutbox)
+        if handle.isSyncReady() {
+            service.storeRestoreCodeInKeychain(
+                libraryId: config.libraryId,
+                onError: { [weak service] message in
+                    Task { @MainActor in
+                        service?.showError(DisplayError(line: message))
+                    }
+                }
+            )
+        }
+        return service
     }
 }

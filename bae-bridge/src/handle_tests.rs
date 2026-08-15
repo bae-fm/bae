@@ -2,8 +2,6 @@ use bae_core::album_detail::{
     ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
-#[cfg(not(feature = "desktop"))]
-use bae_core::keys::BaeStoreKeysExt;
 use std::sync::{Arc, Mutex};
 
 /// Records every delivered event so tests can assert on the stream.
@@ -160,10 +158,6 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
         library_dir.clone(),
         "Test Library".to_string(),
     );
-    let key_service = bae_core::keys::StoreKeys::bind(library_id.clone());
-    key_service
-        .set_discogs_key("test-discogs-token")
-        .expect("seed test Discogs key");
     // One id source for the whole test app: the library owner mints every
     // database and domain id from this provider.
     let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(test_name));
@@ -171,7 +165,6 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
     let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
     let manager = bae_core::library::LibraryManager::open(
         config_handle,
-        key_service,
         Arc::new(coven::SystemClock),
         ids,
         bae_core::diagnostics::Diagnostics::noop(),
@@ -190,7 +183,7 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
         bae_core::library::AppServices::new(manager, playback)
     };
     let handle = Arc::new(super::AppHandle {
-        runtime,
+        runtime: super::AppRuntime::new(runtime),
         services,
         ui_event_bus: bae_core::ui::UiEventBus::new(),
     });
@@ -268,6 +261,11 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
     const CHILD: &str = "BAE_BRIDGE_SAVE_SYNC_CONFIG_STACK_CHILD";
 
     if std::env::var_os(CHILD).is_some() {
+        let runtime_drop_panicked = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let panic_flag = runtime_drop_panicked.clone();
+        std::panic::set_hook(Box::new(move |_| {
+            panic_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+        }));
         let (handle, _root) = fresh_bridge_handle("save-sync-config-stack");
         let caller_runtime = tokio::runtime::Runtime::new().expect("create caller runtime");
         std::thread::Builder::new()
@@ -289,6 +287,10 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
             .expect("start UniFFI-sized worker")
             .join()
             .expect("UniFFI-sized worker survives the sync configuration call");
+        assert!(
+            !runtime_drop_panicked.load(std::sync::atomic::Ordering::SeqCst),
+            "releasing the last app handle on its runtime worker must not panic"
+        );
         return;
     }
 

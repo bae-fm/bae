@@ -5,22 +5,28 @@ using Avalonia.Controls;
 namespace Bae.Desktop;
 
 // A locked library (encrypted, key absent on this device): prompt for the
-// 64-character hex key. unlock_library stores it in the credential store; a
-// successful unlock re-opens the library with sync online. The dialog stays open
-// on a bad key; cancelling leaves the library locked. Presented in the window's
-// modal host.
+// 64-character hex key. The retained library handle owns the unlock; the dialog
+// stays open on a bad key and cancelling releases that handle.
 internal sealed class UnlockDialog
 {
     private readonly Action<string> _setStatus;
-    private readonly Action<string> _openLibrary;
+    private readonly Func<string, Task<string?>> _unlock;
+    private readonly Action _onUnlocked;
+    private readonly Func<Task> _cancelUnlock;
 
-    public UnlockDialog(Action<string> setStatus, Action<string> openLibrary)
+    public UnlockDialog(
+        Action<string> setStatus,
+        Func<string, Task<string?>> unlock,
+        Action onUnlocked,
+        Func<Task> cancelUnlock)
     {
         _setStatus = setStatus;
-        _openLibrary = openLibrary;
+        _unlock = unlock;
+        _onUnlocked = onUnlocked;
+        _cancelUnlock = cancelUnlock;
     }
 
-    public Control Build(string libraryId, Action close)
+    public Control Build(Action close)
     {
         var keyBox = new TextBox { Watermark = Loc.Chrome("library.unlock.key_placeholder"), Width = 360 };
         var status = DialogUi.Danger();
@@ -31,7 +37,16 @@ internal sealed class UnlockDialog
         {
             confirm.IsEnabled = false;
             var key = keyBox.Text?.Trim() ?? string.Empty;
-            var error = await Task.Run(() => NativeBae.UnlockLibrary(libraryId, key));
+            string? error;
+            try
+            {
+                error = await _unlock(key);
+            }
+            catch (OperationCanceledException)
+            {
+                close();
+                return;
+            }
             if (error is not null)
             {
                 status.Text = error;
@@ -41,10 +56,11 @@ internal sealed class UnlockDialog
             }
 
             close();
-            _openLibrary(libraryId);
+            _onUnlocked();
         };
-        cancel.Click += (_, _) =>
+        cancel.Click += async (_, _) =>
         {
+            await _cancelUnlock();
             close();
             _setStatus(Loc.Chrome("library.locked"));
         };

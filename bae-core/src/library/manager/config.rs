@@ -162,7 +162,7 @@ impl LibraryManager {
     }
 
     pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
-        Ok(self.key_service.get_mcp_token()?)
+        Ok(self.database.host_secret(crate::keys::MCP_BEARER_TOKEN)?)
     }
 
     pub fn ensure_mcp_token(&self) -> Result<String, LibraryError> {
@@ -177,7 +177,9 @@ impl LibraryManager {
     }
 
     pub fn set_mcp_token(&self, token: String) -> Result<(), LibraryError> {
-        Ok(self.key_service.set_mcp_token(&token)?)
+        Ok(self
+            .database
+            .set_host_secret(crate::keys::MCP_BEARER_TOKEN, &token)?)
     }
 
     /// Set the Subsonic server config. Rejects `port == 0` (no real endpoint)
@@ -192,10 +194,12 @@ impl LibraryManager {
     }
 
     pub fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {
-        Ok(self.key_service.get_subsonic_password()?)
+        Ok(self.database.host_secret(crate::keys::SUBSONIC_PASSWORD)?)
     }
 
     pub fn set_subsonic_password(&self, password: String) -> Result<(), LibraryError> {
-        Ok(self.key_service.set_subsonic_password(&password)?)
+        Ok(self
+            .database
+            .set_host_secret(crate::keys::SUBSONIC_PASSWORD, &password)?)
     }
 }

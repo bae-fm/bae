@@ -81,6 +81,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Keyring(e) => Self::Unavailable(e.to_string()),
             LibraryError::CloudHome(e) => Self::Unavailable(e.to_string()),
             LibraryError::CloudSetup(e) => Self::Unavailable(e.to_string()),
+            LibraryError::CloudUnlock(e) => Self::Unavailable(e.to_string()),
             LibraryError::Sync(e) => Self::Unavailable(e.to_string()),
             LibraryError::Validation(e) => Self::Validation(e),
             LibraryError::MasterKey(e) => Self::Unavailable(e.to_string()),

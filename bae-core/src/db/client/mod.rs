@@ -240,8 +240,8 @@ impl Database {
             "test-device".to_string(),
             "Test Library".to_string(),
         );
-        // StoreKeys captures the registered keyring service when the builder
-        // opens, so install the process-wide test service before constructing it.
+        // Coven's custody owners capture the registered keyring service when
+        // the builder opens, so install the test service first.
         crate::config::install_test_keyring();
         Self::open(
             library_dir,

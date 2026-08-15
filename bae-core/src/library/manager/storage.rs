@@ -25,11 +25,8 @@ impl LibraryManager {
     // Encryption
     // =========================================================================
 
-    /// Whether this store's master key is established in this device's
-    /// keyring — "unlocked". `bootstrap` treats the opposite of this as
-    /// "locked" and defers attaching sync until an explicit unlock.
-    pub fn has_encryption(&self) -> bool {
-        self.sync.has_encryption()
+    pub fn cloud_home_key_state(&self) -> Result<coven::CloudHomeKeyState, LibraryError> {
+        self.sync.cloud_home_key_state()
     }
 }
 

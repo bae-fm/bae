@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">הציגו את קוד ההזמנה מהמכשיר שממנו אתם מצטרפים</string>
     <string name="qr_scanner_join_request_instructions">הציגו את הקוד של המכשיר החדש ממסך “הצטרפות לספרייה” שלו</string>
     <string name="unlock_title">הספרייה נעולה</string>
-    <string name="unlock_key_fingerprint">טביעת אצבע של המפתח: %1$s</string>
     <string name="unlock_explanation">מפתח ההצפנה של ספרייה זו אינו במחזיק המפתחות. הזינו את המפתח ההקסדצימלי באורך 64 תווים כדי לפתוח.</string>
     <string name="unlock_key_label">מפתח הצפנה (64 תווים הקסדצימליים)</string>
     <string name="unlock_failed">פתיחת הנעילה נכשלה</string>

@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Katıldığınız cihazdaki davet kodunu gösterin</string>
     <string name="qr_scanner_join_request_instructions">Yeni cihazın “Arşive katıl” ekranındaki kodunu gösterin</string>
     <string name="unlock_title">Kitaplık kilitli</string>
-    <string name="unlock_key_fingerprint">Şifreleme: %1$s</string>
     <string name="unlock_explanation">Bu kitaplığın şifreleme anahtarı anahtarlıkta yok. Kilidi açmak için 64 karakterlik onaltılık anahtarı girin.</string>
     <string name="unlock_key_label">Şifreleme (64 hex)</string>
     <string name="unlock_failed">Kilit açma başarısız</string>

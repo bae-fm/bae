@@ -1,7 +1,6 @@
 use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
-use crate::keys::StoreKeys;
 use coven::StoreDir;
 use tempfile::TempDir;
 
@@ -61,11 +60,9 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     );
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = StoreKeys::bind(library_id);
     let manager = LibraryManager::new(
         database,
         config_handle,
-        key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),

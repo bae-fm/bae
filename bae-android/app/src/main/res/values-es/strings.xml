@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Muestra el código de invitación del dispositivo desde el que te estás uniendo</string>
     <string name="qr_scanner_join_request_instructions">Muestra el código del dispositivo nuevo desde su pantalla “Unirse a una biblioteca”</string>
     <string name="unlock_title">Biblioteca bloqueada</string>
-    <string name="unlock_key_fingerprint">Huella de la clave: %1$s</string>
     <string name="unlock_explanation">La clave de cifrado de esta biblioteca no está en el llavero. Introduce la clave hexadecimal de 64 caracteres para desbloquearla.</string>
     <string name="unlock_key_label">Clave de cifrado (64 caracteres hexadecimales)</string>
     <string name="unlock_failed">Error al desbloquear</string>

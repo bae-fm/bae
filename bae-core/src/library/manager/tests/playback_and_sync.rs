@@ -36,11 +36,13 @@ async fn discogs_operations_withheld_when_rejected() {
 /// both stores to agree it exists.
 #[tokio::test]
 async fn discogs_operations_withheld_when_config_has_no_key() {
-    use crate::keys::BaeStoreKeysExt;
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-orphan-key").await;
 
     // Keyring bytes present, config untouched (still `None`).
-    manager.key_service.set_discogs_key("orphan-key").unwrap();
+    manager
+        .database
+        .set_host_secret(crate::keys::DISCOGS_API_KEY, "orphan-key")
+        .unwrap();
 
     assert_eq!(manager.discogs_validation(), None);
     assert!(
@@ -53,7 +55,6 @@ async fn discogs_operations_withheld_when_config_has_no_key() {
 #[tokio::test]
 async fn set_and_clear_discogs_key_move_both_stores() {
     use crate::config::DiscogsValidation;
-    use crate::keys::BaeStoreKeysExt;
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-atomic").await;
 
     manager
@@ -61,14 +62,24 @@ async fn set_and_clear_discogs_key_move_both_stores() {
         .unwrap();
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
     assert_eq!(
-        manager.key_service.get_discogs_key().unwrap().as_deref(),
+        manager
+            .database
+            .host_secret(crate::keys::DISCOGS_API_KEY)
+            .unwrap()
+            .as_deref(),
         Some("the-key"),
     );
     assert!(manager.discogs_available_for_test().unwrap());
 
     manager.clear_discogs_key().unwrap();
     assert_eq!(manager.discogs_validation(), None);
-    assert_eq!(manager.key_service.get_discogs_key().unwrap(), None);
+    assert_eq!(
+        manager
+            .database
+            .host_secret(crate::keys::DISCOGS_API_KEY)
+            .unwrap(),
+        None
+    );
     assert!(!manager.discogs_available_for_test().unwrap());
 }
 
@@ -319,7 +330,11 @@ fn setup_failure_classes_map_to_distinct_categories() {
             C::Network,
         ),
         (
-            LibraryError::CloudSetup("oauth denied".into()),
+            LibraryError::CloudSetup(coven::CloudHomeSetupError::Connection(Box::new(
+                coven::SyncError::CloudHome(coven::CloudHomeError::Configuration(
+                    "oauth denied".into(),
+                )),
+            ))),
             C::Credentials,
         ),
         (
@@ -519,19 +534,12 @@ async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_win
     );
 }
 
-/// Setting up an opaque cloud home establishes the master key in the keyring, and
-/// only then connects the provider. If the connect fails, the key is still in the
-/// keyring — so the config has to say so. It used to record the fingerprint only
-/// after a successful connect, which left `encryption_key_stored` false over a
-/// keyring that held the key: the launch gate
-/// (`encryption_key_stored && keyring-has-key`) then never attached sync again,
-/// while the provider stayed configured and the UI reported it connected.
-///
-/// The test manager is built with no CloudKit driver, so the connect fails at the
-/// driver lookup — a failed connect with no network in it.
+/// A failed opaque-home setup leaves both the proposed provider and generated
+/// master key uncommitted. Coven owns that transaction; bae persists the returned
+/// provider config only after Coven returns success.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn a_failed_connect_still_records_the_key_it_put_in_the_keyring() {
+async fn a_failed_connect_commits_neither_provider_nor_master_key() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let error = manager
@@ -543,18 +551,11 @@ async fn a_failed_connect_still_records_the_key_it_put_in_the_keyring() {
         "the failure must be the connect, not the key step: {error}"
     );
 
-    assert!(
-        manager.has_encryption(),
-        "the master key really is established in the keyring"
-    );
-    let config = manager.get_config();
-    assert!(
-        config.encryption_key_stored,
-        "the config must agree with the keyring, or the next launch never attaches sync"
-    );
-    assert!(
-        config.encryption_key_fingerprint.is_some(),
-        "the recorded key carries its fingerprint"
+    assert_eq!(manager.get_config().cloud_home.provider, None);
+    assert_eq!(
+        manager.cloud_home_key_state().unwrap(),
+        coven::CloudHomeKeyState::Locked,
+        "a generated master key is not retained after connection failure"
     );
 }
 

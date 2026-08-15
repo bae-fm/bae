@@ -13,11 +13,10 @@ async fn restore_test_library() -> RestoreTestLibrary {
     .unwrap();
     let database_arc = Arc::new(database.clone());
     let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -80,11 +79,10 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
     .await
     .unwrap();
     let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         database,
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -360,11 +358,10 @@ impl CloudOnlyPlaybackFixture {
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let config_handle = test_config(&library_dir);
         let library_manager = LibraryManager::new(
             database,
             config_handle,
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

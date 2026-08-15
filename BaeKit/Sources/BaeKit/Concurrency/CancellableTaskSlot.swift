@@ -43,6 +43,30 @@ public final class CancellableTaskSlot {
         }
     }
 
+    /// Cancel the run in flight, await `work`, and deliver its result on the
+    /// main actor. The operation itself owns the runtime on which it executes;
+    /// this slot owns only replacement and UI delivery.
+    public func replace<T: Sendable>(
+        _ label: String,
+        work: @escaping @MainActor @Sendable () async throws -> T,
+        onSuccess: @escaping @MainActor (T) -> Void,
+        onError: @escaping @MainActor (Error) -> Void
+    ) {
+        replace {
+            do {
+                let value = try await work()
+                try Task.checkCancellation()
+                onSuccess(value)
+            }
+            catch is CancellationError {
+                logger.debug("\(label) cancelled")
+            }
+            catch {
+                onError(error)
+            }
+        }
+    }
+
     /// Cancel the run in flight without starting a new one.
     public func cancel() {
         task?.cancel()

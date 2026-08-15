@@ -472,17 +472,10 @@ pub fn tracing_init() {
         .try_init();
 }
 
-/// Create test config_handle + key_service for integration tests.
-/// Seeds a dummy Discogs key into the in-memory test keyring so the worker can
-/// build a `DiscogsClient` and consult the seeded LRU caches without doing real
-/// HTTP work. (coven's StoreKeys reads the keyring, not env vars.)
-pub fn test_config_and_keys(
+/// Create a test config handle for integration tests.
+pub fn test_config(
     library_dir: &coven::StoreDir,
-) -> (
-    std::sync::Arc<bae_core::config::ConfigHandle>,
-    bae_core::keys::StoreKeys,
-) {
-    use bae_core::keys::BaeStoreKeysExt;
+) -> std::sync::Arc<bae_core::config::ConfigHandle> {
     bae_core::config::install_test_keyring();
     // No test has any business reaching api.discogs.com. Point every client
     // built from here at a port nothing listens on: the seeded session caches
@@ -494,24 +487,13 @@ pub fn test_config_and_keys(
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
-    let mut config = bae_core::config::Config::with_defaults(
-        library_id.clone(),
+    let config = bae_core::config::Config::with_defaults(
+        library_id,
         "test-device".to_string(),
         library_dir,
         "Test Library".to_string(),
     );
-    // Seed both stores the way production's `set_discogs_key` does: the keyring
-    // holds the token and the config records the validation. `discogs_client`
-    // gates on both, so seeding only the keyring leaves it unusable.
-    config.discogs = Some(bae_core::config::DiscogsValidation::Valid);
-    let key_service = bae_core::keys::StoreKeys::bind(library_id);
-    key_service
-        .set_discogs_key("test-discogs-token")
-        .expect("seed discogs key into test keyring");
-    (
-        std::sync::Arc::new(bae_core::config::ConfigHandle::new(config)),
-        key_service,
-    )
+    std::sync::Arc::new(bae_core::config::ConfigHandle::new(config))
 }
 
 /// Set up a fresh library + LibraryManager using the real codepath
@@ -534,20 +516,10 @@ pub fn setup_fresh_library(
     config.save_to_config_yaml().expect("save config");
     config.save_active_library().expect("save active library");
 
-    // coven's StoreKeys reads the keyring; seed the encryption key there so the
-    // sync codepaths these tests exercise find it (instead of the OS keyring).
-    // Namespace it under this library's unique id so the shared process-global
-    // mock store (see `install_test_keyring`) can't collide across tests.
     bae_core::config::install_test_keyring();
-    let enc_key_hex = hex::encode([42u8; 32]);
-    let key_service = bae_core::keys::StoreKeys::bind(library_id);
-    key_service
-        .set_encryption_key(&enc_key_hex)
-        .expect("seed encryption key into test keyring");
     let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
     let lm = bae_core::library::LibraryManager::open(
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

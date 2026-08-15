@@ -11,7 +11,6 @@ use tracing::info;
 
 use crate::config::{Config, ConfigHandle};
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
-use crate::keys::StoreKeys;
 use crate::library::AppServices;
 use crate::ui::UiEventBus;
 use coven::{ClockRef, SystemClock};
@@ -158,68 +157,11 @@ where
 
     crate::audio_codec::init();
 
-    // Dev mode keeps bae's secrets in `BAE_*` env vars; coven's keyring-only
-    // StoreKeys can't see those, so bridge them into the keyring it reads.
-    // No-op in production.
-    crate::config::seed_dev_keyring(&config.store_id);
-    let key_service = StoreKeys::bind(config.store_id.clone());
-
-    // Whether this library already has its key on this device — a returning
-    // user with a configured opaque provider. A local-only library has no key
-    // and needs none; the master key is established lazily, only when a
-    // provider is actually connected (`ensure_sync_manager_and_start`). coven
-    // resolves the actual cipher from the master-key custody itself once sync
-    // connects (below), so this is only the presence check that decides
-    // whether to attempt that connect at all. The stamper above is already in
-    // place regardless, so local imports write synced rows without any key.
-    //
-    // The locked case: encryption was set up but the keyring lacks the key on
-    // this device (OS keychain wiped, fresh install with config preserved).
-    // Attempting to connect would mint a new key over cloud data that key
-    // never sealed, so we leave sync unbuilt and let the caller prompt the
-    // user to unlock.
-    let key_established = config.encryption_key_stored
-        && match key_service.get_encryption_key() {
-            Ok(Some(_)) => true,
-            Ok(None) => {
-                tracing::warn!(
-                    "encryption key marked stored but not found in keyring; deferring sync until unlocked"
-                );
-                diagnostics.event(TelemetryEvent::Anomaly {
-                    kind: AnomalyKind::EncryptionKeyMissing,
-                });
-                false
-            }
-            Err(e) => {
-                tracing::warn!(
-                    error = %e,
-                    "failed to read encryption key from keyring; deferring sync until unlocked"
-                );
-                diagnostics.event(TelemetryEvent::Anomaly {
-                    kind: AnomalyKind::EncryptionKeyMissing,
-                });
-                false
-            }
-        };
-
-    // Locked: encryption was set up but this device's keyring lacks the key.
-    // Bootstrap still completes (sync deferred); the caller diverts to an unlock
-    // screen the user may cancel without ever entering this library.
-    let locked = config.encryption_key_stored && !key_established;
-    let advance_active_pointer = !locked;
-
-    // A browsable home (a provider is configured but the home is stored in the
-    // clear) has no key, so the opaque/locked resolution above leaves
-    // `key_established` false. It still needs a keyless sync manager built at
-    // startup so a returning user resumes syncing.
-    let cloud_home_is_browsable =
-        config.cloud_home.provider.is_some() && config.cloud_home.storage.is_browsable();
-
+    let dev_secrets = crate::config::dev_secrets();
     let config_handle = Arc::new(ConfigHandle::new(config));
 
     let library_manager = crate::library::LibraryManager::open(
         Arc::clone(&config_handle),
-        key_service.clone(),
         Arc::clone(&clock),
         ids,
         diagnostics.clone(),
@@ -231,6 +173,34 @@ where
         ),
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
+
+    if let Some(token) = dev_secrets.discogs_api_key.as_deref() {
+        library_manager
+            .set_discogs_key(token, crate::config::DiscogsValidation::Unvalidated)
+            .map_err(|error| BootstrapError::Config(error.to_string()))?;
+    }
+
+    let provider_configured = config_handle.config().cloud_home.provider.is_some();
+    let mut key_state = library_manager
+        .cloud_home_key_state()
+        .map_err(|error| BootstrapError::Config(error.to_string()))?;
+    let mut connected_during_unlock = false;
+    if provider_configured && key_state == coven::CloudHomeKeyState::Locked {
+        if let Some(master_key) = dev_secrets.master_key.as_deref() {
+            runtime
+                .block_on(library_manager.unlock_cloud_home(master_key))
+                .map_err(|error| BootstrapError::Config(error.to_string()))?;
+            key_state = coven::CloudHomeKeyState::Available;
+            connected_during_unlock = true;
+        }
+    }
+    let locked = provider_configured && key_state == coven::CloudHomeKeyState::Locked;
+    let advance_active_pointer = !locked;
+    if locked {
+        diagnostics.event(TelemetryEvent::Anomaly {
+            kind: AnomalyKind::EncryptionKeyMissing,
+        });
+    }
 
     // Configure coven's per-namespace cache budgets (device-local, idempotent):
     // the bulk for audio, a small reserved slice each for covers / artist images.
@@ -251,7 +221,7 @@ where
     // not abort the launch: the library opens, and sync reports itself not connected
     // so the UI shows its reconnect banner. Local browse and pinned playback need no
     // network, and the next launch retries the connect.
-    if key_established || cloud_home_is_browsable {
+    if provider_configured && !locked && !connected_during_unlock {
         runtime.block_on(library_manager.attach_and_start_sync_at_startup());
     }
 

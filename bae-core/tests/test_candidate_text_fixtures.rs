@@ -248,11 +248,10 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
     .await
     .unwrap();
     let library_dir = coven::StoreDir::new(tmp.path());
-    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+    let config_handle = support::test_config(&library_dir);
     let manager = bae_core::library::LibraryManager::new(
         database,
         config_handle,
-        key_service,
         clock,
         Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

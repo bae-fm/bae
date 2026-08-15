@@ -13,8 +13,8 @@ import Testing
 @Suite("DisconnectSyncFlow")
 struct DisconnectSyncFlowTests {
     /// Thread-safe call recorder for the injected closures. `@unchecked
-    /// Sendable` because the `disconnect` closure is invoked off the main actor
-    /// by `DetachedWork.run`.
+    /// Sendable` because the `disconnect` closure crosses the async bridge
+    /// boundary.
     private final class Recorder: @unchecked Sendable {
         private let lock = NSLock()
         private var _warningCalls = 0
@@ -39,7 +39,7 @@ struct DisconnectSyncFlowTests {
             0
         },
         atRiskMessage: @escaping (UInt64) -> String = { "\($0) at risk." },
-        disconnect: @escaping @Sendable () throws -> Void = {},
+        disconnect: @escaping @Sendable () async throws -> Void = {},
         deleteRestoreCode: @escaping () -> Void = {},
         baseMessage: @escaping () -> String = { "Disconnect." },
         warningCheckFailedMessage: @escaping (String) -> String = {

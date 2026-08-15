@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">Pokaż kod zaproszenia z urządzenia, z którego dołączasz</string>
     <string name="qr_scanner_join_request_instructions">Pokaż kod nowego urządzenia z ekranu „Dołącz do biblioteki”</string>
     <string name="unlock_title">Biblioteka zablokowana</string>
-    <string name="unlock_key_fingerprint">Odcisk klucza: %1$s</string>
     <string name="unlock_explanation">Klucza szyfrującego tej biblioteki nie ma w pęku kluczy. Wprowadź 64-znakowy klucz szesnastkowy, aby odblokować.</string>
     <string name="unlock_key_label">Klucz szyfrujący (64 znaki szesnastkowe)</string>
     <string name="unlock_failed">Nie udało się odblokować</string>

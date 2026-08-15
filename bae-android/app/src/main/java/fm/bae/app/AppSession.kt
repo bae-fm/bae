@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeCloudHomeKeyState
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
@@ -326,9 +327,7 @@ sealed interface AppScreen {
 
     /** Encryption key isn't in the keyring; the user must enter it to unlock. */
     data class Unlock(
-        val libraryId: String,
         val libraryName: String,
-        val fingerprint: String?,
     ) : AppScreen
 
     data class LibraryOpen(
@@ -363,6 +362,17 @@ object AppSessionHolder {
     @Volatile
     private var current: OpenLibrary? = null
 
+    private data class LockedLibrary(
+        val libraryId: String,
+        val handle: AppHandle,
+        val config: BridgeConfig,
+        val diagnostics: BridgeDiagnostics,
+        val appContext: Context,
+    )
+
+    @Volatile
+    private var locked: LockedLibrary? = null
+
     /**
      * Scan for local libraries off-main, publish the result to [libraries], and
      * return it. Throws when the scan itself fails, so callers can surface it
@@ -395,7 +405,7 @@ object AppSessionHolder {
     ) {
         val session = current ?: return
         try {
-            withContext(Dispatchers.IO) { session.appHandle.forgetLibrary() }
+            session.appHandle.forgetLibrary()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -459,6 +469,8 @@ object AppSessionHolder {
             }
         }
         onScreen(AppScreen.Loading)
+        locked?.handle?.close()
+        locked = null
         // The process-lifetime telemetry sink, built at app launch. `init_app`
         // requires it, and the library-open event ships through it below.
         val diagnostics = (context.applicationContext as BaeApp).diagnostics
@@ -477,39 +489,32 @@ object AppSessionHolder {
                 }
             val config: BridgeConfig = handle.getConfig()
 
-            if (config.encryptionKeyStored && !handle.hasEncryptionKey()) {
-                handle.close()
+            if (handle.cloudHomeKeyState() == BridgeCloudHomeKeyState.LOCKED) {
+                locked =
+                    LockedLibrary(
+                        libraryId,
+                        handle,
+                        config,
+                        diagnostics,
+                        context.applicationContext,
+                    )
                 onScreen(
                     AppScreen.Unlock(
-                        libraryId = libraryId,
                         libraryName = config.libraryName,
-                        fingerprint = config.encryptionKeyFingerprint,
                     ),
                 )
                 return
             }
 
-            val initialOutbox = handle.getOutboxSnapshot()
-
-            // A different library was open: tear it down before swapping.
-            current?.dispose()
-            current = null
-
             val session =
-                buildSession(
+                installSession(
                     libraryId,
                     handle,
+                    config,
                     diagnostics,
-                    buildStores(config, handle, initialOutbox),
                     context.applicationContext,
                 )
-            current = session
-            session.wireUp(appScope)
             onScreen(AppScreen.LibraryOpen(session))
-            // Host-originated telemetry: the library screen opened, shipped
-            // through the standalone sink. Infallible; the core owns every other
-            // event.
-            diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
         } catch (e: CancellationException) {
             // A newer openLibrary (or leaving the screen) cancelled us; let it
             // propagate so cooperative cancellation works and we don't report a
@@ -519,6 +524,51 @@ object AppSessionHolder {
             logger.error("openLibrary failed for $libraryId", e)
             onScreen(AppScreen.Failed(e.message ?: "Failed to open library"))
         }
+    }
+
+    suspend fun unlock(serializedMasterKey: String): OpenLibrary {
+        val pending = locked ?: throw CancellationException("locked library was superseded")
+        pending.handle.unlockCloudHome(serializedMasterKey)
+        if (locked !== pending) {
+            throw CancellationException("locked library was superseded")
+        }
+        locked = null
+        return installSession(
+            pending.libraryId,
+            pending.handle,
+            pending.config,
+            pending.diagnostics,
+            pending.appContext,
+        )
+    }
+
+    fun cancelUnlock() {
+        locked?.handle?.close()
+        locked = null
+    }
+
+    private suspend fun installSession(
+        libraryId: String,
+        handle: AppHandle,
+        config: BridgeConfig,
+        diagnostics: BridgeDiagnostics,
+        appContext: Context,
+    ): OpenLibrary {
+        val initialOutbox = handle.getOutboxSnapshot()
+        current?.dispose()
+        current = null
+        val session =
+            buildSession(
+                libraryId,
+                handle,
+                diagnostics,
+                buildStores(config, handle, initialOutbox),
+                appContext,
+            )
+        current = session
+        session.wireUp(appScope)
+        diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
+        return session
     }
 
     private fun buildSession(

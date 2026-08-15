@@ -835,13 +835,6 @@ pub fn oauth_cancel() {
     lock_bridge_mutex(&OAUTH_REQUESTS).clear();
 }
 
-/// Unlock a library by providing the encryption key hex.
-/// Validates the key against the stored fingerprint, then saves it to the keyring.
-#[uniffi::export]
-pub fn unlock_library(library_id: String, key_hex: String) -> Result<(), BridgeError> {
-    bae_core::library::unlock_library(&library_id, &key_hex).map_err(BridgeError::config)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

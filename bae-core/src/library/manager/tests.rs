@@ -48,23 +48,24 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
 /// parallel tests don't clobber each other's entries.
 async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-
     let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let config = Config::with_defaults(
         library_id.to_string(),
         "test-device".to_string(),
-        library_dir,
+        library_dir.clone(),
         "Test Library".to_string(),
     );
-    assemble_test_manager(library_id, temp_dir, database, config).await
+    crate::config::install_test_keyring();
+    let database = Database::open(
+        library_dir,
+        config.inner.clone(),
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::UuidProvider),
+        crate::sync::synced_tables(),
+        None,
+    )
+    .unwrap();
+    assemble_test_manager(temp_dir, database, config).await
 }
 
 #[cfg(feature = "test-utils")]
@@ -91,11 +92,10 @@ async fn setup_browsable_test_manager() -> (LibraryManager, TempDir) {
         None,
     )
     .unwrap();
-    assemble_test_manager(&library_id, temp_dir, database, config).await
+    assemble_test_manager(temp_dir, database, config).await
 }
 
 async fn assemble_test_manager(
-    library_id: &str,
     temp_dir: TempDir,
     database: Database,
     config: Config,
@@ -113,14 +113,9 @@ async fn assemble_test_manager(
 
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = StoreKeys::bind(library_id.to_string());
-    // `database`'s coven handle (opened via `Database::new_test` above)
-    // establishes its own per-store identity under the fixed test store id
-    // `new_test` always opens — see the note there.
     let manager = LibraryManager::new(
         database,
         config_handle,
-        key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),

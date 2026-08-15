@@ -4,7 +4,7 @@ use bae_core::library::LibraryManager;
 use bae_test_support as support;
 use chrono::Utc;
 use coven::StoreDir;
-use support::{test_config_and_keys, tracing_init};
+use support::{test_config, tracing_init};
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -20,11 +20,10 @@ async fn setup_test_environment() -> (LibraryManager, Database, TempDir) {
     )
     .await
     .expect("Failed to create database");
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),

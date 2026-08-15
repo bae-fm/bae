@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">ਜਿਸ ਡਿਵਾਈਸ ਤੋਂ ਤੁਸੀਂ ਸ਼ਾਮਲ ਹੋ ਰਹੇ ਹੋ ਉਸਦਾ ਸੱਦਾ ਕੋਡ ਦਿਖਾਓ</string>
     <string name="qr_scanner_join_request_instructions">ਨਵੇਂ ਡਿਵਾਈਸ ਦੀ “ਲਾਇਬ੍ਰੇਰੀ ਨਾਲ ਜੁੜੋ” ਸਕਰੀਨ ਤੋਂ ਉਸਦਾ ਕੋਡ ਦਿਖਾਓ</string>
     <string name="unlock_title">ਲਾਇਬ੍ਰੇਰੀ ਲਾਕ ਹੈ</string>
-    <string name="unlock_key_fingerprint">ਇਨਕ੍ਰਿਪਸ਼ਨ: %1$s</string>
     <string name="unlock_explanation">ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਦੀ ਇਨਕ੍ਰਿਪਸ਼ਨ ਕੁੰਜੀ ਕੀਰਿੰਗ ਵਿੱਚ ਨਹੀਂ ਹੈ। ਅਨਲਾਕ ਕਰਨ ਲਈ 64-ਅੱਖਰੀ ਹੈਕਸ ਕੁੰਜੀ ਦਰਜ ਕਰੋ।</string>
     <string name="unlock_key_label">ਇਨਕ੍ਰਿਪਸ਼ਨ ਕੁੰਜੀ (64 ਹੈਕਸ ਅੱਖਰ)</string>
     <string name="unlock_failed">ਅਨਲਾਕ · ਗਲਤੀ</string>

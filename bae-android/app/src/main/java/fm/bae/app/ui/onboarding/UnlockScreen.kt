@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -33,10 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.unlockLibrary
 
 private const val HEX_KEY_LENGTH = 64
 
@@ -45,11 +41,6 @@ private const val HEX_KEY_LENGTH = 64
  * happy path stores the key during `restoreFromCode`, so this rarely triggers,
  * but it's the recovery path when the keyring is wiped.
  */
-private data class UnlockLibraryInfo(
-    val name: String,
-    val fingerprint: String?,
-)
-
 private data class UnlockCallbacks(
     val onKeyHexChange: (String) -> Unit,
     val onUnlock: () -> Unit,
@@ -58,10 +49,8 @@ private data class UnlockCallbacks(
 
 @Composable
 fun UnlockScreen(
-    libraryId: String,
     libraryName: String,
-    fingerprint: String?,
-    onUnlocked: () -> Unit,
+    onUnlock: suspend (String) -> Unit,
     onCancel: () -> Unit,
 ) {
     var keyHex by remember { mutableStateOf("") }
@@ -71,7 +60,7 @@ fun UnlockScreen(
     val appContext = LocalContext.current
     BackHandler { onCancel() }
     UnlockForm(
-        info = UnlockLibraryInfo(libraryName, fingerprint),
+        libraryName = libraryName,
         keyHex = keyHex,
         isUnlocking = isUnlocking,
         error = error,
@@ -83,9 +72,8 @@ fun UnlockScreen(
                     error = null
                     scope.launch {
                         try {
-                            withContext(Dispatchers.IO) { unlockLibrary(libraryId, keyHex) }
+                            onUnlock(keyHex)
                             isUnlocking = false
-                            onUnlocked()
                         } catch (e: Exception) {
                             isUnlocking = false
                             error = e.message ?: appContext.getString(R.string.unlock_failed)
@@ -99,7 +87,7 @@ fun UnlockScreen(
 
 @Composable
 private fun UnlockForm(
-    info: UnlockLibraryInfo,
+    libraryName: String,
     keyHex: String,
     isUnlocking: Boolean,
     error: String?,
@@ -114,18 +102,10 @@ private fun UnlockForm(
         Text(stringResource(R.string.unlock_title), style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            info.name,
+            libraryName,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (info.fingerprint != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.unlock_key_fingerprint, info.fingerprint),
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.unlock_explanation),
@@ -167,7 +147,7 @@ private fun UnlockForm(
 private fun UnlockFormPreview() {
     BaeTheme {
         UnlockForm(
-            info = UnlockLibraryInfo(name = "Library Name", fingerprint = "0a1b2c3d"),
+            libraryName = "Library Name",
             keyHex = "",
             isUnlocking = false,
             error = null,
@@ -181,7 +161,7 @@ private fun UnlockFormPreview() {
 private fun UnlockFormErrorPreview() {
     BaeTheme {
         UnlockForm(
-            info = UnlockLibraryInfo(name = "Library Name", fingerprint = null),
+            libraryName = "Library Name",
             keyHex = "abc123",
             isUnlocking = false,
             error = "That key didn't unlock the library.",

@@ -16,7 +16,7 @@ use crate::types::BridgeHomeStorage;
 use crate::types::BridgeRemoteCover;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
-    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeComposerDetail,
+    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCloudHomeKeyState, BridgeComposerDetail,
     BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
     BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
     BridgeMetadataSource, BridgePlaybackValues, BridgeQueueSnapshot, BridgeQueueUpcomingPage,
@@ -38,7 +38,7 @@ pub struct AppHandle {
     #[cfg(feature = "cast")]
     cast: std::sync::Arc<bae_cast::CastController>,
     /// Last so every retained service is dropped while its tasks can still run.
-    runtime: tokio::runtime::Runtime,
+    runtime: AppRuntime,
 }
 
 mod base;
@@ -59,6 +59,30 @@ mod service_status;
 mod ui_events;
 use import_projection::convert_ui_event;
 use queue_projection::pump_ui_events;
+
+struct AppRuntime(Option<tokio::runtime::Runtime>);
+
+impl AppRuntime {
+    fn new(runtime: tokio::runtime::Runtime) -> Self {
+        Self(Some(runtime))
+    }
+}
+
+impl std::ops::Deref for AppRuntime {
+    type Target = tokio::runtime::Runtime;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("app runtime exists until drop")
+    }
+}
+
+impl Drop for AppRuntime {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.0.take() {
+            runtime.shutdown_background();
+        }
+    }
+}
 
 #[cfg(feature = "desktop")]
 pub use editing_projection::{
@@ -100,7 +124,7 @@ impl AppHandle {
             desktop,
             #[cfg(feature = "cast")]
             cast,
-            runtime,
+            runtime: AppRuntime::new(runtime),
         })
     }
 

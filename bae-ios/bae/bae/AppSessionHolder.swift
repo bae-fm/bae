@@ -9,7 +9,6 @@ private let positionUpdateIntervalMs: UInt32 = 200
 
 struct LockedLibrary {
     let library: BridgeLibrary
-    let config: BridgeConfig
 }
 
 /// The app's lifecycle screen. The locked-library screen carries the bridge
@@ -120,12 +119,14 @@ final class AppSessionHolder {
         openLibrary(info)
     }
 
-    /// Re-open the locked library after UnlockView has stored the key.
-    func retryUnlock() {
-        guard case .unlock(let lockedLibrary) = screen else {
-            preconditionFailure("retryUnlock called while screen is \(screen)")
-        }
-        openLibrary(lockedLibrary.library)
+    /// Complete the retained locked handle and install its service.
+    func unlock(serializedCloudKey: String) async throws {
+        let service = try await opener.unlock(
+            serializedCloudKey: serializedCloudKey
+        )
+        appService = service
+        screen = .library(service)
+        service.reportScreen(.library)
     }
 
     /// Leave the unlock gate without adding the key.
@@ -146,20 +147,18 @@ final class AppSessionHolder {
         guard let service = appService else {
             return
         }
-        do {
-            try service.forgetLibrary()
+        Task {
+            do {
+                try await service.forgetLibrary()
+            }
+            catch {
+                guard let message = error.displayLine else { return }
+                screen = .failed(message: message)
+                return
+            }
+            appService = nil
+            start()
         }
-        catch {
-            // No line means a cancellation; leave the screen for the retry.
-            guard let message = error.displayLine else { return }
-            screen = .failed(message: message)
-            return
-        }
-        // Drop the handle so ARC runs the Rust destructor and closes the DB
-        // whose directory was just removed, before re-discovery spins up again.
-        // activeLibraryId follows appService (it's derived), so this clears it.
-        appService = nil
-        start()
     }
 
     /// Open `library` through the shared opener and land the outcome on
@@ -174,9 +173,9 @@ final class AppSessionHolder {
                 self.appService = service
                 self.screen = .library(service)
                 service.reportScreen(.library)
-            case .needsUnlock(let config):
+            case .needsUnlock:
                 self.screen = .unlock(
-                    LockedLibrary(library: library, config: config)
+                    LockedLibrary(library: library)
                 )
             case .superseded:
                 // A newer open owns `screen`; leave it alone.

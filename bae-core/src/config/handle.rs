@@ -85,18 +85,6 @@ impl ConfigHandle {
         self.config().discogs.is_some()
     }
 
-    /// Record that an encryption key now exists, with its fingerprint. Used
-    /// after creating the key on first sync setup.
-    pub fn record_encryption_key_fingerprint(
-        &self,
-        fingerprint: String,
-    ) -> Result<(), ConfigError> {
-        self.update(|c| {
-            c.encryption_key_stored = true;
-            c.encryption_key_fingerprint = Some(fingerprint);
-        })
-    }
-
     /// Rename the library. The name is already validated non-blank by its type.
     pub fn rename_library(
         &self,

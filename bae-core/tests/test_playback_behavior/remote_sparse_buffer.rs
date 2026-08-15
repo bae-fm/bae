@@ -56,11 +56,10 @@ async fn build_remote_multi_window_template(
     )
     .await?;
     let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let config_handle = test_config(&library_dir);
     let library_manager = LibraryManager::new(
         database,
         config_handle,
-        key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
@@ -210,12 +209,11 @@ impl RemoteMultiWindowPlayback {
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let config_handle = test_config(&library_dir);
         let runtime_handle = tokio::runtime::Handle::current();
         let library_manager = LibraryManager::new(
             database,
             config_handle,
-            key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

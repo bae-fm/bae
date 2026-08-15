@@ -19,10 +19,7 @@ struct DiscogsSession {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl DiscogsSession {
-    fn open(
-        config_handle: &Arc<ConfigHandle>,
-        key_service: &StoreKeys,
-    ) -> Result<Self, LibraryError> {
+    fn open(config_handle: &Arc<ConfigHandle>, database: &Database) -> Result<Self, LibraryError> {
         let validation = config_handle.config().discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
             return Ok(Self { client: None });
@@ -32,8 +29,8 @@ impl DiscogsSession {
         let observer = Arc::new(move |signal| {
             Self::record_validation_signal(&config_handle, signal);
         });
-        let client = key_service
-            .get_discogs_key()?
+        let client = database
+            .host_secret(crate::keys::DISCOGS_API_KEY)?
             .map(|key| DiscogsClient::with_observer(key, observer));
         Ok(Self { client })
     }
@@ -147,7 +144,7 @@ impl LibraryManager {
     }
 
     pub fn get_discogs_token(&self) -> Result<Option<String>, LibraryError> {
-        Ok(self.key_service.get_discogs_key()?)
+        Ok(self.database.host_secret(crate::keys::DISCOGS_API_KEY)?)
     }
 
     /// Store the keyring bytes before recording the config state. A failure
@@ -158,7 +155,8 @@ impl LibraryManager {
         token: &str,
         validation: DiscogsValidation,
     ) -> Result<(), LibraryError> {
-        self.key_service.set_discogs_key(token)?;
+        self.database
+            .set_host_secret(crate::keys::DISCOGS_API_KEY, token)?;
         self.config_handle
             .update(|config| config.discogs = Some(validation))?;
         Ok(())
@@ -168,7 +166,8 @@ impl LibraryManager {
     /// between the writes leaves Discogs disabled rather than half-enabled.
     pub fn clear_discogs_key(&self) -> Result<(), LibraryError> {
         self.config_handle.update(|config| config.discogs = None)?;
-        self.key_service.delete_discogs_key()?;
+        self.database
+            .delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
         Ok(())
     }
 
@@ -193,7 +192,7 @@ impl LibraryManager {
         params: DiscogsSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        DiscogsSession::open(&self.config_handle, &self.key_service)?
+        DiscogsSession::open(&self.config_handle, &self.database)?
             .search(params, priority)
             .await
     }
@@ -204,7 +203,7 @@ impl LibraryManager {
         release: &crate::import::MetadataRef,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        match DiscogsSession::open(&self.config_handle, &self.key_service) {
+        match DiscogsSession::open(&self.config_handle, &self.database) {
             Ok(session) => session.fetch_payloads(release, priority).await,
             Err(error) if release.source == crate::import::MetadataSource::MusicBrainz => {
                 warn!(
@@ -223,7 +222,7 @@ impl LibraryManager {
         release_id: &str,
         priority: CallPriority,
     ) -> Result<Option<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
-        DiscogsSession::open(&self.config_handle, &self.key_service)?
+        DiscogsSession::open(&self.config_handle, &self.database)?
             .release_cover(release_id, priority)
             .await
     }
@@ -237,7 +236,7 @@ impl LibraryManager {
         parsed_artists: &[DbArtist],
         artist_id_map: &HashMap<String, String>,
     ) -> Vec<(DbLibraryImage, Vec<u8>)> {
-        let session = match DiscogsSession::open(&self.config_handle, &self.key_service) {
+        let session = match DiscogsSession::open(&self.config_handle, &self.database) {
             Ok(session) => session,
             Err(error) => {
                 warn!("Discogs artist images unavailable: {error}");
@@ -326,7 +325,7 @@ impl LibraryManager {
         if self.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        let validation = DiscogsSession::open(&self.config_handle, &self.key_service)?
+        let validation = DiscogsSession::open(&self.config_handle, &self.database)?
             .validate()
             .await?;
         self.set_discogs_validation(validation)?;
@@ -335,11 +334,9 @@ impl LibraryManager {
 
     #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
     pub(super) fn discogs_available_for_test(&self) -> Result<bool, LibraryError> {
-        Ok(
-            DiscogsSession::open(&self.config_handle, &self.key_service)?
-                .client
-                .is_some(),
-        )
+        Ok(DiscogsSession::open(&self.config_handle, &self.database)?
+            .client
+            .is_some())
     }
 
     #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]

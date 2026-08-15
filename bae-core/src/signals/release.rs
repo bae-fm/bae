@@ -193,7 +193,6 @@ mod tests {
     async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
         use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease};
-        use crate::keys::StoreKeys;
         use crate::library::LibraryManager;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
@@ -231,11 +230,9 @@ mod tests {
         );
         let config_handle = Arc::new(ConfigHandle::new(config));
         crate::config::install_test_keyring();
-        let key_service = StoreKeys::bind(library_id);
         let manager = LibraryManager::new(
             database.clone(),
             config_handle,
-            key_service,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
@@ -315,7 +312,6 @@ mod tests {
     async fn test_resolve_release_identity_local() {
         use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack};
-        use crate::keys::StoreKeys;
         use crate::library::LibraryManager;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
@@ -375,11 +371,9 @@ mod tests {
         );
         let config_handle = Arc::new(ConfigHandle::new(config));
         crate::config::install_test_keyring();
-        let key_service = StoreKeys::bind(library_id);
         let manager = LibraryManager::new(
             database.clone(),
             config_handle,
-            key_service,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),

@@ -16,7 +16,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
         false,
     )
     .await;
-    manager.disconnect_cloud_provider().unwrap();
+    manager.disconnect_cloud_provider().await.unwrap();
 
     let files = manager
         .database

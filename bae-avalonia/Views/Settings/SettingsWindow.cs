@@ -290,7 +290,7 @@ internal sealed partial class SettingsWindow
         var lockButton = new Button { Content = Loc.Chrome("settings.lock_library") };
         lockButton.Click += async (_, _) =>
         {
-            var (current, error) = _app.Sync.LockActiveLibrary();
+            var (current, error) = await _app.Sync.LockActiveLibrary();
             if (!current)
             {
                 return;

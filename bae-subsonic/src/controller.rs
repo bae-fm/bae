@@ -302,11 +302,10 @@ mod tests {
         .await
         .expect("database");
         let library_dir = StoreDir::new(db_dir);
-        let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+        let config_handle = support::test_config(&library_dir);
         let manager = LibraryManager::new(
             database,
             config_handle,
-            key_service,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),

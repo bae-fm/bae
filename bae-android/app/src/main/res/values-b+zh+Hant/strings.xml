@@ -182,7 +182,6 @@
     <string name="qr_scanner_invite_instructions">顯示你要從中加入的裝置上的邀請碼</string>
     <string name="qr_scanner_join_request_instructions">從新裝置的「加入資料庫」畫面顯示其代碼</string>
     <string name="unlock_title">資料庫已鎖定</string>
-    <string name="unlock_key_fingerprint">加密: %1$s</string>
     <string name="unlock_explanation">此資料庫的加密金鑰不在鑰匙圈中。請輸入 64 字元十六進位金鑰以解鎖。</string>
     <string name="unlock_key_label">加密金鑰 (64 個十六進位字元)</string>
     <string name="unlock_failed">解鎖 · 錯誤</string>
