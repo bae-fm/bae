@@ -479,7 +479,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @ObservationIgnored
     private let shutdownCoordinator =
         LibraryShutdownCoordinator<AppService>()
+}
 
+extension AppDelegate {
     // MARK: - Library lifecycle
 
     func presentWelcome(mode: WelcomeView.Mode?) {

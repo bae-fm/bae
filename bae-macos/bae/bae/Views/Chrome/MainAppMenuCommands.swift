@@ -105,7 +105,8 @@ struct CloseLibraryButton: View {
 /// File commands use native placements and disable when no library is open.
 /// Close Library precedes `.saveItem`, which retains the native Close item.
 struct LibraryFileMenuCommands: Commands {
-    @FocusedValue(\.mainAppMenuTarget) private var target
+    @FocusedValue(\.mainAppMenuTarget)
+    private var target
     let libraries: [BridgeLibrary]
     let onNewLibrary: (WelcomeView.Mode?) -> Void
     let onOpenLibrary: (BridgeLibrary) -> Void
@@ -148,7 +149,10 @@ struct LibraryFileMenuCommands: Commands {
                 .disabled(target == nil)
             Button("Copy Library ID") { onCopyLibraryId() }
                 .disabled(target == nil)
-            CloseLibraryButton(onClose: onCloseLibrary, isEnabled: target != nil)
+            CloseLibraryButton(
+                onClose: onCloseLibrary,
+                isEnabled: target != nil
+            )
         }
     }
 }
@@ -210,7 +214,9 @@ struct OpenLibraryButton: View {
     var body: some View {
         Button("Library") {
             guard let target else {
-                preconditionFailure("Library is disabled without an open library")
+                preconditionFailure(
+                    "Library is disabled without an open library"
+                )
             }
             openWindow(id: MainWindow.sceneID)
             target.uiStore.navigateToLibraryRoot()
@@ -228,7 +234,9 @@ struct OpenImportButton: View {
     var body: some View {
         Button("Import") {
             guard let target else {
-                preconditionFailure("Import is disabled without an open library")
+                preconditionFailure(
+                    "Import is disabled without an open library"
+                )
             }
             openWindow(id: MainWindow.sceneID)
             target.uiStore.navigateToImport()
@@ -299,7 +307,8 @@ struct RepeatModeMenuItems: View {
 }
 
 struct MainAppMenuCommands: Commands {
-    @FocusedValue(\.mainAppMenuTarget) private var target
+    @FocusedValue(\.mainAppMenuTarget)
+    private var target
     @FocusedValue(\.focusSearch)
     var focusSearch
 
@@ -451,7 +460,8 @@ struct MainAppMenuCommands: Commands {
             importer: target.importer,
             importStore: target.importStore,
             uiStore: target.uiStore
-        ).isEnabled
+        )
+        .isEnabled
     }
 
     private var canShuffleLibrary: Bool {
@@ -463,7 +473,8 @@ struct MainAppMenuCommands: Commands {
 
     private func goToNowPlaying() {
         let target = requireTarget()
-        guard let albumId = target.playbackStore.nowPlaying.track?.albumId else {
+        guard let albumId = target.playbackStore.nowPlaying.track?.albumId
+        else {
             preconditionFailure(
                 "Go to Now Playing is disabled without a playing album"
             )
