@@ -33,7 +33,10 @@ final class MainMenuTests: XCTestCase {
             app.staticTexts["Get started with your music library."]
                 .waitForExistence(timeout: 20)
         )
-        fileMenu.click()
+        app.activate()
+        let welcomeFileMenu = app.menuBars.menuBarItems["File"]
+        XCTAssertTrue(welcomeFileMenu.waitForExistence(timeout: 5))
+        welcomeFileMenu.click()
         XCTAssertFalse(app.menuItems["Close Library"].exists)
     }
 }
