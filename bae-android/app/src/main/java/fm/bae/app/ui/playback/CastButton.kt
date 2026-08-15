@@ -153,15 +153,16 @@ private fun CastPickerSheet(
                         isActive = device.name == castingTo,
                         onCast = {
                             castJob?.cancel()
-                            castJob = scope.launch {
-                                try {
-                                    session.cast.castTo(device.id)
-                                    onDismiss()
-                                } catch (e: BridgeException) {
-                                    logger.error("Failed to cast to ${device.id}", e)
-                                    session.configStore.showError(context.localizedLine(e))
+                            castJob =
+                                scope.launch {
+                                    try {
+                                        session.cast.castTo(device.id)
+                                        onDismiss()
+                                    } catch (e: BridgeException) {
+                                        logger.error("Failed to cast to ${device.id}", e)
+                                        session.configStore.showError(context.localizedLine(e))
+                                    }
                                 }
-                            }
                         },
                     )
                 }

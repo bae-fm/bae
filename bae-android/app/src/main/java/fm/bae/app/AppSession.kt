@@ -39,8 +39,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCloudHomeKeyState
+import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
