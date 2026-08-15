@@ -134,6 +134,17 @@ targets:
       base:
         SWIFT_VERSION: "6.2"
         GENERATE_INFOPLIST_FILE: YES
+  baeUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - baeUITests
+    dependencies:
+      - target: bae
+    settings:
+      base:
+        SWIFT_VERSION: "6.2"
+        GENERATE_INFOPLIST_FILE: YES
   # Screenshot-capture bundle for the cross-platform gallery. Hosted in the app
   # (like baeTests) so it can `@testable import bae` and reach the DEBUG
   # PreviewScenes builders + fixtures. Kept out of the `bae` scheme's test
@@ -167,6 +178,7 @@ schemes:
       config: Debug
       targets:
         - baeTests
+        - baeUITests
     profile:
       config: Release
     analyze:

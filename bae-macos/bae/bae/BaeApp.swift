@@ -25,8 +25,40 @@ private enum AppRuntime {
     }
 
     private static func isTestHost(environment: [String: String]) -> Bool {
-        environment["XCTestConfigurationFilePath"] != nil
+        #if DEBUG
+            if environment["BAE_UI_TESTING"] == "1" {
+                return false
+            }
+        #endif
+        return environment["XCTestConfigurationFilePath"] != nil
     }
+
+    #if DEBUG
+        static func createsLibraryForUITesting(
+            environment: [String: String]
+        ) -> Bool {
+            environment["BAE_UI_TESTING_CREATE_LIBRARY"] == "1"
+        }
+    #endif
+}
+
+private let skipsApplicationServices = AppRuntime.skipsApplicationServices(
+    environment: appProcessEnvironment
+)
+
+private func discoverInitialLibraries(
+    environment: [String: String]
+) throws -> [BridgeLibrary] {
+    var libraries = try discoverLibraries()
+    #if DEBUG
+        if libraries.isEmpty,
+            AppRuntime.createsLibraryForUITesting(environment: environment)
+        {
+            _ = try createLibrary(name: nil)
+            libraries = try discoverLibraries()
+        }
+    #endif
+    return libraries
 }
 
 /// Swaps the welcome and main windows as the shell comes and goes. Sits in
@@ -263,6 +295,45 @@ struct BaeApp: App {
 }
 
 extension BaeApp {
+    @CommandsBuilder
+    private var applicationCommands: some Commands {
+        CommandGroup(after: .appInfo) {
+            CheckForUpdatesView(viewModel: checkForUpdatesViewModel)
+        }
+        if let appService = appDelegate.appService {
+            MainAppMenuCommands(
+                libraries: appDelegate.libraries,
+                onNewLibrary: { mode in
+                    appDelegate.welcomeInitialMode = mode
+                    appDelegate.showAddLibrarySheet = true
+                },
+                onOpenLibrary: { appDelegate.openLibrary($0) },
+                onSwitchOffset: {
+                    appDelegate.switchLibrary(byOffset: $0)
+                },
+                onRenameLibrary: {
+                    appDelegate.renameLibrarySheet = RenameLibrarySheetState(
+                        id: appService.libraryId,
+                        newName: appService.libraryName
+                    )
+                },
+                onLockLibrary: {
+                    appDelegate.confirmLockLibrary = true
+                },
+                onSyncNow: { appService.triggerSync() },
+                onRevealLibrary: {
+                    SystemActions.revealInFinder(
+                        path: appService.libraryPath
+                    )
+                },
+                onCopyLibraryId: {
+                    SystemActions.copyToPasteboard(appService.libraryId)
+                },
+                onCloseLibrary: { appDelegate.closeLibrary() }
+            )
+        }
+    }
+
     /// The bootstrap window: fixed-size, presented at launch, dismissed once
     /// a library opens (and re-presented when the last one closes). Loading,
     /// welcome, and unlock all render here — pre-shell, there is no other
@@ -291,9 +362,9 @@ extension BaeApp {
     }
 
     private var mainWindow: some Scene {
-        Window("bae", id: "main") {
-            if let appService = appDelegate.appService {
-                appService.installEnvironment(
+        AppService.installEnvironment(
+            Window("bae", id: "main") {
+                if appDelegate.appService != nil {
                     libraryModals(
                         MainWindowChrome(loadError: appDelegate.loadError) {
                             detailContent
@@ -303,20 +374,21 @@ extension BaeApp {
                             WindowSwapDriver(hasShell: appDelegate.hasShell)
                         )
                     )
-                )
+                }
+                else {
+                    ProgressView()
+                }
             }
-            else {
-                ProgressView()
-            }
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(
-            width: MainWindow.defaultSize.width,
-            height: MainWindow.defaultSize.height
+            .windowStyle(.hiddenTitleBar)
+            .defaultSize(
+                width: MainWindow.defaultSize.width,
+                height: MainWindow.defaultSize.height
+            )
+            .restorationBehavior(.disabled)
+            .defaultLaunchBehavior(.suppressed)
+            .commands { applicationCommands },
+            from: appDelegate.appService
         )
-        .restorationBehavior(.disabled)
-        .defaultLaunchBehavior(.suppressed)
-        .commandsRemoved()
     }
 
     private var storageManagerWindow: some Scene {
@@ -334,7 +406,6 @@ extension BaeApp {
             }
         }
         .defaultSize(width: 800, height: 500)
-        .commandsRemoved()
     }
 
     private var settingsWindow: some Scene {
@@ -357,46 +428,6 @@ extension BaeApp {
                         )
                     )
                     .frame(width: 300, height: 200)
-                }
-            }
-            .commands {
-                CommandGroup(after: .appInfo) {
-                    CheckForUpdatesView(viewModel: checkForUpdatesViewModel)
-                }
-                if let appService = appDelegate.appService {
-                    MainAppMenuCommands(
-                        libraries: appDelegate.libraries,
-                        onNewLibrary: { mode in
-                            appDelegate.welcomeInitialMode = mode
-                            appDelegate.showAddLibrarySheet = true
-                        },
-                        onOpenLibrary: { appDelegate.openLibrary($0) },
-                        onSwitchOffset: {
-                            appDelegate.switchLibrary(byOffset: $0)
-                        },
-                        onRenameLibrary: {
-                            appDelegate.renameLibrarySheet =
-                                RenameLibrarySheetState(
-                                    id: appService.libraryId,
-                                    newName: appService.libraryName
-                                )
-                        },
-                        onLockLibrary: {
-                            appDelegate.confirmLockLibrary = true
-                        },
-                        onSyncNow: { appService.triggerSync() },
-                        onRevealLibrary: {
-                            SystemActions.revealInFinder(
-                                path: appService.libraryPath
-                            )
-                        },
-                        onCopyLibraryId: {
-                            SystemActions.copyToPasteboard(
-                                appService.libraryId
-                            )
-                        },
-                        onCloseLibrary: { appDelegate.closeLibrary() }
-                    )
                 }
             },
             from: appDelegate.appService
@@ -491,12 +522,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let shutdownCoordinator =
         LibraryShutdownCoordinator<AppService>()
 
-    private var skipsApplicationServices: Bool {
-        AppRuntime.skipsApplicationServices(
-            environment: appProcessEnvironment
-        )
-    }
-
     func applicationDidFinishLaunching(_: Notification) {
         if !skipsApplicationServices {
             // Telemetry is already up (built at delegate construction, from
@@ -524,7 +549,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         do {
-            let libraries = try discoverLibraries()
+            let libraries = try discoverInitialLibraries(
+                environment: appProcessEnvironment
+            )
             self.libraries = libraries
             // Auto-open only a library whose config loaded. A broken one
             // (unreadable config.yaml) can't open — auto-trying it would just

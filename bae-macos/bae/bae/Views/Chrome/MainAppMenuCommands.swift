@@ -231,7 +231,7 @@ struct MainAppMenuCommands: Commands {
             .disabled(!canSkipSelectedImportCandidates)
         }
 
-        CommandGroup(after: .newItem) {
+        CommandMenu("File") {
             Button("New Library...") { onNewLibrary(nil) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
             Button("Join a Library...") { onNewLibrary(.join) }
