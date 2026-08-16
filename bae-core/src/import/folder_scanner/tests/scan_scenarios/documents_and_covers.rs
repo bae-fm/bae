@@ -98,12 +98,10 @@ fn zero_byte_cover_art_does_not_surface() {
 //
 // Rooted in the folders that were broken, not in the model's own shape.
 
-/// The walkthrough's folder: the sheet was written against a WAV that was later
-/// encoded to FLAC. The directive names a file that is not here — a question,
-/// not a verdict — so the folder imports, the sheet stays unbound, and the FLAC
-/// keeps the audio role.
+/// A sheet written against a WAV that was later encoded to FLAC still binds
+/// when the FLAC is the unique same-stem audio beside it.
 #[test]
-fn sheet_naming_absent_audio_does_not_invalidate_the_folder() {
+fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
     let tmp = tempfile::tempdir().unwrap();
     let album = tmp.path().join("Album");
     std::fs::create_dir_all(&album).unwrap();
@@ -134,8 +132,9 @@ fn sheet_naming_absent_audio_does_not_invalidate_the_folder() {
     assert_eq!(sheets[0].file.file_name, "Album.cue");
     assert_eq!(
         sheets[0].binding,
-        &SheetBinding::Unresolved,
-        "the directive names audio that is not here",
+        &SheetBinding::Describes {
+            file_id: "Album.flac".to_string()
+        },
     );
     assert_eq!(
         candidate
@@ -147,8 +146,8 @@ fn sheet_naming_absent_audio_does_not_invalidate_the_folder() {
     );
     assert_eq!(
         candidate.files.track_count(),
-        1,
-        "with no sheet bound, the image is one track",
+        2,
+        "the bound sheet defines the release's track slots",
     );
 }
 

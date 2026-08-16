@@ -406,7 +406,7 @@ async fn no_row_is_written_for_a_transport_failure() {
     );
 }
 
-/// A binding the user set survives a relaunch: it is stored under the
+/// A binding the user cleared survives a relaunch: it is stored under the
 /// candidate's content hash, read back from a cold database, and the scan
 /// that follows reports the folder as they settled it rather than as its
 /// filenames read.
@@ -414,7 +414,7 @@ async fn no_row_is_written_for_a_transport_failure() {
 /// The scan is the point — a binding that round-tripped through SQLite but
 /// never reached a folder's roles would be a stored value nothing consumes.
 #[tokio::test]
-async fn a_binding_survives_a_relaunch() {
+async fn a_cleared_binding_survives_a_relaunch() {
     use crate::import::folder_scanner::{
         collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingEdits,
         StoredCandidateEdits, UserSheetBinding,
@@ -428,7 +428,11 @@ async fn a_binding_survives_a_relaunch() {
         &StoredCandidateEdits::none(),
     )
     .unwrap();
-    assert_eq!(scanned.track_count(), 1, "unbound, the image is one track");
+    assert_eq!(
+        scanned.track_count(),
+        12,
+        "the unique same-stem audio is bound automatically"
+    );
     let root = folder.path().to_string_lossy().into_owned();
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
@@ -457,12 +461,7 @@ async fn a_binding_survives_a_relaunch() {
         .unwrap();
 
     let mut edits = SheetBindingEdits::default();
-    edits.set(
-        "cd.cue".to_string(),
-        UserSheetBinding::Describes {
-            file_id: "cd.flac".to_string(),
-        },
-    );
+    edits.set("cd.cue".to_string(), UserSheetBinding::Cleared);
     let candidate_edits = CandidateFileEdits {
         sheet_bindings: edits,
         ..Default::default()
@@ -488,9 +487,7 @@ async fn a_binding_survives_a_relaunch() {
     assert_eq!(current.revision, 1);
     assert_eq!(
         current.sheet_bindings.get("cd.cue"),
-        Some(&UserSheetBinding::Describes {
-            file_id: "cd.flac".to_string()
-        })
+        Some(&UserSheetBinding::Cleared)
     );
     assert_eq!(
         db.load_candidate_file_edits("missing").await.unwrap(),
@@ -503,11 +500,8 @@ async fn a_binding_survives_a_relaunch() {
         panic!("the persisted candidate keeps its valid variant");
     };
     assert_eq!(restored_candidate.file_edit_revision, 1);
-    assert_eq!(restored_candidate.track_count(), 12);
-    assert_eq!(
-        restored_candidate.files.bound_sheets()[0].audio.file_name,
-        "cd.flac"
-    );
+    assert_eq!(restored_candidate.track_count(), 1);
+    assert!(restored_candidate.files.bound_sheets().is_empty());
 
     // A subsequent scan reads the same decisions and derives the same
     // shape as the candidate restored before that scan.
@@ -521,10 +515,10 @@ async fn a_binding_survives_a_relaunch() {
 
     assert_eq!(
         reopened.track_count(),
-        12,
-        "the binding read back from disk is the one the scan applies"
+        1,
+        "the cleared binding read back from disk is the one the scan applies"
     );
-    assert_eq!(reopened.bound_sheets()[0].audio.file_name, "cd.flac");
+    assert!(reopened.bound_sheets().is_empty());
 }
 
 /// The pair that makes re-identification correct rather than incidental:
@@ -544,13 +538,14 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
 
     let (db, _tmp) = empty_db().await;
     let folder = walkthrough_folder();
-    let unbound = collect_release_candidate_files_with_scope(
+    let proposed = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::import::ReleaseFileScope::Recursive,
         &StoredCandidateEdits::none(),
     )
     .unwrap();
-    let hash = unbound.content_hash();
+    assert_eq!(proposed.track_count(), 12);
+    let hash = proposed.content_hash();
 
     db.save_import_candidate_verdict(&new_candidate_row(
         &hash,
@@ -572,12 +567,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     );
 
     let mut edits = SheetBindingEdits::default();
-    edits.set(
-        "cd.cue".to_string(),
-        UserSheetBinding::Describes {
-            file_id: "cd.flac".to_string(),
-        },
-    );
+    edits.set("cd.cue".to_string(), UserSheetBinding::Cleared);
     db.save_import_candidate_file_edits(
         &hash,
         &folder.path().to_string_lossy(),
@@ -591,19 +581,19 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     .await
     .unwrap();
 
-    let bound = collect_release_candidate_files_with_scope(
+    let unbound = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::import::ReleaseFileScope::Recursive,
         &db.load_stored_candidate_edits().await.unwrap(),
     )
     .unwrap();
     assert_eq!(
-        bound.track_count(),
-        12,
+        unbound.track_count(),
+        1,
         "the folder really did change shape -- otherwise this proves nothing"
     );
     assert_eq!(
-        bound.content_hash(),
+        unbound.content_hash(),
         hash,
         "the hash covers files, never role decisions, so the row stays addressable"
     );
@@ -621,9 +611,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     );
     assert_eq!(
         row.file_edits.sheet_bindings.get("cd.cue"),
-        Some(&UserSheetBinding::Describes {
-            file_id: "cd.flac".to_string()
-        }),
+        Some(&UserSheetBinding::Cleared),
         "the decision that cleared the verdict is what the row now holds"
     );
 }

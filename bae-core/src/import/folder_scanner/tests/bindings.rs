@@ -10,17 +10,52 @@ fn cover_names(files: &CategorizedFiles) -> Vec<&str> {
 
 // ── The sheet↔audio binding is a user decision ──────────────────────────
 //
-// The scan proposes; these pin what happens when the user overrules it.
+// The scan proposes; these pin both its automatic choices and what happens
+// when the user overrules them.
 
-/// The walkthrough folder, one step on from the roles task: a twelve-track
-/// sheet written against a WAV, the FLAC it was actually encoded to, and the
-/// rip log. Unbound it imports as one track; bound, the slot count comes from
-/// the sheet and the disc ID becomes computable from sheet plus audio.
-///
-/// This is the task's whole point — the information needed to fix the folder
-/// was on screen all along and the app had no way to accept it.
+/// A single-file sheet written against a WAV automatically describes the FLAC
+/// it was encoded to when it is the only same-stem audio beside the sheet.
 #[test]
-fn binding_a_sheet_whose_directive_missed_makes_the_folder_a_twelve_track_disc() {
+fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    let cue = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+    )
+    .unwrap()
+    .replace("Test Album.flac", "cd.wav");
+    std::fs::write(album.join("cd.cue"), cue).unwrap();
+
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
+
+    assert_eq!(files.track_count(), 3);
+    assert_eq!(files.format_label, "CUE+FLAC");
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Describes {
+            file_id: "cd.flac".to_string()
+        },
+    );
+    assert_eq!(files.bound_sheets()[0].audio.file_name, "cd.flac");
+    assert!(
+        crate::import::discid::compute_discid_from_categorized(&files).is_some(),
+        "the automatically bound sheet and audio yield a disc ID",
+    );
+}
+
+#[test]
+fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
     let tmp = tempfile::tempdir().unwrap();
     let album = tmp.path().join("Album");
     std::fs::create_dir_all(&album).unwrap();
@@ -30,51 +65,125 @@ fn binding_a_sheet_whose_directive_missed_makes_the_folder_a_twelve_track_disc()
     )
     .unwrap();
     std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test_album.log"),
-        album.join("rip.log"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_ape/Test Album.ape"),
+        album.join("cd.ape"),
     )
     .unwrap();
     std::fs::write(
         album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
+        make_cue_content_n_tracks("cd.wav", "Album Title", 3),
     )
     .unwrap();
 
-    let unbound = collect_release_candidate_files_with_scope(
+    let files = collect_release_candidate_files_with_scope(
         &album,
         crate::import::ReleaseFileScope::Recursive,
         &StoredCandidateEdits::none(),
     )
     .expect("scan");
-    assert_eq!(
-        unbound.track_count(),
-        1,
-        "the directive names a file that is not here, so the image is one track",
-    );
-    assert_eq!(unbound.format_label, "FLAC");
-
-    let bound = scan_with_binding(&album, &unbound, "cd.cue", Some("cd.flac"));
 
     assert_eq!(
-        bound.track_count(),
-        12,
-        "bound, the slot count comes from the sheet rather than the file",
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Unresolved,
     );
+    assert_eq!(files.track_count(), 2);
+}
+
+#[test]
+fn same_stem_audio_outside_the_cue_directory_is_not_guessed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(album.join("sheets")).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("sheets/cd.cue"),
+        make_cue_content_n_tracks("cd.wav", "Album Title", 3),
+    )
+    .unwrap();
+
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
+
     assert_eq!(
-        bound.format_label, "CUE+FLAC",
-        "the label follows the probed codec of the audio the user named",
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Unresolved,
     );
-    let sheets: Vec<_> = bound.track_sheets().collect();
+    assert_eq!(files.track_count(), 1);
+}
+
+#[test]
+fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("track-01.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("disc.cue"),
+        "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
+         FILE \"track-01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
+         FILE \"track-02.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
+
     assert_eq!(
-        sheets[0].binding,
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Unresolved,
+    );
+    assert_eq!(files.track_count(), 1);
+}
+
+#[test]
+fn exact_file_reference_wins_over_other_same_stem_audio() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_ape/Test Album.ape"),
+        album.join("cd.ape"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("cd.cue"),
+        make_cue_content_n_tracks("cd.flac", "Album Title", 3),
+    )
+    .unwrap();
+
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
+
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
         &SheetBinding::Describes {
             file_id: "cd.flac".to_string()
         },
-    );
-    assert_eq!(bound.bound_sheets()[0].audio.file_name, "cd.flac");
-    assert!(
-        crate::import::discid::compute_discid_from_categorized(&bound).is_some(),
-        "a bound sheet plus its audio yields a disc ID",
     );
 }
 
@@ -146,7 +255,7 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
     .unwrap();
     std::fs::write(
         album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.flac", "Album Title", 12),
+        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
     )
     .unwrap();
 
@@ -159,7 +268,7 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
     assert_eq!(
         proposed.track_count(),
         12,
-        "the directive resolves, so the scan proposes the binding on its own",
+        "the unique same-stem audio makes the scan propose the binding",
     );
 
     let cleared = scan_with_binding(&album, &proposed, "cd.cue", None);

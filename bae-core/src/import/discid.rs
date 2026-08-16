@@ -1,4 +1,5 @@
 use crate::cue_flac::CueSheet;
+use crate::import::folder_scanner::find_matching_audio_for_cue;
 use crate::util::content_type_hint::ContentTypeHint;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -19,44 +20,6 @@ fn invalid_discid_data(message: impl Into<String>) -> MetadataDetectionError {
     ))
 }
 
-/// The audio file a CUE pairs with, for the CUE-pair DiscID calculation. Accepts
-/// any extension `ContentTypeHint::is_audio()` recognises, so the downstream
-/// dispatcher routes by container rather than a hardcoded list.
-///
-/// Matches only single-file CUE sheets (one FILE directive scoping every TRACK).
-/// A multi-FILE sheet is a one-file-per-track release, which has no disc ID to
-/// compute — the sectors would have to come from one concatenated container.
-pub(crate) fn find_matching_audio_for_cue<'a>(
-    cue_path: &Path,
-    sheet: &CueSheet,
-    audio_files: &'a [PathBuf],
-) -> Option<&'a PathBuf> {
-    let Some(file_reference) = sheet.single_file() else {
-        debug!(
-            "CUE is multi-FILE (one file per track) — not a disc-ID candidate: {:?}",
-            cue_path
-        );
-        return None;
-    };
-    let file_stem = match Path::new(file_reference)
-        .file_stem()
-        .and_then(|s| s.to_str())
-    {
-        Some(s) => s,
-        None => {
-            warn!("CUE FILE reference has no UTF-8 stem: {:?}", file_reference);
-            return None;
-        }
-    };
-    debug!(
-        "CUE references file with stem: '{}', looking for match",
-        file_stem
-    );
-    audio_files.iter().find(|p| {
-        ContentTypeHint::path_is_audio(p)
-            && p.file_stem().and_then(|s| s.to_str()) == Some(file_stem)
-    })
-}
 fn probe_duration_seconds(audio_path: &Path) -> Result<f64, MetadataDetectionError> {
     let path_str = audio_path.to_str().ok_or_else(|| {
         MetadataDetectionError::Io(std::io::Error::new(
@@ -823,8 +786,7 @@ mod tests {
         }
     }
 
-    /// A single-FILE CUE matches the audio file whose stem equals the FILE
-    /// reference's stem, ignoring extension and unrelated files.
+    /// A single-FILE CUE matches the unique same-stem audio beside the sheet.
     #[test]
     fn find_matching_audio_for_cue_matches_by_stem() {
         let sheet = cue_sheet_with(vec![
@@ -846,6 +808,45 @@ mod tests {
     fn find_matching_audio_for_cue_no_stem_match_is_none() {
         let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.flac")]);
         let audio_files = vec![PathBuf::from("/rip/Different Name.flac")];
+
+        assert!(
+            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn find_matching_audio_for_cue_ambiguous_same_stem_is_none() {
+        let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.wav")]);
+        let audio_files = vec![
+            PathBuf::from("/rip/Album Image.flac"),
+            PathBuf::from("/rip/Album Image.ape"),
+        ];
+
+        assert!(
+            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn find_matching_audio_for_cue_exact_path_wins_over_same_stem_audio() {
+        let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.flac")]);
+        let audio_files = vec![
+            PathBuf::from("/rip/Album Image.ape"),
+            PathBuf::from("/rip/Album Image.flac"),
+        ];
+
+        assert_eq!(
+            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files),
+            Some(&PathBuf::from("/rip/Album Image.flac")),
+        );
+    }
+
+    #[test]
+    fn find_matching_audio_for_cue_other_directory_is_none() {
+        let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.wav")]);
+        let audio_files = vec![PathBuf::from("/rip/audio/Album Image.flac")];
 
         assert!(
             find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)

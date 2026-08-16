@@ -451,7 +451,13 @@ pub(super) fn categorize_files_from_tree(
     // directory. A sheet binds only when every reference resolves — a partial
     // layout describes audio that isn't reachable, so it is no better than none
     // — and `describes` names the first reference, the audio the sheet leads
-    // with. A miss is a question for the user, not a verdict on the folder.
+    // with. A single-FILE sheet whose literal path is absent may instead name
+    // the unique same-stem audio beside it.
+    let audio_paths: Vec<PathBuf> = proposed
+        .iter()
+        .filter(|(_, role)| *role == ProposedRole::Audio)
+        .map(|(file, _)| file.path.clone())
+        .collect();
     let audio_by_path: HashMap<&Path, &str> = proposed
         .iter()
         .filter(|(_, role)| *role == ProposedRole::Audio)
@@ -482,13 +488,21 @@ pub(super) fn categorize_files_from_tree(
             Some(resolved) => SheetBinding::Describes {
                 file_id: resolved[0].to_string(),
             },
-            None => {
-                info!(
-                    "CUE {:?} names audio that is not here; it stays unbound",
-                    cue_file.path
-                );
-                SheetBinding::Unresolved
-            }
+            None => match find_matching_audio_for_cue(&cue_file.path, sheet, &audio_paths) {
+                Some(audio_path) => SheetBinding::Describes {
+                    file_id: audio_by_path
+                        .get(audio_path.as_path())
+                        .expect("same-stem match came from this folder's audio")
+                        .to_string(),
+                },
+                None => {
+                    info!(
+                        "CUE {:?} names audio that is not here; it stays unbound",
+                        cue_file.path
+                    );
+                    SheetBinding::Unresolved
+                }
+            },
         };
         bindings.insert(*index, binding);
     }
