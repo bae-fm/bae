@@ -128,6 +128,7 @@ pub enum UiBusEvent {
     /// row. `key` routes it to the importing candidate's confirm pane; `fraction`
     /// drives the determinate bar when available and `tracks_done`/`tracks_total`
     /// label which track ("N / M").
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     CandidateImportLoudnessProgress {
         key: String,
         tracks_done: u32,
@@ -138,6 +139,7 @@ pub enum UiBusEvent {
     /// sidebar header renders it as a line and a bar. Both numbers are the
     /// queue's, not the list's — the sidebar is filtered, so a view counting
     /// the rows it holds would report a different, wrong total.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     ImportQueueIdentifyProgress {
         identified: u32,
         total: u32,

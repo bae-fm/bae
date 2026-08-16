@@ -20,7 +20,9 @@ use std::collections::{BTreeSet, HashMap};
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use std::sync::Mutex;
 use tracing::warn;
 
 mod album;
@@ -40,11 +42,14 @@ mod identity;
 // and every caller is a gated import module — the mobile builds are sync and
 // playback clients with no import pipeline.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod import_content_hash;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_projection;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use import_projection::ImportTriageDbProjection;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod payloads;
 mod playback;
 pub(crate) use playback::QueueCatalogProjection;

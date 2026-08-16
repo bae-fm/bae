@@ -30,6 +30,7 @@ pub(super) fn dev_mode_enabled() -> bool {
 
 pub(crate) struct DevSecrets {
     pub(crate) master_key: Option<String>,
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) discogs_api_key: Option<String>,
 }
 
@@ -40,11 +41,13 @@ pub(crate) fn dev_secrets() -> DevSecrets {
     if !dev_mode_enabled() {
         return DevSecrets {
             master_key: None,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             discogs_api_key: None,
         };
     }
     DevSecrets {
         master_key: dev_env_secret("BAE_ENCRYPTION_KEY"),
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         discogs_api_key: dev_env_secret("BAE_DISCOGS_API_KEY"),
     }
 }

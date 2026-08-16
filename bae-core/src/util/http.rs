@@ -9,6 +9,7 @@ use std::time::Duration;
 pub(crate) const USER_AGENT: &str = "bae/1.0 +https://github.com/bae-fm/bae";
 
 /// Total per-request ceiling for a bounded JSON API call.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) const API_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Bounded time to establish a TCP + TLS connection to any provider.

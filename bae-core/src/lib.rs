@@ -7,9 +7,11 @@ pub mod audio_codec;
 pub mod cast;
 #[doc(hidden)]
 pub mod config;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod cue_flac;
 pub mod db;
 pub mod diagnostics;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discogs;
 pub mod dlna;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -25,6 +27,7 @@ pub mod library_name;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod loudness;
 pub mod migrations;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod musicbrainz;
 pub mod network;
 pub mod oauth;
@@ -32,6 +35,7 @@ pub mod playback;
 pub mod queue;
 pub mod renderer;
 pub mod retry;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod serde_helpers;
 // The extraction machinery (OCR, disc-ID compute) is desktop-only and gated
 // submodule-by-submodule inside `signals`. The module itself stays on every
@@ -42,6 +46,7 @@ pub mod storage;
 pub mod sync;
 #[cfg(test)]
 pub(crate) mod test_logs;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod text_encoding;
 pub mod ui;
 pub mod util;

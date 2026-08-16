@@ -124,6 +124,10 @@ impl AppHandle {
 #[cfg(feature = "desktop")]
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
+    pub fn get_discogs_token(&self) -> Result<Option<String>, BridgeError> {
+        Ok(self.services.get_discogs_token()?)
+    }
+
     /// Register the platform artwork analyzer. Called once at app boot
     /// (e.g. from `BaeApp`'s startup path) by the platforms that have one.
     /// Extraction owns artwork OCR and streams its barcode/text signals to

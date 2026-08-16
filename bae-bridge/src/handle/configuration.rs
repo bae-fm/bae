@@ -93,8 +93,4 @@ impl AppHandle {
         })
         .await
     }
-
-    pub fn get_discogs_token(&self) -> Result<Option<String>, BridgeError> {
-        Ok(self.services.get_discogs_token()?)
-    }
 }

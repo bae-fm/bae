@@ -24,6 +24,7 @@ pub struct BridgeSortCriterion {
 /// place) or Remote (upload to the cloud). Mirrors
 /// `bae_core::import::StorageMode`. Whether a remote import is kept offline is the
 /// ORTHOGONAL `pin` argument on `start_import`, never folded into this enum.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeStorageMode {
     Local,

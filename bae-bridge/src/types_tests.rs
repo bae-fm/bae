@@ -14,7 +14,7 @@ use super::*;
 /// Each keyed enum is covered by an explicit array of every variant AND an
 /// inline exhaustive `match` with no `_` arm, so adding a variant is a compile
 /// error here that forces updating the coverage.
-#[cfg(test)]
+#[cfg(all(test, feature = "desktop"))]
 mod loc_key_coverage {
     use super::*;
 

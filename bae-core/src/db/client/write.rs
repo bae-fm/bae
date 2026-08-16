@@ -26,6 +26,7 @@ pub(super) fn insert_artist_row(
     .map_err(DbError::from)
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn upsert_library_image_row_with_cloud_path(
     conn: &SqlContext<'_, '_>,
     image: &DbLibraryImage,
@@ -217,6 +218,11 @@ pub(super) fn insert_track_artist_row(
     .map_err(DbError::from)
 }
 
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(super) fn insert_work_row(
     conn: &SqlContext<'_, '_>,
     work: &DbWork,
@@ -242,6 +248,7 @@ pub(super) fn insert_work_row(
     .map_err(DbError::from)
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_work_artist_row(
     conn: &SqlContext<'_, '_>,
     link: &DbWorkArtist,
@@ -266,6 +273,7 @@ pub(super) fn insert_work_artist_row(
     .map_err(DbError::from)
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_work_part_row(
     conn: &SqlContext<'_, '_>,
     part: &DbWorkPart,
@@ -291,6 +299,11 @@ pub(super) fn insert_work_part_row(
     .map_err(DbError::from)
 }
 
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(super) fn insert_track_work_row(
     conn: &SqlContext<'_, '_>,
     link: &DbTrackWork,
@@ -315,6 +328,7 @@ pub(super) fn insert_track_work_row(
     .map_err(DbError::from)
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_release_artist_role_row(
     conn: &SqlContext<'_, '_>,
     role: &DbReleaseArtistRole,
@@ -337,6 +351,7 @@ pub(super) fn insert_release_artist_role_row(
     )
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_track_artist_role_row(
     conn: &SqlContext<'_, '_>,
     role: &DbTrackArtistRole,
@@ -359,6 +374,7 @@ pub(super) fn insert_track_artist_role_row(
     )
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_artist_role_row(
     conn: &SqlContext<'_, '_>,
     table: &'static str,
@@ -415,6 +431,11 @@ pub(super) fn insert_file_row(
     .map_err(DbError::from)
 }
 
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(super) fn insert_audio_format_row(
     conn: &SqlContext<'_, '_>,
     af: &DbAudioFormat,
@@ -447,6 +468,11 @@ pub(super) fn insert_audio_format_row(
     .map_err(DbError::from)
 }
 
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(super) fn insert_audio_segment_row(
     conn: &SqlContext<'_, '_>,
     segment: &DbAudioSegment,
@@ -552,6 +578,7 @@ pub(super) fn resolve_release_path<C: QueryOne>(
 /// `release_files` namespace coven prepends), mirroring the imported folder. Ids
 /// are immutable and unique, so the key is stable and collision-free by
 /// construction — no disambiguation.
+#[cfg(any(test, not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn resolve_audio_cloud_path<C: QueryOne>(
     conn: &C,
     release_id: &str,

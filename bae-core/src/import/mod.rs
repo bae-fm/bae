@@ -2,6 +2,7 @@
 // leave out — the import editor is desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_names;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod assemble;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_store;
@@ -13,12 +14,16 @@ pub mod cover_art;
 pub mod discid;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discid_hash;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discogs_mapper;
 mod error;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod file_tag_mapper;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod file_validation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod folder_registry;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod folder_scanner;
 mod image_response;
 // The import pipeline (scanning, transcoding, identify orchestration) is
@@ -32,6 +37,7 @@ mod loudness;
 // import pane's one structure, and desktop-only like the slots it reads.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod mapping;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod musicbrainz_mapper;
 // The payload store's projections build the picker detail and the commit's
 // `ParsedAlbum` from archived documents — both desktop-only import shapes.
@@ -51,6 +57,7 @@ pub mod track_slots;
 pub mod triage;
 mod types;
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
@@ -58,10 +65,12 @@ use crate::db::{
 
 /// The four-digit year at the head of a metadata date string (`"1998"`,
 /// `"1998-05-01"`), or `None` when the value is absent or has no leading year.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn parse_year(date: Option<&str>) -> Option<i32> {
     date?.split('-').next()?.parse().ok()
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct ParsedWorkGraph {
     pub works: Vec<DbWork>,
@@ -73,6 +82,7 @@ pub struct ParsedWorkGraph {
 /// A parsed release (MusicBrainz, Discogs, or file tags) in the shape that
 /// flows into commit: commit turns `identities` into `release_identities` rows
 /// and the rest into `albums` / `releases` / `tracks` writes.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct ParsedAlbum {
     pub album: DbAlbum,
@@ -100,6 +110,7 @@ pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelea
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_scanner::{
     FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
     FolderReleaseTreeRow, FolderReleaseTreeRowKind, InvalidCandidate, InvalidReason,
@@ -133,10 +144,14 @@ pub use triage::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::DecidedIdentity;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use types::ImportCommand;
 pub use types::{
-    AudioFile, ClaimLevel, CoverSelection, EditValidationError, IdentityChoice, IdentityPick,
-    ImportCommand, ImportPhase, ImportProgress, ImportStep, MetadataPointer, MetadataRef,
-    MetadataSource, PayloadSource, PrepareStep, PressingEdit, RawPressingEdit, RawReleaseEdit,
-    RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, SourcePayload, StorageMode, TrackFile,
-    TrackUserEdit,
+    AudioFile, EditValidationError, MetadataPointer, MetadataSource, PressingEdit, RawPressingEdit,
+    RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, TrackUserEdit,
+};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use types::{
+    ClaimLevel, CoverSelection, IdentityChoice, IdentityPick, ImportPhase, ImportProgress,
+    ImportStep, MetadataRef, PayloadSource, PrepareStep, SourcePayload, StorageMode, TrackFile,
 };

@@ -562,39 +562,3 @@ impl crate::types::BridgeMatchedSignal {
         }
     }
 }
-
-/// Every `UiBusEvent` has a bridge mirror, so this always returns `Some`.
-pub(super) fn convert_ui_event(
-    event: bae_core::ui::UiBusEvent,
-) -> Option<crate::types::BridgeUiEvent> {
-    use crate::types::*;
-    use bae_core::ui::UiBusEvent;
-
-    match event {
-        UiBusEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
-            reason: crate::types::BridgePlaybackErrorReason::from_core(reason),
-        }),
-        UiBusEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
-
-        // ── Import live progress ───────────────────────────────────
-        UiBusEvent::CandidateImportLoudnessProgress {
-            key,
-            tracks_done,
-            tracks_total,
-            fraction,
-        } => Some(BridgeUiEvent::CandidateImportLoudnessProgress {
-            key,
-            tracks_done,
-            tracks_total,
-            fraction,
-        }),
-        UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
-            Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
-        }
-
-        // ── Errors ─────────────────────────────────────────────────
-        UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
-            error: crate::types::BridgeError::from_core(error),
-        }),
-    }
-}

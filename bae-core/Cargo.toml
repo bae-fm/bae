@@ -63,13 +63,8 @@ rand_core = "0.6"
 async-trait = "0.1"
 dirs = "5.0"
 axum = "0.7"
-natord = "1.0"
 regex = "1.11"
-strsim = "0.11"
-unicode-normalization = "0.1"
 libc = "0.2"
-chardetng = "0.1"
-encoding_rs = "0.8"
 rtrb = "0.3.2"
 # Cover-art resizing at store time (src/util/cover.rs) runs on every platform —
 # imports and change-cover normalize to a ≤600 JPEG thumbnail everywhere, so the
@@ -78,17 +73,12 @@ rtrb = "0.3.2"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"
-# Embedded-tag reads and writes: the Unknown-import file-tag projection and the
-# library exporter both run on every platform, so this is not a desktop dep.
-lofty = "0.24"
 lru = "0.18.2"
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-# Staging a coven-held cover blob to a real file for the barcode-OCR reader,
-# which needs a path (the bytes come back through `read_image_blob`).
+# The shared remote-image cache spools downloads to a temporary file before an
+# atomic persist. Desktop extraction also stages cover blobs for barcode OCR.
 tempfile = "3.8"
-notify = "8.2.0"
-notify-debouncer-full = "0.7.0"
 # Google Cast sender (src/cast/): the CASTV2 protocol over TLS to Chromecast/Nest
 # devices, and mDNS service discovery of them. `thread_safe` makes rust_cast's
 # `CastDevice` Send so the session can own it on its own OS thread. Compiled on
@@ -122,6 +112,14 @@ ndk = { version = "0.9", features = ["audio"] }
 # targets positively instead would let a new non-mobile target compile the
 # pipeline while its dependencies stayed behind.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+chardetng = "0.1"
+encoding_rs = "0.8"
+lofty = "0.24"
+natord = "1.0"
+notify = "8.2.0"
+notify-debouncer-full = "0.7.0"
+strsim = "0.11"
+unicode-normalization = "0.1"
 # Dev-mode `.env` loading (src/config/dev.rs).
 dotenvy = "0.15"
 # Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no

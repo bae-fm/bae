@@ -618,6 +618,7 @@ impl AppServices {
     delegate_sync!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, rename_library => rename_library(library_id: &str, name: &crate::library_name::LibraryName) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), crate::library::LibraryError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
     delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, forget_library => forget_library() -> Result<(), crate::library::LibraryError>);

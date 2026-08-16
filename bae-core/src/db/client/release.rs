@@ -1,5 +1,7 @@
 use super::*;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod fail_import;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use fail_import::*;
 impl Database {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
@@ -528,6 +530,7 @@ impl Database {
 
     /// Finalize an import in one transaction. Nothing of it is in the DB yet except
     /// the import record — every row below lands together or not at all.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[allow(clippy::too_many_arguments)]
     pub async fn finalize_import_atomic(
         &self,
@@ -886,6 +889,7 @@ impl Database {
     /// write, so the rows it names to delete are exactly the rows the write
     /// deletes; a divergence surfaces as coven's `BlobStillReferenced` (a declared
     /// blob whose row wasn't dropped) rather than a silent leak.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn fail_import_and_delete_release(&self, release_id: &str) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let plan = self
@@ -1086,55 +1090,5 @@ impl Database {
             .handle
             .make_remote_progress("releases", release_id)
             .await
-    }
-
-    /// Release ids whose stored `content_hash` equals `hash`. Normally zero or
-    /// one (the import overwrite path keeps the hash unique), but returns all
-    /// matches so a re-import sweeps any pre-existing duplicates.
-    pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
-        let hash = hash.to_string();
-        self.read(move |sql| {
-            sql.query(
-                "SELECT id FROM releases WHERE content_hash = ?",
-                params![hash],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Whether some release in the library was imported from this exact file
-    /// structure (its `content_hash` matches `hash`). The import view uses this
-    /// to mark a scanned folder as already added.
-    pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, DbError> {
-        let hash = hash.to_string();
-        self.read(move |sql| {
-            sql.query_row(
-                "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
-                params![hash],
-                |_| Ok(()),
-            )
-            .optional()
-            .map(|o| o.is_some())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    pub async fn imported_content_hashes(
-        &self,
-    ) -> Result<std::collections::HashSet<String>, DbError> {
-        self.read(move |sql| {
-            Ok(sql
-                .query(
-                    "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
-                    [],
-                    |row| row.get::<_, String>(0),
-                )?
-                .into_iter()
-                .collect())
-        })
-        .await
     }
 }

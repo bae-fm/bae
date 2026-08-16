@@ -64,6 +64,7 @@ mod artist;
 mod composer;
 mod config;
 mod coven_blobs;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
@@ -76,6 +77,7 @@ mod discogs;
 mod export;
 mod identity;
 mod image;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 mod lifecycle;
 mod locality;

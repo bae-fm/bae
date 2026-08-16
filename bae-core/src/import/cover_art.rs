@@ -118,6 +118,7 @@ impl RemoteCover {
 /// album's has no such statement anywhere in MusicBrainz's data: a release group
 /// document carries no `cover-art-archive` block, so the address is offered and
 /// the fetch is what answers whether the archive has an image there.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub fn musicbrainz_covers(response: &crate::musicbrainz::MbReleaseResponse) -> Vec<RemoteCover> {
     let mut covers = Vec::new();
     if response.has_front_cover() {

@@ -1,5 +1,7 @@
+#[cfg(feature = "desktop")]
 use super::*;
 
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSearchQueryKind {
     General,
@@ -11,6 +13,7 @@ pub enum BridgeSearchQueryKind {
 /// search ran against so the caller can route results into the matching
 /// (tab, source) slot — the user may have changed tabs or sources during
 /// the await.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateSearchResults {
     pub tab: BridgeSearchQueryKind,
@@ -22,6 +25,7 @@ pub struct BridgeCandidateSearchResults {
     pub statuses: Vec<BridgeLibraryStatus>,
 }
 
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseDetail {
     pub release_id: String,
@@ -46,6 +50,7 @@ pub struct BridgeReleaseDetail {
     pub default_cover: Option<BridgeCoverChoice>,
 }
 
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseTrack {
     pub title: String,
@@ -69,6 +74,7 @@ pub struct BridgeReleaseTrack {
 /// the pressing block), so the UI binds it straight to the editor. The claim
 /// itself came in on the pick, and lowering it is another pick — so there is no
 /// re-shaping for the UI to do either way.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
@@ -90,6 +96,7 @@ pub struct BridgeReleasePrefetch {
 /// `bae_core::import::ClaimEvidence`. It explains the pick and decides nothing:
 /// the UI renders it as the claim sentence's trailing clause, and the claim
 /// itself is the user's, carried on the pick.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeClaimEvidence {
     /// The disc's table of contents matched this release and no other.
@@ -111,6 +118,7 @@ pub enum BridgeClaimEvidence {
 /// which side of the header's claim control is in force, and — since only an
 /// album claim leaves the metadata's release unsaid — whether the second line
 /// naming it is drawn.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeClaimLine {
     /// The claim this import will record, and what commit writes.
@@ -195,6 +203,7 @@ pub enum BridgeAudioFile {
 /// Arrives computed rather than left to each UI to subtract, and it is stated
 /// rather than enforced — a disagreement is something to read, never something
 /// that disables the commit.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSlotReconciliation {
     Agrees { count: u32 },
@@ -220,7 +229,8 @@ pub fn bridge_lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -
 }
 
 /// The catalog key naming the reconciliation line.
-#[cfg_attr(feature = "desktop", uniffi::export)]
+#[cfg(feature = "desktop")]
+#[uniffi::export]
 pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) -> String {
     match reconciliation {
         BridgeSlotReconciliation::Agrees { .. } => "core.import.reconciliation.agrees",
@@ -236,6 +246,7 @@ pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) 
 /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so this is a
 /// decision, set through `AppHandle::set_sheet_disc`, and never something a UI
 /// reads off a name.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSheetDisc {
     /// The sheet's entries are the release's disc `number`, counting from one.
@@ -251,6 +262,7 @@ pub enum BridgeSheetDisc {
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
 /// it heads a group of rows — and an image is not one either, because the
 /// images are one gallery row rather than a row each.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMappingRole {
     Audio,
@@ -260,6 +272,7 @@ pub enum BridgeMappingRole {
 
 /// A file of the folder, as the mapping table's left half shows it. Mirror of
 /// bae-core's `MappingFile`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingFile {
     /// The file's identity within the release (its relative path) — the id
@@ -285,6 +298,7 @@ pub struct BridgeMappingFile {
 
 /// One entry of a track sheet, as the mapping table's left half shows it.
 /// Mirror of bae-core's `MappingEntry`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingEntry {
     pub sheet_id: String,
@@ -304,6 +318,7 @@ pub struct BridgeMappingEntry {
 
 /// The left half of a mapping row: what the folder offers for it. Mirror of
 /// bae-core's `MappingSource`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingSource {
     /// A file the folder holds, whole.
@@ -317,6 +332,7 @@ pub enum BridgeMappingSource {
 
 /// The right half of a mapping row: what committing makes of the source unit.
 /// Mirror of bae-core's `MappingBecomes`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingBecomes {
     /// A track of the release being committed. The row edits it in place, and
@@ -336,6 +352,7 @@ pub enum BridgeMappingBecomes {
 
 /// One source unit and the track committing makes of it. Mirror of bae-core's
 /// `MappingUnit`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingUnit {
     pub source: BridgeMappingSource,
@@ -343,6 +360,7 @@ pub struct BridgeMappingUnit {
 }
 
 /// The audio a track sheet describes. Mirror of bae-core's `MappingContainer`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingContainer {
     pub file_id: String,
@@ -352,6 +370,7 @@ pub struct BridgeMappingContainer {
 
 /// A track sheet, as the header of the group of rows it carves. Mirror of
 /// bae-core's `SheetGroup`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSheetGroup {
     /// The sheet's `file_id` — the id `AppHandle::set_sheet_binding` and
@@ -372,6 +391,7 @@ pub struct BridgeSheetGroup {
 /// `BridgeSheetBinding` enriched by the container's name and size: a header
 /// states both which audio a sheet is on and why it is on none, and carrying
 /// the binding separately would be a second way to say the first.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSheetBound {
     /// The sheet describes this audio.
@@ -392,6 +412,7 @@ pub enum BridgeSheetBound {
 
 /// One of the folder's images, as the gallery shows it. Mirror of bae-core's
 /// `MappingImage`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingImage {
     /// The file's identity within the release (its relative path).
@@ -406,6 +427,7 @@ pub struct BridgeMappingImage {
 }
 
 /// One row of the mapping table. Mirror of bae-core's `MappingRow`.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingRow {
     /// One source unit and what it becomes.
@@ -427,6 +449,7 @@ pub enum BridgeMappingRow {
 /// One structure, not two lists to keep aligned: the editable track row lives
 /// *inside* the row that produces it, so removing a row removes both halves and
 /// no index addresses anything.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {
     pub rows: Vec<BridgeMappingRow>,
@@ -439,6 +462,7 @@ pub struct BridgeMappingTable {
 /// What committing a folder as Unknown produces: the release its own files
 /// describe, and the mapping table that lands each of its audio units on one of
 /// those tracks.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUnknownMapping {
     pub seed: BridgeReleaseUserEdit,
@@ -558,7 +582,7 @@ impl BridgeValidationReason {
     /// table — the single source of the variant→key mapping for every platform.
     /// Only the desktop edit flow produces a validation reason, so the mapping
     /// is compiled there (and under test for the cross-check).
-    #[cfg(any(feature = "desktop", test))]
+    #[cfg(feature = "desktop")]
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
             Self::EmptyAlbumTitle => "core.import.validation.empty_album_title",

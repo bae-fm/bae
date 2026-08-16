@@ -3,6 +3,38 @@
 use super::*;
 
 impl LibraryManager {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn register_release_external_refs_for_test(
+        &self,
+        release_id: &str,
+        source_dir: &str,
+    ) -> Result<(), LibraryError> {
+        self.database
+            .register_release_external_refs_for_test(release_id, source_dir)
+            .await?;
+        Ok(())
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_audio_format_with_segments_for_test(
+        &self,
+        audio_format: &DbAudioFormat,
+        segments: &[DbAudioSegment],
+    ) -> Result<(), LibraryError> {
+        self.database
+            .insert_audio_format_with_segments_for_test(audio_format, segments)
+            .await?;
+        Ok(())
+    }
+
+    /// Test-only: seed a single file row. Production inserts files only as part of
+    /// an import or edit transaction.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
+        self.database.insert_file(file).await?;
+        Ok(())
+    }
+
     pub async fn get_release_by_id(
         &self,
         release_id: &str,
@@ -14,10 +46,12 @@ impl LibraryManager {
     /// library. The import watcher stamps each scanned candidate with this so an
     /// already-imported folder surfaces under the "Added" tab even after a
     /// restart (it matches by file structure, not by name).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, LibraryError> {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn imported_content_hashes(
         &self,
     ) -> Result<std::collections::HashSet<String>, LibraryError> {
@@ -47,6 +81,7 @@ impl LibraryManager {
     ///
     /// Empty `identities` (Unknown) skips both lookups — an Unknown import always
     /// gets a fresh album.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
         &self,
         identities: &[crate::import::ReleaseIdentity],
@@ -55,6 +90,7 @@ impl LibraryManager {
             .await
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn find_existing_album_for_import_excluding(
         &self,
         identities: &[crate::import::ReleaseIdentity],
@@ -823,7 +859,7 @@ impl LibraryManager {
     /// [`delete_release`](Self::delete_release) per match. A re-import does NOT use
     /// this destructive path — it prepares replacement plans and commits the
     /// prior-release delete inside the finalize transaction.
-    #[cfg(test)]
+    #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
     pub async fn delete_releases_with_content_hash(&self, hash: &str) -> Result<(), LibraryError> {
         for release_id in self.database.release_ids_for_content_hash(hash).await? {
             self.delete_release(&release_id).await?;

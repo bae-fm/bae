@@ -34,30 +34,6 @@ impl LibraryManager {
         .await
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn register_release_external_refs_for_test(
-        &self,
-        release_id: &str,
-        source_dir: &str,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .register_release_external_refs_for_test(release_id, source_dir)
-            .await?;
-        Ok(())
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn insert_audio_format_with_segments_for_test(
-        &self,
-        audio_format: &DbAudioFormat,
-        segments: &[DbAudioSegment],
-    ) -> Result<(), LibraryError> {
-        self.database
-            .insert_audio_format_with_segments_for_test(audio_format, segments)
-            .await?;
-        Ok(())
-    }
-
     #[cfg(test)]
     pub(crate) async fn source_release_payload_for_test(
         &self,
@@ -78,19 +54,6 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         self.database.save_source_release_payloads(rows).await?;
         Ok(())
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn rename_artist_images_table_for_test(&self) -> Result<(), LibraryError> {
-        self.database.rename_artist_images_table_for_test().await?;
-        Ok(())
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn artist_and_image_counts_for_test(
-        &self,
-    ) -> Result<(i64, i64), LibraryError> {
-        Ok(self.database.artist_and_image_counts_for_test().await?)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -176,14 +139,6 @@ impl LibraryManager {
         &self,
     ) -> Result<Vec<crate::db::DbFolderScanSnapshot>, LibraryError> {
         Ok(self.database.load_folder_scan_snapshots().await?)
-    }
-
-    /// Test-only: seed a single file row. Production inserts files only as part of
-    /// an import or edit transaction.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
-        self.database.insert_file(file).await?;
-        Ok(())
     }
 
     /// Insert all of an import's data in one transaction, so the release either

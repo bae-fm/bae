@@ -13,6 +13,7 @@ mod setup;
 #[cfg(feature = "desktop")]
 mod signals;
 mod types;
+#[cfg(feature = "desktop")]
 mod utils;
 
 #[cfg(feature = "cloudkit")]
@@ -22,6 +23,7 @@ pub use init::*;
 pub use live_subscription::*;
 pub use setup::*;
 pub use types::*;
+#[cfg(feature = "desktop")]
 pub use utils::*;
 
 #[cfg(feature = "cloudkit")]

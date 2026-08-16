@@ -15,10 +15,14 @@
 //!
 //! An import always lands as a local, playable release. A [`StorageMode::Remote`]
 //! import then uploads to the cloud in the background.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::audio_codec::ProbeResult;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::cue_flac::CueSheet;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::DbTrack;
 use serde::{Deserialize, Serialize};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::Path, path::PathBuf, sync::Arc};
 
 /// Metadata source for a release.
@@ -83,6 +87,7 @@ impl std::str::FromStr for MetadataSource {
 /// documents that belong to other entities — its release group, a Discogs
 /// master — and each is keyed by the entity it describes so two releases that
 /// share one never store it twice.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PayloadSource {
     /// A MusicBrainz release, by release id.
@@ -104,6 +109,7 @@ pub enum PayloadSource {
     MusicBrainzDiscogsXref,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl PayloadSource {
     /// The stored `source` column value.
     pub fn as_str(self) -> &'static str {
@@ -126,6 +132,7 @@ impl PayloadSource {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl std::str::FromStr for PayloadSource {
     type Err = String;
 
@@ -141,6 +148,7 @@ impl std::str::FromStr for PayloadSource {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl std::fmt::Display for PayloadSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
@@ -149,6 +157,7 @@ impl std::fmt::Display for PayloadSource {
 
 /// One document a metadata lookup returned, carrying the entity it describes so
 /// the store can key it without re-reading it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourcePayload {
     pub source: PayloadSource,
@@ -156,6 +165,7 @@ pub struct SourcePayload {
     pub json: String,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl SourcePayload {
     pub fn new(source: PayloadSource, source_release_id: impl Into<String>, json: String) -> Self {
         Self {
@@ -175,6 +185,7 @@ impl std::fmt::Display for MetadataSource {
 /// A source-tagged identifier into a metadata system. Whether this points at a
 /// release vs. a release-group/master is determined by the field this value
 /// lives in — there's no structural difference, both are `(id, source)`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MetadataRef {
     pub id: String,
@@ -187,6 +198,7 @@ pub struct MetadataRef {
 /// `identity_pick`) so an answered pane reopens answered after a restart; the
 /// claim line, the seed, and the mapping are all re-derived from it against the
 /// archived documents, never stored.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IdentityPick {
     Release {
@@ -200,6 +212,7 @@ pub enum IdentityPick {
     Unknown,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl IdentityPick {
     /// What committing this pick records as the release's identity.
     pub fn choice(&self) -> IdentityChoice {
@@ -235,6 +248,7 @@ pub enum DecidedIdentity {
     },
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl MetadataRef {
     pub fn new(id: impl Into<String>, source: MetadataSource) -> Self {
         Self {
@@ -293,6 +307,7 @@ pub enum MetadataPointer {
 /// For Exact and Approximate, `metadata_source_release_id` on the release row
 /// carries `release_ref.id` either way — the release records which source
 /// release seeded it regardless of the claim.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IdentityChoice {
     Exact { release_ref: MetadataRef },
@@ -308,6 +323,7 @@ pub enum IdentityChoice {
 /// album but can't vouch for the pressing. It is stored with the pick rather
 /// than derived from the evidence, because it is an assertion about the record
 /// in the room that no metadata can settle.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClaimLevel {
     /// This pressing is the one in the room.
@@ -316,6 +332,7 @@ pub enum ClaimLevel {
     Approximate,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ClaimLevel {
     /// What claiming `release_ref` at this level records — what commit writes
     /// identity rows from.
@@ -693,6 +710,7 @@ impl RawPressingEdit {
 /// property. The user's pin choice rides the remote transition as a transient
 /// argument (`pin` on the import command) telling coven whether to populate
 /// `storage/pinned/`; it is never persisted.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageMode {
     /// Files stay in place on this device; never uploaded.
@@ -703,6 +721,7 @@ pub enum StorageMode {
 }
 
 /// User's cover art selection for an import.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Clone, Debug)]
 pub enum CoverSelection {
     /// Remote cover to download (URL + source for attribution)
@@ -712,6 +731,7 @@ pub enum CoverSelection {
 }
 
 /// Progress updates during import
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub enum ImportProgress {
     /// A preparation step, before the running phases begin.
@@ -749,6 +769,7 @@ pub enum ImportProgress {
 /// transition begins so the UI can name the work in progress. Every import is
 /// local-in-place: the source files are read and hashed where they sit, then
 /// each track is decoded to measure loudness, then the rows are written.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportPhase {
     /// Reading and hashing each source file before it is registered. Per-file
@@ -764,6 +785,7 @@ pub enum ImportPhase {
 
 /// Preparation steps, emitted by the import worker before the running phases
 /// ([`ImportPhase`]) begin.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrepareStep {
     Queued,
@@ -776,6 +798,7 @@ pub enum PrepareStep {
 
 /// Which step of an import is in progress, for the candidate progress UI. The
 /// UI localizes each step; bae-core no longer renders display text for it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportStep {
     Preparing(PrepareStep),
@@ -791,6 +814,7 @@ pub enum ImportStep {
 /// tracks share one container file and identify themselves by their position
 /// inside the CUE sheet; every CUE-backed track from one container references
 /// the same `CueFlacAnalysis`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub enum TrackFile {
     Standalone {
@@ -805,6 +829,7 @@ pub enum TrackFile {
     },
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl TrackFile {
     pub fn db_track(&self) -> &DbTrack {
         match self {
@@ -821,12 +846,14 @@ impl TrackFile {
 
 /// Parsed CUE sheet plus probed container analysis, shared across all tracks
 /// that live inside the same file.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug)]
 pub struct CueFlacAnalysis {
     pub cue_sheet: CueSheet,
     pub audio_files: Vec<CueAnalyzedAudioFile>,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug)]
 pub struct CueAnalyzedAudioFile {
     pub file_reference: String,
@@ -848,6 +875,7 @@ pub struct CueAnalyzedAudioFile {
 /// present its fields override the seeded metadata after the choice
 /// transformation.
 #[derive(Debug)]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct ImportCommand {
     pub import_id: String,
     pub candidate_key: String,

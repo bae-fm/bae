@@ -811,6 +811,7 @@ impl DbAlbum {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn is_various_artists(name: &str) -> bool {
     let lower = name.trim().to_lowercase();
     lower == "various" || lower == "various artists"
@@ -953,6 +954,7 @@ impl DbAudioFormat {
 /// Written before the verdict that names the release and read back after it
 /// commits, so fields we don't map today can be extracted later without
 /// re-fetching.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSourceReleasePayload {
     pub source: crate::import::PayloadSource,
@@ -961,6 +963,7 @@ pub struct DbSourceReleasePayload {
     pub fetched_at: DateTime<Utc>,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl DbSourceReleasePayload {
     pub fn new(payload: &crate::import::SourcePayload, now: DateTime<Utc>) -> Self {
         DbSourceReleasePayload {

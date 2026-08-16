@@ -52,14 +52,15 @@ mod desktop;
 mod desktop_services;
 #[cfg(feature = "desktop")]
 mod editing_projection;
+#[cfg(feature = "desktop")]
 mod import_projection;
 mod library_projection;
 mod playback_persistence;
 mod queue_projection;
 mod service_status;
 mod ui_events;
-use import_projection::convert_ui_event;
 use queue_projection::pump_ui_events;
+use ui_events::convert_ui_event;
 
 struct AppRuntime(Option<tokio::runtime::Runtime>);
 

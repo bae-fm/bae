@@ -3,6 +3,19 @@
 use super::*;
 
 impl LibraryManager {
+    #[cfg(test)]
+    pub(crate) async fn rename_artist_images_table_for_test(&self) -> Result<(), LibraryError> {
+        self.database.rename_artist_images_table_for_test().await?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn artist_and_image_counts_for_test(
+        &self,
+    ) -> Result<(i64, i64), LibraryError> {
+        Ok(self.database.artist_and_image_counts_for_test().await?)
+    }
+
     /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
     /// so no caller picks the byte source itself: a `Cover` is read by its image
     /// ref, a `ReleaseFile` by file id (`load_gallery_image`).

@@ -3,6 +3,7 @@ mod configuration;
 mod conversion;
 mod editing;
 mod events_and_transfers;
+#[cfg(feature = "desktop")]
 mod import;
 mod library_playback;
 mod live_results;
@@ -13,6 +14,7 @@ pub use configuration::*;
 pub use conversion::*;
 pub use editing::*;
 pub use events_and_transfers::*;
+#[cfg(feature = "desktop")]
 pub use import::*;
 pub use library_playback::*;
 pub use live_results::*;

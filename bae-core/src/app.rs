@@ -174,6 +174,7 @@ where
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     if let Some(token) = dev_secrets.discogs_api_key.as_deref() {
         library_manager
             .set_discogs_key(token, crate::config::DiscogsValidation::Unvalidated)

@@ -6,6 +6,7 @@
 //! chain. `do_import`, the terminal consumer, is the only place that turns this
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::MetadataSource;
 
 /// Why an import failed. One class per distinguishable failure the pipeline
@@ -13,25 +14,30 @@ use crate::import::MetadataSource;
 #[derive(Debug, thiserror::Error)]
 pub enum ImportError {
     /// Walking the candidate folder failed (I/O during the tree walk).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("folder scan failed: {0}")]
     Scan(#[from] crate::import::folder_scanner::FolderScanError),
 
     /// The folder is structurally unimportable (corrupt/zero-byte audio,
     /// CUE referencing missing audio, no valid audio). Typed reason reused
     /// from the scanner.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("folder cannot be imported: {0}")]
     InvalidFolder(#[from] crate::import::folder_scanner::InvalidReason),
 
     /// A MusicBrainz request failed. Network/Timeout/Provider{status}
     /// distinctions preserved from the wire.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("MusicBrainz request failed: {0}")]
     MusicBrainz(#[from] crate::musicbrainz::MusicBrainzError),
 
     /// A Discogs request failed. RateLimit/InvalidApiKey/NotFound preserved.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("Discogs request failed: {0}")]
     Discogs(#[from] crate::discogs::client::DiscogsError),
 
     /// A Discogs operation was requested but no API key is configured.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("Discogs API key not configured")]
     DiscogsNotConfigured,
 
@@ -42,6 +48,7 @@ pub enum ImportError {
     /// The field is `metadata_source`, not `source`: thiserror reserves a field
     /// literally named `source` for the error-chain source, which a
     /// `MetadataSource` (not an `Error`) can't be.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("{} release data cannot be mapped: {detail}", metadata_source.as_str())]
     SourceData {
         metadata_source: MetadataSource,
@@ -50,6 +57,7 @@ pub enum ImportError {
 
     /// Local file-tag evidence can't seed an Unknown import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("file tags cannot be read: {detail}")]
     FileTags { detail: String },
 
@@ -60,6 +68,7 @@ pub enum ImportError {
     /// The import's only remaining refusal. A disagreement between the source's
     /// tracklist and the folder's audio is a track slot to look at, not a
     /// failure — see [`TrackSlot`](crate::import::TrackSlot).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("{detail}")]
     UnusableFile { detail: String },
 
@@ -70,20 +79,24 @@ pub enum ImportError {
     CoverArt { detail: String },
 
     /// verify_decode_on_import found tracks that would import but not play.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("decode verification failed for {} track(s): {}", broken.len(), broken.join("; "))]
     DecodeVerification { broken: Vec<String> },
 
     /// Per-pressing duplicate rejection: an Exact identity already in the
     /// library. The Display text is user-facing — the UI renders it verbatim.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("This release is already in your library as \"{album_title}\"")]
     AlreadyInLibrary { album_title: String },
 
     /// The user-edit overlay is invalid (reuses the editor's typed error).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),
 
     /// A library/DB operation failed (insert_import, finalize_import_atomic,
     /// resolve_artists_for_import, replacement plans, coven_make_remote).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
     Db(#[from] crate::library::LibraryError),
 
@@ -92,6 +105,7 @@ pub enum ImportError {
     /// offerable set that crosses to a UI is already filtered to what the sheet
     /// can use, so this is a folder that changed under the choice rather than a
     /// UI that offered something it should not have.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("that audio can no longer back this sheet: {detail}")]
     SheetBinding { detail: String },
 
@@ -100,31 +114,36 @@ pub enum ImportError {
     /// leave the release with no tracks at all. Taking out the last of a
     /// folder's audio is the one role change that is refused — the folder would
     /// stop being a release, and there would be nothing left to import.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("that file's role can't be changed: {detail}")]
     FileRole { detail: String },
 
     /// The watched-folder registry could not persist (YAML serialize / fs write).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("watched-folder registry: {detail}")]
     Registry { detail: String },
 
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a
     /// broken invariant.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("folder watch failed: {detail}")]
     Watch { detail: String },
 
     /// Config/keyring plumbing failed (Discogs key store/read).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("configuration error: {detail}")]
     Config { detail: String },
 
     /// A broken invariant, not a user condition: artist-id remap miss,
     /// non-UTF-8 path, spawn_blocking join failure, closed command channel,
     /// missing library-status row.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("internal import error: {detail}")]
     Internal { detail: String },
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
 mod tests {
     use super::*;
     use crate::musicbrainz::MusicBrainzError;

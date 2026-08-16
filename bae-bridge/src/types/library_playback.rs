@@ -325,6 +325,7 @@ pub struct BridgeRelease {
 /// from embedded file tags). Carried on the import command; the
 /// commit pipeline post-processes the mapper's identity vec to NULL
 /// out `source_release_id` when Approximate.
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentityChoice {
     Exact {
@@ -338,6 +339,7 @@ pub enum BridgeIdentityChoice {
     Unknown,
 }
 
+#[cfg(feature = "desktop")]
 impl BridgeIdentityChoice {
     pub fn into_core(self) -> bae_core::import::IdentityChoice {
         match self {
