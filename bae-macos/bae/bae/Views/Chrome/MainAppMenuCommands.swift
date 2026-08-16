@@ -180,10 +180,8 @@ struct OpenLibrarySubmenu: View {
     }
 }
 
-struct OpenLibraryButton: View {
+struct LibraryNavigationButton: View {
     let target: MainAppMenuTarget?
-    @Environment(\.openWindow)
-    private var openWindow
 
     var body: some View {
         Button("Library") {
@@ -192,7 +190,6 @@ struct OpenLibraryButton: View {
                     "Library is disabled without an open library"
                 )
             }
-            openWindow(id: MainWindow.sceneID)
             target.uiStore.navigateToLibraryRoot()
         }
         .keyboardShortcut("1", modifiers: .command)
@@ -200,10 +197,8 @@ struct OpenLibraryButton: View {
     }
 }
 
-struct OpenImportButton: View {
+struct ImportNavigationButton: View {
     let target: MainAppMenuTarget?
-    @Environment(\.openWindow)
-    private var openWindow
 
     var body: some View {
         Button("Import") {
@@ -212,7 +207,6 @@ struct OpenImportButton: View {
                     "Import is disabled without an open library"
                 )
             }
-            openWindow(id: MainWindow.sceneID)
             target.uiStore.navigateToImport()
         }
         .keyboardShortcut("2", modifiers: .command)
@@ -232,17 +226,13 @@ struct OpenStorageManagerButton: View {
     }
 }
 
-/// One checkmarked button per library browser mode. Opens the main window and
-/// navigates to the library section before setting the mode, so the item works
-/// from any window (matching `OpenLibraryButton`).
+/// One checkmarked button per library browser mode. The focused menu target
+/// identifies the main window whose library section and mode should change.
 struct LibraryModeCommandButtons: View {
     let target: MainAppMenuTarget
-    @Environment(\.openWindow)
-    private var openWindow
 
     var body: some View {
         LibraryModeButtons(uiStore: target.uiStore) { mode in
-            openWindow(id: MainWindow.sceneID)
             target.uiStore.navigateToLibraryRoot()
             target.uiStore.setLibraryBrowserMode(mode)
         }
@@ -297,8 +287,8 @@ struct MainAppMenuCommands: Commands {
         }
 
         CommandGroup(before: .toolbar) {
-            OpenLibraryButton(target: target)
-            OpenImportButton(target: target)
+            LibraryNavigationButton(target: target)
+            ImportNavigationButton(target: target)
             OpenStorageManagerButton()
 
             if let target {
