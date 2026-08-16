@@ -11,7 +11,9 @@ extension ImportView {
         ImportCandidateListContent(
             importStore: importStore,
             selectedKeys: candidateSelectionBinding,
-            onAddFolder: { pickFolderAndAdd() },
+            onAddFolder: {
+                uiStore.setImportFolderPickerPresented(true)
+            },
             onRemoveFolder: { path in removeWatchedFolder(path) },
             onRefreshFolder: { folder in refreshWatchedFolder(folder) },
             onReleaseDecision: { key, decision in

@@ -159,6 +159,17 @@ struct MainAppView: View {
             }
         }
         .errorAlert(uiStore)
+        .fileImporter(
+            isPresented: Binding(
+                get: { uiStore.isImportFolderPickerPresented },
+                set: { uiStore.setImportFolderPickerPresented($0) }
+            ),
+            allowedContentTypes: [.directory],
+            onCompletion: handleImportFolderResult
+        )
+        .fileDialogDefaultDirectory(.homeDirectory)
+        .fileDialogMessage("Select a folder to watch for music to import")
+        .fileDialogConfirmationLabel("Add")
         .toolbar(.hidden)
         .ignoresSafeArea(.all, edges: .top)
         .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
@@ -203,6 +214,35 @@ struct MainAppView: View {
 
     // MARK: - Scan + Drop
 
+    private func handleImportFolderResult(_ result: Result<URL, any Error>) {
+        switch result {
+        case .success(let url):
+            addWatchedFolder(url)
+        case .failure(let error):
+            uiStore.showError(
+                String(
+                    localized: "Couldn't add folder: \(error.displayLine)"
+                )
+            )
+        }
+    }
+
+    private func addWatchedFolder(_ url: URL) {
+        Task {
+            do {
+                try await importer.addWatchedFolder(url.path)
+                uiStore.navigateToImport()
+            }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized: "Couldn't add folder: \(error.displayLine)"
+                    )
+                )
+            }
+        }
+    }
+
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         guard let provider = providers.first else {
             return false
@@ -244,20 +284,7 @@ struct MainAppView: View {
                 return
             }
             DispatchQueue.main.async {
-                Task {
-                    do {
-                        try await importer.addWatchedFolder(url.path)
-                    }
-                    catch {
-                        uiStore.showError(
-                            String(
-                                localized:
-                                    "Couldn't add folder: \(error.displayLine)"
-                            )
-                        )
-                    }
-                    uiStore.navigateToImport()
-                }
+                addWatchedFolder(url)
             }
         }
         return true

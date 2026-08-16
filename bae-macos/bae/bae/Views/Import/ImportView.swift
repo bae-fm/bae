@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import SwiftUI
 
@@ -78,7 +77,9 @@ struct ImportView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Button(action: { pickFolderAndAdd() }) {
+            Button(action: {
+                uiStore.setImportFolderPickerPresented(true)
+            }) {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 48, weight: .thin))
             }
@@ -89,35 +90,6 @@ struct ImportView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Pick a folder and add it to the watch list; its releases scan in as
-    /// candidates and the folder persists across restarts.
-    func pickFolderAndAdd() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.message = String(
-            localized: "Select a folder to watch for music to import"
-        )
-        panel.prompt = String(localized: "Add")
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
-        }
-        Task {
-            do {
-                try await importer.addWatchedFolder(url.path)
-            }
-            catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't add folder: \(error.displayLine)"
-                    )
-                )
-            }
-        }
     }
 
     /// Read what each of `candidate`'s track sheets may be bound to. One call

@@ -139,6 +139,7 @@ class UiStore: @unchecked Sendable {
 
     var lightbox: Cursor<LightboxItem>?
     private(set) var modalBuilder: (() -> AnyView)?
+    private(set) var isImportFolderPickerPresented = false
 
     // ── Errors ──────────────────────────────────────────────────────────
 
@@ -379,5 +380,9 @@ class UiStore: @unchecked Sendable {
 
     func dismissModal() {
         modalBuilder = nil
+    }
+
+    func setImportFolderPickerPresented(_ presented: Bool) {
+        isImportFolderPickerPresented = presented
     }
 }

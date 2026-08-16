@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import SwiftUI
 
@@ -48,44 +47,19 @@ extension FocusedValues {
 }
 
 struct ImportFolderButton: View {
-    let target: MainAppMenuTarget?
+    let uiStore: UiStore?
 
     var body: some View {
         Button("Import Folder...") {
-            guard let target else {
+            guard let uiStore else {
                 preconditionFailure(
                     "Import Folder is disabled without an open library"
                 )
             }
-            let panel = NSOpenPanel()
-            panel.canCreateDirectories = false
-            panel.canChooseDirectories = true
-            panel.canChooseFiles = false
-            panel.allowsMultipleSelection = false
-            panel.message = String(
-                localized: "Select a folder to watch for music to import"
-            )
-            panel.prompt = String(localized: "Add")
-            guard panel.runModal() == .OK, let url = panel.url else {
-                return
-            }
-            Task {
-                do {
-                    try await target.importer.addWatchedFolder(url.path)
-                    target.uiStore.navigateToImport()
-                }
-                catch {
-                    target.uiStore.showError(
-                        String(
-                            localized:
-                                "Couldn't add folder: \(error.displayLine)"
-                        )
-                    )
-                }
-            }
+            uiStore.setImportFolderPickerPresented(true)
         }
         .keyboardShortcut("i", modifiers: .command)
-        .disabled(target == nil)
+        .disabled(uiStore == nil)
     }
 }
 
@@ -136,7 +110,7 @@ struct LibraryFileMenuCommands: Commands {
             }
         }
         CommandGroup(after: .importExport) {
-            ImportFolderButton(target: target)
+            ImportFolderButton(uiStore: target?.uiStore)
         }
         CommandGroup(before: .saveItem) {
             Button("Rename Library...") { onRenameLibrary() }

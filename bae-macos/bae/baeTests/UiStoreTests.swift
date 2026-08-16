@@ -1,6 +1,26 @@
-@testable import bae
 import BaeKit
 import Testing
+
+@testable import bae
+
+@Suite("UiStore import folder picker")
+struct UiStoreImportFolderPickerTests {
+    @Test("duplicate requests share one active presentation")
+    func duplicateRequestsShareOnePresentation() {
+        let store = UiStore()
+
+        #expect(!store.isImportFolderPickerPresented)
+        store.setImportFolderPickerPresented(true)
+        store.setImportFolderPickerPresented(true)
+
+        #expect(store.isImportFolderPickerPresented)
+
+        store.setImportFolderPickerPresented(false)
+        store.setImportFolderPickerPresented(true)
+
+        #expect(store.isImportFolderPickerPresented)
+    }
+}
 
 @Suite("UiStore import candidate selection")
 struct UiStoreImportCandidateSelectionTests {
@@ -92,7 +112,7 @@ struct UiStoreLibraryBrowserModeTests {
 
         guard
             case .composer("artist-1") = store.pendingLibraryNavigation?
-            .target
+                .target
         else {
             Issue.record("expected composer navigation target")
             return
@@ -327,7 +347,7 @@ struct UiStoreImportQueueInteractionTests {
         store.setReleaseGroupExpanded(stale, false)
 
         store.retainReleaseGroupDisclosureIDs([
-            groupDisclosureID(relativePath: "current"),
+            groupDisclosureID(relativePath: "current")
         ])
 
         #expect(store.releaseGroupExpanded(stale))
