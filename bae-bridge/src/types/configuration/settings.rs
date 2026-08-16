@@ -170,6 +170,7 @@ pub enum BridgeCloudHomeSetupFailure {
     InvalidConfiguration,
     LocationOccupied,
     Network,
+    DeviceIdentityMissing,
     SecureStorage,
     Internal,
 }
@@ -319,6 +320,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
                 "core.error.cloud_setup.location_occupied"
             }
             BridgeCloudHomeSetupFailure::Network => "core.error.category.network",
+            BridgeCloudHomeSetupFailure::DeviceIdentityMissing => "core.error.identity_missing",
             BridgeCloudHomeSetupFailure::SecureStorage => "core.error.category.keyring",
             BridgeCloudHomeSetupFailure::Internal => "core.error.category.internal",
         },
@@ -442,6 +444,7 @@ impl BridgeCloudHomeSetupFailure {
             CloudHomeSetupFailure::InvalidConfiguration => Self::InvalidConfiguration,
             CloudHomeSetupFailure::LocationOccupied => Self::LocationOccupied,
             CloudHomeSetupFailure::Network => Self::Network,
+            CloudHomeSetupFailure::DeviceIdentityMissing => Self::DeviceIdentityMissing,
             CloudHomeSetupFailure::SecureStorage => Self::SecureStorage,
             CloudHomeSetupFailure::Internal => Self::Internal,
         }

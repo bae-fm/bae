@@ -81,6 +81,14 @@ internal sealed partial class StorageDialog
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown upload file state"),
     };
 
+    private static string UploadFileLabel(BridgeUploadFileLabel label) => label switch
+    {
+        BridgeUploadFileLabel.Filename filename => filename.Name,
+        BridgeUploadFileLabel.Cover => Loc.Core("core.import.role.cover"),
+        BridgeUploadFileLabel.ArtistImage => Loc.Core("core.outbox.file.artist_image"),
+        _ => throw new ArgumentOutOfRangeException(nameof(label), label, "Unknown upload file label"),
+    };
+
     // A file's byte text: "6.2 MB of 12.4 MB" while transferring; just the size
     // otherwise.
     private static string FileBytesLabel(BridgeUploadFileOp file)

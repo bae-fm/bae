@@ -20,8 +20,8 @@ pub use download_snapshot::{
 pub use local_lifecycle::remove_local_library;
 pub use manager::*;
 pub use outbox_snapshot::{
-    DeleteOp, OutboxSnapshot, UploadActivity, UploadFileOp, UploadProgress, UploadReleaseGroup,
-    UploadState,
+    DeleteOp, OutboxSnapshot, UploadActivity, UploadFileLabel, UploadFileOp, UploadProgress,
+    UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
 pub use release_queue::{CountLabel, ReleaseQueue};

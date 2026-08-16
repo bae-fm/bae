@@ -33,7 +33,7 @@ struct OutboxStoreHasPendingCloudWorkTests {
                     files: [
                         BridgeUploadFileOp(
                             fileId: "file-1",
-                            displayName: "01 Track Title.flac",
+                            label: .filename(name: "01 Track Title.flac"),
                             bytesDone: 0,
                             bytesTotal: 1000,
                             state: .queued,

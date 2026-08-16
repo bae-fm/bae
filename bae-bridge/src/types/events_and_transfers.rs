@@ -95,6 +95,15 @@ pub enum BridgeUploadFileState {
     Done,
 }
 
+/// The label for one queued upload. Source filenames cross the bridge as data;
+/// image roles cross as typed cases so each platform localizes them.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadFileLabel {
+    Filename { name: String },
+    Cover,
+    ArtistImage,
+}
+
 /// One cloud object still owed a removal.
 ///
 /// The row that named the object is gone — that is what makes the removal
@@ -384,9 +393,7 @@ pub struct BridgeOutputSnapshot {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
     pub file_id: String,
-    /// The file's original name, resolved by core (its cloud key / file id
-    /// when no release-file row backs it).
-    pub display_name: String,
+    pub label: BridgeUploadFileLabel,
     pub bytes_done: u64,
     pub bytes_total: u64,
     pub state: BridgeUploadFileState,

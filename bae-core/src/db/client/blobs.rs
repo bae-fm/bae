@@ -252,41 +252,80 @@ impl Database {
             .queued_uploads()
             .await?
             .iter()
-            .any(|upload| upload.table_name == "release_files" && upload.row_id == file_id))
+            .any(|upload| {
+                upload.blob.table() == crate::sync::RELEASE_FILES_NAMESPACE
+                    && upload.blob.row_id() == file_id
+            }))
     }
 
     /// What coven's durable cloud queue is holding, joined to the bae context the
     /// Storage Manager renders it with. Backs the processing snapshot.
     ///
     /// The two halves come from the two owners: coven reports every queued upload
-    /// and cloud tombstone (oldest first, surviving restarts), and bae looks up
-    /// the file name, size, and album title of each upload's `release_files` row.
-    /// An upload whose row has since gone keeps its place in the queue with no
-    /// context — it is still work owed to the cloud.
+    /// and cloud tombstone (oldest first, surviving restarts), and bae reads
+    /// display context from each upload's declared blob-bearing table. Missing
+    /// context is an invalid queue snapshot and is surfaced to the subscriber.
     pub async fn outbox_queue(&self) -> Result<DbOutboxQueue, DbError> {
         let uploads = self.inner.handle.queued_uploads().await?;
         let deletes = self.inner.handle.queued_deletes().await?;
 
-        let file_ids: Vec<String> = uploads.iter().map(|u| u.row_id.clone()).collect();
-        let context = self.outbox_upload_context(&file_ids).await?;
+        let release_file_ids: Vec<String> = uploads
+            .iter()
+            .filter(|upload| upload.blob.table() == crate::sync::RELEASE_FILES_NAMESPACE)
+            .map(|upload| upload.blob.row_id().to_string())
+            .collect();
+        let file_names = self.outbox_release_file_names(&release_file_ids).await?;
+        let release_ids: Vec<String> = uploads
+            .iter()
+            .map(|upload| {
+                if upload.root_table != "releases" {
+                    return Err(DbError::Message(format!(
+                        "queued upload root {}:{} is not a release",
+                        upload.root_table, upload.root_id
+                    )));
+                }
+                Ok(upload.root_id.clone())
+            })
+            .collect::<Result<_, DbError>>()?;
+        let album_titles = self.outbox_release_titles(&release_ids).await?;
 
         let uploads = uploads
             .into_iter()
             .map(|upload| {
-                let context = context.get(&upload.row_id);
+                let label = match upload.blob.table() {
+                    crate::sync::RELEASE_FILES_NAMESPACE => {
+                        let file_name = file_names.get(upload.blob.row_id()).ok_or_else(|| {
+                            DbError::Message(format!(
+                                "queued release file {} no longer has a database row",
+                                upload.blob.row_id()
+                            ))
+                        })?;
+                        crate::library::UploadFileLabel::Filename(file_name.clone())
+                    }
+                    crate::sync::COVERS_NAMESPACE => crate::library::UploadFileLabel::Cover,
+                    crate::sync::ARTIST_IMAGES_NAMESPACE => {
+                        crate::library::UploadFileLabel::ArtistImage
+                    }
+                    table => {
+                        return Err(DbError::Message(format!(
+                            "queued upload names undeclared blob table {table:?}"
+                        )));
+                    }
+                };
+                let release_id = upload.root_id;
+                let album_title = album_titles.get(&release_id).cloned().ok_or_else(|| {
+                    DbError::Message(format!(
+                        "queued upload release {release_id} no longer has an album title"
+                    ))
+                })?;
                 Ok(DbOutboxUpload {
-                    // `releases` is bae's only gated root, so every upload bae
-                    // enqueues names one. Anything else is a shape bae does not
-                    // produce; it renders in the ungrouped bucket rather than
-                    // being silently dropped from the queue.
-                    release_id: (upload.root_table == "releases").then_some(upload.root_id),
-                    file_id: upload.row_id,
+                    album_title: Some(album_title),
+                    release_id: Some(release_id),
+                    blob: upload.blob,
                     attempt_count: upload.attempt_count,
                     last_error: upload.last_error,
                     created_at: stamp_millis(&upload.created_at)?,
-                    file_name: context.map(|c| c.file_name.clone()),
-                    file_size: context.map(|c| c.file_size),
-                    album_title: context.and_then(|c| c.album_title.clone()),
+                    label,
                 })
             })
             .collect::<Result<Vec<_>, DbError>>()?;
@@ -305,13 +344,12 @@ impl Database {
         Ok(DbOutboxQueue { uploads, deletes })
     }
 
-    /// The queue-pane context for a batch of `release_files` ids: the file's
-    /// name and stored size, plus its release's album title. Ids with no row are
-    /// absent from the map.
-    async fn outbox_upload_context(
+    /// Original filenames for queued `release_files` rows. The queue already
+    /// declares each upload's table, so image rows never enter this lookup.
+    async fn outbox_release_file_names(
         &self,
         file_ids: &[String],
-    ) -> Result<HashMap<String, OutboxUploadContext>, DbError> {
+    ) -> Result<HashMap<String, String>, DbError> {
         if file_ids.is_empty() {
             return Ok(HashMap::new());
         }
@@ -321,25 +359,14 @@ impl Database {
             for chunk in file_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
                 let query = format!(
-                    "SELECT rf.id, rf.original_filename, rf.file_size, a.title \
+                    "SELECT rf.id, rf.original_filename \
                      FROM release_files rf \
-                     LEFT JOIN releases r ON r.id = rf.release_id \
-                     LEFT JOIN albums a ON a.id = r.album_id \
                      WHERE rf.id IN ({placeholders})"
                 );
                 let rows = sql.query(
                     &query,
                     coven::rusqlite::params_from_iter(chunk.iter()),
-                    |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            OutboxUploadContext {
-                                file_name: row.get(1)?,
-                                file_size: row.get(2)?,
-                                album_title: row.get(3)?,
-                            },
-                        ))
-                    },
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
                 )?;
                 map.extend(rows);
             }
@@ -347,15 +374,39 @@ impl Database {
         })
         .await
     }
-}
 
-/// The bae half of a queued upload's rendering: what its `release_files` row
-/// and that row's album say about it.
-#[derive(Debug, Clone)]
-struct OutboxUploadContext {
-    file_name: String,
-    file_size: i64,
-    album_title: Option<String>,
+    /// Album titles for the release roots coven groups uploads under. The title
+    /// belongs to the root, not to whichever audio/image row happens to be the
+    /// first queued upload.
+    async fn outbox_release_titles(
+        &self,
+        release_ids: &[String],
+    ) -> Result<HashMap<String, String>, DbError> {
+        if release_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let release_ids = release_ids.to_vec();
+        self.read(move |sql| {
+            let mut map = HashMap::new();
+            for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
+                let placeholders = in_clause_placeholders(chunk.len());
+                let query = format!(
+                    "SELECT r.id, a.title \
+                     FROM releases r \
+                     LEFT JOIN albums a ON a.id = r.album_id \
+                     WHERE r.id IN ({placeholders})"
+                );
+                let rows = sql.query(
+                    &query,
+                    coven::rusqlite::params_from_iter(chunk.iter()),
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                )?;
+                map.extend(rows);
+            }
+            Ok(map)
+        })
+        .await
+    }
 }
 
 /// coven stamps a queue entry's `created_at` with its HLC (`millis-counter-device`);

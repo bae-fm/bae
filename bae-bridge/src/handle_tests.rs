@@ -372,13 +372,19 @@ fn upload_file_op_flattens_state_into_fields() {
     let convert = |state: UploadState| {
         crate::types::BridgeUploadFileOp::from_core(UploadFileOp {
             file_id: "file-1".into(),
-            display_name: "01 Track Title.flac".into(),
+            label: bae_core::library::UploadFileLabel::Filename("01 Track Title.flac".into()),
             bytes_total: 1000,
             state,
         })
     };
 
     let queued = convert(UploadState::Queued);
+    assert_eq!(
+        queued.label,
+        crate::types::BridgeUploadFileLabel::Filename {
+            name: "01 Track Title.flac".into()
+        }
+    );
     assert_eq!(queued.state, BridgeUploadFileState::Queued);
     assert_eq!((queued.bytes_done, queued.last_error), (0, None));
 

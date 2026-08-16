@@ -397,6 +397,7 @@ fn every_cloud_setup_failure_keeps_its_exact_user_action() {
         F::InvalidConfiguration,
         F::LocationOccupied,
         F::Network,
+        F::DeviceIdentityMissing,
         F::SecureStorage,
         F::Internal,
     ] {

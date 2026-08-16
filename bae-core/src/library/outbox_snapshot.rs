@@ -20,11 +20,44 @@
 
 use std::collections::{HashMap, HashSet};
 
-use tracing::debug;
-
 use crate::db::DbOutboxQueue;
 use crate::library::upload_sessions::UploadSessions;
 use crate::library::upload_throughput::UploadThroughput;
+
+/// One immutable cloud blob identity. A row can be repointed at a replacement
+/// blob, so upload progress and completion follow the namespace and blob id,
+/// not the row that happens to reference it.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct UploadBlobKey {
+    namespace: String,
+    blob_id: String,
+}
+
+impl UploadBlobKey {
+    pub(crate) fn new(namespace: impl Into<String>, blob_id: impl Into<String>) -> Self {
+        Self {
+            namespace: namespace.into(),
+            blob_id: blob_id.into(),
+        }
+    }
+
+    pub(crate) fn from_row(blob: &coven::RowBlobRef) -> Self {
+        Self::new(blob.blob().namespace.clone(), blob.blob().id.clone())
+    }
+
+    fn stable_id(&self) -> String {
+        format!("{}:{}", self.namespace, self.blob_id)
+    }
+}
+
+/// What the queue calls one uploaded object. Filenames are source data; image
+/// kinds are localized by each platform from their typed case.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UploadFileLabel {
+    Filename(String),
+    Cover,
+    ArtistImage,
+}
 
 /// What an upload is doing right now — derived from the row, the in-flight map,
 /// and the completed tally; never stored. `Active`'s `bytes_done` is the live count
@@ -140,9 +173,7 @@ impl UploadProgress {
 #[derive(Debug, Clone)]
 pub struct UploadFileOp {
     pub file_id: String,
-    /// The file's original name, or its cloud key / file id when no
-    /// release-file row backs it.
-    pub display_name: String,
+    pub label: UploadFileLabel,
     pub bytes_total: u64,
     pub state: UploadState,
 }
@@ -257,7 +288,7 @@ impl GroupBuilder {
     }
 }
 
-/// Build the snapshot from coven's queue, the in-flight upload map (file_id →
+/// Build the snapshot from coven's queue, the in-flight upload map (blob-bearing row →
 /// live `bytes_done`), the completed-upload tallies for this burst, the
 /// rolling-window throughput tracker, and the user-driven pause flag.
 ///
@@ -269,7 +300,7 @@ impl GroupBuilder {
 /// mutation path funnels through, so stale done-rows cannot survive it.
 pub(crate) fn build_outbox_snapshot(
     queue: DbOutboxQueue,
-    in_flight: &HashMap<String, u64>,
+    in_flight: &HashMap<UploadBlobKey, u64>,
     sessions: &UploadSessions,
     throughput: &UploadThroughput,
     paused: bool,
@@ -293,18 +324,19 @@ pub(crate) fn build_outbox_snapshot(
         .collect();
     let mut groups: Vec<GroupBuilder> = Vec::new();
     let mut group_index: HashMap<Option<String>, usize> = HashMap::new();
-    let mut done_ids: HashSet<String> = HashSet::new();
+    let mut done_blobs: HashSet<UploadBlobKey> = HashSet::new();
 
     // Completed files first: they anchor their groups in completion order, so
     // a release that finished stays at the top while later ones drain.
     for (release_id, done_files) in sessions.tallies() {
         let mut group = GroupBuilder::new(release_id.clone());
-        for file in done_files {
-            done_ids.insert(file.file_id.clone());
+        for upload in done_files {
+            let blob_key = UploadBlobKey::from_row(&upload.blob);
+            done_blobs.insert(blob_key.clone());
             group.push(UploadFileOp {
-                file_id: file.file_id,
-                display_name: file.display_name,
-                bytes_total: file.bytes,
+                file_id: blob_key.stable_id(),
+                label: upload.label,
+                bytes_total: upload.blob.plaintext_size(),
                 state: UploadState::Done,
             });
         }
@@ -317,11 +349,12 @@ pub(crate) fn build_outbox_snapshot(
         // post-upload commit consumes it. Deriving it too would double-count the
         // file, and deriving it as queued would announce a completed upload as
         // fresh work.
-        if done_ids.contains(&upload.file_id) {
+        let blob_key = UploadBlobKey::from_row(&upload.blob);
+        if done_blobs.contains(&blob_key) {
             continue;
         }
-        let bytes_total = upload.file_size.unwrap_or(0) as u64;
-        let state = if let Some(&live) = in_flight.get(&upload.file_id) {
+        let bytes_total = upload.blob.plaintext_size();
+        let state = if let Some(&live) = in_flight.get(&blob_key) {
             // The reported count is of the encrypted payload, which can edge
             // just past the stored plaintext size; clamp it so the bar never
             // exceeds 100% or skews the ETA math.
@@ -332,17 +365,6 @@ pub(crate) fn build_outbox_snapshot(
             UploadState::Failed { last_error }
         } else {
             UploadState::Queued
-        };
-        let display_name = match upload.file_name {
-            Some(name) => name,
-            None => {
-                debug!(
-                    file_id = upload.file_id,
-                    "queued upload has no backing release_files row; \
-                     showing its file id as the label"
-                );
-                upload.file_id.clone()
-            }
         };
         let idx = *group_index
             .entry(upload.release_id.clone())
@@ -355,8 +377,8 @@ pub(crate) fn build_outbox_snapshot(
             group.display_title = upload.album_title;
         }
         group.push(UploadFileOp {
-            file_id: upload.file_id,
-            display_name,
+            file_id: blob_key.stable_id(),
+            label: upload.label,
             bytes_total,
             state,
         });
@@ -371,20 +393,9 @@ pub(crate) fn build_outbox_snapshot(
         // the backstop.
         .filter(|group| group.progress.has_pending())
         .map(|group| {
-            // Every rendered group has a pending row, so the album title normally
-            // arrives on the row join. The fallback labels the orphaned bucket (no
-            // backing release) by its first file, as the per-file case above does.
-            let display_title = group.display_title.unwrap_or_else(|| {
-                debug!(
-                    release_id = ?group.release_id,
-                    "outbox upload group has no album title; labelling by file name"
-                );
-                group
-                    .files
-                    .first()
-                    .map(|f| f.display_name.clone())
-                    .unwrap_or_default()
-            });
+            let display_title = group
+                .display_title
+                .expect("every queued release upload has its album title");
             UploadReleaseGroup {
                 release_id: group.release_id,
                 display_title,
@@ -429,13 +440,45 @@ pub(crate) fn build_outbox_snapshot(
 mod tests {
     use super::*;
     use crate::db::{DbOutboxDelete, DbOutboxUpload};
-    use crate::library::upload_sessions::DoneFile;
+    use crate::library::upload_sessions::DoneUpload;
 
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const SMALL_FILE: &str = "00415c7f-b363-4ed9-8aad-422b93e974e9";
     const LARGE_FILE: &str = "357d9eb4-a021-4555-8713-0bc652d83c65";
     const OTHER_RELEASE: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
     const OTHER_FILE: &str = "36ebe9b3-749f-4638-82b2-57cba256ff68";
+
+    fn row_blob(
+        table: &str,
+        row_id: &str,
+        namespace: &str,
+        blob_id: &str,
+        plaintext_size: u64,
+    ) -> coven::RowBlobRef {
+        coven::RowBlobRef::new(
+            table.to_string(),
+            row_id.to_string(),
+            "0000000001000-0000-device-a".to_string(),
+            "blob_id".to_string(),
+            coven::BlobRef {
+                namespace: namespace.to_string(),
+                id: blob_id.to_string(),
+                scope: coven::BlobScope::Master,
+                cloud_path: None,
+                provenance: coven::Provenance::HostProvided,
+                fill: coven::CacheFill::CacheEager,
+            },
+            plaintext_size,
+            coven::ObjectHash::digest(blob_id.as_bytes()),
+            coven::RowBlobAuthority::Local,
+            None,
+        )
+        .expect("valid queued test blob")
+    }
+
+    fn upload_id(namespace: &str, blob_id: &str) -> String {
+        format!("{namespace}:{blob_id}")
+    }
 
     fn progress(queued: u32, active: u32, failed: u32, done: u32) -> UploadProgress {
         UploadProgress {
@@ -490,22 +533,27 @@ mod tests {
         }
     }
 
-    fn queued_upload(file_id: &str, file_name: &str, file_size: i64) -> DbOutboxUpload {
+    fn queued_upload(file_id: &str, file_name: &str, file_size: u64) -> DbOutboxUpload {
         DbOutboxUpload {
             release_id: Some(RELEASE.to_string()),
-            file_id: file_id.to_string(),
+            blob: row_blob(
+                crate::sync::RELEASE_FILES_NAMESPACE,
+                file_id,
+                crate::sync::RELEASE_FILES_NAMESPACE,
+                file_id,
+                file_size,
+            ),
             attempt_count: 0,
             last_error: None,
             created_at: 1_700_000_000_000,
-            file_name: Some(file_name.to_string()),
-            file_size: Some(file_size),
+            label: UploadFileLabel::Filename(file_name.to_string()),
             album_title: Some("Album Title".to_string()),
         }
     }
 
     fn build(
         queue: DbOutboxQueue,
-        in_flight: &HashMap<String, u64>,
+        in_flight: &HashMap<UploadBlobKey, u64>,
         sessions: &UploadSessions,
     ) -> OutboxSnapshot {
         build_outbox_snapshot(queue, in_flight, sessions, &UploadThroughput::new(), false)
@@ -525,7 +573,10 @@ mod tests {
         assert_eq!(group.release_id.as_deref(), Some(RELEASE));
         assert_eq!(group.display_title, "Album Title");
         assert_eq!(group.files.len(), 2);
-        assert_eq!(group.files[0].display_name, "01 Track Title.flac");
+        assert_eq!(
+            group.files[0].label,
+            UploadFileLabel::Filename("01 Track Title.flac".to_string())
+        );
         assert_eq!(group.files[0].state, UploadState::Queued);
         // Aggregate progress: both queued, summed bytes (100 + 1000).
         assert_eq!(group.progress.queued, 2);
@@ -537,7 +588,10 @@ mod tests {
     fn live_bytes_ride_the_active_file_and_the_totals() {
         // The large file is uploading right now (250 of 1000 bytes done); the
         // small file is still queued.
-        let in_flight = HashMap::from([(LARGE_FILE.to_string(), 250u64)]);
+        let in_flight = HashMap::from([(
+            UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+            250u64,
+        )]);
         let snapshot = build(two_queued_uploads(), &in_flight, &UploadSessions::new());
 
         assert_eq!(snapshot.total.bytes_total, 1100);
@@ -549,9 +603,58 @@ mod tests {
         let active = group
             .files
             .iter()
-            .find(|f| f.file_id == LARGE_FILE)
+            .find(|f| f.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE))
             .expect("active file listed");
         assert_eq!(active.state, UploadState::Active { bytes_done: 250 });
+    }
+
+    /// Row ids do not identify immutable bytes. A cover whose row id equals an
+    /// audio file's id must not make that audio blob active or completed.
+    #[test]
+    fn upload_state_uses_the_blob_bearing_table_and_row() {
+        let shared_row_id = SMALL_FILE;
+        let cover_blob_id = "8ff02583-dd77-47e0-9db5-8be5a7295729";
+        let mut queue = DbOutboxQueue {
+            uploads: vec![
+                queued_upload(shared_row_id, "01 Track Title.flac", 100),
+                DbOutboxUpload {
+                    blob: row_blob(
+                        crate::sync::COVERS_NAMESPACE,
+                        shared_row_id,
+                        crate::sync::COVERS_NAMESPACE,
+                        cover_blob_id,
+                        20,
+                    ),
+                    label: UploadFileLabel::Cover,
+                    ..queued_upload(shared_row_id, "unused", 0)
+                },
+            ],
+            deletes: Vec::new(),
+        };
+        queue.uploads[1].release_id = Some(RELEASE.to_string());
+        let in_flight = HashMap::from([(
+            UploadBlobKey::new(crate::sync::COVERS_NAMESPACE, cover_blob_id),
+            10,
+        )]);
+
+        let snapshot = build(queue, &in_flight, &UploadSessions::new());
+
+        let audio = snapshot.upload_groups[0]
+            .files
+            .iter()
+            .find(|upload| {
+                upload.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, shared_row_id)
+            })
+            .expect("audio upload");
+        assert_eq!(audio.state, UploadState::Queued);
+        let cover = snapshot.upload_groups[0]
+            .files
+            .iter()
+            .find(|upload| {
+                upload.file_id == upload_id(crate::sync::COVERS_NAMESPACE, cover_blob_id)
+            })
+            .expect("cover upload");
+        assert_eq!(cover.state, UploadState::Active { bytes_done: 10 });
     }
 
     /// A queue entry coven has recorded a failed attempt on derives as `Failed`,
@@ -574,38 +677,13 @@ mod tests {
         let failed = snapshot.upload_groups[0]
             .files
             .iter()
-            .find(|f| f.file_id == LARGE_FILE)
+            .find(|f| f.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE))
             .expect("failed file listed");
         assert_eq!(
             failed.state,
             UploadState::Failed {
                 last_error: "boom".to_string()
             }
-        );
-    }
-
-    /// An upload whose `release_files` row is gone still holds its place in the
-    /// queue — labelled by its file id, since there is no filename left.
-    #[test]
-    fn an_upload_with_no_backing_row_is_labelled_by_its_file_id() {
-        let queue = DbOutboxQueue {
-            uploads: vec![DbOutboxUpload {
-                file_name: None,
-                file_size: None,
-                album_title: None,
-                ..queued_upload(SMALL_FILE, "unused", 0)
-            }],
-            deletes: Vec::new(),
-        };
-
-        let snapshot = build(queue, &HashMap::new(), &UploadSessions::new());
-
-        let group = &snapshot.upload_groups[0];
-        assert_eq!(group.files[0].display_name, SMALL_FILE);
-        assert_eq!(group.files[0].bytes_total, 0);
-        assert_eq!(
-            group.display_title, SMALL_FILE,
-            "with no album title the group falls back to its first file's label"
         );
     }
 
@@ -647,10 +725,15 @@ mod tests {
         let sessions = UploadSessions::new();
         sessions.record_done(
             Some(RELEASE.to_string()),
-            DoneFile {
-                file_id: SMALL_FILE.to_string(),
-                display_name: "01 Track Title.flac".into(),
-                bytes: 100,
+            DoneUpload {
+                blob: row_blob(
+                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    SMALL_FILE,
+                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    SMALL_FILE,
+                    100,
+                ),
+                label: UploadFileLabel::Filename("01 Track Title.flac".into()),
             },
         );
         let snapshot = build(two_queued_uploads(), &HashMap::new(), &sessions);
@@ -660,7 +743,7 @@ mod tests {
         let done = group
             .files
             .iter()
-            .find(|f| f.file_id == SMALL_FILE)
+            .find(|f| f.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE))
             .expect("done file listed");
         assert_eq!(done.state, UploadState::Done);
         assert_eq!(group.progress.done, 1);
@@ -690,10 +773,15 @@ mod tests {
         for (id, bytes) in [(SMALL_FILE, 100u64), (LARGE_FILE, 1000u64)] {
             sessions.record_done(
                 Some(RELEASE.to_string()),
-                DoneFile {
-                    file_id: id.to_string(),
-                    display_name: id.to_string(),
-                    bytes,
+                DoneUpload {
+                    blob: row_blob(
+                        crate::sync::RELEASE_FILES_NAMESPACE,
+                        id,
+                        crate::sync::RELEASE_FILES_NAMESPACE,
+                        id,
+                        bytes,
+                    ),
+                    label: UploadFileLabel::Filename(id.to_string()),
                 },
             );
         }
@@ -717,10 +805,15 @@ mod tests {
         let sessions = UploadSessions::new();
         sessions.record_done(
             Some(RELEASE.to_string()),
-            DoneFile {
-                file_id: SMALL_FILE.to_string(),
-                display_name: "01 Track Title.flac".into(),
-                bytes: 100,
+            DoneUpload {
+                blob: row_blob(
+                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    SMALL_FILE,
+                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    SMALL_FILE,
+                    100,
+                ),
+                label: UploadFileLabel::Filename("01 Track Title.flac".into()),
             },
         );
         let snapshot = build(DbOutboxQueue::default(), &HashMap::new(), &sessions);

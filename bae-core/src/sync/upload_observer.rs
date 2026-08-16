@@ -25,7 +25,7 @@ use tracing::{debug, warn};
 pub(crate) enum UploadObserverEvent {
     OutboxChanged,
     BlobUploaded {
-        file_id: String,
+        blob: coven::RowBlobRef,
         already_counted: u64,
     },
     ReleaseMadeRemote {
@@ -84,7 +84,7 @@ impl UploadObserverEvents {
 /// rate. Database-backed projection work is sent to the sync controller rather
 /// than retaining or exposing its database.
 pub struct ReleaseUploadObserver {
-    in_flight: Arc<Mutex<HashMap<String, u64>>>,
+    in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
     events: mpsc::UnboundedSender<UploadObserverMessage>,
@@ -92,7 +92,7 @@ pub struct ReleaseUploadObserver {
 
 impl ReleaseUploadObserver {
     pub(crate) fn new(
-        in_flight: Arc<Mutex<HashMap<String, u64>>>,
+        in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
     ) -> (Self, UploadObserverEvents) {
@@ -125,19 +125,29 @@ impl ReleaseUploadObserver {
     }
 }
 
+fn upload_blob_key(upload: &coven::RowBlobRef) -> crate::library::outbox_snapshot::UploadBlobKey {
+    crate::library::outbox_snapshot::UploadBlobKey::from_row(upload)
+}
+
 #[async_trait::async_trait]
 impl coven::BlobTransitionObserver for ReleaseUploadObserver {
-    async fn on_blob_upload_started(&self, file_id: &str) {
+    async fn on_blob_upload_started(&self, upload: &coven::RowBlobRef) {
         {
             self.in_flight
                 .lock()
                 .unwrap()
-                .insert(file_id.to_string(), 0);
+                .insert(upload_blob_key(upload), 0);
         }
         self.report(UploadObserverEvent::OutboxChanged).await;
     }
 
-    async fn on_blob_upload_progress(&self, file_id: &str, bytes_done: u64, _bytes_total: u64) {
+    async fn on_blob_upload_progress(
+        &self,
+        upload: &coven::RowBlobRef,
+        bytes_done: u64,
+        _bytes_total: u64,
+    ) {
+        let blob_key = upload_blob_key(upload);
         // Feed the throughput tracker only the bytes new since the last report.
         // coven coalesces these calls to a tick, so each is already throttled —
         // emit the snapshot on every one to move the bar. The counts are
@@ -145,7 +155,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         // late or duplicate report.
         let delta = {
             let mut map = self.in_flight.lock().unwrap();
-            match map.get_mut(file_id) {
+            match map.get_mut(&blob_key) {
                 Some(prev) => {
                     let delta = bytes_done.saturating_sub(*prev);
                     *prev = bytes_done;
@@ -156,7 +166,9 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                 // isn't fully invisible.
                 None => {
                     debug!(
-                        "upload progress for {file_id} after it left the in-flight set; ignoring"
+                        table_name = upload.table(),
+                        row_id = upload.row_id(),
+                        "upload progress arrived after the row left the in-flight set; ignoring"
                     );
                     return;
                 }
@@ -168,35 +180,45 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         self.report(UploadObserverEvent::OutboxChanged).await;
     }
 
-    async fn on_blob_uploaded(&self, file_id: &str) {
+    async fn on_blob_uploaded(&self, upload: &coven::RowBlobRef) {
         // Credit any bytes no progress report counted (a small file that uploaded
         // between coalescing ticks, or the tail past the last report) so the
         // throughput tracker sees the whole file. coven's counts are of the
         // encrypted payload, a few bytes larger than `file_size`, but the rolling
         // rate is approximate so the discrepancy doesn't matter. coven, not bae,
         // flips the gate — this is a notification only.
-        let already_counted = match self.in_flight.lock().unwrap().remove(file_id) {
+        let already_counted = match self
+            .in_flight
+            .lock()
+            .unwrap()
+            .remove(&upload_blob_key(upload))
+        {
             Some(counted) => counted,
             // The file completed without an in-flight entry (no `started`/progress
             // seen — e.g. a tiny file). Credit its whole size below; note it so the
             // missing lifecycle isn't silent.
             None => {
                 debug!(
-                    "upload of {file_id} completed with no in-flight entry; crediting full size"
+                    table_name = upload.table(),
+                    row_id = upload.row_id(),
+                    "upload completed with no in-flight entry; crediting full size"
                 );
                 0
             }
         };
         self.report(UploadObserverEvent::BlobUploaded {
-            file_id: file_id.to_string(),
+            blob: upload.clone(),
             already_counted,
         })
         .await;
     }
 
-    async fn on_blob_upload_failed(&self, file_id: &str, _error: &str) {
+    async fn on_blob_upload_failed(&self, upload: &coven::RowBlobRef, _error: &str) {
         {
-            self.in_flight.lock().unwrap().remove(file_id);
+            self.in_flight
+                .lock()
+                .unwrap()
+                .remove(&upload_blob_key(upload));
         }
         // coven's drain records the attempt count and the error on its own
         // queue entry; the snapshot we emit here reads them back.
@@ -265,29 +287,34 @@ impl WeakUploadObserver {
 
 #[async_trait::async_trait]
 impl BlobTransitionObserver for WeakUploadObserver {
-    async fn on_blob_upload_started(&self, file_id: &str) {
+    async fn on_blob_upload_started(&self, blob: &coven::RowBlobRef) {
         if let Some(observer) = self.inner.upgrade() {
-            observer.on_blob_upload_started(file_id).await;
+            observer.on_blob_upload_started(blob).await;
         }
     }
 
-    async fn on_blob_upload_progress(&self, file_id: &str, bytes_done: u64, bytes_total: u64) {
+    async fn on_blob_upload_progress(
+        &self,
+        blob: &coven::RowBlobRef,
+        bytes_done: u64,
+        bytes_total: u64,
+    ) {
         if let Some(observer) = self.inner.upgrade() {
             observer
-                .on_blob_upload_progress(file_id, bytes_done, bytes_total)
+                .on_blob_upload_progress(blob, bytes_done, bytes_total)
                 .await;
         }
     }
 
-    async fn on_blob_uploaded(&self, file_id: &str) {
+    async fn on_blob_uploaded(&self, blob: &coven::RowBlobRef) {
         if let Some(observer) = self.inner.upgrade() {
-            observer.on_blob_uploaded(file_id).await;
+            observer.on_blob_uploaded(blob).await;
         }
     }
 
-    async fn on_blob_upload_failed(&self, file_id: &str, error: &str) {
+    async fn on_blob_upload_failed(&self, blob: &coven::RowBlobRef, error: &str) {
         if let Some(observer) = self.inner.upgrade() {
-            observer.on_blob_upload_failed(file_id, error).await;
+            observer.on_blob_upload_failed(blob, error).await;
         }
     }
 

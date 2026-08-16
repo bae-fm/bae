@@ -513,7 +513,7 @@ internal sealed partial class StorageDialog
                 {
                     var fileGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
                     var fileColumn = new StackPanel { Spacing = 2 };
-                    fileColumn.Children.Add(Primary($"{file.DisplayName} · {FileBytesLabel(file)}"));
+                    fileColumn.Children.Add(Primary($"{UploadFileLabel(file.Label)} · {FileBytesLabel(file)}"));
                     if (file.State == BridgeUploadFileState.Uploading && file.BytesTotal > 0)
                     {
                         fileColumn.Children.Add(new ProgressBar

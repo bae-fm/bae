@@ -33,6 +33,9 @@ mod loc_key_coverage {
         "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",
+        // Upload rows localize typed image kinds; original filenames render
+        // verbatim and covers reuse the file-role cover key.
+        "core.outbox.file.artist_image",
         // Album total playing time: the UI switches on `BridgeDurationUnits` and
         // composes the hours and minutes words through the join pattern.
         "core.duration.hours",
@@ -429,6 +432,9 @@ mod loc_key_coverage {
                 failure: BridgeCloudHomeSetupFailure::Network,
             },
             BridgeErrorCategory::CloudSetup {
+                failure: BridgeCloudHomeSetupFailure::DeviceIdentityMissing,
+            },
+            BridgeErrorCategory::CloudSetup {
                 failure: BridgeCloudHomeSetupFailure::SecureStorage,
             },
             BridgeErrorCategory::CloudSetup {
@@ -471,6 +477,9 @@ mod loc_key_coverage {
                         "core.error.cloud_setup.location_occupied"
                     }
                     BridgeCloudHomeSetupFailure::Network => "core.error.category.network",
+                    BridgeCloudHomeSetupFailure::DeviceIdentityMissing => {
+                        "core.error.identity_missing"
+                    }
                     BridgeCloudHomeSetupFailure::SecureStorage => "core.error.category.keyring",
                     BridgeCloudHomeSetupFailure::Internal => "core.error.category.internal",
                 },
@@ -696,6 +705,10 @@ mod conversion_roundtrip {
                 BridgeCloudHomeSetupFailure::LocationOccupied,
             ),
             (Core::Network, BridgeCloudHomeSetupFailure::Network),
+            (
+                Core::DeviceIdentityMissing,
+                BridgeCloudHomeSetupFailure::DeviceIdentityMissing,
+            ),
             (
                 Core::SecureStorage,
                 BridgeCloudHomeSetupFailure::SecureStorage,

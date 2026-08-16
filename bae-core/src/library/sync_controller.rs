@@ -44,10 +44,10 @@ pub(crate) struct SyncController {
     config_handle: Arc<ConfigHandle>,
     outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
     database: Database,
-    /// `file_id`s whose upload is in flight right now, mapped to the live count
-    /// of encrypted bytes that have reached the cloud for that file. Shared with
+    /// Exact blob-bearing rows whose upload is in flight right now, mapped to
+    /// the live count of encrypted bytes that have reached the cloud. Shared with
     /// the sync loop's `ReleaseUploadObserver`. Read by `outbox_snapshot`.
-    outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
+    outbox_in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
     /// Per-release tallies of uploads completed during the current queue burst.
     /// The observer records completions; the snapshot builder merges them with
     /// the remaining rows and clears them when the queue idles.
@@ -69,7 +69,7 @@ impl SyncController {
         config_handle: Arc<ConfigHandle>,
         outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
         database: Database,
-        outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
+        outbox_in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
         upload_sessions: Arc<crate::library::UploadSessions>,
         upload_throughput: Arc<UploadThroughput>,
         sync_paused: Arc<AtomicBool>,
@@ -100,15 +100,23 @@ impl SyncController {
 
     #[cfg(test)]
     pub(crate) fn set_upload_progress_for_test(&self, file_id: &str, bytes_done: u64) {
-        self.outbox_in_flight
-            .lock()
-            .unwrap()
-            .insert(file_id.to_string(), bytes_done);
+        self.outbox_in_flight.lock().unwrap().insert(
+            crate::library::outbox_snapshot::UploadBlobKey::new(
+                crate::sync::RELEASE_FILES_NAMESPACE,
+                file_id,
+            ),
+            bytes_done,
+        );
     }
 
     #[cfg(test)]
     pub(crate) fn clear_upload_progress_for_test(&self, file_id: &str) {
-        self.outbox_in_flight.lock().unwrap().remove(file_id);
+        self.outbox_in_flight.lock().unwrap().remove(
+            &crate::library::outbox_snapshot::UploadBlobKey::new(
+                crate::sync::RELEASE_FILES_NAMESPACE,
+                file_id,
+            ),
+        );
     }
 
     #[cfg(test)]
@@ -177,49 +185,61 @@ impl SyncController {
     }
 
     pub(super) async fn process_upload_observer_event(&self, event: UploadObserverEvent) {
-        match event {
-            UploadObserverEvent::OutboxChanged => {}
+        let result = match event {
+            UploadObserverEvent::OutboxChanged => Ok(()),
             UploadObserverEvent::BlobUploaded {
-                file_id,
+                blob,
                 already_counted,
-            } => self.record_uploaded_blob(&file_id, already_counted).await,
+            } => self.record_uploaded_blob(blob, already_counted).await,
             UploadObserverEvent::ReleaseMadeRemote { release_id } => {
                 self.upload_sessions.clear_group(Some(&release_id));
+                Ok(())
             }
-            UploadObserverEvent::ReleaseMadeLocal => {}
+            UploadObserverEvent::ReleaseMadeLocal => Ok(()),
+        };
+        if let Err(error) = result {
+            warn!(%error, "Failed to record a completed cloud upload");
+            self.outbox_values
+                .send_replace(Some(Err(error.to_string())));
+            return;
         }
         self.emit_outbox_changed().await;
     }
 
-    async fn record_uploaded_blob(&self, file_id: &str, already_counted: u64) {
-        match self.database.find_file_by_id(file_id).await {
-            Ok(Some(file)) => {
-                let remaining = (file.file_size as u64).saturating_sub(already_counted);
-                if remaining > 0 {
-                    self.upload_throughput.record(remaining);
-                }
-                self.upload_sessions.record_done(
-                    Some(file.release_id),
-                    crate::library::upload_sessions::DoneFile {
-                        file_id: file_id.to_string(),
-                        display_name: file.original_filename,
-                        bytes: file.file_size as u64,
-                    },
-                );
-            }
-            Ok(None) => {
-                warn!("on_blob_uploaded: no file row for {file_id}; tallying unattributed");
-                self.upload_sessions.record_done(
-                    None,
-                    crate::library::upload_sessions::DoneFile {
-                        file_id: file_id.to_string(),
-                        display_name: file_id.to_string(),
-                        bytes: already_counted,
-                    },
-                );
-            }
-            Err(error) => warn!("on_blob_uploaded: looking up {file_id}: {error}"),
+    async fn record_uploaded_blob(
+        &self,
+        blob: coven::RowBlobRef,
+        already_counted: u64,
+    ) -> Result<(), coven::DbError> {
+        let remaining = blob.plaintext_size().saturating_sub(already_counted);
+        if remaining > 0 {
+            self.upload_throughput.record(remaining);
         }
+
+        let queued = self
+            .database
+            .outbox_queue()
+            .await?
+            .uploads
+            .into_iter()
+            .find(|queued| queued.blob == blob)
+            .ok_or_else(|| {
+                coven::DbError::Message(format!(
+                    "completed upload {}:{} for {}/{} is absent from the durable queue",
+                    blob.table(),
+                    blob.row_id(),
+                    blob.blob().namespace,
+                    blob.blob().id,
+                ))
+            })?;
+        self.upload_sessions.record_done(
+            queued.release_id,
+            crate::library::upload_sessions::DoneUpload {
+                blob,
+                label: queued.label,
+            },
+        );
+        Ok(())
     }
 
     /// The library's membership: its devices (with this device flagged, each
@@ -369,7 +389,7 @@ impl SyncController {
             _ => {
                 return Err(LibraryError::Internal(
                     "provider does not use OAuth sign-in".to_string(),
-                ))
+                ));
             }
         }
         let mut proposed = self.config_handle.config().cloud_home.clone();

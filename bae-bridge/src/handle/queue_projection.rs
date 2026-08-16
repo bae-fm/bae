@@ -52,7 +52,7 @@ impl crate::types::BridgeUploadFileOp {
         use bae_core::library::UploadState;
         let bae_core::library::UploadFileOp {
             file_id,
-            display_name,
+            label,
             bytes_total,
             state,
         } = f;
@@ -72,11 +72,21 @@ impl crate::types::BridgeUploadFileOp {
         };
         Self {
             file_id,
-            display_name,
+            label: crate::types::BridgeUploadFileLabel::from_core(label),
             bytes_done,
             bytes_total,
             state,
             last_error,
+        }
+    }
+}
+
+impl crate::types::BridgeUploadFileLabel {
+    fn from_core(label: bae_core::library::UploadFileLabel) -> Self {
+        match label {
+            bae_core::library::UploadFileLabel::Filename(name) => Self::Filename { name },
+            bae_core::library::UploadFileLabel::Cover => Self::Cover,
+            bae_core::library::UploadFileLabel::ArtistImage => Self::ArtistImage,
         }
     }
 }

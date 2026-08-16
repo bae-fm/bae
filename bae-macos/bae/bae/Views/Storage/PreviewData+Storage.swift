@@ -149,7 +149,7 @@
         static let uploadFileOps: [BridgeUploadFileOp] = [
             BridgeUploadFileOp(
                 fileId: "f-1",
-                displayName: "01 Track Title.flac",
+                label: .cover,
                 bytesDone: 24_000_000,
                 bytesTotal: 24_000_000,
                 state: .done,
@@ -157,7 +157,7 @@
             ),
             BridgeUploadFileOp(
                 fileId: "f-2",
-                displayName: "02 Track Title.flac",
+                label: .filename(name: "02 Track Title.flac"),
                 bytesDone: 31_000_000,
                 bytesTotal: 31_000_000,
                 state: .done,
@@ -165,7 +165,7 @@
             ),
             BridgeUploadFileOp(
                 fileId: "f-3",
-                displayName: "03 Track Title.flac",
+                label: .filename(name: "03 Track Title.flac"),
                 bytesDone: 12_400_000,
                 bytesTotal: 28_000_000,
                 state: .uploading,
@@ -173,7 +173,7 @@
             ),
             BridgeUploadFileOp(
                 fileId: "f-4",
-                displayName: "04 Track Title.flac",
+                label: .filename(name: "04 Track Title.flac"),
                 bytesDone: 0,
                 bytesTotal: 26_000_000,
                 state: .retrying,
@@ -181,7 +181,7 @@
             ),
             BridgeUploadFileOp(
                 fileId: "f-5",
-                displayName: "05 Track Title.flac",
+                label: .filename(name: "05 Track Title.flac"),
                 bytesDone: 0,
                 bytesTotal: 22_000_000,
                 state: .queued,
@@ -217,7 +217,7 @@
             files: [
                 BridgeUploadFileOp(
                     fileId: "g-1",
-                    displayName: "01 Track Title.flac",
+                    label: .filename(name: "01 Track Title.flac"),
                     bytesDone: 18_000_000,
                     bytesTotal: 18_000_000,
                     state: .done,

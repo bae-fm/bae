@@ -374,9 +374,14 @@ impl LibraryManager {
 
     #[cfg(test)]
     pub(crate) async fn observe_blob_upload_started_for_test(&self, file_id: &str) {
+        let blob = self
+            .database
+            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+            .await
+            .unwrap();
         coven::BlobTransitionObserver::on_blob_upload_started(
             self._upload_observer.as_ref(),
-            file_id,
+            &blob,
         )
         .await;
     }
@@ -388,9 +393,14 @@ impl LibraryManager {
         bytes_done: u64,
         bytes_total: u64,
     ) {
+        let blob = self
+            .database
+            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+            .await
+            .unwrap();
         coven::BlobTransitionObserver::on_blob_upload_progress(
             self._upload_observer.as_ref(),
-            file_id,
+            &blob,
             bytes_done,
             bytes_total,
         )
@@ -399,7 +409,12 @@ impl LibraryManager {
 
     #[cfg(test)]
     pub(crate) async fn observe_blob_uploaded_for_test(&self, file_id: &str) {
-        coven::BlobTransitionObserver::on_blob_uploaded(self._upload_observer.as_ref(), file_id)
+        let blob = self
+            .database
+            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+            .await
+            .unwrap();
+        coven::BlobTransitionObserver::on_blob_uploaded(self._upload_observer.as_ref(), &blob)
             .await;
     }
 

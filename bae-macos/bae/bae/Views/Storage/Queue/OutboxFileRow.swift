@@ -14,7 +14,7 @@ struct OutboxFileRow: View {
             stateIcon
                 .frame(width: 16)
 
-            Text(file.displayName)
+            Text(displayName)
                 .font(.caption)
                 .lineLimit(1)
                 .foregroundStyle(.secondary)
@@ -35,6 +35,17 @@ struct OutboxFileRow: View {
         .padding(.leading, 44)
         .padding(.trailing)
         .padding(.vertical, 3)
+    }
+
+    private var displayName: String {
+        switch file.label {
+        case .filename(let name):
+            name
+        case .cover:
+            QueueSummary.message("core.import.role.cover")
+        case .artistImage:
+            QueueSummary.message("core.outbox.file.artist_image")
+        }
     }
 
     @ViewBuilder

@@ -1,6 +1,6 @@
-//! Files that finished uploading during the current queue burst, grouped the
-//! same way the outbox snapshot groups its rows (by the file's release; `None`
-//! for a file with no backing release row).
+//! Blobs that finished uploading during the current queue burst, grouped the
+//! same way the outbox snapshot groups its rows (by the blob's release; `None`
+//! for a blob outside a release root).
 //!
 //! The outbox tables only know what *remains* — coven deletes an upload's row
 //! the moment its post-upload commit lands — so on their own they can't answer
@@ -27,12 +27,9 @@ use std::sync::Mutex;
 
 /// One completed upload, as recorded by the observer when coven reports it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoneFile {
-    pub file_id: String,
-    /// What the queue pane labels the file with — the file's original name, or
-    /// the file id when no release-file row backs it.
-    pub display_name: String,
-    pub bytes: u64,
+pub struct DoneUpload {
+    pub blob: coven::RowBlobRef,
+    pub label: crate::library::UploadFileLabel,
 }
 
 /// A group's completed files, in completion order. `seq` orders groups by
@@ -40,7 +37,7 @@ pub struct DoneFile {
 #[derive(Debug, Clone)]
 struct GroupTally {
     seq: u64,
-    files: Vec<DoneFile>,
+    uploads: Vec<DoneUpload>,
 }
 
 /// The completed-upload tallies for the current queue burst. Shared between
@@ -65,7 +62,7 @@ impl UploadSessions {
     /// Record a completed upload under its release. A re-upload of a file
     /// already recorded (a retried post-upload commit) replaces the entry
     /// rather than double-counting it.
-    pub fn record_done(&self, release_id: Option<String>, file: DoneFile) {
+    pub fn record_done(&self, release_id: Option<String>, upload: DoneUpload) {
         let mut inner = self.inner.lock().unwrap();
         if !inner.groups.contains_key(&release_id) {
             let seq = inner.next_seq;
@@ -74,7 +71,7 @@ impl UploadSessions {
                 release_id.clone(),
                 GroupTally {
                     seq,
-                    files: Vec::new(),
+                    uploads: Vec::new(),
                 },
             );
         }
@@ -82,9 +79,12 @@ impl UploadSessions {
             .groups
             .get_mut(&release_id)
             .expect("group inserted above");
-        match group.files.iter_mut().find(|f| f.file_id == file.file_id) {
-            Some(existing) => *existing = file,
-            None => group.files.push(file),
+        match group.uploads.iter_mut().find(|candidate| {
+            candidate.blob.blob().namespace == upload.blob.blob().namespace
+                && candidate.blob.blob().id == upload.blob.blob().id
+        }) {
+            Some(existing) => *existing = upload,
+            None => group.uploads.push(upload),
         }
     }
 
@@ -108,13 +108,13 @@ impl UploadSessions {
 
     /// The tallies as `(release_id, completed files)` pairs, ordered by each
     /// group's first completion.
-    pub fn tallies(&self) -> Vec<(Option<String>, Vec<DoneFile>)> {
+    pub fn tallies(&self) -> Vec<(Option<String>, Vec<DoneUpload>)> {
         let inner = self.inner.lock().unwrap();
         let mut groups: Vec<_> = inner.groups.iter().collect();
         groups.sort_by_key(|(_, tally)| tally.seq);
         groups
             .into_iter()
-            .map(|(release_id, tally)| (release_id.clone(), tally.files.clone()))
+            .map(|(release_id, tally)| (release_id.clone(), tally.uploads.clone()))
             .collect()
     }
 }

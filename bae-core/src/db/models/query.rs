@@ -313,11 +313,7 @@ pub struct DbOutboxQueue {
     pub deletes: Vec<DbOutboxDelete>,
 }
 
-/// One queued upload plus its bae context.
-///
-/// The context fields are `None` when the `release_files` row the blob hangs
-/// off is gone — the upload is still queued and still rendered, just labelled
-/// by its file id instead of a filename.
+/// One queued blob upload plus its bae context.
 #[derive(Debug, Clone)]
 pub struct DbOutboxUpload {
     /// The release whose make-Remote enqueued this upload — the gated root
@@ -325,18 +321,19 @@ pub struct DbOutboxUpload {
     /// by. `None` when coven reports a root outside `releases`, which is not a
     /// shape bae enqueues.
     pub release_id: Option<String>,
-    /// The `release_files` row carrying the blob. Progress is reported under
-    /// this id, and it is the blob's id too — the table declares no separate
-    /// id column, so coven reads the blob id off the primary key.
-    pub file_id: String,
+    /// Coven's exact blob-bearing row version. It carries the table-scoped row
+    /// identity, immutable cloud blob identity, and declared plaintext size as
+    /// one value shared with upload lifecycle callbacks.
+    pub blob: coven::RowBlobRef,
     /// Failed transfer attempts so far; 0 for one never yet tried.
     pub attempt_count: u64,
     /// Why the last attempt failed, if one has.
     pub last_error: Option<String>,
     /// Enqueue time as Unix epoch milliseconds, taken from coven's HLC stamp.
     pub created_at: i64,
-    pub file_name: Option<String>,
-    pub file_size: Option<i64>,
+    /// The domain label for this upload. Platforms localize the named image
+    /// kinds and render an original filename verbatim.
+    pub label: crate::library::UploadFileLabel,
     /// The album title of `release_id`, for the group heading.
     pub album_title: Option<String>,
 }

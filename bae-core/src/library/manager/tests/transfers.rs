@@ -410,7 +410,10 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(group.display_title, "Test Album");
     assert_eq!(group.release_id.as_deref(), Some(release.id.as_str()));
     assert_eq!(group.files.len(), 1);
-    assert_eq!(group.files[0].display_name, "a.flac");
+    assert_eq!(
+        group.files[0].label,
+        crate::library::UploadFileLabel::Filename("a.flac".to_string())
+    );
     assert_eq!(group.progress.queued, 1);
     assert_eq!(group.progress.bytes_total, 1000);
 
@@ -459,6 +462,56 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     let snap = manager.outbox_snapshot().await.unwrap();
     assert!(snap.upload_groups.is_empty());
     assert_eq!(snap.total.failed, 0);
+}
+
+/// A cover upload is carried by the `covers` row whose primary key is the
+/// release id, while its immutable cloud blob has a distinct id. The queue must
+/// identify and size the blob itself rather than mistaking the release id for
+/// an audio-file id.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn outbox_snapshot_identifies_the_cover_blob() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("cover-upload"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    let cover_bytes = b"cover-bytes";
+    let cover_blob_id = Uuid::new_v4().to_string();
+    let cover = DbLibraryImage::cover(
+        &release.id,
+        &cover_blob_id,
+        "local",
+        None,
+        cover_bytes,
+        manager.clock.now(),
+    );
+    manager
+        .store_library_image_blob(&cover, cover_bytes)
+        .await
+        .unwrap();
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+
+    let snapshot = manager.outbox_snapshot().await.unwrap();
+    let group = snapshot
+        .upload_groups
+        .iter()
+        .find(|group| group.release_id.as_deref() == Some(release.id.as_str()))
+        .expect("the release upload group");
+    let cover_upload = group
+        .files
+        .iter()
+        .find(|file| file.label == crate::library::UploadFileLabel::Cover)
+        .expect("the cover is a typed upload row");
+    assert_eq!(
+        cover_upload.file_id,
+        format!("{}:{cover_blob_id}", crate::sync::COVERS_NAMESPACE)
+    );
+    assert_eq!(cover_upload.bytes_total, cover_bytes.len() as u64);
 }
 
 /// The real `ReleaseUploadObserver` drives the snapshot's live byte count:
@@ -748,7 +801,10 @@ async fn download_queue_values_report_each_driven_file_progress() {
     manager.emit_download_queue_changed();
 
     let active_progress = |snapshot: &crate::library::DownloadSnapshot| {
-        let op = snapshot.ops.first().expect("the active download remains queued");
+        let op = snapshot
+            .ops
+            .first()
+            .expect("the active download remains queued");
         let crate::library::DownloadState::Active { progress } = &op.state else {
             panic!("the download is active")
         };
@@ -770,12 +826,8 @@ async fn download_queue_values_report_each_driven_file_progress() {
     for bytes_done in [3, 7] {
         progress_tx
             .send(TransferProgress::Progress {
-                progress: crate::library::DownloadTransferProgress::new(
-                    &release_id,
-                    bytes_done,
-                    7,
-                )
-                .unwrap(),
+                progress: crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7)
+                    .unwrap(),
             })
             .expect("the transfer driver is listening");
         values.changed().await.expect("file progress value");
