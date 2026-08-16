@@ -221,6 +221,8 @@ extension TriageRowView {
                     // no metadata line yet — the lead match's artist is all
                     // that's known, and the trailing chip states the count.
                     return row.matched?.artist
+                case .noMatch:
+                    return nil
                 default:
                     return needsYou.localizedText
                 }
@@ -406,10 +408,7 @@ extension TriageRowView {
             case .countsOrLengthsDisagree:
                 trailingIcon("questionmark.circle", tint: .orange)
             case .noMatch:
-                Button(action: onSelect) {
-                    chip(String(localized: "Search manually"), tint: .secondary)
-                }
-                .buttonStyle(.plain)
+                EmptyView()
             case .stillIdentifying:
                 EmptyView()
             }

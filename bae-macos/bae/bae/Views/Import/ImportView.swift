@@ -251,6 +251,18 @@ struct ImportView: View {
         }
     }
 
+    #Preview("Import tab — smoke test") {
+        let uiStore = ImportTabPreview.uiStore(
+            tab: .pending,
+            selected: PreviewData.importTabCandidate.key,
+            ticked: [PreviewData.importTabCandidate.key]
+        )
+        let importStore: ImportStore = PreviewData.importSmokeTestStore()
+        ImportView()
+            .environment(importStore)
+            .importTabPreviewEnvironment(uiStore: uiStore)
+    }
+
     #Preview("Import tab — a release settled") {
         let uiStore = ImportTabPreview.uiStore(
             tab: .pending,

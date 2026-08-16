@@ -147,6 +147,46 @@
         .importPreviewEnvironment()
     }
 
+    #Preview("Mapping pane — one file for ten tracks") {
+        @Previewable
+        @State
+        var values = PreviewData.moreTracksEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.moreTracksMappingCandidate,
+            editor: $values,
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 900)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — one file for ten tracks, narrow") {
+        @Previewable
+        @State
+        var values = PreviewData.moreTracksEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.moreTracksMappingCandidate,
+            editor: $values,
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 760, height: 900)
+        .importPreviewEnvironment()
+    }
+
     #Preview("Mapping pane — read as Unknown") {
         @Previewable
         @State

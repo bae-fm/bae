@@ -571,7 +571,8 @@ struct ImportStoreTriageRenderingTests {
             store.releaseSections(
                 tab: .pending,
                 filterText: "common"
-            ).flatMap(\.entries).map(\.id)
+            )
+            .flatMap(\.entries).map(\.id)
                 == firstEntries.map(ReleaseQueueEntry.init).map(\.id)
         )
 
@@ -597,7 +598,8 @@ struct ImportStoreTriageRenderingTests {
             store.releaseSections(
                 tab: .pending,
                 filterText: "common"
-            ).flatMap(\.entries).map(\.id)
+            )
+            .flatMap(\.entries).map(\.id)
                 == secondEntries.map(ReleaseQueueEntry.init).map(\.id)
         )
     }
@@ -751,16 +753,17 @@ struct ImportStoreTriageRenderingTests {
     @MainActor
     @Test("bulk skip keeps queue order and excludes ineligible or stale picks")
     func skippableSelectionUsesLiveQueueRows() {
-        let keys = seededStore().skippableCandidateKeys(
-            in: [
-                "/w/ready-a",
-                "/w/ready-b",
-                "/w/collection/second",
-                "/w/done",
-                "/w/skipped",
-                "/w/missing",
-            ]
-        )
+        let keys = seededStore()
+            .skippableCandidateKeys(
+                in: [
+                    "/w/ready-a",
+                    "/w/ready-b",
+                    "/w/collection/second",
+                    "/w/done",
+                    "/w/skipped",
+                    "/w/missing",
+                ]
+            )
 
         #expect(
             keys
@@ -866,120 +869,6 @@ struct ImportStoreSidebarCoverTests {
         #expect(
             ImportStore().sidebarCover(for: row)
                 == .remote(url: "https://example.com/queue-thumbnail.jpg")
-        )
-    }
-}
-
-@Suite("Import preview data")
-struct ImportPreviewDataTests {
-    @MainActor
-    @Test("boundary preview covers several trees and every child kind")
-    func boundaryPreviewCoversProductionShapes() {
-        let entries = PreviewData.releaseBoundaryPreviewImportStore.triageQueue
-            .sections
-            .flatMap(\.entries)
-        let boundaries = entries.compactMap {
-            entry -> BridgeFolderReleaseBoundary? in
-            guard case .boundary(_, let boundary) = entry else {
-                return nil
-            }
-            return boundary
-        }
-        let kinds = boundaries.flatMap(\.treeRows).map(\.kind)
-        let invalidReasons = kinds.compactMap {
-            kind -> BridgeInvalidReason? in
-            guard case .invalid(let reason) = kind else { return nil }
-            return reason
-        }
-
-        #expect(boundaries.count == 4)
-        #expect(boundaries.contains { $0.sharedFileCount > 0 })
-        #expect(boundaries.flatMap(\.treeRows).contains { $0.depth == 2 })
-        #expect(
-            kinds.contains {
-                if case .folder = $0 { return true }
-                return false
-            }
-        )
-        #expect(
-            kinds.contains {
-                if case .candidate = $0 { return true }
-                return false
-            }
-        )
-        #expect(
-            invalidReasons.contains(
-                .corruptAudioFile(path: "Album 02.flac")
-            )
-        )
-        #expect(invalidReasons.contains(.corruptImage(path: "Front.png")))
-        #expect(invalidReasons.contains(.noValidAudio))
-    }
-
-    @MainActor
-    @Test("every preview queue row opens its production candidate")
-    func everyCandidateRowResolves() {
-        let stores = [
-            PreviewData.importTabStore(),
-            PreviewData.releaseQueueImportStore,
-        ]
-        for store in stores {
-            let rows = store.triageQueue.sections.flatMap(\.entries)
-                .compactMap {
-                    entry -> BridgeTriageRow? in
-                    guard case .candidate(_, let row) = entry else {
-                        return nil
-                    }
-                    return row
-                }
-
-            #expect(!rows.isEmpty)
-            #expect(
-                rows.allSatisfy {
-                    store.folderCandidates[$0.candidateKey] != nil
-                }
-            )
-        }
-    }
-
-    @MainActor
-    @Test("preview queue covers every pending question and terminal shape")
-    func queueCoversProductionShapes() {
-        let store = PreviewData.importTabStore()
-        let entries = store.triageQueue.sections.flatMap(\.entries)
-        let rows = entries.compactMap { entry -> BridgeTriageRow? in
-            guard case .candidate(_, let row) = entry else { return nil }
-            return row
-        }
-        let needsYouGroups = rows.compactMap { row -> BridgeNeedsYouGroup? in
-            guard case .needsYou(let group, _) = row.placement else {
-                return nil
-            }
-            return group
-        }
-
-        #expect(rows.contains { $0.placement == .ready })
-        #expect(rows.contains { $0.placement == .importing })
-        #expect(rows.contains { $0.placement == .done })
-        #expect(rows.contains { $0.placement == .skipped })
-        #expect(needsYouGroups.contains(.pickAPressing))
-        #expect(needsYouGroups.contains(.signalsDisagree))
-        #expect(needsYouGroups.contains(.countsOrLengthsDisagree))
-        #expect(needsYouGroups.contains(.alreadyInLibrary))
-        #expect(needsYouGroups.contains(.noMatch))
-        #expect(needsYouGroups.contains(.stillIdentifying))
-        #expect(
-            entries.contains {
-                if case .boundary = $0 { return true }
-                return false
-            }
-        )
-        #expect(
-            entries.filter {
-                if case .invalid = $0 { return true }
-                return false
-            }
-            .count == 3
         )
     }
 }

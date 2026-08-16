@@ -543,17 +543,14 @@ extension ImportCandidateListContent {
 
     // MARK: - Previews
 
-    #Preview("Candidate List") {
-        let store = PreviewData.importTabStore()
+    #Preview("Candidate List — Smoke Test") {
+        let store = PreviewData.importSmokeTestStore()
+        let uiStore = UiStore()
+        uiStore.setImportCandidateTab(.pending)
+        uiStore.selectAllReady([PreviewData.importTabCandidate.key])
         return ImportCandidateListContent(
             importStore: store,
-            selectedKeys: .constant(
-                Set(
-                    store.selectableReadyRows(filterText: "")
-                        .prefix(1)
-                        .map(\.candidateKey)
-                )
-            ),
+            selectedKeys: .constant([PreviewData.importTabCandidate.key]),
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },
@@ -562,9 +559,9 @@ extension ImportCandidateListContent {
             onImportSelected: { _ in }
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(UiStore())
+        .environment(uiStore)
         .environment(PreviewData.artImageStore())
-        .frame(width: 340, height: 560)
+        .frame(width: 500, height: 900)
         .windowBackground()
     }
 

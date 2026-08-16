@@ -70,28 +70,23 @@
 
         /// The folder's images, as the gallery row shows them.
         static let mappingImages: [BridgeMappingImage] = [
-            BridgeMappingImage(
-                fileId: "Front.png",
-                name: "Front.png",
-                size: 2_500_000,
-                localPath: previewArtPath("Front.png"),
-                isCover: true
-            ),
-            BridgeMappingImage(
-                fileId: "Back.png",
-                name: "Back.png",
-                size: 1_800_000,
-                localPath: previewArtPath("Back.png"),
-                isCover: false
-            ),
-            BridgeMappingImage(
-                fileId: "scans/scan-1.jpg",
-                name: "scan-1.jpg",
-                size: 1_400_000,
-                localPath: previewArtPath("scan-1.jpg"),
-                isCover: false
-            ),
+            mappingImage(coverImage, isCover: true),
+            mappingImage(backImage, isCover: false),
+            mappingImage(scanImage, isCover: false),
         ]
+
+        private static func mappingImage(
+            _ file: BridgeCandidateFile,
+            isCover: Bool
+        ) -> BridgeMappingImage {
+            BridgeMappingImage(
+                fileId: file.file.name,
+                name: file.file.fileName,
+                size: file.file.size,
+                localPath: file.file.localPath,
+                isCover: isCover
+            )
+        }
 
         /// The mapping the picked release produces: nine files against nine
         /// tracks, every row paired, with the folder's images and documents
@@ -106,6 +101,116 @@
                 ),
             ],
             reconciliation: .agrees(count: 9)
+        )
+
+        private static let moreTracksAudio = BridgeCandidateFile(
+            file: BridgeFileInfo(
+                name: "Album Image.flac",
+                size: 221_100_000,
+                dirPrefix: nil,
+                fileName: "Album Image.flac",
+                localPath: "/tmp/fake/Album Image.flac"
+            ),
+            role: .audio,
+            becomes: .slots(first: 1, last: 1),
+            alternatives: [.audio, .notATrack],
+            roleChoice: .audio
+        )
+
+        static let moreTracksCandidateFiles = BridgeCandidateFiles(
+            files: [moreTracksAudio],
+            formatLabel: "FLAC",
+            collapsedDirectories: []
+        )
+
+        static let moreTracksEditValues: BridgeRawReleaseEdit = {
+            var edit = editMetadataSeed(trackCount: 10)
+            edit.tracks = edit.tracks.enumerated()
+                .map { index, track in
+                    var track = track
+                    track.file =
+                        index == 0
+                        ? .standalone(fileId: moreTracksAudio.file.name) : nil
+                    return track
+                }
+            return edit
+        }()
+
+        private static let moreTracksReleaseDetail = BridgeReleaseDetail(
+            releaseId: "rel-more-tracks",
+            source: .musicBrainz,
+            sourceGroupId: "rg-more-tracks",
+            title: moreTracksEditValues.albumTitle,
+            artist: moreTracksEditValues.albumArtistText,
+            year: 1997,
+            format: "CD",
+            label: "Some Label",
+            catalogNumber: "CAT-0001",
+            country: "US",
+            barcode: "000000000000",
+            trackCount: 10,
+            tracks: moreTracksEditValues.tracks.enumerated()
+                .map {
+                    index,
+                    track in
+                    BridgeReleaseTrack(
+                        title: track.title,
+                        artist: nil,
+                        durationMs: UInt64(252_000 + index * 9000),
+                        position: "\(index + 1)",
+                        side: 1
+                    )
+                },
+            coverArt: [],
+            defaultCover: nil
+        )
+
+        /// One file paired to the release's first track, followed by every
+        /// release track the folder has nothing for.
+        static let moreTracksMappingTable = BridgeMappingTable(
+            rows: moreTracksEditValues.tracks.enumerated()
+                .map {
+                    index,
+                    track in
+                    let sourcePosition = "\(index + 1)"
+                    let sourceDurationMs = UInt64(252_000 + index * 9000)
+                    if index == 0 {
+                        return .unit(
+                            unit: BridgeMappingUnit(
+                                source: .file(
+                                    file: BridgeMappingFile(
+                                        fileId: moreTracksAudio.file.name,
+                                        name: moreTracksAudio.file.fileName,
+                                        size: moreTracksAudio.file.size,
+                                        localPath: moreTracksAudio.file
+                                            .localPath,
+                                        probedDurationMs: 272_000,
+                                        role: .audio,
+                                        alternatives: moreTracksAudio
+                                            .alternatives,
+                                        roleChoice: moreTracksAudio.roleChoice
+                                    )
+                                ),
+                                becomes: .track(
+                                    track: track,
+                                    sourcePosition: sourcePosition,
+                                    sourceDurationMs: sourceDurationMs
+                                )
+                            )
+                        )
+                    }
+                    return .unit(
+                        unit: BridgeMappingUnit(
+                            source: .missing,
+                            becomes: .track(
+                                track: track,
+                                sourcePosition: sourcePosition,
+                                sourceDurationMs: sourceDurationMs
+                            )
+                        )
+                    )
+                },
+            reconciliation: .moreTracks(files: 1, tracks: 10)
         )
 
         /// The same folder before a release is picked: what each file is, with
@@ -137,14 +242,14 @@
         ) -> BridgeMappingUnit {
             let durationMs = UInt64(180_000 + (index + 1) * 15000)
             let entry = BridgeMappingEntry(
-                sheetId: "Album Title.cue",
+                sheetId: boundTrackSheet.file.name,
                 index: UInt32(index),
                 number: UInt32(index + 1),
                 title: "Track Title \(index + 1)",
                 durationMs: durationMs,
-                containerId: "Album Title.flac",
-                containerName: "Album Title.flac",
-                containerLocalPath: "/tmp/fake/Album Title.flac"
+                containerId: mappedAudioContainer.file.name,
+                containerName: mappedAudioContainer.file.fileName,
+                containerLocalPath: mappedAudioContainer.file.localPath
             )
             return BridgeMappingUnit(
                 source: .sheetEntry(entry: entry),
@@ -157,25 +262,18 @@
         }
 
         private static let previewSheetGroup = BridgeSheetGroup(
-            sheetId: "Album Title.cue",
-            name: "Album Title.cue",
-            localPath: "/tmp/fake/Album Title.cue",
+            sheetId: boundTrackSheet.file.name,
+            name: boundTrackSheet.file.fileName,
+            localPath: boundTrackSheet.file.localPath,
             bound: .describes(
                 container: BridgeMappingContainer(
-                    fileId: "Album Title.flac",
-                    name: "Album Title.flac",
-                    size: 340_000_000
+                    fileId: mappedAudioContainer.file.name,
+                    name: mappedAudioContainer.file.fileName,
+                    size: mappedAudioContainer.file.size
                 )
             ),
             assignment: .disc(number: 1),
             discOptions: [1, 2]
-        )
-
-        private static let previewLogsDirectory = BridgeCollapsedDirectory(
-            dirPrefix: "logs/",
-            kind: .document,
-            count: 4,
-            totalSize: 4 * 6000
         )
 
         /// One CUE+FLAC container the sheet carves nine entries out of, with
@@ -194,10 +292,10 @@
 
         /// Every row kind the table draws, in one folder: the sheet heading the
         /// nine entries it carves, the images as one gallery, the two documents
-        /// carried with the release, and the rip logs collapsed to the one row
-        /// their shared role makes of them. What the Import-tab preview reads,
-        /// so a change to any row kind shows up in the canvas without hunting
-        /// for the fixture that has it.
+        /// carried with the release, the diagnostic logs collapsed to the one
+        /// row their shared role makes of them, and one non-audio video. What
+        /// the Import-tab preview reads, so a change to any row kind shows up
+        /// in the canvas without hunting for the fixture that has it.
         static let everyRowKindMappingTable = BridgeMappingTable(
             rows: [
                 .sheet(
@@ -206,8 +304,13 @@
                 ),
                 .images(images: mappingImages),
                 carriedRow(infoLog, role: .document, becomes: .kept),
-                carriedRow(notesDocument, role: .document, becomes: .kept),
                 .directory(directory: previewLogsDirectory),
+                carriedRow(notesDocument, role: .document, becomes: .kept),
+                carriedRow(
+                    supplementalVideo,
+                    role: .other,
+                    becomes: .kept
+                ),
             ],
             reconciliation: .agrees(count: 9)
         )
@@ -310,6 +413,42 @@
         static let sheetMappingCandidate: Candidate = {
             var candidate = mappingCandidate
             candidate.mapping = sheetMappingTable
+            return candidate
+        }()
+
+        /// A settled ten-track release against a folder containing one audio
+        /// file: the first row is backed and the remaining nine are missing.
+        static let moreTracksMappingCandidate: Candidate = {
+            var candidate = Candidate(
+                bridge: BridgeFolderCandidate(
+                    folderPath: "/Music/Downloads/Partial Album",
+                    sourceFolderName: "Partial Album",
+                    watchedFolderPath: importWatchedFolder.path,
+                    files: moreTracksCandidateFiles,
+                    trackCount: 1,
+                    skipped: false,
+                    isAdded: false
+                )
+            )
+            candidate.claim = BridgeClaimLine(
+                choice: .exact(
+                    releaseId: moreTracksReleaseDetail.releaseId,
+                    source: moreTracksReleaseDetail.source
+                ),
+                level: .exact,
+                evidence: .discIdAlone,
+                release: "CD \u{00b7} 1997 \u{00b7} US \u{00b7} CAT-0001",
+                trackCount: moreTracksReleaseDetail.trackCount
+            )
+            candidate.identityChoice = candidate.claim?.choice
+            candidate.pick = CandidatePick(
+                releaseId: moreTracksReleaseDetail.releaseId,
+                source: moreTracksReleaseDetail.source,
+                claim: .exact
+            )
+            candidate.releaseDetailBridge = moreTracksReleaseDetail
+            candidate.editValues = moreTracksEditValues
+            candidate.mapping = moreTracksMappingTable
             return candidate
         }()
 

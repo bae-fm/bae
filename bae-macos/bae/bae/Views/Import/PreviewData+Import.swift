@@ -736,6 +736,34 @@
             )
         )
 
+        /// Every Import-tab state in one production-backed fixture: the
+        /// candidate questions and terminal tabs, plus the mixed folder trees.
+        @MainActor
+        static func importSmokeTestStore() -> ImportStore {
+            let store = importTabStore()
+            let boundarySection = BridgeTriageSection(
+                tab: .pending,
+                watchedFolderPath: releaseQueueRoot,
+                group: nil,
+                entries: releaseBoundaryPreviewBoundaries.map(boundaryEntry)
+            )
+            let queue = store.triageQueue
+
+            store.watchedFolders.append(releaseQueueWatchedFolder)
+            store.triageQueue = BridgeTriageQueue(
+                sections: queue.sections + [boundarySection],
+                counts: BridgeTriageTabCounts(
+                    pending: queue.counts.pending
+                        + UInt32(releaseBoundaryPreviewBoundaries.count),
+                    done: queue.counts.done,
+                    skipped: queue.counts.skipped
+                ),
+                folderScanStatuses: queue.folderScanStatuses
+            )
+            store.queueIdentifyProgress = (identified: 20, total: 21)
+            return store
+        }
+
         @MainActor
         static func releaseQueueScanningImportStore() -> ImportStore {
             let store = releaseQueueStore(releaseQueueScanning)

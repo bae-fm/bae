@@ -573,18 +573,42 @@
             name: "Album Title.cue",
             size: 1200,
             role: .trackSheet(
-                binding: .describes(fileId: "Album Title.flac"),
+                binding: .describes(fileId: mappedAudioContainer.file.name),
                 trackCount: 9
             ),
             becomes: .slots(first: 1, last: 9)
         )
 
+        static let mappedAudioContainer = previewFile(
+            name: "Album Title.flac",
+            size: 340_000_000,
+            role: .audio,
+            becomes: .slots(first: 1, last: 9)
+        )
+
+        static let backImage = previewImage(
+            name: "Back.png",
+            size: 1_800_000
+        )
+
+        static let coverImage = previewImage(
+            name: "Front.png",
+            size: 2_500_000,
+            isCover: true
+        )
+
+        static let scanImage = previewImage(
+            name: "scan-1.jpg",
+            size: 1_400_000,
+            dirPrefix: "scans/"
+        )
+
         /// What core offers a sheet in this folder: the FLAC it can use, and
         /// the MP3 it can't, refused with its codec named.
         static let sheetBindingOptions: [String: [BridgeSheetBindingOption]] = [
-            "Album Title.cue": [
+            boundTrackSheet.file.name: [
                 BridgeSheetBindingOption(
-                    fileId: "Album Title.flac",
+                    fileId: mappedAudioContainer.file.name,
                     offer: .offered
                 ),
                 BridgeSheetBindingOption(
@@ -594,31 +618,60 @@
             ]
         ]
 
+        static let infoLog = previewFile(
+            name: "info.log",
+            size: 6000,
+            role: .document
+        )
+
+        static let notesDocument = previewFile(
+            name: "notes.txt",
+            size: 1200,
+            role: .document
+        )
+
+        static let supplementalVideo = previewFile(
+            name: "video.mkv",
+            size: 24_000_000,
+            role: .other
+        )
+
+        private static let previewLogDocuments = [
+            "checksum.txt",
+            "drive.txt",
+            "read.txt",
+            "verify.txt",
+        ]
+        .map {
+            previewFile(
+                name: $0,
+                size: 6000,
+                role: .document,
+                dirPrefix: "logs/"
+            )
+        }
+
+        static let previewLogsDirectory = BridgeCollapsedDirectory(
+            dirPrefix: "logs/",
+            kind: .document,
+            count: UInt32(previewLogDocuments.count),
+            totalSize: previewLogDocuments.map(\.file.size).reduce(0, +)
+        )
+
         static let bridgeCandidateFiles = BridgeCandidateFiles(
             files: [
-                previewImage(name: "Back.png", size: 1_800_000),
+                backImage,
                 boundTrackSheet,
-                previewFile(
-                    name: "Album Title.flac",
-                    size: 340_000_000,
-                    role: .audio,
-                    becomes: .slots(first: 1, last: 9)
-                ),
-                previewImage(name: "Front.png", size: 2_500_000, isCover: true),
-                previewImage(name: "Matrix.png", size: 900_000),
-                previewFile(name: "info.log", size: 6000, role: .document),
-                previewFile(name: "rip.nfo", size: 400, role: .other),
+                mappedAudioContainer,
+                coverImage,
+                scanImage,
+                infoLog,
+                notesDocument,
+                supplementalVideo,
             ]
-                + (1...14)
-                .map { i in
-                    previewImage(
-                        name: "scan-\(i).jpg",
-                        size: 1_400_000,
-                        dirPrefix: "scans/"
-                    )
-                },
+                + previewLogDocuments,
             formatLabel: "CUE+FLAC",
-            collapsedDirectories: []
+            collapsedDirectories: [previewLogsDirectory]
         )
 
         static let releaseDetailBridge: BridgeReleaseDetail = {
@@ -719,24 +772,6 @@
                     becomes: .slots(first: slot, last: slot)
                 )
             }
-
-        static let coverImage = previewImage(
-            name: "Front.png",
-            size: 2_500_000,
-            isCover: true
-        )
-
-        static let infoLog = previewFile(
-            name: "info.log",
-            size: 6000,
-            role: .document
-        )
-
-        static let notesDocument = previewFile(
-            name: "notes.txt",
-            size: 1200,
-            role: .document
-        )
 
         static let candidateFilesTracks = BridgeCandidateFiles(
             files: trackAudioFiles
