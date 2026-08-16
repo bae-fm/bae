@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>전체</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>로컬</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>클라우드</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>업로드 중</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>동기화 대기열</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>앨범</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>아티스트</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>형식</value></data>

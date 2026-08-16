@@ -657,14 +657,66 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
     assert!(db.find_release_by_id(REL_B).await.unwrap().is_some());
 }
 
-/// A failed remote import's cover and artist-image blobs live only in coven's
-/// on-device store, since the release never went remote. The DB transaction drops
-/// their rows but can't reach the blob store, so `fail_import_and_delete_release`
-/// returns the blobs it orphaned for the caller to evict: the cover and each
-/// deleted artist's image, but not the image of an artist a surviving release
-/// still references.
 #[tokio::test]
-async fn fail_import_and_delete_release_returns_orphaned_image_blobs_to_evict() {
+async fn failed_import_rollback_refuses_a_deletion_plan_that_changed_before_write() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let path = tmp.path().join("test.db");
+    let db = Database::new_test(
+        path.to_str().unwrap(),
+        Arc::new(SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
+    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+
+    let artist = DbArtist {
+        id: ARTIST_A.to_string(),
+        name: "Artist Name A".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    };
+    db.insert_artist(&artist).await.unwrap();
+    let album = DbAlbum {
+        id: ALBUM_A.to_string(),
+        title: "Album Title A".to_string(),
+        artist_id: artist.id,
+        year: Some(2026),
+        primary_release_id: None,
+        is_compilation: false,
+        created_at: now,
+    };
+    let release = DbRelease::new_test(&album.id, REL_A);
+    db.insert_album_with_release_and_tracks(&album, &release, &[], &[])
+        .await
+        .unwrap();
+
+    let concurrent_db = db.clone();
+    let sibling = DbRelease::new_test(&album.id, REL_B);
+    let error = db
+        .fail_import_and_delete_release_after_planning_for_test(REL_A, move || async move {
+            concurrent_db.insert_release(&sibling).await.unwrap();
+        })
+        .await
+        .expect_err("a changed rollback plan must abort");
+
+    assert!(error.to_string().contains("changed after planning"));
+    assert!(db.find_album_by_id(ALBUM_A).await.unwrap().is_some());
+    assert!(db.find_release_by_id(REL_A).await.unwrap().is_some());
+    assert!(db.find_release_by_id(REL_B).await.unwrap().is_some());
+}
+
+/// A failed remote import's cover and artist-image blobs live only in coven's
+/// on-device store, since the release never went remote. The rollback declares
+/// each blob its row deletions orphan in the same coven write: the release cover
+/// and each deleted artist's image are reclaimed, while an image whose artist is
+/// still referenced survives.
+#[tokio::test]
+async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically() {
     let tmp = tempfile::TempDir::new().unwrap();
     let path = tmp.path().join("test.db");
     let db = Database::new_test(

@@ -190,6 +190,13 @@ struct TriageRowView: View {
                 )
                 .padding(.top, 7)
             }
+            else if let progress = cloudUploadObservation?.progressBar {
+                ProgressTrackBar(
+                    progress: progress.fraction,
+                    trackHeight: 3
+                )
+                .padding(.top, 7)
+            }
         }
     }
 
@@ -265,7 +272,12 @@ extension TriageRowView {
             // ambiguous to hand-author as a catalog key.
             let percentText = (Double(percent) / 100).formatted(.percent)
             return String(localized: "\(phaseText) \u{b7} \(percentText)")
-        case .complete, nil:
+        case .cloudUploadQueued, .complete:
+            if let statusText = cloudUploadObservation?.statusText {
+                return statusText
+            }
+            return metadataLine
+        case nil:
             return metadataLine
         case .error(let error):
             return error.displayLine
@@ -420,9 +432,24 @@ extension TriageRowView {
         switch row.importStatus {
         case .importing:
             ProgressView().controlSize(.small)
-        case .complete(let releaseId, _):
-            if outboxStore.progress(forRelease: releaseId) != nil {
+        case .cloudUploadQueued:
+            switch cloudUploadObservation {
+            case .awaiting:
                 trailingIcon("icloud.and.arrow.up", tint: .secondary)
+            case .active(let progress):
+                UploadActivityLabel(progress: progress)
+                    .font(.caption)
+            case .finished:
+                trailingIcon("checkmark.circle.fill", tint: .green)
+            case nil:
+                preconditionFailure(
+                    "a queued cloud import has no upload observation"
+                )
+            }
+        case .complete:
+            if case .active(let progress) = cloudUploadObservation {
+                UploadActivityLabel(progress: progress)
+                    .font(.caption)
             }
             else {
                 trailingIcon("checkmark.circle.fill", tint: .green)
@@ -434,6 +461,22 @@ extension TriageRowView {
             // so there is no in-session status to read — the fact is the
             // same, so the glyph is.
             trailingIcon("checkmark.circle.fill", tint: .green)
+        }
+    }
+
+    private var cloudUploadObservation: UploadObservation? {
+        switch row.importStatus {
+        case .cloudUploadQueued(let releaseId, _, let outboxRevision):
+            return outboxStore.uploadObservation(
+                forRelease: releaseId,
+                queuedAtRevision: outboxRevision
+            )
+        case .complete(let releaseId, _):
+            return outboxStore.persistedUploadObservation(
+                forRelease: releaseId
+            )
+        default:
+            return nil
         }
     }
 

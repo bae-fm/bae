@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Master progress strip: filled progress bar + bytes done/total, throughput,
-/// and ETA. All three labels are pre-formatted by core.
+/// Master progress strip. The bar covers the complete two-stage pipeline;
+/// its caption shows exact bytes for the phase currently doing I/O.
 struct OutboxTotalProgress: View {
     let snapshot: BridgeOutboxSnapshot
 
@@ -12,12 +12,14 @@ struct OutboxTotalProgress: View {
                 // Dim the bar while paused so the visual matches the "Paused"
                 // chip in the band above — paused-but-mid-progress reads as
                 // active otherwise.
-                .opacity(snapshot.paused ? 0.4 : 1)
+                .opacity(snapshot.pauseState == .paused ? 0.4 : 1)
             HStack(spacing: 8) {
-                Text(snapshot.total.bytesText)
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                if let stageBytesText = snapshot.total.stageBytesText {
+                    Text(stageBytesText)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
                 if !snapshot.throughputText.isEmpty {
                     Text(verbatim: "·").foregroundStyle(.tertiary)
                     Text(snapshot.throughputText)
@@ -47,7 +49,7 @@ struct OutboxTotalProgress: View {
 
     #Preview("Paused") {
         OutboxTotalProgress(
-            snapshot: PreviewData.outboxSnapshot(paused: true)
+            snapshot: PreviewData.outboxSnapshot(pauseState: .paused)
         )
         .frame(width: 700)
     }

@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>সব</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>স্থানীয়</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>ক্লাউড</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>আপলোড হচ্ছে</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>সিঙ্ক সারি</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>অ্যালবাম</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>শিল্পী</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>ফরম্যাট</value></data>

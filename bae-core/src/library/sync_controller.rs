@@ -18,7 +18,6 @@ use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::library::{LibraryError, OutboxSnapshot, UploadThroughput};
-use crate::sync::upload_observer::UploadObserverEvent;
 use crate::sync::S3ConfigData;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::ExactCloudHome;
@@ -43,15 +42,23 @@ use crate::sync::device_join_timing;
 pub(crate) struct SyncController {
     config_handle: Arc<ConfigHandle>,
     outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
+    /// Serializes every durable/transient projection and numbers publications
+    /// in the order they reach subscribers. Each projection rereads the current
+    /// durable queue while holding this lock, so a delayed trigger cannot
+    /// overwrite a newer value with an older queue snapshot.
+    outbox_projection_revision: Arc<tokio::sync::Mutex<u64>>,
     database: Database,
-    /// Exact blob-bearing rows whose upload is in flight right now, mapped to
-    /// the live count of encrypted bytes that have reached the cloud. Shared with
-    /// the sync loop's `ReleaseUploadObserver`. Read by `outbox_snapshot`.
-    outbox_in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
-    /// Per-release tallies of uploads completed during the current queue burst.
-    /// The observer records completions; the snapshot builder merges them with
-    /// the remaining rows and clears them when the queue idles.
-    upload_sessions: Arc<crate::library::UploadSessions>,
+    /// Exact blob-bearing rows with preparation or provider work in flight,
+    /// mapped to buffer-cadence progress. Shared with the sync loop's
+    /// `ReleaseUploadObserver` and read by `outbox_snapshot`.
+    transient_uploads: Arc<
+        Mutex<
+            HashMap<
+                crate::library::outbox_snapshot::UploadBlobKey,
+                crate::library::outbox_snapshot::TransientUploadState,
+            >,
+        >,
+    >,
     /// Rolling-window upload-throughput tracker. The observer records bytes; the
     /// snapshot builder reads the rate.
     upload_throughput: Arc<UploadThroughput>,
@@ -68,9 +75,16 @@ impl SyncController {
     pub(crate) fn new(
         config_handle: Arc<ConfigHandle>,
         outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
+        outbox_projection_revision: Arc<tokio::sync::Mutex<u64>>,
         database: Database,
-        outbox_in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
-        upload_sessions: Arc<crate::library::UploadSessions>,
+        transient_uploads: Arc<
+            Mutex<
+                HashMap<
+                    crate::library::outbox_snapshot::UploadBlobKey,
+                    crate::library::outbox_snapshot::TransientUploadState,
+                >,
+            >,
+        >,
         upload_throughput: Arc<UploadThroughput>,
         sync_paused: Arc<AtomicBool>,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
@@ -79,9 +93,9 @@ impl SyncController {
         Self {
             config_handle,
             outbox_values,
+            outbox_projection_revision,
             database,
-            outbox_in_flight,
-            upload_sessions,
+            transient_uploads,
             upload_throughput,
             sync_paused,
             cloudkit_ops,
@@ -99,33 +113,13 @@ impl SyncController {
     }
 
     #[cfg(test)]
-    pub(crate) fn set_upload_progress_for_test(&self, file_id: &str, bytes_done: u64) {
-        self.outbox_in_flight.lock().unwrap().insert(
-            crate::library::outbox_snapshot::UploadBlobKey::new(
-                crate::sync::RELEASE_FILES_NAMESPACE,
-                file_id,
-            ),
-            bytes_done,
-        );
-    }
-
-    #[cfg(test)]
-    pub(crate) fn clear_upload_progress_for_test(&self, file_id: &str) {
-        self.outbox_in_flight.lock().unwrap().remove(
+    pub(crate) fn clear_transient_upload_for_test(&self, file_id: &str) {
+        self.transient_uploads.lock().unwrap().remove(
             &crate::library::outbox_snapshot::UploadBlobKey::new(
                 crate::sync::RELEASE_FILES_NAMESPACE,
                 file_id,
             ),
         );
-    }
-
-    #[cfg(test)]
-    pub(crate) fn upload_bytes_per_second_for_test(&self) -> u64 {
-        self.upload_throughput.bytes_per_sec()
-    }
-
-    pub(crate) fn clear_upload_session(&self, release_id: &str) {
-        self.upload_sessions.clear_group(Some(release_id));
     }
 
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
@@ -150,17 +144,27 @@ impl SyncController {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    /// Build and publish the current outbox snapshot. Called at every outbox
-    /// mutation, once per sync cycle, and on each upload lifecycle callback.
-    pub(crate) async fn emit_outbox_changed(&self) {
+    /// Build and publish the current outbox snapshot. Called by durable outbox
+    /// and display-row subscriptions and by each upload lifecycle callback.
+    pub(crate) async fn emit_outbox_changed(&self) -> u64 {
+        let mut revision = self.outbox_projection_revision.lock().await;
+        *revision = revision
+            .checked_add(1)
+            .expect("outbox projection revision overflow");
+        let published_revision = *revision;
         let value = self
             .build_outbox_snapshot()
             .await
+            .map(|mut snapshot| {
+                snapshot.revision = published_revision;
+                snapshot
+            })
             .map_err(|error| error.to_string());
         if let Err(error) = &value {
             warn!("Failed to build outbox snapshot: {error}");
         }
         self.outbox_values.send_replace(Some(value));
+        published_revision
     }
 
     /// The current outbox processing snapshot — queue depth, per-item state, and
@@ -168,78 +172,103 @@ impl SyncController {
     pub(crate) async fn outbox_snapshot(
         &self,
     ) -> Result<crate::library::OutboxSnapshot, LibraryError> {
-        Ok(self.build_outbox_snapshot().await?)
+        let revision = self.outbox_projection_revision.lock().await;
+        let mut snapshot = self.build_outbox_snapshot().await?;
+        snapshot.revision = *revision;
+        Ok(snapshot)
     }
 
     async fn build_outbox_snapshot(&self) -> Result<OutboxSnapshot, coven::DbError> {
         let queue = self.database.outbox_queue().await?;
-        let in_flight = { self.outbox_in_flight.lock().unwrap().clone() };
-        let paused = self.is_sync_paused();
-        Ok(crate::library::outbox_snapshot::build_outbox_snapshot(
-            queue,
-            &in_flight,
-            &self.upload_sessions,
-            &self.upload_throughput,
-            paused,
-        ))
+        self.retain_current_transient_uploads(&queue.uploads);
+        Ok(self.build_outbox_snapshot_from_queue(queue))
     }
 
-    pub(super) async fn process_upload_observer_event(&self, event: UploadObserverEvent) {
-        let result = match event {
-            UploadObserverEvent::OutboxChanged => Ok(()),
-            UploadObserverEvent::BlobUploaded {
-                blob,
-                already_counted,
-            } => self.record_uploaded_blob(blob, already_counted).await,
-            UploadObserverEvent::ReleaseMadeRemote { release_id } => {
-                self.upload_sessions.clear_group(Some(&release_id));
-                Ok(())
-            }
-            UploadObserverEvent::ReleaseMadeLocal => Ok(()),
-        };
-        if let Err(error) = result {
-            warn!(%error, "Failed to record a completed cloud upload");
-            self.outbox_values
-                .send_replace(Some(Err(error.to_string())));
-            return;
-        }
+    fn build_outbox_snapshot_from_queue(&self, queue: crate::db::DbOutboxQueue) -> OutboxSnapshot {
+        let transient = { self.transient_uploads.lock().unwrap().clone() };
+        let paused = self.is_sync_paused();
+        crate::library::outbox_snapshot::build_outbox_snapshot(
+            queue,
+            &transient,
+            &self.upload_throughput,
+            paused,
+        )
+    }
+
+    pub(super) async fn process_upload_observer_event(&self) {
         self.emit_outbox_changed().await;
     }
 
-    async fn record_uploaded_blob(
+    pub(super) async fn run_cloud_outbox_subscription(
         &self,
-        blob: coven::RowBlobRef,
-        already_counted: u64,
-    ) -> Result<(), coven::DbError> {
-        let remaining = blob.plaintext_size().saturating_sub(already_counted);
-        if remaining > 0 {
-            self.upload_throughput.record(remaining);
+        mut subscription: coven::CloudOutboxLiveQuery,
+    ) {
+        let mut display = self.database.subscribe_outbox_display(Default::default());
+        let display_requests = display.requests();
+        loop {
+            tokio::select! {
+                durable = subscription.next() => match durable {
+                    Ok(snapshot) => {
+                        match Database::outbox_display_request(&snapshot) {
+                            Ok(request) => {
+                                display_requests
+                                    .set(request)
+                                    .expect("the outbox display subscription is retained");
+                                self.emit_outbox_changed().await;
+                            }
+                            Err(error) => {
+                                warn!(%error, "Failed to identify durable outbox display rows");
+                                self.outbox_values
+                                    .send_replace(Some(Err(error.to_string())));
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        warn!(%error, "Failed to read the durable cloud outbox");
+                        self.outbox_values
+                            .send_replace(Some(Err(error.to_string())));
+                    }
+                },
+                event = display.next() => match event.into_result() {
+                    Ok(_) => {
+                        self.emit_outbox_changed().await;
+                    }
+                    Err(error) => {
+                        warn!(%error, "Failed to read durable outbox display rows");
+                        self.outbox_values
+                            .send_replace(Some(Err(error.to_string())));
+                    }
+                },
+            }
         }
+    }
 
-        let queued = self
-            .database
-            .outbox_queue()
-            .await?
-            .uploads
-            .into_iter()
-            .find(|queued| queued.blob == blob)
-            .ok_or_else(|| {
-                coven::DbError::Message(format!(
-                    "completed upload {}:{} for {}/{} is absent from the durable queue",
-                    blob.table(),
-                    blob.row_id(),
-                    blob.blob().namespace,
-                    blob.blob().id,
-                ))
-            })?;
-        self.upload_sessions.record_done(
-            queued.release_id,
-            crate::library::upload_sessions::DoneUpload {
-                blob,
-                label: queued.label,
-            },
-        );
-        Ok(())
+    /// Drop callback facts when the durable outbox proves their phase has been
+    /// superseded. `Created` deliberately retains provider progress: coven
+    /// commits that handoff before calling `on_blob_uploaded`, and that callback
+    /// owns validation and removal of the exact final byte report.
+    fn retain_current_transient_uploads(&self, uploads: &[crate::db::DbOutboxUpload]) {
+        let durable: HashMap<_, _> = uploads
+            .iter()
+            .map(|upload| {
+                (
+                    crate::library::outbox_snapshot::UploadBlobKey::from_row(&upload.blob),
+                    upload.phase,
+                )
+            })
+            .collect();
+        self.transient_uploads
+            .lock()
+            .unwrap()
+            .retain(|key, transient| match durable.get(key) {
+                None => false,
+                Some(coven::QueuedUploadPhase::Created) => true,
+                Some(coven::QueuedUploadPhase::Prepared) => !matches!(
+                    transient,
+                    crate::library::outbox_snapshot::TransientUploadState::Preparing { .. }
+                ),
+                Some(coven::QueuedUploadPhase::Pending) => true,
+            });
     }
 
     /// The library's membership: its devices (with this device flagged, each

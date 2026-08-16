@@ -311,6 +311,7 @@ pub enum StorageFilter {
 pub struct DbOutboxQueue {
     pub uploads: Vec<DbOutboxUpload>,
     pub deletes: Vec<DbOutboxDelete>,
+    pub make_remotes: Vec<DbMakeRemote>,
 }
 
 /// One queued blob upload plus its bae context.
@@ -318,13 +319,19 @@ pub struct DbOutboxQueue {
 pub struct DbOutboxUpload {
     /// The release whose make-Remote enqueued this upload — the gated root
     /// every one of a release's uploads shares, and what the queue pane groups
-    /// by. `None` when coven reports a root outside `releases`, which is not a
-    /// shape bae enqueues.
-    pub release_id: Option<String>,
+    /// by. Roots outside `releases` fail the outbox projection.
+    pub release_id: String,
     /// Coven's exact blob-bearing row version. It carries the table-scoped row
     /// identity, immutable cloud blob identity, and declared plaintext size as
     /// one value shared with upload lifecycle callbacks.
     pub blob: coven::RowBlobRef,
+    /// Coven's durable upload handoff. Transient preparation/upload callbacks
+    /// refine this while work is moving, but never replace it as the restart
+    /// truth.
+    pub phase: coven::QueuedUploadPhase,
+    /// Exact encrypted/browsable object bytes once preparation has produced
+    /// the provider payload. Pending preparation has no provider denominator.
+    pub provider_bytes_total: Option<u64>,
     /// Failed transfer attempts so far; 0 for one never yet tried.
     pub attempt_count: u64,
     /// Why the last attempt failed, if one has.
@@ -335,7 +342,14 @@ pub struct DbOutboxUpload {
     /// kinds and render an original filename verbatim.
     pub label: crate::library::UploadFileLabel,
     /// The album title of `release_id`, for the group heading.
-    pub album_title: Option<String>,
+    pub album_title: String,
+}
+
+/// One durable make-Remote intent plus the bae title its release group renders.
+#[derive(Debug, Clone)]
+pub struct DbMakeRemote {
+    pub transition: coven::QueuedMakeRemote,
+    pub album_title: String,
 }
 
 /// One cloud object still owed a removal. A tombstone outlives the row that

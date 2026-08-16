@@ -45,7 +45,7 @@ struct StorageManagerView: View {
                 Text("All").tag(BridgeStorageFilter.all)
                 Text("Local").tag(BridgeStorageFilter.local)
                 Text("Cloud").tag(BridgeStorageFilter.remote)
-                Text("Uploading").tag(BridgeStorageFilter.uploading)
+                Text("Sync queue").tag(BridgeStorageFilter.uploading)
             }
             .pickerStyle(.segmented)
             .padding()

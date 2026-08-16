@@ -22,7 +22,9 @@ struct DownloadsSection: View {
                 QueueSectionHeader(
                     icon: "arrow.down.circle",
                     title: "Downloads",
-                    paused: snapshot.paused,
+                    pauseRequested: snapshot.paused,
+                    pauseStatusText: snapshot.paused
+                        ? String(localized: "Paused") : nil,
                     summaryText: snapshot.summaryText,
                     retryDisabled: snapshot.total.failed == 0,
                     onSetPaused: { downloads.setDownloadsPaused($0) },

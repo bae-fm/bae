@@ -698,8 +698,8 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Pin",
         ReleaseStorageAction::Unpin => "Unpin",
-        ReleaseStorageAction::MakeRemote => "Manage",
-        ReleaseStorageAction::MakeLocal => "Unmanage",
+        ReleaseStorageAction::MakeRemote => "Move to Cloud",
+        ReleaseStorageAction::MakeLocal => "Make Local",
     }
 }
 
@@ -764,7 +764,7 @@ pub struct LibraryManager {
     outbox_values:
         tokio::sync::watch::Sender<Option<Result<crate::library::OutboxSnapshot, String>>>,
     download_values: tokio::sync::watch::Sender<crate::library::DownloadSnapshot>,
-    /// Cancellation tokens for in-progress foreground transfers (unmanage),
+    /// Cancellation tokens for in-progress foreground make-Local transfers,
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
     /// and leaves the release remote (no orphans). Registered for the transfer's

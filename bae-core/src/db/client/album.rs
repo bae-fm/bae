@@ -159,6 +159,26 @@ impl Database {
         .await
     }
 
+    #[cfg(test)]
+    pub(crate) async fn rename_album_for_test(
+        &self,
+        album_id: &str,
+        title: &str,
+    ) -> Result<(), DbError> {
+        let album_id = album_id.to_string();
+        let title = title.to_string();
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            sql.execute(
+                "UPDATE albums SET title = ?1, _updated_at = ?2 WHERE id = ?3",
+                params![title, reg, album_id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
     /// `sort` is empty.
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {

@@ -119,7 +119,7 @@ async fn storage_page_sorts_album_title_descending() {
 
 /// Each storage-page row carries the state-appropriate `storage_actions`
 /// the Storage Manager row context menu renders — pinned offers unpin +
-/// unmanage, cloud-only offers pin + unmanage, local offers manage.
+/// make-Local, cloud-only offers pin + make-Local, local offers make-Remote.
 /// With a cloud home present every remote/local transition is open.
 #[cfg(feature = "test-utils")]
 #[tokio::test]

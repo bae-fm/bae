@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>Tümü</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>Yerel</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>Bulut</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>Yükleniyor</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Eşzamanlama kuyruğu</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Albüm</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Sanatçı</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>Biçim</value></data>

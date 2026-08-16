@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>ਸਭ</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>ਲੋਕਲ</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>ਕਲਾਊਡ</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>ਸਿੰਕ ਕਤਾਰ</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>ਐਲਬਮ</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>ਫਾਰਮੈਟ</value></data>

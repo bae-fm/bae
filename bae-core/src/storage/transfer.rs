@@ -6,8 +6,9 @@
 //!
 //! - `make_release_remote`: `coven.make_remote` enqueues an upload per release
 //!   file from its external (in-place) source, uploads each, and on the last
-//!   flips `remote` true, drops the external refs, deletes the source files, and
-//!   re-emits the subtree (the cover rides along). The commit wakes subscribed
+//!   publishes `remote` true and drops the external refs. User-provided source
+//!   files stay in place; host-provided local-store copies follow coven's cache
+//!   retention policy. The cover rides along. The commit wakes subscribed
 //!   release projections.
 //! - `make_release_local`: `coven.make_local` materializes every blob back to a
 //!   local file durability-first (release files to the chosen folder, the cover to
@@ -30,7 +31,7 @@ use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
-type TransferResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+type TransferResult = Result<TransferOutcome, Box<dyn std::error::Error + Send + Sync>>;
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 
 /// Read one release file's whole plaintext through coven's locality-aware read:
@@ -61,9 +62,27 @@ pub async fn read_release_file_bytes(
 #[derive(Debug, Clone)]
 pub enum TransferProgress {
     Started,
-    Progress { progress: DownloadTransferProgress },
-    Complete { release_id: String },
-    Failed { release_id: String, error: String },
+    Progress {
+        progress: DownloadTransferProgress,
+    },
+    Complete {
+        release_id: String,
+        outcome: TransferOutcome,
+    },
+    Failed {
+        release_id: String,
+        error: String,
+    },
+}
+
+/// The terminal fact a foreground storage command hands back to its caller.
+/// Moving to cloud finishes the command at the durable-queue boundary, so its
+/// outbox revision is part of the result; the background outbox owns every
+/// phase after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransferOutcome {
+    Complete,
+    CloudUploadQueued { outbox_revision: u64 },
 }
 
 /// Pin/unpin/make-Remote/make-Local service for releases.
@@ -97,7 +116,7 @@ impl TransferService {
                         send_progress(&tx, TransferProgress::Progress { progress });
                     })
                     .await?;
-                Ok(())
+                Ok(TransferOutcome::Complete)
             },
         );
         let abort = task.abort_handle();
@@ -123,7 +142,7 @@ impl TransferService {
             ReleaseStorageAction::Unpin,
             |release_id, library_manager, _tx| async move {
                 library_manager.unpin_release_blobs(&release_id).await?;
-                Ok(())
+                Ok(TransferOutcome::Complete)
             },
         );
         rx
@@ -143,30 +162,12 @@ impl TransferService {
             release_id,
             ReleaseStorageAction::MakeRemote,
             move |release_id, library_manager, _tx| async move {
-                // The release reaches `remote = true` only when coven's upload drain
-                // flips it after the last upload lands. That drain runs from the sync
-                // loop, so the loop must be running — otherwise the uploads sit forever
-                // and the release stays Local with no error.
-                //
-                // `available_storage_actions` states this rule as the availability
-                // policy, so a UI that reads it never offers the action here. This is
-                // the guard for what that list cannot cover: the loop stopping between
-                // the list being computed and the action being taken, and callers (the
-                // bridge, MCP) that never read a list at all.
-                if !library_manager.is_sync_ready() {
-                    return Err(
-                        "Cannot make a release remote while sync isn't running — it would never finish \
-                                 uploading and would stay local"
-                            .into(),
-                    );
-                }
-
                 // Hand the whole transition to coven: it verifies every external source,
                 // enqueues the uploads, and kicks the loop. Per-file upload progress flows
-                // through the outbox snapshot; the gate flip + source delete fire from
-                // coven's drain, surfaced via the observer's `on_root_made_remote`.
-                library_manager.coven_make_remote(&release_id, pin).await?;
-                Ok(())
+                // through the outbox snapshot; durable publication flips the gate and the
+                // cloud-outbox live query reports that terminal handoff.
+                let outbox_revision = library_manager.coven_make_remote(&release_id, pin).await?;
+                Ok(TransferOutcome::CloudUploadQueued { outbox_revision })
             },
         );
         rx
@@ -195,7 +196,7 @@ impl TransferService {
                 library_manager
                     .coven_make_local(&release_id, &new_path, &cancel)
                     .await?;
-                Ok(())
+                Ok(TransferOutcome::Complete)
             },
         );
         rx
@@ -256,7 +257,7 @@ where
     Fut: Future<Output = TransferResult> + Send,
 {
     let file_count = start_transfer(&release_id, action, &library_manager, &tx).await?;
-    run(release_id.clone(), library_manager.clone(), tx.clone()).await?;
+    let outcome = run(release_id.clone(), library_manager.clone(), tx.clone()).await?;
     info!(
         action = ?action,
         release_id = %release_id,
@@ -267,8 +268,14 @@ where
         release_id: LocalId(release_id.clone()),
         file_count,
     });
-    send_progress(&tx, TransferProgress::Complete { release_id });
-    Ok(())
+    send_progress(
+        &tx,
+        TransferProgress::Complete {
+            release_id,
+            outcome,
+        },
+    );
+    Ok(outcome)
 }
 
 /// Guard the transfer's preconditions and announce its start; returns the

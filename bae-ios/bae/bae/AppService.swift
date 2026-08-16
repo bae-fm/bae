@@ -57,7 +57,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// (the `ConfigStore` banner).
     func wireUp() {
         startCommonSubscriptions()
-        subscribeUIEvents(onUnhandled: DesktopUiEvents.ignore)
+        subscribeUIEvents { event in
+            preconditionFailure("Unhandled UI event \(event)")
+        }
         setupRemoteCommands()
     }
 

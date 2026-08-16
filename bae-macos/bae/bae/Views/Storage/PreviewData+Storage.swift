@@ -144,46 +144,59 @@
 
         // MARK: - Cloud outbox (uploads + deletes)
 
-        /// A release's per-file rows in completion order: two shipped, one in
-        /// flight, one retrying, one still queued — every `OutboxFileRow` state.
+        /// Every durable and transient upload-file phase.
         static let uploadFileOps: [BridgeUploadFileOp] = [
             BridgeUploadFileOp(
                 fileId: "f-1",
                 label: .cover,
-                bytesDone: 24_000_000,
-                bytesTotal: 24_000_000,
-                state: .done,
+                bytesDone: 24_100_000,
+                progressBytesTotal: 24_100_000,
+                sourceBytesTotal: 24_000_000,
+                state: .uploaded,
                 lastError: nil
             ),
             BridgeUploadFileOp(
                 fileId: "f-2",
                 label: .filename(name: "02 Track Title.flac"),
-                bytesDone: 31_000_000,
-                bytesTotal: 31_000_000,
-                state: .done,
+                bytesDone: 10_000_000,
+                progressBytesTotal: 31_000_000,
+                sourceBytesTotal: 31_000_000,
+                state: .preparing,
                 lastError: nil
             ),
             BridgeUploadFileOp(
                 fileId: "f-3",
                 label: .filename(name: "03 Track Title.flac"),
-                bytesDone: 12_400_000,
-                bytesTotal: 28_000_000,
-                state: .uploading,
+                bytesDone: 28_000_000,
+                progressBytesTotal: 28_000_000,
+                sourceBytesTotal: 28_000_000,
+                state: .prepared,
                 lastError: nil
             ),
             BridgeUploadFileOp(
                 fileId: "f-4",
                 label: .filename(name: "04 Track Title.flac"),
-                bytesDone: 0,
-                bytesTotal: 26_000_000,
-                state: .retrying,
-                lastError: "Upload timed out; will retry."
+                bytesDone: 12_400_000,
+                progressBytesTotal: 26_100_000,
+                sourceBytesTotal: 26_000_000,
+                state: .uploading,
+                lastError: nil
             ),
             BridgeUploadFileOp(
                 fileId: "f-5",
                 label: .filename(name: "05 Track Title.flac"),
                 bytesDone: 0,
-                bytesTotal: 22_000_000,
+                progressBytesTotal: 22_000_000,
+                sourceBytesTotal: 22_000_000,
+                state: .retrying,
+                lastError: "Upload timed out; will retry."
+            ),
+            BridgeUploadFileOp(
+                fileId: "f-6",
+                label: .filename(name: "06 Track Title.flac"),
+                bytesDone: 0,
+                progressBytesTotal: 0,
+                sourceBytesTotal: 18_000_000,
                 state: .queued,
                 lastError: nil
             ),
@@ -194,10 +207,20 @@
         ) -> BridgeUploadProgress {
             BridgeUploadProgress(
                 queued: 1,
-                active: 1,
+                preparing: 1,
+                prepared: 1,
+                uploading: 1,
                 failed: 1,
-                bytesDone: 55_000_000,
-                bytesTotal: 131_000_000,
+                uploaded: 1,
+                publishing: 0,
+                cancelling: 0,
+                preparationBytesDone: 93_000_000,
+                preparationBytesTotal: 149_000_000,
+                uploadBytesDone: 36_500_000,
+                uploadBytesTotal: 50_200_000,
+                uploadBytesTotalComplete: false,
+                workDone: 105_000_000,
+                workTotal: 298_000_000,
                 activity: activity
             )
         }
@@ -209,8 +232,7 @@
             progress: uploadProgress(activity: .uploading)
         )
 
-        /// A second group whose files all shipped — a done row that stays until
-        /// the whole queue drains.
+        /// A second group whose blobs landed and whose release is publishing.
         static let uploadGroupDone = BridgeUploadReleaseGroup(
             releaseId: "rel-up-2",
             displayTitle: "Album Title B",
@@ -218,13 +240,31 @@
                 BridgeUploadFileOp(
                     fileId: "g-1",
                     label: .filename(name: "01 Track Title.flac"),
-                    bytesDone: 18_000_000,
-                    bytesTotal: 18_000_000,
-                    state: .done,
+                    bytesDone: 18_100_000,
+                    progressBytesTotal: 18_100_000,
+                    sourceBytesTotal: 18_000_000,
+                    state: .uploaded,
                     lastError: nil
                 )
             ],
-            progress: uploadProgress(activity: .queued)
+            progress: BridgeUploadProgress(
+                queued: 0,
+                preparing: 0,
+                prepared: 0,
+                uploading: 0,
+                failed: 0,
+                uploaded: 1,
+                publishing: 1,
+                cancelling: 0,
+                preparationBytesDone: 18_000_000,
+                preparationBytesTotal: 18_000_000,
+                uploadBytesDone: 18_100_000,
+                uploadBytesTotal: 18_100_000,
+                uploadBytesTotalComplete: true,
+                workDone: 36_000_000,
+                workTotal: 36_000_000,
+                activity: .publishing
+            )
         )
 
         static let deleteOps: [BridgeDeleteOp] = [
@@ -245,23 +285,34 @@
                 uploadGroup, uploadGroupDone,
             ],
             deletes: [BridgeDeleteOp] = deleteOps,
-            paused: Bool = false
+            pauseState: BridgeOutboxPauseState = .running
         ) -> BridgeOutboxSnapshot {
             let perRelease = Dictionary(
-                uniqueKeysWithValues: uploadGroups.compactMap { group in
-                    group.releaseId.map { ($0, group.progress) }
+                uniqueKeysWithValues: uploadGroups.map { group in
+                    (group.releaseId, group.progress)
                 }
             )
             return BridgeOutboxSnapshot(
+                revision: 1,
                 uploadGroups: uploadGroups,
                 deletes: deletes,
                 perRelease: perRelease,
                 total: BridgeUploadProgress(
                     queued: 1,
-                    active: 1,
+                    preparing: 1,
+                    prepared: 1,
+                    uploading: 1,
                     failed: 1,
-                    bytesDone: 73_000_000,
-                    bytesTotal: 149_000_000,
+                    uploaded: 2,
+                    publishing: 1,
+                    cancelling: 0,
+                    preparationBytesDone: 111_000_000,
+                    preparationBytesTotal: 167_000_000,
+                    uploadBytesDone: 54_600_000,
+                    uploadBytesTotal: 68_300_000,
+                    uploadBytesTotalComplete: false,
+                    workDone: 141_000_000,
+                    workTotal: 334_000_000,
                     activity: .uploading
                 ),
                 pendingDeletes: UInt32(deletes.count),
@@ -274,7 +325,7 @@
                         count: UInt32(deletes.count)
                     ),
                 ],
-                paused: paused,
+                pauseState: pauseState,
                 throughputBps: 6_800_000,
                 etaSeconds: 42
             )

@@ -109,22 +109,23 @@ final class StorageActionRunner {
             // Pinning routes through the in-memory download queue, which
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
-            Task { try await downloads.queuePins(releaseIds) }
+            Task {
+                do { try await downloads.queuePins(releaseIds) }
+                catch { uiStore.showError(error) }
+            }
         case .unpin:
-            runEach(
-                releaseIds,
-                String(localized: "unpin"),
-                downloads.unpinRelease
-            )
+            runEach(releaseIds, downloads.unpinRelease)
         }
     }
 
     /// Confirm callback for `MoveToCloudConfirmSheet`: move each pending
     /// release to cloud storage, pinning it when `pin` is set.
     func confirmMoveToCloud(pin: Bool) {
-        let releaseIds = pendingMoveToCloud ?? []
+        guard let releaseIds = pendingMoveToCloud else {
+            preconditionFailure("move-to-cloud confirmation has no releases")
+        }
         pendingMoveToCloud = nil
-        runEach(releaseIds, String(localized: "move to cloud")) {
+        runEach(releaseIds) {
             releaseId in
             try await self.releaseEditor.moveReleaseToCloud(releaseId, pin)
         }
@@ -143,12 +144,7 @@ final class StorageActionRunner {
                     try await sync.cancelReleaseTransition(id)
                 }
                 catch {
-                    uiStore.showError(
-                        String(
-                            localized:
-                                "Failed to cancel: \(error.displayLine)"
-                        )
-                    )
+                    uiStore.showError(error)
                     return
                 }
             }
@@ -173,19 +169,17 @@ final class StorageActionRunner {
         guard let newPath = Self.promptMakeLocalDestination() else {
             return
         }
-        runEach(releaseIds, String(localized: "make local")) {
+        runEach(releaseIds) {
             releaseId in
             try await self.releaseEditor.makeReleaseLocal(releaseId, newPath)
         }
     }
 
     /// Run an async per-release transition for each id, surfacing the first
-    /// failure. `verb` names the action for the error message ("failed to pin:
-    /// …"). Each bridge call descends into the cloud future chain
-    /// on a runtime worker; progress renders from subscribed release values.
+    /// failure. Each bridge call descends into the cloud future chain on a
+    /// runtime worker; progress renders from subscribed release values.
     private func runEach(
         _ releaseIds: [String],
-        _ verb: String,
         _ transition: @escaping @Sendable (String) async throws -> Void
     ) {
         Task {
@@ -195,12 +189,7 @@ final class StorageActionRunner {
                 }
             }
             catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Failed to \(verb): \(error.displayLine)"
-                    )
-                )
+                uiStore.showError(error)
             }
         }
     }

@@ -102,7 +102,7 @@ pub struct ParsedAlbum {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidate_store::{
     CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
-    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot,
+    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportedRelease,
     RuntimeImportCandidateSnapshot, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

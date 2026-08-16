@@ -227,7 +227,7 @@ async fn expect_storage_state(
 // The make-Remote enqueue is visible in the outbox snapshot before the drain
 // ---------------------------------------------------------------------------
 
-/// A Managed import lands Unmanaged-and-uploading: the make-Remote uploads are
+/// A Cloud import lands Local-and-uploading: the make-Remote uploads are
 /// enqueued through coven, and the Storage Manager / import-progress UI reads
 /// them from `outbox_snapshot`. Assert they are visible the instant make-Remote
 /// returns — before any byte drains — so the upload shows up immediately rather
@@ -257,9 +257,43 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
     let group = snap
         .upload_groups
         .iter()
-        .find(|group| group.release_id.as_deref() == Some(release_id.as_str()))
+        .find(|group| group.release_id == release_id)
         .expect("the uploading release is present in upload_groups");
     assert_eq!(group.progress.queued, named.len() as u32);
+}
+
+#[tokio::test]
+async fn durable_outbox_subscription_emits_enqueue_without_a_sync_cycle() {
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let mut values = mgr.subscribe_outbox_values();
+    mgr.start();
+    let source = tmp.path().join("live-outbox");
+    let (_album_id, release_id, _) =
+        create_local_release(&mgr, &source, &[("track.flac", b"audio")]).await;
+
+    mgr.coven_make_remote(&release_id, false).await.unwrap();
+
+    loop {
+        tokio::time::timeout(std::time::Duration::from_secs(5), values.changed())
+            .await
+            .expect("durable outbox commit wakes the subscription")
+            .expect("outbox subscription remains open");
+        let current = values.borrow_and_update();
+        let snapshot = current
+            .as_ref()
+            .expect("outbox subscription published a value")
+            .as_ref()
+            .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
+        if snapshot
+            .upload_groups
+            .iter()
+            .any(|group| group.release_id == release_id)
+        {
+            break;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

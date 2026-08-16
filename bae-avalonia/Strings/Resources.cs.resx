@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>Vše</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>Místní</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>Cloud</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>Nahrávání</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Fronta synchronizace</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Interpret</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>Formát</value></data>

@@ -160,6 +160,11 @@ pub enum BridgeCandidateImportStatus {
         release_id: String,
         album_id: String,
     },
+    CloudUploadQueued {
+        release_id: String,
+        album_id: String,
+        outbox_revision: u64,
+    },
     Error {
         error: BridgeError,
     },

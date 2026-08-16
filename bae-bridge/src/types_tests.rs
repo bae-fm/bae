@@ -30,6 +30,12 @@ mod loc_key_coverage {
         "core.queue.queued",
         "core.download.bytes_progress",
         "core.outbox.pending_deletes",
+        "core.outbox.pausing",
+        "core.outbox.preparing",
+        "core.outbox.prepared",
+        "core.outbox.uploaded",
+        "core.outbox.publishing",
+        "core.outbox.cancelling",
         "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",
@@ -82,10 +88,10 @@ mod loc_key_coverage {
             BridgeReleaseStorageAction::MakeLocal,
         ] {
             let expected = match a {
-                BridgeReleaseStorageAction::MakeRemote => "core.transfer.action.manage",
+                BridgeReleaseStorageAction::MakeRemote => "core.transfer.action.make_remote",
                 BridgeReleaseStorageAction::Pin => "core.transfer.action.pin",
                 BridgeReleaseStorageAction::Unpin => "core.transfer.action.unpin",
-                BridgeReleaseStorageAction::MakeLocal => "core.transfer.action.unmanage",
+                BridgeReleaseStorageAction::MakeLocal => "core.transfer.action.make_local",
             };
             assert_eq!(bridge_transfer_action_key(a), expected);
             keys.push(expected.to_string());

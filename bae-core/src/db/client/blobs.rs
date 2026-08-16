@@ -1,5 +1,23 @@
 use super::*;
 
+/// The bae rows needed to label one exact coven outbox snapshot.
+///
+/// This is an absolute live-query request: when coven changes the durable
+/// queue, the subscription is reconfigured to follow precisely the release
+/// and release-file rows named by that snapshot.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct OutboxDisplayRequest {
+    release_file_ids: Vec<String>,
+    release_ids: Vec<String>,
+}
+
+/// Display values read reactively for an [`OutboxDisplayRequest`].
+#[derive(Debug, Clone)]
+pub(crate) struct OutboxDisplayContext {
+    file_names: HashMap<String, String>,
+    album_titles: HashMap<String, String>,
+}
+
 impl Database {
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), DbError> {
         let image = image.clone();
@@ -266,16 +284,42 @@ impl Database {
     /// display context from each upload's declared blob-bearing table. Missing
     /// context is an invalid queue snapshot and is surfaced to the subscriber.
     pub async fn outbox_queue(&self) -> Result<DbOutboxQueue, DbError> {
-        let uploads = self.inner.handle.queued_uploads().await?;
-        let deletes = self.inner.handle.queued_deletes().await?;
+        let snapshot = self.inner.handle.cloud_outbox_snapshot().await?;
+        self.outbox_queue_from(snapshot).await
+    }
 
-        let release_file_ids: Vec<String> = uploads
+    /// Subscribe to coven's durable uploads, deletes, and make-Remote intents
+    /// as one committed stream. Display context is joined by
+    /// [`outbox_queue_from`](Self::outbox_queue_from) after each value arrives.
+    pub fn subscribe_cloud_outbox(&self) -> coven::CloudOutboxLiveQuery {
+        self.inner.handle.subscribe_cloud_outbox()
+    }
+
+    pub async fn outbox_queue_from(
+        &self,
+        snapshot: coven::CloudOutboxSnapshot,
+    ) -> Result<DbOutboxQueue, DbError> {
+        let request = Self::outbox_display_request(&snapshot)?;
+        let context = self.outbox_display_context(request).await?;
+        Self::outbox_queue_from_context(snapshot, context)
+    }
+
+    /// Identify the bae rows that label an exact durable outbox snapshot.
+    /// Invalid roots fail here rather than producing a partially labelled UI.
+    pub(crate) fn outbox_display_request(
+        snapshot: &coven::CloudOutboxSnapshot,
+    ) -> Result<OutboxDisplayRequest, DbError> {
+        let mut release_file_ids = snapshot
+            .uploads
             .iter()
             .filter(|upload| upload.blob.table() == crate::sync::RELEASE_FILES_NAMESPACE)
             .map(|upload| upload.blob.row_id().to_string())
-            .collect();
-        let file_names = self.outbox_release_file_names(&release_file_ids).await?;
-        let release_ids: Vec<String> = uploads
+            .collect::<Vec<_>>();
+        release_file_ids.sort();
+        release_file_ids.dedup();
+
+        let mut release_ids = snapshot
+            .uploads
             .iter()
             .map(|upload| {
                 if upload.root_table != "releases" {
@@ -286,8 +330,75 @@ impl Database {
                 }
                 Ok(upload.root_id.clone())
             })
-            .collect::<Result<_, DbError>>()?;
-        let album_titles = self.outbox_release_titles(&release_ids).await?;
+            .collect::<Result<Vec<_>, DbError>>()?;
+        release_ids.extend(
+            snapshot
+                .make_remotes
+                .iter()
+                .map(|transition| {
+                    if transition.root_table != "releases" {
+                        return Err(DbError::Message(format!(
+                            "make-Remote root {}:{} is not a release",
+                            transition.root_table, transition.root_id
+                        )));
+                    }
+                    Ok(transition.root_id.clone())
+                })
+                .collect::<Result<Vec<_>, DbError>>()?,
+        );
+        release_ids.sort();
+        release_ids.dedup();
+
+        Ok(OutboxDisplayRequest {
+            release_file_ids,
+            release_ids,
+        })
+    }
+
+    /// Follow the bae display rows named by the current coven outbox. A title,
+    /// release-to-album link, or original filename change produces a new value
+    /// even while the durable outbox itself is unchanged.
+    pub(crate) fn subscribe_outbox_display(
+        &self,
+        initial: OutboxDisplayRequest,
+    ) -> coven::ReconfigurableLiveQuery<OutboxDisplayRequest, OutboxDisplayContext> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |request, sql| {
+                Ok(OutboxDisplayContext {
+                    file_names: outbox_release_file_names_on(&sql, &request.release_file_ids)?,
+                    album_titles: outbox_release_titles_on(&sql, &request.release_ids)?,
+                })
+            })
+    }
+
+    async fn outbox_display_context(
+        &self,
+        request: OutboxDisplayRequest,
+    ) -> Result<OutboxDisplayContext, DbError> {
+        self.read(move |sql| {
+            Ok(OutboxDisplayContext {
+                file_names: outbox_release_file_names_on(&sql, &request.release_file_ids)?,
+                album_titles: outbox_release_titles_on(&sql, &request.release_ids)?,
+            })
+        })
+        .await
+    }
+
+    pub(crate) fn outbox_queue_from_context(
+        snapshot: coven::CloudOutboxSnapshot,
+        context: OutboxDisplayContext,
+    ) -> Result<DbOutboxQueue, DbError> {
+        let coven::CloudOutboxSnapshot {
+            uploads,
+            deletes,
+            make_remotes,
+        } = snapshot;
+
+        let OutboxDisplayContext {
+            file_names,
+            album_titles,
+        } = context;
 
         let uploads = uploads
             .into_iter()
@@ -319,13 +430,35 @@ impl Database {
                     ))
                 })?;
                 Ok(DbOutboxUpload {
-                    album_title: Some(album_title),
-                    release_id: Some(release_id),
+                    album_title,
+                    release_id,
                     blob: upload.blob,
+                    phase: upload.phase,
+                    provider_bytes_total: upload.provider_bytes_total,
                     attempt_count: upload.attempt_count,
                     last_error: upload.last_error,
                     created_at: stamp_millis(&upload.created_at)?,
                     label,
+                })
+            })
+            .collect::<Result<Vec<_>, DbError>>()?;
+
+        let make_remotes = make_remotes
+            .into_iter()
+            .map(|transition| {
+                let album_title =
+                    album_titles
+                        .get(&transition.root_id)
+                        .cloned()
+                        .ok_or_else(|| {
+                            DbError::Message(format!(
+                                "make-Remote release {} no longer has an album title",
+                                transition.root_id
+                            ))
+                        })?;
+                Ok(DbMakeRemote {
+                    transition,
+                    album_title,
                 })
             })
             .collect::<Result<Vec<_>, DbError>>()?;
@@ -341,72 +474,61 @@ impl Database {
             })
             .collect::<Result<Vec<_>, DbError>>()?;
 
-        Ok(DbOutboxQueue { uploads, deletes })
-    }
-
-    /// Original filenames for queued `release_files` rows. The queue already
-    /// declares each upload's table, so image rows never enter this lookup.
-    async fn outbox_release_file_names(
-        &self,
-        file_ids: &[String],
-    ) -> Result<HashMap<String, String>, DbError> {
-        if file_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-        let file_ids = file_ids.to_vec();
-        self.read(move |sql| {
-            let mut map = HashMap::new();
-            for chunk in file_ids.chunks(SQL_MAX_IN_VARS) {
-                let placeholders = in_clause_placeholders(chunk.len());
-                let query = format!(
-                    "SELECT rf.id, rf.original_filename \
-                     FROM release_files rf \
-                     WHERE rf.id IN ({placeholders})"
-                );
-                let rows = sql.query(
-                    &query,
-                    coven::rusqlite::params_from_iter(chunk.iter()),
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )?;
-                map.extend(rows);
-            }
-            Ok(map)
+        Ok(DbOutboxQueue {
+            uploads,
+            deletes,
+            make_remotes,
         })
-        .await
     }
+}
 
-    /// Album titles for the release roots coven groups uploads under. The title
-    /// belongs to the root, not to whichever audio/image row happens to be the
-    /// first queued upload.
-    async fn outbox_release_titles(
-        &self,
-        release_ids: &[String],
-    ) -> Result<HashMap<String, String>, DbError> {
-        if release_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-        let release_ids = release_ids.to_vec();
-        self.read(move |sql| {
-            let mut map = HashMap::new();
-            for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
-                let placeholders = in_clause_placeholders(chunk.len());
-                let query = format!(
-                    "SELECT r.id, a.title \
-                     FROM releases r \
-                     LEFT JOIN albums a ON a.id = r.album_id \
-                     WHERE r.id IN ({placeholders})"
-                );
-                let rows = sql.query(
-                    &query,
-                    coven::rusqlite::params_from_iter(chunk.iter()),
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )?;
-                map.extend(rows);
-            }
-            Ok(map)
-        })
-        .await
+/// Original filenames for queued `release_files` rows. The queue already
+/// declares each upload's table, so image rows never enter this lookup.
+fn outbox_release_file_names_on(
+    sql: &SqlReadContext<'_>,
+    file_ids: &[String],
+) -> Result<HashMap<String, String>, DbError> {
+    let mut map = HashMap::new();
+    for chunk in file_ids.chunks(SQL_MAX_IN_VARS) {
+        let placeholders = in_clause_placeholders(chunk.len());
+        let query = format!(
+            "SELECT rf.id, rf.original_filename \
+             FROM release_files rf \
+             WHERE rf.id IN ({placeholders})"
+        );
+        let rows = sql.query(
+            &query,
+            coven::rusqlite::params_from_iter(chunk.iter()),
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?;
+        map.extend(rows);
     }
+    Ok(map)
+}
+
+/// Album titles for the release roots coven groups uploads under. The title
+/// belongs to the root, not to whichever audio/image row happens to be first.
+fn outbox_release_titles_on(
+    sql: &SqlReadContext<'_>,
+    release_ids: &[String],
+) -> Result<HashMap<String, String>, DbError> {
+    let mut map = HashMap::new();
+    for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
+        let placeholders = in_clause_placeholders(chunk.len());
+        let query = format!(
+            "SELECT r.id, a.title \
+             FROM releases r \
+             LEFT JOIN albums a ON a.id = r.album_id \
+             WHERE r.id IN ({placeholders})"
+        );
+        let rows = sql.query(
+            &query,
+            coven::rusqlite::params_from_iter(chunk.iter()),
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?;
+        map.extend(rows);
+    }
+    Ok(map)
 }
 
 /// coven stamps a queue entry's `created_at` with its HLC (`millis-counter-device`);

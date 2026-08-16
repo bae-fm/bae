@@ -1,28 +1,53 @@
 import Foundation
 
 extension BridgeUploadProgress {
-    /// Total queued + active + failed (i.e. anything not yet shipped). Drives
-    /// the storage row's "Uploading (N)" badge.
-    public var pending: UInt32 {
-        queued + active + failed
+    /// Localized count for the dominant durable or transient phase. Core owns
+    /// the dominant phase; this resolves its catalog key and matching count.
+    public var activityText: String? {
+        guard let activity else { return nil }
+        let (key, count): (String, UInt32) =
+            switch activity {
+            case .cancelling: ("core.outbox.cancelling", cancelling)
+            case .publishing: ("core.outbox.publishing", publishing)
+            case .uploading: ("core.queue.uploading", uploading)
+            case .preparing: ("core.outbox.preparing", preparing)
+            case .retrying: ("core.queue.failed", failed)
+            case .prepared: ("core.outbox.prepared", prepared)
+            case .queued: ("core.queue.queued", queued)
+            case .uploaded: ("core.outbox.uploaded", uploaded)
+            }
+        return QueueSummary.countLabel(key, count)
     }
 
-    /// Byte progress as a 0...1 fraction for a determinate `ProgressView`.
-    /// Cumulative over the queue burst: completed files stay in both numbers.
-    /// Zero (an empty bar) when nothing is queued, which reads correctly as
-    /// "not started" rather than a divide-by-zero.
+    /// Source-preparation + provider-upload work as a 0...1 fraction.
     public var fraction: Double {
-        guard bytesTotal > 0 else { return 0 }
-        return Double(bytesDone) / Double(bytesTotal)
+        guard workTotal > 0 else { return 0 }
+        precondition(
+            workDone <= workTotal,
+            "cloud upload work cannot exceed its exact total"
+        )
+        return Double(workDone) / Double(workTotal)
     }
 
-    /// Byte progress for a queue row: "45.2 MB of 103.1 MB", cumulative over
-    /// the queue burst.
-    public var bytesText: String {
-        String(
+    /// Exact byte progress for the dominant active stage. Preparation measures
+    /// plaintext consumed; upload measures encrypted bytes sent.
+    public var stageBytesText: String? {
+        let values: (UInt64, UInt64)? =
+            switch activity {
+            case .preparing:
+                (preparationBytesDone, preparationBytesTotal)
+            case .uploading:
+                uploadBytesTotalComplete
+                    ? (uploadBytesDone, uploadBytesTotal)
+                    : nil
+            default:
+                nil
+            }
+        guard let (done, total) = values, total > 0 else { return nil }
+        return String(
             format: QueueSummary.message("core.outbox.bytes_progress"),
-            Int64(bytesDone).formatted(.byteCount(style: .file)),
-            Int64(bytesTotal).formatted(.byteCount(style: .file))
+            Int64(done).formatted(.byteCount(style: .file)),
+            Int64(total).formatted(.byteCount(style: .file))
         )
     }
 }

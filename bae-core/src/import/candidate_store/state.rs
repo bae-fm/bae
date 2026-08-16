@@ -89,14 +89,23 @@ impl CandidateRuntimeSnapshot {
 }
 
 #[derive(Debug, Clone)]
+pub struct ImportedRelease {
+    pub release_id: String,
+    pub album_id: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum CandidateImportStatusSnapshot {
     Importing {
         progress_percent: u32,
         step: Option<ImportStep>,
     },
     Complete {
-        release_id: String,
-        album_id: String,
+        release: ImportedRelease,
+    },
+    CloudUploadQueued {
+        release: ImportedRelease,
+        outbox_revision: u64,
     },
     Error {
         error: String,
@@ -690,13 +699,26 @@ impl CandidateState {
                             step: Some(ImportStep::Running(*phase)),
                         })
                     }
-                    ImportProgress::Complete { id, album_id, .. }
-                    | ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+                    ImportProgress::Complete { id, album_id, .. } => {
                         Some(CandidateImportStatusSnapshot::Complete {
-                            release_id: id.clone(),
-                            album_id: album_id.clone(),
+                            release: ImportedRelease {
+                                release_id: id.clone(),
+                                album_id: album_id.clone(),
+                            },
                         })
                     }
+                    ImportProgress::RemoteUploadQueued {
+                        id,
+                        album_id,
+                        outbox_revision,
+                        ..
+                    } => Some(CandidateImportStatusSnapshot::CloudUploadQueued {
+                        release: ImportedRelease {
+                            release_id: id.clone(),
+                            album_id: album_id.clone(),
+                        },
+                        outbox_revision: *outbox_revision,
+                    }),
                     ImportProgress::Failed { error, .. } => {
                         Some(CandidateImportStatusSnapshot::Error {
                             error: error.clone(),

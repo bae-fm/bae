@@ -75,24 +75,31 @@ pub enum BridgeUiEvent {
 
 /// The dominant activity of a slice of the upload queue (a release's uploads,
 /// or the whole queue), for the storage-row badge. Mirror of bae-core's
-/// `UploadActivity`. No terminal variant: a release with nothing left to ship
-/// stops being rendered at all.
+/// `UploadActivity`. No terminal variant: `Uploaded` still awaits release
+/// publication, and the group leaves only after that transition finishes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadActivity {
+    Cancelling,
+    Publishing,
     Uploading,
+    Preparing,
     Retrying,
+    Prepared,
     Queued,
+    Uploaded,
 }
 
-/// One file's state in the queue pane's per-file rows. Unlike the slice badge,
-/// a file inside a still-uploading release does render as `Done` — the row
-/// shows which files already shipped while the rest transfer.
+/// One file's state in the queue pane's per-file rows. A file inside an
+/// unfinished release transition can render as `Uploaded`, showing that its
+/// provider write finished while other files or publication remain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadFileState {
     Queued,
+    Preparing,
+    Prepared,
     Uploading,
     Retrying,
-    Done,
+    Uploaded,
 }
 
 /// The label for one queued upload. Source filenames cross the bridge as data;
@@ -122,19 +129,52 @@ pub struct BridgeDeleteOp {
 /// Per-state counts, byte progress, and a derived badge `activity`. Used
 /// per-release (the storage-row badge reads `activity`; storage-action gates
 /// read the counts) and as the overall total (queue counts, ETA, summary band).
-/// Files completed during the current queue burst count in `bytes_done` and
-/// `bytes_total`, so the fractions are cumulative over the burst.
-#[derive(Debug, Clone, Default, uniffi::Record)]
+/// Provider-complete files remain counted until publication, so the fraction
+/// stays cumulative over the full durable release transition and across restarts.
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
-    pub active: u32,
+    pub preparing: u32,
+    pub prepared: u32,
+    pub uploading: u32,
     pub failed: u32,
-    pub bytes_done: u64,
-    pub bytes_total: u64,
+    pub uploaded: u32,
+    pub publishing: u32,
+    pub cancelling: u32,
+    pub preparation_bytes_done: u64,
+    pub preparation_bytes_total: u64,
+    pub upload_bytes_done: u64,
+    pub upload_bytes_total: u64,
+    /// Whether the provider-byte total covers every upload in this slice.
+    pub upload_bytes_total_complete: bool,
+    pub work_done: u64,
+    pub work_total: u64,
     /// The badge activity for this slice; `None` when idle. Per-release entries
-    /// always have pending work (finished releases aren't rendered), so theirs
-    /// is always set.
+    /// always belong to an unfinished transition, so theirs is always set.
     pub activity: Option<BridgeUploadActivity>,
+}
+
+impl Default for BridgeUploadProgress {
+    fn default() -> Self {
+        Self {
+            queued: 0,
+            preparing: 0,
+            prepared: 0,
+            uploading: 0,
+            failed: 0,
+            uploaded: 0,
+            publishing: 0,
+            cancelling: 0,
+            preparation_bytes_done: 0,
+            preparation_bytes_total: 0,
+            upload_bytes_done: 0,
+            upload_bytes_total: 0,
+            upload_bytes_total_complete: true,
+            work_done: 0,
+            work_total: 0,
+            activity: None,
+        }
+    }
 }
 
 /// A queued download's state.
@@ -386,31 +426,40 @@ pub struct BridgeOutputSnapshot {
 
 /// One file in a release's upload group: what the queue pane's per-file rows
 /// render. Mirror of bae-core's `UploadFileOp`, with the state flattened into
-/// `state` + `bytes_done` + `last_error` so the UI doesn't switch on
-/// associated data: `bytes_done` is the live count while `Uploading`, equal to
-/// `bytes_total` when `Done`, and 0 otherwise; `last_error` is set only when
-/// `Retrying`.
+/// `state` + progress fields + `last_error` so the UI doesn't switch on
+/// associated data. `source_bytes_total` is the displayed local file size;
+/// `progress_bytes_total` is the exact denominator of the active preparation
+/// or provider-transfer phase.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
     pub file_id: String,
     pub label: BridgeUploadFileLabel,
     pub bytes_done: u64,
-    pub bytes_total: u64,
+    pub progress_bytes_total: u64,
+    pub source_bytes_total: u64,
     pub state: BridgeUploadFileState,
     pub last_error: Option<String>,
 }
 
 /// A release's uploads, grouped for the queue pane's expandable per-release
-/// rows. Mirror of bae-core's `UploadReleaseGroup`. `release_id` is `None` for
-/// the orphaned-files bucket; `display_title` is the row's label, resolved by
-/// core. `files` runs completed files first (in completion order), then the
-/// remaining queue in order.
+/// rows. Mirror of bae-core's `UploadReleaseGroup`. Core resolves the required
+/// release id and display title before the bridge value can exist. Files retain
+/// their durable queue order.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadReleaseGroup {
-    pub release_id: Option<String>,
+    pub release_id: String,
     pub display_title: String,
     pub files: Vec<BridgeUploadFileOp>,
     pub progress: BridgeUploadProgress,
+}
+
+/// Whether the upload queue is running, finishing the provider write that was
+/// already active when pause was requested, or fully paused between entries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeOutboxPauseState {
+    Running,
+    Pausing,
+    Paused,
 }
 
 /// The cloud-outbox processing snapshot the Storage Manager renders. The
@@ -418,17 +467,19 @@ pub struct BridgeUploadReleaseGroup {
 /// are computed from bae-core's grouped snapshot; the UI renders them verbatim.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
-    /// Uploads grouped by release for the queue pane's rows. Groups whose
-    /// files all completed stay listed (as done rows) until the whole queue
-    /// drains.
+    /// Monotonic publication number from core. A cloud import carries the
+    /// revision that first represented its enqueue, allowing a subscriber that
+    /// coalesced intermediate values to recognize terminal completion.
+    pub revision: u64,
+    /// Uploads grouped by release for the queue pane's rows. A group leaves
+    /// only after its durable make-Remote transition finishes publication.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
     pub deletes: Vec<BridgeDeleteOp>,
     /// Per-release aggregate derived from `upload_groups`, keyed by release id.
-    /// Releases with no work this burst are absent from the map.
+    /// Releases with no unfinished make-Remote transition are absent.
     pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
-    /// Sum across all uploads. The master progress bar shows
-    /// `total.bytes_done` of `total.bytes_total` — cumulative over the burst,
-    /// completed files included.
+    /// Sum across all uploads. `work_done/work_total` is the two-stage progress
+    /// bar; preparation and provider byte counters remain separate.
     pub total: BridgeUploadProgress,
     /// Derived from `deletes.len()`.
     pub pending_deletes: u32,
@@ -436,9 +487,7 @@ pub struct BridgeOutboxSnapshot {
     /// deletes, each dropped when zero), decided by core. The UI resolves each
     /// key and joins.
     pub summary_parts: Vec<BridgeCountLabel>,
-    /// True when the user has paused the upload pipeline. Drives the
-    /// pause/resume toggle and suppresses throughput/ETA in the UI.
-    pub paused: bool,
+    pub pause_state: BridgeOutboxPauseState,
     /// Rolling-window upload throughput in bytes per second. The UI formats it.
     pub throughput_bps: u64,
     /// Estimated seconds remaining at the current rate. The UI formats it.

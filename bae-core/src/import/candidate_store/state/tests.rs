@@ -296,15 +296,32 @@ fn record_event_overlays_import_progress_onto_folder_runtime() {
         .clone()
         .expect("import status overlaid");
     match complete {
-        CandidateImportStatusSnapshot::Complete {
-            release_id,
-            album_id,
-        } => {
-            assert_eq!(release_id, "rel1");
-            assert_eq!(album_id, "1250a7bb-41ed-4500-8ab4-04f5d3461e30");
+        CandidateImportStatusSnapshot::Complete { release } => {
+            assert_eq!(release.release_id, "rel1");
+            assert_eq!(release.album_id, "1250a7bb-41ed-4500-8ab4-04f5d3461e30");
         }
         other => panic!("expected Complete, got {other:?}"),
     }
+
+    state.record_event(&ImportEvent::ImportProgress {
+        candidate_key: "/watch/a/rel1".to_string(),
+        progress: ImportProgress::RemoteUploadQueued {
+            id: "rel1".to_string(),
+            import_id: "imp-1".to_string(),
+            album_id: "1250a7bb-41ed-4500-8ab4-04f5d3461e30".to_string(),
+            outbox_revision: 7,
+        },
+    });
+    assert!(matches!(
+        state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+            .runtime
+            .import_status,
+        Some(CandidateImportStatusSnapshot::CloudUploadQueued {
+            ref release,
+            outbox_revision: 7,
+        }) if release.release_id == "rel1"
+            && release.album_id == "1250a7bb-41ed-4500-8ab4-04f5d3461e30"
+    ));
 }
 
 #[test]

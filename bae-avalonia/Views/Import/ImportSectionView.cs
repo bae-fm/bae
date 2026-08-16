@@ -38,6 +38,7 @@ internal sealed partial class ImportSectionView : UserControl
 
     private readonly AppService _app;
     private readonly ImportStore _import;
+    private readonly StorageStore _storage;
     private readonly ImportMappingPane _pane;
 
     // The candidate the pane is holding, so a re-render of the list can accent
@@ -65,6 +66,7 @@ internal sealed partial class ImportSectionView : UserControl
     {
         _app = app;
         _import = app.ImportStore;
+        _storage = app.StorageStore;
         _pane = new ImportMappingPane(app, dialogs);
         _pane.Cleared += () => { _selectedKey = null; Render(); };
 
@@ -88,6 +90,7 @@ internal sealed partial class ImportSectionView : UserControl
         Content = BuildShell();
 
         _import.Changed += Render;
+        _storage.Changed += Render;
 
         Render();
     }

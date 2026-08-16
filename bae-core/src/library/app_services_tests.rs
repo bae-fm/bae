@@ -182,3 +182,22 @@ async fn queue_upcoming_subscription_clamps_to_the_live_tails_end() {
         "both subscriptions project the current queue revision"
     );
 }
+
+#[test]
+fn storage_sync_queue_reconfigures_only_when_membership_changes() {
+    let mut current = vec!["release-a".to_string(), "release-b".to_string()];
+
+    assert!(!replace_transitioning_release_ids(
+        &mut current,
+        vec![
+            "release-b".to_string(),
+            "release-a".to_string(),
+            "release-b".to_string(),
+        ]
+    ));
+    assert!(replace_transitioning_release_ids(
+        &mut current,
+        vec!["release-a".to_string(), "release-c".to_string()]
+    ));
+    assert_eq!(current, ["release-a", "release-c"]);
+}

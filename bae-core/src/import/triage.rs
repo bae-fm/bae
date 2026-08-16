@@ -26,7 +26,7 @@ use super::search::{ImportSearchReleaseDetail, MetadataResult, SourceTracks};
 use super::types::{IdentityChoice, MetadataSource};
 use super::{
     CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
-    WatchedFolderScanStatus,
+    ImportedRelease, WatchedFolderScanStatus,
 };
 use crate::db::{DbImportCandidateState, LibraryCheck, LibraryStatus};
 use crate::identify::verdict::decode_stored;
@@ -81,6 +81,7 @@ pub fn place(
         Some(CandidateImportStatusSnapshot::Importing { .. }) => return TriagePlacement::Importing,
         Some(
             CandidateImportStatusSnapshot::Complete { .. }
+            | CandidateImportStatusSnapshot::CloudUploadQueued { .. }
             | CandidateImportStatusSnapshot::Error { .. },
         ) => true,
         None => false,
@@ -109,6 +110,7 @@ fn row(
     snapshot: &FolderImportCandidateSnapshot,
     answer: Option<&Answered>,
     picked: Option<&Picked>,
+    imported_release: Option<&ImportedRelease>,
 ) -> TriageRow {
     let FolderCandidate {
         path,
@@ -121,7 +123,11 @@ fn row(
         scope: _,
         ..
     } = &snapshot.candidate;
-    let import_status = snapshot.runtime.import_status.clone();
+    let import_status = snapshot.runtime.import_status.clone().or_else(|| {
+        imported_release
+            .cloned()
+            .map(|release| CandidateImportStatusSnapshot::Complete { release })
+    });
     let actionable_answer = answer.filter(|_| snapshot.actionable);
     let known = match actionable_answer {
         Some(answer) => CandidateAnswer::Classified(answer.classification.clone()),
@@ -129,7 +135,7 @@ fn row(
     };
     let placement = place(
         snapshot.skipped,
-        snapshot.is_added,
+        imported_release.is_some(),
         import_status.as_ref(),
         &known,
     );
@@ -170,6 +176,7 @@ pub fn project(
     snapshot: ImportCandidatesSnapshot,
     answers: &HashMap<(String, u64), Answered>,
     picks: &HashMap<(String, u64), Picked>,
+    imported_releases: &HashMap<String, ImportedRelease>,
 ) -> TriageQueue {
     let ImportCandidatesSnapshot {
         folder_candidates,
@@ -190,14 +197,13 @@ pub fn project(
         ..TriageTabCounts::default()
     };
     for candidate in actionable_candidates {
-        let candidate_identity = (
-            candidate.candidate.files.content_hash(),
-            candidate.candidate.file_edit_revision,
-        );
+        let content_hash = candidate.candidate.files.content_hash();
+        let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
         let row = row(
             candidate,
             answers.get(&candidate_identity),
             picks.get(&candidate_identity),
+            imported_releases.get(&content_hash),
         );
         counts.bump(row.placement.tab());
         rows.push(row);
@@ -389,7 +395,17 @@ pub async fn load(
     let statuses = library_manager.check_releases_in_library(&checks).await?;
     let answers = answers_from_statuses(verdicts, &statuses)?;
     let picks = stored_picks(&snapshot, &stored, library_manager).await?;
-    Ok(project(snapshot, &answers, &picks))
+    let mut content_hashes: Vec<_> = snapshot
+        .folder_candidates
+        .iter()
+        .map(|candidate| candidate.candidate.files.content_hash())
+        .collect();
+    content_hashes.sort();
+    content_hashes.dedup();
+    let imported_releases = library_manager
+        .imported_releases_for_content_hashes(&content_hashes)
+        .await?;
+    Ok(project(snapshot, &answers, &picks, &imported_releases))
 }
 
 pub(crate) fn library_checks(
@@ -410,7 +426,12 @@ pub(crate) fn project_live(
         &projection.candidate_states,
         &projection.source_payloads,
     )?;
-    Ok(project(snapshot, &answers, &picks))
+    Ok(project(
+        snapshot,
+        &answers,
+        &picks,
+        &projection.imported_releases,
+    ))
 }
 
 fn checks_from_verdicts(

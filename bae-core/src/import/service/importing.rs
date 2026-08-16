@@ -768,33 +768,40 @@ impl ImportService {
         // user-provided source. This runs BEFORE the events below so the outbox
         // already holds the upload by the time any consumer observes the release
         // or `Complete`.
-        if remote_intent {
-            if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
-                let remote_error = format!(
-                    "Remote import of {} could not start its cloud upload: {e}",
-                    db_release.id
-                );
-                if let Err(delete_error) = library_manager
-                    .fail_import_and_delete_release(&db_release.id)
-                    .await
-                {
-                    return Err(crate::import::ImportError::Internal {
-                        detail: format!(
-                            "{remote_error}; removing the release it had already finalized failed: {delete_error}"
-                        ),
-                    });
+        let outbox_revision = if remote_intent {
+            match library_manager.coven_make_remote(&db_release.id, pin).await {
+                Ok(revision) => Some(revision),
+                Err(e) => {
+                    let remote_error = format!(
+                        "Remote import of {} could not start its cloud upload: {e}",
+                        db_release.id
+                    );
+                    if let Err(delete_error) = library_manager
+                        .fail_import_and_delete_release(&db_release.id)
+                        .await
+                    {
+                        return Err(crate::import::ImportError::Internal {
+                            detail: format!(
+                                "{remote_error}; removing the release it had already finalized failed: {delete_error}"
+                            ),
+                        });
+                    }
+                    return Err(crate::import::ImportError::Db(
+                        crate::library::LibraryError::Storage(remote_error),
+                    ));
                 }
-                return Err(crate::import::ImportError::Db(
-                    crate::library::LibraryError::Storage(remote_error),
-                ));
             }
-        }
+        } else {
+            None
+        };
 
         let progress = if remote_intent {
             ImportProgress::RemoteUploadQueued {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
                 album_id: album_id.to_string(),
+                outbox_revision: outbox_revision
+                    .expect("a Remote import publishes its queued outbox revision"),
             }
         } else {
             ImportProgress::Complete {

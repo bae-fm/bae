@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>الكل</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>محلي</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>السحابة</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>جارٍ الرفع</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>طابور المزامنة</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>الألبوم</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>الفنان</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>الصيغة</value></data>

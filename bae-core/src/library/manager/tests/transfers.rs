@@ -325,7 +325,7 @@ async fn storage_page_uploading_filter_matches_the_upload_queue() {
 async fn cancel_release_transition_fires_a_registered_transfer_token() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    // A registered unmanage token is fired by the unified cancel.
+    // A registered make-Local token is fired by the unified cancel.
     let token = crate::library::CancellationToken::new();
     manager
         .transfer_cancels
@@ -401,40 +401,43 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     // Freshly queued: per-release count is 1 queued, joined to the album title.
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.queued, 1);
-    assert_eq!(snap.total.active, 0);
+    assert_eq!(snap.total.uploading, 0);
     assert_eq!(snap.total.failed, 0);
-    assert_eq!(snap.total.bytes_total, 1000);
-    assert_eq!(snap.total.bytes_done, 0);
+    assert_eq!(snap.total.preparation_bytes_total, 1000);
+    assert_eq!(snap.total.upload_bytes_done, 0);
     assert_eq!(snap.upload_groups.len(), 1);
     let group = &snap.upload_groups[0];
     assert_eq!(group.display_title, "Test Album");
-    assert_eq!(group.release_id.as_deref(), Some(release.id.as_str()));
+    assert_eq!(group.release_id, release.id);
     assert_eq!(group.files.len(), 1);
     assert_eq!(
         group.files[0].label,
         crate::library::UploadFileLabel::Filename("a.flac".to_string())
     );
     assert_eq!(group.progress.queued, 1);
-    assert_eq!(group.progress.bytes_total, 1000);
+    assert_eq!(group.progress.preparation_bytes_total, 1000);
 
-    // In flight now: the in-memory map flips it to active, starting at zero
-    // bytes done.
-    manager.sync.set_upload_progress_for_test(&file_id, 0);
+    // Source preparation starts before coven has produced the encrypted object.
+    manager
+        .observe_blob_preparation_started_for_test(&file_id)
+        .await;
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.total.active, 1);
+    assert_eq!(snap.total.preparing, 1);
     assert_eq!(snap.total.queued, 0);
-    assert_eq!(snap.upload_groups[0].progress.active, 1);
-    assert_eq!(snap.total.bytes_done, 0);
+    assert_eq!(snap.upload_groups[0].progress.preparing, 1);
+    assert_eq!(snap.total.preparation_bytes_done, 0);
 
-    // Mid-upload progress advances the live byte count: the snapshot's
-    // per-release and aggregate bytes_done climb without the file completing.
-    manager.sync.set_upload_progress_for_test(&file_id, 400);
+    // Mid-preparation progress advances at the source stream's buffer cadence.
+    manager
+        .observe_blob_preparation_progress_for_test(&file_id, 400, 1000)
+        .await;
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.upload_groups[0].progress.active, 1);
-    assert_eq!(snap.upload_groups[0].progress.bytes_done, 400);
-    assert_eq!(snap.total.bytes_done, 400);
-    assert_eq!(snap.total.bytes_total, 1000);
-    manager.sync.clear_upload_progress_for_test(&file_id);
+    assert_eq!(snap.upload_groups[0].progress.preparing, 1);
+    assert_eq!(snap.upload_groups[0].progress.preparation_bytes_done, 400);
+    assert_eq!(snap.total.preparation_bytes_done, 400);
+    assert_eq!(snap.total.upload_bytes_done, 0);
+    assert_eq!(snap.total.preparation_bytes_total, 1000);
+    manager.sync.clear_transient_upload_for_test(&file_id);
 
     // A real failure: the user's file is gone, so the drain cannot seal it. The
     // entry stays queued with coven's own attempt count and error on it.
@@ -500,7 +503,7 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
     let group = snapshot
         .upload_groups
         .iter()
-        .find(|group| group.release_id.as_deref() == Some(release.id.as_str()))
+        .find(|group| group.release_id == release.id)
         .expect("the release upload group");
     let cover_upload = group
         .files
@@ -511,338 +514,351 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         cover_upload.file_id,
         format!("{}:{cover_blob_id}", crate::sync::COVERS_NAMESPACE)
     );
-    assert_eq!(cover_upload.bytes_total, cover_bytes.len() as u64);
+    assert_eq!(cover_upload.source_bytes_total, cover_bytes.len() as u64);
 }
 
-/// The real `ReleaseUploadObserver` drives the snapshot's live byte count:
-/// `on_blob_upload_progress` advances an in-flight `Active` file's
-/// `bytes_done` so the aggregate and per-release bars move mid-file.
+/// A successful make-Remote command must publish the canonical durable queue
+/// snapshot before it returns. The foreground transfer and Import status both
+/// finish immediately after this call; without this ordering the UI briefly
+/// falls back to Local/Imported while the live query catches up.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn observer_progress_advances_snapshot_bytes_done() {
+async fn make_remote_publishes_its_durable_queue_before_returning() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("queued"),
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
-
-    // The observer shares the manager's in-flight map and throughput tracker,
-    // exactly as production wires it in `build_sync_manager`.
-    manager.observe_blob_upload_started_for_test(&file_id).await;
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.upload_groups[0].progress.active, 1);
-    assert_eq!(snap.upload_groups[0].progress.bytes_done, 0);
-    assert_eq!(snap.total.bytes_done, 0);
-
-    // A mid-upload progress report advances the live count without the file
-    // completing.
-    manager
-        .observe_blob_upload_progress_for_test(&file_id, 600, 1000)
-        .await;
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.upload_groups[0].progress.active, 1);
-    assert_eq!(snap.upload_groups[0].progress.bytes_done, 600);
-    assert_eq!(snap.total.bytes_done, 600);
-    // The rolling-window tracker saw the 600-byte delta, so the rate is
-    // non-zero before the file even finishes.
-    assert!(manager.sync.upload_bytes_per_second_for_test() > 0);
-
-    // Completion clears the in-flight entry and tallies the file as done; the
-    // queue entry is still there (this test drives only the observer, not
-    // coven's drain), but with its only file shipped the release has nothing
-    // left to render — the group leaves the snapshot.
-    manager.observe_blob_uploaded_for_test(&file_id).await;
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.total.active, 0);
-    assert_eq!(snap.total.queued, 0);
-    assert!(snap.upload_groups.is_empty());
-}
-
-/// A file that finished uploading but whose queue entry hasn't been consumed
-/// yet (coven reports completion first, then clears the entry inside the
-/// post-upload commit) must read as done work — never as freshly queued. The
-/// Storage Manager renders whatever the last emitted snapshot says, so a
-/// completed upload re-deriving as "Queued" is a lie the UI can freeze on.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn completed_upload_with_lingering_entry_is_not_queued() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("queued"),
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
-
-    manager.observe_blob_upload_started_for_test(&file_id).await;
-    manager
-        .observe_blob_upload_progress_for_test(&file_id, 1000, 1000)
-        .await;
-    manager.observe_blob_uploaded_for_test(&file_id).await;
-
-    // The queue entry is still present — only coven's commit consumes it — but
-    // the upload finished: nothing pending anywhere, and the release (its only
-    // file shipped) is no longer rendered at all.
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(
-        snap.total.queued, 0,
-        "a completed upload must not re-derive as queued"
-    );
-    assert_eq!(snap.total.active, 0);
-    assert_eq!(snap.total.failed, 0);
-    assert!(snap.upload_groups.is_empty());
-}
-
-/// Insert a remote, not-pinned release with one file and return its id.
-/// `remote: true` + no pinned cache copy makes it eligible for pinning.
-async fn insert_pinnable_release(manager: &LibraryManager) -> String {
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    let file = DbFile {
-        id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
-        release_id: release.id.clone(),
-        original_filename: "a.flac".to_string(),
-        file_size: 1000,
-        content_type: crate::util::content_type::ContentType::Flac,
-        cloud_path: None,
-        content_hash: crate::util::fs::hash_bytes(b"fixture"),
-        created_at: Utc::now(),
-    };
-    manager.database.insert_file(&file).await.unwrap();
-    release.id
-}
-
-/// Pausing before the first enqueue parks the worker, so the queue's
-/// in-memory state (enqueue, dedup, snapshot counts, cancel) is observable
-/// deterministically without the download path racing the assertions.
-#[tokio::test]
-async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
-
-    // Park the worker up front so nothing drains while we inspect state.
-    manager.set_downloads_paused(true);
-
-    manager.enqueue_pins(vec![release_id.clone()]).await;
-    let snap = manager.download_snapshot();
-    assert_eq!(snap.total.queued, 1);
-    assert_eq!(snap.ops.len(), 1);
-    assert_eq!(snap.ops[0].title, "Test Album");
-    assert_eq!(snap.ops[0].file_count, 1);
-    assert_eq!(snap.ops[0].state, crate::library::DownloadState::Queued);
-    assert!(snap.paused);
-
-    // Re-enqueuing the same release is a no-op: still one entry.
-    manager.enqueue_pins(vec![release_id.clone()]).await;
-    assert_eq!(manager.download_snapshot().ops.len(), 1);
-
-    // Cancel drops the entry.
-    manager.cancel_download(&release_id);
-    let snap = manager.download_snapshot();
-    assert!(snap.ops.is_empty());
-}
-
-/// An already-pinned release is skipped at enqueue rather than re-downloaded.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn download_queue_skips_already_pinned() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    manager.set_downloads_paused(true);
-
-    // A genuinely pinned release: made Remote with pin, so its blob lands in
-    // coven's offline cache.
-    connect_test_cloud(&manager).await;
-    let release_id = make_remote_release(
-        &manager,
-        &temp_dir.path().join("pinned"),
-        "Test Album",
-        true,
-    )
-    .await;
-    let summary = manager
-        .find_release_storage_summary(&release_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        summary.storage_state,
-        crate::album_detail::ReleaseStorageState::Remote
-    );
-    assert!(
-        summary.pinned,
-        "the offline-cached blob makes it read as pinned"
-    );
-
-    manager.enqueue_pins(vec![release_id.clone()]).await;
-    assert!(manager.download_snapshot().ops.is_empty());
-}
-
-/// A local (unmanaged) release has nothing to pin — it is already fully on disk —
-/// so `enqueue_pins` skips it rather than queueing a download that would fail. The
-/// album grid's bulk pin reaches this path with a mixed local/remote selection.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn download_queue_skips_local_release() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    manager.set_downloads_paused(true);
-
+    assert!(!manager.is_sync_ready(), "the test exercises queueing without a sync loop");
     let release = insert_local_release_with_files(
         &manager,
-        &temp_dir.path().join("local-source"),
-        "Test Album",
-        &[("a.flac", b"aaa")],
+        &temp_dir.path().join("publish-queue"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
     )
     .await;
-    let summary = manager
-        .find_release_storage_summary(&release.id)
+    let mut values = manager.subscribe_outbox_values();
+    assert!(values.borrow_and_update().is_none());
+
+    let queued_revision = manager
+        .make_release_remote(&release.id, false)
         .await
-        .unwrap()
         .unwrap();
-    assert_eq!(
-        summary.storage_state,
-        crate::album_detail::ReleaseStorageState::Local
-    );
 
-    manager.enqueue_pins(vec![release.id.clone()]).await;
-    assert!(
-        manager.download_snapshot().ops.is_empty(),
-        "a local release is not enqueued for pinning"
-    );
+    let snapshot = values
+        .borrow_and_update()
+        .clone()
+        .expect("make-Remote publishes an outbox value")
+        .expect("the durable queue projects");
+    assert_eq!(snapshot.revision, queued_revision);
+    assert!(snapshot
+        .upload_groups
+        .iter()
+        .any(|group| group.release_id == release.id));
 }
 
-/// A pin that fails (no cloud home for a cloud-only release) lands `Failed`
-/// and stays in the queue; `retry_downloads` flips it back to `Queued`.
-#[tokio::test]
-async fn download_queue_failed_pin_retries() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
-
-    // No cloud home + no local copy ⇒ the pin can't read the file and fails.
-    manager.enqueue_pins(vec![release_id.clone()]).await;
-
-    // Let the worker pick it up, fail, and mark it Failed. Poll the snapshot
-    // rather than sleeping a fixed interval.
-    let failed = wait_for(|| {
-        matches!(
-            manager.download_snapshot().ops.first().map(|op| &op.state),
-            Some(crate::library::DownloadState::Failed { .. })
-        )
-    })
-    .await;
-    assert!(failed, "the pin should land Failed without a cloud home");
-    assert_eq!(manager.download_snapshot().total.failed, 1);
-
-    // Retry flips it back to Queued; with no cloud home it'll fail again,
-    // but the immediate post-retry state is Queued (or already re-failed).
-    manager.retry_downloads();
-    let snap = manager.download_snapshot();
-    assert!(
-        snap.ops.first().is_some_and(|op| matches!(
-            op.state,
-            crate::library::DownloadState::Queued
-                | crate::library::DownloadState::Active { .. }
-                | crate::library::DownloadState::Failed { .. }
-        )),
-        "after retry the release is still tracked"
-    );
-
-    // Cancelling clears it regardless of the in-flight retry.
-    manager.cancel_download(&release_id);
-    let cleared = wait_for(|| manager.download_snapshot().ops.is_empty()).await;
-    assert!(cleared, "cancel removes the entry");
-}
-
+/// Queue identity and display context have different owners. A title edit does
+/// not change coven's private outbox rows, but the retained outbox value must
+/// still re-enrich the same release instead of freezing the title captured at
+/// enqueue time.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn download_queue_values_report_each_driven_file_progress() {
-    use crate::storage::transfer::TransferProgress;
+async fn outbox_subscription_reacts_to_release_display_context_changes() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    manager.start();
+    let mut values = manager.subscribe_outbox_values();
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("reactive-outbox-context"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let release_id = "release-progress".to_string();
-    let mut values = manager.subscribe_download_values();
-    values.borrow_and_update();
-    assert!(manager.download_queue.enqueue(crate::library::DownloadOp {
-        release_id: release_id.clone(),
-        title: "Album Title".to_string(),
-        file_count: 2,
-        total_size: 7,
-        created_at: 0,
-        payload: (),
-        state: crate::library::DownloadState::Queued,
-    }));
-    let pending = tokio::spawn(std::future::pending::<()>());
-    assert!(manager.download_queue.activate(
-        &release_id,
-        pending.abort_handle(),
-        crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
-    ));
-    manager.emit_download_queue_changed();
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            values.changed().await.expect("outbox value stream");
+            let current = values.borrow_and_update();
+            let snapshot = current
+                .as_ref()
+                .expect("outbox subscription published a value")
+                .as_ref()
+                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
+            if snapshot
+                .upload_groups
+                .iter()
+                .any(|group| group.release_id == release.id)
+            {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("durable enqueue reaches the outbox subscription");
 
-    let active_progress = |snapshot: &crate::library::DownloadSnapshot| {
-        let op = snapshot
-            .ops
-            .first()
-            .expect("the active download remains queued");
-        let crate::library::DownloadState::Active { progress } = &op.state else {
-            panic!("the download is active")
-        };
-        progress.clone()
-    };
-    values.changed().await.expect("initial active value");
-    assert_eq!(active_progress(&values.borrow_and_update()).bytes_done, 0);
+    manager
+        .database
+        .rename_album_for_test(&release.album_id, "Renamed Album")
+        .await
+        .unwrap();
 
-    let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
-    let driver = {
-        let manager = manager.clone();
-        let release_id = release_id.clone();
-        tokio::spawn(async move {
-            manager
-                .drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx)
-                .await
-        })
-    };
-    for bytes_done in [3, 7] {
-        progress_tx
-            .send(TransferProgress::Progress {
-                progress: crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7)
-                    .unwrap(),
-            })
-            .expect("the transfer driver is listening");
-        values.changed().await.expect("file progress value");
-        let progress = active_progress(&values.borrow_and_update());
-        assert_eq!(progress.bytes_done, bytes_done);
-        assert_eq!(progress.bytes_total, 7);
-        assert_eq!(progress.fraction, bytes_done as f64 / 7.0);
-    }
-    progress_tx
-        .send(TransferProgress::Complete {
-            release_id: release_id.clone(),
-        })
-        .expect("the transfer driver is listening");
-    driver.await.unwrap().unwrap();
-    pending.abort();
+    let renamed = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            values.changed().await.expect("outbox value stream");
+            let current = values.borrow_and_update();
+            let snapshot = current
+                .as_ref()
+                .expect("outbox subscription published a value")
+                .as_ref()
+                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
+            if snapshot.upload_groups[0].display_title == "Renamed Album" {
+                break snapshot.upload_groups[0].display_title.clone();
+            }
+        }
+    })
+    .await
+    .expect("album title changes wake outbox enrichment");
+    assert_eq!(renamed, "Renamed Album");
+
+    let file = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .next()
+        .expect("release file");
+    manager
+        .database
+        .set_original_filename_for_test(&file.id, "renamed-track.flac")
+        .await
+        .unwrap();
+
+    let renamed_file = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            values.changed().await.expect("outbox value stream");
+            let current = values.borrow_and_update();
+            let snapshot = current
+                .as_ref()
+                .expect("outbox subscription published a value")
+                .as_ref()
+                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
+            let label = &snapshot.upload_groups[0].files[0].label;
+            if label
+                == &crate::library::UploadFileLabel::Filename(
+                    "renamed-track.flac".to_string(),
+                )
+            {
+                break label.clone();
+            }
+        }
+    })
+    .await
+    .expect("original filename changes wake outbox enrichment");
+    assert_eq!(
+        renamed_file,
+        crate::library::UploadFileLabel::Filename("renamed-track.flac".to_string())
+    );
 }
 
-// ── Export queue ─────────────────────────────────────────────────
+/// A user retry without a connected cloud must report the refusal to its
+/// caller; returning success would leave the failed queue unchanged while the
+/// Storage Manager claims the retry ran.
+#[tokio::test]
+async fn retry_outbox_now_surfaces_a_missing_cloud_connection() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    let error = manager
+        .retry_outbox_now()
+        .await
+        .expect_err("retrying without a cloud connection must fail");
+
+    assert!(matches!(error, LibraryError::Sync(_)), "got {error:?}");
+}
+
+/// Storage Manager retry bypasses an automatic retry delay, but a paused retry
+/// neither attempts the upload nor changes that delay.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn retry_outbox_now_respects_pause_and_bypasses_backoff() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("retry-queue"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+
+    home.fail_exact_create_before_call(1);
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(home.exact_create_count(), 1);
+    assert!(matches!(
+        manager.drain_uploads_for_test().await.unwrap(),
+        coven::DrainOutcome::AllInBackoff
+    ));
+
+    manager.set_sync_paused(true).await;
+    let paused = manager
+        .retry_outbox_now()
+        .await
+        .expect_err("a paused retry must report that it did not run");
+    assert!(matches!(paused, LibraryError::Storage(_)));
+    assert_eq!(home.exact_create_count(), 1);
+    manager.set_sync_paused(false).await;
+    assert!(matches!(
+        manager.drain_uploads_for_test().await.unwrap(),
+        coven::DrainOutcome::AllInBackoff
+    ));
+
+    manager.retry_outbox_now().await.unwrap();
+    assert_eq!(home.exact_create_count(), 2);
+}
+
+/// Test managers that connect a cloud must install the same upload observer as
+/// the app; otherwise a paused queue drains because coven cannot see bae's
+/// pause state.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn connected_test_manager_uses_the_production_upload_observer() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("paused-queue"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+
+    let creates_before_pause = home.exact_create_count();
+    manager.set_sync_paused(true).await;
+    let outcome = manager.database.retry_uploads_now().await.unwrap();
+
+    assert!(matches!(outcome, coven::DrainOutcome::Paused));
+    assert_eq!(home.exact_create_count(), creates_before_pause);
+}
+
+/// The real observer drives source-preparation byte progress into the canonical
+/// snapshot at coven's buffer cadence. Provider callback ordering is tested at
+/// the observer itself; the snapshot's provider-phase join is a pure projection
+/// test with coven's matching durable phase.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn preparation_observer_advances_snapshot_bytes_done() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+
+    manager
+        .observe_blob_preparation_started_for_test(&file_id)
+        .await;
+    manager
+        .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
+        .await;
+    let snap = manager.outbox_snapshot().await.unwrap();
+    assert_eq!(snap.upload_groups[0].progress.preparing, 1);
+    assert_eq!(snap.total.preparation_bytes_done, 300);
+    assert_eq!(snap.total.upload_bytes_done, 0);
+}
+
+/// One coalesced coven callback is one outbox value. Publishing it twice would
+/// double the database reads and revision churn at every progress tick.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn one_upload_observer_callback_publishes_one_outbox_revision() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+    let before = manager.outbox_snapshot().await.unwrap().revision;
+
+    manager
+        .observe_blob_preparation_started_for_test(&file_id)
+        .await;
+
+    let after = manager.outbox_snapshot().await.unwrap().revision;
+    assert_eq!(after, before + 1);
+}
+
+/// Source preparation progress is ordered after preparation-start, which
+/// establishes the exact plaintext denominator for that attempt.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+#[should_panic(expected = "preparation progress arrived without a preparation-start state")]
+async fn preparation_progress_requires_preparation_start() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+
+    manager
+        .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
+        .await;
+}
+
+/// Preparation measures the exact plaintext source declared by the row.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+#[should_panic(expected = "preparation progress changed its exact plaintext total")]
+async fn preparation_progress_must_match_source_total() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+
+    manager
+        .observe_blob_preparation_started_for_test(&file_id)
+        .await;
+    manager
+        .observe_blob_preparation_progress_for_test(&file_id, 300, 999)
+        .await;
+}

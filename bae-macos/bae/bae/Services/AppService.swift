@@ -95,7 +95,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         // `getOutputSnapshot` is infallible — no fallback.
         outputStore = OutputStore(snapshot: appHandle.getOutputSnapshot())
         previewAudio = PreviewAudio(handle: appHandle)
-        releaseEditor = ReleaseEditor(handle: appHandle)
+        releaseEditor = ReleaseEditor(
+            handle: appHandle,
+            outboxStore: outboxStore
+        )
         self.importer = importer
         outputs = Outputs(handle: appHandle)
         discogs = Discogs(handle: appHandle)

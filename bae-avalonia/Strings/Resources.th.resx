@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>ทั้งหมด</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>ในเครื่อง</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>คลาวด์</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>กำลังอัปโหลด</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>คิวการซิงค์</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>อัลบั้ม</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>ศิลปิน</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>รูปแบบ</value></data>

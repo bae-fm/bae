@@ -161,8 +161,17 @@ fn every_import_status() -> Vec<Option<CandidateImportStatusSnapshot>> {
             step: None,
         }),
         Some(CandidateImportStatusSnapshot::Complete {
-            release_id: "rel-1".to_string(),
-            album_id: "alb-1".to_string(),
+            release: ImportedRelease {
+                release_id: "rel-1".to_string(),
+                album_id: "alb-1".to_string(),
+            },
+        }),
+        Some(CandidateImportStatusSnapshot::CloudUploadQueued {
+            release: ImportedRelease {
+                release_id: "rel-2".to_string(),
+                album_id: "alb-2".to_string(),
+            },
+            outbox_revision: 7,
         }),
         Some(CandidateImportStatusSnapshot::Error {
             error: "boom".to_string(),

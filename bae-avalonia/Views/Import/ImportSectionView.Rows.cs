@@ -320,6 +320,9 @@ internal sealed partial class ImportSectionView
 
     private Control BuildRowText(BridgeTriageRow row)
     {
+        var upload = UploadProgressPresentation.ResolveImport(
+            row.ImportStatus,
+            _storage.Outbox);
         var column = new StackPanel { Spacing = 0 };
         var title = new TextBlock
         {
@@ -343,7 +346,7 @@ internal sealed partial class ImportSectionView
             column.Children.Add(title);
         }
 
-        if (RowSubLine(row) is { Length: > 0 } subLine)
+        if (RowSubLine(row, upload) is { Length: > 0 } subLine)
         {
             var sub = new TextBlock
             {
@@ -363,6 +366,13 @@ internal sealed partial class ImportSectionView
             bar.Margin = new Thickness(0, 7, 0, 0);
             column.Children.Add(bar);
         }
+        else if (upload is ImportUploadObservation.Awaiting
+                 or ImportUploadObservation.Active)
+        {
+            var bar = CloudProgressBar(upload);
+            bar.Margin = new Thickness(0, 7, 0, 0);
+            column.Children.Add(bar);
+        }
 
         var actions = BuildRowActions(row);
         if (actions is not null)
@@ -377,7 +387,9 @@ internal sealed partial class ImportSectionView
     // The second line: the matched release's metadata, a disagreement sentence,
     // the still-identifying phase, or an import failure — whichever `row` is
     // actually saying.
-    private static string? RowSubLine(BridgeTriageRow row) => row.Placement switch
+    private static string? RowSubLine(
+        BridgeTriageRow row,
+        ImportUploadObservation? upload) => row.Placement switch
     {
         BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped => MetadataLine(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
@@ -388,7 +400,8 @@ internal sealed partial class ImportSectionView
             row.Matched?.Artist,
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
             BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
-        BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done => ImportSubLine(row),
+        BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done =>
+            ImportSubLine(row, upload),
         _ => null,
     };
 
@@ -421,7 +434,9 @@ internal sealed partial class ImportSectionView
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    private static string? ImportSubLine(BridgeTriageRow row) => row.ImportStatus switch
+    private static string? ImportSubLine(
+        BridgeTriageRow row,
+        ImportUploadObservation? upload) => row.ImportStatus switch
     {
         BridgeCandidateImportStatus.Importing importing => string.Join(
             " · ",
@@ -430,10 +445,48 @@ internal sealed partial class ImportSectionView
                 importing.Step is { } step ? BridgeDisplay.LocalizedLine(step) : Loc.Chrome("import.progress.identifying"),
                 (importing.ProgressPercent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
             }.Where(part => part.Length > 0)),
-        BridgeCandidateImportStatus.Complete or null => MetadataLine(row),
+        BridgeCandidateImportStatus.Complete
+            or BridgeCandidateImportStatus.CloudUploadQueued =>
+            upload switch
+            {
+                ImportUploadObservation.Awaiting =>
+                    Loc.Core("core.queue.queued", "count", 1),
+                ImportUploadObservation.Active active => string.Join(
+                    " · ",
+                    new[]
+                    {
+                        UploadProgressPresentation.ActivityLabel(active.Progress),
+                        UploadProgressPresentation.StageBytesLabel(active.Progress),
+                    }.Where(part => part.Length > 0)),
+                ImportUploadObservation.Finished => MetadataLine(row),
+                _ => throw new InvalidOperationException(
+                    "a completed import has no upload observation"),
+            },
+        null => MetadataLine(row),
         BridgeCandidateImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
         _ => null,
     };
+
+    private static ProgressBar CloudProgressBar(
+        ImportUploadObservation observation)
+    {
+        var fraction = observation switch
+        {
+            ImportUploadObservation.Awaiting => null,
+            ImportUploadObservation.Active active =>
+                UploadProgressPresentation.WorkFraction(active.Progress),
+            _ => throw new InvalidOperationException(
+                "a finished import has no upload progress bar"),
+        };
+        return new ProgressBar
+        {
+            Height = 3,
+            Minimum = 0,
+            Maximum = 1,
+            Value = fraction ?? 0,
+            IsIndeterminate = fraction is null,
+        };
+    }
 
     // The pill row under the meta column — only the placements the design
     // gives one: pick-a-pressing, already-in-library, and a failed import.
@@ -585,7 +638,20 @@ internal sealed partial class ImportSectionView
     private Control DoneTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
         BridgeCandidateImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
-        BridgeCandidateImportStatus.Complete => DotIcon("BaeSuccessBrush", "✓"),
+        BridgeCandidateImportStatus.Complete
+            or BridgeCandidateImportStatus.CloudUploadQueued =>
+            UploadProgressPresentation.ResolveImport(
+                row.ImportStatus,
+                _storage.Outbox) switch
+            {
+                ImportUploadObservation.Awaiting
+                    or ImportUploadObservation.Active =>
+                    Icons.Glyph(Icons.ArrowUp, 14, "BaeTextSecondaryBrush"),
+                ImportUploadObservation.Finished =>
+                    DotIcon("BaeSuccessBrush", "✓"),
+                _ => throw new InvalidOperationException(
+                    "a completed import has no upload observation"),
+            },
         BridgeCandidateImportStatus.Error => Chip(Loc.Chrome("import.row.failed"), "BaeDangerBrush"),
         // Already imported from a previous session (content-hash match), so
         // there is no in-session status to read — the fact is the same, so the

@@ -50,29 +50,31 @@ struct OutboxSection: View {
                 QueueSectionHeader(
                     icon: "arrow.up.arrow.down.circle",
                     title: "Sync queue",
-                    paused: snapshot.paused,
+                    pauseRequested: snapshot.pauseRequested,
+                    pauseStatusText: Self.pauseStatusText(snapshot.pauseState),
                     summaryText: snapshot.summaryText,
                     retryDisabled: snapshot.total.failed == 0,
                     onSetPaused: { paused in
-                        Task { try await sync.setSyncPaused(paused) }
+                        Task {
+                            await Self.setPaused(
+                                paused,
+                                sync: sync,
+                                uiStore: uiStore
+                            )
+                        }
                     },
                     onRetry: {
                         Task {
                             do { try await sync.retryOutbox() }
                             catch {
-                                uiStore.showError(
-                                    String(
-                                        localized:
-                                            "Failed to retry uploads: \(error.displayLine)"
-                                    )
-                                )
+                                uiStore.showError(error)
                             }
                         }
                     },
                     leading: { collapseButton }
                 )
                 if !collapsed {
-                    if snapshot.total.bytesTotal > 0 {
+                    if snapshot.total.workTotal > 0 {
                         OutboxTotalProgress(snapshot: snapshot)
                     }
                     Divider()
@@ -80,6 +82,33 @@ struct OutboxSection: View {
                         .frame(height: paneHeight(applying: dragOffset))
                 }
             }
+        }
+    }
+
+    static func pauseStatusText(_ state: BridgeOutboxPauseState) -> String? {
+        switch state {
+        case .running:
+            nil
+        case .pausing:
+            QueueSummary.message("core.outbox.pausing")
+        case .paused:
+            String(localized: "Paused")
+        }
+    }
+
+    /// Apply the absolute pause target and surface a bridge failure in this
+    /// window instead of leaving the button press with no result.
+    @MainActor
+    static func setPaused(
+        _ paused: Bool,
+        sync: Sync,
+        uiStore: UiStore
+    ) async {
+        do {
+            try await sync.setSyncPaused(paused)
+        }
+        catch {
+            uiStore.showError(error)
         }
     }
 
@@ -133,9 +162,7 @@ struct OutboxSection: View {
                 // right-click a release to cancel its transition.
                 ForEach(snapshot.uploadGroups, id: \.releaseId) { group in
                     OutboxReleaseRow(group: group) {
-                        if let releaseId = group.releaseId {
-                            cancelTransition(releaseId)
-                        }
+                        cancelTransition(group.releaseId)
                     }
                     Divider()
                 }
@@ -153,12 +180,7 @@ struct OutboxSection: View {
         Task {
             do { try await sync.cancelReleaseTransition(releaseId) }
             catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Failed to cancel: \(error.displayLine)"
-                    )
-                )
+                uiStore.showError(error)
             }
         }
     }
@@ -177,7 +199,7 @@ struct OutboxSection: View {
         OutboxSection()
             .environment(
                 PreviewData.outboxStore(
-                    PreviewData.outboxSnapshot(paused: true)
+                    PreviewData.outboxSnapshot(pauseState: .paused)
                 )
             )
             .environment(Sync.stub())

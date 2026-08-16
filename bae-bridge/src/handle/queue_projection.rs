@@ -53,28 +53,72 @@ impl crate::types::BridgeUploadFileOp {
         let bae_core::library::UploadFileOp {
             file_id,
             label,
-            bytes_total,
+            source_bytes_total,
             state,
         } = f;
-        let (state, bytes_done, last_error) = match state {
-            UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, 0, None),
-            UploadState::Active { bytes_done } => (
-                crate::types::BridgeUploadFileState::Uploading,
+        let (state, bytes_done, progress_bytes_total, last_error) = match state {
+            UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, 0, 0, None),
+            UploadState::Preparing {
                 bytes_done,
+                bytes_total,
+            } => (
+                crate::types::BridgeUploadFileState::Preparing,
+                bytes_done,
+                bytes_total,
                 None,
             ),
-            UploadState::Failed { last_error } => (
+            UploadState::Prepared { bytes_total } => (
+                crate::types::BridgeUploadFileState::Prepared,
+                0,
+                bytes_total,
+                None,
+            ),
+            UploadState::Uploading {
+                bytes_done,
+                bytes_total,
+            } => (
+                crate::types::BridgeUploadFileState::Uploading,
+                bytes_done,
+                bytes_total,
+                None,
+            ),
+            UploadState::RetryingPreparation { last_error } => (
                 crate::types::BridgeUploadFileState::Retrying,
                 0,
+                source_bytes_total,
                 Some(last_error),
             ),
-            UploadState::Done => (crate::types::BridgeUploadFileState::Done, bytes_total, None),
+            UploadState::RetryingUpload {
+                last_error,
+                bytes_total,
+            } => (
+                crate::types::BridgeUploadFileState::Retrying,
+                0,
+                bytes_total,
+                Some(last_error),
+            ),
+            UploadState::RetryingPublication {
+                last_error,
+                bytes_total,
+            } => (
+                crate::types::BridgeUploadFileState::Retrying,
+                bytes_total,
+                bytes_total,
+                Some(last_error),
+            ),
+            UploadState::Uploaded { bytes_total } => (
+                crate::types::BridgeUploadFileState::Uploaded,
+                bytes_total,
+                bytes_total,
+                None,
+            ),
         };
         Self {
             file_id,
             label: crate::types::BridgeUploadFileLabel::from_core(label),
             bytes_done,
-            bytes_total,
+            progress_bytes_total,
+            source_bytes_total,
             state,
             last_error,
         }
@@ -127,15 +171,17 @@ impl crate::types::BridgeOutboxSnapshot {
             .collect();
 
         let bae_core::library::OutboxSnapshot {
+            revision,
             upload_groups,
             deletes,
             total,
-            paused,
+            pause_state,
             throughput_bps,
             eta_seconds,
         } = snapshot;
 
         crate::types::BridgeOutboxSnapshot {
+            revision,
             upload_groups: upload_groups
                 .into_iter()
                 .map(crate::types::BridgeUploadReleaseGroup::from_core)
@@ -148,9 +194,19 @@ impl crate::types::BridgeOutboxSnapshot {
             total: crate::types::BridgeUploadProgress::from_core(total),
             pending_deletes,
             summary_parts,
-            paused,
+            pause_state: crate::types::BridgeOutboxPauseState::from_core(pause_state),
             throughput_bps,
             eta_seconds,
+        }
+    }
+}
+
+impl crate::types::BridgeOutboxPauseState {
+    fn from_core(state: bae_core::library::OutboxPauseState) -> Self {
+        match state {
+            bae_core::library::OutboxPauseState::Running => Self::Running,
+            bae_core::library::OutboxPauseState::Pausing => Self::Pausing,
+            bae_core::library::OutboxPauseState::Paused => Self::Paused,
         }
     }
 }
@@ -163,21 +219,37 @@ impl crate::types::BridgeUploadProgress {
             .map(crate::types::BridgeUploadActivity::from_core);
         let bae_core::library::UploadProgress {
             queued,
-            active,
+            preparing,
+            prepared,
+            uploading,
             failed,
-            // Completed files feed the cumulative byte fractions; the count
-            // itself has no UI consumer (finished releases aren't rendered,
-            // and pending groups list their done files individually).
-            done: _,
-            bytes_done,
-            bytes_total,
+            uploaded,
+            publishing,
+            cancelling,
+            preparation_bytes_done,
+            preparation_bytes_total,
+            upload_bytes_done,
+            upload_bytes_total,
+            upload_bytes_total_complete,
+            work_done,
+            work_total,
         } = p;
         crate::types::BridgeUploadProgress {
             queued,
-            active,
+            preparing,
+            prepared,
+            uploading,
             failed,
-            bytes_done,
-            bytes_total,
+            uploaded,
+            publishing,
+            cancelling,
+            preparation_bytes_done,
+            preparation_bytes_total,
+            upload_bytes_done,
+            upload_bytes_total,
+            upload_bytes_total_complete,
+            work_done,
+            work_total,
             activity,
         }
     }
@@ -188,9 +260,14 @@ impl crate::types::BridgeUploadActivity {
         use crate::types::BridgeUploadActivity;
         use bae_core::library::UploadActivity;
         match a {
+            UploadActivity::Cancelling => BridgeUploadActivity::Cancelling,
+            UploadActivity::Publishing => BridgeUploadActivity::Publishing,
             UploadActivity::Uploading => BridgeUploadActivity::Uploading,
+            UploadActivity::Preparing => BridgeUploadActivity::Preparing,
             UploadActivity::Retrying => BridgeUploadActivity::Retrying,
+            UploadActivity::Prepared => BridgeUploadActivity::Prepared,
             UploadActivity::Queued => BridgeUploadActivity::Queued,
+            UploadActivity::Uploaded => BridgeUploadActivity::Uploaded,
         }
     }
 }

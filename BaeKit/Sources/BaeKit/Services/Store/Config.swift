@@ -67,11 +67,13 @@ public struct Config: Equatable {
         subsonic = bridge.subsonic
     }
 
-    /// The storage state to import into. `Cloud` only when a cloud home exists
-    /// and the user chose it; otherwise `Local`. Whether to keep the
-    /// release pinned locally is the orthogonal `pin` argument to
-    /// `startImport`, never folded in here.
-    public func importStorageMode(cloud: Bool) -> BridgeStorageMode {
-        hasCloudHome && cloud ? .remote : .local
-    }
+    #if os(macOS)
+        /// The storage state to import into. `Cloud` only when a cloud home exists
+        /// and the user chose it; otherwise `Local`. Whether to keep the
+        /// release pinned locally is the orthogonal `pin` argument to
+        /// `startImport`, never folded in here.
+        public func importStorageMode(cloud: Bool) -> BridgeStorageMode {
+            hasCloudHome && cloud ? .remote : .local
+        }
+    #endif
 }

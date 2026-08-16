@@ -885,26 +885,45 @@ impl Database {
     /// when the batch opens (so coven binds a row cleanup intent) and unreferenced
     /// when it commits (so the intent records), reclaiming the local bytes.
     ///
-    /// The plan is read on the same serialized writer path immediately before the
-    /// write, so the rows it names to delete are exactly the rows the write
-    /// deletes; a divergence surfaces as coven's `BlobStillReferenced` (a declared
-    /// blob whose row wasn't dropped) rather than a silent leak.
+    /// Planning needs a read because blob declarations are fixed before coven
+    /// opens the write. The write recomputes that plan inside its serialized SQL
+    /// transaction and aborts atomically if anything changed between the two.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn fail_import_and_delete_release(&self, release_id: &str) -> Result<(), DbError> {
+        self.fail_import_and_delete_release_after_planning(release_id, || async {})
+            .await
+    }
+
+    #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+    pub(crate) async fn fail_import_and_delete_release_after_planning_for_test<F, Fut>(
+        &self,
+        release_id: &str,
+        after_planning: F,
+    ) -> Result<(), DbError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
+        self.fail_import_and_delete_release_after_planning(release_id, after_planning)
+            .await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn fail_import_and_delete_release_after_planning<F, Fut>(
+        &self,
+        release_id: &str,
+        after_planning: F,
+    ) -> Result<(), DbError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
         let release_id = release_id.to_string();
         let plan = self
             .read(move |sql| plan_fail_import_deletion(&sql, &release_id))
             .await?;
-        let FailImportDeletion {
-            release_id,
-            album_id,
-            delete_album,
-            orphaned_work_ids,
-            orphaned_artist_ids,
-            image_blobs,
-            file_ids,
-        } = plan;
-        let declared = image_blobs.clone();
+        after_planning().await;
+        let declared = plan.image_blobs.clone();
         self.inner
             .handle
             .write_with_blobs(
@@ -915,6 +934,23 @@ impl Database {
                     Ok(())
                 },
                 move |sql| {
+                    let current = plan_fail_import_deletion(&sql, &plan.release_id)
+                        .map_err(CovenError::from)?;
+                    if current != plan {
+                        return Err(CovenError::from(DbError::Message(format!(
+                            "failed-import rollback plan for {} changed after planning",
+                            plan.release_id
+                        ))));
+                    }
+                    let FailImportDeletion {
+                        release_id,
+                        album_id,
+                        delete_album,
+                        orphaned_work_ids,
+                        orphaned_artist_ids,
+                        image_blobs: _,
+                        file_ids,
+                    } = plan;
                     let reg = sql.stamp();
                     // Drop each file's external-file registration while its row is
                     // still there to bind: the rollback leaves the user's own

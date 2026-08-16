@@ -143,6 +143,70 @@ public sealed class ImportSectionViewTests
         Assert.Contains($"{PreviewData.ImportRoot}/Release 03", RowTags(view));
     }
 
+    [AvaloniaFact]
+    public void CloudImportReactsToOutboxProgressAndTerminalRevision()
+    {
+        var status = new BridgeCandidateImportStatus.CloudUploadQueued(
+            "release-a",
+            "album-a",
+            7);
+        var (view, app) = BuildSection(
+            MatchedQueue(
+                new BridgeTriagePlacement.Done(),
+                null,
+                BridgeTriageTab.Done,
+                status),
+            BridgeTriageTab.Done);
+
+        var queuedRow = CandidateRow(view);
+        Assert.Contains(
+            queuedRow.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("core.queue.queued", "count", 1));
+        Assert.True(
+            queuedRow.GetLogicalDescendants().OfType<ProgressBar>().Single()
+                .IsIndeterminate);
+
+        var progress = new BridgeUploadProgress(
+            0, 1, 0, 0, 0, 0, 0, 0,
+            5, 10, 0, 0, false, 5, 20,
+            BridgeUploadActivity.Preparing);
+        app.StorageStore.ApplyOutbox(Outbox(7, progress));
+
+        var activeRow = CandidateRow(view);
+        Assert.Contains(
+            activeRow.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text is { } line
+                && line.Contains(
+                    Loc.Core("core.outbox.preparing", "count", 1),
+                    StringComparison.Ordinal));
+        var activeBar = activeRow
+            .GetLogicalDescendants()
+            .OfType<ProgressBar>()
+            .Single();
+        Assert.False(activeBar.IsIndeterminate);
+        Assert.Equal(0.25, activeBar.Value);
+
+        app.StorageStore.ApplyOutbox(Outbox(8));
+
+        var finishedRow = CandidateRow(view);
+        Assert.DoesNotContain(
+            finishedRow.GetLogicalDescendants(),
+            control => control is ProgressBar);
+        Assert.Contains(
+            finishedRow.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "✓");
+
+        app.StorageStore.ApplyOutbox(Outbox(6, progress));
+
+        var afterOlderSnapshot = CandidateRow(view);
+        Assert.DoesNotContain(
+            afterOlderSnapshot.GetLogicalDescendants(),
+            control => control is ProgressBar);
+        Assert.Contains(
+            afterOlderSnapshot.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "✓");
+    }
+
     private static ImportSectionView BuildView(
         BridgeTriageQueue queue,
         BridgeTriageTab activeTab = BridgeTriageTab.Pending,
@@ -218,7 +282,8 @@ public sealed class ImportSectionViewTests
     private static BridgeTriageQueue MatchedQueue(
         BridgeTriagePlacement placement,
         BridgeTriageSkipAction? skipAction,
-        BridgeTriageTab tab) => new(
+        BridgeTriageTab tab,
+        BridgeCandidateImportStatus? importStatus = null) => new(
         Sections: new[]
         {
             new BridgeTriageSection(
@@ -249,7 +314,7 @@ public sealed class ImportSectionViewTests
                                     BridgeMetadataSource.MusicBrainz,
                                     BridgeMatchedSignal.DiscId)),
                             Selectable: placement is BridgeTriagePlacement.Ready,
-                            ImportStatus: null,
+                            ImportStatus: importStatus,
                             Picked: placement
                                 is BridgeTriagePlacement.Ready
                                     or BridgeTriagePlacement.Done
@@ -272,6 +337,27 @@ public sealed class ImportSectionViewTests
             Done: tab is BridgeTriageTab.Done ? 1u : 0u,
             Skipped: tab is BridgeTriageTab.Skipped ? 1u : 0u),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
+
+    private static BridgeOutboxSnapshot Outbox(
+        ulong revision,
+        BridgeUploadProgress? progress = null) => new(
+        revision,
+        [],
+        [],
+        progress is null
+            ? new Dictionary<string, BridgeUploadProgress>()
+            : new Dictionary<string, BridgeUploadProgress>
+            {
+                ["release-a"] = progress,
+            },
+        new BridgeUploadProgress(
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, true, 0, 0, null),
+        0,
+        [],
+        BridgeOutboxPauseState.Running,
+        0,
+        null);
 
     private static LibraryService EmptyLibrary() => new()
     {

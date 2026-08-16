@@ -1,12 +1,23 @@
 import SwiftUI
 
+struct QueueSectionHeaderStatus: Equatable {
+    let pauseText: String?
+    let summaryText: String?
+
+    init(pauseStatusText: String?, summaryText: String) {
+        pauseText = pauseStatusText
+        self.summaryText = summaryText.isEmpty ? nil : summaryText
+    }
+}
+
 /// Header band shared by the three queue panes: optional leading slot
-/// (the outbox pane's collapse chevron), icon, title, paused chip or
+/// (the outbox pane's collapse chevron), icon, title, pause status and queue
 /// summary, pause/resume, and retry.
 struct QueueSectionHeader<Leading: View>: View {
     let icon: String
     let title: LocalizedStringKey
-    let paused: Bool
+    let pauseRequested: Bool
+    let pauseStatusText: String?
     let summaryText: String
     let retryDisabled: Bool
     let onSetPaused: (Bool) -> Void
@@ -15,23 +26,29 @@ struct QueueSectionHeader<Leading: View>: View {
     let leading: () -> Leading
 
     var body: some View {
+        let status = QueueSectionHeaderStatus(
+            pauseStatusText: pauseStatusText,
+            summaryText: summaryText
+        )
         HStack(spacing: 8) {
             leading()
             Image(systemName: icon)
                 .foregroundStyle(.secondary)
             Text(title).font(.callout.weight(.medium))
-            if paused {
-                Label("Paused", systemImage: "pause.circle.fill")
+            if let pauseText = status.pauseText {
+                Label(pauseText, systemImage: "pause.circle.fill")
                     .font(.callout)
                     .foregroundStyle(.orange)
             }
-            else if !summaryText.isEmpty {
+            if let summaryText = status.summaryText {
                 Text(summaryText)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(paused ? "Resume" : "Pause") { onSetPaused(!paused) }
+            Button(pauseRequested ? "Resume" : "Pause") {
+                onSetPaused(!pauseRequested)
+            }
             Button("Retry now", action: onRetry)
                 .disabled(retryDisabled)
         }
@@ -44,7 +61,8 @@ extension QueueSectionHeader where Leading == EmptyView {
     init(
         icon: String,
         title: LocalizedStringKey,
-        paused: Bool,
+        pauseRequested: Bool,
+        pauseStatusText: String?,
         summaryText: String,
         retryDisabled: Bool,
         onSetPaused: @escaping (Bool) -> Void,
@@ -53,7 +71,8 @@ extension QueueSectionHeader where Leading == EmptyView {
         self.init(
             icon: icon,
             title: title,
-            paused: paused,
+            pauseRequested: pauseRequested,
+            pauseStatusText: pauseStatusText,
             summaryText: summaryText,
             retryDisabled: retryDisabled,
             onSetPaused: onSetPaused,
@@ -67,7 +86,8 @@ extension QueueSectionHeader where Leading == EmptyView {
         QueueSectionHeader(
             icon: "arrow.down.circle",
             title: "Downloads",
-            paused: false,
+            pauseRequested: false,
+            pauseStatusText: nil,
             summaryText: "1 downloading · 2 queued",
             retryDisabled: true,
             onSetPaused: { _ in },
@@ -80,7 +100,8 @@ extension QueueSectionHeader where Leading == EmptyView {
         QueueSectionHeader(
             icon: "arrow.up.arrow.down.circle",
             title: "Sync queue",
-            paused: true,
+            pauseRequested: true,
+            pauseStatusText: String(localized: "Paused"),
             summaryText: "",
             retryDisabled: false,
             onSetPaused: { _ in },

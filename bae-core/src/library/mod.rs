@@ -10,7 +10,6 @@ pub mod release_queue;
 pub mod save;
 pub mod search;
 pub(crate) mod sync_controller;
-pub mod upload_sessions;
 pub mod upload_throughput;
 pub use app_services::*;
 pub use browse::*;
@@ -20,8 +19,8 @@ pub use download_snapshot::{
 pub use local_lifecycle::remove_local_library;
 pub use manager::*;
 pub use outbox_snapshot::{
-    DeleteOp, OutboxSnapshot, UploadActivity, UploadFileLabel, UploadFileOp, UploadProgress,
-    UploadReleaseGroup, UploadState,
+    DeleteOp, OutboxPauseState, OutboxSnapshot, UploadActivity, UploadFileLabel, UploadFileOp,
+    UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
 pub use release_queue::{CountLabel, ReleaseQueue};
@@ -31,7 +30,6 @@ pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
 /// How a device join this library invited ended. The controller itself stays
 /// crate-private; this outcome is part of the public sharing surface.
 pub use sync_controller::DeviceJoinOutcome;
-pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
 #[cfg(test)]

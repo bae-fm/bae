@@ -6,8 +6,8 @@ private let logger = Logger.bae("UiEventDispatcher")
 /// services every Apple platform writes: `PlaybackStore`, `MediaControlService`,
 /// and `AppService`. Most variants apply identically on every
 /// platform — `dispatch` handles exactly those and reports whether it did.
-/// Variants with no shared handling (preview, import-loudness) resolve to
-/// `.unhandled`; the platform sink's `onUnhandled` owns what happens to them.
+/// On macOS, import-only variants resolve to `.unhandled`; the platform sink's
+/// `onUnhandled` owns what happens to them.
 public enum UiEventDispatcher {
     /// Whether a shared arm consumed the event. The platform sink decides what
     /// to do with `.unhandled` events: macOS handles its desktop-only events
@@ -37,10 +37,11 @@ public enum UiEventDispatcher {
         case .error(let error):
             appService.showError(error)
 
-        case .candidateImportLoudnessProgress, .importQueueIdentifyProgress:
-            // Preview, import-loudness, and the import queue's identify progress
-            // are desktop-only: the platform sink owns them. iOS ignores them.
-            return .unhandled
+        #if os(macOS)
+            case .candidateImportLoudnessProgress,
+                .importQueueIdentifyProgress:
+                return .unhandled
+        #endif
         }
         return .handled
     }

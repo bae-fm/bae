@@ -260,6 +260,10 @@ impl Database {
         self.inner.handle.drain_uploads().await
     }
 
+    pub(crate) async fn retry_uploads_now(&self) -> Result<coven::DrainOutcome, coven::SyncError> {
+        self.inner.handle.retry_uploads_now().await
+    }
+
     pub(crate) async fn set_cache_budget(
         &self,
         namespace: &str,

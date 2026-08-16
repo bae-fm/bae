@@ -242,7 +242,8 @@ internal static partial class NativeBae
                 Step = importing.Step is null ? null : ImportStep(importing.Step),
             };
         }
-        if (runtime.ImportStatus is BridgeCandidateImportStatus.Complete)
+        if (runtime.ImportStatus is BridgeCandidateImportStatus.Complete
+            or BridgeCandidateImportStatus.CloudUploadQueued)
         {
             return new ImportCandidateRowStatus { Kind = "complete" };
         }

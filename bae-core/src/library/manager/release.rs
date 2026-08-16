@@ -58,6 +58,17 @@ impl LibraryManager {
         Ok(self.database.imported_content_hashes().await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn imported_releases_for_content_hashes(
+        &self,
+        content_hashes: &[String],
+    ) -> Result<HashMap<String, crate::import::ImportedRelease>, LibraryError> {
+        Ok(self
+            .database
+            .imported_releases_for_content_hashes(content_hashes)
+            .await?)
+    }
+
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,
@@ -648,12 +659,10 @@ impl LibraryManager {
             return Ok(None);
         };
         let has_cloud_home = self.has_cloud_home();
-        let sync_ready = self.is_sync_ready();
         let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
         Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
             has_cloud_home,
-            sync_ready,
             pinned,
         )))
     }
@@ -709,13 +718,11 @@ impl LibraryManager {
         cover: Option<ImageRef>,
     ) -> Result<ReleaseDetail, LibraryError> {
         let has_cloud_home = self.has_cloud_home();
-        let sync_ready = self.is_sync_ready();
         let pinned = self
             .release_pinned(raw.files.first().map(|file| file.id.as_str()))
             .await?;
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            sync_ready,
             pinned,
             cover,
             transfer_action: self.current_transfer_action(release_id),

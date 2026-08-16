@@ -2,7 +2,6 @@
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
 // real ids are, so these fixtures carry UUIDs too. Each constant is named
 // for the moniker it replaced, so assertions still read by name.
-const COVER_1: &str = "2bc5ed84-97ea-4463-83cb-c206a428c802"; // was "cover-1"
 const COVER_BLOB: &str = "4c98761d-e446-4871-8800-8ce69ac302ad"; // was "cover-blob"
 const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
 const REL_2: &str = "dcdebf05-2d41-4dfc-8823-024993c9d00f"; // was "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
@@ -56,16 +55,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
         "Test Library".to_string(),
     );
     crate::config::install_test_keyring();
-    let database = Database::open(
-        library_dir,
-        config.inner.clone(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
-        crate::sync::synced_tables(),
-        None,
-    )
-    .unwrap();
-    assemble_test_manager(temp_dir, database, config).await
+    assemble_test_manager(temp_dir, config).await
 }
 
 #[cfg(feature = "test-utils")]
@@ -81,25 +71,22 @@ async fn setup_browsable_test_manager() -> (LibraryManager, TempDir) {
     );
     config.cloud_home.storage = crate::config::HomeStorage::Browsable;
     crate::config::install_test_keyring();
-    let clock: Arc<dyn coven::Clock> = Arc::new(coven::SystemClock);
-    let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
-    let database = Database::open(
-        library_dir,
-        config.inner.clone(),
-        clock,
-        ids,
-        crate::sync::synced_tables(),
-        None,
-    )
-    .unwrap();
-    assemble_test_manager(temp_dir, database, config).await
+    assemble_test_manager(temp_dir, config).await
 }
 
-async fn assemble_test_manager(
-    temp_dir: TempDir,
-    database: Database,
-    config: Config,
-) -> (LibraryManager, TempDir) {
+async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryManager, TempDir) {
+    let config_handle = Arc::new(ConfigHandle::new(config));
+    let manager = LibraryManager::open(
+        config_handle,
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::UuidProvider),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+        None,
+        crate::import::cover_art::RemoteImageCache::for_test(),
+    )
+    .expect("open test library manager through the production object graph");
+
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {
         id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
@@ -109,19 +96,7 @@ async fn assemble_test_manager(
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    database.insert_artist(&artist).await.unwrap();
-
-    let config_handle = Arc::new(ConfigHandle::new(config));
-    crate::config::install_test_keyring();
-    let manager = LibraryManager::new(
-        database,
-        config_handle,
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(),
-    );
+    manager.database.insert_artist(&artist).await.unwrap();
     (manager, temp_dir)
 }
 
@@ -130,6 +105,7 @@ include!("tests/deletion.rs");
 include!("tests/release_details.rs");
 include!("tests/storage.rs");
 include!("tests/transfers.rs");
+include!("tests/downloads.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");
 include!("tests/playback_and_sync.rs");

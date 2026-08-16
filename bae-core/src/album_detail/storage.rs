@@ -35,12 +35,10 @@ impl ReleaseStorageSummary {
     pub(crate) fn from_raw(
         raw: DbReleaseStorageSummary,
         has_cloud_home: bool,
-        sync_ready: bool,
         pinned: bool,
     ) -> ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
-        let storage_actions =
-            available_storage_actions(storage_state, pinned, has_cloud_home, sync_ready);
+        let storage_actions = available_storage_actions(storage_state, pinned, has_cloud_home);
         ReleaseStorageSummary {
             storage_state,
             pinned,
@@ -71,14 +69,12 @@ impl StorageRow {
     pub(crate) fn from_raw(
         raw: DbStorageRow,
         has_cloud_home: bool,
-        sync_ready: bool,
         pinned: bool,
         transfer_action: Option<ReleaseStorageAction>,
         resolve_cover: impl Fn(&str) -> Option<ImageRef>,
     ) -> StorageRow {
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            sync_ready,
             pinned,
             cover: resolve_cover(&raw.release.id),
             transfer_action,

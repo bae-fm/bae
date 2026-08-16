@@ -17,6 +17,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.pauseRequested
 import fm.bae.app.performBridgeAction
 import kotlinx.coroutines.launch
 
@@ -34,7 +35,7 @@ internal fun SyncUploadPauseControl(session: OpenLibrary) {
     ) {
         Text(stringResource(R.string.settings_pause_uploads), modifier = Modifier.weight(1f))
         Switch(
-            checked = outbox.paused,
+            checked = outbox.pauseRequested,
             onCheckedChange = { paused ->
                 scope.launch {
                     performBridgeAction(

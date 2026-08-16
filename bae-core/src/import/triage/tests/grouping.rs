@@ -4,7 +4,12 @@ fn nested_candidates_form_a_collapsible_group_with_a_combine_target() {
         candidate("Group/Release One", false, false),
         candidate("Group/Wrapper/Release Two", false, false),
     ]);
-    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
+    let queue = project(
+        snapshot,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+    );
 
     assert_eq!(queue.sections.len(), 1);
     let group = queue.sections[0].group.as_ref().expect("grouped section");
@@ -25,7 +30,12 @@ fn direct_release_joins_its_top_level_descendant_group() {
         candidate("Artist", false, false),
         candidate("Artist/Album", false, false),
     ]);
-    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
+    let queue = project(
+        snapshot,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+    );
 
     assert_eq!(queue.sections.len(), 1);
     let section = &queue.sections[0];
@@ -51,7 +61,12 @@ fn candidate_and_boundary_entries_share_natural_path_order() {
         candidate_keys: Vec::new(),
     });
 
-    let queue = project(snapshot, &HashMap::new(), &HashMap::new());
+    let queue = project(
+        snapshot,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+    );
     assert_eq!(queue.sections.len(), 1);
     assert!(matches!(
         &queue.sections[0].entries[..],
@@ -76,8 +91,18 @@ fn projected_entry_keys_are_stable_and_variant_distinct() {
         candidate_keys: Vec::new(),
     });
 
-    let first = project(snapshot.clone(), &HashMap::new(), &HashMap::new());
-    let second = project(snapshot, &HashMap::new(), &HashMap::new());
+    let first = project(
+        snapshot.clone(),
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+    );
+    let second = project(
+        snapshot,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+    );
     let first_keys: Vec<_> = first.sections[0]
         .entries
         .iter()

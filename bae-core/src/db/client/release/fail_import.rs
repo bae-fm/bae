@@ -4,6 +4,7 @@ use super::*;
 /// rolled-back release, plus the host-provided image blobs those rows carry, so
 /// the atomic write that deletes them can declare the blob deletions coven turns
 /// into durable local-cleanup intents.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct FailImportDeletion {
     pub(super) release_id: String,
     pub(super) album_id: String,
@@ -28,8 +29,8 @@ pub(super) struct FailImportDeletion {
 /// tracks; an artist orphans when every album, link, or role that names it lies
 /// inside the deleted subtree — this release, its album if the album holds no
 /// other release, and the orphaned works.
-pub(super) fn plan_fail_import_deletion(
-    sql: &SqlReadContext<'_>,
+pub(super) fn plan_fail_import_deletion<Q: QueryOne + QueryRows>(
+    sql: &Q,
     release_id: &str,
 ) -> Result<FailImportDeletion, DbError> {
     let album_id: String = sql
@@ -112,10 +113,15 @@ pub(super) fn plan_fail_import_deletion(
         )?
         .into_iter()
         .collect();
-    let orphaned_work_ids: Vec<String> = candidate_work_ids
+    let mut orphaned_work_ids: Vec<String> = candidate_work_ids
         .into_iter()
         .filter(|work_id| !live_work_ids.contains(work_id))
         .collect();
+    orphaned_work_ids.sort();
+    orphaned_work_ids.dedup();
+
+    candidate_artist_ids.sort();
+    candidate_artist_ids.dedup();
 
     let mut image_blobs: Vec<(&'static str, String, Option<String>)> = Vec::new();
     // The cover is 1:1 with the release, so it always orphans.
@@ -178,11 +184,12 @@ pub(super) fn plan_fail_import_deletion(
         }
     }
 
-    let file_ids: Vec<String> = sql.query(
+    let mut file_ids: Vec<String> = sql.query(
         "SELECT id FROM release_files WHERE release_id = ?",
         params![release_id],
         |row| row.get(0),
     )?;
+    file_ids.sort();
 
     Ok(FailImportDeletion {
         release_id: release_id.to_string(),

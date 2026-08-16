@@ -15,6 +15,7 @@ import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
+import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
@@ -206,23 +207,34 @@ object BridgeFixtures {
             paused = paused,
         )
 
-    fun outboxSnapshot(paused: Boolean = false): BridgeOutboxSnapshot =
+    fun outboxSnapshot(pauseState: BridgeOutboxPauseState = BridgeOutboxPauseState.RUNNING): BridgeOutboxSnapshot =
         BridgeOutboxSnapshot(
+            revision = 0uL,
             uploadGroups = emptyList(),
             deletes = emptyList(),
             perRelease = emptyMap(),
             total =
                 BridgeUploadProgress(
                     queued = 0u,
-                    active = 0u,
+                    preparing = 0u,
+                    prepared = 0u,
+                    uploading = 0u,
                     failed = 0u,
-                    bytesDone = 0uL,
-                    bytesTotal = 0uL,
+                    uploaded = 0u,
+                    publishing = 0u,
+                    cancelling = 0u,
+                    preparationBytesDone = 0uL,
+                    preparationBytesTotal = 0uL,
+                    uploadBytesDone = 0uL,
+                    uploadBytesTotal = 0uL,
+                    uploadBytesTotalComplete = true,
+                    workDone = 0uL,
+                    workTotal = 0uL,
                     activity = null,
                 ),
             pendingDeletes = 0u,
             summaryParts = emptyList(),
-            paused = paused,
+            pauseState = pauseState,
             throughputBps = 0uL,
             etaSeconds = null,
         )

@@ -6,14 +6,23 @@ use super::*;
 impl LibraryManager {
     /// Make a release Remote (Local → Remote) through coven: coven enqueues an
     /// upload per user-provided blob from its external file, uploads each, and on
-    /// the last flips the `remote` gate true, drops the external refs, deletes the
-    /// source files, and re-emits the subtree (the host-provided cover then rides
-    /// along). Returns once enqueued; completion fires `on_root_made_remote`.
-    pub async fn coven_make_remote(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
+    /// the last flips the `remote` gate true, drops coven's external references,
+    /// and re-emits the subtree. The user's source files remain untouched.
+    /// Returns once enqueued; durable make-Remote state reports completion.
+    pub async fn coven_make_remote(
+        &self,
+        release_id: &str,
+        pin: bool,
+    ) -> Result<u64, LibraryError> {
         self.database
             .make_remote("releases", release_id, pin)
             .await
-            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
+            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))?;
+        // Publish the same canonical projection the durable live query emits
+        // before the initiating command can clear its foreground label or emit
+        // RemoteUploadQueued. This gives both entrypoints one continuous state
+        // path independently of live-query delivery timing.
+        Ok(self.emit_outbox_changed().await)
     }
 
     /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
@@ -316,6 +325,7 @@ impl LibraryManager {
                 let running = transfer.pin_release(release_id, move |progress| async move {
                     self.drive_transfer(&drive_release_id, ReleaseStorageAction::Pin, progress)
                         .await
+                        .map(|_| ())
                 });
                 Ok((initial_progress, running))
             },
@@ -330,26 +340,38 @@ impl LibraryManager {
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
-        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
-            .await
+        let outcome = self
+            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
+            .await?;
+        assert_eq!(outcome, crate::storage::transfer::TransferOutcome::Complete);
+        Ok(())
     }
 
-    /// Manage a local release: upload its files to the cloud home. `pin`
+    /// Move a Local release to Cloud: upload its files to the cloud home. `pin`
     /// chooses whether coven keeps the blobs in `storage/pinned/` (offline) vs the
-    /// evictable cache. The in-place source is always deleted once the upload lands
-    /// (a remote release has no local path).
+    /// evictable cache. Once the upload lands, the remote release no longer refers
+    /// to the user's source path; the source file itself remains untouched.
     pub async fn make_release_remote(
         &self,
         release_id: &str,
         pin: bool,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<u64, LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
-        self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx)
-            .await
+        match self
+            .drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx)
+            .await?
+        {
+            crate::storage::transfer::TransferOutcome::CloudUploadQueued { outbox_revision } => {
+                Ok(outbox_revision)
+            }
+            crate::storage::transfer::TransferOutcome::Complete => {
+                panic!("make-Remote completed without its durable outbox revision")
+            }
+        }
     }
 
-    /// Unmanage a remote release: copy its files back out to `new_path` and
+    /// Make a Cloud release Local: copy its files back out to `new_path` and
     /// drop the remote copies. coven owns the durability-first ordering: every
     /// copy is verified at the new path before any delete is queued.
     pub async fn make_release_local(
@@ -375,14 +397,15 @@ impl LibraryManager {
             new_path.to_string(),
             cancel,
         );
-        let result = self
+        let outcome = self
             .drive_transfer(release_id, ReleaseStorageAction::MakeLocal, rx)
-            .await;
-        result
+            .await?;
+        assert_eq!(outcome, crate::storage::transfer::TransferOutcome::Complete);
+        Ok(())
     }
 
     /// Cancel the in-progress transition for a release, whatever it is: a pin
-    /// (download), a remote upload, or an unmanage. The UI calls this from the
+    /// (download), a remote upload, or a make-Local transfer. The UI calls this from the
     /// storage row and the queue pane without knowing which is running — a
     /// release is in at most one transition at a time. A no-op if nothing is in
     /// progress. Each branch is gated on the transition actually running:
@@ -407,7 +430,7 @@ impl LibraryManager {
     }
 
     /// Fire the cancellation token for a release's in-progress foreground
-    /// transfer (unmanage), if one is registered; returns whether it fired. The
+    /// make-Local transfer, if one is registered; returns whether it fired. The
     /// transfer observes the token between files, deletes its partial copies, and
     /// leaves the release remote. A missing token is not an error — it means no
     /// transfer is running, so the caller falls through to the other transition
@@ -431,7 +454,7 @@ impl LibraryManager {
         release_id: &str,
         action: ReleaseStorageAction,
         mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<crate::storage::transfer::TransferOutcome, LibraryError> {
         use crate::storage::transfer::TransferProgress;
 
         // The bridge transfer future is abortable. The guard clears the streamed
@@ -473,7 +496,7 @@ impl LibraryManager {
                         }
                     }
                 }
-                TransferProgress::Complete { .. } => break Ok(()),
+                TransferProgress::Complete { outcome, .. } => break Ok(outcome),
                 TransferProgress::Failed { error, .. } => break Err(LibraryError::Storage(error)),
             }
         };

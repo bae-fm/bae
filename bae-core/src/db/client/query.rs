@@ -19,6 +19,19 @@ pub(super) trait QueryOne {
     ) -> coven::rusqlite::Result<T>;
 }
 
+/// Multi-row SELECT shared by coven's read and write SQL contexts. Kept
+/// separate from [`QueryOne`] because the release-path resolvers need only a
+/// single-row lookup, while deletion planning needs both forms.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) trait QueryRows {
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<Vec<T>>;
+}
+
 /// The resolvers' unit tests run them against a bare seeded connection, which is
 /// the only place bae still holds one — coven owns every production connection.
 #[cfg(test)]
@@ -33,6 +46,20 @@ impl QueryOne for Connection {
     }
 }
 
+#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+impl QueryRows for Connection {
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<Vec<T>> {
+        let mut statement = self.prepare(sql)?;
+        let values = statement.query_map(params, f)?.collect();
+        values
+    }
+}
+
 impl QueryOne for SqlReadContext<'_> {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
@@ -44,6 +71,18 @@ impl QueryOne for SqlReadContext<'_> {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl QueryRows for SqlReadContext<'_> {
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<Vec<T>> {
+        SqlReadContext::query(self, sql, params, f)
+    }
+}
+
 impl QueryOne for SqlContext<'_, '_> {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
@@ -52,6 +91,18 @@ impl QueryOne for SqlContext<'_, '_> {
         f: F,
     ) -> coven::rusqlite::Result<T> {
         SqlContext::query_row(self, sql, params, f)
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl QueryRows for SqlContext<'_, '_> {
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<Vec<T>> {
+        SqlContext::query(self, sql, params, f)
     }
 }
 

@@ -45,20 +45,30 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Retry failed uploads now: run coven's upload drain immediately rather
-    /// than waiting for the next sync cycle's own pass.
-    ///
-    /// The per-entry backoff is coven's bookkeeping — a drain it is asked for
-    /// explicitly is the retry, so bae no longer reaches into the queue to clear
-    /// timestamps. A drain with no provider connected is not an error the user
-    /// needs: there is simply nothing to send yet.
+    /// Retry failed uploads now: clear coven's durable retry delay and run its
+    /// upload drain immediately. Connection, queue-state, and provider failures
+    /// are returned to the caller instead of reporting that a retry ran.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
-        if let Err(e) = self.database.drain_uploads().await {
-            warn!("retrying uploads now: {e}");
+        if self.is_sync_paused() {
+            return Err(LibraryError::Storage(
+                "upload retry cannot run while cloud sync is paused".to_string(),
+            ));
         }
+        let outcome = self.database.retry_uploads_now().await?;
         self.trigger_sync();
         self.emit_outbox_changed().await;
-        Ok(())
+        match outcome {
+            coven::DrainOutcome::Drained { failures, .. } if !failures.failures().is_empty() => {
+                Err(LibraryError::Storage(failures.to_string()))
+            }
+            coven::DrainOutcome::AllInBackoff => Err(LibraryError::Storage(
+                "upload retry remained in backoff after the delay was cleared".to_string(),
+            )),
+            coven::DrainOutcome::Paused => Err(LibraryError::Storage(
+                "cloud upload pipeline paused after the retry began".to_string(),
+            )),
+            coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => Ok(()),
+        }
     }
 
     /// Stop uploading a release that's mid-make-Remote and keep it Local.
@@ -69,10 +79,6 @@ impl LibraryManager {
     /// Local — its files are still the external refs coven holds, untouched.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
         self.coven_cancel_make_remote(release_id).await?;
-        // The cancel tombstones the blobs that already reached the cloud, so
-        // the release's completed-upload tally would now report done work that
-        // isn't — drop it before re-deriving the snapshot.
-        self.sync.clear_upload_session(release_id);
         self.emit_outbox_changed().await;
         Ok(())
     }
@@ -127,7 +133,6 @@ impl LibraryManager {
         let total_count = self.database.get_storage_count(filter).await?;
 
         let has_cloud_home = self.has_cloud_home();
-        let sync_ready = self.is_sync_ready();
         // The cover resolver serves both halves of each row — the release's own id
         // and the album's resolved primary release id — so gather both for the
         // batch lookup.
@@ -152,7 +157,6 @@ impl LibraryManager {
             rows.push(StorageRow::from_raw(
                 raw,
                 has_cloud_home,
-                sync_ready,
                 pinned,
                 transfer_action,
                 |rid| covers.get(rid).cloned(),
@@ -165,12 +169,12 @@ impl LibraryManager {
         &self,
         sort: &crate::db::StorageSortCriterion,
         filter: crate::db::StorageFilter,
-        uploading_release_ids: Vec<String>,
+        transitioning_release_ids: Vec<String>,
         offset: u64,
         limit: u64,
     ) -> coven::LiveQuery<crate::db::StoragePageProjection> {
         self.database
-            .subscribe_storage_page(sort, filter, uploading_release_ids, offset, limit)
+            .subscribe_storage_page(sort, filter, transitioning_release_ids, offset, limit)
     }
 
     pub(crate) async fn resolve_storage_page_projection(
@@ -192,7 +196,6 @@ impl LibraryManager {
             })
             .collect::<HashMap<_, _>>();
         let has_cloud_home = self.has_cloud_home();
-        let sync_ready = self.is_sync_ready();
         let mut rows = Vec::with_capacity(projection.rows.len());
         for raw in projection.rows {
             let pinned = self
@@ -202,7 +205,6 @@ impl LibraryManager {
             rows.push(StorageRow::from_raw(
                 raw,
                 has_cloud_home,
-                sync_ready,
                 pinned,
                 transfer_action,
                 |release_id| covers.get(release_id).cloned(),

@@ -777,6 +777,7 @@ pub(super) fn automation_import_progress(progress: ImportProgress) -> Automation
             id,
             import_id,
             album_id,
+            outbox_revision: _,
         } => AutomationImportProgress::RemoteUploadQueued {
             id,
             import_id,

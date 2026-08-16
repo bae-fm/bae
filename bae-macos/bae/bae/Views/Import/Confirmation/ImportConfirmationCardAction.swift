@@ -25,56 +25,73 @@ struct ImportConfirmationCardAction: View {
         if case .complete = importStatus {
             return true
         }
+        if case .cloudUploadQueued = importStatus {
+            return true
+        }
         return false
     }
 
     private var completedAlbumId: String? {
-        if case .complete(releaseId: _, albumId: let albumId) = importStatus {
+        switch importStatus {
+        case .complete(releaseId: _, let albumId),
+            .cloudUploadQueued(
+                releaseId: _,
+                let albumId,
+                outboxRevision: _
+            ):
             return albumId
-        }
-        return nil
-    }
-
-    /// Cloud-upload progress for the imported release, while its files are still
-    /// queued. "Imported" means the rows are committed and the uploads durably
-    /// queued — this surfaces the remaining transfer instead of presenting a
-    /// cloud-only import as fully landed.
-    private var uploadProgress: BridgeUploadProgress? {
-        guard
-            case .complete(releaseId: let releaseId, albumId: _) = importStatus
-        else {
+        default:
             return nil
         }
-        return outboxStore.progress(forRelease: releaseId)
+    }
+
+    /// The imported release's durable cloud-transition observation. This keeps
+    /// the import result truthful across bridge delivery ordering: awaiting the
+    /// first queue snapshot is still Queued, and Imported appears only after a
+    /// previously observed transition leaves the outbox.
+    private var uploadObservation: UploadObservation? {
+        switch importStatus {
+        case .cloudUploadQueued(
+            let releaseId,
+            albumId: _,
+            let outboxRevision
+        ):
+            return outboxStore.uploadObservation(
+                forRelease: releaseId,
+                queuedAtRevision: outboxRevision
+            )
+        case .complete(let releaseId, albumId: _):
+            return outboxStore.persistedUploadObservation(
+                forRelease: releaseId
+            )
+        default:
+            return nil
+        }
     }
 
     var body: some View {
         if isComplete {
             VStack(alignment: .trailing, spacing: 2) {
-                if let progress = uploadProgress {
-                    if progress.failed > 0 {
-                        Label(
-                            "Imported — upload failed, retrying",
-                            systemImage: "exclamationmark.arrow.circlepath"
-                        )
-                        .foregroundStyle(.orange)
-                        .font(.callout)
-                        .help(
-                            "The cloud upload failed and retries automatically. See the Storage Manager for details."
-                        )
-                    }
-                    else {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Label(
-                                "Imported — uploading to cloud",
-                                systemImage: "icloud.and.arrow.up"
-                            )
-                            .foregroundStyle(.secondary)
+                if case .active(let progress) = uploadObservation {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        UploadActivityLabel(progress: progress)
                             .font(.callout)
+                        if let stageBytesText = progress.stageBytesText {
+                            Text(stageBytesText)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                        if progress.workTotal > 0 {
                             ProgressTrackBar(progress: progress.fraction)
                                 .frame(width: 160)
                         }
                     }
+                }
+                else if case .awaiting = uploadObservation {
+                    Label("Queued", systemImage: "clock")
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
                 }
                 else {
                     Label("Imported", systemImage: "checkmark.circle.fill")
@@ -113,7 +130,7 @@ struct ImportConfirmationCardAction: View {
             case .error:
                 Button("Retry Import") { onConfirmImport() }
                     .buttonStyle(.borderedProminent)
-            case .complete:
+            case .complete, .cloudUploadQueued:
                 EmptyView()
             }
         }

@@ -123,18 +123,9 @@ pub enum ReleaseStorageAction {
 
 /// Remote requires a cloud home, so without one there are no transitions at all.
 ///
-/// `MakeRemote` additionally requires the sync loop to be *running*, not merely a
-/// connected home: a release becomes Remote only when the upload observer — which
-/// fires from inside a running cycle — sees the last upload land, so with the loop
-/// stopped the uploads would sit forever and the release would stay Local. A
-/// connected home whose loop isn't running is reachable (coven installs a
-/// loop-less manager when the config carries no provider), so this is the one place
-/// that rule is stated; `TransferService::make_release_remote` re-checks it as the
-/// guard against the loop stopping after this list was computed, and against
-/// callers that never read the list at all.
-///
-/// Pin / Unpin / MakeLocal move bytes through the connected manager's storage and
-/// need no drain loop, so they gate on the cloud home alone.
+/// `MakeRemote` admits work to coven's durable outbox. A stopped loop leaves that
+/// work truthfully queued until a cycle can drain it; it does not remove the
+/// action. Pin / Unpin / MakeLocal also gate on the connected cloud home alone.
 ///
 /// The in-flight-uploads gate — acting mid-upload would race the observer that
 /// completes the remote transition — lives in the UI instead, which suppresses
@@ -145,15 +136,13 @@ pub fn available_storage_actions(
     state: ReleaseStorageState,
     pinned: bool,
     has_cloud_home: bool,
-    sync_ready: bool,
 ) -> Vec<ReleaseStorageAction> {
     use ReleaseStorageAction::*;
     if !has_cloud_home {
         return Vec::new();
     }
     match state {
-        ReleaseStorageState::Local if sync_ready => vec![MakeRemote],
-        ReleaseStorageState::Local => Vec::new(),
+        ReleaseStorageState::Local => vec![MakeRemote],
         ReleaseStorageState::Remote if pinned => vec![Unpin, MakeLocal],
         ReleaseStorageState::Remote => vec![Pin, MakeLocal],
     }
@@ -362,7 +351,7 @@ mod tests {
         for state in [Local, Remote] {
             for pinned in [false, true] {
                 assert_eq!(
-                    available_storage_actions(state, pinned, false, true),
+                    available_storage_actions(state, pinned, false),
                     Vec::<ReleaseStorageAction>::new(),
                     "no cloud home blocks all actions for {state:?} (pinned={pinned})"
                 );
@@ -371,29 +360,28 @@ mod tests {
     }
 
     #[test]
-    fn local_with_cloud_and_a_running_loop_offers_manage() {
+    fn local_with_cloud_offers_make_remote() {
         // `pinned` is irrelevant for a local release.
         assert_eq!(
-            available_storage_actions(Local, false, true, true),
+            available_storage_actions(Local, false, true),
             vec![MakeRemote]
         );
         assert_eq!(
-            available_storage_actions(Local, true, true, true),
+            available_storage_actions(Local, true, true),
             vec![MakeRemote]
         );
     }
 
-    /// A connected home whose sync loop isn't running cannot finish a make-Remote:
-    /// the release goes Remote only when the upload observer sees the last upload
-    /// land, and that observer fires from inside a running cycle. So the action is
-    /// not offered — `TransferService::make_release_remote` would refuse it.
+    /// A stopped loop delays the upload; it does not prevent admitting the work.
+    /// The durable outbox remains the truthful queued state while the loop is
+    /// stopped and until the loop drains it.
     #[test]
-    fn local_without_a_running_loop_offers_nothing() {
+    fn local_without_a_running_loop_still_offers_make_remote() {
         for pinned in [false, true] {
             assert_eq!(
-                available_storage_actions(Local, pinned, true, false),
-                Vec::<ReleaseStorageAction>::new(),
-                "MakeRemote must not be offered with the sync loop stopped (pinned={pinned})"
+                available_storage_actions(Local, pinned, true),
+                vec![MakeRemote],
+                "MakeRemote queues durably even with the sync loop stopped (pinned={pinned})"
             );
         }
     }
@@ -403,27 +391,27 @@ mod tests {
     #[test]
     fn remote_actions_do_not_need_a_running_loop() {
         assert_eq!(
-            available_storage_actions(Remote, true, true, false),
+            available_storage_actions(Remote, true, true),
             vec![Unpin, MakeLocal]
         );
         assert_eq!(
-            available_storage_actions(Remote, false, true, false),
+            available_storage_actions(Remote, false, true),
             vec![Pin, MakeLocal]
         );
     }
 
     #[test]
-    fn remote_pinned_offers_unpin_and_unmanage() {
+    fn remote_pinned_offers_unpin_and_make_local() {
         assert_eq!(
-            available_storage_actions(Remote, true, true, true),
+            available_storage_actions(Remote, true, true),
             vec![Unpin, MakeLocal]
         );
     }
 
     #[test]
-    fn remote_unpinned_offers_pin_and_unmanage() {
+    fn remote_unpinned_offers_pin_and_make_local() {
         assert_eq!(
-            available_storage_actions(Remote, false, true, true),
+            available_storage_actions(Remote, false, true),
             vec![Pin, MakeLocal]
         );
     }

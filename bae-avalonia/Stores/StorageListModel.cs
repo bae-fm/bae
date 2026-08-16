@@ -38,7 +38,7 @@ public static class StorageListModel
         StorageTab.All => "storage.tab.all",
         StorageTab.Local => "storage.tab.local",
         StorageTab.Cloud => "storage.tab.cloud",
-        StorageTab.Uploading => "storage.tab.uploading",
+        StorageTab.Uploading => "storage.tab.sync_queue",
         _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "Unknown storage tab"),
     };
 

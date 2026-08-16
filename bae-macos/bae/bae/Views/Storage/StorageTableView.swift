@@ -671,17 +671,27 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         // action it offers is cancelling — in every tab. Uploads live in the
         // outbox; foreground transfers (pin/unpin/make-local) set `transfer`.
         let transitioning = targets.filter { id in
-            outboxStore.isUploading(forRelease: id)
+            outboxStore.isTransitioning(forRelease: id)
                 || libraryStore.releaseSummaries[id]?.transfer != nil
         }
         if !transitioning.isEmpty {
-            addMenuItem(
-                to: menu,
-                title: String(localized: "Cancel"),
-                action: #selector(cancelTransitionsAction(_:)),
-                symbol: "xmark.circle",
-                representedObject: transitioning
-            )
+            let cancellable = transitioning.filter { id in
+                if let observation = outboxStore.storageUploadObservation(
+                    forRelease: id
+                ) {
+                    return observation.canCancel
+                }
+                return libraryStore.releaseSummaries[id]?.transfer != nil
+            }
+            if !cancellable.isEmpty {
+                addMenuItem(
+                    to: menu,
+                    title: String(localized: "Cancel"),
+                    action: #selector(cancelTransitionsAction(_:)),
+                    symbol: "xmark.circle",
+                    representedObject: cancellable
+                )
+            }
             return
         }
         for action in intersectedActions(of: targets) {

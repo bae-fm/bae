@@ -349,7 +349,7 @@ private struct SyncConnectedControls: View {
             Toggle(
                 "Pause uploads",
                 isOn: Binding(
-                    get: { outboxStore.snapshot.paused },
+                    get: { outboxStore.snapshot.pauseRequested },
                     set: { paused in
                         Task { try await sync.setSyncPaused(paused) }
                     }

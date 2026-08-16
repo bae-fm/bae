@@ -12,13 +12,13 @@ struct StorageStatusBand: View {
     @Environment(OutboxStore.self)
     private var outboxStore
 
-    /// Outbox progress for this release, if any work is in flight (releases
-    /// with nothing left to ship are absent from the per-release map). Drives
+    /// Outbox progress for this release while its make-Remote transition is
+    /// unfinished, including publication after all provider bytes land. Drives
     /// the "uploading…" indicator and suppresses transfer actions — acting
     /// mid-upload races the observer that completes the local → cloud
     /// step.
-    private var uploadProgress: BridgeUploadProgress? {
-        outboxStore.progress(forRelease: release.summary.id)
+    private var uploadObservation: StorageUploadObservation? {
+        outboxStore.storageUploadObservation(forRelease: release.summary.id)
     }
 
     var body: some View {
@@ -31,17 +31,16 @@ struct StorageStatusBand: View {
                     label: transfer.label
                 )
             }
-            else if let progress = uploadProgress {
-                progressBar(
-                    value: progress.fraction,
-                    label: String(
-                        localized:
-                            "Uploading (\(Int(progress.pending)) remaining)…"
-                    )
-                )
-            }
-            else {
+            else if Self.showsTransferActions(
+                uploadObservation: uploadObservation
+            ) {
                 transferActions
+            }
+            else if let observation = uploadObservation {
+                progressBar(
+                    value: observation.progressBar.fraction,
+                    label: observation.transitionStatusText
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,20 +56,42 @@ struct StorageStatusBand: View {
         }
     }
 
+    /// Storage actions are available only at rest. Publication and
+    /// cancellation can have no file bytes left, but they are still active
+    /// cloud transitions and keep the action area occupied by their phase.
+    static func showsTransferActions(
+        uploadObservation: StorageUploadObservation?
+    ) -> Bool {
+        uploadObservation == nil
+    }
+
     private var storageStatus: some View {
         HStack(spacing: 6) {
-            switch release.summary.storageState {
-            case .local:
-                Image(systemName: "folder")
-                Text("Local")
-            case .remote:
-                if release.summary.pinned {
-                    Image(systemName: "pin.fill")
-                    Text("Pinned")
+            if let observation = uploadObservation {
+                switch observation {
+                case .active(let progress):
+                    UploadActivityLabel(progress: progress)
+                case .queueing, .awaiting:
+                    Label(
+                        observation.transitionStatusText,
+                        systemImage: "icloud.and.arrow.up"
+                    )
                 }
-                else {
-                    Image(systemName: "cloud")
-                    Text("Cloud")
+            }
+            else {
+                switch release.summary.storageState {
+                case .local:
+                    Image(systemName: "folder")
+                    Text("Local")
+                case .remote:
+                    if release.summary.pinned {
+                        Image(systemName: "pin.fill")
+                        Text("Pinned")
+                    }
+                    else {
+                        Image(systemName: "cloud")
+                        Text("Cloud")
+                    }
                 }
             }
         }

@@ -200,12 +200,19 @@ impl crate::types::BridgeCandidateImportStatus {
                 progress_percent,
                 step: step.map(crate::types::BridgeImportStep::from_core),
             },
-            bae_core::import::CandidateImportStatusSnapshot::Complete {
-                release_id,
-                album_id,
-            } => crate::types::BridgeCandidateImportStatus::Complete {
-                release_id,
-                album_id,
+            bae_core::import::CandidateImportStatusSnapshot::Complete { release } => {
+                crate::types::BridgeCandidateImportStatus::Complete {
+                    release_id: release.release_id,
+                    album_id: release.album_id,
+                }
+            }
+            bae_core::import::CandidateImportStatusSnapshot::CloudUploadQueued {
+                release,
+                outbox_revision,
+            } => crate::types::BridgeCandidateImportStatus::CloudUploadQueued {
+                release_id: release.release_id,
+                album_id: release.album_id,
+                outbox_revision,
             },
             bae_core::import::CandidateImportStatusSnapshot::Error { error } => {
                 crate::types::BridgeCandidateImportStatus::Error {

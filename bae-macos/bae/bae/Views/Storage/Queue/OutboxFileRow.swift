@@ -21,10 +21,9 @@ struct OutboxFileRow: View {
 
             Spacer()
 
-            if file.state == .uploading {
-                ProgressTrackBar(progress: fraction)
-                    .frame(width: 140)
-            }
+            ProgressTrackBar(progress: fraction)
+                .frame(width: 140)
+                .opacity(showsProgress ? 1 : 0)
 
             Text(bytesText)
                 .font(.caption)
@@ -54,35 +53,55 @@ struct OutboxFileRow: View {
         case .queued:
             Image(systemName: "clock")
                 .foregroundStyle(.secondary)
+        case .preparing:
+            Image(systemName: "seal")
+                .foregroundStyle(.orange)
+        case .prepared:
+            Image(systemName: "checkmark.circle")
+                .foregroundStyle(.secondary)
         case .uploading:
             Image(systemName: "arrow.up.circle.fill")
                 .foregroundStyle(.orange)
         case .retrying:
-            // The converter sets `lastError` for every retrying file; the
-            // conditional only spares a hypothetical empty tooltip.
-            let icon = Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
-            if let error = file.lastError {
-                icon.help(error)
-            }
-            else {
-                icon
-            }
-        case .done:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .help(retryError)
+        case .uploaded:
+            Image(systemName: "icloud")
+                .foregroundStyle(.blue)
         }
     }
 
+    private var retryError: String {
+        guard let error = file.lastError else {
+            preconditionFailure("a retrying upload file has no error")
+        }
+        return error
+    }
+
     private var fraction: Double {
-        guard file.bytesTotal > 0 else { return 0 }
-        return Double(file.bytesDone) / Double(file.bytesTotal)
+        guard file.progressBytesTotal > 0 else { return 0 }
+        precondition(
+            file.bytesDone <= file.progressBytesTotal,
+            "upload file progress cannot exceed its exact total"
+        )
+        return Double(file.bytesDone) / Double(file.progressBytesTotal)
+    }
+
+    private var showsProgress: Bool {
+        (file.state == .preparing || file.state == .uploading)
+            && file.progressBytesTotal > 0
     }
 
     /// "6.2 MB of 12.4 MB" while transferring; just the size otherwise.
     private var bytesText: String {
-        let total = Int64(file.bytesTotal).formatted(.byteCount(style: .file))
-        guard file.state == .uploading else { return total }
+        let sourceSize = Int64(file.sourceBytesTotal)
+            .formatted(.byteCount(style: .file))
+        guard file.state == .preparing || file.state == .uploading,
+            file.progressBytesTotal > 0
+        else { return sourceSize }
+        let total = Int64(file.progressBytesTotal)
+            .formatted(.byteCount(style: .file))
         return String(
             format: QueueSummary.message("core.outbox.bytes_progress"),
             Int64(file.bytesDone).formatted(.byteCount(style: .file)),

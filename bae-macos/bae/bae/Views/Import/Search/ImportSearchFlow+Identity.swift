@@ -234,7 +234,7 @@ extension ImportSearchFlow {
             return false
         }
         switch status {
-        case .importing, .complete: return true
+        case .importing, .complete, .cloudUploadQueued: return true
         default: return false
         }
     }

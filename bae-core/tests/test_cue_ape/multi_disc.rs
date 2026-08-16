@@ -327,10 +327,6 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
             // that cycle plus the import's publication.
             timeout(Duration::from_secs(60), async {
                 loop {
-                    library_manager
-                        .drain_uploads_for_test()
-                        .await
-                        .expect("drain queued remote import uploads");
                     let release = library_manager
                         .get_release_by_id(&release_id)
                         .await

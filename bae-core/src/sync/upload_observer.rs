@@ -1,15 +1,16 @@
 //! bae's `BlobTransitionObserver` — UI bookkeeping only.
 //!
 //! coven owns the whole blob lifecycle: the upload drain, the make-Remote gate
-//! flip + source-file delete, and the make-Local materialize + retract. This
-//! observer only *reports* what coven did, so the UI stays current:
+//! flip + local ownership cleanup, and the make-Local materialize + retract.
+//! User-provided source files remain untouched; coven drops their external
+//! references once the release is Remote. This observer only *reports* what
+//! coven did, so the UI stays current:
 //!
-//! - the upload callbacks drive the `in_flight` map and the rolling-window
+//! - preparation and upload callbacks drive the transient map and the rolling-window
 //!   `throughput`, then tell the database-owning sync controller which UI
 //!   projection changed;
-//! - `on_root_made_remote` / `on_root_made_local` fire when coven completes a
-//!   transition, including one resumed after a restart, so the outbox stream
-//!   reflects the completed work.
+//! - durable queue changes, including terminal publication, arrive through
+//!   coven's cloud-outbox live query rather than lifecycle callbacks.
 //!
 //! `should_skip_uploads` lets the host pause the upload pipeline without touching
 //! the queue.
@@ -21,32 +22,7 @@ use coven::BlobTransitionObserver;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, warn};
 
-#[derive(Debug)]
-pub(crate) enum UploadObserverEvent {
-    OutboxChanged,
-    BlobUploaded {
-        blob: coven::RowBlobRef,
-        already_counted: u64,
-    },
-    ReleaseMadeRemote {
-        release_id: String,
-    },
-    ReleaseMadeLocal,
-}
-
-impl UploadObserverEvent {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::OutboxChanged => "OutboxChanged",
-            Self::BlobUploaded { .. } => "BlobUploaded",
-            Self::ReleaseMadeRemote { .. } => "ReleaseMadeRemote",
-            Self::ReleaseMadeLocal => "ReleaseMadeLocal",
-        }
-    }
-}
-
 struct UploadObserverMessage {
-    event: UploadObserverEvent,
     completed: oneshot::Sender<()>,
 }
 
@@ -59,11 +35,11 @@ pub(crate) struct UploadObserverEvents {
 impl UploadObserverEvents {
     pub(crate) async fn run<F, Fut>(mut self, mut process: F)
     where
-        F: FnMut(UploadObserverEvent) -> Fut,
+        F: FnMut() -> Fut,
         Fut: Future<Output = ()>,
     {
         while let Some(message) = self.receiver.recv().await {
-            process(message.event).await;
+            process().await;
             if message.completed.send(()).is_err() {
                 debug!("upload observer callback ended before its UI projection completed");
             }
@@ -74,17 +50,21 @@ impl UploadObserverEvents {
 /// Reports coven's blob transitions to the outbox value stream while a
 /// make-Remote upload runs and when a transition completes.
 ///
-/// `in_flight` maps each uploading `file_id` to the encrypted bytes that have
-/// reached the cloud for it, shared with the `LibraryManager` so its outbox
-/// snapshot reports the "uploading" state and drives the per-file bar. `sessions`
-/// tallies each completed upload under its release, so the snapshot keeps finished
-/// files in the cumulative progress and never re-derives a completed file as
-/// queued while coven's post-upload commit hasn't removed its row yet.
-/// `throughput` records the byte deltas as they transfer, for a rolling-window
-/// rate. Database-backed projection work is sent to the sync controller rather
-/// than retaining or exposing its database.
+/// `transient` maps each exact blob to preparation or provider-transfer bytes,
+/// shared with the `LibraryManager` so its outbox snapshot reports the active
+/// state and drives the per-file bar.
+/// `throughput` records byte deltas while provider transfers are active.
+/// Database-backed projection work is sent to the sync controller rather than
+/// retaining or exposing its database.
 pub struct ReleaseUploadObserver {
-    in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
+    transient: Arc<
+        Mutex<
+            HashMap<
+                crate::library::outbox_snapshot::UploadBlobKey,
+                crate::library::outbox_snapshot::TransientUploadState,
+            >,
+        >,
+    >,
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
     events: mpsc::UnboundedSender<UploadObserverMessage>,
@@ -92,14 +72,21 @@ pub struct ReleaseUploadObserver {
 
 impl ReleaseUploadObserver {
     pub(crate) fn new(
-        in_flight: Arc<Mutex<HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>>>,
+        transient: Arc<
+            Mutex<
+                HashMap<
+                    crate::library::outbox_snapshot::UploadBlobKey,
+                    crate::library::outbox_snapshot::TransientUploadState,
+                >,
+            >,
+        >,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
     ) -> (Self, UploadObserverEvents) {
         let (events, receiver) = mpsc::unbounded_channel();
         (
             Self {
-                in_flight,
+                transient,
                 throughput,
                 sync_paused,
                 events,
@@ -108,19 +95,18 @@ impl ReleaseUploadObserver {
         )
     }
 
-    async fn report(&self, event: UploadObserverEvent) {
-        let event_name = event.name();
+    async fn report(&self) {
         let (completed, completion) = oneshot::channel();
         if self
             .events
-            .send(UploadObserverMessage { event, completed })
+            .send(UploadObserverMessage { completed })
             .is_err()
         {
-            warn!("upload observer event processor stopped before {event_name}");
+            warn!("upload observer event processor stopped");
             return;
         }
         if completion.await.is_err() {
-            warn!("upload observer event processor dropped {event_name}");
+            warn!("upload observer event processor dropped a lifecycle update");
         }
     }
 }
@@ -131,120 +117,213 @@ fn upload_blob_key(upload: &coven::RowBlobRef) -> crate::library::outbox_snapsho
 
 #[async_trait::async_trait]
 impl coven::BlobTransitionObserver for ReleaseUploadObserver {
-    async fn on_blob_upload_started(&self, upload: &coven::RowBlobRef) {
+    async fn on_blob_preparation_started(&self, upload: &coven::RowBlobRef) {
+        self.transient.lock().unwrap().insert(
+            upload_blob_key(upload),
+            crate::library::outbox_snapshot::TransientUploadState::Preparing {
+                bytes_done: 0,
+                bytes_total: upload.plaintext_size(),
+            },
+        );
+        self.report().await;
+    }
+
+    async fn on_blob_preparation_progress(
+        &self,
+        upload: &coven::RowBlobRef,
+        bytes_done: u64,
+        bytes_total: u64,
+    ) {
+        let blob_key = upload_blob_key(upload);
         {
-            self.in_flight
-                .lock()
-                .unwrap()
-                .insert(upload_blob_key(upload), 0);
+            let mut transient = self.transient.lock().unwrap();
+            match transient.get_mut(&blob_key) {
+                Some(crate::library::outbox_snapshot::TransientUploadState::Preparing {
+                    bytes_done: previous,
+                    bytes_total: exact_total,
+                }) => {
+                    if bytes_total != *exact_total || bytes_total != upload.plaintext_size() {
+                        panic!(
+                            "preparation progress changed its exact plaintext total for {}:{}: \
+                             expected {}, received {bytes_total}",
+                            upload.table(),
+                            upload.row_id(),
+                            *exact_total
+                        );
+                    }
+                    if bytes_done < *previous || bytes_done > bytes_total {
+                        panic!(
+                            "preparation progress regressed or exceeded its exact total for {}:{}: \
+                             previous {}, received {bytes_done} of {bytes_total}",
+                            upload.table(),
+                            upload.row_id(),
+                            *previous
+                        );
+                    }
+                    *previous = bytes_done;
+                }
+                state => panic!(
+                    "preparation progress arrived without a preparation-start state for {}:{}; \
+                     transient state: {state:?}",
+                    upload.table(),
+                    upload.row_id()
+                ),
+            }
         }
-        self.report(UploadObserverEvent::OutboxChanged).await;
+        self.report().await;
+    }
+
+    async fn on_blob_upload_started(&self, upload: &coven::RowBlobRef) {
+        let blob_key = upload_blob_key(upload);
+        let uploading = crate::library::outbox_snapshot::TransientUploadState::UploadStarted;
+        {
+            use std::collections::hash_map::Entry;
+            let mut transient = self.transient.lock().unwrap();
+            match transient.entry(blob_key) {
+                Entry::Vacant(entry) => {
+                    // A restart can resume directly from coven's durable
+                    // Prepared state, so no preparation callback is required in
+                    // this process.
+                    entry.insert(uploading);
+                }
+                Entry::Occupied(mut entry) => match entry.get() {
+                    crate::library::outbox_snapshot::TransientUploadState::Preparing {
+                        bytes_done,
+                        bytes_total,
+                    } if bytes_done == bytes_total => {
+                        entry.insert(uploading);
+                    }
+                    state => panic!(
+                        "upload started while the same blob already had transient state for {}:{}; state: {state:?}",
+                        upload.table(),
+                        upload.row_id()
+                    ),
+                },
+            }
+        }
+        self.throughput.begin();
+        self.report().await;
     }
 
     async fn on_blob_upload_progress(
         &self,
         upload: &coven::RowBlobRef,
         bytes_done: u64,
-        _bytes_total: u64,
+        bytes_total: u64,
     ) {
+        if bytes_total == 0 || bytes_done > bytes_total {
+            panic!(
+                "provider progress regressed or changed its exact total for {}:{}: \
+                 received {bytes_done} of {bytes_total}",
+                upload.table(),
+                upload.row_id()
+            );
+        }
         let blob_key = upload_blob_key(upload);
         // Feed the throughput tracker only the bytes new since the last report.
         // coven coalesces these calls to a tick, so each is already throttled —
         // emit the snapshot on every one to move the bar. The counts are
-        // cumulative and monotonic within an attempt; `saturating_sub` guards a
-        // late or duplicate report.
+        // cumulative within an attempt; invalid ordering fails loudly below.
         let delta = {
-            let mut map = self.in_flight.lock().unwrap();
+            let mut map = self.transient.lock().unwrap();
             match map.get_mut(&blob_key) {
-                Some(prev) => {
-                    let delta = bytes_done.saturating_sub(*prev);
-                    *prev = bytes_done;
+                Some(
+                    state @ crate::library::outbox_snapshot::TransientUploadState::UploadStarted,
+                ) => {
+                    *state = crate::library::outbox_snapshot::TransientUploadState::Uploading {
+                        bytes_done,
+                        bytes_total,
+                    };
+                    bytes_done
+                }
+                Some(crate::library::outbox_snapshot::TransientUploadState::Uploading {
+                    bytes_done: previous,
+                    bytes_total: previous_total,
+                }) => {
+                    if bytes_total == 0
+                        || bytes_done < *previous
+                        || bytes_done > bytes_total
+                        || bytes_total != *previous_total
+                    {
+                        panic!(
+                            "provider progress regressed or changed its exact total for {}:{}: \
+                             previous {} of {}, received {bytes_done} of {bytes_total}",
+                            upload.table(),
+                            upload.row_id(),
+                            *previous,
+                            *previous_total
+                        );
+                    }
+                    let delta = bytes_done - *previous;
+                    *previous = bytes_done;
+                    *previous_total = bytes_total;
                     delta
                 }
-                // A progress report after the file's terminal callback removed its
-                // in-flight entry: ignore it, but name the file so a stray report
-                // isn't fully invisible.
-                None => {
-                    debug!(
-                        table_name = upload.table(),
-                        row_id = upload.row_id(),
-                        "upload progress arrived after the row left the in-flight set; ignoring"
-                    );
-                    return;
-                }
+                state => panic!(
+                    "upload progress arrived without an upload-start state for {}:{}; \
+                     transient state: {state:?}",
+                    upload.table(),
+                    upload.row_id()
+                ),
             }
         };
         if delta > 0 {
             self.throughput.record(delta);
         }
-        self.report(UploadObserverEvent::OutboxChanged).await;
+        self.report().await;
     }
 
     async fn on_blob_uploaded(&self, upload: &coven::RowBlobRef) {
-        // Credit any bytes no progress report counted (a small file that uploaded
-        // between coalescing ticks, or the tail past the last report) so the
-        // throughput tracker sees the whole file. coven's counts are of the
-        // encrypted payload, a few bytes larger than `file_size`, but the rolling
-        // rate is approximate so the discrepancy doesn't matter. coven, not bae,
-        // flips the gate — this is a notification only.
-        let already_counted = match self
-            .in_flight
+        // Coven emits a final provider-progress report with the exact encrypted
+        // total before completion. Requiring that report keeps provider bytes
+        // distinct from plaintext source bytes; substituting the source size
+        // here would make both the file row and throughput false.
+        match self
+            .transient
             .lock()
             .unwrap()
             .remove(&upload_blob_key(upload))
         {
-            Some(counted) => counted,
-            // The file completed without an in-flight entry (no `started`/progress
-            // seen — e.g. a tiny file). Credit its whole size below; note it so the
-            // missing lifecycle isn't silent.
-            None => {
-                debug!(
-                    table_name = upload.table(),
-                    row_id = upload.row_id(),
-                    "upload completed with no in-flight entry; crediting full size"
-                );
-                0
-            }
-        };
-        self.report(UploadObserverEvent::BlobUploaded {
-            blob: upload.clone(),
-            already_counted,
-        })
-        .await;
+            Some(crate::library::outbox_snapshot::TransientUploadState::Uploading {
+                bytes_done,
+                bytes_total,
+            }) if bytes_total > 0 && bytes_done == bytes_total => {}
+            state => panic!(
+                "upload completion arrived without exact provider byte progress for {}:{}; \
+                 transient state: {state:?}",
+                upload.table(),
+                upload.row_id()
+            ),
+        }
+        // Coven committed this exact row journal as Created before calling us;
+        // the durable outbox now owns its Uploaded state. Keep no transient
+        // terminal copy that could survive or disagree with that commit.
+        self.throughput.end();
+        self.report().await;
     }
 
     async fn on_blob_upload_failed(&self, upload: &coven::RowBlobRef, _error: &str) {
-        {
-            self.in_flight
-                .lock()
-                .unwrap()
-                .remove(&upload_blob_key(upload));
+        let removed = self
+            .transient
+            .lock()
+            .unwrap()
+            .remove(&upload_blob_key(upload));
+        if matches!(
+            removed,
+            Some(
+                crate::library::outbox_snapshot::TransientUploadState::UploadStarted
+                    | crate::library::outbox_snapshot::TransientUploadState::Uploading { .. }
+            )
+        ) {
+            self.throughput.end();
         }
         // coven's drain records the attempt count and the error on its own
         // queue entry; the snapshot we emit here reads them back.
-        self.report(UploadObserverEvent::OutboxChanged).await;
+        self.report().await;
     }
 
     fn should_skip_uploads(&self) -> bool {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
-    }
-
-    /// coven finished making a root Remote (every blob uploaded, gate flipped,
-    /// source files dropped). For a release, drop its completed-upload tally — its queue rows
-    /// are gone, so nothing renders for it. For *every* root, refresh the outbox
-    /// snapshot: a covers / artist-images root often commits last in a burst, and
-    /// skipping its emission would leave the queue pane frozen on the previous
-    /// snapshot instead of clearing.
-    async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
-        if root_table == "releases" {
-            self.report(UploadObserverEvent::ReleaseMadeRemote {
-                release_id: root_id.to_string(),
-            })
-            .await;
-        } else {
-            debug!("on_root_made_remote for non-release root {root_table:?}/{root_id}");
-            self.report(UploadObserverEvent::OutboxChanged).await;
-        }
     }
 
     /// coven finished making a root Local (blobs materialized to local files,
@@ -252,10 +331,10 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     /// snapshot for every root because the retraction changed the queue.
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
         if root_table == "releases" {
-            self.report(UploadObserverEvent::ReleaseMadeLocal).await;
+            self.report().await;
         } else {
             debug!("on_root_made_local for non-release root {root_table:?}/{root_id}");
-            self.report(UploadObserverEvent::OutboxChanged).await;
+            self.report().await;
         }
     }
 }
@@ -287,6 +366,25 @@ impl WeakUploadObserver {
 
 #[async_trait::async_trait]
 impl BlobTransitionObserver for WeakUploadObserver {
+    async fn on_blob_preparation_started(&self, blob: &coven::RowBlobRef) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.on_blob_preparation_started(blob).await;
+        }
+    }
+
+    async fn on_blob_preparation_progress(
+        &self,
+        blob: &coven::RowBlobRef,
+        bytes_done: u64,
+        bytes_total: u64,
+    ) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer
+                .on_blob_preparation_progress(blob, bytes_done, bytes_total)
+                .await;
+        }
+    }
+
     async fn on_blob_upload_started(&self, blob: &coven::RowBlobRef) {
         if let Some(observer) = self.inner.upgrade() {
             observer.on_blob_upload_started(blob).await;
@@ -324,15 +422,180 @@ impl BlobTransitionObserver for WeakUploadObserver {
             .is_some_and(|observer| observer.should_skip_uploads())
     }
 
-    async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
-        if let Some(observer) = self.inner.upgrade() {
-            observer.on_root_made_remote(root_table, root_id).await;
-        }
-    }
-
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
         if let Some(observer) = self.inner.upgrade() {
             observer.on_root_made_local(root_table, root_id).await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type TransientMap = Arc<
+        Mutex<
+            HashMap<
+                crate::library::outbox_snapshot::UploadBlobKey,
+                crate::library::outbox_snapshot::TransientUploadState,
+            >,
+        >,
+    >;
+
+    fn observer() -> (
+        ReleaseUploadObserver,
+        UploadObserverEvents,
+        TransientMap,
+        Arc<crate::library::UploadThroughput>,
+    ) {
+        let transient = Arc::new(Mutex::new(HashMap::new()));
+        let throughput = Arc::new(crate::library::UploadThroughput::new());
+        let paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (observer, events) =
+            ReleaseUploadObserver::new(transient.clone(), throughput.clone(), paused);
+        (observer, events, transient, throughput)
+    }
+
+    fn test_blob() -> coven::RowBlobRef {
+        coven::RowBlobRef::new(
+            crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
+            "00415c7f-b363-4ed9-8aad-422b93e974e9".to_string(),
+            "0000000001000-0000-device-a".to_string(),
+            "blob_id".to_string(),
+            coven::BlobRef {
+                namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
+                id: "357d9eb4-a021-4555-8713-0bc652d83c65".to_string(),
+                scope: coven::BlobScope::Master,
+                cloud_path: None,
+                provenance: coven::Provenance::HostProvided,
+                fill: coven::CacheFill::CacheEager,
+            },
+            1000,
+            coven::ObjectHash::digest(b"upload-observer-test"),
+            coven::RowBlobAuthority::Local,
+            None,
+        )
+        .expect("valid observer test blob")
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "upload started while the same blob already had transient state")]
+    async fn one_blob_cannot_start_two_provider_transfers() {
+        let (observer, events, _, _) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+
+        observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_upload_started(&blob).await;
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    async fn provider_callbacks_advance_exact_transient_bytes_and_end_throughput() {
+        let (observer, events, transient, throughput) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+        let key = upload_blob_key(&blob);
+
+        observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_upload_progress(&blob, 600, 1016).await;
+        assert_eq!(
+            transient.lock().unwrap().get(&key).copied(),
+            Some(
+                crate::library::outbox_snapshot::TransientUploadState::Uploading {
+                    bytes_done: 600,
+                    bytes_total: 1016,
+                }
+            )
+        );
+        assert!(throughput.bytes_per_sec() > 0);
+
+        observer.on_blob_upload_progress(&blob, 1016, 1016).await;
+        observer.on_blob_uploaded(&blob).await;
+        assert_eq!(transient.lock().unwrap().get(&key).copied(), None);
+        assert_eq!(throughput.bytes_per_sec(), 0);
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    async fn completed_preparation_can_enter_provider_upload() {
+        let (observer, events, transient, _) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+        let key = upload_blob_key(&blob);
+
+        observer.on_blob_preparation_started(&blob).await;
+        observer
+            .on_blob_preparation_progress(&blob, 1000, 1000)
+            .await;
+        observer.on_blob_upload_started(&blob).await;
+
+        assert_eq!(
+            transient.lock().unwrap().get(&key).copied(),
+            Some(crate::library::outbox_snapshot::TransientUploadState::UploadStarted)
+        );
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "upload progress arrived without an upload-start state")]
+    async fn provider_progress_requires_upload_start() {
+        let (observer, events, _, _) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+
+        observer.on_blob_upload_progress(&blob, 600, 1016).await;
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "upload completion arrived without exact provider byte progress")]
+    async fn provider_completion_requires_the_exact_final_progress() {
+        let (observer, events, _, _) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+
+        observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_uploaded(&blob).await;
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "provider progress regressed or changed its exact total")]
+    async fn first_provider_progress_cannot_exceed_its_total() {
+        let (observer, events, _, _) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+
+        observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_upload_progress(&blob, 1_017, 1_016).await;
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "provider progress regressed or changed its exact total")]
+    async fn provider_progress_is_monotonic_with_one_exact_total() {
+        let (observer, events, _, _) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+
+        observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_upload_progress(&blob, 600, 1016).await;
+        observer.on_blob_upload_progress(&blob, 500, 1016).await;
+
+        drop(observer);
+        event_task.await.expect("observer event task");
     }
 }

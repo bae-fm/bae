@@ -75,6 +75,19 @@ pub struct StorageProjectionValue {
     pub total_size: u64,
 }
 
+/// Replace the Sync-queue filter's absolute release set only when durable
+/// membership changed. Byte-progress snapshots keep the same IDs and must not
+/// rebuild the database page subscription at buffer cadence.
+fn replace_transitioning_release_ids(current: &mut Vec<String>, mut next: Vec<String>) -> bool {
+    next.sort();
+    next.dedup();
+    if *current == next {
+        return false;
+    }
+    *current = next;
+    true
+}
+
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppServices")
@@ -294,14 +307,14 @@ impl AppServices {
         &self,
         sort: &crate::db::StorageSortCriterion,
         filter: crate::db::StorageFilter,
-        uploading_release_ids: Vec<String>,
+        transitioning_release_ids: Vec<String>,
         offset: u64,
         limit: u64,
     ) -> coven::LiveQuery<crate::db::StoragePageProjection> {
         self.inner.manager.subscribe_storage_page(
             sort,
             filter,
-            uploading_release_ids,
+            transitioning_release_ids,
             offset,
             limit,
         )
@@ -335,21 +348,27 @@ impl AppServices {
         let mut downloads = services.subscribe_download_values();
         let mut transfers = services.subscribe_transfer_values();
         runtime_handle.spawn(async move {
-            let uploading = if filter == crate::db::StorageFilter::Uploading {
+            let mut transitioning = if filter == crate::db::StorageFilter::Uploading {
                 let current = { outbox.borrow_and_update().clone() };
                 match current {
-                    Some(Ok(snapshot)) => snapshot.uploading_release_ids(),
+                    Some(Ok(snapshot)) => snapshot.transitioning_release_ids(),
                     Some(Err(error)) => {
                         let _ = tx.send(Err(crate::library::LibraryError::Internal(error)));
                         return;
                     }
                     None => match services.outbox_snapshot().await {
-                        Ok(snapshot) => snapshot.uploading_release_ids(),
+                        Ok(snapshot) => snapshot.transitioning_release_ids(),
                         Err(error) => { let _ = tx.send(Err(error)); return; }
                     },
                 }
             } else { Vec::new() };
-            let mut query = services.subscribe_storage_page(&sort, filter, uploading, offset, limit);
+            let mut query = services.subscribe_storage_page(
+                &sort,
+                filter,
+                transitioning.clone(),
+                offset,
+                limit,
+            );
             let mut last = None;
             loop {
                 tokio::select! {
@@ -368,7 +387,12 @@ impl AppServices {
                     changed = outbox.changed(), if filter == crate::db::StorageFilter::Uploading => {
                         if changed.is_err() { return; }
                         match outbox.borrow_and_update().clone() {
-                            Some(Ok(snapshot)) => query = services.subscribe_storage_page(&sort, filter, snapshot.uploading_release_ids(), offset, limit),
+                            Some(Ok(snapshot)) => {
+                                let next = snapshot.transitioning_release_ids();
+                                if replace_transitioning_release_ids(&mut transitioning, next) {
+                                    query = services.subscribe_storage_page(&sort, filter, transitioning.clone(), offset, limit);
+                                }
+                            }
                             Some(Err(error)) => match tx.send(Err(crate::library::LibraryError::Internal(error))) {
                                 Ok(()) => {}
                                 Err(_) => return,
@@ -664,7 +688,7 @@ impl AppServices {
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, make_release_remote => make_release_remote(release_id: &str, pin: bool) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, make_release_remote => make_release_remote(release_id: &str, pin: bool) -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, make_release_local => make_release_local(release_id: &str, new_path: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData) -> Result<(), crate::library::LibraryError>);

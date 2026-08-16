@@ -361,9 +361,8 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     ));
 }
 
-/// The per-file converter flattens core's `UploadState` into plain fields:
-/// live bytes ride `Uploading`, `Done` reads as fully transferred, and the
-/// failure message lands in `last_error` under `Retrying`.
+/// The per-file converter keeps source size separate from each live stage's
+/// exact byte denominator and preserves every durable phase.
 #[test]
 fn upload_file_op_flattens_state_into_fields() {
     use crate::types::BridgeUploadFileState;
@@ -373,7 +372,7 @@ fn upload_file_op_flattens_state_into_fields() {
         crate::types::BridgeUploadFileOp::from_core(UploadFileOp {
             file_id: "file-1".into(),
             label: bae_core::library::UploadFileLabel::Filename("01 Track Title.flac".into()),
-            bytes_total: 1000,
+            source_bytes_total: 1000,
             state,
         })
     };
@@ -388,19 +387,48 @@ fn upload_file_op_flattens_state_into_fields() {
     assert_eq!(queued.state, BridgeUploadFileState::Queued);
     assert_eq!((queued.bytes_done, queued.last_error), (0, None));
 
-    let active = convert(UploadState::Active { bytes_done: 400 });
-    assert_eq!(active.state, BridgeUploadFileState::Uploading);
-    assert_eq!(active.bytes_done, 400);
+    let preparing = convert(UploadState::Preparing {
+        bytes_done: 400,
+        bytes_total: 1000,
+    });
+    assert_eq!(preparing.state, BridgeUploadFileState::Preparing);
+    assert_eq!(
+        (preparing.bytes_done, preparing.progress_bytes_total),
+        (400, 1000)
+    );
 
-    let failed = convert(UploadState::Failed {
+    let prepared = convert(UploadState::Prepared { bytes_total: 1016 });
+    assert_eq!(prepared.state, BridgeUploadFileState::Prepared);
+    assert_eq!(
+        (prepared.bytes_done, prepared.progress_bytes_total),
+        (0, 1016)
+    );
+
+    let uploading = convert(UploadState::Uploading {
+        bytes_done: 420,
+        bytes_total: 1016,
+    });
+    assert_eq!(uploading.state, BridgeUploadFileState::Uploading);
+    assert_eq!(
+        (uploading.bytes_done, uploading.progress_bytes_total),
+        (420, 1016)
+    );
+
+    let failed = convert(UploadState::RetryingUpload {
         last_error: "cloud write failed".into(),
+        bytes_total: 1016,
     });
     assert_eq!(failed.state, BridgeUploadFileState::Retrying);
     assert_eq!(failed.last_error.as_deref(), Some("cloud write failed"));
+    assert_eq!((failed.bytes_done, failed.progress_bytes_total), (0, 1016));
 
-    let done = convert(UploadState::Done);
-    assert_eq!(done.state, BridgeUploadFileState::Done);
-    assert_eq!(done.bytes_done, 1000);
+    let uploaded = convert(UploadState::Uploaded { bytes_total: 1016 });
+    assert_eq!(uploaded.state, BridgeUploadFileState::Uploaded);
+    assert_eq!(
+        (uploaded.bytes_done, uploaded.progress_bytes_total),
+        (1016, 1016)
+    );
+    assert_eq!(uploaded.source_bytes_total, 1000);
 }
 
 #[test]

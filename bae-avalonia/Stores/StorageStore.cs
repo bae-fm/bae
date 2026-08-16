@@ -25,6 +25,12 @@ internal sealed class StorageStore
 
     public void ApplyOutbox(BridgeOutboxSnapshot snapshot)
     {
+        if (_outbox is { } current && snapshot.Revision < current.Revision)
+        {
+            BaeDiagnostics.Logger.Debug(
+                $"Dropped outbox snapshot at revision {snapshot.Revision}; revision {current.Revision} is already applied.");
+            return;
+        }
         _outbox = snapshot;
         Changed?.Invoke();
     }

@@ -161,7 +161,7 @@ struct ImportReleaseHeader: View {
     /// spent then, so its toggles leave the row.
     private func commitSettled(_ commit: ImportCommitControls) -> Bool {
         switch commit.importStatus {
-        case .importing, .complete: return true
+        case .importing, .complete, .cloudUploadQueued: return true
         case .error, nil: return false
         }
     }

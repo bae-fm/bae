@@ -322,7 +322,6 @@ impl LibraryManager {
         })?;
 
         let has_cloud_home = self.has_cloud_home();
-        let sync_ready = self.is_sync_ready();
         let cover = covers.get(&primary_release_id).cloned();
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, r) in raw.releases.into_iter().enumerate() {
@@ -334,7 +333,6 @@ impl LibraryManager {
             let release_cover = covers.get(&r.release.id).cloned();
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
-                sync_ready,
                 pinned,
                 cover: release_cover,
                 transfer_action: self.current_transfer_action(&r.release.id),

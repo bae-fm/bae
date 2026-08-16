@@ -758,6 +758,7 @@ pub enum ImportProgress {
         id: String,
         import_id: String,
         album_id: String,
+        outbox_revision: u64,
     },
     Failed {
         error: String,

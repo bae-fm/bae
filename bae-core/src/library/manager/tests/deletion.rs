@@ -180,7 +180,7 @@ async fn delete_releases_with_content_hash_removes_only_matching() {
 
 /// Deleting one release of a multi-release album must tombstone its remote
 /// cloud blobs — delete_release has to queue the cloud-outbox deletes like
-/// delete_album/unmanage, or the remote blobs leak in the cloud (nothing else
+/// delete_album/make-Local, or the remote blobs leak in the cloud (nothing else
 /// processes the release once its rows are gone).
 #[cfg(feature = "test-utils")]
 #[tokio::test]

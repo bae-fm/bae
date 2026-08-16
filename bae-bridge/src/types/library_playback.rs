@@ -235,8 +235,8 @@ impl BridgeReleaseStorageAction {
         match self {
             Self::Pin => "core.transfer.action.pin",
             Self::Unpin => "core.transfer.action.unpin",
-            Self::MakeRemote => "core.transfer.action.manage",
-            Self::MakeLocal => "core.transfer.action.unmanage",
+            Self::MakeRemote => "core.transfer.action.make_remote",
+            Self::MakeLocal => "core.transfer.action.make_local",
         }
     }
 }

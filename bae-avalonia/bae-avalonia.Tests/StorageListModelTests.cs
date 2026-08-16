@@ -16,7 +16,7 @@ public sealed class StorageListModelTests
         Assert.Equal("storage.tab.all", StorageListModel.TabLabelKey(StorageTab.All));
         Assert.Equal("storage.tab.local", StorageListModel.TabLabelKey(StorageTab.Local));
         Assert.Equal("storage.tab.cloud", StorageListModel.TabLabelKey(StorageTab.Cloud));
-        Assert.Equal("storage.tab.uploading", StorageListModel.TabLabelKey(StorageTab.Uploading));
+        Assert.Equal("storage.tab.sync_queue", StorageListModel.TabLabelKey(StorageTab.Uploading));
     }
 
     [Fact]

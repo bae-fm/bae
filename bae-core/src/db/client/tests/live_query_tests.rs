@@ -677,6 +677,106 @@ async fn release_library_status_subscription_delivers_identity_changes() {
 }
 
 #[tokio::test]
+async fn import_triage_subscription_rejoins_an_imported_release_by_content_hash() {
+    use crate::import::folder_scanner::{
+        CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScannedFile,
+    };
+    use crate::import::{
+        CandidateRuntimeSnapshot, FolderCandidate, FolderImportCandidateSnapshot,
+        ImportCandidatesSnapshot, WatchedFolder,
+    };
+
+    let (db, _temp) = live_db().await;
+    let candidate = FolderCandidate {
+        path: "/music/release".into(),
+        file_root: "/music/release".into(),
+        name: "Release".to_string(),
+        files: CategorizedFiles {
+            files: vec![CandidateFile {
+                proposed_audio: true,
+                file: ScannedFile::new(
+                    "/music/release/01.flac".into(),
+                    "01.flac".to_string(),
+                    1_000,
+                ),
+                role: FileRole::Audio,
+            }],
+            format_label: "FLAC".to_string(),
+        },
+        watched_folder_path: "/music".to_string(),
+        scope: ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        display_path: "release".to_string(),
+        resolved_boundaries: Vec::new(),
+        combine_ancestor_key: None,
+    };
+    let content_hash = candidate.files.content_hash();
+    let snapshot = ImportCandidatesSnapshot {
+        watched_folders: vec![WatchedFolder {
+            path: "/music".to_string(),
+            name: "music".to_string(),
+        }],
+        folder_candidates: vec![FolderImportCandidateSnapshot {
+            candidate,
+            runtime: CandidateRuntimeSnapshot {
+                identify_state: crate::identify::IdentifyState::Idle,
+                toolbar: Vec::new(),
+                signals: None,
+                import_status: None,
+            },
+            actionable: true,
+            skipped: false,
+            is_added: true,
+        }],
+        runtime_candidates: Vec::new(),
+        invalid_candidates: Vec::new(),
+        boundaries: Vec::new(),
+        folder_scan_statuses: Vec::new(),
+    };
+    let mut live = db.subscribe_import_triage(snapshot);
+    assert!(live.next().await.unwrap().imported_releases.is_empty());
+
+    let imported_hash = content_hash.clone();
+    db.call(move |sql| {
+        sql.execute(
+            "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
+            params![imported_hash, RELEASE_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+
+    let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("the imported release wakes import triage")
+        .unwrap();
+    let release = imported
+        .imported_releases
+        .get(&content_hash)
+        .expect("the content hash resolves its imported release");
+    assert_eq!(release.release_id, RELEASE_ID);
+    assert_eq!(release.album_id, ALBUM_ID);
+
+    db.call(|sql| {
+        sql.execute(
+            "UPDATE releases SET content_hash = NULL WHERE id = ?1",
+            params![RELEASE_ID],
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    let removed = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("removing the imported release wakes import triage")
+        .unwrap();
+    assert!(removed.imported_releases.is_empty());
+}
+
+#[tokio::test]
 async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     let seed_dir = tempfile::TempDir::new().unwrap();
     let writer_dir = tempfile::TempDir::new().unwrap();

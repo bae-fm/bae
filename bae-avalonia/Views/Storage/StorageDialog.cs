@@ -330,7 +330,9 @@ internal sealed partial class StorageDialog
             band.Children.Add(Primary(Loc.Chrome(OutputQueueModel.BandTitleKey(paused))));
             if (!paused && snapshot.SummaryParts.Length > 0)
             {
-                band.Children.Add(Secondary(QueueSummaryText(snapshot.SummaryParts)));
+                band.Children.Add(Secondary(
+                    UploadProgressPresentation.SummaryParts(
+                        snapshot.SummaryParts)));
             }
             var retry = new Button
             {
@@ -406,7 +408,11 @@ internal sealed partial class StorageDialog
 
             var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             band.Children.Add(Primary(OutboxSummary(snapshot)));
-            var retry = new Button { Content = Loc.Chrome("outbox.retry_now") };
+            var retry = new Button
+            {
+                Content = Loc.Chrome("outbox.retry_now"),
+                IsEnabled = snapshot.Total.Failed > 0,
+            };
             retry.Click += async (_, _) =>
             {
                 status.IsVisible = false;
@@ -425,26 +431,38 @@ internal sealed partial class StorageDialog
                 }
             };
             band.Children.Add(retry);
-            var paused = snapshot.Paused;
-            var pause = new Button { Content = paused ? Loc.Chrome("outbox.resume") : Loc.Chrome("outbox.pause") };
+            var pauseRequested = snapshot.PauseState != BridgeOutboxPauseState.Running;
+            var fullyPaused = snapshot.PauseState == BridgeOutboxPauseState.Paused;
+            var pause = new Button { Content = pauseRequested ? Loc.Chrome("outbox.resume") : Loc.Chrome("outbox.pause") };
             pause.Click += async (_, _) =>
             {
+                status.IsVisible = false;
                 pause.IsEnabled = false;
-                await _app.Sync.SetSyncPaused(!paused);
+                var (pauseCurrent, error) = await _app.Sync.SetSyncPaused(!pauseRequested);
+                if (!pauseCurrent)
+                {
+                    return;
+                }
+                if (error is not null)
+                {
+                    status.Text = error;
+                    status.IsVisible = true;
+                    pause.IsEnabled = true;
+                }
             };
             band.Children.Add(pause);
             outboxPanel.Children.Add(band);
 
-            // Master progress strip: a byte-progress bar (dimmed while paused) and
-            // locale-formatted byte / throughput / ETA labels.
-            if (snapshot.Total.BytesTotal > 0)
+            // Master progress strip: the complete preparation + provider pipeline.
+            // The caption keeps each stage's byte units separate.
+            if (snapshot.Total.WorkTotal > 0)
             {
                 outboxPanel.Children.Add(new ProgressBar
                 {
                     Minimum = 0,
-                    Maximum = checked((long)snapshot.Total.BytesTotal),
-                    Value = checked((long)snapshot.Total.BytesDone),
-                    Opacity = paused ? 0.4 : 1.0,
+                    Maximum = checked((long)snapshot.Total.WorkTotal),
+                    Value = checked((long)snapshot.Total.WorkDone),
+                    Opacity = fullyPaused ? 0.4 : 1.0,
                 });
                 var detail = new List<string>();
                 foreach (var label in new[] { OutboxBytesLabel(snapshot), OutboxThroughputLabel(snapshot), OutboxEtaLabel(snapshot) })
@@ -487,24 +505,26 @@ internal sealed partial class StorageDialog
 
             // Uploads: one expandable row per release — title, file count, cumulative
             // byte progress, an aggregate state badge, and the per-file list inside.
-            // Right-click cancels the release's transition; the orphaned-files bucket
-            // (no release id) has no release to cancel.
+            // Right-click cancels the release's transition.
             foreach (var group in snapshot.UploadGroups)
             {
                 var titleLine = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
                 titleLine.Children.Add(Primary(group.DisplayTitle));
-                titleLine.Children.Add(Secondary(
-                    $"{Loc.Chrome("storage.files", "count", group.Files.Length)} · {UploadBytesLabel(group.Progress)}"));
+                var stageBytes = UploadBytesLabel(group.Progress);
+                var fileDetail = Loc.Chrome("storage.files", "count", group.Files.Length);
+                titleLine.Children.Add(Secondary(string.IsNullOrEmpty(stageBytes)
+                    ? fileDetail
+                    : $"{fileDetail} · {stageBytes}"));
                 titleLine.Children.Add(Secondary(UploadBadgeLabel(group.Progress)));
                 var header = new StackPanel { Spacing = 2 };
                 header.Children.Add(titleLine);
-                if (group.Progress.BytesTotal > 0)
+                if (group.Progress.WorkTotal > 0)
                 {
                     header.Children.Add(new ProgressBar
                     {
                         Minimum = 0,
-                        Maximum = checked((long)group.Progress.BytesTotal),
-                        Value = checked((long)group.Progress.BytesDone),
+                        Maximum = checked((long)group.Progress.WorkTotal),
+                        Value = checked((long)group.Progress.WorkDone),
                     });
                 }
 
@@ -514,12 +534,14 @@ internal sealed partial class StorageDialog
                     var fileGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
                     var fileColumn = new StackPanel { Spacing = 2 };
                     fileColumn.Children.Add(Primary($"{UploadFileLabel(file.Label)} · {FileBytesLabel(file)}"));
-                    if (file.State == BridgeUploadFileState.Uploading && file.BytesTotal > 0)
+                    if ((file.State == BridgeUploadFileState.Preparing
+                        || file.State == BridgeUploadFileState.Uploading)
+                        && file.ProgressBytesTotal > 0)
                     {
                         fileColumn.Children.Add(new ProgressBar
                         {
                             Minimum = 0,
-                            Maximum = checked((long)file.BytesTotal),
+                            Maximum = checked((long)file.ProgressBytesTotal),
                             Value = checked((long)file.BytesDone),
                         });
                     }
@@ -544,9 +566,9 @@ internal sealed partial class StorageDialog
                     IsExpanded = true,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 };
-                if (group.ReleaseId is { } releaseId)
+                if (group.Progress.Activity != BridgeUploadActivity.Cancelling)
                 {
-                    expander.ContextFlyout = CancelFlyout(() => _app.Sync.CancelReleaseTransition(releaseId));
+                    expander.ContextFlyout = CancelFlyout(() => _app.Sync.CancelReleaseTransition(group.ReleaseId));
                 }
                 outboxPanel.Children.Add(expander);
             }
@@ -634,25 +656,31 @@ internal sealed partial class StorageDialog
             }
             if (transitioning.Count > 0)
             {
-                var cancel = new MenuItem { Header = Loc.Chrome("action.cancel") };
-                cancel.Click += async (_, _) =>
+                var cancellable = transitioning.Where(id =>
+                    !outboxProgress.TryGetValue(id, out var progress)
+                    || progress.Activity != BridgeUploadActivity.Cancelling).ToList();
+                if (cancellable.Count > 0)
                 {
-                    foreach (var releaseId in transitioning)
+                    var cancel = new MenuItem { Header = Loc.Chrome("action.cancel") };
+                    cancel.Click += async (_, _) =>
                     {
-                        var (cancelCurrent, error) = await _app.Sync.CancelReleaseTransition(releaseId);
-                        if (!cancelCurrent)
+                        foreach (var releaseId in cancellable)
                         {
-                            return;
+                            var (cancelCurrent, error) = await _app.Sync.CancelReleaseTransition(releaseId);
+                            if (!cancelCurrent)
+                            {
+                                return;
+                            }
+                            if (error is not null)
+                            {
+                                status.Text = error;
+                                status.IsVisible = true;
+                                return;
+                            }
                         }
-                        if (error is not null)
-                        {
-                            status.Text = error;
-                            status.IsVisible = true;
-                            return;
-                        }
-                    }
-                };
-                menu.Items.Add(cancel);
+                    };
+                    menu.Items.Add(cancel);
+                }
                 return menu;
             }
 

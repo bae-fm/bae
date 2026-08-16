@@ -57,7 +57,7 @@ object UiEventAdapter {
         if (handleAppErrorEvent(event, stores, errors)) {
             return
         }
-        ignoreObsoleteEvent(event)
+        error("unhandled UI event: ${event::class.simpleName}")
     }
 
     private fun handlePlaybackEvent(
@@ -97,24 +97,5 @@ object UiEventAdapter {
             }
         }
         return true
-    }
-
-    private fun ignoreObsoleteEvent(event: BridgeUiEvent) {
-        when (event) {
-            is BridgeUiEvent.CandidateImportLoudnessProgress,
-            // Importing is a desktop feature; Android has no import queue, so
-            // how much of it has been identified drives nothing here.
-            is BridgeUiEvent.ImportQueueIdentifyProgress,
-            -> {
-                logger.debug("ignoring ${event::class.simpleName}")
-            }
-
-            is BridgeUiEvent.PlaybackError,
-            is BridgeUiEvent.QueueItemsAdded,
-            is BridgeUiEvent.Error,
-            -> {
-                error("handled event reached obsolete-event path: ${event::class.simpleName}")
-            }
-        }
     }
 }

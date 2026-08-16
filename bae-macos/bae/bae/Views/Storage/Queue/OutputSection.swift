@@ -21,7 +21,9 @@ struct OutputSection: View {
                 QueueSectionHeader(
                     icon: "square.and.arrow.up",
                     title: "Export & Save",
-                    paused: snapshot.paused,
+                    pauseRequested: snapshot.paused,
+                    pauseStatusText: snapshot.paused
+                        ? String(localized: "Paused") : nil,
                     summaryText: snapshot.summaryText,
                     retryDisabled: snapshot.total.failed == 0,
                     onSetPaused: { outputs.setOutputsPaused($0) },

@@ -422,7 +422,7 @@
   <data name="storage.tab.all" xml:space="preserve"><value>Todos</value></data>
   <data name="storage.tab.local" xml:space="preserve"><value>Local</value></data>
   <data name="storage.tab.cloud" xml:space="preserve"><value>Nuvem</value></data>
-  <data name="storage.tab.uploading" xml:space="preserve"><value>Enviando</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Fila de sincronização</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Álbum</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Artista</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>Formato</value></data>

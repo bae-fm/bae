@@ -14,13 +14,12 @@ impl LibraryManager {
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Result<Self, coven::DbError> {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
-        let upload_sessions = Arc::new(crate::library::UploadSessions::new());
+        let transient_uploads = Arc::new(Mutex::new(HashMap::new()));
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
         let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
-            outbox_in_flight.clone(),
+            transient_uploads.clone(),
             upload_throughput.clone(),
             sync_paused.clone(),
         );
@@ -63,6 +62,7 @@ impl LibraryManager {
             sync_ready: database.is_syncing(),
         });
         let (outbox_values, _) = tokio::sync::watch::channel(None);
+        let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
         let download_queue = Arc::new(crate::library::DownloadQueue::new());
         let (download_values, _) = tokio::sync::watch::channel(
             crate::library::download_snapshot::build_download_snapshot(
@@ -81,9 +81,9 @@ impl LibraryManager {
         let sync = SyncController::new(
             config_handle.clone(),
             outbox_values.clone(),
+            outbox_projection_revision,
             database.clone(),
-            outbox_in_flight,
-            upload_sessions,
+            transient_uploads,
             upload_throughput,
             sync_paused,
             cloudkit_ops,
@@ -134,12 +134,11 @@ impl LibraryManager {
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
-        let upload_sessions = Arc::new(crate::library::UploadSessions::new());
+        let transient_uploads = Arc::new(Mutex::new(HashMap::new()));
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
         let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
-            outbox_in_flight.clone(),
+            transient_uploads.clone(),
             upload_throughput.clone(),
             sync_paused.clone(),
         );
@@ -152,6 +151,7 @@ impl LibraryManager {
             sync_ready: database.is_syncing(),
         });
         let (outbox_values, _) = tokio::sync::watch::channel(None);
+        let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
         let download_queue = Arc::new(crate::library::DownloadQueue::new());
         let (download_values, _) = tokio::sync::watch::channel(
             crate::library::download_snapshot::build_download_snapshot(
@@ -170,9 +170,9 @@ impl LibraryManager {
         let sync = SyncController::new(
             config_handle.clone(),
             outbox_values.clone(),
+            outbox_projection_revision,
             database.clone(),
-            outbox_in_flight,
-            upload_sessions,
+            transient_uploads,
             upload_throughput,
             sync_paused,
             None,
@@ -214,10 +214,10 @@ impl LibraryManager {
         let sync = self.sync.clone();
         self.runtime_handle.spawn(async move {
             events
-                .run(move |event| {
+                .run(move || {
                     let sync = sync.clone();
                     async move {
-                        sync.process_upload_observer_event(event).await;
+                        sync.process_upload_observer_event().await;
                     }
                 })
                 .await;
@@ -373,13 +373,13 @@ impl LibraryManager {
     }
 
     #[cfg(test)]
-    pub(crate) async fn observe_blob_upload_started_for_test(&self, file_id: &str) {
+    pub(crate) async fn observe_blob_preparation_started_for_test(&self, file_id: &str) {
         let blob = self
             .database
             .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
             .await
             .unwrap();
-        coven::BlobTransitionObserver::on_blob_upload_started(
+        coven::BlobTransitionObserver::on_blob_preparation_started(
             self._upload_observer.as_ref(),
             &blob,
         )
@@ -387,7 +387,7 @@ impl LibraryManager {
     }
 
     #[cfg(test)]
-    pub(crate) async fn observe_blob_upload_progress_for_test(
+    pub(crate) async fn observe_blob_preparation_progress_for_test(
         &self,
         file_id: &str,
         bytes_done: u64,
@@ -398,7 +398,7 @@ impl LibraryManager {
             .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
             .await
             .unwrap();
-        coven::BlobTransitionObserver::on_blob_upload_progress(
+        coven::BlobTransitionObserver::on_blob_preparation_progress(
             self._upload_observer.as_ref(),
             &blob,
             bytes_done,
@@ -407,30 +407,15 @@ impl LibraryManager {
         .await;
     }
 
-    #[cfg(test)]
-    pub(crate) async fn observe_blob_uploaded_for_test(&self, file_id: &str) {
-        let blob = self
-            .database
-            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
-            .await
-            .unwrap();
-        coven::BlobTransitionObserver::on_blob_uploaded(self._upload_observer.as_ref(), &blob)
-            .await;
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn observe_root_made_remote_for_test(&self, root_table: &str, root_id: &str) {
-        coven::BlobTransitionObserver::on_root_made_remote(
-            self._upload_observer.as_ref(),
-            root_table,
-            root_id,
-        )
-        .await;
-    }
-
     /// Subscribe to the sync loop's status and publish the current banner value.
     /// Call once after construction, with a tokio runtime available.
     pub fn start(&self) {
+        let outbox = self.database.subscribe_cloud_outbox();
+        let sync = self.sync.clone();
+        self.runtime_handle.spawn(async move {
+            sync.run_cloud_outbox_subscription(outbox).await;
+        });
+
         let mut rx = self.database.subscribe_sync_status();
         let lm = self.clone();
         self.runtime_handle.spawn(async move {
@@ -504,9 +489,6 @@ impl LibraryManager {
                 if changed {
                     lm.sync_status_values.send_replace(lm.get_sync_status());
                 }
-                // coven gives no per-item drain signal in the status, so re-derive
-                // the outbox snapshot each cycle to catch what it uploaded or failed.
-                lm.emit_outbox_changed().await;
                 if rx.changed().await.is_err() {
                     break;
                 }
@@ -533,9 +515,9 @@ impl LibraryManager {
         }
     }
 
-    /// Build and publish the current outbox snapshot. Called at every outbox
-    /// mutation, once per sync cycle, and on each upload lifecycle callback.
-    pub(crate) async fn emit_outbox_changed(&self) {
+    /// Build and publish the current outbox snapshot. Called by durable outbox
+    /// and display-row subscriptions and by each upload lifecycle callback.
+    pub(crate) async fn emit_outbox_changed(&self) -> u64 {
         self.sync.emit_outbox_changed().await
     }
 

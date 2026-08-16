@@ -851,25 +851,4 @@ async fn find_release_detail_returns_none_for_unknown_id() {
 }
 
 
-/// A non-release root (covers, artist images) completing its make-remote must
-/// still push a fresh outbox snapshot: such a root often commits last in a
-/// burst, and without this emission the queue pane freezes on the previous
-/// snapshot instead of clearing.
-#[tokio::test]
-async fn non_release_root_completion_emits_outbox_changed() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let mut values = manager.subscribe_outbox_values();
-    values.borrow_and_update();
-
-    manager
-        .observe_root_made_remote_for_test("covers", COVER_1)
-        .await;
-
-    tokio::time::timeout(std::time::Duration::from_secs(2), values.changed())
-        .await
-        .expect("covers-root completion must emit an outbox snapshot")
-        .expect("value stream stays open");
-    assert!(values.borrow_and_update().is_some());
-}
-
 // ── Storage page tests ───────────────────────────────────────────

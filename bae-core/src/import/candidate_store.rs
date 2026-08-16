@@ -14,7 +14,7 @@ mod state;
 use state::CandidateState;
 pub use state::{
     CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
-    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot,
+    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportedRelease,
     RuntimeImportCandidateSnapshot, WatchedFolderScanStatus,
 };
 

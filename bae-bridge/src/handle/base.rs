@@ -586,10 +586,12 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         release_id: String,
         pin: bool,
-    ) -> Result<(), BridgeError> {
+    ) -> Result<u64, BridgeError> {
         self.run_exported(move |this| async move {
-            this.services.make_release_remote(&release_id, pin).await?;
-            Ok(())
+            this.services
+                .make_release_remote(&release_id, pin)
+                .await
+                .map_err(BridgeError::internal)
         })
         .await
     }
@@ -890,7 +892,7 @@ impl AppHandle {
     }
 
     /// Cancel whatever transition a release is mid-flight — a pin (download), a
-    /// remote upload, or an unmanage — leaving it in its prior state. The UI
+    /// remote upload, or a make-Local transfer — leaving it in its prior state. The UI
     /// calls this from the storage row and the queue pane without knowing which
     /// is running; a no-op if nothing is in progress.
     pub async fn cancel_release_transition(
@@ -908,7 +910,8 @@ impl AppHandle {
 
     /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
     /// still land in the outbox but the sync cycle won't drain them; the
-    /// snapshot's `paused` field flips so the UI can render the toggle.
+    /// snapshot's pause phase changes so the UI can distinguish pausing from
+    /// fully paused.
     pub async fn set_sync_paused(
         self: std::sync::Arc<Self>,
         paused: bool,
