@@ -38,54 +38,37 @@ struct ImportCandidateCheckboxTests {
         await Task.yield()
         host.layoutSubtreeIfNeeded()
 
-        let checkbox = try #require(
-            descendants(of: host).compactMap { $0 as? NSButton }
-                .first {
-                    $0.frame.width <= 24 && $0.frame.height <= 24
-                }
-        )
+        let buttons: [NSButton] = descendants(of: host)
+            .compactMap {
+                $0 as? NSButton
+            }
+        let checkbox = try #require(buttons.first)
         let checkboxCenter = checkbox.convert(
             NSPoint(x: checkbox.bounds.midX, y: checkbox.bounds.midY),
             to: nil
         )
-        click(checkboxCenter, in: window)
-        try await Task.sleep(for: .milliseconds(50))
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = try #require(
+                NSEvent.mouseEvent(
+                    with: type,
+                    location: checkboxCenter,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber,
+                    context: nil,
+                    eventNumber: 0,
+                    clickCount: 1,
+                    pressure: type == .leftMouseDown ? 1 : 0
+                )
+            )
+            window.sendEvent(event)
+        }
+        await Task.yield()
 
         #expect(
             uiStore.selectedReadyCandidates
                 == [PreviewData.triageRowReady.candidateKey]
         )
-    }
-
-    @MainActor
-    private func click(_ point: NSPoint, in window: NSWindow) {
-        let timestamp = ProcessInfo.processInfo.systemUptime
-        let mouseDown = NSEvent.mouseEvent(
-            with: .leftMouseDown,
-            location: point,
-            modifierFlags: [],
-            timestamp: timestamp,
-            windowNumber: window.windowNumber,
-            context: nil,
-            eventNumber: 0,
-            clickCount: 1,
-            pressure: 1
-        )
-        let mouseUp = NSEvent.mouseEvent(
-            with: .leftMouseUp,
-            location: point,
-            modifierFlags: [],
-            timestamp: timestamp + 0.01,
-            windowNumber: window.windowNumber,
-            context: nil,
-            eventNumber: 0,
-            clickCount: 1,
-            pressure: 0
-        )
-        if let mouseDown, let mouseUp {
-            NSApp.postEvent(mouseUp, atStart: false)
-            window.sendEvent(mouseDown)
-        }
     }
 
     @MainActor
