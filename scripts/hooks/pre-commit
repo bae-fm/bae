@@ -2,6 +2,8 @@
 
 set -e
 
+source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/file-list.sh"
+
 # In a linked worktree, git exports GIT_DIR/GIT_INDEX_FILE to hooks. Child git
 # processes inherit them — SwiftPM's package clones then run `git checkout`
 # against *this* repo's object store and die with "unable to read tree". The
@@ -21,9 +23,10 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
 
 TMPFILE=$(mktemp)
+FORMAT_STATE=$(mktemp)
 
 cleanup() {
-    rm -f "$TMPFILE"
+    rm -f "$TMPFILE" "$FORMAT_STATE"
 }
 trap cleanup EXIT
 
@@ -56,38 +59,39 @@ run_check() {
 # fail the commit so the dev sees what changed and re-runs `git commit`.
 restage_and_fail_if_changed() {
     local tool_name="$1"
-    local scope="${2:-}"
-    local diff
-    if [ -n "$scope" ]; then
-        diff=$(git --no-pager diff --name-only -- "$scope")
-    else
-        diff=$(git --no-pager diff --name-only)
-    fi
-    if [ -z "$diff" ]; then
-        return 0
-    fi
-    local restaged=0
-    while IFS= read -r file; do
-        if echo "$CHANGED_FILES" | grep -qF "$file"; then
-            git add "$file"
-            restaged=1
-        fi
-    done <<< "$diff"
-    if [ "$restaged" -eq 1 ]; then
-        echo ""
-        echo "❌ $tool_name reformatted staged files. Changes have been re-staged."
-        echo "   Please review the diff and commit again."
-        exit 1
-    fi
+    local state_file="$2"
+    local scope="${3:-}"
+    local status=0
+    stage_formatter_changes "$state_file" "$scope" || status=$?
+    case "$status" in
+        0) return 0 ;;
+        1)
+            echo ""
+            echo "❌ $tool_name reformatted staged files. Changes have been re-staged."
+            echo "   Please review the diff and commit again."
+            exit 1
+            ;;
+        2)
+            echo ""
+            echo "❌ $tool_name reformatted a partially staged file."
+            echo "   Existing unstaged hunks were left out of the index; review and stage the intended result."
+            exit 1
+            ;;
+    esac
+}
+
+run_check "pre-commit staged path matching" bash scripts/hooks/tests/file-list-test.sh || {
+    exit 1
 }
 
 # Auto-format all packages. If anything changes, re-stage and fail so the
 # dev can review the new diff before committing.
+record_staged_worktree_state "$FORMAT_STATE"
 run_check "cargo fmt" cargo fmt --all || {
     echo "cargo fmt failed"
     exit 1
 }
-restage_and_fail_if_changed "cargo fmt"
+restage_and_fail_if_changed "cargo fmt" "$FORMAT_STATE"
 
 run_check "source file layout" scripts/check-source-file-size.py || {
     exit 1
@@ -172,6 +176,7 @@ fi
 if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
     || has_changes_in "BaeKit"; then
     if xcrun --find swift-format &> /dev/null; then
+        record_staged_worktree_state "$FORMAT_STATE"
         run_check "swift-format format (bae-macos + BaeKit)" bash -c '
             find bae-macos/bae/bae BaeKit/Sources/BaeKit \
                 BaeKit/Sources/AppleHost -name "*.swift" -print0 \
@@ -180,8 +185,8 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
             echo "swift-format format failed"
             exit 1
         }
-        restage_and_fail_if_changed "swift-format" "bae-macos/"
-        restage_and_fail_if_changed "swift-format" "BaeKit/"
+        restage_and_fail_if_changed "swift-format" "$FORMAT_STATE" "bae-macos/"
+        restage_and_fail_if_changed "swift-format" "$FORMAT_STATE" "BaeKit/"
 
         # Lint catches structural rules the formatter does not auto-fix
         # (e.g. OnlyOneTrailingClosureArgument, TypeNamesShouldBeCapitalized,
