@@ -15,7 +15,7 @@ struct StorageStatusBand: View {
     /// Outbox progress for this release, if any work is in flight (releases
     /// with nothing left to ship are absent from the per-release map). Drives
     /// the "uploading…" indicator and suppresses transfer actions — acting
-    /// mid-upload races the observer that completes the unmanaged → managed
+    /// mid-upload races the observer that completes the local → cloud
     /// step.
     private var uploadProgress: BridgeUploadProgress? {
         outboxStore.progress(forRelease: release.summary.id)
@@ -25,7 +25,7 @@ struct StorageStatusBand: View {
         VStack(alignment: .leading, spacing: 12) {
             storageStatus
             // Read the live transfer state off the identity-stable summary so a
-            // running pin/unpin/manage/unmanage updates the bar in place.
+            // running pin/unpin/cloud/local transition updates the bar in place.
             if let transfer = release.summary.transfer {
                 progressBar(
                     label: transfer.label
@@ -62,11 +62,11 @@ struct StorageStatusBand: View {
             switch release.summary.storageState {
             case .local:
                 Image(systemName: "folder")
-                Text("Unmanaged")
+                Text("Local")
             case .remote:
                 if release.summary.pinned {
                     Image(systemName: "pin.fill")
-                    Text("Pinned for offline")
+                    Text("Pinned")
                 }
                 else {
                     Image(systemName: "cloud")
@@ -120,7 +120,7 @@ struct StorageStatusBand: View {
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     }
 
-    // Unmanaged (local): the only offered transition is uploading to the cloud.
+    // Local: the only offered transition is uploading to the cloud.
     #Preview("Storage Band — Local") {
         previewStorageBand(
             storageState: .local,
@@ -130,7 +130,7 @@ struct StorageStatusBand: View {
         .preferredColorScheme(.dark)
     }
 
-    // In the cloud, not kept offline: can pin or pull back local.
+    // In the cloud, not pinned: can pin or pull back local.
     #Preview("Storage Band — Cloud") {
         previewStorageBand(
             storageState: .remote,
@@ -140,7 +140,7 @@ struct StorageStatusBand: View {
         .preferredColorScheme(.dark)
     }
 
-    // In the cloud, pinned for offline: can unpin or pull back local.
+    // In the cloud and pinned: can unpin or pull back local.
     #Preview("Storage Band — Pinned") {
         previewStorageBand(
             storageState: .remote,

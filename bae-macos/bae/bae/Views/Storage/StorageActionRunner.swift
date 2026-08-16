@@ -12,10 +12,10 @@ import SwiftUI
 /// uses. Errors surface through `UiStore` (shown by the Storage Manager
 /// window's alert); subscribed rows and outbox values carry transition results.
 ///
-/// `manage` (move into library) needs the pin choice, so it stashes the targets
-/// in `pendingManage` and the view presents `ManageConfirmSheet`. `unmanage`
-/// opens an `NSOpenPanel` for the destination folder. The other transitions run
-/// straight away.
+/// Moving to cloud storage needs the pin choice, so it stashes the targets in
+/// `pendingMoveToCloud` and the view presents `MoveToCloudConfirmSheet`. Making
+/// a release local opens an `NSOpenPanel` for the destination folder. The other
+/// transitions run straight away.
 @MainActor
 @Observable
 final class StorageActionRunner {
@@ -26,9 +26,9 @@ final class StorageActionRunner {
     private let configStore: ConfigStore
     private let uiStore: UiStore
 
-    /// Releases awaiting the "Move into library" confirm sheet. Non-nil while
+    /// Releases awaiting the "Move to Cloud" confirm sheet. Non-nil while
     /// the sheet is up; the view binds its presentation to this.
-    var pendingManage: [String]?
+    var pendingMoveToCloud: [String]?
 
     init(
         releaseEditor: ReleaseEditor,
@@ -95,16 +95,16 @@ final class StorageActionRunner {
         }
     }
 
-    /// Run `action` against every release in `releaseIds`. `manage` defers to
-    /// the confirm sheet; `unmanage` asks for a destination folder once and
-    /// moves each release into it; `pin` enqueues the whole batch on the
-    /// download queue; `unpin` runs directly.
+    /// Run `action` against every release in `releaseIds`. Moving to cloud
+    /// defers to the confirm sheet; making local asks for a destination folder
+    /// once and moves each release into it; pin enqueues the whole batch on the
+    /// download queue; unpin runs directly.
     func run(_ action: BridgeReleaseStorageAction, releaseIds: [String]) {
         switch action {
         case .makeRemote:
-            pendingManage = releaseIds
+            pendingMoveToCloud = releaseIds
         case .makeLocal:
-            unmanage(releaseIds: releaseIds)
+            makeLocal(releaseIds: releaseIds)
         case .pin:
             // Pinning routes through the in-memory download queue, which
             // serializes the batch and reports progress via the Downloads pane
@@ -113,28 +113,28 @@ final class StorageActionRunner {
         case .unpin:
             runEach(
                 releaseIds,
-                String(localized: "remove local copy"),
+                String(localized: "unpin"),
                 downloads.unpinRelease
             )
         }
     }
 
-    /// Confirm callback for `ManageConfirmSheet`: move each pending release
-    /// into the library, pinning it for offline when `pin` is set.
-    func confirmManage(pin: Bool) {
-        let releaseIds = pendingManage ?? []
-        pendingManage = nil
-        runEach(releaseIds, String(localized: "move into library")) {
+    /// Confirm callback for `MoveToCloudConfirmSheet`: move each pending
+    /// release to cloud storage, pinning it when `pin` is set.
+    func confirmMoveToCloud(pin: Bool) {
+        let releaseIds = pendingMoveToCloud ?? []
+        pendingMoveToCloud = nil
+        runEach(releaseIds, String(localized: "move to cloud")) {
             releaseId in
-            try await self.releaseEditor.manageRelease(releaseId, pin)
+            try await self.releaseEditor.moveReleaseToCloud(releaseId, pin)
         }
     }
 
-    func cancelManage() {
-        pendingManage = nil
+    func cancelMoveToCloud() {
+        pendingMoveToCloud = nil
     }
 
-    /// Cancel each release's in-progress transition (pin / upload / unmanage),
+    /// Cancel each release's in-progress transition (pin / upload / make local),
     /// leaving it in its prior state — core dispatches to whichever is running.
     func cancelTransitions(releaseIds: [String]) {
         Task {
@@ -155,9 +155,9 @@ final class StorageActionRunner {
         }
     }
 
-    /// Prompt for the folder an unmanaged release's files move into. Returns
+    /// Prompt for the folder a local release's files move into. Returns
     /// the chosen directory path, or nil when the user cancels the panel.
-    static func promptUnmanageDestination() -> String? {
+    static func promptMakeLocalDestination() -> String? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -169,19 +169,19 @@ final class StorageActionRunner {
         return url.path(percentEncoded: false)
     }
 
-    private func unmanage(releaseIds: [String]) {
-        guard let newPath = Self.promptUnmanageDestination() else {
+    private func makeLocal(releaseIds: [String]) {
+        guard let newPath = Self.promptMakeLocalDestination() else {
             return
         }
-        runEach(releaseIds, String(localized: "move out of library")) {
+        runEach(releaseIds, String(localized: "make local")) {
             releaseId in
-            try await self.releaseEditor.unmanageRelease(releaseId, newPath)
+            try await self.releaseEditor.makeReleaseLocal(releaseId, newPath)
         }
     }
 
     /// Run an async per-release transition for each id, surfacing the first
-    /// failure. `verb` names the action for the error message ("failed to pin
-    /// for offline: …"). Each bridge call descends into the cloud future chain
+    /// failure. `verb` names the action for the error message ("failed to pin:
+    /// …"). Each bridge call descends into the cloud future chain
     /// on a runtime worker; progress renders from subscribed release values.
     private func runEach(
         _ releaseIds: [String],

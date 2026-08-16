@@ -128,7 +128,7 @@ internal sealed partial class StorageDialog
         // ── Tab bar ───────────────────────────────────────────────────────────────
         var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var tabButtons = new List<(StorageTab Tab, Button Button)>();
-        foreach (var tab in new[] { StorageTab.All, StorageTab.Unmanaged, StorageTab.Managed, StorageTab.Uploading })
+        foreach (var tab in new[] { StorageTab.All, StorageTab.Local, StorageTab.Cloud, StorageTab.Uploading })
         {
             var value = tab;
             var button = new Button { Content = Loc.Chrome(StorageListModel.TabLabelKey(tab)) };
@@ -663,7 +663,7 @@ internal sealed partial class StorageDialog
                 item.Click += async (_, _) =>
                 {
                     var error = await _app.StorageStore.RunStorageActionForReleases(
-                        act, releaseIds, () => DialogPrimitives.PickUnmanageFolder(anchor));
+                        act, releaseIds, () => DialogPrimitives.PickLocalFolder(anchor));
                     if (error is not null)
                     {
                         status.Text = error;

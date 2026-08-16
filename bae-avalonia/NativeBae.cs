@@ -473,10 +473,8 @@ internal static partial class NativeBae
     private static BridgeStorageFilter ToBridge(StorageTab tab) => tab switch
     {
         StorageTab.All => BridgeStorageFilter.All,
-        // "Managed"/"Unmanaged" in this UI's vocabulary map onto the wire's
-        // Remote/Local storage state, not a "managed by an import" concept.
-        StorageTab.Managed => BridgeStorageFilter.Remote,
-        StorageTab.Unmanaged => BridgeStorageFilter.Local,
+        StorageTab.Cloud => BridgeStorageFilter.Remote,
+        StorageTab.Local => BridgeStorageFilter.Local,
         StorageTab.Uploading => BridgeStorageFilter.Uploading,
         _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "Unknown storage tab"),
     };

@@ -22,7 +22,7 @@ struct StorageStateLabel: View {
         else {
             switch release.storageState {
             case .local:
-                Label("Unmanaged", systemImage: "folder").lineLimit(1)
+                Label("Local", systemImage: "folder").lineLimit(1)
             case .remote:
                 if release.pinned {
                     Label("Pinned", systemImage: "pin.fill").lineLimit(1)
@@ -67,7 +67,7 @@ struct StorageStateLabel: View {
 #if DEBUG
     #Preview("Storage states") {
         VStack(alignment: .leading, spacing: 10) {
-            // Resting states: unmanaged, cloud, pinned.
+            // Resting states: local, cloud, pinned.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-local",

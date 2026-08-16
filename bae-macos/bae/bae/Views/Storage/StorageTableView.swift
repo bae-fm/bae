@@ -666,10 +666,10 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         let targets = menuTargets(forClicked: item)
         guard !targets.isEmpty else { return }
 
-        // A release mid-transition (uploading, pinning, or unmanaging) can't be
-        // managed/pinned/unmanaged (those race the transition), so the only
+        // A release mid-transition (uploading, pinning, or becoming local) can't
+        // start another storage action (those race the transition), so the only
         // action it offers is cancelling — in every tab. Uploads live in the
-        // outbox; foreground transfers (pin/unpin/unmanage) set `transfer`.
+        // outbox; foreground transfers (pin/unpin/make-local) set `transfer`.
         let transitioning = targets.filter { id in
             outboxStore.isUploading(forRelease: id)
                 || libraryStore.releaseSummaries[id]?.transfer != nil

@@ -25,7 +25,7 @@
         static func make(
             candidate: Candidate,
             editor: Binding<BridgeRawReleaseEdit>?,
-            storageManaged: Binding<Bool>,
+            storageCloud: Binding<Bool>,
             storagePinned: Binding<Bool>,
             previewingPath: String? = nil
         ) -> some View {
@@ -37,7 +37,7 @@
                 hasCoverOptions: true,
                 coverContent: nil,
                 editor: editor,
-                storageManaged: storageManaged,
+                storageCloud: storageCloud,
                 storagePinned: storagePinned,
                 mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
@@ -78,14 +78,14 @@
         var values = PreviewData.confirmEditValues
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.mappingCandidate,
             editor: $values,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             previewingPath: "/tmp/fake/Track 3.flac"
         )
@@ -96,14 +96,14 @@
     #Preview("Mapping pane — nothing picked yet") {
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.unidentifiedMappingCandidate,
             editor: nil,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 700)
@@ -113,14 +113,14 @@
     #Preview("Mapping pane — several matches to pick") {
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.severalMatchesMappingCandidate,
             editor: nil,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 900)
@@ -133,14 +133,14 @@
         var values = PreviewData.confirmEditValues
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.sheetMappingCandidate,
             editor: $values,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 900)
@@ -153,14 +153,14 @@
         var values = PreviewData.moreTracksEditValues
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
             editor: $values,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 900)
@@ -173,14 +173,14 @@
         var values = PreviewData.moreTracksEditValues
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
             editor: $values,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
         .frame(width: 760, height: 900)
@@ -193,14 +193,14 @@
         var values = PreviewData.confirmEditValues
         @Previewable
         @State
-        var storageManaged = true
+        var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.unknownMappingCandidate,
             editor: $values,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 900)

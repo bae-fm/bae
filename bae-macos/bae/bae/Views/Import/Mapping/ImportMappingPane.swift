@@ -23,7 +23,7 @@ struct ImportMappingPane: View {
     /// stays off the pane.
     let editor: Binding<BridgeRawReleaseEdit>?
     @Binding
-    var storageManaged: Bool
+    var storageCloud: Bool
     @Binding
     var storagePinned: Bool
     let mappingActions: ImportMappingActions
@@ -94,7 +94,7 @@ struct ImportMappingPane: View {
             unansweredCount: mapping.unansweredCount,
             candidateKey: candidate.key,
             importStatus: candidate.importStatus,
-            storageManaged: $storageManaged,
+            storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,
         )

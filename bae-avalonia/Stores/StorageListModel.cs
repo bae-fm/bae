@@ -2,12 +2,12 @@
 
 namespace Bae.Desktop;
 
-// The storage dialog's four filter tabs. All lists every release; Unmanaged and
-// Managed split on storage state; Uploading is driven solely by the release
+// The storage dialog's four filter tabs. All lists every release; Local and
+// Cloud split on storage state; Uploading is driven solely by the release
 // having pending outbox uploads. Tab membership is applied server-side (the
 // dialog subscribes to a per-tab page through LibraryService), so this
 // enum is purely the vocabulary the tab bar and the wire filter share.
-public enum StorageTab { All, Unmanaged, Managed, Uploading }
+public enum StorageTab { All, Local, Cloud, Uploading }
 
 // The five sortable columns. Storage (the sixth column) is inert, so it has no
 // field here. SortDirection is reused from LibrarySort.cs. Sorting is applied
@@ -36,8 +36,8 @@ public static class StorageListModel
     public static string TabLabelKey(StorageTab tab) => tab switch
     {
         StorageTab.All => "storage.tab.all",
-        StorageTab.Unmanaged => "storage.tab.unmanaged",
-        StorageTab.Managed => "storage.tab.managed",
+        StorageTab.Local => "storage.tab.local",
+        StorageTab.Cloud => "storage.tab.cloud",
         StorageTab.Uploading => "storage.tab.uploading",
         _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "Unknown storage tab"),
     };

@@ -16,7 +16,7 @@ extension ImportView {
             return
         }
         let storageMode = configStore.config.importStorageMode(
-            managed: storageManaged
+            cloud: storageCloud
         )
         // Starting an import suspends — core claims the candidate before it
         // queues the command — so the run happens off the foot bar's action.

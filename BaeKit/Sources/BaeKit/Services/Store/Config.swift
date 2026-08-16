@@ -12,7 +12,7 @@ public struct Config: Equatable {
     public let discogsUsable: Bool
     /// The configured cloud provider, present whenever YAML carries one.
     /// "Configured" — not "live". Flows that only need a provider configured
-    /// (managed import enqueues a cloud_outbox row and uploads on the next
+    /// (cloud import enqueues a cloud_outbox row and uploads on the next
     /// sync cycle) gate on `sync != nil`. Flows that need sync live this
     /// instant (device pairing, restore-code generation) gate on
     /// `SyncStatusStore.syncReady` — that's runtime status, kept off this
@@ -67,11 +67,11 @@ public struct Config: Equatable {
         subsonic = bridge.subsonic
     }
 
-    /// The storage state to import into. `Managed` only when a cloud home
-    /// exists and the user chose it; otherwise `Unmanaged`. Whether to keep the
-    /// release pinned (offline) is the orthogonal `pin` argument to
+    /// The storage state to import into. `Cloud` only when a cloud home exists
+    /// and the user chose it; otherwise `Local`. Whether to keep the
+    /// release pinned locally is the orthogonal `pin` argument to
     /// `startImport`, never folded in here.
-    public func importStorageMode(managed: Bool) -> BridgeStorageMode {
-        hasCloudHome && managed ? .remote : .local
+    public func importStorageMode(cloud: Bool) -> BridgeStorageMode {
+        hasCloudHome && cloud ? .remote : .local
     }
 }

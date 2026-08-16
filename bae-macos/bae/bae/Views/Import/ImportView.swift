@@ -14,11 +14,11 @@ struct ImportView: View {
     var configStore
 
     // Last-used storage choices, persisted; only consulted when a cloud home
-    // exists (toggles hidden otherwise). Managed and pinned are orthogonal:
-    // `managed` picks the storage state, `pinned` is passed separately to
-    // `startImport`. Config.importStorageMode forces Unmanaged without a home.
-    @AppStorage("importStorageManaged")
-    var storageManaged: Bool = true
+    // exists (toggles hidden otherwise). Cloud and pinned are orthogonal:
+    // `cloud` picks the storage state, `pinned` is passed separately to
+    // `startImport`. Config.importStorageMode forces Local without a home.
+    @AppStorage("importStorageCloud")
+    var storageCloud: Bool = true
     @AppStorage("importStoragePinned")
     var storagePinned: Bool = true
 

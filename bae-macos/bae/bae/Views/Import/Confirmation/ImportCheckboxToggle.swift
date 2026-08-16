@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// A checkbox-style toggle used in the confirmation header (Managed / Keep
-/// local copy).
+/// A checkbox-style toggle used in the confirmation header (Cloud / Pinned).
 struct ImportCheckboxToggle: View {
     private let label: Text
     @Binding
@@ -31,8 +30,8 @@ struct ImportCheckboxToggle: View {
 
     #Preview("Checkbox toggles") {
         VStack(alignment: .leading, spacing: 8) {
-            ImportCheckboxToggle("Managed", isOn: .constant(true))
-            ImportCheckboxToggle("Keep local copy", isOn: .constant(false))
+            ImportCheckboxToggle("Cloud", isOn: .constant(true))
+            ImportCheckboxToggle("Pinned", isOn: .constant(false))
         }
         .padding()
         .windowBackground()

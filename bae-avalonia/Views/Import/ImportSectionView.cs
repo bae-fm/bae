@@ -604,7 +604,7 @@ internal sealed partial class ImportSectionView : UserControl
         {
             return;
         }
-        var storageMode = settings.HasCloudHome ? "managed" : "unmanaged";
+        var storageMode = settings.HasCloudHome ? "cloud" : "local";
         var pinned = settings.HasCloudHome;
 
         var failureCount = 0;

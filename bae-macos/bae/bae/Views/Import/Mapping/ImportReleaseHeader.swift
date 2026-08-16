@@ -11,7 +11,7 @@ struct ImportCommitControls {
     /// pass.
     let candidateKey: String
     let importStatus: BridgeCandidateImportStatus?
-    let storageManaged: Binding<Bool>
+    let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
     let actions: ImportCommitActions
 }
@@ -136,12 +136,12 @@ struct ImportReleaseHeader: View {
             if !commitSettled(commit), configStore.config.hasCloudHome {
                 HStack(spacing: 10) {
                     ImportCheckboxToggle(
-                        "Managed",
-                        isOn: commit.storageManaged
+                        "Cloud",
+                        isOn: commit.storageCloud
                     )
-                    if commit.storageManaged.wrappedValue {
+                    if commit.storageCloud.wrappedValue {
                         ImportCheckboxToggle(
-                            "Keep local copy",
+                            "Pinned",
                             isOn: commit.storagePinned
                         )
                     }

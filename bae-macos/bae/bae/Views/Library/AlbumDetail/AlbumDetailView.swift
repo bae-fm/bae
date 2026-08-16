@@ -126,7 +126,9 @@ struct AlbumDetailView: View {
                         onReIdentify: {
                             presentReIdentifySheet(release: selectedDetail)
                         },
-                        onManage: { presentManageReleaseSheet(selectedDetail) },
+                        onOpenStorage: {
+                            presentReleaseStorageSheet(selectedDetail)
+                        },
                         onExportRelease: {
                             exportRelease(releaseId: selectedReleaseId)
                         },
@@ -377,9 +379,9 @@ extension AlbumDetailView {
         }
     }
 
-    private func presentManageReleaseSheet(_ detail: ReleaseDetail) {
+    private func presentReleaseStorageSheet(_ detail: ReleaseDetail) {
         uiStore.presentModal {
-            ManageReleaseSheet(
+            ReleaseStorageSheet(
                 release: detail,
                 onAction: { action in
                     performStorageAction(action, releaseId: detail.id)
@@ -403,9 +405,9 @@ extension AlbumDetailView {
         case .unpin:
             unpinRelease(releaseId: releaseId)
         case .makeRemote:
-            presentManageConfirmSheet(releaseId: releaseId)
+            presentMoveToCloudConfirmSheet(releaseId: releaseId)
         case .makeLocal:
-            unmanageRelease(releaseId: releaseId)
+            makeReleaseLocal(releaseId: releaseId)
         }
     }
 
@@ -452,11 +454,11 @@ extension AlbumDetailView {
         }
     }
 
-    private func presentManageConfirmSheet(releaseId: String) {
+    private func presentMoveToCloudConfirmSheet(releaseId: String) {
         uiStore.presentModal {
-            ManageConfirmSheet(
+            MoveToCloudConfirmSheet(
                 onConfirm: { pin in
-                    manageRelease(releaseId: releaseId, pin: pin)
+                    moveReleaseToCloud(releaseId: releaseId, pin: pin)
                 },
                 onCancel: { uiStore.dismissModal() },
             )
@@ -526,23 +528,23 @@ extension AlbumDetailView {
         }
     }
 
-    private func manageRelease(releaseId: String, pin: Bool) {
+    private func moveReleaseToCloud(releaseId: String, pin: Bool) {
         uiStore.dismissModal()
         let releaseEditor = releaseEditor
         runStorageTransition {
-            try await releaseEditor.manageRelease(releaseId, pin)
+            try await releaseEditor.moveReleaseToCloud(releaseId, pin)
         }
     }
 
-    private func unmanageRelease(releaseId: String) {
+    private func makeReleaseLocal(releaseId: String) {
         guard
-            let newPath = StorageActionRunner.promptUnmanageDestination()
+            let newPath = StorageActionRunner.promptMakeLocalDestination()
         else {
             return
         }
         let releaseEditor = releaseEditor
         runStorageTransition {
-            try await releaseEditor.unmanageRelease(releaseId, newPath)
+            try await releaseEditor.makeReleaseLocal(releaseId, newPath)
         }
     }
 

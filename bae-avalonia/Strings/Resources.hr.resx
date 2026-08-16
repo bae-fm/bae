@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>uvoz {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ponovno pokreni identifikaciju</value></data>
   <data name="import.scanning" xml:space="preserve"><value>skeniranje…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Zadrži lokalnu kopiju</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Upravljano</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Prikvačeno</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Oblak</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>prikaži u fonoteci</value></data>
   <data name="join.title" xml:space="preserve"><value>pridruži se fonoteci</value></data>
   <data name="join.intro" xml:space="preserve"><value>dodajte ovaj uređaj u fonoteku koju već imate na drugom uređaju.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>naziv</value></data>
   <data name="sort.title" xml:space="preserve"><value>naslov</value></data>
   <data name="sort.year" xml:space="preserve"><value>godina</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Premjesti u fonoteku</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Prikvači za izvanmrežni rad</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Premjesti iz fonoteke…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Ukloni lokalnu kopiju</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Premjesti u oblak</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Prikvači</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Postavi lokalno…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Otkvači</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# datoteka} few {# datoteke} other {# datoteka}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>nije moguće učitati pohranu</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Prikvačeno</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>nije moguće pročitati pohranu</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Upravljano</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Neupravljano</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Oblak</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Prikvačeno</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Lokalno</value></data>
   <data name="storage.title" xml:space="preserve"><value>pohrana</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>pogreška sinkronizacije</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Ponovno poveži</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>prethodna slika</value></data>
   <data name="gallery.next" xml:space="preserve"><value>sljedeća slika</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Sve</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Neupravljano</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Upravljano</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Lokalno</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Oblak</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Učitavanje</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Izvođač</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Neke se promjene još nisu dovršile prijenos i bit će izgubljene.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Ponovno kliknite gumb za potvrdu.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Fonoteku nije bilo moguće ukloniti: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Prikvači za izvanmrežni rad</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Prikvači</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Reproduciraj # album} few {Reproduciraj # albuma} other {Reproduciraj # albuma}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Reproduciraj # album sljedeće} few {Reproduciraj # albuma sljedeće} other {Reproduciraj # albuma sljedeće}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Dodaj # album u red} few {Dodaj # albuma u red} other {Dodaj # albuma u red}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Prikvači # album za izvanmrežni rad} few {Prikvači # albuma za izvanmrežni rad} other {Prikvači # albuma za izvanmrežni rad}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Prikvači # album} few {Prikvači # albuma} other {Prikvači # albuma}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>otvori s aplikacijom {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Pauziraj</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Utišaj</value></data>

@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>importeren {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>identificatie opnieuw uitvoeren</value></data>
   <data name="import.scanning" xml:space="preserve"><value>scannen…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Lokale kopie behouden</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Beheerd</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Vastgezet</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>weergeven in bibliotheek</value></data>
   <data name="join.title" xml:space="preserve"><value>aan een bibliotheek deelnemen</value></data>
   <data name="join.intro" xml:space="preserve"><value>voeg dit apparaat toe aan een bibliotheek die je al op een ander apparaat hebt.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>naam</value></data>
   <data name="sort.title" xml:space="preserve"><value>titel</value></data>
   <data name="sort.year" xml:space="preserve"><value>jaar</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Naar bibliotheek verplaatsen</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Vastzetten voor offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Uit bibliotheek verplaatsen…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Lokale kopie verwijderen</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Naar de cloud verplaatsen</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Vastzetten</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Lokaal maken…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Losmaken</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# bestand} other {# bestanden}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>kan opslag niet laden</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Vastgezet</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>kan opslag niet lezen</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Beheerd</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Onbeheerd</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Vastgezet</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Lokaal</value></data>
   <data name="storage.title" xml:space="preserve"><value>Opslag</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>synchronisatiefout</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Opnieuw verbinden</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>vorige afbeelding</value></data>
   <data name="gallery.next" xml:space="preserve"><value>volgende afbeelding</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Alle</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Onbeheerd</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Beheerd</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Lokaal</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Uploaden</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Artiest</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Sommige wijzigingen zijn nog niet volledig geüpload en gaan verloren.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Klik opnieuw op de knop om te bevestigen.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Kan bibliotheek niet verwijderen: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Vastzetten voor offline</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Vastzetten</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# album afspelen} other {# albums afspelen}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# album hierna afspelen} other {# albums hierna afspelen}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# album toevoegen aan wachtrij} other {# albums toevoegen aan wachtrij}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# album vastzetten voor offline} other {# albums vastzetten voor offline}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# album vastzetten} other {# albums vastzetten}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>openen met {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Pauze</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Dempen</value></data>

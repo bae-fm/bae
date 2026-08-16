@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>가져오는 중 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>식별 다시 실행</value></data>
   <data name="import.scanning" xml:space="preserve"><value>스캔 중…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>로컬 복사본 유지</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>관리형</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>고정됨</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>클라우드</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>라이브러리에서 보기</value></data>
   <data name="join.title" xml:space="preserve"><value>라이브러리 참여</value></data>
   <data name="join.intro" xml:space="preserve"><value>다른 기기에 이미 있는 라이브러리에 이 기기를 추가합니다.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>이름</value></data>
   <data name="sort.title" xml:space="preserve"><value>제목</value></data>
   <data name="sort.year" xml:space="preserve"><value>연도</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>라이브러리로 이동</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>오프라인용으로 고정</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>라이브러리 밖으로 이동…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>로컬 복사본 제거</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>클라우드로 이동</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>고정</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>로컬로 전환…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>고정 해제</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, other {#개 파일}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>저장소를 불러올 수 없음</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>고정됨</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>저장소를 읽을 수 없음</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>관리형</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>자체 관리형</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>클라우드</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>고정됨</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>로컬</value></data>
   <data name="storage.title" xml:space="preserve"><value>저장소</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>동기화 오류</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>다시 연결</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>이전 이미지</value></data>
   <data name="gallery.next" xml:space="preserve"><value>다음 이미지</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>전체</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>자체 관리형</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>관리형</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>로컬</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>클라우드</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>업로드 중</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>앨범</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>아티스트</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>일부 변경 사항이 아직 업로드되지 않았으며 손실됩니다.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>확인하려면 버튼을 다시 클릭하세요.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>라이브러리를 제거할 수 없습니다: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>오프라인용으로 고정</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>고정</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 재생} other {앨범 #개 재생}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 다음에 재생} other {앨범 #개 다음에 재생}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 대기열에 추가} other {앨범 #개 대기열에 추가}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 오프라인용으로 고정} other {앨범 #개 오프라인용으로 고정}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 고정} other {앨범 #개 고정}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>{name}(으)로 열기</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>일시 정지</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>음소거</value></data>

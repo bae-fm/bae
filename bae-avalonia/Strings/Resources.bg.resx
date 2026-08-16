@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>внасяне {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>повторно изпълнение на идентификацията</value></data>
   <data name="import.scanning" xml:space="preserve"><value>сканиране…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Запазване на локално копие</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Управлявани</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Закачено</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Облак</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>преглед в библиотеката</value></data>
   <data name="join.title" xml:space="preserve"><value>присъединяване към библиотека</value></data>
   <data name="join.intro" xml:space="preserve"><value>добавете това устройство към библиотека, която вече имате на друго устройство.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>име</value></data>
   <data name="sort.title" xml:space="preserve"><value>заглавие</value></data>
   <data name="sort.year" xml:space="preserve"><value>година</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Преместване в библиотеката</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Закачане за офлайн</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Преместване извън библиотеката…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Премахване на локалното копие</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Премести в облака</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Закачи</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Направи локално…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Откачи</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# файл} other {# файла}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>хранилището не може да бъде заредено</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Закачено</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>хранилището не може да бъде прочетено</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Управлявани</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Неуправлявани</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Облак</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Закачено</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Локално</value></data>
   <data name="storage.title" xml:space="preserve"><value>хранилище</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>грешка при синхронизиране</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Повторно свързване</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>предишно изображение</value></data>
   <data name="gallery.next" xml:space="preserve"><value>следващо изображение</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Всички</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Неуправлявани</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Управлявани</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Локално</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Облак</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Качване</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Албум</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Изпълнител</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Някои промени все още не са качени и ще бъдат загубени.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натиснете бутона отново, за да потвърдите.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Библиотеката не можа да бъде премахната: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Закачане за офлайн</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Закачи</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Възпроизведи # албум} other {Възпроизведи # албума}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Възпроизведи # албум като следващ} other {Възпроизведи # албума като следващи}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Добави # албум в опашката} other {Добави # албума в опашката}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Закачи # албум за офлайн} other {Закачи # албума за офлайн}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Закачи # албум} other {Закачи # албума}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>отвори с {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Пауза</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Заглушаване</value></data>

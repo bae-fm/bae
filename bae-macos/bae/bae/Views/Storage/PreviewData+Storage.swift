@@ -360,7 +360,7 @@
 
         // MARK: - Whole-screen: seeded list + Library
 
-        /// The storage rows the table renders: one unmanaged, one cloud, one
+        /// The storage rows the table renders: one local, one cloud, one
         /// pinned. Album summaries share one album id per row for the join.
         static let storageRows: [BridgeStorageRow] = [
             storageRow(

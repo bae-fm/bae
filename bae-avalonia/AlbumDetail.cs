@@ -67,9 +67,9 @@ public sealed class Release : INotifyPropertyChanged
 
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>
-    public bool IsManaged => _release.StorageState == BridgeReleaseStorageState.Remote;
+    public bool IsCloud => _release.StorageState == BridgeReleaseStorageState.Remote;
 
-    /// <summary>Whether coven keeps this release's blobs pinned (kept offline) on
+    /// <summary>Whether coven keeps this release's blobs pinned locally on
     /// this device.</summary>
     public bool Pinned => _release.Pinned;
 

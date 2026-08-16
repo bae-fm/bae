@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>import {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>relancer l'identification</value></data>
   <data name="import.scanning" xml:space="preserve"><value>analyse…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Conserver une copie locale</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Gérés</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Épinglé</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>voir dans la bibliothèque</value></data>
   <data name="join.title" xml:space="preserve"><value>rejoindre une bibliothèque</value></data>
   <data name="join.intro" xml:space="preserve"><value>ajoutez cet appareil à une bibliothèque que vous avez déjà sur un autre appareil.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>nom</value></data>
   <data name="sort.title" xml:space="preserve"><value>titre</value></data>
   <data name="sort.year" xml:space="preserve"><value>année</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Déplacer dans la bibliothèque</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Épingler hors ligne</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Déplacer hors de la bibliothèque…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Supprimer la copie locale</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Déplacer vers le cloud</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Épingler</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Rendre local…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Désépingler</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# fichier} other {# fichiers}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>impossible de charger le stockage</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Épinglé</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>impossible de lire le stockage</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Gérés</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Non gérés</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Épinglé</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Local</value></data>
   <data name="storage.title" xml:space="preserve"><value>stockage</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>erreur de synchronisation</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Reconnecter</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>image précédente</value></data>
   <data name="gallery.next" xml:space="preserve"><value>image suivante</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Tout</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Non gérés</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Gérés</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Local</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Envoi</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Artiste</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Certaines modifications n'ont pas fini de se téléverser et seront perdues.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Cliquez de nouveau sur le bouton pour confirmer.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Impossible de supprimer la bibliothèque : {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Épingler hors ligne</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Épingler</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Lire # album} other {Lire # albums}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Lire # album à la suite} other {Lire # albums à la suite}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Ajouter # album à la file} other {Ajouter # albums à la file}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Épingler # album hors ligne} other {Épingler # albums hors ligne}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Épingler # album} other {Épingler # albums}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>ouvrir avec {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Pause</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Couper le son</value></data>

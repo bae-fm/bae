@@ -11,6 +11,15 @@ namespace Bae.Desktop.Tests;
 public sealed class StorageListModelTests
 {
     [Fact]
+    public void TabLabelKeysUseStorageVocabulary()
+    {
+        Assert.Equal("storage.tab.all", StorageListModel.TabLabelKey(StorageTab.All));
+        Assert.Equal("storage.tab.local", StorageListModel.TabLabelKey(StorageTab.Local));
+        Assert.Equal("storage.tab.cloud", StorageListModel.TabLabelKey(StorageTab.Cloud));
+        Assert.Equal("storage.tab.uploading", StorageListModel.TabLabelKey(StorageTab.Uploading));
+    }
+
+    [Fact]
     public void Toggle_FlipsActiveFieldAndResetsNewField()
     {
         // Same field flips direction.

@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>імпорт {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>запустити ідентифікацію знову</value></data>
   <data name="import.scanning" xml:space="preserve"><value>сканування…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Зберегти локальну копію</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Кероване</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Закріплено</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Хмара</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>переглянути в бібліотеці</value></data>
   <data name="join.title" xml:space="preserve"><value>приєднатися до бібліотеки</value></data>
   <data name="join.intro" xml:space="preserve"><value>додайте цей пристрій до бібліотеки, яка вже є на іншому пристрої.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>назва</value></data>
   <data name="sort.title" xml:space="preserve"><value>назва</value></data>
   <data name="sort.year" xml:space="preserve"><value>рік</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Перемістити в бібліотеку</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Закріпити для офлайн-доступу</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Перемістити з бібліотеки…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Вилучити локальну копію</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Перемістити в хмару</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Закріпити</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Зробити локальним…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Відкріпити</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# файл} few {# файли} many {# файлів} other {# файлу}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>не вдалося завантажити сховище</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Закріплено</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>не вдалося прочитати сховище</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Кероване</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Некероване</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Хмара</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Закріплено</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Локально</value></data>
   <data name="storage.title" xml:space="preserve"><value>сховище</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>помилка синхронізації</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Підключити знову</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>попереднє зображення</value></data>
   <data name="gallery.next" xml:space="preserve"><value>наступне зображення</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Усі</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Некероване</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Кероване</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Локально</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Хмара</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Вивантаження</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Альбом</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Виконавець</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Деякі зміни ще не завершили завантаження і будуть втрачені.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натисніть кнопку ще раз, щоб підтвердити.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Не вдалося вилучити бібліотеку: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Закріпити для офлайн-доступу</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Закріпити</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Відтворити # альбом} few {Відтворити # альбоми} many {Відтворити # альбомів} other {Відтворити # альбому}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Відтворити # альбом наступним} few {Відтворити # альбоми наступними} many {Відтворити # альбомів наступними} other {Відтворити # альбому наступним}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Додати # альбом в чергу} few {Додати # альбоми в чергу} many {Додати # альбомів в чергу} other {Додати # альбому в чергу}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Закріпити # альбом для офлайн-доступу} few {Закріпити # альбоми для офлайн-доступу} many {Закріпити # альбомів для офлайн-доступу} other {Закріпити # альбому для офлайн-доступу}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Закріпити # альбом} few {Закріпити # альбоми} many {Закріпити # альбомів} other {Закріпити # альбому}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>відкрити за допомогою {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Пауза</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Вимкнути звук</value></data>

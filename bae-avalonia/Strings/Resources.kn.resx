@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಯನ್ನು ಮತ್ತೆ ನಡೆಸಿ</value></data>
   <data name="import.scanning" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ಇಟ್ಟುಕೊಳ್ಳಿ</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>ನಿರ್ವಹಿತ</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಲಾಗಿದೆ</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದಲ್ಲಿ ನೋಡಿ</value></data>
   <data name="join.title" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಿ</value></data>
   <data name="join.intro" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಮತ್ತೊಂದು ಸಾಧನದಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸಿ.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>ಹೆಸರು</value></data>
   <data name="sort.title" xml:space="preserve"><value>ಶೀರ್ಷಿಕೆ</value></data>
   <data name="sort.year" xml:space="preserve"><value>ವರ್ಷ</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯಕ್ಕೆ ಸರಿಸಿ</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದಿಂದ ಹೊರಗೆ ಸರಿಸಿ…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ಗೆ ಸರಿಸಿ</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಿ</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>ಸ್ಥಳೀಯವಾಗಿಸಿ…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>ಪಿನ್ ತೆಗೆಯಿರಿ</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# ಫೈಲ್} other {# ಫೈಲ್‌ಗಳು}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಲಾಗಿದೆ</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆಯನ್ನು ಓದಲಾಗಲಿಲ್ಲ</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>ನಿರ್ವಹಿತ</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>ನಿರ್ವಹಿಸದ</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಲಾಗಿದೆ</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>ಸ್ಥಳೀಯ</value></data>
   <data name="storage.title" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>ಸಿಂಕ್ ದೋಷ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>ಹಿಂದಿನ ಚಿತ್ರ</value></data>
   <data name="gallery.next" xml:space="preserve"><value>ಮುಂದಿನ ಚಿತ್ರ</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>ಎಲ್ಲಾ</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>ನಿರ್ವಹಿಸದ</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>ನಿರ್ವಹಿತ</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>ಸ್ಥಳೀಯ</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>ಆಲ್ಬಮ್</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ಕೆಲವು ಬದಲಾವಣೆಗಳು ಇನ್ನೂ ಅಪ್‌ಲೋಡ್ ಮುಗಿಸಿಲ್ಲ ಮತ್ತು ಕಳೆದುಹೋಗುತ್ತವೆ.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>ದೃಢೀಕರಿಸಲು ಬಟನ್ ಅನ್ನು ಮತ್ತೆ ಕ್ಲಿಕ್ ಮಾಡಿ.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>ಲೈಬ್ರರಿಯನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಿ</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಪ್ಲೇ ಮಾಡಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಪ್ಲೇ ಮಾಡಿ}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಮುಂದೆ ಪ್ಲೇ ಮಾಡಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಮುಂದೆ ಪ್ಲೇ ಮಾಡಿ}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಸಾಲಿಗೆ ಸೇರಿಸಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಸಾಲಿಗೆ ಸೇರಿಸಿ}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಪಿನ್ ಮಾಡಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಪಿನ್ ಮಾಡಿ}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>{name} ನೊಂದಿಗೆ ತೆರೆಯಿರಿ</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>ವಿರಾಮ</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>ಮ್ಯೂಟ್</value></data>

@@ -43,8 +43,8 @@ struct StorageManagerView: View {
         VStack(spacing: 0) {
             Picker("Filter", selection: $filter) {
                 Text("All").tag(BridgeStorageFilter.all)
-                Text("Unmanaged").tag(BridgeStorageFilter.local)
-                Text("Managed").tag(BridgeStorageFilter.remote)
+                Text("Local").tag(BridgeStorageFilter.local)
+                Text("Cloud").tag(BridgeStorageFilter.remote)
                 Text("Uploading").tag(BridgeStorageFilter.uploading)
             }
             .pickerStyle(.segmented)
@@ -99,14 +99,14 @@ struct StorageManagerView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { runner?.pendingManage != nil },
-                set: { if !$0 { runner?.cancelManage() } },
+                get: { runner?.pendingMoveToCloud != nil },
+                set: { if !$0 { runner?.cancelMoveToCloud() } },
             )
         ) {
             if let runner {
-                ManageConfirmSheet(
-                    onConfirm: { pin in runner.confirmManage(pin: pin) },
-                    onCancel: { runner.cancelManage() },
+                MoveToCloudConfirmSheet(
+                    onConfirm: { pin in runner.confirmMoveToCloud(pin: pin) },
+                    onCancel: { runner.cancelMoveToCloud() },
                 )
                 .frame(width: 420)
             }

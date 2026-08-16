@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ഇറക്കുമതി ചെയ്യുന്നു</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>തിരിച്ചറിയൽ വീണ്ടും പ്രവർത്തിപ്പിക്കുക</value></data>
   <data name="import.scanning" xml:space="preserve"><value>സ്കാൻ ചെയ്യുന്നു…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>പ്രാദേശിക പകർപ്പ് സൂക്ഷിക്കുക</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>നിയന്ത്രിതം</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>പിൻ ചെയ്തു</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>ക്ലൗഡ്</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ലൈബ്രറിയിൽ കാണുക</value></data>
   <data name="join.title" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരുക</value></data>
   <data name="join.intro" xml:space="preserve"><value>നിങ്ങളുടെ മറ്റൊരു ഉപകരണത്തിലുള്ള ശേഖരത്തിലേക്ക് ഈ ഉപകരണം ചേർക്കുക.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>പേര്</value></data>
   <data name="sort.title" xml:space="preserve"><value>title</value></data>
   <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>ലൈബ്രറിയിലേക്ക് മാറ്റുക</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>ലൈബ്രറിയിൽ നിന്ന് മാറ്റുക…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>പ്രാദേശിക പകർപ്പ് നീക്കം ചെയ്യുക</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>ക്ലൗഡിലേക്ക് മാറ്റുക</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>പിൻ ചെയ്യുക</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>പ്രാദേശികമാക്കുക…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>പിൻ നീക്കുക</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>സംഭരണം ലോഡ് ചെയ്യാനായില്ല</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>പിൻ ചെയ്തു</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>സംഭരണം വായിക്കാനായില്ല</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>നിയന്ത്രിതം</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>നിയന്ത്രണമില്ലാത്തത്</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>ക്ലൗഡ്</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>പിൻ ചെയ്തു</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>പ്രാദേശികം</value></data>
   <data name="storage.title" xml:space="preserve"><value>സംഭരണം</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>സിങ്ക് പിശക്</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>വീണ്ടും ബന്ധിപ്പിക്കുക</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>മുൻഗാമി ചിത്രം</value></data>
   <data name="gallery.next" xml:space="preserve"><value>അടുത്ത ചിത്രം</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>എല്ലാം</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>നിയന്ത്രണമില്ലാത്തത്</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>നിയന്ത്രിതം</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>പ്രാദേശികം</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>ക്ലൗഡ്</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>ആൽബം</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ചില മാറ്റങ്ങൾ ഇതുവരെ അപ്‌ലോഡ് പൂർത്തിയായിട്ടില്ല, അവ നഷ്ടപ്പെടും.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>സ്ഥിരീകരിക്കാൻ ബട്ടൺ വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>ലൈബ്രറി നീക്കം ചെയ്യാനായില്ല: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>പിൻ ചെയ്യുക</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം പ്ലേ ചെയ്യുക} other {# ആൽബങ്ങൾ പ്ലേ ചെയ്യുക}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം അടുത്തതായി പ്ലേ ചെയ്യുക} other {# ആൽബങ്ങൾ അടുത്തതായി പ്ലേ ചെയ്യുക}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം നിരയിലേക്ക് ചേർക്കുക} other {# ആൽബങ്ങൾ നിരയിലേക്ക് ചേർക്കുക}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക} other {# ആൽബങ്ങൾ ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം പിൻ ചെയ്യുക} other {# ആൽബങ്ങൾ പിൻ ചെയ്യുക}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>{name} ഉപയോഗിച്ച് തുറക്കുക</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>താൽക്കാലിക നിർത്തൽ</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>മ്യൂട്ട്</value></data>

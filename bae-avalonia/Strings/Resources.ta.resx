@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% இறக்குமதி செய்யப்படுகிறது</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>அடையாளம் காணலை மீண்டும் இயக்கு</value></data>
   <data name="import.scanning" xml:space="preserve"><value>வருடப்படுகிறது…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>உள்ளூர் நகலை வைத்திரு</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>நிர்வகிக்கப்படுகிறது</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>நிலைநிறுத்தப்பட்டது</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>மேகம்</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>நூலகத்தில் பார்</value></data>
   <data name="join.title" xml:space="preserve"><value>நூலகத்தில் சேர்</value></data>
   <data name="join.intro" xml:space="preserve"><value>இந்த சாதனத்தை உங்கள் மற்றொரு சாதனத்தில் ஏற்கனவே உள்ள நூலகத்தில் சேர்க்கவும்.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>பெயர்</value></data>
   <data name="sort.title" xml:space="preserve"><value>தலைப்பு</value></data>
   <data name="sort.year" xml:space="preserve"><value>ஆண்டு</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>நூலகத்திற்குள் நகர்த்து</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>நூலகத்திலிருந்து வெளியே நகர்த்து…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>உள்ளூர் நகலை நீக்கு</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>மேகத்திற்கு நகர்த்து</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>நிலைநிறுத்து</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>உள்ளூராக்கு…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>நிலைநிறுத்தலை நீக்கு</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# கோப்பு} other {# கோப்புகள்}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>சேமிப்பகத்தை ஏற்ற முடியவில்லை</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>நிலைநிறுத்தப்பட்டது</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>சேமிப்பகத்தைப் படிக்க முடியவில்லை</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>நிர்வகிக்கப்படுகிறது</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>நிர்வகிக்கப்படாதது</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>மேகம்</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>நிலைநிறுத்தப்பட்டது</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>உள்ளூர்</value></data>
   <data name="storage.title" xml:space="preserve"><value>சேமிப்பு</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>ஒத்திசைவு பிழை</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>மீண்டும் இணை</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>முந்தைய படம்</value></data>
   <data name="gallery.next" xml:space="preserve"><value>அடுத்த படம்</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>அனைத்தும்</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>நிர்வகிக்கப்படாதது</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>நிர்வகிக்கப்படுகிறது</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>உள்ளூர்</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>மேகம்</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>பதிவேற்றுகிறது</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>ஆல்பம்</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>கலைஞர்</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>சில மாற்றங்கள் இன்னும் பதிவேற்றம் முடிக்கவில்லை, அவை இழக்கப்படும்.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>உறுதிப்படுத்த பொத்தானை மீண்டும் கிளிக் செய்யவும்.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>நூலகத்தை அகற்ற முடியவில்லை: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>நிலைநிறுத்து</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை இயக்கு} other {# ஆல்பங்களை இயக்கு}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை அடுத்து இயக்கு} other {# ஆல்பங்களை அடுத்து இயக்கு}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை வரிசையில் சேர்க்கவும்} other {# ஆல்பங்களை வரிசையில் சேர்க்கவும்}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து} other {# ஆல்பங்களை இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை நிலைநிறுத்து} other {# ஆல்பங்களை நிலைநிறுத்து}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>{name} மூலம் திற</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>இடைநிறுத்து</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>ஒலி நிறுத்து</value></data>

@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% درآمد ہو رہا ہے</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>شناخت دوبارہ چلائیں</value></data>
   <data name="import.scanning" xml:space="preserve"><value>اسکین ہو رہا ہے…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>مقامی نقل رکھیں</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>منظم</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>پن شدہ</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>کلاؤڈ</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>لائبریری میں دیکھیں</value></data>
   <data name="join.title" xml:space="preserve"><value>کتب خانے میں شامل ہوں</value></data>
   <data name="join.intro" xml:space="preserve"><value>اس آلے کو ایسے کتب خانے میں شامل کریں جو آپ کے دوسرے آلے پر پہلے سے ہے۔</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>name</value></data>
   <data name="sort.title" xml:space="preserve"><value>title</value></data>
   <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>لائبریری میں منتقل کریں</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>آف لائن کے لیے پن کریں</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>لائبریری سے باہر منتقل کریں…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>مقامی نقل ہٹائیں</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>کلاؤڈ میں منتقل کریں</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>پن کریں</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>مقامی بنائیں…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>پن ہٹائیں</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>اسٹوریج لوڈ نہیں ہو سکا</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>پن شدہ</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>اسٹوریج پڑھا نہیں جا سکا</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>منظم</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>غیر منظم</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>کلاؤڈ</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>پن شدہ</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>مقامی</value></data>
   <data name="storage.title" xml:space="preserve"><value>اسٹوریج</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>مطابقت پذیری خرابی</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>دوبارہ جوڑیں</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>پچھلی تصویر</value></data>
   <data name="gallery.next" xml:space="preserve"><value>اگلی تصویر</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>تمام</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>غیر منظم</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>منظم</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>مقامی</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>کلاؤڈ</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>اپ لوڈ ہو رہا ہے</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>البم</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>فنکار</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>کچھ تبدیلیاں ابھی اپ لوڈ مکمل نہیں کر پائیں اور ضائع ہو جائیں گی۔</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>تصدیق کے لیے بٹن دوبارہ دبائیں۔</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>لائبریری ہٹائی نہیں جا سکی: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>آف لائن کے لیے پن کریں</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>پن کریں</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# البم چلائیں} other {# البمز چلائیں}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# البم اگلا چلائیں} other {# البمز اگلا چلائیں}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# البم قطار میں شامل کریں} other {# البمز قطار میں شامل کریں}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# البم آف لائن کے لیے پن کریں} other {# البمز آف لائن کے لیے پن کریں}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# البم پن کریں} other {# البمز پن کریں}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>{name} کے ساتھ کھولیں</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>وقفہ</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>خاموش</value></data>

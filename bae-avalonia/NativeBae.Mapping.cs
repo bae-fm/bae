@@ -403,7 +403,7 @@ internal static partial class NativeBae
         storage == "browsable" ? BridgeHomeStorage.Browsable : BridgeHomeStorage.Opaque;
 
     private static BridgeStorageMode StorageMode(string storageMode) =>
-        storageMode == "managed" ? BridgeStorageMode.Remote : BridgeStorageMode.Local;
+        storageMode == "cloud" ? BridgeStorageMode.Remote : BridgeStorageMode.Local;
 
     private static BridgeExcludedSignal ExcludedSignal(string kind, string value) =>
         kind switch

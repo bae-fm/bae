@@ -50,7 +50,7 @@ extension ImportView {
         let coverSelection = candidate.coverPick?.selection
 
         let storageMode = configStore.config.importStorageMode(
-            managed: storageManaged
+            cloud: storageCloud
         )
 
         // The edit is the album fields over the mapping table's rows, and it

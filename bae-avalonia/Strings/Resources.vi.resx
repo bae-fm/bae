@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>đang nhập {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>chạy lại nhận dạng</value></data>
   <data name="import.scanning" xml:space="preserve"><value>đang quét…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Giữ bản sao cục bộ</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Được quản lý</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Đã ghim</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Đám mây</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>xem trong thư viện</value></data>
   <data name="join.title" xml:space="preserve"><value>tham gia thư viện</value></data>
   <data name="join.intro" xml:space="preserve"><value>thêm thiết bị này vào thư viện bạn đã có trên thiết bị khác.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>tên</value></data>
   <data name="sort.title" xml:space="preserve"><value>tiêu đề</value></data>
   <data name="sort.year" xml:space="preserve"><value>năm</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Chuyển vào thư viện</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Ghim để dùng ngoại tuyến</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Chuyển ra khỏi thư viện…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Xóa bản sao cục bộ</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Chuyển lên đám mây</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Ghim</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Đặt thành cục bộ…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Bỏ ghim</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# tệp} other {# tệp}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>không thể tải kho lưu trữ</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Đã ghim</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>không thể đọc kho lưu trữ</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Được quản lý</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Không được quản lý</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Đám mây</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Đã ghim</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Cục bộ</value></data>
   <data name="storage.title" xml:space="preserve"><value>Lưu trữ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>lỗi đồng bộ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Kết nối lại</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>hình ảnh trước</value></data>
   <data name="gallery.next" xml:space="preserve"><value>hình ảnh tiếp theo</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Tất cả</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Không được quản lý</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Được quản lý</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Cục bộ</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Đám mây</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Đang tải lên</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Nghệ sĩ</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Một số thay đổi vẫn chưa tải lên xong và sẽ bị mất.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Nhấp lại vào nút để xác nhận.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Không thể xóa thư viện: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Ghim để dùng ngoại tuyến</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Ghim</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Phát # album} other {Phát # album}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Phát # album tiếp theo} other {Phát # album tiếp theo}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Thêm # album vào hàng đợi} other {Thêm # album vào hàng đợi}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Ghim # album để dùng ngoại tuyến} other {Ghim # album để dùng ngoại tuyến}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Ghim # album} other {Ghim # album}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>mở bằng {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Tạm dừng</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Tắt tiếng</value></data>

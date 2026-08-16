@@ -7,7 +7,7 @@ import Foundation
 /// reads its state from `DownloadStore` (the download projection is the sole
 /// writer).
 public final class Downloads: Sendable, Observable {
-    /// Enqueue releases to pin for offline. They join the serial download
+    /// Enqueue releases to pin locally. They join the serial download
     /// queue; the worker drains them one at a time. Fire-and-forget — progress
     /// and queue state arrive via `downloadQueueChanged` events.
     public let queuePins:

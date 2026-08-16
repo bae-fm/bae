@@ -30,7 +30,7 @@ struct AlbumExpansionContent: View {
     let onChangeCover: () -> Void
     let onEditMetadata: () -> Void
     let onReIdentify: () -> Void
-    let onManage: () -> Void
+    let onOpenStorage: () -> Void
     let onExportRelease: () -> Void
     let onSaveReleaseAs: () -> Void
     let onSetPrimaryRelease: () -> Void
@@ -181,7 +181,7 @@ struct AlbumExpansionContent: View {
             Button("Change Cover...") { onChangeCover() }
             Button("Edit metadata...") { onEditMetadata() }
             Button("Re-identify...") { onReIdentify() }
-            Button("Storage...") { onManage() }
+            Button("Storage...") { onOpenStorage() }
             Button("Export…") { onExportRelease() }
             Button("Save As…") { onSaveReleaseAs() }
             if releaseCursor.canCycle, canSetAsPrimaryRelease {

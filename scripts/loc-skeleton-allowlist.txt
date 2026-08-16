@@ -192,6 +192,9 @@ it	settings.formats.bit_depth.bits24
 it	settings.formats.bit_depth.bits32
 it	settings.formats.bitrate
 it	storage.column.album
+it	import.storage.cloud
+it	storage.state.cloud
+it	storage.tab.cloud
 tr	action.ok
 tr	cloud.provider.s3
 tr	s3.field.bucket
@@ -248,6 +251,9 @@ nl	settings.formats.bit_depth.bits32
 nl	edit.field.label
 nl	edit.field.barcode
 nl	storage.column.album
+nl	import.storage.cloud
+nl	storage.state.cloud
+nl	storage.tab.cloud
 
 # Export settings redesign: codec labels are proper nouns plus the universal
 # kbps unit; "Pregap" is the established technical loanword in these locales

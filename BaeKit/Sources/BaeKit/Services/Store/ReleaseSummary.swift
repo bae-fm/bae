@@ -15,7 +15,7 @@ import Observation
 /// snapshot is the single source of truth for the queue; storage rows
 /// and storage-action gates read `outboxStore.progress(forRelease:)`.
 ///
-/// Per-release TRANSFER progress (the synchronous pin/unpin/manage/unmanage
+/// Per-release TRANSFER progress (the synchronous pin/unpin/cloud/local
 /// transition the user triggers) IS a field here: `transfer`. Core includes the
 /// current action in subscribed release values. The two concerns are distinct —
 /// uploads are background queue work, a transfer is a foregrounded action with
@@ -32,10 +32,10 @@ public final class ReleaseSummary: Identifiable {
     public let albumId: String
     public var format: String?
     public var storageState: BridgeReleaseStorageState
-    /// Whether coven keeps this release's blobs pinned (offline) on this device
+    /// Whether coven keeps this release's blobs pinned locally on this device
     /// — the orthogonal coven-cache property, meaningful only when
-    /// `storageState` is `.managed`. Kept separate from `storageState` so the UI
-    /// never conflates "in the cloud" with "kept offline".
+    /// `storageState` is `.remote`. Kept separate from `storageState` so the UI
+    /// never conflates "in the cloud" with "pinned locally".
     public var pinned: Bool
     /// Storage transitions the user can take right now, pre-computed by core
     /// from the release's state and cloud-home presence. The album-detail
@@ -49,7 +49,7 @@ public final class ReleaseSummary: Identifiable {
     /// renders its own art; `ImageView` fetches the bytes by id and caches the
     /// decoded image under the version.
     public var cover: BridgeImageRef?
-    /// Non-nil while a pin/unpin/manage/unmanage transition runs. Core includes
+    /// Non-nil while a pin/unpin/cloud/local transition runs. Core includes
     /// the current action in release subscriptions, so later values refresh this
     /// the same way they refresh storage state.
     public var transfer: TransferState?

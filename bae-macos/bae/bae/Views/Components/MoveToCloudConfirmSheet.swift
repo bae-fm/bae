@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Confirmation for moving an unmanaged release into the library. The single
-/// toggle maps to the `manage_release` pin option: whether to keep a local copy
-/// (pinned for offline) once the release is managed.
-struct ManageConfirmSheet: View {
+/// Confirmation for moving a local release to cloud storage. The single
+/// toggle chooses whether the release is also pinned on this device.
+struct MoveToCloudConfirmSheet: View {
     let onConfirm: (_ pin: Bool) -> Void
     let onCancel: () -> Void
 
@@ -12,14 +11,14 @@ struct ManageConfirmSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Move into library")
+            Text("Move to Cloud")
                 .font(.headline)
-            Toggle("Pin for offline", isOn: $pin)
+            Toggle("Pinned", isOn: $pin)
             HStack {
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Move") { onConfirm(pin) }
+                Button("Move to Cloud") { onConfirm(pin) }
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -28,8 +27,8 @@ struct ManageConfirmSheet: View {
 }
 
 #if DEBUG
-    #Preview("Move into library") {
-        ManageConfirmSheet(onConfirm: { _ in }, onCancel: {})
+    #Preview("Move to Cloud") {
+        MoveToCloudConfirmSheet(onConfirm: { _ in }, onCancel: {})
             .frame(width: 420)
     }
 #endif

@@ -10,9 +10,9 @@ final class ReleaseEditor: Sendable, Observable {
         @Sendable (
             _ releaseId: String, _ selection: BridgeCoverSelection
         ) async throws -> Void
-    let manageRelease:
+    let moveReleaseToCloud:
         @Sendable (_ releaseId: String, _ pin: Bool) async throws -> Void
-    let unmanageRelease:
+    let makeReleaseLocal:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
     let setPrimaryRelease:
@@ -34,10 +34,10 @@ final class ReleaseEditor: Sendable, Observable {
         changeCover:
             @escaping @Sendable (String, BridgeCoverSelection)
             async throws -> Void = { _, _ in },
-        manageRelease:
+        moveReleaseToCloud:
             @escaping @Sendable (String, Bool) async throws -> Void =
             { _, _ in },
-        unmanageRelease:
+        makeReleaseLocal:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
                 _ in
@@ -68,8 +68,8 @@ final class ReleaseEditor: Sendable, Observable {
             }
     ) {
         self.changeCover = changeCover
-        self.manageRelease = manageRelease
-        self.unmanageRelease = unmanageRelease
+        self.moveReleaseToCloud = moveReleaseToCloud
+        self.makeReleaseLocal = makeReleaseLocal
         self.deleteRelease = deleteRelease
         self.setPrimaryRelease = setPrimaryRelease
         self.reIdentifyRelease = reIdentifyRelease
@@ -87,10 +87,10 @@ final class ReleaseEditor: Sendable, Observable {
                     selection: $1
                 )
             },
-            manageRelease: {
+            moveReleaseToCloud: {
                 try await handle.makeReleaseRemote(releaseId: $0, pin: $1)
             },
-            unmanageRelease: {
+            makeReleaseLocal: {
                 try await handle.makeReleaseLocal(releaseId: $0, newPath: $1)
             },
             deleteRelease: { try await handle.deleteRelease(releaseId: $0) },

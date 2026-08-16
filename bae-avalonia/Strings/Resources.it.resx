@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>importazione {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>riesegui identificazione</value></data>
   <data name="import.scanning" xml:space="preserve"><value>scansione…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Mantieni copia locale</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Gestito</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Fissato</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>vedi nella libreria</value></data>
   <data name="join.title" xml:space="preserve"><value>unisciti a una libreria</value></data>
   <data name="join.intro" xml:space="preserve"><value>aggiungi questo dispositivo a una libreria che hai già su un altro dispositivo.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>nome</value></data>
   <data name="sort.title" xml:space="preserve"><value>titolo</value></data>
   <data name="sort.year" xml:space="preserve"><value>anno</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Sposta nella libreria</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Rendi disponibile offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Sposta fuori dalla libreria…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Rimuovi copia locale</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Sposta nel cloud</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Fissa</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Rendi locale…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Rimuovi fissaggio</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# file}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>impossibile caricare l'archiviazione</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Disponibile offline</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>impossibile leggere l'archiviazione</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Gestito</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Non gestito</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Fissato</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Locale</value></data>
   <data name="storage.title" xml:space="preserve"><value>Archiviazione</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>errore di sincronizzazione</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Riconnetti</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>immagine precedente</value></data>
   <data name="gallery.next" xml:space="preserve"><value>immagine seguente</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Tutti</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Non gestito</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Gestito</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Locale</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Caricamento</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Artista</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Alcune modifiche non hanno ancora terminato il caricamento e andranno perse.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Fai clic di nuovo sul pulsante per confermare.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Impossibile rimuovere la libreria: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Rendi disponibile offline</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Fissa</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Riproduci # album} other {Riproduci # album}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Riproduci # album dopo} other {Riproduci # album dopo}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Aggiungi # album alla coda} other {Aggiungi # album alla coda}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Rendi disponibile offline # album} other {Rendi disponibile offline # album}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Fissa # album} other {Fissa # album}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>apri con {name}</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Pausa</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Disattiva audio</value></data>

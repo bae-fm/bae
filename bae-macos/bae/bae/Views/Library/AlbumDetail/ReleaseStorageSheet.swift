@@ -4,7 +4,7 @@ import SwiftUI
 /// The Storage sheet for a single release: its storage status band plus a
 /// sortable table of the release's files. Presented from the album detail's
 /// menu.
-struct ManageReleaseSheet: View {
+struct ReleaseStorageSheet: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
     let onExport: () -> Void
@@ -86,8 +86,8 @@ struct ManageReleaseSheet: View {
 }
 
 #if DEBUG
-    #Preview("Manage Release Sheet") {
-        ManageReleaseSheet(
+    #Preview("Release Storage Sheet") {
+        ReleaseStorageSheet(
             release: PreviewData.storageRelease(
                 storageState: .remote,
                 pinned: false,

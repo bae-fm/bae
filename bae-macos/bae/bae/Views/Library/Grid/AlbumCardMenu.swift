@@ -32,7 +32,7 @@ struct AlbumCardMenu {
 
     var pinLabel: String {
         targetCount > 1
-            ? String(localized: "Pin \(targetCount) Albums for Offline")
-            : String(localized: "Pin for offline")
+            ? String(localized: "Pin \(targetCount) Albums")
+            : String(localized: "Pin")
     }
 }

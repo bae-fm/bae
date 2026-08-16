@@ -75,7 +75,7 @@
                 onChangeCover: {},
                 onEditMetadata: {},
                 onReIdentify: {},
-                onManage: {},
+                onOpenStorage: {},
                 onExportRelease: {},
                 onSaveReleaseAs: {},
                 onSetPrimaryRelease: {},
@@ -215,7 +215,7 @@
         ]
 
         /// A `ReleaseDetail` in a chosen storage state, for the storage band and
-        /// manage-sheet previews: the storage status line, the pin flag, and the
+        /// storage-sheet previews: the storage status line, the pin flag, and the
         /// core-computed actions all vary by locality, so each state is its own
         /// fixture rather than a mutation of one.
         @MainActor

@@ -43214,198 +43214,6 @@
         }
       }
     },
-    "Keep local copy" : {
-      "comment" : "Import confirm: toggle to keep a local copy of managed files",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الاحتفاظ بنسخة محلية"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запазване на локално копие"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "স্থানীয় কপি রাখুন"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zachovat místní kopii"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokale Kopie behalten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keep local copy"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mantener copia local"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conserver une copie locale"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "સ્થાનિક નકલ રાખો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "שמור עותק מקומי"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "स्थानीय कॉपी रखें"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zadrži lokalnu kopiju"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mantieni copia locale"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ローカルコピーを保持"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ಇಟ್ಟುಕೊಳ್ಳಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "로컬 복사본 유지"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "പ്രാദേശിക പകർപ്പ് സൂക്ഷിക്കുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "स्थानिक प्रत ठेवा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokale kopie behouden"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਲੋਕਲ ਕਾਪੀ ਰੱਖੋ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zachowaj kopię lokalną"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manter cópia local"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "உள்ளூர் நகலை வைத்திரு"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "లోకల్ కాపీని ఉంచు"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เก็บสำเนาในเครื่อง"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yerel kopyayı tut"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зберегти локальну копію"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "مقامی نقل رکھیں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giữ bản sao cục bộ"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保留本地副本"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保留本機副本"
-          }
-        }
-      }
-    },
     "Key Prefix" : {
       "comment" : "Sync wizard: S3 key-prefix text field title",
       "extractionState" : "stale",
@@ -45709,197 +45517,6 @@
         }
       }
     },
-    "Managed" : {
-      "comment" : "Storage Manager filter: managed releases",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "مُدار"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Управлявани"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "পরিচালিত"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spravované"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verwaltet"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Managed"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gestionadas"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gérés"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "સંચાલિત"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מנוהל"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "प्रबंधित"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upravljano"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gestito"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "管理対象"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ನಿರ್ವಹಿತ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "관리형"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "നിയന്ത്രിതം"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "व्यवस्थापित"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beheerd"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਪਰਬੰਧਿਤ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zarządzane"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gerenciado"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "நிர்வகிக்கப்படுகிறது"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "నిర్వహించబడుతోంది"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "จัดการแล้ว"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yönetilen"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Кероване"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "منظم"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Được quản lý"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已托管"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "受管理"
-          }
-        }
-      }
-    },
     "matched %lld releases" : {
       "comment" : "Import search conflict: barcode section subtitle; %lld is the match count",
       "extractionState" : "stale",
@@ -47256,198 +46873,6 @@
         }
       }
     },
-    "Move" : {
-      "comment" : "Manage-confirm sheet: confirm moving the release into the library",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "نقل"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Преместване"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "সরান"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Přesunout"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verschieben"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Move"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mover"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Déplacer"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ખસેડો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "העבר"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ले जाएं"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premjesti"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sposta"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移動"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಸರಿಸಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이동"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "നീക്കുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "हलवा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verplaatsen"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਹਿਲਾਓ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przenieś"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mover"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "நகர்த்து"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "తరలించు"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ย้าย"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Taşı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перемістити"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "منتقل کریں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Di chuyển"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移入"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移動"
-          }
-        }
-      }
-    },
     "Move Here" : {
       "comment" : "Open/save panel button: confirm moving release files to the chosen folder",
       "extractionState" : "stale",
@@ -47640,577 +47065,766 @@
         }
       }
     },
-    "Move into library" : {
-      "comment" : "Manage-confirm sheet title",
+    "Make Local…" : {
+      "comment" : "Storage action: choose a folder and make a cloud release local",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "نقل إلى المكتبة"
+            "value" : "جعله محليًا…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Преместване в библиотеката"
+            "value" : "Направи локално…"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "লাইব্রেরিতে সরান"
+            "value" : "স্থানীয় করুন…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přesunout do knihovny"
+            "value" : "Převést na místní…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In Bibliothek verschieben"
+            "value" : "Lokal machen…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Move into library"
+            "value" : "Make Local…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover a la biblioteca"
+            "value" : "Hacer local…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacer dans la bibliothèque"
+            "value" : "Rendre local…"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "લાઇબ્રેરીમાં ખસેડો"
+            "value" : "સ્થાનિક બનાવો…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "העבר לספרייה"
+            "value" : "הפוך למקומי…"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लाइब्रेरी में ले जाएं"
+            "value" : "स्थानीय बनाएँ…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premjesti u fonoteku"
+            "value" : "Postavi lokalno…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sposta nella libreria"
+            "value" : "Rendi locale…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリに移動"
+            "value" : "ローカルにする…"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಗ್ರಂಥಾಲಯಕ್ಕೆ ಸರಿಸಿ"
+            "value" : "ಸ್ಥಳೀಯವಾಗಿಸಿ…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리로 이동"
+            "value" : "로컬로 전환…"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ലൈബ്രറിയിലേക്ക് മാറ്റുക"
+            "value" : "പ്രാദേശികമാക്കുക…"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लायब्ररीमध्ये हलवा"
+            "value" : "स्थानिक करा…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naar bibliotheek verplaatsen"
+            "value" : "Lokaal maken…"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਲਿਜਾਓ"
+            "value" : "ਲੋਕਲ ਬਣਾਓ…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przenieś do biblioteki"
+            "value" : "Ustaw jako lokalne…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover para a biblioteca"
+            "value" : "Tornar local…"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "நூலகத்திற்குள் நகர்த்து"
+            "value" : "உள்ளூராக்கு…"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "లైబ్రరీలోకి తరలించండి"
+            "value" : "లోకల్‌గా చేయి…"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ย้ายเข้าคลัง"
+            "value" : "ทำให้เป็นในเครื่อง…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplığa taşı"
+            "value" : "Yerel yap…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перемістити в бібліотеку"
+            "value" : "Зробити локальним…"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لائبریری میں منتقل کریں"
+            "value" : "مقامی بنائیں…"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chuyển vào thư viện"
+            "value" : "Đặt thành cục bộ…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移入库"
+            "value" : "设为本地…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移入資料庫"
+            "value" : "設為本機…"
           }
         }
       }
     },
-    "move into library" : {
-      "comment" : "Storage action verb (manage), inserted into 'Failed to %@: ...'",
-      "extractionState" : "stale",
+    "Move to Cloud" : {
+      "comment" : "Storage action: move a local release to cloud storage",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "النقل إلى المكتبة"
+            "value" : "نقل إلى السحابة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "преместване в библиотеката"
+            "value" : "Премести в облака"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "লাইব্রেরিতে সরান"
+            "value" : "ক্লাউডে সরান"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "přesunout do knihovny"
+            "value" : "Přesunout do cloudu"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "in Bibliothek verschieben"
+            "value" : "In die Cloud verschieben"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "move into library"
+            "value" : "Move to Cloud"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "mover a la biblioteca"
+            "value" : "Mover a la nube"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "déplacer dans la bibliothèque"
+            "value" : "Déplacer vers le cloud"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "લાઇબ્રેરીમાં ખસેડો"
+            "value" : "ક્લાઉડમાં ખસેડો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "העברה לספרייה"
+            "value" : "העבר לענן"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लाइब्रेरी में ले जाएं"
+            "value" : "क्लाउड में ले जाएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "premještanje u fonoteku"
+            "value" : "Premjesti u oblak"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sposta nella libreria"
+            "value" : "Sposta nel cloud"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリに移動"
+            "value" : "クラウドに移動"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಗ್ರಂಥಾಲಯಕ್ಕೆ ಸರಿಸಿ"
+            "value" : "ಕ್ಲೌಡ್‌ಗೆ ಸರಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리로 이동"
+            "value" : "클라우드로 이동"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ലൈബ്രറിയിലേക്ക് മാറ്റുക"
+            "value" : "ക്ലൗഡിലേക്ക് മാറ്റുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लायब्ररीमध्ये हलवा"
+            "value" : "क्लाउडमध्ये हलवा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "naar bibliotheek verplaatsen"
+            "value" : "Naar de cloud verplaatsen"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਲਿਜਾਓ"
+            "value" : "ਕਲਾਊਡ ਵਿੱਚ ਲਿਜਾਓ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "przenoszenia do biblioteki"
+            "value" : "Przenieś do chmury"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "mover para a biblioteca"
+            "value" : "Mover para a nuvem"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "நூலகத்திற்குள் நகர்த்து"
+            "value" : "மேகத்திற்கு நகர்த்து"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "లైబ్రరీలోకి తరలించండి"
+            "value" : "క్లౌడ్‌కు తరలించు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ย้ายเข้าคลัง"
+            "value" : "ย้ายไปยังคลาวด์"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "kitaplığa taşı"
+            "value" : "Buluta taşı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "перемістити в бібліотеку"
+            "value" : "Перемістити в хмару"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لائبریری میں منتقل کریں"
+            "value" : "کلاؤڈ میں منتقل کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "chuyển vào thư viện"
+            "value" : "Chuyển lên đám mây"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移入库"
+            "value" : "移至云端"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移入資料庫"
+            "value" : "移至雲端"
           }
         }
       }
     },
-    "move out of library" : {
-      "comment" : "Storage action verb (unmanage), inserted into 'Failed to %@: ...'",
-      "extractionState" : "stale",
+    "move to cloud" : {
+      "comment" : "Storage action verb inserted into 'Failed to %@: ...'",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "النقل خارج المكتبة"
+            "value" : "نقل إلى السحابة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "преместване извън библиотеката"
+            "value" : "премести в облака"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "লাইব্রেরি থেকে সরান"
+            "value" : "ক্লাউডে সরান"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "přesunout z knihovny"
+            "value" : "přesunout do cloudu"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "aus Bibliothek verschieben"
+            "value" : "in die cloud verschieben"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "move out of library"
+            "value" : "move to cloud"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sacar de la biblioteca"
+            "value" : "mover a la nube"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "déplacer hors de la bibliothèque"
+            "value" : "déplacer vers le cloud"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "લાઇબ્રેરીમાંથી બહાર ખસેડો"
+            "value" : "ક્લાઉડમાં ખસેડો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "העברה מחוץ לספרייה"
+            "value" : "העבר לענן"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लाइब्रेरी से बाहर ले जाएं"
+            "value" : "क्लाउड में ले जाएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "premještanje iz fonoteke"
+            "value" : "premjesti u oblak"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sposta fuori dalla libreria"
+            "value" : "sposta nel cloud"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリから移動"
+            "value" : "クラウドに移動"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಗ್ರಂಥಾಲಯದಿಂದ ಹೊರಗೆ ಸರಿಸಿ"
+            "value" : "ಕ್ಲೌಡ್‌ಗೆ ಸರಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리 밖으로 이동"
+            "value" : "클라우드로 이동"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ലൈബ്രറിയിൽ നിന്ന് മാറ്റുക"
+            "value" : "ക്ലൗഡിലേക്ക് മാറ്റുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लायब्ररीबाहेर हलवा"
+            "value" : "क्लाउडमध्ये हलवा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "uit bibliotheek verplaatsen"
+            "value" : "naar de cloud verplaatsen"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਤੋਂ ਬਾਹਰ ਲਿਜਾਓ"
+            "value" : "ਕਲਾਊਡ ਵਿੱਚ ਲਿਜਾਓ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "przenoszenia poza bibliotekę"
+            "value" : "przenieś do chmury"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "mover para fora da biblioteca"
+            "value" : "mover para a nuvem"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "நூலகத்திலிருந்து வெளியே நகர்த்து"
+            "value" : "மேகத்திற்கு நகர்த்து"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "లైబ్రరీ నుండి బయటకు తరలించండి"
+            "value" : "క్లౌడ్‌కు తరలించు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ย้ายออกจากคลัง"
+            "value" : "ย้ายไปยังคลาวด์"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "kitaplıktan taşı"
+            "value" : "buluta taşı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "перемістити з бібліотеки"
+            "value" : "перемістити в хмару"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لائبریری سے باہر منتقل کریں"
+            "value" : "کلاؤڈ میں منتقل کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "chuyển ra khỏi thư viện"
+            "value" : "chuyển lên đám mây"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移出库"
+            "value" : "移至云端"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移出資料庫"
+            "value" : "移至雲端"
+          }
+        }
+      }
+    },
+    "make local" : {
+      "comment" : "Storage action verb inserted into 'Failed to %@: ...'",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جعله محليًا"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "направи локално"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "স্থানীয় করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "převést na místní"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "lokal machen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "make local"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hacer local"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rendre local"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "સ્થાનિક બનાવો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפוך למקומי"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्थानीय बनाएँ"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "postavi lokalno"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rendi locale"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ローカルにする"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಸ್ಥಳೀಯವಾಗಿಸಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로컬로 전환"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പ്രാദേശികമാക്കുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्थानिक करा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "lokaal maken"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਲੋਕਲ ਬਣਾਓ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ustaw jako lokalne"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tornar local"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "உள்ளூராக்கு"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "లోకల్‌గా చేయి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทำให้เป็นในเครื่อง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "yerel yap"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "зробити локальним"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مقامی بنائیں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "đặt thành cục bộ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设为本地"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設為本機"
           }
         }
       }
@@ -59133,7 +58747,7 @@
         }
       }
     },
-    "Pin %lld Albums for Offline" : {
+    "Pin %lld Albums" : {
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
@@ -59142,37 +58756,37 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "تثبيت %lld ألبومات للاستخدام دون اتصال"
+                  "value" : "تثبيت %lld ألبومات"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "تثبيت %lld ألبومًا للاستخدام دون اتصال"
+                  "value" : "تثبيت %lld ألبومًا"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "تثبيت ألبوم واحد للاستخدام دون اتصال"
+                  "value" : "تثبيت ألبوم واحد"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "تثبيت %lld ألبوم للاستخدام دون اتصال"
+                  "value" : "تثبيت %lld ألبوم"
                 }
               },
               "two" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "تثبيت ألبومين للاستخدام دون اتصال"
+                  "value" : "تثبيت ألبومين"
                 }
               },
               "zero" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "تثبيت %lld ألبوم للاستخدام دون اتصال"
+                  "value" : "تثبيت %lld ألبوم"
                 }
               }
             }
@@ -59184,13 +58798,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Закачане на %lld албум за офлайн"
+                  "value" : "Закачане на %lld албум"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Закачане на %lld албума за офлайн"
+                  "value" : "Закачане на %lld албума"
                 }
               }
             }
@@ -59202,13 +58816,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld অ্যালবাম অফলাইনের জন্য পিন করুন"
+                  "value" : "%lld অ্যালবাম পিন করুন"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld অ্যালবাম অফলাইনের জন্য পিন করুন"
+                  "value" : "%lld অ্যালবাম পিন করুন"
                 }
               }
             }
@@ -59220,25 +58834,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Připnout %lld alba pro offline"
+                  "value" : "Připnout %lld alba"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Připnout %lld alba pro offline"
+                  "value" : "Připnout %lld alba"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Připnout %lld album pro offline"
+                  "value" : "Připnout %lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Připnout %lld alb pro offline"
+                  "value" : "Připnout %lld alb"
                 }
               }
             }
@@ -59250,13 +58864,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Album für Offline anheften"
+                  "value" : "%lld Album anheften"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Alben für Offline anheften"
+                  "value" : "%lld Alben anheften"
                 }
               }
             }
@@ -59268,13 +58882,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Pin %lld Album for Offline"
+                  "value" : "Pin %lld Album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Pin %lld Albums for Offline"
+                  "value" : "Pin %lld Albums"
                 }
               }
             }
@@ -59286,13 +58900,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Fijar %lld álbum para sin conexión"
+                  "value" : "Fijar %lld álbum"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Fijar %lld álbumes para sin conexión"
+                  "value" : "Fijar %lld álbumes"
                 }
               }
             }
@@ -59304,13 +58918,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Épingler %lld album hors ligne"
+                  "value" : "Épingler %lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Épingler %lld albums hors ligne"
+                  "value" : "Épingler %lld albums"
                 }
               }
             }
@@ -59322,13 +58936,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld આલ્બમ ઑફલાઇન માટે પિન કરો"
+                  "value" : "%lld આલ્બમ પિન કરો"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld આલ્બમ ઑફલાઇન માટે પિન કરો"
+                  "value" : "%lld આલ્બમ પિન કરો"
                 }
               }
             }
@@ -59340,25 +58954,25 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "נעץ %lld אלבומים לזמינות לא מקוונת"
+                  "value" : "נעץ %lld אלבומים"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "נעץ אלבום אחד לזמינות לא מקוונת"
+                  "value" : "נעץ אלבום אחד"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "נעץ %lld אלבומים לזמינות לא מקוונת"
+                  "value" : "נעץ %lld אלבומים"
                 }
               },
               "two" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "נעץ שני אלבומים לזמינות לא מקוונת"
+                  "value" : "נעץ שני אלבומים"
                 }
               }
             }
@@ -59370,13 +58984,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld एल्बम ऑफलाइन के लिए पिन करें"
+                  "value" : "%lld एल्बम पिन करें"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld एल्बम ऑफलाइन के लिए पिन करें"
+                  "value" : "%lld एल्बम पिन करें"
                 }
               }
             }
@@ -59388,19 +59002,19 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Prikvači %lld albuma za izvanmrežni rad"
+                  "value" : "Prikvači %lld albuma"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Prikvači %lld album za izvanmrežni rad"
+                  "value" : "Prikvači %lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Prikvači %lld albuma za izvanmrežni rad"
+                  "value" : "Prikvači %lld albuma"
                 }
               }
             }
@@ -59412,13 +59026,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Rendi disponibile offline %lld album"
+                  "value" : "Fissa %lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Rendi disponibili offline %lld album"
+                  "value" : "Fissa %lld album"
                 }
               }
             }
@@ -59430,7 +59044,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld枚のアルバムをオフライン用にピン留め"
+                  "value" : "%lld枚のアルバムをピン留め"
                 }
               }
             }
@@ -59442,13 +59056,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ಆಲ್ಬಂ ಅನ್ನು ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ"
+                  "value" : "%lld ಆಲ್ಬಂ ಅನ್ನು ಪಿನ್ ಮಾಡಿ"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ಆಲ್ಬಂಗಳನ್ನು ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ"
+                  "value" : "%lld ಆಲ್ಬಂಗಳನ್ನು ಪಿನ್ ಮಾಡಿ"
                 }
               }
             }
@@ -59460,7 +59074,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "앨범 %lld개 오프라인용으로 고정"
+                  "value" : "앨범 %lld개 고정"
                 }
               }
             }
@@ -59472,13 +59086,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ആൽബം ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക"
+                  "value" : "%lld ആൽബം പിൻ ചെയ്യുക"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ആൽബങ്ങൾ ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക"
+                  "value" : "%lld ആൽബങ്ങൾ പിൻ ചെയ്യുക"
                 }
               }
             }
@@ -59490,13 +59104,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld अल्बम ऑफलाइनसाठी पिन करा"
+                  "value" : "%lld अल्बम पिन करा"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld अल्बम ऑफलाइनसाठी पिन करा"
+                  "value" : "%lld अल्बम पिन करा"
                 }
               }
             }
@@ -59508,13 +59122,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld album vastzetten voor offline"
+                  "value" : "%lld album vastzetten"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld albums vastzetten voor offline"
+                  "value" : "%lld albums vastzetten"
                 }
               }
             }
@@ -59526,13 +59140,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ਐਲਬਮ ਆਫਲਾਈਨ ਲਈ ਪਿਨ ਕਰੋ"
+                  "value" : "%lld ਐਲਬਮ ਪਿਨ ਕਰੋ"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ਐਲਬਮ ਆਫਲਾਈਨ ਲਈ ਪਿਨ ਕਰੋ"
+                  "value" : "%lld ਐਲਬਮ ਪਿਨ ਕਰੋ"
                 }
               }
             }
@@ -59544,25 +59158,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Przypnij %lld albumy do trybu offline"
+                  "value" : "Przypnij %lld albumy"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Przypnij %lld albumów do trybu offline"
+                  "value" : "Przypnij %lld albumów"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Przypnij %lld album do trybu offline"
+                  "value" : "Przypnij %lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Przypnij %lld albumu do trybu offline"
+                  "value" : "Przypnij %lld albumu"
                 }
               }
             }
@@ -59574,13 +59188,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Fixar %lld álbum para offline"
+                  "value" : "Fixar %lld álbum"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Fixar %lld álbuns para offline"
+                  "value" : "Fixar %lld álbuns"
                 }
               }
             }
@@ -59592,13 +59206,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ஆல்பத்தை இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து"
+                  "value" : "%lld ஆல்பத்தை நிலைநிறுத்து"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ஆல்பங்களை இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து"
+                  "value" : "%lld ஆல்பங்களை நிலைநிறுத்து"
                 }
               }
             }
@@ -59610,13 +59224,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ఆల్బమ్‌ను ఆఫ్‌లైన్ కోసం పిన్ చేయి"
+                  "value" : "%lld ఆల్బమ్‌ను పిన్ చేయి"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ఆల్బమ్‌లను ఆఫ్‌లైన్ కోసం పిన్ చేయి"
+                  "value" : "%lld ఆల్బమ్‌లను పిన్ చేయి"
                 }
               }
             }
@@ -59628,7 +59242,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "ปักหมุด %lld อัลบั้มเพื่อใช้ออฟไลน์"
+                  "value" : "ปักหมุด %lld อัลบั้ม"
                 }
               }
             }
@@ -59640,13 +59254,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld albümü çevrimdışı için sabitle"
+                  "value" : "%lld albümü sabitle"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld albümü çevrimdışı için sabitle"
+                  "value" : "%lld albümü sabitle"
                 }
               }
             }
@@ -59658,25 +59272,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Закріпити %lld альбоми для офлайн-доступу"
+                  "value" : "Закріпити %lld альбоми"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Закріпити %lld альбомів для офлайн-доступу"
+                  "value" : "Закріпити %lld альбомів"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Закріпити %lld альбом для офлайн-доступу"
+                  "value" : "Закріпити %lld альбом"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Закріпити %lld альбома для офлайн-доступу"
+                  "value" : "Закріпити %lld альбома"
                 }
               }
             }
@@ -59688,13 +59302,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld البم آف لائن کے لیے پن کریں"
+                  "value" : "%lld البم پن کریں"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld البمز آف لائن کے لیے پن کریں"
+                  "value" : "%lld البمز پن کریں"
                 }
               }
             }
@@ -59706,7 +59320,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Ghim %lld album để dùng ngoại tuyến"
+                  "value" : "Ghim %lld album"
                 }
               }
             }
@@ -59718,7 +59332,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "固定 %lld 张专辑以离线使用"
+                  "value" : "固定 %lld 张专辑"
                 }
               }
             }
@@ -59730,208 +59344,399 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "釘選 %lld 張專輯供離線使用"
+                  "value" : "釘選 %lld 張專輯"
                 }
               }
             }
           }
         }
-      }
+      },
+      "comment" : "Storage menu action for pinning selected albums"
     },
-    "Pin for offline" : {
-      "comment" : "Manage-confirm sheet toggle: keep a local copy",
-      "extractionState" : "stale",
+    "Unpin" : {
+      "comment" : "Storage action: stop keeping a cloud release available locally",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تثبيت للاستخدام دون اتصال"
+            "value" : "إلغاء التثبيت"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Закачане за офлайн"
+            "value" : "Откачи"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "অফলাইনের জন্য পিন করুন"
+            "value" : "পিন খুলুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Připnout pro offline"
+            "value" : "Odepnout"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Für Offline anheften"
+            "value" : "Loslösen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pin for offline"
+            "value" : "Unpin"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fijar para sin conexión"
+            "value" : "Desfijar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Épingler hors ligne"
+            "value" : "Désépingler"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ઑફલાઇન માટે પિન કરો"
+            "value" : "પિન કાઢો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נעץ לזמינות לא מקוונת"
+            "value" : "בטל נעיצה"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑफलाइन के लिए पिन करें"
+            "value" : "पिन हटाएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prikvači za izvanmrežni rad"
+            "value" : "Otkvači"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rendi disponibile offline"
+            "value" : "Rimuovi fissaggio"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オフライン用にピン留め"
+            "value" : "ピン留めを解除"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ"
+            "value" : "ಪಿನ್ ತೆಗೆಯಿರಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "오프라인용으로 고정"
+            "value" : "고정 해제"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക"
+            "value" : "പിൻ നീക്കുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑफलाइनसाठी पिन करा"
+            "value" : "पिन काढा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vastzetten voor offline"
+            "value" : "Losmaken"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਆਫਲਾਈਨ ਲਈ ਪਿਨ ਕਰੋ"
+            "value" : "ਅਨਪਿਨ ਕਰੋ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przypnij do trybu offline"
+            "value" : "Odepnij"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fixar para offline"
+            "value" : "Desafixar"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து"
+            "value" : "நிலைநிறுத்தலை நீக்கு"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఆఫ్‌లైన్ కోసం పిన్ చేయి"
+            "value" : "పిన్ తీసివేయి"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ปักหมุดเพื่อใช้ออฟไลน์"
+            "value" : "เลิกปักหมุด"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Çevrimdışı için sabitle"
+            "value" : "Sabitlemeyi kaldır"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Закріпити для офлайн-доступу"
+            "value" : "Відкріпити"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "آف لائن کے لیے پن کریں"
+            "value" : "پن ہٹائیں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ghim để dùng ngoại tuyến"
+            "value" : "Bỏ ghim"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "固定以离线使用"
+            "value" : "取消固定"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "釘選供離線使用"
+            "value" : "取消釘選"
+          }
+        }
+      }
+    },
+    "Pin" : {
+      "comment" : "Storage action: keep a cloud release available locally",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تثبيت"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закачи"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "পিন করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Připnout"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anheften"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pin"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Épingler"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પિન કરો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נעץ"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पिन करें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prikvači"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fissa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ピン留め"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಪಿನ್ ಮಾಡಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "고정"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പിൻ ചെയ്യുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पिन करा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vastzetten"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਪਿਨ ਕਰੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przypnij"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixar"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நிலைநிறுத்து"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "పిన్ చేయి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปักหมุด"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sabitle"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закріпити"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "پن کریں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghim"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "固定"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "釘選"
           }
         }
       }
     },
     "Pinned" : {
-      "comment" : "Storage table storage badge: pinned for offline",
+      "comment" : "Storage state: cloud release pinned locally",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
@@ -60009,7 +59814,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disponibile offline"
+            "value" : "Fissato"
           }
         },
         "ja" : {
@@ -60118,197 +59923,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已釘選"
-          }
-        }
-      }
-    },
-    "Pinned for offline" : {
-      "comment" : "Storage state: release kept available offline",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "مثبّت للاستخدام دون اتصال"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Закачено за офлайн"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "অফলাইনের জন্য পিন করা"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Připnuto pro offline"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für Offline angeheftet"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pinned for offline"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fijada para sin conexión"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Épinglé hors ligne"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ઑફલાઇન માટે પિન કરેલું"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ננעץ לזמינות לא מקוונת"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ऑफलाइन के लिए पिन किया गया"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prikvačeno za izvanmrežni rad"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reso disponibile offline"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オフライン用にピン留め済み"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಲಾಗಿದೆ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오프라인용으로 고정됨"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്തു"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ऑफलाइनसाठी पिन केलेले"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vastgezet voor offline"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਆਫਲਾਈਨ ਲਈ ਪਿਨ ਕੀਤਾ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przypięte do trybu offline"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fixado para offline"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்தப்பட்டது"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఆఫ్‌లైన్ కోసం పిన్ చేయబడింది"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ปักหมุดเพื่อใช้ออฟไลน์แล้ว"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çevrimdışı için sabitlendi"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Закріплено для офлайн-доступу"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "آف لائن کے لیے پن شدہ"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã ghim để dùng ngoại tuyến"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已固定以离线使用"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已釘選供離線使用"
           }
         }
       }
@@ -69542,194 +69156,193 @@
         }
       }
     },
-    "remove local copy" : {
-      "comment" : "Storage action verb (unpin), inserted into 'Failed to %@: ...'",
-      "extractionState" : "stale",
+    "unpin" : {
+      "comment" : "Storage action verb inserted into 'Failed to %@: ...'",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إزالة النسخة المحلية"
+            "value" : "إلغاء التثبيت"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "премахване на локалното копие"
+            "value" : "откачи"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "স্থানীয় কপি সরান"
+            "value" : "পিন খুলুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "odebrat místní kopii"
+            "value" : "odepnout"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "lokale Kopie entfernen"
+            "value" : "loslösen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "remove local copy"
+            "value" : "unpin"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "quitar la copia local"
+            "value" : "desfijar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "supprimer la copie locale"
+            "value" : "désépingler"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "સ્થાનિક નકલ દૂર કરો"
+            "value" : "પિન કાઢો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הסרת עותק מקומי"
+            "value" : "בטל נעיצה"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "स्थानीय कॉपी हटाएं"
+            "value" : "पिन हटाएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "uklanjanje lokalne kopije"
+            "value" : "otkvači"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "rimuovi copia locale"
+            "value" : "rimuovi fissaggio"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ローカルコピーを削除"
+            "value" : "ピン留めを解除"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ತೆಗೆದುಹಾಕಿ"
+            "value" : "ಪಿನ್ ತೆಗೆಯಿರಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "로컬 복사본 제거"
+            "value" : "고정 해제"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "പ്രാദേശിക പകർപ്പ് നീക്കം ചെയ്യുക"
+            "value" : "പിൻ നീക്കുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "स्थानिक प्रत काढा"
+            "value" : "पिन काढा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "lokale kopie verwijderen"
+            "value" : "losmaken"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਲੋਕਲ ਕਾਪੀ ਹਟਾਓ"
+            "value" : "ਅਨਪਿਨ ਕਰੋ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "usuwania kopii lokalnej"
+            "value" : "odepnij"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "remover cópia local"
+            "value" : "desafixar"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "உள்ளூர் நகலை நீக்கு"
+            "value" : "நிலைநிறுத்தலை நீக்கு"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "లోకల్ కాపీని తీసివేయి"
+            "value" : "పిన్ తీసివేయి"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ลบสำเนาในเครื่อง"
+            "value" : "เลิกปักหมุด"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "yerel kopyayı kaldır"
+            "value" : "sabitlemeyi kaldır"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "вилучити локальну копію"
+            "value" : "відкріпити"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مقامی نقل ہٹائیں"
+            "value" : "پن ہٹائیں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "xóa bản sao cục bộ"
+            "value" : "bỏ ghim"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移除本地副本"
+            "value" : "取消固定"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移除本機副本"
+            "value" : "取消釘選"
           }
         }
       }
@@ -91957,193 +91570,193 @@
         }
       }
     },
-    "Unmanaged" : {
-      "comment" : "Storage state: files live outside the managed library",
+    "Local" : {
+      "comment" : "Storage state and filter: release stored locally",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "غير مُدار"
+            "value" : "محلي"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Неуправлявани"
+            "value" : "Локално"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "অপরিচালিত"
+            "value" : "স্থানীয়"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nespravované"
+            "value" : "Místní"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nicht verwaltet"
+            "value" : "Lokal"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unmanaged"
+            "value" : "Local"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin gestionar"
+            "value" : "Local"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non gérés"
+            "value" : "Local"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "અસંચાલિત"
+            "value" : "સ્થાનિક"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא מנוהל"
+            "value" : "מקומי"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अप्रबंधित"
+            "value" : "स्थानीय"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neupravljano"
+            "value" : "Lokalno"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non gestito"
+            "value" : "Locale"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "管理対象外"
+            "value" : "ローカル"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ನಿರ್ವಹಿಸದ"
+            "value" : "ಸ್ಥಳೀಯ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "자체 관리형"
+            "value" : "로컬"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "നിയന്ത്രണമില്ലാത്തത്"
+            "value" : "പ്രാദേശികം"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अव्यवस्थापित"
+            "value" : "स्थानिक"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Onbeheerd"
+            "value" : "Lokaal"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਅਪਰਬੰਧਿਤ"
+            "value" : "ਲੋਕਲ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Niezarządzane"
+            "value" : "Lokalne"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não gerenciado"
+            "value" : "Local"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "நிர்வகிக்கப்படாதது"
+            "value" : "உள்ளூர்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "నిర్వహించబడలేదు"
+            "value" : "లోకల్"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ไม่ได้จัดการ"
+            "value" : "ในเครื่อง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yönetilmeyen"
+            "value" : "Yerel"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Некероване"
+            "value" : "Локально"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "غیر منظم"
+            "value" : "مقامی"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không được quản lý"
+            "value" : "Cục bộ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未托管"
+            "value" : "本地"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未受管理"
+            "value" : "本機"
           }
         }
       }

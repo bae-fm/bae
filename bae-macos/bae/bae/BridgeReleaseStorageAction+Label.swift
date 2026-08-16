@@ -7,10 +7,10 @@ extension BridgeReleaseStorageAction {
     /// sites read the same wording.
     var label: String {
         switch self {
-        case .makeRemote: "Move into library"
-        case .makeLocal: "Move out of library..."
-        case .pin: "Pin for offline"
-        case .unpin: "Remove local copy"
+        case .makeRemote: String(localized: "Move to Cloud")
+        case .makeLocal: String(localized: "Make Local…")
+        case .pin: String(localized: "Pin")
+        case .unpin: String(localized: "Unpin")
         }
     }
 

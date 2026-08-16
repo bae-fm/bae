@@ -17,7 +17,7 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class DownloadsService
 {
-    /// <summary>Enqueue releases to pin for offline; they join the serial download
+    /// <summary>Enqueue releases to pin locally; they join the serial download
     /// queue. Fire-and-forget — progress arrives via download-queue events.</summary>
     public Func<IReadOnlyList<string>, Task<(bool Current, string? Error)>> QueuePins { get; init; }
         = _ => throw new InvalidOperationException("DownloadsService stub: QueuePins not wired");
@@ -60,15 +60,15 @@ internal sealed class DownloadsService
     public Func<bool> RetryOutputs { get; init; }
         = () => throw new InvalidOperationException("DownloadsService stub: RetryOutputs not wired");
 
-    /// <summary>Move a release to managed (cloud-owned) storage — "manage". With
-    /// <c>pin</c> it also keeps a local pinned copy. The macOS ReleaseEditor's
-    /// manageRelease analog; folded here beside pin/unpin since Windows has no
+    /// <summary>Move a release to cloud storage. With <c>pin</c> it also keeps a
+    /// pinned copy. The macOS ReleaseEditor's moveReleaseToCloud analog; folded
+    /// here beside pin/unpin since Windows has no
     /// release-editor service yet.</summary>
     public Func<string, bool, Task<(bool Current, string? Error)>> MakeReleaseRemote { get; init; }
         = (_, _) => throw new InvalidOperationException("DownloadsService stub: MakeReleaseRemote not wired");
 
-    /// <summary>Move a release to unmanaged (user-file) storage at a destination
-    /// folder — "unmanage". The macOS ReleaseEditor's unmanageRelease analog.</summary>
+    /// <summary>Make a release local at a destination folder. The macOS
+    /// ReleaseEditor's makeReleaseLocal analog.</summary>
     public Func<string, string, Task<(bool Current, string? Error)>> MakeReleaseLocal { get; init; }
         = (_, _) => throw new InvalidOperationException("DownloadsService stub: MakeReleaseLocal not wired");
 

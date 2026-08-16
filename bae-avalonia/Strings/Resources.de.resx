@@ -78,8 +78,8 @@
   <data name="import.progress.percent" xml:space="preserve"><value>wird importiert {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>Identifizierung erneut ausführen</value></data>
   <data name="import.scanning" xml:space="preserve"><value>wird gescannt …</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Lokale Kopie behalten</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Verwaltet</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Angeheftet</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>in Bibliothek anzeigen</value></data>
   <data name="join.title" xml:space="preserve"><value>Mediathek beitreten</value></data>
   <data name="join.intro" xml:space="preserve"><value>dieses Gerät zu einer Mediathek hinzufügen, die du bereits auf einem anderen Gerät hast.</value></data>
@@ -228,16 +228,16 @@
   <data name="sort.name" xml:space="preserve"><value>Name</value></data>
   <data name="sort.title" xml:space="preserve"><value>Titel</value></data>
   <data name="sort.year" xml:space="preserve"><value>Jahr</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>In Bibliothek verschieben</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Für Offline anheften</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Aus Bibliothek verschieben …</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Lokale Kopie entfernen</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>In die Cloud verschieben</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Anheften</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Lokal machen…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Loslösen</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# Datei} other {# Dateien}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>Speicher konnte nicht geladen werden</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Angeheftet</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>Speicher konnte nicht gelesen werden</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Verwaltet</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Nicht verwaltet</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Angeheftet</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Lokal</value></data>
   <data name="storage.title" xml:space="preserve"><value>Speicher</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>Sync-Fehler</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Erneut verbinden</value></data>
@@ -420,8 +420,8 @@
   <data name="gallery.previous" xml:space="preserve"><value>vorheriges Bild</value></data>
   <data name="gallery.next" xml:space="preserve"><value>nächstes Bild</value></data>
   <data name="storage.tab.all" xml:space="preserve"><value>Alle</value></data>
-  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Nicht verwaltet</value></data>
-  <data name="storage.tab.managed" xml:space="preserve"><value>Verwaltet</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Lokal</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="storage.tab.uploading" xml:space="preserve"><value>Wird hochgeladen</value></data>
   <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
   <data name="storage.column.artist" xml:space="preserve"><value>Interpret</value></data>
@@ -440,11 +440,11 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Einige Änderungen wurden noch nicht hochgeladen und gehen verloren.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Klicken Sie erneut auf die Schaltfläche, um zu bestätigen.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Bibliothek konnte nicht entfernt werden: {error}</value></data>
-  <data name="menu.pin" xml:space="preserve"><value>Für Offline anheften</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Anheften</value></data>
   <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# Album wiedergeben} other {# Alben wiedergeben}}</value></data>
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# Album als Nächstes abspielen} other {# Alben als Nächstes abspielen}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# Album zur Warteschlange hinzufügen} other {# Alben zur Warteschlange hinzufügen}}</value></data>
-  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# Album für Offline anheften} other {# Alben für Offline anheften}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# Album anheften} other {# Alben anheften}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>mit {name} öffnen</value></data>
   <data name="nowplaying.pause" xml:space="preserve"><value>Pause</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Stummschalten</value></data>

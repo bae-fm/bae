@@ -100,9 +100,9 @@ internal sealed class ImportMappingPane : UserControl
     private int _searchSource;
     private string _searchError = string.Empty;
 
-    // Storage: managed (remote) against keep-local, and the pin that rides with
-    // a remote import. Only offered when the library has a cloud home.
-    private bool _storageRemote = true;
+    // Storage: cloud against local, and the pin that rides with a cloud import.
+    // Only offered when the library has a cloud home.
+    private bool _storageCloud = true;
     private bool _storagePinned = true;
 
     private ImportMappingTable? _table;
@@ -874,20 +874,20 @@ internal sealed class ImportMappingPane : UserControl
         }
         if (hasCloudHome)
         {
-            var remote = new CheckBox { Content = Loc.Chrome("import.storage.managed"), IsChecked = _storageRemote };
+            var cloud = new CheckBox { Content = Loc.Chrome("import.storage.cloud"), IsChecked = _storageCloud };
             var pinned = new CheckBox
             {
-                Content = Loc.Chrome("import.storage.keep_local"),
+                Content = Loc.Chrome("import.storage.pinned"),
                 IsChecked = _storagePinned,
-                IsVisible = _storageRemote,
+                IsVisible = _storageCloud,
             };
-            remote.IsCheckedChanged += (_, _) =>
+            cloud.IsCheckedChanged += (_, _) =>
             {
-                _storageRemote = remote.IsChecked == true;
-                pinned.IsVisible = _storageRemote;
+                _storageCloud = cloud.IsChecked == true;
+                pinned.IsVisible = _storageCloud;
             };
             pinned.IsCheckedChanged += (_, _) => _storagePinned = pinned.IsChecked == true;
-            storage.Children.Add(remote);
+            storage.Children.Add(cloud);
             storage.Children.Add(pinned);
         }
 
@@ -954,11 +954,11 @@ internal sealed class ImportMappingPane : UserControl
             _albumTitle, _albumArtistText, _pressing, BaeBridgeMethods.BridgeMappingTracks(mapping));
         var identity = _claim?.Choice ?? new BridgeIdentityChoice.Unknown();
         var (settingsCurrent, settings) = _app.Settings.GetSettings();
-        var remote = settingsCurrent && settings.HasCloudHome && _storageRemote;
+        var cloud = settingsCurrent && settings.HasCloudHome && _storageCloud;
 
         var (current, error) = await _app.Import.CommitImport(
-            key, candidate.FolderPath, identity, remote ? "managed" : "unmanaged",
-            remote && _storagePinned, edit, _cover?.Selection);
+            key, candidate.FolderPath, identity, cloud ? "cloud" : "local",
+            cloud && _storagePinned, edit, _cover?.Selection);
         if (!current)
         {
             return;
