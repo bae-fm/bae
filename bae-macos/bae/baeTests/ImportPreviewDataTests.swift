@@ -45,7 +45,7 @@ struct ImportPreviewDataTests {
         let candidate = PreviewData.importTabCandidate
         let mapping = try #require(candidate.mapping)
         let candidateFileIDs = Set(candidate.files.files.map(\.file.name))
-        var representedFileIDs: Set<String> = []
+        var representedFileIDs = Set(mapping.images.map(\.fileId))
 
         for row in mapping.rows {
             switch row {
@@ -60,8 +60,6 @@ struct ImportPreviewDataTests {
                         representedFileIDs.insert(source.containerId)
                     }
                 }
-            case .images(let images):
-                representedFileIDs.formUnion(images.map(\.fileId))
             case .directory(let directory):
                 representedFileIDs.formUnion(
                     candidate.files.files.compactMap { file in

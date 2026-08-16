@@ -79,7 +79,7 @@ fn becomes(row: &MappingRow) -> Vec<&MappingBecomes> {
     match row {
         MappingRow::Unit(unit) => vec![&unit.becomes],
         MappingRow::Sheet { entries, .. } => entries.iter().map(|e| &e.becomes).collect(),
-        MappingRow::Images(_) | MappingRow::Directory(_) => Vec::new(),
+        MappingRow::Directory(_) => Vec::new(),
     }
 }
 
@@ -107,29 +107,29 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     let table = mapping_table(&scan(tmp.path()), None);
 
     assert!(table.reconciliation.is_none());
-    assert!(matches!(table.rows[0], MappingRow::Images(_)));
+    assert_eq!(table.images.len(), 1);
+    assert!(matches!(
+        becomes(&table.rows[0])[0],
+        MappingBecomes::AwaitingPick
+    ));
+    assert_eq!(file_row(&table.rows[0]).name, "01.flac");
     assert!(matches!(
         becomes(&table.rows[1])[0],
         MappingBecomes::AwaitingPick
     ));
-    assert_eq!(file_row(&table.rows[1]).name, "01.flac");
-    assert!(matches!(
-        becomes(&table.rows[2])[0],
-        MappingBecomes::AwaitingPick
-    ));
-    assert_eq!(file_row(&table.rows[2]).name, "02.flac");
-    assert!(matches!(becomes(&table.rows[3])[0], MappingBecomes::Kept));
-    assert_eq!(file_row(&table.rows[3]).name, "rip.log");
+    assert_eq!(file_row(&table.rows[1]).name, "02.flac");
+    assert!(matches!(becomes(&table.rows[2])[0], MappingBecomes::Kept));
+    assert_eq!(file_row(&table.rows[2]).name, "rip.log");
     // A row nothing has opened has no probed length to show.
-    assert_eq!(file_row(&table.rows[1]).probed_duration_ms, None);
-    assert_eq!(file_row(&table.rows[1]).role, MappingRole::Audio);
-    assert_eq!(file_row(&table.rows[3]).role, MappingRole::Document);
+    assert_eq!(file_row(&table.rows[0]).probed_duration_ms, None);
+    assert_eq!(file_row(&table.rows[0]).role, MappingRole::Audio);
+    assert_eq!(file_row(&table.rows[2]).role, MappingRole::Document);
 }
 
-/// The folder's images are one row, whatever else the table holds: a
-/// gallery, not a row per file, with the one that leads the release marked.
+/// The folder's images are one gallery beside the table rows, with the one that
+/// leads the release marked.
 #[test]
-fn the_folder_s_images_are_one_gallery_row() {
+fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
@@ -141,33 +141,35 @@ fn the_folder_s_images_are_one_gallery_row() {
 
     let table = mapping_table(&scan(tmp.path()), None);
 
-    assert!(
-        matches!(table.rows.first(), Some(MappingRow::Images(_))),
-        "the image gallery leads the pane even when audio sorts before it on disk"
-    );
-
-    let images: Vec<&MappingImage> = table
-        .rows
-        .iter()
-        .filter_map(|row| match row {
-            MappingRow::Images(images) => Some(images),
-            _ => None,
-        })
-        .flatten()
-        .collect();
-    assert_eq!(images.len(), 5);
+    assert_eq!(table.images.len(), 5);
     assert_eq!(
-        images.iter().filter(|image| image.is_cover).count(),
+        table
+            .images
+            .iter()
+            .map(|image| image.file_id.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "back.jpg",
+            "cover.jpg",
+            "scans/scan1.jpg",
+            "scans/scan2.jpg",
+            "scans/scan3.jpg",
+        ],
+        "the gallery preserves the scan's authoritative order"
+    );
+    assert_eq!(
+        table.images.iter().filter(|image| image.is_cover).count(),
         1,
         "exactly one image leads the release"
     );
     // A directory of images is not collapsed away from the gallery — its
     // files are in it, each with the path a thumbnail reads.
-    assert!(images
+    assert!(table
+        .images
         .iter()
         .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
-    // And no image is a row of its own.
-    assert_eq!(table.rows.len(), 2);
+    assert_eq!(table.rows.len(), 1);
+    assert_eq!(file_row(&table.rows[0]).name, "01.flac");
 }
 
 /// A bound sheet is one group row over its entries: the entries carry the
@@ -395,6 +397,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     write_flac(&tmp.path().join("02.flac"));
+    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
     let slots = slot_table(&source_tracks(2), &files);
@@ -416,6 +419,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
         .map(|track| track.title)
         .collect();
     assert_eq!(titles, vec!["Track Title 1", "Renamed"]);
+    assert_eq!(table.images[0].file_id, "cover.jpg");
     assert_eq!(
         table.reconciliation,
         Some(SlotReconciliation::Agrees { count: 2 }),
@@ -430,6 +434,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     write_flac(&tmp.path().join("02.flac"));
+    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
     let slots = slot_table(&source_tracks(3), &files);
@@ -453,6 +458,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
 
     assert_eq!(table.rows.len(), 2);
     assert_eq!(mapping_tracks(&table).len(), 2);
+    assert_eq!(table.images[0].file_id, "cover.jpg");
     assert_eq!(
         table.reconciliation,
         Some(SlotReconciliation::Agrees { count: 2 }),
@@ -471,6 +477,7 @@ fn without_file_takes_a_sheet_s_whole_group_with_its_container() {
     )
     .expect("write cue");
     write_flac(&tmp.path().join("bonus.flac"));
+    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
     let slots = slot_table(&source_tracks(3), &files);
@@ -494,6 +501,7 @@ fn without_file_takes_a_sheet_s_whole_group_with_its_container() {
 
     assert_eq!(table.rows.len(), 1, "only the bonus file is left");
     assert_eq!(mapping_tracks(&table).len(), 1);
+    assert_eq!(table.images[0].file_id, "cover.jpg");
     assert_eq!(
         table.reconciliation,
         Some(SlotReconciliation::MoreFiles {

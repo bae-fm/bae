@@ -695,12 +695,6 @@ impl BridgeMappingRow {
                     .map(BridgeMappingUnit::from_core)
                     .collect(),
             },
-            MappingRow::Images(images) => Self::Images {
-                images: images
-                    .into_iter()
-                    .map(BridgeMappingImage::from_core)
-                    .collect(),
-            },
             MappingRow::Directory(directory) => Self::Directory {
                 directory: BridgeCollapsedDirectory::from_core(directory),
             },
@@ -718,12 +712,6 @@ impl BridgeMappingRow {
                     .map(BridgeMappingUnit::into_core)
                     .collect(),
             },
-            Self::Images { images } => MappingRow::Images(
-                images
-                    .into_iter()
-                    .map(BridgeMappingImage::into_core)
-                    .collect(),
-            ),
             Self::Directory { directory } => MappingRow::Directory(directory.into_core()),
         }
     }
@@ -733,10 +721,15 @@ impl BridgeMappingRow {
 impl BridgeMappingTable {
     pub(crate) fn from_core(table: bae_core::import::MappingTable) -> Self {
         let bae_core::import::MappingTable {
+            images,
             rows,
             reconciliation,
         } = table;
         BridgeMappingTable {
+            images: images
+                .into_iter()
+                .map(BridgeMappingImage::from_core)
+                .collect(),
             rows: rows.into_iter().map(BridgeMappingRow::from_core).collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::from_core),
         }
@@ -744,10 +737,15 @@ impl BridgeMappingTable {
 
     pub(crate) fn into_core(self) -> bae_core::import::MappingTable {
         let BridgeMappingTable {
+            images,
             rows,
             reconciliation,
         } = self;
         bae_core::import::MappingTable {
+            images: images
+                .into_iter()
+                .map(BridgeMappingImage::into_core)
+                .collect(),
             rows: rows.into_iter().map(BridgeMappingRow::into_core).collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::into_core),
         }

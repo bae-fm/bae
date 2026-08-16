@@ -171,6 +171,7 @@ public sealed class ImportSectionViewTests
             CandidateMapping = _ => (
                 true,
                 ((BridgeMappingTable?)new BridgeMappingTable(
+                    Array.Empty<BridgeMappingImage>(),
                     Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null)),
             CandidateDecidedIdentity = (key, _) =>
             {

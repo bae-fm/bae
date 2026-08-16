@@ -260,8 +260,7 @@ pub enum BridgeSheetDisc {
 /// bae-core's `MappingRole`.
 ///
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
-/// it heads a group of rows — and an image is not one either, because the
-/// images are one gallery row rather than a row each.
+/// it heads a group of rows — and images live in the table's gallery instead.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMappingRole {
@@ -437,8 +436,6 @@ pub enum BridgeMappingRow {
         sheet: BridgeSheetGroup,
         entries: Vec<BridgeMappingUnit>,
     },
-    /// Every image the folder holds, shown as one gallery.
-    Images { images: Vec<BridgeMappingImage> },
     /// A directory whose files all do the same job, shown as one row.
     Directory { directory: BridgeCollapsedDirectory },
 }
@@ -452,6 +449,8 @@ pub enum BridgeMappingRow {
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {
+    /// Every image the folder holds, in the scan's authoritative order.
+    pub images: Vec<BridgeMappingImage>,
     pub rows: Vec<BridgeMappingRow>,
     /// The tally over the rows that become tracks. `None` when there is nothing
     /// to reconcile the folder against — no release is picked, or the tracklist

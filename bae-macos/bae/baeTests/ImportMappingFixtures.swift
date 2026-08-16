@@ -84,6 +84,7 @@ enum MappingFixtures {
     )
 
     static let thirteenFileTable = BridgeMappingTable(
+        images: [],
         rows: (1...12).map(pairedRow) + [unnamedRow],
         reconciliation: .moreFiles(files: 13, tracks: 12)
     )
@@ -170,6 +171,7 @@ enum MappingFixtures {
 
     /// The sheet describes nothing, so it carves nothing.
     static let unboundSheetTable = BridgeMappingTable(
+        images: [],
         rows: looseContainerRows(
             sheet: sheetGroup(container: nil, assignment: .disc(number: 1))
         ),
@@ -179,6 +181,7 @@ enum MappingFixtures {
     /// An ignored sheet speaks for nothing either, so its container is loose
     /// audio again.
     static let ignoredSheetTable = BridgeMappingTable(
+        images: [],
         rows: looseContainerRows(
             sheet: sheetGroup(container: container, assignment: .ignored)
         ),
@@ -221,6 +224,7 @@ enum MappingFixtures {
         assignment: BridgeSheetDisc = .disc(number: 1)
     ) -> BridgeMappingTable {
         BridgeMappingTable(
+            images: [],
             rows: [
                 .sheet(
                     sheet: sheetGroup(
@@ -237,6 +241,7 @@ enum MappingFixtures {
     /// What the folder's own tags say it is: two tracks, no release behind
     /// them, so the table carries no tally.
     static let unknownTable = BridgeMappingTable(
+        images: [],
         rows: (1...2)
             .map { index in
                 BridgeMappingRow.unit(
@@ -377,10 +382,16 @@ enum MappingFixtures {
         )
         candidate.editValues = albumEdit
         candidate.exactPressing = exactPressing
-        candidate.claim = prefetch(
-            mapping: mapping ?? BridgeMappingTable(rows: [], reconciliation: nil)
-        )
-        .claim
+        candidate.claim =
+            prefetch(
+                mapping: mapping
+                    ?? BridgeMappingTable(
+                        images: [],
+                        rows: [],
+                        reconciliation: nil
+                    )
+            )
+            .claim
         candidate.mapping = mapping
         store.folderCandidates[candidate.key] = candidate
         return store
@@ -390,7 +401,7 @@ enum MappingFixtures {
     @MainActor
     static func mapping(of store: ImportStore) -> BridgeMappingTable {
         store.folderCandidates[candidateKey]?.mapping
-            ?? BridgeMappingTable(rows: [], reconciliation: nil)
+            ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
     }
 
     /// Whether bae-core can shape what the pane would commit into a savable

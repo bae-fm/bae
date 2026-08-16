@@ -68,7 +68,7 @@
             )
         }
 
-        /// The folder's images, as the gallery row shows them.
+        /// The folder's images, as the gallery shows them.
         static let mappingImages: [BridgeMappingImage] = [
             mappingImage(coverImage, isCover: true),
             mappingImage(backImage, isCover: false),
@@ -92,13 +92,13 @@
         /// tracks, every row paired, with the folder's images and documents
         /// carried alongside them.
         static let mappingTable = BridgeMappingTable(
+            images: mappingImages,
             rows: (1...9).map(mappingTrackRow) + [
-                .images(images: mappingImages),
                 carriedRow(
                     infoLog,
                     role: .document,
                     becomes: .kept
-                ),
+                )
             ],
             reconciliation: .agrees(count: 9)
         )
@@ -168,6 +168,7 @@
         /// One file paired to the release's first track, followed by every
         /// release track the folder has nothing for.
         static let moreTracksMappingTable = BridgeMappingTable(
+            images: [],
             rows: moreTracksEditValues.tracks.enumerated()
                 .map {
                     index,
@@ -216,6 +217,7 @@
         /// The same folder before a release is picked: what each file is, with
         /// what its audio becomes left open.
         static let awaitingPickTable = BridgeMappingTable(
+            images: mappingImages,
             rows: (1...9)
                 .map { index in
                     BridgeMappingRow.unit(
@@ -226,12 +228,11 @@
                     )
                 }
                 + [
-                    .images(images: mappingImages),
                     carriedRow(
                         infoLog,
                         role: .document,
                         becomes: .kept
-                    ),
+                    )
                 ],
             reconciliation: nil
         )
@@ -279,30 +280,30 @@
         /// One CUE+FLAC container the sheet carves nine entries out of, with
         /// the folder's images and a collapsed logs directory alongside it.
         static let sheetMappingTable = BridgeMappingTable(
+            images: mappingImages,
             rows: [
                 .sheet(
                     sheet: previewSheetGroup,
                     entries: (0..<9).map(sheetEntryUnit)
                 ),
-                .images(images: mappingImages),
                 .directory(directory: previewLogsDirectory),
             ],
             reconciliation: .agrees(count: 9)
         )
 
-        /// Every row kind the table draws, in one folder: the sheet heading the
-        /// nine entries it carves, the images as one gallery, the two documents
+        /// Every row kind the table draws, with the folder's gallery beside it:
+        /// the sheet heading the nine entries it carves, the two documents
         /// carried with the release, the diagnostic logs collapsed to the one
         /// row their shared role makes of them, and one non-audio video. What
         /// the Import-tab preview reads, so a change to any row kind shows up
         /// in the canvas without hunting for the fixture that has it.
         static let everyRowKindMappingTable = BridgeMappingTable(
+            images: mappingImages,
             rows: [
                 .sheet(
                     sheet: previewSheetGroup,
                     entries: (0..<9).map(sheetEntryUnit)
                 ),
-                .images(images: mappingImages),
                 carriedRow(infoLog, role: .document, becomes: .kept),
                 .directory(directory: previewLogsDirectory),
                 carriedRow(notesDocument, role: .document, becomes: .kept),
@@ -318,6 +319,7 @@
         /// What the folder's own tags say it is: nine tracks, and no release to
         /// tally them against.
         static let unknownMappingTable = BridgeMappingTable(
+            images: [],
             rows: (1...9)
                 .map { index in
                     BridgeMappingRow.unit(

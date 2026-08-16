@@ -66,7 +66,7 @@ extension BridgeMappingRow {
         switch self {
         case .unit(let unit): [unit]
         case .sheet(_, let entries): entries
-        case .images, .directory: []
+        case .directory: []
         }
     }
 }

@@ -474,13 +474,20 @@ internal sealed class ImportMappingPane : UserControl
         _table = null;
         if (_mapping is { } mapping)
         {
+            var actions = MappingActions();
+            if (mapping.Images.Length > 0)
+            {
+                sections.Children.Add(new ImportMappingGallery(
+                    mapping.Images,
+                    (image, path) => _app.Images.Bind(
+                        image, new ImageContent.LocalFile(path), ImageWidths.PickerTile),
+                    actions.OpenImages).Build());
+            }
             _table = new ImportMappingTable(
                 mapping,
                 sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
                 () => _import.PreviewingPath,
-                (image, path) => _app.Images.Bind(
-                    image, new ImageContent.LocalFile(path), ImageWidths.PickerTile),
-                MappingActions());
+                actions);
             var table = _table.Build();
             sections.Children.Add(_table.Title());
             sections.Children.Add(table);

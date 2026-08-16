@@ -44,7 +44,8 @@ struct ImportMappingPane: View {
     /// The folder's mapping, or an empty table while the first read is still in
     /// flight — the pane's own shape does not change for it.
     private var mapping: BridgeMappingTable {
-        candidate.mapping ?? BridgeMappingTable(rows: [], reconciliation: nil)
+        candidate.mapping
+            ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
     }
 
     var body: some View {
@@ -53,6 +54,12 @@ struct ImportMappingPane: View {
                 identitySection
                 conflictResolution
                 banners
+                if !mapping.images.isEmpty {
+                    ImportMappingGallery(
+                        images: mapping.images,
+                        actions: mappingActions
+                    )
+                }
                 ImportMappingTable(
                     table: mapping,
                     bindingOptions: bindingOptions,

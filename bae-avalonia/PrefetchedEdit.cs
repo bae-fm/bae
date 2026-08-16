@@ -42,7 +42,7 @@ internal sealed class PrefetchedEdit
     /// commit's tracklist is read back out of, so <see cref="Edit"/>'s own track
     /// rows are not the ones that get written.
     /// </summary>
-    internal BridgeMappingTable Mapping { get; set; } = new([], Reconciliation: null);
+    internal BridgeMappingTable Mapping { get; set; } = new([], [], Reconciliation: null);
 }
 
 /// <summary>

@@ -375,7 +375,7 @@ pub enum FileBecomes {
 
 /// The job a collapsed directory's files share. Audio, track sheets and images
 /// are deliberately absent: a folder of tracks is exactly what the roles table
-/// exists to show one row at a time, and the images are one gallery however
+/// exists to show one row at a time, and images live in one gallery however
 /// many directories they sit in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileRowKind {
@@ -384,13 +384,13 @@ pub enum FileRowKind {
 }
 
 /// A directory whose files all do the same job, which the roles table shows as
-/// one row — `covers/ — 14 images` — instead of one row each. Nothing in it
+/// one row — `logs/ — 14 documents` — instead of one row each. Nothing in it
 /// needs a decision, so listing every file buys nothing and costs the table its
 /// readability.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CollapsedDirectory {
     /// The prefix its files carry in [`ScannedFile::dir_prefix`], e.g.
-    /// `covers/` — which is also how a renderer tells which files it stands
+    /// `logs/` — which is also how a renderer tells which files it stands
     /// for.
     pub dir_prefix: String,
     pub kind: FileRowKind,

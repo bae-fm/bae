@@ -7,8 +7,8 @@ import SwiftUI
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
 /// where the pairing is visible. A track sheet heads the group of entries it
-/// carves; the folder's images are one gallery row; a collapsed directory is
-/// one row, because the roles of fourteen rip logs are one fact.
+/// carves; a collapsed directory is one row, because the roles of fourteen rip
+/// logs are one fact.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// What each track sheet may be bound to, by the sheet's file id. Core
@@ -78,13 +78,6 @@ struct ImportMappingTable: View {
             )
             .rowChrome()
             ForEach(entries, id: \.rowId, content: unitRow)
-        case .images(let images):
-            ImportMappingImagesRow(
-                images: images,
-                columns: columns,
-                actions: actions
-            )
-            .rowChrome()
         case .directory(let directory):
             ImportMappingDirectoryRow(
                 directory: directory,
@@ -156,7 +149,7 @@ struct ImportMappingTable: View {
 extension View {
     /// A cell in the source column: exactly the column's width, and clipped to
     /// it. A file name truncates on its own; what a cell cannot truncate — a
-    /// control, a size, a gallery tile — stops at the column's edge rather than
+    /// control or a size — stops at the column's edge rather than
     /// running into the role beside it.
     func sourceColumn(_ columns: ImportMappingColumns) -> some View {
         frame(width: columns.source, alignment: .leading)
@@ -347,7 +340,6 @@ extension BridgeMappingRow {
         switch self {
         case .unit(let unit): unit.rowId
         case .sheet(let sheet, _): "sheet:\(sheet.sheetId)"
-        case .images: "images"
         case .directory(let directory): "dir:\(directory.dirPrefix)"
         }
     }

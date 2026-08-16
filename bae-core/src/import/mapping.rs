@@ -23,6 +23,8 @@ use tracing::warn;
 /// committing makes of it.
 #[derive(Debug, Clone)]
 pub struct MappingTable {
+    /// Every image the folder holds, in the scan's authoritative order.
+    pub images: Vec<MappingImage>,
     pub rows: Vec<MappingRow>,
     /// The tally over the rows that become tracks. `None` when there is nothing
     /// to reconcile the folder against — no release is picked, or the tracklist
@@ -35,6 +37,7 @@ impl MappingTable {
     /// for a release already in the library, whose files are bound already.
     pub fn empty() -> Self {
         Self {
+            images: Vec::new(),
             rows: Vec::new(),
             reconciliation: None,
         }
@@ -51,23 +54,19 @@ pub enum MappingRow {
         sheet: SheetGroup,
         entries: Vec<MappingUnit>,
     },
-    /// Every image the folder holds, in one row: a surface shows them as a
-    /// gallery, because a picture is read by looking at it and a filename says
-    /// nothing about what is in it.
-    Images(Vec<MappingImage>),
     /// A directory whose files all do the same job, shown as one row.
     Directory(CollapsedDirectory),
 }
 
 impl MappingRow {
-    /// The units this row carries: itself, or the entries a sheet carves. The
-    /// images and a collapsed directory carry none — they stand for files that
-    /// are not the release's tracks.
+    /// The units this row carries: itself, or the entries a sheet carves. A
+    /// collapsed directory carries none — it stands for files that are not the
+    /// release's tracks.
     pub fn units(&self) -> &[MappingUnit] {
         match self {
             Self::Unit(unit) => std::slice::from_ref(unit),
             Self::Sheet { entries, .. } => entries.as_slice(),
-            Self::Images(_) | Self::Directory(_) => &[],
+            Self::Directory(_) => &[],
         }
     }
 
@@ -75,7 +74,7 @@ impl MappingRow {
         match self {
             Self::Unit(unit) => std::slice::from_mut(unit),
             Self::Sheet { entries, .. } => entries.as_mut_slice(),
-            Self::Images(_) | Self::Directory(_) => &mut [],
+            Self::Directory(_) => &mut [],
         }
     }
 }
@@ -116,8 +115,7 @@ pub enum MappingSource {
 /// What one of the folder's files is, as a row of the mapping table.
 ///
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
-/// it heads a group of rows — and an image is not one either, because the
-/// images are one gallery row rather than a row each.
+/// it heads a group of rows — and images live in the table's gallery instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MappingRole {
     /// Playable audio.
@@ -310,8 +308,8 @@ pub fn mapping_table(
     };
     let mut rows = Vec::with_capacity(files.files.len());
     let mut opened: BTreeSet<&str> = BTreeSet::new();
-    // The folder's images become one gallery that leads the pane regardless of
-    // where their names sort among the source files.
+    // The folder's images become one gallery beside the rows while retaining
+    // the scan's order.
     let mut images: Vec<MappingImage> = Vec::new();
 
     for entry in &files.files {
@@ -378,10 +376,6 @@ pub fn mapping_table(
         }
     }
 
-    if !images.is_empty() {
-        rows.insert(0, MappingRow::Images(images));
-    }
-
     // The tracks the source names and the folder has nothing for. They sit past
     // every unit in the slot table, so they close the table.
     if let Some(picked) = picked {
@@ -397,6 +391,7 @@ pub fn mapping_table(
         .filter(|picked| picked.source == TracklistSource::Release)
         .map(|_| tally(&rows));
     MappingTable {
+        images,
         rows,
         reconciliation,
     }
@@ -540,7 +535,7 @@ fn carried(entry: &CandidateFile, role: MappingRole) -> MappingRow {
     })
 }
 
-/// One of the folder's images, as the gallery row carries it.
+/// One of the folder's images, as the gallery carries it.
 fn mapping_image(entry: &CandidateFile, is_cover: bool) -> MappingImage {
     MappingImage {
         file_id: entry.file.relative_path.clone(),
@@ -688,7 +683,7 @@ pub fn mapping_without_file(table: MappingTable, file_id: &str) -> MappingTable 
     let mut table = table;
     table.rows.retain(|row| match row {
         MappingRow::Sheet { sheet, .. } => sheet.bound.container_id() != Some(file_id),
-        MappingRow::Unit(_) | MappingRow::Images(_) | MappingRow::Directory(_) => true,
+        MappingRow::Unit(_) | MappingRow::Directory(_) => true,
     });
     remove(table, &|unit| match &unit.source {
         MappingSource::File(file) => file.file_id == file_id,
@@ -707,7 +702,7 @@ fn remove(mut table: MappingTable, should_remove: &dyn Fn(&MappingUnit) -> bool)
             entries.retain(|entry| !should_remove(entry));
             true
         }
-        MappingRow::Images(_) | MappingRow::Directory(_) => true,
+        MappingRow::Directory(_) => true,
     });
     if table.reconciliation.is_some() {
         table.reconciliation = Some(tally(&table.rows));

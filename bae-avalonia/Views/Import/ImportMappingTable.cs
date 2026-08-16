@@ -19,15 +19,14 @@ namespace Bae.Desktop;
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
 /// where the pairing is visible. A track sheet heads the group of entries it
-/// carves; the folder's images are one gallery row; a collapsed directory is one
-/// row, because the roles of fourteen rip logs are one fact.
+/// carves; a collapsed directory is one row, because the roles of fourteen rip
+/// logs are one fact.
 /// </summary>
 internal sealed class ImportMappingTable
 {
     private readonly BridgeMappingTable _table;
     private readonly Func<string, Task<List<ImportSheetBindingOption>>> _bindingOptions;
     private readonly Func<string?> _previewingPath;
-    private readonly Action<Image, string> _loadImage;
     private readonly ImportMappingActions _actions;
     private readonly IReadOnlyList<ImportAudioChoice> _audioChoices;
 
@@ -44,13 +43,11 @@ internal sealed class ImportMappingTable
         BridgeMappingTable table,
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
         Func<string?> previewingPath,
-        Action<Image, string> loadImage,
         ImportMappingActions actions)
     {
         _table = table;
         _bindingOptions = bindingOptions;
         _previewingPath = previewingPath;
-        _loadImage = loadImage;
         _actions = actions;
         _audioChoices = table.AudioChoices();
     }
@@ -74,9 +71,6 @@ internal sealed class ImportMappingTable
                     {
                         column.Children.Add(UnitRow(entry));
                     }
-                    break;
-                case BridgeMappingRow.Images images:
-                    column.Children.Add(ImagesRow(images.ImagesValue));
                     break;
                 case BridgeMappingRow.Directory directory:
                     column.Children.Add(DirectoryRow(directory.DirectoryValue));
@@ -705,34 +699,6 @@ internal sealed class ImportMappingTable
         combo.IsVisible = options.Count > 0;
         combo.SelectedItem = selected;
         doneFilling();
-    }
-
-    // ── The folder's images, as one gallery ──────────────────────────────────
-
-    // A picture is read by looking at it — a row per filename says nothing about
-    // what is in the file — so the images are shown rather than listed, and what
-    // becomes of them is stated once for the group. Clicking one opens the
-    // lightbox at it.
-    private Control ImagesRow(IReadOnlyList<BridgeMappingImage> images)
-    {
-        var grid = Grid();
-        var gallery = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var image in images)
-        {
-            var thumbnail = new Image();
-            var tile = DialogUi.CoverTile(
-                thumbnail,
-                image.Name,
-                image.IsCover ? Loc.Core("ui.import.becomes.cover") : string.Empty);
-            var path = image.LocalPath;
-            tile.Click += (_, _) => _actions.OpenImages(images, path);
-            gallery.Children.Add(tile);
-            _loadImage(thumbnail, path);
-        }
-        Avalonia.Controls.Grid.SetColumn(gallery, 0);
-        grid.Children.Add(gallery);
-        AddBecomesText(grid, Loc.Core("ui.import.becomes.kept"));
-        return Host(grid, audioPath: null);
     }
 
     // ── A directory whose files all do the same job ──────────────────────────
