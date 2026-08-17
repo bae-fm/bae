@@ -35,7 +35,7 @@ extension ImportView {
             previewingPath: importStore.previewState.active?.path,
             libraryStatus: libraryStatus(for: candidate),
             hasCoverOptions: hasCoverOptions(candidate),
-            coverContent: candidate.coverFace?.thumbnailContent,
+            coverContent: candidate.selectedCover?.thumbnailContent,
             editor: editorBinding(for: candidate),
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
@@ -157,10 +157,10 @@ extension ImportView {
             CoverPickerView(
                 remoteCoverArts: candidate.releaseDetailBridge?.coverArt ?? [],
                 localArtwork: candidate.files.images,
-                selectedCover: candidate.coverFace,
+                selectedCover: candidate.selectedCover,
                 onSelect: { selection in
                     importStore.mutateCandidate(forKey: key) {
-                        $0.coverPick = selection
+                        $0.selectedCover = selection
                     }
                     uiStore.dismissModal()
                 },

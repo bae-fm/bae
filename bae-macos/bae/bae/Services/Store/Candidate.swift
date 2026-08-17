@@ -166,17 +166,9 @@ struct Candidate: Equatable, Identifiable {
     /// before the pick or the tag read it starts has come back.
     var identity: ImportIdentity = .release
     var error: String?
-    /// The cover the *user* picked, `nil` while they have picked none. Only a
-    /// pick crosses to the commit: with none, bae-core lands the release's own
-    /// first cover option — the one ``coverFace`` is already showing — so an
-    /// untouched pane must not send that option back as if it had been chosen.
-    var coverPick: BridgeCoverChoice?
-
-    /// The cover the pane shows: the user's pick, else the release's own first
-    /// option, which is what an untouched commit lands.
-    var coverFace: BridgeCoverChoice? {
-        coverPick ?? releaseDetailBridge?.defaultCover
-    }
+    /// The cover shown as selected and sent on commit. Settling a release
+    /// selects its default cover; choosing another replaces it.
+    var selectedCover: BridgeCoverChoice?
     var search: CandidateSearchState = .init()
     /// Extracted signals (disc ID, barcodes, classified text), `nil` until the
     /// first extraction snapshot. The search UI surfaces these and feeds the
@@ -240,7 +232,7 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.identity = existing.identity
         copy.error = existing.error
-        copy.coverPick = existing.coverPick
+        copy.selectedCover = existing.selectedCover
         copy.search = existing.search
         copy.identityChoice = existing.identityChoice
         copy.editValues = existing.editValues
@@ -287,6 +279,13 @@ struct Candidate: Equatable, Identifiable {
             pressing: editValues.pressing,
             tracks: mapping.commitTracks
         )
+    }
+
+    /// Replace the displayed release and select the cover that release names
+    /// as its default. Clearing the release clears its cover selection too.
+    mutating func setReleaseDetail(_ detail: BridgeReleaseDetail?) {
+        releaseDetailBridge = detail
+        selectedCover = detail?.defaultCover
     }
 
     /// The watched folder this candidate was scanned from — the candidate-list

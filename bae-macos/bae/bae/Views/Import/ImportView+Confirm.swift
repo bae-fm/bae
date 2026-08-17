@@ -43,12 +43,6 @@ extension ImportView {
         // Start each attempt from a clean error state so a prior failed
         // commit's banner doesn't linger over a now-succeeding retry.
         importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
-        // Only a pick the user made crosses. With none, bae-core lands the
-        // picked release's own first cover option rather than importing bare —
-        // sending the pane's shown default back would make it indistinguishable
-        // from a choice.
-        let coverSelection = candidate.coverPick?.selection
-
         let storageMode = configStore.config.importStorageMode(
             cloud: storageCloud
         )
@@ -72,8 +66,7 @@ extension ImportView {
             ) {
                 try await importer.startImport(
                     ImportCommitRequest(
-                        candidateKey: candidate.key,
-                        selectedCover: coverSelection,
+                        candidate: candidate,
                         storageMode: storageMode,
                         pin: storagePinned,
                         identityChoice: identityChoice,

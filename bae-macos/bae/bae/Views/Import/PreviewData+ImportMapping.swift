@@ -379,7 +379,7 @@
                 source: releaseDetailBridge.source,
                 claim: claimBridge.level
             )
-            candidate.releaseDetailBridge = releaseDetailBridge
+            candidate.setReleaseDetail(releaseDetailBridge)
             candidate.editValues = confirmEditValues
             candidate.mapping = mappingTable
             return candidate
@@ -448,7 +448,7 @@
                 source: moreTracksReleaseDetail.source,
                 claim: .exact
             )
-            candidate.releaseDetailBridge = moreTracksReleaseDetail
+            candidate.setReleaseDetail(moreTracksReleaseDetail)
             candidate.editValues = moreTracksEditValues
             candidate.mapping = moreTracksMappingTable
             return candidate
@@ -472,7 +472,7 @@
             candidate.identity = .unknown
             candidate.identityChoice = .unknown
             candidate.claim = nil
-            candidate.releaseDetailBridge = nil
+            candidate.setReleaseDetail(nil)
             candidate.mapping = unknownMappingTable
             return candidate
         }()

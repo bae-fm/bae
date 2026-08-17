@@ -208,6 +208,60 @@ struct ImportSearchFlowPickedResumeTests {
 }
 
 @MainActor
+@Suite("ImportSearchFlow cover selection")
+struct ImportSearchFlowCoverSelectionTests {
+    @Test("a release decision commits the cover shown by default")
+    func releaseDecisionSelectsItsDefaultCover() async throws {
+        let store = ImportStore()
+        let candidate = PreviewData.folderCandidates[0]
+        store.folderCandidates[candidate.key] = candidate
+
+        let detail = PreviewData.releaseDetailBridge
+        let fixture = MappingFixtures.prefetch(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let answer = BridgeDecidedIdentity.release(
+            source: detail.source,
+            releaseId: detail.releaseId,
+            prefetch: BridgeReleasePrefetch(
+                detail: detail,
+                seed: fixture.seed,
+                claim: fixture.claim,
+                exactPressing: fixture.exactPressing,
+                mapping: fixture.mapping
+            )
+        )
+        let importer = Importer(candidateDecidedIdentity: { _ in answer })
+        let pick = BridgeIdentityPick.release(
+            source: detail.source,
+            releaseId: detail.releaseId,
+            claim: .exact
+        )
+
+        await ImportSearchFlow.refreshDecidedIdentity(
+            importer: importer,
+            importStore: store,
+            key: candidate.key,
+            pick: pick
+        )
+        .value
+
+        let seeded = try #require(store.candidate(forKey: candidate.key))
+        let expectedCover = try #require(detail.defaultCover)
+        #expect(seeded.selectedCover == expectedCover)
+
+        let request = ImportCommitRequest(
+            candidate: seeded,
+            storageMode: .local,
+            pin: false,
+            identityChoice: fixture.claim.choice,
+            userEdit: nil
+        )
+        #expect(request.selectedCover == expectedCover.selection)
+    }
+}
+
+@MainActor
 @Suite("ImportSearchFlow live library status")
 struct ImportSearchFlowLibraryStatusTests {
     @Test(

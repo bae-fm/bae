@@ -69,9 +69,8 @@ extension ImportSearchFlow {
                 // detail and the claim so the pane falls back to its
                 // detail-less rendering. `pick` stays: it is what switching
                 // back re-picks.
-                candidate.releaseDetailBridge = nil
+                candidate.setReleaseDetail(nil)
                 candidate.claim = nil
-                candidate.coverPick = nil
             }
         }
 
@@ -146,15 +145,11 @@ extension ImportSearchFlow {
                     claim: prefetch.claim.level
                 )
                 // The display detail: cover options, library status.
-                candidate.releaseDetailBridge = prefetch.detail
+                candidate.setReleaseDetail(prefetch.detail)
                 // What the decision claims, as bae-core reads it back off the
                 // stored pick. The header states it; the commit carries it.
                 candidate.claim = prefetch.claim
                 candidate.identityChoice = prefetch.claim.choice
-                // No pick yet: the pane shows the release's own first cover
-                // option through `coverFace`, and a commit with nothing picked
-                // lands that same option from bae-core.
-                candidate.coverPick = nil
                 // The seed arrives from bae-core projected the way the
                 // commit worker maps the release, and already masked for the
                 // claim (an album-level claim blanks the pressing block).
@@ -168,9 +163,8 @@ extension ImportSearchFlow {
             case .unknown(let seed, let mapping):
                 candidate.identity = .unknown
                 candidate.identityChoice = .unknown
-                candidate.releaseDetailBridge = nil
+                candidate.setReleaseDetail(nil)
                 candidate.claim = nil
-                candidate.coverPick = nil
                 candidate.editValues = albumEdit(from: seed)
                 candidate.exactPressing = nil
                 candidate.mapping = mapping

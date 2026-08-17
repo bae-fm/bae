@@ -8,9 +8,10 @@ extension ImportView {
     /// Each is one existing single import, dispatched independently; there is
     /// no batch primitive in core. A bulk import never opens the mapping
     /// pane: it commits straight onto the row's matched release with no
-    /// cover pick and no metadata edit, which is exactly what the Ready rule
-    /// already guarantees is safe (one confident match, not in the library,
-    /// counts and lengths agree).
+    /// metadata edit, which is exactly what the Ready rule already guarantees
+    /// is safe (one confident match, not in the library, counts and lengths
+    /// agree). If the candidate has a selected cover, the same request shape as
+    /// an individual commit carries it.
     func importReadyCandidates(_ keys: [String]) {
         guard !keys.isEmpty else {
             return
@@ -24,6 +25,7 @@ extension ImportView {
             var failureCount = 0
             for key in keys {
                 guard
+                    let candidate = importStore.candidate(forKey: key),
                     let row = importStore.triageRow(forKey: key),
                     let claim = row.claim
                 else {
@@ -36,8 +38,7 @@ extension ImportView {
                 do {
                     try await importer.startImport(
                         ImportCommitRequest(
-                            candidateKey: key,
-                            selectedCover: nil,
+                            candidate: candidate,
                             storageMode: storageMode,
                             pin: storagePinned,
                             // The row's stored decision, in the shape commit

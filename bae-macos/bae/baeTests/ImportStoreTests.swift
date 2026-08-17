@@ -818,7 +818,7 @@ struct ImportStoreSidebarCoverTests {
             try #require(localArtwork.coverChoice),
         ]
         for choice in choices {
-            candidate.coverPick = choice
+            candidate.selectedCover = choice
             store.folderCandidates[key] = candidate
 
             #expect(
@@ -838,7 +838,7 @@ struct ImportStoreSidebarCoverTests {
             watchedFolderPath: "/w",
             name: "Subject"
         )
-        candidate.releaseDetailBridge = PreviewData.releaseDetailBridge
+        candidate.setReleaseDetail(PreviewData.releaseDetailBridge)
         store.folderCandidates[key] = candidate
 
         let row = readyRow(

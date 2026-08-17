@@ -8,6 +8,21 @@ struct ImportCommitRequest: Sendable {
     let pin: Bool
     let identityChoice: BridgeIdentityChoice
     let userEdit: BridgeReleaseUserEdit?
+
+    init(
+        candidate: Candidate,
+        storageMode: BridgeStorageMode,
+        pin: Bool,
+        identityChoice: BridgeIdentityChoice,
+        userEdit: BridgeReleaseUserEdit?
+    ) {
+        candidateKey = candidate.key
+        selectedCover = candidate.selectedCover?.selection
+        self.storageMode = storageMode
+        self.pin = pin
+        self.identityChoice = identityChoice
+        self.userEdit = userEdit
+    }
 }
 
 private final class ReleaseLibraryStatusSink: ReleaseLibraryStatusCallback,

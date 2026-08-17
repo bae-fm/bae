@@ -18,7 +18,7 @@ private let logger = Logger.bae("AppService")
 final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Import-flow session state — folder candidates and the preview audio
     /// state. Mixed-writer: core drives scan/identify and preview state through
-    /// retained values; views drive user-set fields (mode, coverPick).
+    /// retained values; views drive user-set fields (mode, selectedCover).
     private let importStore: ImportStore
 
     /// Navigation and selection state — which album is expanded, which release

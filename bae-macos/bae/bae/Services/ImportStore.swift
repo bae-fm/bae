@@ -55,7 +55,7 @@ struct ReleaseQueueSection: Identifiable {
 /// Session state for the import flow. Mixed-writer: core drives scan/identify,
 /// the triage queue, and preview state through value subscriptions, while views
 /// drive user-set fields
-/// (mode, coverPick)
+/// (mode, selectedCover)
 /// via `mutateCandidate(forKey:_:)`. The single-writer rule applies per field,
 /// not per store.
 ///
@@ -345,7 +345,7 @@ extension ImportStore {
     /// The candidate's selected/default cover, or the queue's match thumbnail
     /// before identification has supplied one.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
-        candidate(forKey: row.candidateKey)?.coverFace?.thumbnailContent
+        candidate(forKey: row.candidateKey)?.selectedCover?.thumbnailContent
             ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
     }
 
