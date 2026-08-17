@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">स्कैन करें</string>
     <string name="members_pairing_confirm">मंजूर करने से पहले जांचें कि यह नए उपकरण पर दिखाए गए फिंगरप्रिंट से मेल खाता है।</string>
     <string name="members_pairing_approve">मंजूर करें</string>
-    <string name="members_pairing_approving">मंजूर किया जा रहा है…</string>
     <string name="members_pairing_failed">यह उपकरण मंजूर नहीं किया जा सका।</string>
     <string name="members_pairing_waiting">उपकरण की प्रतीक्षा हो रही है…</string>
     <string name="onboarding_tagline">शुरू करने के लिए अपने किसी दूसरे उपकरण से लाइब्रेरी से जुड़ें</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">यह पेयरिंग कोड मान्य नहीं है।</string>
     <string name="onboarding_join_action">जुड़ें</string>
     <string name="onboarding_joining_title">आपकी लाइब्रेरी से जुड़ा जा रहा है</string>
-    <string name="onboarding_joining_body">bae इस उपकरण को आपकी लाइब्रेरी में जोड़ रहा है।</string>
     <string name="qr_scanner_instructions">दूसरे उपकरण पर bae → सेटिंग्स → पुनर्प्राप्ति कोड से इस लाइब्रेरी का पुनर्प्राप्ति QR दिखाएं</string>
     <string name="unlock_title">लाइब्रेरी लॉक है</string>
     <string name="unlock_explanation">इस लाइब्रेरी की एन्क्रिप्शन कुंजी कीरिंग में नहीं है। अनलॉक करने के लिए 64-वर्ण वाली हेक्स कुंजी दर्ज करें।</string>

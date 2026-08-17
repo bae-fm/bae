@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Quét</string>
     <string name="members_pairing_confirm">Kiểm tra giá trị này khớp với dấu vân tay hiển thị trên thiết bị mới trước khi phê duyệt.</string>
     <string name="members_pairing_approve">Phê duyệt</string>
-    <string name="members_pairing_approving">Đang phê duyệt…</string>
     <string name="members_pairing_failed">Không thể phê duyệt thiết bị này.</string>
     <string name="members_pairing_waiting">Đang chờ thiết bị…</string>
     <string name="onboarding_tagline">Tham gia thư viện từ một thiết bị khác của bạn để bắt đầu</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Mã ghép đôi này không hợp lệ.</string>
     <string name="onboarding_join_action">Tham gia</string>
     <string name="onboarding_joining_title">Đang tham gia thư viện của bạn</string>
-    <string name="onboarding_joining_body">bae đang thêm thiết bị này vào thư viện của bạn.</string>
     <string name="qr_scanner_instructions">Hiển thị QR khôi phục của thư viện này từ bae → Cài đặt → Mã khôi phục trên thiết bị khác</string>
     <string name="unlock_title">Thư viện bị khóa</string>
     <string name="unlock_explanation">Khóa mã hóa của thư viện này không có trong chuỗi khóa. Nhập khóa thập lục phân 64 ký tự để mở khóa.</string>

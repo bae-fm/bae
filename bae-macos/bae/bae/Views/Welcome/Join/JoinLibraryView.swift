@@ -10,12 +10,13 @@ private let logger = Logger.bae("JoinLibraryView")
 struct JoinLibraryView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
     let onBack: () -> Void
+    let pending: BridgePendingDevicePairingJoin?
 
     @Environment(LibrarySetup.self)
     private var setup
 
     @State
-    private var pairingCodeInput = ""
+    private var pairingCodeInput: String
     @State
     private var decodedOffer: Result<BridgeDevicePairingOffer, Error>?
     @State
@@ -36,6 +37,21 @@ struct JoinLibraryView: View {
     private var joinProgress: BridgeJoiningDeviceJoinProgress?
     @State
     private var error: String?
+
+    init(
+        onLibraryReady: @escaping (BridgeLibrary) -> Void,
+        onBack: @escaping () -> Void,
+        pending: BridgePendingDevicePairingJoin? = nil
+    ) {
+        self.onLibraryReady = onLibraryReady
+        self.onBack = onBack
+        self.pending = pending
+        self._pairingCodeInput = State(initialValue: pending?.pairingCode ?? "")
+        self._decodedOffer = State(
+            initialValue: pending.map { .success($0.offer) }
+        )
+        self._joiningFingerprint = State(initialValue: pending?.fingerprint)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,12 +77,15 @@ struct JoinLibraryView: View {
                 joinReady: joinReady,
                 onScan: { showScanner = true },
                 onJoin: { join() },
-                onBack: onBack
+                onBack: abandonPendingPairingAndGoBack
             )
         }
         .padding(.horizontal)
         .onChange(of: pairingCodeInput) { _, input in
             decodePairingOffer(input)
+        }
+        .task {
+            resumePendingPairing()
         }
         .onDisappear {
             authorizationTask?.cancel()
@@ -111,10 +130,13 @@ struct JoinLibraryView: View {
         guard case .success(let offer) = decoded, offer.needsOauth else {
             return
         }
-        authorize(offer.cloudProvider)
+        authorize(offer.cloudProvider, joinAfterAuthorization: false)
     }
 
-    private func authorize(_ provider: BridgeCloudProvider) {
+    private func authorize(
+        _ provider: BridgeCloudProvider,
+        joinAfterAuthorization: Bool
+    ) {
         #if BAE_OAUTH_PROVIDERS
             isAuthorizing = true
             let authorize = setup.oauthAuthorize
@@ -126,9 +148,13 @@ struct JoinLibraryView: View {
                     try Task.checkCancellation()
                     oauthTokenJson = token
                     isAuthorizing = false
+                    if joinAfterAuthorization {
+                        join()
+                    }
                 }
                 catch is CancellationError {
                     logger.debug("pairing authorization cancelled")
+                    isAuthorizing = false
                 }
                 catch {
                     isAuthorizing = false
@@ -136,6 +162,43 @@ struct JoinLibraryView: View {
                 }
             }
         #endif
+    }
+
+    private func resumePendingPairing() {
+        guard let pending, !isJoining, authorizationTask == nil else { return }
+        if pending.offer.needsOauth,
+            pending.phase != .libraryInstallationPending
+        {
+            authorize(
+                pending.offer.cloudProvider,
+                joinAfterAuthorization: true
+            )
+        }
+        else {
+            join()
+        }
+    }
+
+    private func abandonPendingPairingAndGoBack() {
+        let activeAuthorization = authorizationTask
+        let activeJoin = joinTask
+        activeAuthorization?.cancel()
+        activeJoin?.cancel()
+        #if BAE_OAUTH_PROVIDERS
+            setup.oauthCancel()
+        #endif
+        let abandon = setup.abandonPendingDevicePairingJoin
+        Task {
+            do {
+                await activeAuthorization?.value
+                await activeJoin?.value
+                try await DetachedWork.run { try abandon() }
+                onBack()
+            }
+            catch {
+                self.error = error.displayLine
+            }
+        }
     }
 
     private func join() {
@@ -188,6 +251,8 @@ struct JoinLibraryView: View {
             }
             catch is CancellationError {
                 logger.debug("device pairing join cancelled")
+                isJoining = false
+                joinProgress = nil
             }
             catch {
                 isJoining = false

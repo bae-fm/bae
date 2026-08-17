@@ -31,6 +31,18 @@ pub const DEFAULT_CONCURRENT_TRANSFERS: u32 = 3;
 /// The largest transfer concurrency the UI offers and the setters accept.
 pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
 
+fn default_transfer_concurrency() -> NonZeroU32 {
+    NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS).expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero")
+}
+
+pub(crate) fn default_transfer_limits() -> coven::TransferLimits {
+    let limit = usize_bound(default_transfer_concurrency());
+    coven::TransferLimits {
+        uploads: limit,
+        downloads: limit,
+    }
+}
+
 /// A blob-transfer concurrency setting must be at least 1 — coven's drain admits
 /// nothing at 0 and never completes — and at most [`MAX_CONCURRENT_TRANSFERS`],
 /// the ceiling the UI offers. Returns the validated value for storage.
@@ -519,10 +531,8 @@ impl Config {
             default_track_save_preset: "flac".to_string(),
             default_release_save_preset: "flac".to_string(),
             pause_between_sides: false,
-            max_concurrent_uploads: NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS)
-                .expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero"),
-            max_concurrent_downloads: NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS)
-                .expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero"),
+            max_concurrent_uploads: default_transfer_concurrency(),
+            max_concurrent_downloads: default_transfer_concurrency(),
             show_remaining_time: false,
             library_full_width: false,
             verify_decode_on_import: true,

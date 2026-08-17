@@ -5,17 +5,8 @@ pub enum BridgeJoiningDeviceJoinProgress {
     WaitingForProviderAccess,
     RegisteringDevice,
     WaitingForLibrary,
-    DownloadingSnapshot {
-        bytes_done: u64,
-        bytes_total: u64,
-    },
+    DownloadingSnapshot { bytes_done: u64, bytes_total: u64 },
     InstallingSnapshot,
-    DownloadingLibraryFiles {
-        files_done: u64,
-        files_total: u64,
-        bytes_done: u64,
-        bytes_total: u64,
-    },
     WaitingForActivation,
     CatchingUp,
     SavingLibrary,
@@ -41,17 +32,6 @@ impl BridgeJoiningDeviceJoinProgress {
                 bytes_total,
             },
             coven::JoiningDeviceJoinProgress::InstallingSnapshot => Self::InstallingSnapshot,
-            coven::JoiningDeviceJoinProgress::DownloadingLibraryFiles {
-                files_done,
-                files_total,
-                bytes_done,
-                bytes_total,
-            } => Self::DownloadingLibraryFiles {
-                files_done,
-                files_total,
-                bytes_done,
-                bytes_total,
-            },
             coven::JoiningDeviceJoinProgress::WaitingForActivation => Self::WaitingForActivation,
             coven::JoiningDeviceJoinProgress::CatchingUp => Self::CatchingUp,
             coven::JoiningDeviceJoinProgress::SavingLibrary => Self::SavingLibrary,
@@ -127,9 +107,6 @@ pub fn bridge_joining_device_join_progress_key(
         }
         BridgeJoiningDeviceJoinProgress::InstallingSnapshot => {
             "core.pairing.join.installing_snapshot"
-        }
-        BridgeJoiningDeviceJoinProgress::DownloadingLibraryFiles { .. } => {
-            "core.pairing.join.downloading_library_files"
         }
         BridgeJoiningDeviceJoinProgress::WaitingForActivation => {
             "core.pairing.join.waiting_for_activation"

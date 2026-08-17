@@ -52,6 +52,7 @@ internal sealed class AppService : IDisposable
     public PlaybackStore PlaybackStore { get; }
     public CastStore CastStore { get; }
     public SyncStatusStore SyncStatusStore { get; }
+    public ArtworkLoadingStore ArtworkLoadingStore { get; }
     public SettingsStore SettingsStore { get; }
     public ImportStore ImportStore { get; }
     public StorageStore StorageStore { get; }
@@ -123,6 +124,7 @@ internal sealed class AppService : IDisposable
             error => ShowError(Loc.Chrome("error.title"), error.Message));
         CastStore = new CastStore(Cast);
         SyncStatusStore = new SyncStatusStore();
+        ArtworkLoadingStore = new ArtworkLoadingStore(Sync.CancelArtworkLoading);
         // Built before the now-playing bar (in the shell): the bar reads the
         // remaining-time preference through the settings mirror, whose Current
         // stays null until a library seeds it.
@@ -149,7 +151,7 @@ internal sealed class AppService : IDisposable
             action => dispatcher.Post(action),
             HandleAlbumDetailError);
         _valueSubscriptions = new ValueSubscriptions(
-            session, dispatcher, SettingsStore, SyncStatusStore, PlaybackStore,
+            session, dispatcher, SettingsStore, SyncStatusStore, ArtworkLoadingStore, PlaybackStore,
             StorageStore, CastStore, ImportStore, MediaControl, ShowError);
     }
 

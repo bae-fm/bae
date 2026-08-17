@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Skanuj</string>
     <string name="members_pairing_confirm">Przed zatwierdzeniem sprawdź, czy zgadza się z odciskiem wyświetlanym na nowym urządzeniu.</string>
     <string name="members_pairing_approve">Zatwierdź</string>
-    <string name="members_pairing_approving">Zatwierdzanie…</string>
     <string name="members_pairing_failed">Nie udało się zatwierdzić tego urządzenia.</string>
     <string name="members_pairing_waiting">Oczekiwanie na urządzenie…</string>
     <string name="onboarding_tagline">Aby zacząć, dołącz do biblioteki z jednego ze swoich innych urządzeń</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Ten kod parowania jest nieprawidłowy.</string>
     <string name="onboarding_join_action">Dołącz</string>
     <string name="onboarding_joining_title">Dołączanie do Twojej biblioteki</string>
-    <string name="onboarding_joining_body">bae dodaje to urządzenie do Twojej biblioteki.</string>
     <string name="qr_scanner_instructions">Pokaż QR odzyskiwania tej biblioteki z bae → Ustawienia → Kod odzyskiwania na innym urządzeniu</string>
     <string name="unlock_title">Biblioteka zablokowana</string>
     <string name="unlock_explanation">Klucza szyfrującego tej biblioteki nie ma w pęku kluczy. Wprowadź 64-znakowy klucz szesnastkowy, aby odblokować.</string>

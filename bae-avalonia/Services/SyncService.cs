@@ -83,6 +83,9 @@ internal sealed class SyncService
     public Func<bool> TriggerSync { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: TriggerSync not wired");
 
+    public Action CancelArtworkLoading { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: CancelArtworkLoading not wired");
+
     /// <summary>Delete the active library's encryption key from the OS keyring; the
     /// current session keeps working, the next launch lands on unlock.</summary>
     public Func<Task<(bool Current, string? Error)>> LockActiveLibrary { get; init; }
@@ -144,6 +147,8 @@ internal sealed class SyncService
             session.RunForCurrentHandle(handle => NativeBae.CancelReleaseTransition(handle, releaseId)),
         SetSyncPaused = paused => session.RunForCurrentHandle(handle => NativeBae.SetSyncPaused(handle, paused)),
         TriggerSync = () => session.WithCurrentHandle(NativeBae.TriggerSync),
+        CancelArtworkLoading = () =>
+            session.WithCurrentHandle(handle => handle.CancelEagerCacheFill()),
         LockActiveLibrary = () => session.RunForCurrentHandle(NativeBae.LockActiveLibrary),
         ForgetLibrary = () => session.RunForCurrentHandle(NativeBae.ForgetLibrary),
         SetMaxConcurrentUploads = n => session.WithCurrentHandle(handle => NativeBae.SetMaxConcurrentUploads(handle, n)),

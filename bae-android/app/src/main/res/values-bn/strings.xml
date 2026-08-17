@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">স্ক্যান করুন</string>
     <string name="members_pairing_confirm">অনুমোদনের আগে এটি নতুন ডিভাইসে দেখানো ফিঙ্গারপ্রিন্টের সঙ্গে মেলে কিনা পরীক্ষা করুন।</string>
     <string name="members_pairing_approve">অনুমোদন করুন</string>
-    <string name="members_pairing_approving">অনুমোদন করা হচ্ছে…</string>
     <string name="members_pairing_failed">এই ডিভাইসটি অনুমোদন করা যায়নি।</string>
     <string name="members_pairing_waiting">ডিভাইসের জন্য অপেক্ষা করা হচ্ছে…</string>
     <string name="onboarding_tagline">শুরু করতে আপনার অন্য কোনো ডিভাইস থেকে একটি লাইব্রেরিতে যোগ দিন</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">এই পেয়ারিং কোডটি বৈধ নয়।</string>
     <string name="onboarding_join_action">যোগ দিন</string>
     <string name="onboarding_joining_title">আপনার লাইব্রেরিতে যোগ দিচ্ছে</string>
-    <string name="onboarding_joining_body">bae এই ডিভাইসটি আপনার লাইব্রেরিতে যোগ করছে।</string>
     <string name="qr_scanner_instructions">অন্য ডিভাইসে bae → সেটিংস → পুনরুদ্ধার কোড থেকে এই লাইব্রেরির পুনরুদ্ধার QR দেখান</string>
     <string name="unlock_title">লাইব্রেরি লক করা</string>
     <string name="unlock_explanation">এই লাইব্রেরির এনক্রিপশন কী কীরিংয়ে নেই। আনলক করতে ৬৪-অক্ষরের হেক্স কী লিখুন।</string>

@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Сканувати</string>
     <string name="members_pairing_confirm">Перед схваленням перевірте, що це збігається з відбитком, показаним на новому пристрої.</string>
     <string name="members_pairing_approve">Схвалити</string>
-    <string name="members_pairing_approving">Схвалення…</string>
     <string name="members_pairing_failed">Не вдалося схвалити цей пристрій.</string>
     <string name="members_pairing_waiting">Очікування пристрою…</string>
     <string name="onboarding_tagline">Щоб почати, приєднайтеся до бібліотеки з одного з ваших інших пристроїв</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Цей код сполучення недійсний.</string>
     <string name="onboarding_join_action">Приєднатися</string>
     <string name="onboarding_joining_title">Приєднання до вашої бібліотеки</string>
-    <string name="onboarding_joining_body">bae додає цей пристрій до вашої бібліотеки.</string>
     <string name="qr_scanner_instructions">Покажіть QR відновлення цієї бібліотеки з bae → Налаштування → Код відновлення на іншому пристрої</string>
     <string name="unlock_title">Бібліотеку заблоковано</string>
     <string name="unlock_explanation">Ключа шифрування цієї бібліотеки немає у сховищі ключів. Введіть 64-символьний шістнадцятковий ключ, щоб розблокувати.</string>

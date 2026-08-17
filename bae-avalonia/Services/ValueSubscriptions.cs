@@ -15,6 +15,7 @@ internal sealed class ValueSubscriptions : IDisposable
         Dispatcher dispatcher,
         SettingsStore settings,
         SyncStatusStore sync,
+        ArtworkLoadingStore artworkLoading,
         PlaybackStore playback,
         StorageStore storage,
         CastStore cast,
@@ -31,6 +32,8 @@ internal sealed class ValueSubscriptions : IDisposable
                 {
                     sync.Apply(value);
                 }))));
+            _subscriptions.Add(handle.SubscribeEagerCacheFillStatus(new ArtworkLoadingSink(value =>
+                dispatcher.Post(() => artworkLoading.Apply(value)))));
             _subscriptions.Add(handle.SubscribeQueue(new QueueSink(
                 value => dispatcher.Post(() => playback.ApplyQueueValue(value)),
                 error => dispatcher.Post(() => Show(error, showError)))));
@@ -84,6 +87,12 @@ internal sealed class ValueSubscriptions : IDisposable
     private sealed class SyncSink(Action<BridgeSyncStatusSnapshot> apply) : SyncStatusCallback
     {
         public void OnValue(BridgeSyncStatusSnapshot value) => apply(value);
+    }
+
+    private sealed class ArtworkLoadingSink(Action<BridgeEagerCacheFillStatus> apply)
+        : EagerCacheFillStatusCallback
+    {
+        public void OnValue(BridgeEagerCacheFillStatus value) => apply(value);
     }
 
     private sealed class QueueSink(Action<BridgeQueueSnapshot> apply, Action<BridgeException> error) : QueueCallback

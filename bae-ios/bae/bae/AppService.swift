@@ -26,6 +26,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             playbackStore: PlaybackStore(),
             configStore: ConfigStore(config: Config(bridge: config)),
             syncStatusStore: SyncStatusStore(),
+            artworkLoadingStore: ArtworkLoadingStore {
+                appHandle.cancelEagerCacheFill()
+            },
             libraryStore: LibraryStore(),
             downloadStore: DownloadStore(
                 snapshot: appHandle.getDownloadSnapshot()

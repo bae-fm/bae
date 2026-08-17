@@ -17,15 +17,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDevicePairingOffer
+import uniffi.bae_bridge.BridgeDevicePairingPhase
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinDevicePairingOperation
 import uniffi.bae_bridge.JoiningDeviceJoinProgressCallback
 import uniffi.bae_bridge.RestoreFromCodeOperation
+import uniffi.bae_bridge.abandonPendingDevicePairingJoin
 import uniffi.bae_bridge.decodeDevicePairingOffer
 import uniffi.bae_bridge.decodeRestoreCode
 import uniffi.bae_bridge.joinDevicePairingOperation
+import uniffi.bae_bridge.pendingDevicePairingJoin
 import uniffi.bae_bridge.restoreFromCodeOperation
 
 private const val TAG = "bae.OnboardingLaunchers"
@@ -178,6 +181,8 @@ class JoinLauncher(
 
     private var oauthTokenJson: String? = null
     private var authorizationJob: Job? = null
+    var hasPendingPairing by mutableStateOf(false)
+        private set
 
     val joinReady: Boolean
         get() {
@@ -191,11 +196,13 @@ class JoinLauncher(
         oauthLinking: OAuthLinker?,
         oauthLinkingError: String?,
     ) {
+        if (hasPendingPairing) return
         authorizationJob?.cancel()
         pairingCode = raw
         error = null
         joiningFingerprint = null
         joinProgress = null
+        hasPendingPairing = false
         oauthTokenJson = null
         isAuthorizing = false
         val trimmed = raw.trim()
@@ -241,6 +248,7 @@ class JoinLauncher(
         error = null
         joiningFingerprint = null
         joinProgress = null
+        hasPendingPairing = false
     }
 
     fun join() {
@@ -262,6 +270,7 @@ class JoinLauncher(
                         code,
                         token,
                         onPrepared = {
+                            hasPendingPairing = true
                             joiningFingerprint = it
                             joinProgress = BridgeJoiningDeviceJoinProgress.WaitingForApproval
                         },
@@ -289,11 +298,69 @@ class JoinLauncher(
         launched.start()
     }
 
-    fun cancel() {
+    suspend fun resumePending(
+        oauthLinking: OAuthLinker?,
+        oauthLinkingError: String?,
+    ): Boolean {
+        val pending =
+            try {
+                withContext(Dispatchers.IO) { pendingDevicePairingJoin() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = e.toString()
+                null
+            }
+        if (pending == null) return false
+
+        pairingCode = pending.pairingCode
+        decodedOffer = Result.success(pending.offer)
+        joiningFingerprint = pending.fingerprint
+        hasPendingPairing = true
+        error = null
+        oauthTokenJson = null
+
+        var canJoin = true
+        if (
+            pending.offer.needsOauth &&
+            pending.phase != BridgeDevicePairingPhase.LIBRARY_INSTALLATION_PENDING
+        ) {
+            isAuthorizing = true
+            try {
+                oauthTokenJson =
+                    resolveOauthToken(
+                        oauthLinking,
+                        oauthLinkingError,
+                        context,
+                        pending.offer.cloudProvider,
+                    )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = e.message ?: context.getString(R.string.onboarding_oauth_unconfigured)
+                canJoin = false
+            } finally {
+                isAuthorizing = false
+            }
+        }
+        if (canJoin) join()
+        return true
+    }
+
+    fun abandonAndReset(onAbandoned: () -> Unit) {
         authorizationJob?.cancel()
-        flow?.cancel()
+        val activeFlow = flow
+        activeFlow?.cancel()
         flow = null
-        joiningFingerprint = null
-        joinProgress = null
+        scope.launch {
+            try {
+                activeFlow?.job?.join()
+                withContext(Dispatchers.IO) { abandonPendingDevicePairingJoin() }
+                reset()
+                onAbandoned()
+            } catch (e: Exception) {
+                error = e.toString()
+            }
+        }
     }
 }

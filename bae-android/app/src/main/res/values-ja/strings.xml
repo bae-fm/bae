@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">スキャン</string>
     <string name="members_pairing_confirm">承認する前に、新しいデバイスに表示されているフィンガープリントと一致することを確認してください。</string>
     <string name="members_pairing_approve">承認</string>
-    <string name="members_pairing_approving">承認中…</string>
     <string name="members_pairing_failed">このデバイスを承認できませんでした。</string>
     <string name="members_pairing_waiting">デバイスを待機中…</string>
     <string name="onboarding_tagline">開始するには、ほかのデバイスからライブラリに参加してください</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">このペアリングコードは無効です。</string>
     <string name="onboarding_join_action">参加</string>
     <string name="onboarding_joining_title">ライブラリに参加中</string>
-    <string name="onboarding_joining_body">baeがこのデバイスをライブラリに追加しています。</string>
     <string name="qr_scanner_instructions">別のデバイスのbae → 設定 → リカバリーコードから、このライブラリのリカバリーQRを表示してください</string>
     <string name="unlock_title">ライブラリはロックされています</string>
     <string name="unlock_explanation">このライブラリの暗号化キーがキーリングにありません。ロックを解除するには16進数64文字のキーを入力してください。</string>

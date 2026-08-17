@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Scannen</string>
     <string name="members_pairing_confirm">Controleer vóór goedkeuring of dit overeenkomt met de vingerafdruk op het nieuwe apparaat.</string>
     <string name="members_pairing_approve">Goedkeuren</string>
-    <string name="members_pairing_approving">Goedkeuren…</string>
     <string name="members_pairing_failed">Kan dit apparaat niet goedkeuren.</string>
     <string name="members_pairing_waiting">Wachten op het apparaat…</string>
     <string name="onboarding_tagline">Neem deel aan een bibliotheek vanaf een van je andere apparaten om te beginnen</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Deze koppelingscode is ongeldig.</string>
     <string name="onboarding_join_action">Deelnemen</string>
     <string name="onboarding_joining_title">Deelnemen aan je bibliotheek</string>
-    <string name="onboarding_joining_body">bae voegt dit apparaat toe aan je bibliotheek.</string>
     <string name="qr_scanner_instructions">Toon de herstel-QR van deze bibliotheek via bae → Instellingen → Herstelcode op een ander apparaat</string>
     <string name="unlock_title">Bibliotheek vergrendeld</string>
     <string name="unlock_explanation">De versleutelingssleutel voor deze bibliotheek staat niet in de sleutelhanger. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen.</string>

@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">สแกน</string>
     <string name="members_pairing_confirm">ตรวจสอบว่าสิ่งนี้ตรงกับลายนิ้วมือที่แสดงบนอุปกรณ์ใหม่ก่อนอนุมัติ</string>
     <string name="members_pairing_approve">อนุมัติ</string>
-    <string name="members_pairing_approving">กำลังอนุมัติ…</string>
     <string name="members_pairing_failed">อนุมัติอุปกรณ์นี้ไม่ได้</string>
     <string name="members_pairing_waiting">กำลังรออุปกรณ์…</string>
     <string name="onboarding_tagline">เข้าร่วมคลังจากอุปกรณ์อื่นของคุณเพื่อเริ่มต้น</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">รหัสจับคู่นี้ไม่ถูกต้อง</string>
     <string name="onboarding_join_action">เข้าร่วม</string>
     <string name="onboarding_joining_title">กำลังเข้าร่วมคลังของคุณ</string>
-    <string name="onboarding_joining_body">bae กำลังเพิ่มอุปกรณ์นี้ไปยังคลังของคุณ</string>
     <string name="qr_scanner_instructions">แสดง QR กู้คืนของคลังนี้จาก bae → การตั้งค่า → รหัสกู้คืน บนอุปกรณ์อื่น</string>
     <string name="unlock_title">คลังถูกล็อก</string>
     <string name="unlock_explanation">คีย์เข้ารหัสสำหรับคลังนี้ไม่อยู่ในพวงกุญแจ ป้อนคีย์เลขฐานสิบหก 64 อักขระเพื่อปลดล็อก</string>

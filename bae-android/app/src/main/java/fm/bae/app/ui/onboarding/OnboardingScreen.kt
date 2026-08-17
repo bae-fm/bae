@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -150,6 +151,7 @@ fun OnboardingScreen(
     val launcher = remember { LinkLauncher(scope, context, onLinked) }
     val joinLauncher = remember { JoinLauncher(scope, context, onLinked) }
     var showJoin by remember { mutableStateOf(false) }
+    LaunchedEffect(joinLauncher) { showJoin = joinLauncher.resumePending(oauthLinking, oauthLinkingError) }
     // Non-null while the scanner is open, identifying which code it captures.
     var scanTarget by remember { mutableStateOf<ScanTarget?>(null) }
     val codeRouter =
@@ -182,7 +184,7 @@ fun OnboardingScreen(
                 linking = false,
                 joiningFingerprint = joinLauncher.joiningFingerprint,
                 joinProgress = joinLauncher.joinProgress,
-            ) { joinLauncher.cancel() }
+            ) { joinLauncher.abandonAndReset { showJoin = false } }
         }
 
         showJoin -> {
@@ -192,8 +194,7 @@ fun OnboardingScreen(
                 oauthLinkingError = oauthLinkingError,
                 onRequestScan = { onRequestScan(ScanTarget.PAIRING_CODE) },
                 onBack = {
-                    joinLauncher.reset()
-                    showJoin = false
+                    joinLauncher.abandonAndReset { showJoin = false }
                 },
             )
         }

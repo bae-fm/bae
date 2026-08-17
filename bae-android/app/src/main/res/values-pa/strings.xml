@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">ਸਕੈਨ ਕਰੋ</string>
     <string name="members_pairing_confirm">ਮਨਜ਼ੂਰ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਜਾਂਚੋ ਕਿ ਇਹ ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਦਿਖਾਏ fingerprint ਨਾਲ ਮਿਲਦਾ ਹੈ।</string>
     <string name="members_pairing_approve">ਮਨਜ਼ੂਰ ਕਰੋ</string>
-    <string name="members_pairing_approving">ਮਨਜ਼ੂਰ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</string>
     <string name="members_pairing_failed">ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮਨਜ਼ੂਰ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ।</string>
     <string name="members_pairing_waiting">ਡਿਵਾਈਸ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</string>
     <string name="onboarding_tagline">ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਆਪਣੇ ਹੋਰ ਡਿਵਾਈਸਾਂ ਵਿੱਚੋਂ ਕਿਸੇ ਇੱਕ ਤੋਂ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">ਇਹ ਪੇਅਰਿੰਗ ਕੋਡ ਜਾਇਜ਼ ਨਹੀਂ ਹੈ।</string>
     <string name="onboarding_join_action">ਸ਼ਾਮਲ ਹੋਵੋ</string>
     <string name="onboarding_joining_title">ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋ ਰਿਹਾ ਹੈ</string>
-    <string name="onboarding_joining_body">bae ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰ ਰਿਹਾ ਹੈ।</string>
     <string name="qr_scanner_instructions">ਕਿਸੇ ਹੋਰ ਡਿਵਾਈਸ ਉੱਤੇ bae → ਸੈਟਿੰਗਾਂ → ਰਿਕਵਰੀ ਕੋਡ ਤੋਂ ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਦਾ ਰਿਕਵਰੀ QR ਦਿਖਾਓ</string>
     <string name="unlock_title">ਲਾਇਬ੍ਰੇਰੀ ਲਾਕ ਹੈ</string>
     <string name="unlock_explanation">ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਦੀ ਇਨਕ੍ਰਿਪਸ਼ਨ ਕੁੰਜੀ ਕੀਰਿੰਗ ਵਿੱਚ ਨਹੀਂ ਹੈ। ਅਨਲਾਕ ਕਰਨ ਲਈ 64-ਅੱਖਰੀ ਹੈਕਸ ਕੁੰਜੀ ਦਰਜ ਕਰੋ।</string>

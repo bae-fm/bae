@@ -13,12 +13,6 @@ pub(super) fn progress_keys() -> Vec<String> {
             bytes_total: 2,
         },
         BridgeJoiningDeviceJoinProgress::InstallingSnapshot,
-        BridgeJoiningDeviceJoinProgress::DownloadingLibraryFiles {
-            files_done: 1,
-            files_total: 2,
-            bytes_done: 3,
-            bytes_total: 4,
-        },
         BridgeJoiningDeviceJoinProgress::WaitingForActivation,
         BridgeJoiningDeviceJoinProgress::CatchingUp,
         BridgeJoiningDeviceJoinProgress::SavingLibrary,
@@ -42,9 +36,6 @@ pub(super) fn progress_keys() -> Vec<String> {
             }
             BridgeJoiningDeviceJoinProgress::InstallingSnapshot => {
                 "core.pairing.join.installing_snapshot"
-            }
-            BridgeJoiningDeviceJoinProgress::DownloadingLibraryFiles { .. } => {
-                "core.pairing.join.downloading_library_files"
             }
             BridgeJoiningDeviceJoinProgress::WaitingForActivation => {
                 "core.pairing.join.waiting_for_activation"
@@ -103,23 +94,19 @@ pub(super) fn progress_keys() -> Vec<String> {
 
 #[test]
 fn every_device_pairing_progress_has_one_localization_key() {
-    assert_eq!(progress_keys().len(), 19);
+    assert_eq!(progress_keys().len(), 18);
 }
 
 #[test]
-fn joining_device_progress_crosses_the_bridge_with_transfer_counts() {
+fn joining_device_snapshot_progress_crosses_the_bridge_with_byte_counts() {
     assert_eq!(
         BridgeJoiningDeviceJoinProgress::from_core(
-            coven::JoiningDeviceJoinProgress::DownloadingLibraryFiles {
-                files_done: 3,
-                files_total: 7,
+            coven::JoiningDeviceJoinProgress::DownloadingSnapshot {
                 bytes_done: 1_024,
                 bytes_total: 4_096,
             }
         ),
-        BridgeJoiningDeviceJoinProgress::DownloadingLibraryFiles {
-            files_done: 3,
-            files_total: 7,
+        BridgeJoiningDeviceJoinProgress::DownloadingSnapshot {
             bytes_done: 1_024,
             bytes_total: 4_096,
         }

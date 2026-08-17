@@ -895,6 +895,16 @@ impl AppServices {
         self.inner.manager.subscribe_sync_status_values()
     }
 
+    pub fn subscribe_eager_cache_fill_status(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::EagerCacheFillStatus> {
+        self.inner.manager.subscribe_eager_cache_fill_status()
+    }
+
+    pub fn cancel_eager_cache_fill(&self) {
+        self.inner.manager.cancel_eager_cache_fill();
+    }
+
     pub fn subscribe_outbox_values(
         &self,
     ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>> {

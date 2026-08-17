@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">स्कॅन करा</string>
     <string name="members_pairing_confirm">मंजूर करण्यापूर्वी हे नवीन डिव्हाइसवर दिसणाऱ्या fingerprint शी जुळते का ते तपासा.</string>
     <string name="members_pairing_approve">मंजूर करा</string>
-    <string name="members_pairing_approving">मंजूर करत आहे…</string>
     <string name="members_pairing_failed">हे डिव्हाइस मंजूर करता आले नाही.</string>
     <string name="members_pairing_waiting">डिव्हाइसची प्रतीक्षा करत आहे…</string>
     <string name="onboarding_tagline">सुरू करण्यासाठी तुमच्या दुसऱ्या डिव्हाइसमधून संग्रहालयात जोडा</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">हा पेअरिंग संकेत वैध नाही.</string>
     <string name="onboarding_join_action">जोडा</string>
     <string name="onboarding_joining_title">तुमच्या संग्रहालयात जोडत आहे</string>
-    <string name="onboarding_joining_body">bae हे डिव्हाइस तुमच्या संग्रहालयात जोडत आहे.</string>
     <string name="qr_scanner_instructions">दुसऱ्या डिव्हाइसवर bae → सेटिंग्ज → पुनर्प्राप्ती संकेत मधून या संग्रहालयाचा पुनर्प्राप्ती QR दाखवा</string>
     <string name="unlock_title">लायब्ररी लॉक आहे</string>
     <string name="unlock_explanation">या लायब्ररीची कूटबद्धीकरण कळ कीरिंगमध्ये नाही. अनलॉक करण्यासाठी 64-अक्षरी hex कळ द्या.</string>

@@ -143,6 +143,11 @@ pub trait SyncStatusCallback: Send + Sync {
 }
 
 #[uniffi::export(callback_interface)]
+pub trait EagerCacheFillStatusCallback: Send + Sync {
+    fn on_value(&self, value: BridgeEagerCacheFillStatus);
+}
+
+#[uniffi::export(callback_interface)]
 pub trait QueueCallback: Send + Sync {
     fn on_value(&self, value: BridgeQueueSnapshot);
     fn on_error(&self, error: BridgeError);

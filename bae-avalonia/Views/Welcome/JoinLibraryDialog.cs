@@ -20,7 +20,7 @@ internal sealed class JoinLibraryDialog
         _openLibrary = openLibrary;
     }
 
-    public Control Build(Action close)
+    public Control Build(Action close, BridgePendingDevicePairingJoin? pending = null)
     {
         var column = DialogUi.Column();
         column.Children.Add(DialogUi.Title(Loc.Chrome("join.title")));
@@ -28,6 +28,7 @@ internal sealed class JoinLibraryDialog
 
         var codeBox = new TextBox
         {
+            Text = pending?.PairingCode,
             Watermark = Loc.Chrome("join.pairing_placeholder"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             AcceptsReturn = true,
@@ -59,9 +60,17 @@ internal sealed class JoinLibraryDialog
 
         BridgeDevicePairingOffer? decoded = null;
         JoinDevicePairingOperation? joinOperation = null;
+        Task? joinTask = null;
+        var cancelRequested = false;
         var joined = false;
         string? oauthTokenJson = null;
         var revision = 0;
+
+        if (pending is not null)
+        {
+            fingerprint.Text = Loc.Chrome("join.fingerprint", "fingerprint", pending.Fingerprint);
+            fingerprint.IsVisible = true;
+        }
 
         void CancelJoin()
         {
@@ -90,7 +99,65 @@ internal sealed class JoinLibraryDialog
             status.IsVisible = false;
         }
 
-        async Task DecodePairing(string code)
+        async Task Join()
+        {
+            var offer = decoded;
+            if (offer is null)
+            {
+                return;
+            }
+            join.IsEnabled = false;
+            ShowProgress(Loc.Chrome("join.starting_pairing"));
+            try
+            {
+                var operation = await NativeBae.PrepareJoinDevicePairing(
+                    codeBox.Text?.Trim() ?? string.Empty,
+                    oauthTokenJson);
+                joinOperation = operation;
+                if (cancelRequested)
+                {
+                    operation.Cancel();
+                    operation.Dispose();
+                    joinOperation = null;
+                    return;
+                }
+                fingerprint.Text = Loc.Chrome("join.fingerprint", "fingerprint", operation.Fingerprint());
+                fingerprint.IsVisible = true;
+                ShowProgress(Loc.Chrome("join.waiting_approval"));
+                var progressDelivery = new LatestUiValue<BridgeJoiningDeviceJoinProgress>(
+                    value =>
+                    {
+                        progress.Content = DeviceJoinProgressView.Build(value);
+                        status.IsVisible = false;
+                        progress.IsVisible = true;
+                    });
+                var libraryId = await Task.Run(() =>
+                    NativeBae.JoinDevicePairing(operation, progressDelivery.Offer));
+                joined = true;
+                joinOperation = null;
+                operation.Dispose();
+                close();
+                _dismissWelcome();
+                _openLibrary(libraryId);
+            }
+            catch (BridgeException exception)
+            {
+                joinOperation?.Dispose();
+                joinOperation = null;
+                if (cancelRequested)
+                {
+                    return;
+                }
+                BaeDiagnostics.Logger.Error("Failed to join through device pairing.", exception);
+                ShowStatus(Loc.Chrome("join.failed"));
+                join.IsEnabled = true;
+            }
+        }
+
+        async Task DecodePairing(
+            string code,
+            bool joinWhenReady = false,
+            bool providerAccessStored = false)
         {
             var ownRevision = ++revision;
             decoded = null;
@@ -125,9 +192,13 @@ internal sealed class JoinLibraryDialog
             });
             preview.IsVisible = true;
 
-            if (!offer.NeedsOauth)
+            if (!offer.NeedsOauth || providerAccessStored)
             {
                 join.IsEnabled = true;
+                if (joinWhenReady)
+                {
+                    await Join();
+                }
                 return;
             }
             if (!NativeBae.IsCloudProviderAvailable(offer.CloudProvider))
@@ -152,6 +223,10 @@ internal sealed class JoinLibraryDialog
                 oauthTokenJson = token;
                 progress.IsVisible = false;
                 join.IsEnabled = true;
+                if (joinWhenReady)
+                {
+                    await Join();
+                }
             }
             catch (BridgeException exception)
             {
@@ -169,55 +244,60 @@ internal sealed class JoinLibraryDialog
                 codeBox.Text = scanned.Trim();
             }
         };
-        cancel.Click += (_, _) =>
+        cancel.Click += async (_, _) =>
         {
-            CancelJoin();
-            close();
+            try
+            {
+                cancelRequested = true;
+                CancelJoin();
+                if (joinTask is not null)
+                {
+                    await joinTask;
+                }
+                await Task.Run(BaeBridgeMethods.AbandonPendingDevicePairingJoin);
+                close();
+            }
+            catch (BridgeException exception)
+            {
+                BaeDiagnostics.Logger.Error("Failed to abandon device pairing.", exception);
+                ShowStatus(Loc.Chrome("join.failed"));
+            }
         };
 
         join.Click += async (_, _) =>
         {
-            var offer = decoded;
-            if (offer is null)
-            {
-                return;
-            }
-            join.IsEnabled = false;
-            ShowProgress(Loc.Chrome("join.starting_pairing"));
+            var active = Join();
+            joinTask = active;
             try
             {
-                var operation = await NativeBae.PrepareJoinDevicePairing(
-                    codeBox.Text?.Trim() ?? string.Empty,
-                    oauthTokenJson);
-                joinOperation = operation;
-                fingerprint.Text = Loc.Chrome("join.fingerprint", "fingerprint", operation.Fingerprint());
-                fingerprint.IsVisible = true;
-                ShowProgress(Loc.Chrome("join.waiting_approval"));
-                var progressDelivery = new LatestUiValue<BridgeJoiningDeviceJoinProgress>(
-                    value =>
-                    {
-                        progress.Content = DeviceJoinProgressView.Build(value);
-                        status.IsVisible = false;
-                        progress.IsVisible = true;
-                    });
-                var libraryId = await Task.Run(() =>
-                    NativeBae.JoinDevicePairing(operation, progressDelivery.Offer));
-                joined = true;
-                joinOperation = null;
-                operation.Dispose();
-                close();
-                _dismissWelcome();
-                _openLibrary(libraryId);
+                await active;
             }
-            catch (BridgeException exception)
+            finally
             {
-                joinOperation?.Dispose();
-                joinOperation = null;
-                BaeDiagnostics.Logger.Error("Failed to join through device pairing.", exception);
-                ShowStatus(Loc.Chrome("join.failed"));
-                join.IsEnabled = true;
+                if (ReferenceEquals(joinTask, active))
+                {
+                    joinTask = null;
+                }
             }
         };
+
+        if (pending is not null)
+        {
+            var resumeStarted = false;
+            column.AttachedToVisualTree += (_, _) =>
+            {
+                if (resumeStarted)
+                {
+                    return;
+                }
+                resumeStarted = true;
+                _ = DecodePairing(
+                    pending.PairingCode,
+                    joinWhenReady: true,
+                    providerAccessStored:
+                        pending.Phase == BridgeDevicePairingPhase.LibraryInstallationPending);
+            };
+        }
 
         return new ScrollViewer { Content = column, MaxHeight = 560 };
     }

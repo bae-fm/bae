@@ -25,6 +25,7 @@ internal sealed class MainShellView : UserControl, System.IDisposable
     private readonly LibraryBrowserView _browser;
     private readonly ImportSectionView _importSection;
     private readonly QueuePane _queuePane;
+    private readonly ArtworkLoadingBanner _artworkLoadingBanner;
     private Button? _queueButton;
 
     // The two switcher segments, restyled as the active section changes.
@@ -48,12 +49,16 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         _librariesDialog = librariesDialog;
         _closeLibrary = closeLibrary;
 
-        var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
+        var root = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         SetBg(root, "BaeBackgroundBrush");
 
         var toolbar = BuildToolbar();
         Grid.SetRow(toolbar, 0);
         root.Children.Add(toolbar);
+
+        _artworkLoadingBanner = new ArtworkLoadingBanner(_app.ArtworkLoadingStore);
+        Grid.SetRow(_artworkLoadingBanner, 1);
+        root.Children.Add(_artworkLoadingBanner);
 
         // The content row docks the active section beside the queue sidebar: the
         // section takes the remaining width and the queue host reflows when open.
@@ -70,7 +75,7 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         Grid.SetColumn(queueHost, 1);
         contentRow.Children.Add(section);
         contentRow.Children.Add(queueHost);
-        Grid.SetRow(contentRow, 1);
+        Grid.SetRow(contentRow, 2);
         root.Children.Add(contentRow);
 
         // The now-playing bar reads persisted preferences, so the shell — not just
@@ -79,7 +84,7 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         _app.SettingsStore.Reload();
 
         var bar = BuildNowPlayingBar();
-        Grid.SetRow(bar, 2);
+        Grid.SetRow(bar, 3);
         root.Children.Add(bar);
 
         Content = root;
@@ -92,7 +97,11 @@ internal sealed class MainShellView : UserControl, System.IDisposable
 
     }
 
-    public void Dispose() => _queuePane.Dispose();
+    public void Dispose()
+    {
+        _artworkLoadingBanner.Dispose();
+        _queuePane.Dispose();
+    }
 
     // Switch to the import section and land it on a fresh Pending tab — the
     // switcher click, and the folder-drop / activation flows that route here.

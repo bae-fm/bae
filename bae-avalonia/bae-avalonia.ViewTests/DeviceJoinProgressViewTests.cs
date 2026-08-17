@@ -10,12 +10,10 @@ namespace Bae.Desktop.ViewTests;
 public sealed class DeviceJoinProgressViewTests
 {
     [AvaloniaFact]
-    public void JoiningDeviceShowsTheReportedByteAndFileProgress()
+    public void JoiningDeviceShowsTheReportedSnapshotByteProgress()
     {
         var view = DeviceJoinProgressView.Build(
-            new BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles(
-                FilesDone: 2,
-                FilesTotal: 5,
+            new BridgeJoiningDeviceJoinProgress.DownloadingSnapshot(
                 BytesDone: 1024,
                 BytesTotal: 4096));
 
@@ -24,9 +22,8 @@ public sealed class DeviceJoinProgressViewTests
         Assert.Equal(1024, progress.Value);
         Assert.Equal(4096, progress.Maximum);
         var text = view.GetLogicalDescendants().OfType<TextBlock>().Select(value => value.Text);
-        Assert.Contains(Loc.Core("core.pairing.join.downloading_library_files"), text);
+        Assert.Contains(Loc.Core("core.pairing.join.downloading_snapshot"), text);
         Assert.Contains($"{Loc.Bytes(1024)} / {Loc.Bytes(4096)}", text);
-        Assert.Contains("2 / 5", text);
     }
 
     [AvaloniaFact]

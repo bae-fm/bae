@@ -311,6 +311,83 @@ pub struct BridgeSyncStatusSnapshot {
     pub sync_ready: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeEagerCacheFillProgress {
+    pub files_done: u64,
+    pub files_total: u64,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+}
+
+impl BridgeEagerCacheFillProgress {
+    fn from_core(progress: bae_core::library::EagerCacheFillProgress) -> Self {
+        Self {
+            files_done: progress.files_done,
+            files_total: progress.files_total,
+            bytes_done: progress.bytes_done,
+            bytes_total: progress.bytes_total,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeEagerCacheFillStatus {
+    NotRunning,
+    Scanning {
+        title_key: String,
+    },
+    Downloading {
+        title_key: String,
+        progress: BridgeEagerCacheFillProgress,
+    },
+    Complete {
+        files_total: u64,
+        bytes_total: u64,
+    },
+    Cancelled {
+        title_key: String,
+        progress: BridgeEagerCacheFillProgress,
+    },
+    Failed {
+        title_key: String,
+        progress: BridgeEagerCacheFillProgress,
+        error: String,
+    },
+}
+
+impl BridgeEagerCacheFillStatus {
+    pub(crate) fn from_core(status: bae_core::library::EagerCacheFillStatus) -> Self {
+        use bae_core::library::EagerCacheFillStatus;
+        let title_key = bae_core::sync::eager_cache_fill_title_key(&status).map(str::to_string);
+        match status {
+            EagerCacheFillStatus::NotRunning => Self::NotRunning,
+            EagerCacheFillStatus::Scanning => Self::Scanning {
+                title_key: title_key.expect("visible eager cache status has a title key"),
+            },
+            EagerCacheFillStatus::Downloading(progress) => Self::Downloading {
+                title_key: title_key.expect("visible eager cache status has a title key"),
+                progress: BridgeEagerCacheFillProgress::from_core(progress),
+            },
+            EagerCacheFillStatus::Complete {
+                files_total,
+                bytes_total,
+            } => Self::Complete {
+                files_total,
+                bytes_total,
+            },
+            EagerCacheFillStatus::Cancelled(progress) => Self::Cancelled {
+                title_key: title_key.expect("visible eager cache status has a title key"),
+                progress: BridgeEagerCacheFillProgress::from_core(progress),
+            },
+            EagerCacheFillStatus::Failed { progress, error } => Self::Failed {
+                title_key: title_key.expect("visible eager cache status has a title key"),
+                progress: BridgeEagerCacheFillProgress::from_core(progress),
+                error: error.to_string(),
+            },
+        }
+    }
+}
+
 /// What the sync indicator shows, in precedence order. Mirror of bae-core's
 /// `SyncIndicator`. The UI maps a variant to a label and colour and renders the
 /// `Synced` time; it never decides which state wins — a stale timestamp used to

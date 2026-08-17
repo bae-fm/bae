@@ -73,6 +73,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let playbackStore = PlaybackStore()
         let configStore = ConfigStore(config: Config(bridge: config))
         let syncStatusStore = SyncStatusStore()
+        let artworkLoadingStore = ArtworkLoadingStore {
+            appHandle.cancelEagerCacheFill()
+        }
         let libraryStore = LibraryStore()
         let downloadStore = DownloadStore(
             snapshot: appHandle.getDownloadSnapshot()
@@ -142,6 +145,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             playbackStore: playbackStore,
             configStore: configStore,
             syncStatusStore: syncStatusStore,
+            artworkLoadingStore: artworkLoadingStore,
             libraryStore: libraryStore,
             downloadStore: downloadStore,
             castStore: castStore,

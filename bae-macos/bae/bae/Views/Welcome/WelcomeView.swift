@@ -13,14 +13,19 @@ struct WelcomeView: View {
     let loadError: DisplayError?
     let canDeleteActiveLibrary: Bool
 
+    @Environment(LibrarySetup.self)
+    private var setup
+
     enum Mode {
         case choose
         case restore
-        case join
+        case join(BridgePendingDevicePairingJoin?)
     }
 
     @State
     private var mode: Mode
+    @State
+    private var pendingLoadError: DisplayError?
 
     /// Default initializer used by first-run flow. Lands on `.choose`.
     init(
@@ -32,6 +37,7 @@ struct WelcomeView: View {
         self.loadError = loadError
         self.canDeleteActiveLibrary = canDeleteActiveLibrary
         self._mode = State(initialValue: .choose)
+        self._pendingLoadError = State(initialValue: nil)
     }
 
     /// Initializer used by the sidebar's "+ Add..." menu when the user
@@ -46,28 +52,46 @@ struct WelcomeView: View {
         self.loadError = nil
         self.canDeleteActiveLibrary = canDeleteActiveLibrary
         self._mode = State(initialValue: initialMode)
+        self._pendingLoadError = State(initialValue: nil)
     }
 
     var body: some View {
-        switch mode {
-        case .choose:
-            WelcomeChooseView(
-                loadError: loadError,
-                canDeleteActiveLibrary: canDeleteActiveLibrary,
-                onLibraryReady: onLibraryReady,
-                onJoin: { mode = .join },
-                onRestore: { mode = .restore },
-            )
-        case .restore:
-            RestoreFromCloudView(
-                onLibraryReady: onLibraryReady,
-                onBack: { mode = .choose },
-            )
-        case .join:
-            JoinLibraryView(
-                onLibraryReady: onLibraryReady,
-                onBack: { mode = .choose },
-            )
+        Group {
+            switch mode {
+            case .choose:
+                WelcomeChooseView(
+                    loadError: pendingLoadError ?? loadError,
+                    canDeleteActiveLibrary: canDeleteActiveLibrary,
+                    onLibraryReady: onLibraryReady,
+                    onJoin: { mode = .join(nil) },
+                    onRestore: { mode = .restore },
+                )
+            case .restore:
+                RestoreFromCloudView(
+                    onLibraryReady: onLibraryReady,
+                    onBack: { mode = .choose },
+                )
+            case .join(let pending):
+                JoinLibraryView(
+                    onLibraryReady: onLibraryReady,
+                    onBack: { mode = .choose },
+                    pending: pending
+                )
+            }
+        }
+        .task {
+            guard case .choose = mode else { return }
+            let pendingDevicePairingJoin = setup.pendingDevicePairingJoin
+            do {
+                if let pending = try await DetachedWork.run({
+                    try pendingDevicePairingJoin()
+                }) {
+                    mode = .join(pending)
+                }
+            }
+            catch {
+                pendingLoadError = DisplayError(error)
+            }
         }
     }
 }
@@ -90,7 +114,7 @@ struct WelcomeView: View {
         WelcomeWindowChrome {
             WelcomeView(
                 onLibraryReady: { _ in },
-                initialMode: .join,
+                initialMode: .join(nil),
                 canDeleteActiveLibrary: true
             )
         }

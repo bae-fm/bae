@@ -96,7 +96,7 @@ struct LibraryFileMenuCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("New Library...") { onNewLibrary(nil) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
-            Button("Join a Library...") { onNewLibrary(.join) }
+            Button("Join a Library...") { onNewLibrary(.join(nil)) }
             Button("Restore from Code...") { onNewLibrary(.restore) }
             Menu("Open Library") {
                 OpenLibrarySubmenu(libraries: libraries, onOpen: onOpenLibrary)

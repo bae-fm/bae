@@ -29,6 +29,11 @@ private final class LinkFlow {
         bridgeCancel?()
         task.cancel()
     }
+
+    func cancelAndWait() async {
+        cancel()
+        await task.value
+    }
 }
 
 /// First-run onboarding. Two ways to put a library on this device: join a
@@ -86,6 +91,8 @@ struct OnboardingView: View {
     private var linkingContext = OnboardingLinkingScreen.Context.librarySetup
     @State
     private var joinProgress: BridgeJoiningDeviceJoinProgress?
+    @State
+    private var pendingPairing: BridgePendingDevicePairingJoin?
     #if BAE_OAUTH_PROVIDERS
     @State
     private var presentationAnchor: ASPresentationAnchor?
@@ -97,7 +104,14 @@ struct OnboardingView: View {
                 OnboardingLinkingScreen(
                     context: linkingContext,
                     joinProgress: joinProgress,
-                    onCancel: { cancelLink() }
+                    onCancel: {
+                        if case .devicePairing = linkingContext {
+                            abandonPairingAndReturnToEntry()
+                        }
+                        else {
+                            cancelLink()
+                        }
+                    }
                 )
             }
             else {
@@ -175,6 +189,9 @@ struct OnboardingView: View {
             linkFlow?.cancel()
             authorizationTask?.cancel()
         }
+        .task {
+            await discoverPendingPairing()
+        }
         #if BAE_OAUTH_PROVIDERS
         // Captures the host window so the OAuth web-auth session has a
         // presentation anchor. Only the OAuth link branch needs it.
@@ -210,11 +227,9 @@ extension OnboardingView {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Back") {
-                        mode = .entry
-                        error = nil
+                    Button(isAuthorizing || linkFlow != nil ? "Cancel" : "Back") {
+                        abandonPairingAndReturnToEntry()
                     }
-                    .disabled(isAuthorizing)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Join") { join() }
@@ -222,14 +237,18 @@ extension OnboardingView {
                 }
             }
         }
-        // Entering the join flow fresh: clear any prior provider/token/decode so
-        // nothing leaks across attempts. The code is generated only once the
-        // joiner picks a provider.
-        .task {
-            pairingCodeInput = ""
-            joinTokenJson = nil
-            decodedPairingOffer = nil
-            error = nil
+        // A durable attempt resumes from its retained code and phase. A newly
+        // opened join screen clears every value from the preceding attempt.
+        .task(id: pendingPairing?.fingerprint) {
+            if let pendingPairing {
+                resume(pendingPairing)
+            }
+            else {
+                pairingCodeInput = ""
+                joinTokenJson = nil
+                decodedPairingOffer = nil
+                error = nil
+            }
         }
     }
 
@@ -264,6 +283,13 @@ extension OnboardingView {
         let decoded = Result { try decodeDevicePairingOffer(code: code) }
         decodedPairingOffer = decoded
         guard case .success(let offer) = decoded, offer.needsOauth else { return }
+        authorizeJoiningProvider(offer, joinAfterAuthorization: false)
+    }
+
+    private func authorizeJoiningProvider(
+        _ offer: BridgeDevicePairingOffer,
+        joinAfterAuthorization: Bool
+    ) {
         isAuthorizing = true
         authorizationTask = Task {
             do {
@@ -274,12 +300,72 @@ extension OnboardingView {
                 try Task.checkCancellation()
                 joinTokenJson = token
                 isAuthorizing = false
+                if joinAfterAuthorization {
+                    join()
+                }
             }
             catch {
                 isAuthorizing = false
                 if !isLinkCancellation(error) {
                     self.error = error.displayLine
                 }
+            }
+        }
+    }
+
+    private func discoverPendingPairing() async {
+        do {
+            guard
+                let pending = try await DetachedWork.run({
+                    try pendingDevicePairingJoin()
+                })
+            else { return }
+            pendingPairing = pending
+            mode = .join
+        }
+        catch {
+            self.error = error.displayLine
+        }
+    }
+
+    private func resume(_ pending: BridgePendingDevicePairingJoin) {
+        pairingCodeInput = pending.pairingCode
+        decodedPairingOffer = .success(pending.offer)
+        error = nil
+        if pending.offer.needsOauth,
+            pending.phase != .libraryInstallationPending
+        {
+            authorizeJoiningProvider(
+                pending.offer,
+                joinAfterAuthorization: true
+            )
+        }
+        else {
+            join()
+        }
+    }
+
+    private func abandonPairingAndReturnToEntry() {
+        let activeFlow = linkFlow
+        let activeAuthorization = authorizationTask
+        activeAuthorization?.cancel()
+        Task {
+            await activeAuthorization?.value
+            await activeFlow?.cancelAndWait()
+            do {
+                try await DetachedWork.run {
+                    try abandonPendingDevicePairingJoin()
+                }
+                linkFlow = nil
+                joinProgress = nil
+                pendingPairing = nil
+                pairingCodeInput = ""
+                decodedPairingOffer = nil
+                mode = .entry
+                error = nil
+            }
+            catch {
+                self.error = error.displayLine
             }
         }
     }

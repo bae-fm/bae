@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Scansiona</string>
     <string name="members_pairing_confirm">Prima di approvare, verifica che corrisponda all\'impronta mostrata sul nuovo dispositivo.</string>
     <string name="members_pairing_approve">Approva</string>
-    <string name="members_pairing_approving">Approvazione…</string>
     <string name="members_pairing_failed">Impossibile approvare questo dispositivo.</string>
     <string name="members_pairing_waiting">In attesa del dispositivo…</string>
     <string name="onboarding_tagline">Unisciti a una libreria da uno dei tuoi altri dispositivi per iniziare</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Questo codice di abbinamento non è valido.</string>
     <string name="onboarding_join_action">Unisciti</string>
     <string name="onboarding_joining_title">Accesso alla tua libreria</string>
-    <string name="onboarding_joining_body">bae sta aggiungendo questo dispositivo alla tua libreria.</string>
     <string name="qr_scanner_instructions">Mostra il QR di recupero di questa libreria da bae → Impostazioni → Codice di recupero su un altro dispositivo</string>
     <string name="unlock_title">Libreria bloccata</string>
     <string name="unlock_explanation">La chiave di crittografia per questa libreria non è nel portachiavi. Inserisci la chiave esadecimale a 64 caratteri per sbloccare.</string>

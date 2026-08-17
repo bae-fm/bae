@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">வருடு</string>
     <string name="members_pairing_confirm">ஒப்புதல் அளிக்கும் முன் இது புதிய சாதனத்தில் காட்டப்படும் கைரேகையுடன் பொருந்துகிறதா எனச் சரிபார்க்கவும்.</string>
     <string name="members_pairing_approve">ஒப்புதல் அளிக்கவும்</string>
-    <string name="members_pairing_approving">ஒப்புதல் அளிக்கப்படுகிறது…</string>
     <string name="members_pairing_failed">இந்த சாதனத்துக்கு ஒப்புதல் அளிக்க முடியவில்லை.</string>
     <string name="members_pairing_waiting">சாதனத்திற்காகக் காத்திருக்கிறது…</string>
     <string name="onboarding_tagline">தொடங்க, உங்கள் மற்றொரு சாதனத்தில் உள்ள நூலகத்தில் சேரவும்</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">இந்த இணைத்தல் குறியீடு செல்லாது.</string>
     <string name="onboarding_join_action">சேர்</string>
     <string name="onboarding_joining_title">உங்கள் நூலகத்தில் சேர்கிறது</string>
-    <string name="onboarding_joining_body">bae இந்த சாதனத்தை உங்கள் நூலகத்தில் சேர்க்கிறது.</string>
     <string name="qr_scanner_instructions">மற்றொரு சாதனத்தில் bae → அமைப்புகள் → மீட்பு குறியீடு என்பதிலிருந்து இந்த நூலகத்தின் மீட்பு QR-ஐ காட்டு</string>
     <string name="unlock_title">நூலகம் பூட்டப்பட்டுள்ளது</string>
     <string name="unlock_explanation">இந்த நூலகத்திற்கான குறியாக்க விசை சாவிக்கொத்தில் இல்லை. திறக்க 64 எழுத்துகள் கொண்ட hex விசையை உள்ளிடவும்.</string>

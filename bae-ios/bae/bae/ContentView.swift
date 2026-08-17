@@ -73,8 +73,11 @@ struct ContentView: View {
 
                 case .library(let service):
                     service.installEnvironment(
-                        LibraryView()
-                            .environment(holder)
+                        VStack(spacing: 0) {
+                            ArtworkLoadingBanner()
+                            LibraryView()
+                        }
+                        .environment(holder)
                     )
 
                 case .failed(let message):

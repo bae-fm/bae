@@ -11,20 +11,6 @@
 // `CovenHandle::blob_cloud_key`.
 pub use coven::{decode_restore_code_info, restore_from_code, RestoreSource};
 
-/// How often a device-join transport wait looks for the counterpart's next
-/// artifact, and how long it keeps looking. Shared by both sides of the join —
-/// the owner's driver in `sync_controller` and the joining device's one-call
-/// entry point — so neither gives up while the other is still working.
-///
-/// Both sides are driven by a person at a device, so the deadline bounds a
-/// human-paced step (scan the code, tap approve), not a machine round-trip.
-pub(crate) fn device_join_timing() -> coven::DeviceJoinTransportTiming {
-    coven::DeviceJoinTransportTiming {
-        poll: std::time::Duration::from_secs(1),
-        deadline: std::time::Duration::from_secs(180),
-    }
-}
-
 // `CloudCipher` is what a test hands to `connect_sync_with_test_home`; coven
 // only compiles it under `test`/`test-utils`, so bae's re-export follows.
 #[cfg(any(test, feature = "test-utils"))]
@@ -38,6 +24,20 @@ pub mod membership;
 
 use coven::{BlobDecl, RowIdentity, SyncedTable};
 use coven::{CacheFill, Provenance};
+
+/// The localized message key for a visible post-open artwork-loading state.
+/// Terminal success and the idle state have no banner.
+pub fn eager_cache_fill_title_key(status: &coven::EagerCacheFillStatus) -> Option<&'static str> {
+    match status {
+        coven::EagerCacheFillStatus::NotRunning | coven::EagerCacheFillStatus::Complete { .. } => {
+            None
+        }
+        coven::EagerCacheFillStatus::Scanning => Some("core.artwork_cache.scanning"),
+        coven::EagerCacheFillStatus::Downloading(_) => Some("core.artwork_cache.downloading"),
+        coven::EagerCacheFillStatus::Cancelled(_) => Some("core.artwork_cache.cancelled"),
+        coven::EagerCacheFillStatus::Failed { .. } => Some("core.artwork_cache.failed"),
+    }
+}
 
 /// S3 configuration data for save_s3_config.
 pub struct S3ConfigData {

@@ -51,6 +51,16 @@ impl LibraryManager {
         self.database.sync_now();
     }
 
+    pub fn subscribe_eager_cache_fill_status(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::library::EagerCacheFillStatus> {
+        self.database.subscribe_eager_cache_fill_status()
+    }
+
+    pub fn cancel_eager_cache_fill(&self) {
+        self.database.cancel_eager_cache_fill();
+    }
+
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
         self.sync.save_s3_config(data).await?;
         Ok(())

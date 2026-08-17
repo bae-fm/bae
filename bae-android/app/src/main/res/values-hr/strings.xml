@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Skeniraj</string>
     <string name="members_pairing_confirm">Prije odobravanja provjerite podudara li se ovo s otiskom prikazanim na novom uređaju.</string>
     <string name="members_pairing_approve">Odobri</string>
-    <string name="members_pairing_approving">Odobravanje…</string>
     <string name="members_pairing_failed">Nije moguće odobriti ovaj uređaj.</string>
     <string name="members_pairing_waiting">Čekanje uređaja…</string>
     <string name="onboarding_tagline">Za početak se pridružite fonoteci s jednog od svojih drugih uređaja</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Ovaj kod za uparivanje nije valjan.</string>
     <string name="onboarding_join_action">Pridruži se</string>
     <string name="onboarding_joining_title">Pridruživanje vašoj fonoteci</string>
-    <string name="onboarding_joining_body">bae dodaje ovaj uređaj u vašu fonoteku.</string>
     <string name="qr_scanner_instructions">Prikažite QR za oporavak ove fonoteke iz bae → Postavke → Kod za oporavak na drugom uređaju</string>
     <string name="unlock_title">Fonoteka zaključana</string>
     <string name="unlock_explanation">Ključ za šifriranje ove fonoteke nije u privjesku ključeva. Unesite 64-znamenkasti heksadecimalni ključ za otključavanje.</string>

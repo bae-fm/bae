@@ -61,9 +61,9 @@ struct JoinPairingOffer: View {
 
     private var oauthProvidersAvailable: Bool {
         #if BAE_OAUTH_PROVIDERS
-            true
+        true
         #else
-            false
+        false
         #endif
     }
 }

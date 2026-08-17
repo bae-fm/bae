@@ -11,6 +11,7 @@ public struct AppServiceComponents {
     fileprivate let playbackStore: PlaybackStore
     fileprivate let configStore: ConfigStore
     fileprivate let syncStatusStore: SyncStatusStore
+    fileprivate let artworkLoadingStore: ArtworkLoadingStore
     fileprivate let libraryStore: LibraryStore
     fileprivate let downloadStore: DownloadStore
     fileprivate let castStore: CastStore
@@ -28,6 +29,7 @@ public struct AppServiceComponents {
         playbackStore: PlaybackStore,
         configStore: ConfigStore,
         syncStatusStore: SyncStatusStore,
+        artworkLoadingStore: ArtworkLoadingStore,
         libraryStore: LibraryStore,
         downloadStore: DownloadStore,
         castStore: CastStore,
@@ -44,6 +46,7 @@ public struct AppServiceComponents {
         self.playbackStore = playbackStore
         self.configStore = configStore
         self.syncStatusStore = syncStatusStore
+        self.artworkLoadingStore = artworkLoadingStore
         self.libraryStore = libraryStore
         self.downloadStore = downloadStore
         self.castStore = castStore
@@ -107,6 +110,7 @@ open class AppService: @unchecked Sendable, Observable {
     private let playbackStore: PlaybackStore
     private let configStore: ConfigStore
     private let syncStatusStore: SyncStatusStore
+    private let artworkLoadingStore: ArtworkLoadingStore
     private let libraryStore: LibraryStore
     /// In-memory download (pin) queue mirror — per-release state and summary.
     private let downloadStore: DownloadStore
@@ -161,6 +165,7 @@ open class AppService: @unchecked Sendable, Observable {
         playbackStore = components.playbackStore
         configStore = components.configStore
         syncStatusStore = components.syncStatusStore
+        artworkLoadingStore = components.artworkLoadingStore
         libraryStore = components.libraryStore
         downloadStore = components.downloadStore
         castStore = components.castStore
@@ -169,6 +174,7 @@ open class AppService: @unchecked Sendable, Observable {
             appHandle: appHandle,
             configStore: components.configStore,
             syncStatusStore: components.syncStatusStore,
+            artworkLoadingStore: components.artworkLoadingStore,
             outboxStore: components.outboxStore,
             downloadStore: components.downloadStore,
             castStore: components.castStore
@@ -363,6 +369,7 @@ extension AppService {
             .environment(playbackStore)
             .environment(configStore)
             .environment(syncStatusStore)
+            .environment(artworkLoadingStore)
             .environment(libraryStore)
             .environment(libraryProjectionStore)
             .environment(libraryListsStore)
@@ -386,6 +393,7 @@ extension AppService {
             .environment(playbackStore)
             .environment(configStore)
             .environment(syncStatusStore)
+            .environment(artworkLoadingStore)
             .environment(libraryStore)
             .environment(libraryProjectionStore)
             .environment(libraryListsStore)
@@ -410,6 +418,7 @@ extension AppService {
             .environment(service?.playbackStore)
             .environment(service?.configStore)
             .environment(service?.syncStatusStore)
+            .environment(service?.artworkLoadingStore)
             .environment(service?.libraryStore)
             .environment(service?.libraryProjectionStore)
             .environment(service?.libraryListsStore)

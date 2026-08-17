@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Сканиране</string>
     <string name="members_pairing_confirm">Преди одобряване проверете дали това съвпада с отпечатъка, показан на новото устройство.</string>
     <string name="members_pairing_approve">Одобряване</string>
-    <string name="members_pairing_approving">Одобряване…</string>
     <string name="members_pairing_failed">Това устройство не можа да бъде одобрено.</string>
     <string name="members_pairing_waiting">Изчакване на устройството…</string>
     <string name="onboarding_tagline">За да започнете, присъединете се към библиотека от някое от другите си устройства</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Този код за сдвояване е невалиден.</string>
     <string name="onboarding_join_action">Присъединяване</string>
     <string name="onboarding_joining_title">Присъединяване към библиотеката ви</string>
-    <string name="onboarding_joining_body">bae добавя това устройство към библиотеката ви.</string>
     <string name="qr_scanner_instructions">Покажете QR кода за възстановяване на тази библиотека от bae → Настройки → Код за възстановяване на друго устройство</string>
     <string name="unlock_title">Библиотеката е заключена</string>
     <string name="unlock_explanation">Ключът за шифроване на тази библиотека не е в ключодържателя. Въведете 64-знаковия шестнадесетичен ключ за отключване.</string>

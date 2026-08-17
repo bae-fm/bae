@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">اسکین کریں</string>
     <string name="members_pairing_confirm">منظوری سے پہلے جانچیں کہ یہ نئے آلے پر دکھائے گئے فنگرپرنٹ سے ملتا ہے۔</string>
     <string name="members_pairing_approve">منظور کریں</string>
-    <string name="members_pairing_approving">منظور کیا جا رہا ہے…</string>
     <string name="members_pairing_failed">یہ آلہ منظور نہیں ہو سکا۔</string>
     <string name="members_pairing_waiting">آلے کا انتظار ہے…</string>
     <string name="onboarding_tagline">شروع کرنے کے لیے اپنے دوسرے آلات میں سے کسی ایک سے کتب خانے میں شامل ہوں</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">جوڑی بنانے کا یہ رمز درست نہیں ہے۔</string>
     <string name="onboarding_join_action">شامل ہوں</string>
     <string name="onboarding_joining_title">آپ کے کتب خانے میں شامل ہو رہا ہے</string>
-    <string name="onboarding_joining_body">bae یہ آلہ آپ کے کتب خانے میں شامل کر رہا ہے۔</string>
     <string name="qr_scanner_instructions">دوسرے آلے پر bae → ترتیبات → بازیابی رمز سے اس کتب خانے کا بازیابی QR دکھائیں</string>
     <string name="unlock_title">لائبریری مقفل ہے</string>
     <string name="unlock_explanation">اس لائبریری کی خفیہ کاری کلید کی رنگ میں نہیں ہے۔ کھولنے کے لیے 64 حروف والی hex کلید درج کریں۔</string>

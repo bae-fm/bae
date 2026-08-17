@@ -81,6 +81,23 @@ pub struct BridgeDevicePairingOffer {
     pub expires_at_unix_seconds: i64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDevicePairingPhase {
+    AwaitingInvitation,
+    ProviderAccessPending,
+    LibraryInstallationPending,
+}
+
+/// A pairing attempt retained on this device and available to resume after an
+/// app restart.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePendingDevicePairingJoin {
+    pub pairing_code: String,
+    pub offer: BridgeDevicePairingOffer,
+    pub fingerprint: String,
+    pub phase: BridgeDevicePairingPhase,
+}
+
 /// The exact joining identity waiting for approval on the existing device.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePairingDevice {

@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -67,6 +68,23 @@ internal sealed class WelcomeWindow : Window
         root.Children.Add(_status);
         root.Children.Add(_modalHost);
         Content = root;
+
+        Opened += async (_, _) =>
+        {
+            try
+            {
+                var pending = BaeBridgeMethods.PendingDevicePairingJoin();
+                if (pending is not null)
+                {
+                    await _modalHost.Show(close => _joinDialog.Build(close, pending));
+                }
+            }
+            catch (uniffi.bae_bridge.BridgeException exception)
+            {
+                BaeDiagnostics.Logger.Error("Failed to resume pending device pairing.", exception);
+                SetStatus(Loc.Chrome("join.failed"));
+            }
+        };
     }
 
     // Overwrite the status line — used to surface a failed library open when the

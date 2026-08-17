@@ -21,7 +21,9 @@ struct JoinPairingOffer: View {
                 Section("Pairing code") {
                     TextField("Paste pairing code", text: $pairingCodeInput)
                         .font(.system(.body, design: .monospaced))
+                        .disabled(isAuthorizing || isJoining)
                     Button("Scan") { onScan() }
+                        .disabled(isAuthorizing || isJoining)
 
                     offerPreview
                 }
@@ -51,9 +53,10 @@ struct JoinPairingOffer: View {
             }
 
             HStack(spacing: 12) {
-                Button("Back") { onBack() }
-                    .buttonStyle(.bordered)
-                    .disabled(isJoining)
+                Button(isAuthorizing || isJoining ? "Cancel" : "Back") {
+                    onBack()
+                }
+                .buttonStyle(.bordered)
                 Button("Join") { onJoin() }
                     .buttonStyle(.borderedProminent)
                     .disabled(isJoining || !joinReady)

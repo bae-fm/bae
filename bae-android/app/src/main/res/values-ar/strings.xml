@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">مسح</string>
     <string name="members_pairing_confirm">تحقق من أن هذا يطابق البصمة المعروضة على الجهاز الجديد قبل الموافقة.</string>
     <string name="members_pairing_approve">موافقة</string>
-    <string name="members_pairing_approving">جارٍ الموافقة…</string>
     <string name="members_pairing_failed">تعذرت الموافقة على هذا الجهاز.</string>
     <string name="members_pairing_waiting">في انتظار الجهاز…</string>
     <string name="onboarding_tagline">انضم إلى مكتبة من أحد أجهزتك الأخرى للبدء</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">رمز الاقتران هذا غير صالح.</string>
     <string name="onboarding_join_action">انضمام</string>
     <string name="onboarding_joining_title">جارٍ الانضمام إلى مكتبتك</string>
-    <string name="onboarding_joining_body">يقوم bae بإضافة هذا الجهاز إلى مكتبتك.</string>
     <string name="qr_scanner_instructions">اعرض QR استرداد هذه المكتبة من bae → الإعدادات → رمز الاسترداد على جهاز آخر</string>
     <string name="unlock_title">المكتبة مقفلة</string>
     <string name="unlock_explanation">مفتاح التشفير لهذه المكتبة غير موجود في حلقة المفاتيح. أدخل المفتاح السداسي العشري المكوّن من 64 حرفًا لإلغاء القفل.</string>

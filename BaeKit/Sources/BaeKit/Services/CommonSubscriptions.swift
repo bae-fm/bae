@@ -28,6 +28,23 @@ private final class SyncStatusValueSink: SyncStatusCallback,
     }
 }
 
+private final class ArtworkLoadingValueSink: EagerCacheFillStatusCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void
+
+    init(
+        apply:
+            @escaping @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void
+    ) {
+        self.apply = apply
+    }
+
+    func onValue(value: BridgeEagerCacheFillStatus) {
+        Task { @MainActor in apply(value) }
+    }
+}
+
 private final class PlaybackValuesSink: PlaybackValuesCallback,
     @unchecked Sendable
 {
@@ -120,6 +137,7 @@ final class CommonSubscriptions {
     private let appHandle: AppHandle
     private let configStore: ConfigStore
     private let syncStatusStore: SyncStatusStore
+    private let artworkLoadingStore: ArtworkLoadingStore
     private let outboxStore: OutboxStore
     private let downloadStore: DownloadStore
     private let castStore: CastStore
@@ -129,6 +147,7 @@ final class CommonSubscriptions {
         appHandle: AppHandle,
         configStore: ConfigStore,
         syncStatusStore: SyncStatusStore,
+        artworkLoadingStore: ArtworkLoadingStore,
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
         castStore: CastStore
@@ -136,6 +155,7 @@ final class CommonSubscriptions {
         self.appHandle = appHandle
         self.configStore = configStore
         self.syncStatusStore = syncStatusStore
+        self.artworkLoadingStore = artworkLoadingStore
         self.outboxStore = outboxStore
         self.downloadStore = downloadStore
         self.castStore = castStore
@@ -158,6 +178,12 @@ final class CommonSubscriptions {
             appHandle.subscribeSyncStatus(
                 callback: SyncStatusValueSink { [syncStatusStore] value in
                     syncStatusStore.apply(value)
+                }
+            ),
+            appHandle.subscribeEagerCacheFillStatus(
+                callback: ArtworkLoadingValueSink {
+                    [artworkLoadingStore] value in
+                    artworkLoadingStore.apply(value)
                 }
             ),
             appHandle.subscribePlaybackValues(

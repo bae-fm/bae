@@ -17,8 +17,6 @@ internal static class DeviceJoinProgressView
         {
             BridgeJoiningDeviceJoinProgress.DownloadingSnapshot value =>
                 (value.BytesDone, value.BytesTotal),
-            BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles value =>
-                (value.BytesDone, value.BytesTotal),
             _ => ((ulong Done, ulong Total)?)null,
         };
         column.Children.Add(bytes is { Total: > 0 }
@@ -35,11 +33,6 @@ internal static class DeviceJoinProgressView
         {
             column.Children.Add(DialogUi.Body(
                 $"{Loc.Bytes(checked((long)transfer.Done))} / {Loc.Bytes(checked((long)transfer.Total))}"));
-        }
-        if (progress is BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles files)
-        {
-            column.Children.Add(DialogUi.Body(
-                $"{files.FilesDone.ToString("N0")} / {files.FilesTotal.ToString("N0")}"));
         }
         return column;
     }

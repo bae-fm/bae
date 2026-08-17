@@ -15,17 +15,32 @@ pub struct DevicePairingOfferInfo {
     pub expires_at_unix_seconds: i64,
 }
 
+impl DevicePairingOfferInfo {
+    pub(super) fn from_offer(offer: &coven::DevicePairingOffer) -> Self {
+        let cloud_provider = offer.cloud_provider().clone();
+        Self {
+            library_name: offer.store_name().to_string(),
+            needs_oauth: cloud_provider.needs_oauth(),
+            cloud_provider,
+            expires_at_unix_seconds: offer.expires_at_unix_seconds(),
+        }
+    }
+}
+
+/// A durable joining-device attempt that the onboarding UI can resume after
+/// its process or operation object is gone.
+pub struct PendingDevicePairingJoinInfo {
+    pub pairing_code: String,
+    pub offer: DevicePairingOfferInfo,
+    pub fingerprint: String,
+    pub phase: coven::DevicePairingPhase,
+}
+
 pub fn inspect_device_pairing_offer(
     code: &str,
 ) -> Result<DevicePairingOfferInfo, coven::DevicePairingError> {
     let offer = coven::DevicePairingOffer::decode(code)?;
-    let cloud_provider = offer.cloud_provider().clone();
-    Ok(DevicePairingOfferInfo {
-        library_name: offer.store_name().to_string(),
-        needs_oauth: cloud_provider.needs_oauth(),
-        cloud_provider,
-        expires_at_unix_seconds: offer.expires_at_unix_seconds(),
-    })
+    Ok(DevicePairingOfferInfo::from_offer(&offer))
 }
 
 /// The exact signed identity waiting for the owner to admit it.

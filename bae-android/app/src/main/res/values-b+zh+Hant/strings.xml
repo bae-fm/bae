@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">掃描</string>
     <string name="members_pairing_confirm">核准前，請確認這與新裝置顯示的指紋相符。</string>
     <string name="members_pairing_approve">核准</string>
-    <string name="members_pairing_approving">正在核准…</string>
     <string name="members_pairing_failed">無法核准此裝置。</string>
     <string name="members_pairing_waiting">正在等待裝置…</string>
     <string name="onboarding_tagline">從你的其他裝置加入資料庫以開始使用</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">此配對碼無效。</string>
     <string name="onboarding_join_action">加入</string>
     <string name="onboarding_joining_title">正在加入你的資料庫</string>
-    <string name="onboarding_joining_body">bae 正在將此裝置加入你的資料庫。</string>
     <string name="qr_scanner_instructions">在另一台裝置從 bae → 設定 → 復原碼顯示此資料庫的復原 QR</string>
     <string name="unlock_title">資料庫已鎖定</string>
     <string name="unlock_explanation">此資料庫的加密金鑰不在鑰匙圈中。請輸入 64 字元十六進位金鑰以解鎖。</string>

@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">స్కాన్ చేయి</string>
     <string name="members_pairing_confirm">ఆమోదించే ముందు ఇది కొత్త పరికరంలో చూపిన ఫింగర్‌ప్రింట్‌తో సరిపోతుందో చూడండి.</string>
     <string name="members_pairing_approve">ఆమోదించు</string>
-    <string name="members_pairing_approving">ఆమోదిస్తోంది…</string>
     <string name="members_pairing_failed">ఈ పరికరాన్ని ఆమోదించలేకపోయింది.</string>
     <string name="members_pairing_waiting">పరికరం కోసం వేచి ఉంది…</string>
     <string name="onboarding_tagline">ప్రారంభించడానికి మీ ఇతర పరికరాలలో ఒకదాని నుంచి లైబ్రరీలో చేరండి</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">ఈ జత చేసే కోడ్ చెల్లదు.</string>
     <string name="onboarding_join_action">చేరు</string>
     <string name="onboarding_joining_title">మీ లైబ్రరీలో చేరుతోంది</string>
-    <string name="onboarding_joining_body">bae ఈ పరికరాన్ని మీ లైబ్రరీకి జోడిస్తోంది.</string>
     <string name="qr_scanner_instructions">ఇతర పరికరంలో bae → సెట్టింగ్‌లు → పునరుద్ధరణ కోడ్ నుంచి ఈ లైబ్రరీ పునరుద్ధరణ QRను చూపించండి</string>
     <string name="unlock_title">లైబ్రరీ లాక్ చేయబడింది</string>
     <string name="unlock_explanation">ఈ లైబ్రరీకి గుప్తీకరణ కీ కీరింగ్‌లో లేదు. అన్‌లాక్ చేయడానికి 64-అక్షరాల హెక్స్ కీని నమోదు చేయండి.</string>

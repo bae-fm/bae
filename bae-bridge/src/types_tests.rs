@@ -39,6 +39,12 @@ mod loc_key_coverage {
         "core.queue.failed",
         "core.queue.queued",
         "core.download.bytes_progress",
+        // Eager-cache status records carry their localized title key directly;
+        // each platform renders that field without another key function.
+        "core.artwork_cache.scanning",
+        "core.artwork_cache.downloading",
+        "core.artwork_cache.cancelled",
+        "core.artwork_cache.failed",
         "core.outbox.pending_deletes",
         "core.outbox.pausing",
         "core.outbox.preparing",

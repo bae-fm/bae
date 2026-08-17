@@ -169,7 +169,6 @@
     <string name="pairing_scan_code">Scan</string>
     <string name="members_pairing_confirm">Check that this matches the fingerprint shown on the new device before approving.</string>
     <string name="members_pairing_approve">Approve</string>
-    <string name="members_pairing_approving">Approving…</string>
     <string name="members_pairing_failed">Couldn\'t approve this device.</string>
     <string name="members_pairing_waiting">Waiting for the device…</string>
 
@@ -207,7 +206,6 @@
     <string name="pairing_code_invalid">This pairing code is not valid.</string>
     <string name="onboarding_join_action">Join</string>
     <string name="onboarding_joining_title">Joining your library</string>
-    <string name="onboarding_joining_body">bae is adding this device to your library.</string>
 
     <!-- QR scanner -->
     <string name="qr_scanner_instructions">Show this library\'s recovery QR from bae → Settings → Recovery code on another device</string>

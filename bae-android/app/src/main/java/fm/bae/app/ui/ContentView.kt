@@ -1,7 +1,9 @@
 package fm.bae.app.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +32,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ShortcutAction
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.UnlockScreen
@@ -209,15 +212,20 @@ private fun LibraryOpenScreen(
     // The image store is the open library's: its cache entries are keyed on that
     // library's image ids, so it is scoped to the session, not the process.
     CompositionLocalProvider(LocalImageStore provides session.imageStore) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ArtworkLoadingBanner(session.artworkLoadingStore)
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                LibraryScreen(
+                    session = session,
+                    libraries = libraries,
+                    openSearch = shortcutAction == ShortcutAction.SEARCH,
+                    onSearchOpened = onShortcutHandled,
+                    onSwitchLibrary = onSwitchLibrary,
+                    onLeaveLibrary = onLeaveLibrary,
+                )
+            }
+        }
         Box(modifier = Modifier.fillMaxSize()) {
-            LibraryScreen(
-                session = session,
-                libraries = libraries,
-                openSearch = shortcutAction == ShortcutAction.SEARCH,
-                onSearchOpened = onShortcutHandled,
-                onSwitchLibrary = onSwitchLibrary,
-                onLeaveLibrary = onLeaveLibrary,
-            )
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.align(Alignment.BottomCenter),

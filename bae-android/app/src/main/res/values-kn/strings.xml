@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">ಸ್ಕ್ಯಾನ್</string>
     <string name="members_pairing_confirm">ಅನುಮೋದಿಸುವ ಮೊದಲು ಇದು ಹೊಸ ಸಾಧನದಲ್ಲಿ ತೋರಿಸಲಾದ fingerprint ಗೆ ಹೊಂದುತ್ತದೆಯೇ ಪರಿಶೀಲಿಸಿ.</string>
     <string name="members_pairing_approve">ಅನುಮೋದಿಸಿ</string>
-    <string name="members_pairing_approving">ಅನುಮೋದಿಸಲಾಗುತ್ತಿದೆ…</string>
     <string name="members_pairing_failed">ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಲಾಗಲಿಲ್ಲ.</string>
     <string name="members_pairing_waiting">ಸಾಧನಕ್ಕಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…</string>
     <string name="onboarding_tagline">ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ಬೇರೆ ಸಾಧನದಲ್ಲಿರುವ ಲೈಬ್ರರಿಗೆ ಸೇರಿ</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">ಈ ಜೋಡಣೆ ಕೋಡ್ ಮಾನ್ಯವಾಗಿಲ್ಲ.</string>
     <string name="onboarding_join_action">ಸೇರಿ</string>
     <string name="onboarding_joining_title">ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರುತ್ತಿದೆ</string>
-    <string name="onboarding_joining_body">bae ಈ ಸಾಧನವನ್ನು ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸುತ್ತಿದೆ.</string>
     <string name="qr_scanner_instructions">ಮತ್ತೊಂದು ಸಾಧನದಲ್ಲಿ bae → ಸೆಟ್ಟಿಂಗ್‌ಗಳು → ಮರುಪಡೆಯುವ ಕೋಡ್ ಇಂದ ಈ ಲೈಬ್ರರಿಯ ಮರುಪಡೆಯುವ QR ತೋರಿಸಿ</string>
     <string name="unlock_title">ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಆಗಿದೆ</string>
     <string name="unlock_explanation">ಈ ಗ್ರಂಥಾಲಯದ ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಕೀಲಿ ಕೀರಿಂಗ್‌ನಲ್ಲಿಲ್ಲ. ಅನ್ಲಾಕ್ ಮಾಡಲು 64 ಅಕ್ಷರಗಳ ಹೆಕ್ಸ್ ಕೀಲಿಯನ್ನು ನಮೂದಿಸಿ.</string>

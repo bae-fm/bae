@@ -27,18 +27,10 @@ import uniffi.bae_bridge.bridgeJoiningDeviceJoinProgressKey
 internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
     val context = LocalContext.current
     val bytes =
-        when (progress) {
-            is BridgeJoiningDeviceJoinProgress.DownloadingSnapshot -> {
-                progress.bytesDone to progress.bytesTotal
-            }
-
-            is BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles -> {
-                progress.bytesDone to progress.bytesTotal
-            }
-
-            else -> {
-                null
-            }
+        if (progress is BridgeJoiningDeviceJoinProgress.DownloadingSnapshot) {
+            progress.bytesDone to progress.bytesTotal
+        } else {
+            null
         }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (bytes != null && bytes.second > 0uL) {
@@ -60,13 +52,6 @@ internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
                 text =
                     "${context.formatFileSize(bytes.first.requireDisplayableByteCount())} / " +
                         context.formatFileSize(bytes.second.requireDisplayableByteCount()),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (progress is BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles) {
-            Text(
-                text = "${progress.filesDone} / ${progress.filesTotal}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

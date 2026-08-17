@@ -18,6 +18,9 @@ private let bridgeRemoveLocalLibrary = removeLocalLibrary(libraryId:)
 private let bridgeCreateLibrary = createLibrary(name:)
 private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
 private let bridgeDecodeDevicePairingOffer = decodeDevicePairingOffer(code:)
+private let bridgePendingDevicePairingJoin = pendingDevicePairingJoin
+private let bridgeAbandonPendingDevicePairingJoin =
+    abandonPendingDevicePairingJoin
 private let bridgeRestoreFromCode = restoreFromCode(code:oauthTokenJson:)
 private let bridgeJoinDevicePairingOperation =
     joinDevicePairingOperation(pairingCode:oauthTokenJson:)
@@ -53,6 +56,9 @@ final class LibrarySetup: Sendable, Observable {
         @Sendable (_ code: String) throws -> BridgeRestoreCodeInfo
     let decodeDevicePairingOffer:
         @Sendable (_ code: String) throws -> BridgeDevicePairingOffer
+    let pendingDevicePairingJoin:
+        @Sendable () throws -> BridgePendingDevicePairingJoin?
+    let abandonPendingDevicePairingJoin: @Sendable () throws -> Void
     let restoreFromCode:
         @Sendable (_ code: String, _ oauthTokenJson: String?) throws ->
             BridgeLibrary
@@ -87,6 +93,12 @@ final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable (String) throws -> BridgeDevicePairingOffer = {
                 _ in throw StubError.notImplemented
             },
+        pendingDevicePairingJoin:
+            @escaping @Sendable () throws -> BridgePendingDevicePairingJoin? = {
+                nil
+            },
+        abandonPendingDevicePairingJoin:
+            @escaping @Sendable () throws -> Void = {},
         restoreFromCode:
             @escaping @Sendable (String, String?) throws -> BridgeLibrary = {
                 _,
@@ -115,6 +127,9 @@ final class LibrarySetup: Sendable, Observable {
         self.createLibrary = createLibrary
         self.decodeRestoreCode = decodeRestoreCode
         self.decodeDevicePairingOffer = decodeDevicePairingOffer
+        self.pendingDevicePairingJoin = pendingDevicePairingJoin
+        self.abandonPendingDevicePairingJoin =
+            abandonPendingDevicePairingJoin
         self.restoreFromCode = restoreFromCode
         self.joinDevicePairing = joinDevicePairing
         self.fetchRestoreCodes = fetchRestoreCodes
@@ -134,6 +149,9 @@ final class LibrarySetup: Sendable, Observable {
             createLibrary: { try bridgeCreateLibrary(nil) },
             decodeRestoreCode: bridgeDecodeRestoreCode,
             decodeDevicePairingOffer: bridgeDecodeDevicePairingOffer,
+            pendingDevicePairingJoin: bridgePendingDevicePairingJoin,
+            abandonPendingDevicePairingJoin:
+                bridgeAbandonPendingDevicePairingJoin,
             restoreFromCode: bridgeRestoreFromCode,
             joinDevicePairing: { code, oauthTokenJson in
                 let operation = try await bridgeJoinDevicePairingOperation(

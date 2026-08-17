@@ -2,18 +2,21 @@ import Foundation
 
 extension BridgeDownloadTransferProgress {
     public var bytesText: String {
-        String(
-            format: NSLocalizedString(
-                "core.download.bytes_progress",
-                tableName: "Core",
-                bundle: .main,
-                comment:
-                    "Download progress as transferred bytes out of total bytes"
-            ),
-            bytesDone.formattedDownloadBytes,
-            bytesTotal.formattedDownloadBytes
-        )
+        formattedDownloadBytesProgress(done: bytesDone, total: bytesTotal)
     }
+}
+
+func formattedDownloadBytesProgress(done: UInt64, total: UInt64) -> String {
+    String(
+        format: NSLocalizedString(
+            "core.download.bytes_progress",
+            tableName: "Core",
+            bundle: .main,
+            comment: "Transferred bytes out of total bytes"
+        ),
+        done.formattedDownloadBytes,
+        total.formattedDownloadBytes
+    )
 }
 
 extension UInt64 {

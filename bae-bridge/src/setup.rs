@@ -99,7 +99,8 @@ use bae_core::library::{CancellationToken, JoinDevicePairingError, RestoreFromCo
 use crate::get_cloudkit_ops;
 use crate::types::{
     BridgeCloudProvider, BridgeDevicePairingOffer, BridgeError, BridgeJoiningDeviceJoinProgress,
-    BridgeLibrary, BridgeRestoreCodeInfo, JoiningDeviceJoinProgressCallback,
+    BridgeLibrary, BridgePendingDevicePairingJoin, BridgeRestoreCodeInfo,
+    JoiningDeviceJoinProgressCallback,
 };
 
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
@@ -409,6 +410,45 @@ impl BridgeDevicePairingOffer {
             expires_at_unix_seconds,
         }
     }
+}
+
+impl crate::types::BridgeDevicePairingPhase {
+    fn from_core(phase: coven::DevicePairingPhase) -> Self {
+        match phase {
+            coven::DevicePairingPhase::AwaitingInvitation => Self::AwaitingInvitation,
+            coven::DevicePairingPhase::ProviderAccessPending => Self::ProviderAccessPending,
+            coven::DevicePairingPhase::LibraryInstallationPending => {
+                Self::LibraryInstallationPending
+            }
+        }
+    }
+}
+
+impl BridgePendingDevicePairingJoin {
+    fn from_core(info: bae_core::library::PendingDevicePairingJoinInfo) -> Self {
+        Self {
+            pairing_code: info.pairing_code,
+            offer: BridgeDevicePairingOffer::from_core(info.offer),
+            fingerprint: info.fingerprint,
+            phase: crate::types::BridgeDevicePairingPhase::from_core(info.phase),
+        }
+    }
+}
+
+/// The pairing attempt retained by coven that can continue without rescanning
+/// the existing device's code.
+#[uniffi::export]
+pub fn pending_device_pairing_join() -> Result<Option<BridgePendingDevicePairingJoin>, BridgeError>
+{
+    bae_core::library::pending_device_pairing_join()
+        .map_err(join_error_to_bridge)
+        .map(|pending| pending.map(BridgePendingDevicePairingJoin::from_core))
+}
+
+/// Discard the joining identity and journal for the one pending enrollment.
+#[uniffi::export]
+pub fn abandon_pending_device_pairing_join() -> Result<(), BridgeError> {
+    bae_core::library::abandon_pending_device_pairing_join().map_err(join_error_to_bridge)
 }
 
 fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError {

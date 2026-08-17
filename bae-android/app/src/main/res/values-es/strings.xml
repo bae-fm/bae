@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Escanear</string>
     <string name="members_pairing_confirm">Comprueba que coincida con la huella mostrada en el dispositivo nuevo antes de aprobarlo.</string>
     <string name="members_pairing_approve">Aprobar</string>
-    <string name="members_pairing_approving">Aprobando…</string>
     <string name="members_pairing_failed">No se pudo aprobar este dispositivo.</string>
     <string name="members_pairing_waiting">Esperando al dispositivo…</string>
     <string name="onboarding_tagline">Únete a una biblioteca desde otro de tus dispositivos para empezar</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Este código de emparejamiento no es válido.</string>
     <string name="onboarding_join_action">Unirse</string>
     <string name="onboarding_joining_title">Uniéndote a tu biblioteca</string>
-    <string name="onboarding_joining_body">bae está añadiendo este dispositivo a tu biblioteca.</string>
     <string name="qr_scanner_instructions">Muestra el QR de recuperación de esta biblioteca desde bae → Ajustes → Código de recuperación en otro dispositivo</string>
     <string name="unlock_title">Biblioteca bloqueada</string>
     <string name="unlock_explanation">La clave de cifrado de esta biblioteca no está en el llavero. Introduce la clave hexadecimal de 64 caracteres para desbloquearla.</string>

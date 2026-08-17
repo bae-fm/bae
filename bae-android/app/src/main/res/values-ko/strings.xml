@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">스캔</string>
     <string name="members_pairing_confirm">승인하기 전에 새 기기에 표시된 지문과 일치하는지 확인하세요.</string>
     <string name="members_pairing_approve">승인</string>
-    <string name="members_pairing_approving">승인 중…</string>
     <string name="members_pairing_failed">이 기기를 승인할 수 없습니다.</string>
     <string name="members_pairing_waiting">기기를 기다리는 중…</string>
     <string name="onboarding_tagline">시작하려면 다른 기기 중 하나에서 라이브러리에 참여하세요</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">이 페어링 코드는 유효하지 않습니다.</string>
     <string name="onboarding_join_action">참여</string>
     <string name="onboarding_joining_title">라이브러리에 참여하는 중</string>
-    <string name="onboarding_joining_body">bae가 이 기기를 라이브러리에 추가하는 중입니다.</string>
     <string name="qr_scanner_instructions">다른 기기에서 bae → 설정 → 복구 코드로 이 라이브러리의 복구 QR을 표시하세요</string>
     <string name="unlock_title">라이브러리 잠김</string>
     <string name="unlock_explanation">이 라이브러리의 암호화 키가 키링에 없습니다. 잠금을 해제하려면 64자 16진수 키를 입력하세요.</string>

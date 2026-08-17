@@ -31,14 +31,6 @@ public struct DeviceJoinProgressView: View {
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
             }
-            if let files {
-                Text(
-                    verbatim:
-                        "\(files.done.formatted()) / \(files.total.formatted())"
-                )
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.secondary)
-            }
         }
     }
 
@@ -71,17 +63,8 @@ public struct DeviceJoinProgressView: View {
         switch value {
         case .downloadingSnapshot(let done, let total):
             return (done, total)
-        case .downloadingLibraryFiles(_, _, let done, let total):
-            return (done, total)
         default:
             return nil
         }
-    }
-
-    private var files: (done: UInt64, total: UInt64)? {
-        guard case .joining(let value) = progress else { return nil }
-        guard case .downloadingLibraryFiles(let done, let total, _, _) = value
-        else { return nil }
-        return (done, total)
     }
 }

@@ -14,8 +14,10 @@ pub(crate) mod sync_controller;
 pub mod upload_throughput;
 pub use app_services::*;
 pub use browse::*;
+pub use coven::{EagerCacheFillProgress, EagerCacheFillStatus};
 pub use device_pairing::{
     inspect_device_pairing_offer, DevicePairingOfferInfo, DevicePairingSession, PairingDevice,
+    PendingDevicePairingJoinInfo,
 };
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
@@ -359,6 +361,59 @@ pub async fn prepare_device_pairing_join(
     .await
 }
 
+pub fn pending_device_pairing_join(
+) -> Result<Option<PendingDevicePairingJoinInfo>, JoinDevicePairingError> {
+    let app_dir = crate::config::bae_dir()
+        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    pending_device_pairing_join_at(library_layout(app_dir))
+}
+
+fn pending_device_pairing_join_at(
+    layout: coven::StoreLayout,
+) -> Result<Option<PendingDevicePairingJoinInfo>, JoinDevicePairingError> {
+    Ok(
+        pending_device_pairing_at(&layout)?.map(|pairing| PendingDevicePairingJoinInfo {
+            pairing_code: pairing.offer().encode(),
+            offer: DevicePairingOfferInfo::from_offer(pairing.offer()),
+            fingerprint: crate::sync::membership::pubkey_fingerprint(
+                pairing.request().public_key(),
+            ),
+            phase: pairing.phase(),
+        }),
+    )
+}
+
+pub fn abandon_pending_device_pairing_join() -> Result<(), JoinDevicePairingError> {
+    let app_dir = crate::config::bae_dir()
+        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    abandon_pending_device_pairing_join_at(library_layout(app_dir))
+}
+
+fn abandon_pending_device_pairing_join_at(
+    layout: coven::StoreLayout,
+) -> Result<(), JoinDevicePairingError> {
+    if let Some(pairing) = pending_device_pairing_at(&layout)? {
+        pairing
+            .abandon(&layout)
+            .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    }
+    Ok(())
+}
+
+fn pending_device_pairing_at(
+    layout: &coven::StoreLayout,
+) -> Result<Option<coven::PreparedDevicePairing>, JoinDevicePairingError> {
+    let mut pending = coven::PreparedDevicePairing::pending(layout)
+        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    match pending.len() {
+        0 => Ok(None),
+        1 => Ok(pending.pop()),
+        count => Err(JoinDevicePairingError::Join(format!(
+            "found {count} pending device pairing attempts; cancel one before continuing"
+        ))),
+    }
+}
+
 async fn restore_from_code_inner(
     code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
@@ -380,6 +435,7 @@ async fn restore_from_code_inner(
         // Upload verification is local host policy and does not come from the
         // restore code.
         coven::ExactUploadVerification::MetadataHash,
+        crate::config::default_transfer_limits(),
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
         crate::oauth::clients(),
@@ -438,13 +494,13 @@ pub async fn join_prepared_device_pairing_cancellable(
         // Upload verification is local host policy and does not come from the
         // scanned pairing offer.
         coven::ExactUploadVerification::MetadataHash,
+        crate::config::default_transfer_limits(),
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
         crate::oauth::clients(),
         oauth_tokens,
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),
-        crate::sync::device_join_timing(),
         on_progress,
         &rx,
     )

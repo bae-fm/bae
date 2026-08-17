@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Skenovat</string>
     <string name="members_pairing_confirm">Před schválením zkontrolujte, že se shoduje s otiskem zobrazeným na novém zařízení.</string>
     <string name="members_pairing_approve">Schválit</string>
-    <string name="members_pairing_approving">Schvaluje se…</string>
     <string name="members_pairing_failed">Toto zařízení se nepodařilo schválit.</string>
     <string name="members_pairing_waiting">Čekání na zařízení…</string>
     <string name="onboarding_tagline">Začněte připojením ke knihovně z některého ze svých dalších zařízení</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Tento párovací kód není platný.</string>
     <string name="onboarding_join_action">Připojit se</string>
     <string name="onboarding_joining_title">Připojování k vaší knihovně</string>
-    <string name="onboarding_joining_body">bae přidává toto zařízení do vaší knihovny.</string>
     <string name="qr_scanner_instructions">Zobrazte QR pro obnovení této knihovny z bae → Nastavení → Kód pro obnovení na jiném zařízení</string>
     <string name="unlock_title">Knihovna zamčena</string>
     <string name="unlock_explanation">Šifrovací klíč této knihovny není v klíčence. Pro odemčení zadejte šestnáctkový klíč o 64 znacích.</string>

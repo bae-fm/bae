@@ -42,6 +42,7 @@ struct MainAppView: View {
             // playing bar
             VStack(spacing: 0) {
                 TitleBar(searchText: $searchText)
+                ArtworkLoadingBanner()
 
                 HStack(spacing: 0) {
                     // Only the active section is in the view tree: SwiftUI's
@@ -322,6 +323,7 @@ struct MainAppView: View {
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
             .environment(CastStore())
+            .environment(ArtworkLoadingStore(cancel: {}))
             .albumDetailPreviewEnvironment(store: libraryStore)
             .padding(.top, 1)
             .frame(width: 1280, height: 800)

@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
 import fm.bae.app.data.CastStore
@@ -15,6 +16,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.LibraryStore
+import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SyncStatusStore
@@ -49,6 +51,7 @@ import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.EagerCacheFillStatusCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
@@ -99,8 +102,9 @@ class OpenLibrary internal constructor(
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val syncStatusStore: SyncStatusStore get() = stores.syncStatus
-    val downloadStore: DownloadStore get() = stores.downloads
-    val outboxStore: OutboxStore get() = stores.outbox
+    val artworkLoadingStore: ArtworkLoadingStore get() = stores.transfers.artworkLoading
+    val downloadStore: DownloadStore get() = stores.transfers.downloads
+    val outboxStore: OutboxStore get() = stores.transfers.outbox
     val castStore: CastStore get() = stores.cast
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
@@ -167,6 +171,16 @@ class OpenLibrary internal constructor(
                 },
             )
         valueSubscriptions +=
+            appHandle.subscribeEagerCacheFillStatus(
+                object : EagerCacheFillStatusCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeEagerCacheFillStatus) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.transfers.artworkLoading.apply(value)
+                        }
+                    }
+                },
+            )
+        valueSubscriptions +=
             appHandle.subscribePlaybackValues(
                 object : PlaybackValuesCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgePlaybackValues) {
@@ -181,7 +195,7 @@ class OpenLibrary internal constructor(
             appHandle.subscribeDownloads(
                 object : DownloadCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgeDownloadSnapshot) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.downloads.setSnapshot(value) }
+                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.downloads.setSnapshot(value) }
                     }
                 },
             )
@@ -189,7 +203,7 @@ class OpenLibrary internal constructor(
             appHandle.subscribeOutbox(
                 object : OutboxCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgeOutboxSnapshot) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.outbox.setSnapshot(value) }
+                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setSnapshot(value) }
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
@@ -611,8 +625,12 @@ object AppSessionHolder {
         library = LibraryStore(),
         config = ConfigStore(config),
         syncStatus = SyncStatusStore(),
-        downloads = DownloadStore(handle.getDownloadSnapshot()),
-        outbox = OutboxStore(initialOutbox),
+        transfers =
+            LibraryTransferStores(
+                artworkLoading = ArtworkLoadingStore(handle::cancelEagerCacheFill),
+                downloads = DownloadStore(handle.getDownloadSnapshot()),
+                outbox = OutboxStore(initialOutbox),
+            ),
         cast = CastStore(),
     )
 }

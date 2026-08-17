@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">扫描</string>
     <string name="members_pairing_confirm">批准前，请确认这与新设备上显示的指纹一致。</string>
     <string name="members_pairing_approve">批准</string>
-    <string name="members_pairing_approving">正在批准…</string>
     <string name="members_pairing_failed">无法批准此设备。</string>
     <string name="members_pairing_waiting">正在等待设备…</string>
     <string name="onboarding_tagline">从你的另一台设备加入曲库以开始使用</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">此配对码无效。</string>
     <string name="onboarding_join_action">加入</string>
     <string name="onboarding_joining_title">正在加入你的曲库</string>
-    <string name="onboarding_joining_body">bae 正在将此设备添加到你的曲库。</string>
     <string name="qr_scanner_instructions">在另一台设备上从 bae → 设置 → 恢复代码 显示此曲库的恢复二维码</string>
     <string name="unlock_title">库已锁定</string>
     <string name="unlock_explanation">此库的加密密钥不在密钥环中。请输入 64 位十六进制密钥以解锁。</string>

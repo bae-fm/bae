@@ -759,6 +759,30 @@ impl AppHandle {
         std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
+    pub fn subscribe_eager_cache_fill_status(
+        &self,
+        callback: Box<dyn crate::types::EagerCacheFillStatusCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        let services = self.services.clone();
+        let runtime = self.runtime.handle().clone();
+        let task = crate::operation_runtime::spawn(runtime, move || async move {
+            let mut values = services.subscribe_eager_cache_fill_status();
+            callback.on_value(crate::types::BridgeEagerCacheFillStatus::from_core(
+                values.borrow_and_update().clone(),
+            ));
+            while values.changed().await.is_ok() {
+                callback.on_value(crate::types::BridgeEagerCacheFillStatus::from_core(
+                    values.borrow_and_update().clone(),
+                ));
+            }
+        });
+        std::sync::Arc::new(crate::LiveSubscription::new(task))
+    }
+
+    pub fn cancel_eager_cache_fill(&self) {
+        self.services.cancel_eager_cache_fill();
+    }
+
     /// The current cloud outbox processing snapshot.
     pub async fn get_outbox_snapshot(
         self: std::sync::Arc<Self>,

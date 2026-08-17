@@ -97,9 +97,14 @@ private fun PairingCodeEntry(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
         minLines = 3,
         maxLines = 5,
+        enabled = !joinLauncher.hasPendingPairing,
     )
     Spacer(modifier = Modifier.height(8.dp))
-    OutlinedButton(onClick = onRequestScan, modifier = Modifier.width(220.dp)) {
+    OutlinedButton(
+        onClick = onRequestScan,
+        modifier = Modifier.width(220.dp),
+        enabled = !joinLauncher.hasPendingPairing,
+    ) {
         Text(stringResource(R.string.pairing_scan_code))
     }
 }

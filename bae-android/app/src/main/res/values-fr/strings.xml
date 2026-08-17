@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Scanner</string>
     <string name="members_pairing_confirm">Vérifiez que cela correspond à l’empreinte affichée sur le nouvel appareil avant d’approuver.</string>
     <string name="members_pairing_approve">Approuver</string>
-    <string name="members_pairing_approving">Approbation…</string>
     <string name="members_pairing_failed">Impossible d’approuver cet appareil.</string>
     <string name="members_pairing_waiting">En attente de l’appareil…</string>
     <string name="onboarding_tagline">Rejoignez une bibliothèque depuis l’un de vos autres appareils pour commencer</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Ce code d’association n’est pas valide.</string>
     <string name="onboarding_join_action">Rejoindre</string>
     <string name="onboarding_joining_title">Association à votre bibliothèque</string>
-    <string name="onboarding_joining_body">bae ajoute cet appareil à votre bibliothèque.</string>
     <string name="qr_scanner_instructions">Afficher le QR de récupération de cette bibliothèque depuis bae → Réglages → Code de récupération sur un autre appareil</string>
     <string name="unlock_title">Bibliothèque verrouillée</string>
     <string name="unlock_explanation">La clé de chiffrement de cette bibliothèque n\'est pas dans le trousseau. Saisissez la clé hexadécimale de 64 caractères pour déverrouiller.</string>

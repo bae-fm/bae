@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">סרוק</string>
     <string name="members_pairing_confirm">לפני האישור, בדקו שזה תואם לטביעת האצבע שמוצגת במכשיר החדש.</string>
     <string name="members_pairing_approve">אשר</string>
-    <string name="members_pairing_approving">מאשר…</string>
     <string name="members_pairing_failed">לא ניתן לאשר את המכשיר הזה.</string>
     <string name="members_pairing_waiting">ממתין למכשיר…</string>
     <string name="onboarding_tagline">כדי להתחיל, הצטרפו לספרייה מאחד המכשירים האחרים שלכם</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">קוד הצימוד הזה אינו תקין.</string>
     <string name="onboarding_join_action">הצטרף</string>
     <string name="onboarding_joining_title">מצטרף לספרייה שלך</string>
-    <string name="onboarding_joining_body">bae מוסיף את המכשיר הזה לספרייה שלך.</string>
     <string name="qr_scanner_instructions">הציגו את QR השחזור של הספרייה הזו מתוך bae → הגדרות → קוד שחזור במכשיר אחר</string>
     <string name="unlock_title">הספרייה נעולה</string>
     <string name="unlock_explanation">מפתח ההצפנה של ספרייה זו אינו במחזיק המפתחות. הזינו את המפתח ההקסדצימלי באורך 64 תווים כדי לפתוח.</string>

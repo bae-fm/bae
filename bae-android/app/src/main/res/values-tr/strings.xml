@@ -133,7 +133,6 @@
     <string name="pairing_scan_code">Tara</string>
     <string name="members_pairing_confirm">Onaylamadan önce bunun yeni cihazda gösterilen parmak iziyle eşleştiğini kontrol edin.</string>
     <string name="members_pairing_approve">Onayla</string>
-    <string name="members_pairing_approving">Onaylanıyor…</string>
     <string name="members_pairing_failed">Bu cihaz onaylanamadı.</string>
     <string name="members_pairing_waiting">Cihaz bekleniyor…</string>
     <string name="onboarding_tagline">Başlamak için diğer cihazlarınızdan birindeki arşive katılın</string>
@@ -165,7 +164,6 @@
     <string name="pairing_code_invalid">Bu eşleştirme kodu geçerli değil.</string>
     <string name="onboarding_join_action">Katıl</string>
     <string name="onboarding_joining_title">Arşivinize katılıyor</string>
-    <string name="onboarding_joining_body">bae bu cihazı arşivinize ekliyor.</string>
     <string name="qr_scanner_instructions">Bu arşivin kurtarma QR\'ını başka bir cihazda bae → Ayarlar → Kurtarma kodu bölümünden gösterin</string>
     <string name="unlock_title">Kitaplık kilitli</string>
     <string name="unlock_explanation">Bu kitaplığın şifreleme anahtarı anahtarlıkta yok. Kilidi açmak için 64 karakterlik onaltılık anahtarı girin.</string>

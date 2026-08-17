@@ -32,6 +32,16 @@ impl Database {
         self.inner.handle.subscribe_sync_status()
     }
 
+    pub(crate) fn subscribe_eager_cache_fill_status(
+        &self,
+    ) -> tokio::sync::watch::Receiver<coven::EagerCacheFillStatus> {
+        self.inner.handle.subscribe_eager_cache_fill_status()
+    }
+
+    pub(crate) fn cancel_eager_cache_fill(&self) {
+        self.inner.handle.cancel_eager_cache_fill();
+    }
+
     pub(crate) fn is_syncing(&self) -> bool {
         self.inner.handle.is_syncing()
     }
@@ -316,7 +326,6 @@ impl Database {
                 coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
                 None,
                 on_progress,
-                crate::sync::device_join_timing(),
                 cancel,
             )
             .await
@@ -326,10 +335,7 @@ impl Database {
         &self,
         host: &coven::DevicePairingHost,
     ) -> Result<(), coven::ApproveDevicePairingError> {
-        self.inner
-            .handle
-            .cancel_device_pairing(host, crate::sync::device_join_timing())
-            .await
+        self.inner.handle.cancel_device_pairing(host).await
     }
 
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), coven::SyncError> {
