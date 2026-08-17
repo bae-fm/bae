@@ -24,13 +24,18 @@ val rustlsPlatformVerifierAndroid =
     }.standardOutput.asText.map { metadata ->
         val packages =
             (JsonSlurper().parseText(metadata) as Map<*, *>)["packages"] as List<*>
-        val verifier =
-            packages
-                .map { it as Map<*, *> }
+        val packageRecords = packages.map { it as Map<*, *> }
+        val verifiers = packageRecords.filter { it["name"] == "rustls-platform-verifier" }
+        require(verifiers.size == 1) {
+            "Android must contain one rustls-platform-verifier instance; found versions " +
+                verifiers.map { it["version"] }
+        }
+        val verifierAndroid =
+            packageRecords
                 .single { it["name"] == "rustls-platform-verifier-android" }
         Pair(
-            file(verifier["manifest_path"] as String),
-            verifier["version"] as String,
+            file(verifierAndroid["manifest_path"] as String),
+            verifierAndroid["version"] as String,
         )
     }.get()
 
