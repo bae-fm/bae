@@ -70,6 +70,11 @@ opt-level = 3
 # `uniffiRustCallAsyncCancellable` and `cancelFunc:`. If the upstream Swift
 # template changed shape, the branch needs rebasing.
 [patch.crates-io]
+# Android's platform verifier treats unavailable revocation data as a soft
+# failure while preserving confirmed revocation. The published 0.6.2 verifier
+# misclassifies every revocation-check exception as a revoked certificate.
+rustls-platform-verifier = { git = "https://github.com/bae-fm/rustls-platform-verifier", rev = "c0649fc1bb3e653c9261a3a0672938444b457bc2" }
+
 uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
