@@ -2,6 +2,8 @@
 
 uniffi::setup_scaffolding!();
 
+#[cfg(target_os = "android")]
+mod android_tls;
 mod bridge_utils;
 #[cfg(feature = "cloudkit")]
 mod cloudkit;

@@ -109,7 +109,7 @@ for ABI in "${ABIS[@]}"; do
 done
 
 # Generate bindings from the built static lib, not a host build, so the Kotlin
-# API matches the target exactly — mobile-only exports (e.g. setCaCertDir) are
+# API matches the target exactly — mobile-only exports are
 # present and target-gated desktop ones are absent. Read the .a, not the cdylib
 # .so: the release profile strips the .so (strip = true), which removes the
 # uniffi metadata uniffi-bindgen needs, so the .so yields empty bindings in

@@ -5,7 +5,6 @@ import io.crates.keyring.Keyring
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.initKeyring
-import uniffi.bae_bridge.setCaCertDir
 import uniffi.bae_bridge.setDataDir
 
 private const val TAG = "bae.BaeApp"
@@ -29,6 +28,9 @@ class BaeApp : Application() {
     var startupError: BridgeException? = null
         private set
 
+    var platformStartupError: String? = null
+        private set
+
     override fun onCreate() {
         super.onCreate()
         // Telemetry first, from compiled-in values only, so the sink exists for
@@ -42,16 +44,17 @@ class BaeApp : Application() {
         // library access (discover/restore/initApp) so those don't fail with
         // "could not determine home directory".
         setDataDir(filesDir.absolutePath)
-        // The TLS stack (S3 + reqwest, via rustls-native-certs) can't find CA
-        // roots on Android's default POSIX probe paths, so cloud connections
-        // fail to verify. Point it at the OS trust store so the platform owns
-        // CA trust + updates. conscrypt's dir is the Play-updatable one (API
-        // 30+); the /system dir is the fallback on older devices.
-        setCaCertDir("/apex/com.android.conscrypt/cacerts:/system/etc/security/cacerts")
         // Initialize the Android NDK context for the keyring store.
-        // Must be called before initKeyring() so the Rust side has
-        // access to the Android Context for SharedPreferences / KeyStore.
+        // TLS initialization receives the same application context directly;
+        // both must finish before any key or network operation.
         Keyring.initializeNdkContext(this)
+        try {
+            AndroidRuntime.initialize(this)
+        } catch (error: RuntimeException) {
+            platformStartupError = error.toString()
+            logger.error("Failed to initialize Android TLS", error)
+            return
+        }
         try {
             initKeyring(diagnostics)
         } catch (error: BridgeException) {

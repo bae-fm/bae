@@ -169,19 +169,6 @@ pub fn set_data_dir(path: String) {
     std::env::set_var("HOME", path);
 }
 
-/// Point the TLS stack at the OS certificate-authority store via `SSL_CERT_DIR`
-/// (colon-separated directories, honored by `rustls-native-certs`, which both the
-/// S3 client and reqwest use). Android keeps its trusted roots as PEM files under
-/// these directories rather than the POSIX paths the cert loader probes by
-/// default, so without this native-root loading finds nothing and every TLS
-/// handshake fails. The Android caller passes its system cert directories; trust
-/// — additions and distrusts alike — stays owned by the platform, not the app.
-#[cfg(target_os = "android")]
-#[uniffi::export]
-pub fn set_ca_cert_dir(dirs: String) {
-    std::env::set_var("SSL_CERT_DIR", dirs);
-}
-
 /// Initialize coven's platform keyring. Call once at app startup, after
 /// `configure_diagnostics` and before any bridge function that touches the
 /// keyring. A failure is returned so the host stops startup and displays it.

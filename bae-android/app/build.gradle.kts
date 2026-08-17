@@ -190,6 +190,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("net.java.dev.jna:jna:5.15.0@aar")
+    // JVM half of the Rust TLS verifier. settings.gradle locates the Maven
+    // directory through Cargo metadata, so both halves come from one resolved
+    // crate graph.
+    implementation(nativeDeps.rustls.platform.verifier)
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
