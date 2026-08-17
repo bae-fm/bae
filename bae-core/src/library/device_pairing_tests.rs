@@ -5,6 +5,17 @@ use super::{
 use crate::sync::membership::pubkey_fingerprint;
 
 #[test]
+fn approval_cancellation_remains_a_cancellation_inside_the_library() {
+    let error = super::LibraryError::from(coven::ApproveDevicePairingError::Cancelled);
+
+    assert!(matches!(
+        error,
+        super::LibraryError::DevicePairingApproval(inner)
+            if matches!(*inner, coven::ApproveDevicePairingError::Cancelled)
+    ));
+}
+
+#[test]
 fn pairing_offer_preview_comes_from_the_scanned_offer() {
     let pairing_key = coven::UserKeypair::generate();
     let offer = coven::DevicePairingOffer::new(

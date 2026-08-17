@@ -470,6 +470,13 @@ impl BridgeError {
 /// rides along as opaque, log-only detail.
 impl From<bae_core::library::LibraryError> for BridgeError {
     fn from(error: bae_core::library::LibraryError) -> Self {
+        if matches!(
+            &error,
+            bae_core::library::LibraryError::DevicePairingApproval(inner)
+                if matches!(**inner, coven::ApproveDevicePairingError::Cancelled)
+        ) {
+            return BridgeError::Cancelled;
+        }
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
             detail: error.to_string(),

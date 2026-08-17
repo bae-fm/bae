@@ -304,6 +304,7 @@ impl Database {
         &self,
         host: &coven::DevicePairingHost,
         request: &coven::DevicePairingRequest,
+        cancel: tokio::sync::watch::Receiver<bool>,
     ) -> Result<coven::DeviceJoinDriveOutcome, coven::ApproveDevicePairingError> {
         self.inner
             .handle
@@ -314,7 +315,18 @@ impl Database {
                 coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
                 None,
                 crate::sync::device_join_timing(),
+                cancel,
             )
+            .await
+    }
+
+    pub(crate) async fn cancel_device_pairing(
+        &self,
+        host: &coven::DevicePairingHost,
+    ) -> Result<(), coven::ApproveDevicePairingError> {
+        self.inner
+            .handle
+            .cancel_device_pairing(host, crate::sync::device_join_timing())
             .await
     }
 

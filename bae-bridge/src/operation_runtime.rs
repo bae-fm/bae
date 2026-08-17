@@ -27,11 +27,45 @@ where
     Fut: Future<Output = Result<T, BridgeError>> + Send + 'static,
 {
     let mut task = AbortOnDrop::new(spawn(runtime, build));
-    (&mut task.task).await.map_err(|error| {
+    (&mut task.task).await.map_err(join_error)?
+}
+
+/// Run an operation whose explicit domain cancellation must finish even if the
+/// foreign caller disappears. Dropping this outer future detaches the owned
+/// runtime task; the operation itself remains responsible for reaching its
+/// durable terminal state.
+pub(crate) async fn run_to_completion<T, Build, Fut>(
+    runtime: Handle,
+    operation: &'static str,
+    build: Build,
+) -> Result<T, BridgeError>
+where
+    T: Send + 'static,
+    Build: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, BridgeError>> + Send + 'static,
+{
+    let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+    let operation_runtime = runtime.clone();
+    drop(spawn(runtime, move || async move {
+        let result = spawn(operation_runtime, build)
+            .await
+            .map_err(join_error)
+            .and_then(std::convert::identity);
+        if let Err(Err(error)) = result_tx.send(result) {
+            tracing::error!(operation, error = ?error, "persistent runtime operation failed after its caller disappeared");
+        }
+    }));
+    result_rx.await.map_err(|_| {
         BridgeError::internal(format!(
-            "owned runtime operation failed to complete: {error}"
+            "persistent runtime operation ended without a result: {operation}"
         ))
     })?
+}
+
+fn join_error(error: tokio::task::JoinError) -> BridgeError {
+    BridgeError::internal(format!(
+        "owned runtime operation failed to complete: {error}"
+    ))
 }
 
 struct AbortOnDrop<T> {
@@ -133,6 +167,39 @@ mod tests {
             .await
             .expect("cancellation aborts the owned task")
             .expect("owned task holds the drop signal");
+        owned.shutdown_background();
+    }
+
+    #[tokio::test]
+    async fn dropping_run_to_completion_keeps_the_owned_task_alive() {
+        let owned = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .thread_stack_size(16 * 1024 * 1024)
+            .enable_all()
+            .build()
+            .expect("build owned runtime");
+        let handle = owned.handle().clone();
+        let (started_tx, started_rx) = oneshot::channel();
+        let (continue_tx, continue_rx) = oneshot::channel();
+        let (completed_tx, completed_rx) = oneshot::channel();
+
+        let caller = tokio::spawn(run_to_completion(
+            handle,
+            "test persistent operation",
+            move || async move {
+                started_tx.send(()).expect("test receives task start");
+                continue_rx.await.expect("test releases operation");
+                completed_tx.send(()).expect("test observes completion");
+                Ok(())
+            },
+        ));
+        started_rx.await.expect("owned task starts");
+        caller.abort();
+        continue_tx.send(()).expect("release owned operation");
+        tokio::time::timeout(std::time::Duration::from_secs(1), completed_rx)
+            .await
+            .expect("owned operation completes after caller disappears")
+            .expect("completion signal remains connected");
         owned.shutdown_background();
     }
 }

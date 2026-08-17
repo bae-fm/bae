@@ -49,7 +49,7 @@ internal sealed class SyncService
     public Func<BridgeDevicePairingSession, Task<(bool Current, string? Error)>> ApprovePairingDevice { get; init; }
         = _ => throw new InvalidOperationException("SyncService stub: ApprovePairingDevice not wired");
 
-    public Func<BridgeDevicePairingSession, (bool Current, string? Error)> CancelDevicePairing { get; init; }
+    public Func<BridgeDevicePairingSession, Task<(bool Current, string? Error)>> CancelDevicePairing { get; init; }
         = _ => throw new InvalidOperationException("SyncService stub: CancelDevicePairing not wired");
 
     /// <summary>Remove a device from the library and rotate the library key.</summary>
@@ -133,7 +133,7 @@ internal sealed class SyncService
         ApprovePairingDevice = pairing =>
             session.RunForCurrentHandle(_ => NativeBae.ApprovePairingDevice(pairing)),
         CancelDevicePairing = pairing =>
-            session.WithCurrentHandle(_ => NativeBae.CancelDevicePairing(pairing)),
+            session.RunForCurrentHandle(_ => NativeBae.CancelDevicePairing(pairing)),
         RemoveMember = publicKeyHex =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveMember(handle, publicKeyHex)),
         CloudOnlyReleaseCount = () => session.RunForCurrentHandle(NativeBae.CloudOnlyReleaseCount),

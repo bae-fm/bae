@@ -20,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +42,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDevicePairingSession
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePairingDevice
 
 private const val TAG = "bae.AddDeviceFlow"
@@ -62,6 +62,8 @@ private sealed interface AddDeviceStep {
     ) : AddDeviceStep
 
     data object Approving : AddDeviceStep
+
+    data object Cancelling : AddDeviceStep
 }
 
 private class AddDeviceModel(
@@ -113,6 +115,9 @@ private class AddDeviceModel(
             completed = true
             pairing = null
             onAdded()
+        } catch (_: BridgeException.Cancelled) {
+            completed = true
+            pairing = null
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -122,14 +127,20 @@ private class AddDeviceModel(
         }
     }
 
-    fun dismiss() {
-        if (completed) return
-        val active = pairing ?: return
+    suspend fun dismiss(): Boolean {
+        if (completed) return true
+        val active = pairing ?: return true
+        val previousStep = step
+        step = AddDeviceStep.Cancelling
         try {
             active.cancel()
             pairing = null
+            return true
         } catch (e: Exception) {
             logger.error("Failed to cancel device pairing", e)
+            error = e.message ?: appContext.getString(R.string.members_pairing_failed)
+            step = previousStep
+            return false
         }
     }
 }
@@ -151,16 +162,12 @@ fun AddDeviceSheet(
         }
 
     LaunchedEffect(model) { model.start() }
-    DisposableEffect(model) {
-        onDispose { model.dismiss() }
-    }
-
-    val approving = model.step is AddDeviceStep.Approving
     AlertDialog(
         onDismissRequest = {
-            if (!approving) {
-                model.dismiss()
-                onDismiss()
+            scope.launch {
+                if (model.dismiss()) {
+                    onDismiss()
+                }
             }
         },
         title = { Text(stringResource(R.string.members_add_device)) },
@@ -180,15 +187,17 @@ fun AddDeviceSheet(
             }
         },
         dismissButton = {
-            if (!approving) {
-                TextButton(
-                    onClick = {
-                        model.dismiss()
-                        onDismiss()
-                    },
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
+            TextButton(
+                enabled = model.step != AddDeviceStep.Cancelling,
+                onClick = {
+                    scope.launch {
+                        if (model.dismiss()) {
+                            onDismiss()
+                        }
+                    }
+                },
+            ) {
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -206,6 +215,7 @@ private fun AddDeviceContent(
             is AddDeviceStep.Waiting -> PairingCode(step.code)
             is AddDeviceStep.Confirm -> PairingDevice(step.device)
             AddDeviceStep.Approving -> PairingProgress(R.string.members_pairing_approving)
+            AddDeviceStep.Cancelling -> PairingProgress(R.string.core_pairing_cancelling)
         }
         error?.let {
             Spacer(modifier = Modifier.height(8.dp))
@@ -218,7 +228,9 @@ private fun AddDeviceContent(
 }
 
 @Composable
-private fun PairingProgress(@StringRes label: Int) {
+private fun PairingProgress(
+    @StringRes label: Int,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(12.dp))

@@ -646,7 +646,7 @@ internal static partial class NativeBae
         CaptureError(() => Await(() => pairing.Approve()));
 
     internal static string? CancelDevicePairing(BridgeDevicePairingSession pairing) =>
-        CaptureError(pairing.Cancel);
+        CaptureError(() => Await(() => pairing.Cancel()));
 
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
         CaptureError(() => Await(() => handle.RemoveMember(publicKeyHex)));

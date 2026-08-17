@@ -28,11 +28,6 @@ impl BridgeDevicePairingSession {
         self.inner.code()
     }
 
-    pub fn cancel(&self) -> Result<(), BridgeError> {
-        self.inner.cancel()?;
-        Ok(())
-    }
-
     pub async fn wait_for_device(
         self: std::sync::Arc<Self>,
     ) -> Result<BridgePairingDevice, BridgeError> {
@@ -52,10 +47,27 @@ impl BridgeDevicePairingSession {
 impl BridgeDevicePairingSession {
     pub async fn approve(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.approve().await?;
-            Ok(())
-        })
+        crate::operation_runtime::run_to_completion(
+            runtime,
+            "device pairing approval",
+            move || async move {
+                self.inner.approve().await?;
+                Ok(())
+            },
+        )
+        .await
+    }
+
+    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run_to_completion(
+            runtime,
+            "device pairing cancellation",
+            move || async move {
+                self.inner.cancel().await?;
+                Ok(())
+            },
+        )
         .await
     }
 }

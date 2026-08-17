@@ -22,35 +22,42 @@ internal sealed class ApproveDeviceDialog
     {
         BridgeDevicePairingSession? pairing = null;
         var completed = false;
-        var approving = false;
         var body = new StackPanel { Spacing = 12 };
         var column = DialogUi.Column();
         column.Children.Add(DialogUi.Title(Loc.Chrome("members.approve.title")));
         column.Children.Add(new ScrollViewer { Content = body, MaxHeight = 520 });
         var done = new Button { Content = Loc.Chrome("action.done") };
-        done.Click += (_, _) =>
+        done.Click += async (_, _) =>
         {
-            if (approving)
+            if (await CancelPairing())
             {
-                return;
+                close();
             }
-            CancelPairing();
-            close();
         };
         column.Children.Add(DialogUi.Actions(done));
 
-        void CancelPairing()
+        async Task<bool> CancelPairing()
         {
-            if (completed || approving || pairing is null)
+            if (completed || pairing is null)
             {
-                return;
+                return true;
             }
-            var (current, error) = _app.Sync.CancelDevicePairing(pairing);
-            if (current && error is not null)
+            done.IsEnabled = false;
+            body.Children.Add(DialogUi.Body(Loc.Core("core.pairing.cancelling")));
+            var (current, error) = await _app.Sync.CancelDevicePairing(pairing);
+            if (!current)
             {
+                return true;
+            }
+            if (error is not null)
+            {
+                done.IsEnabled = true;
                 BaeDiagnostics.Logger.Error($"Failed to cancel device pairing: {error}");
+                ShowError(Loc.Chrome("members.pairing.failed"));
+                return false;
             }
             pairing = null;
+            return true;
         }
 
         void ShowError(string message)
@@ -132,17 +139,13 @@ internal sealed class ApproveDeviceDialog
             BridgePairingDevice device,
             Button add)
         {
-            approving = true;
-            done.IsEnabled = false;
             add.IsEnabled = false;
             body.Children.Add(DialogUi.Body(Loc.Chrome("members.pairing.adding")));
             var (current, error) = await _app.Sync.ApprovePairingDevice(session);
-            if (!current)
+            if (!current || pairing != session)
             {
                 return;
             }
-            approving = false;
-            done.IsEnabled = true;
             if (error is not null)
             {
                 BaeDiagnostics.Logger.Error($"Failed to approve paired device: {error}");
@@ -175,7 +178,7 @@ internal sealed class ApproveDeviceDialog
         }
 
         _ = Start();
-        column.DetachedFromVisualTree += (_, _) => CancelPairing();
+        column.DetachedFromVisualTree += (_, _) => _ = CancelPairing();
         return column;
     }
 }

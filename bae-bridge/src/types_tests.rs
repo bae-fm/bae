@@ -1,5 +1,15 @@
 use super::*;
 
+#[test]
+fn pairing_cancellation_crosses_the_bridge_as_cancellation() {
+    assert!(matches!(
+        BridgeError::from(bae_core::library::LibraryError::from(
+            coven::ApproveDevicePairingError::Cancelled
+        )),
+        BridgeError::Cancelled
+    ));
+}
+
 /// Airtight cross-check that the `core.*` localization catalog stays in sync
 /// with the keys the `bridge_*_key` functions produce — in both directions:
 ///

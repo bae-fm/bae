@@ -460,6 +460,15 @@ pub async fn join_prepared_device_pairing_cancellable(
         // The owner gave up on this attempt before it completed. Not a failure of
         // this device — a distinct end the UI reports as such.
         Ok(coven::DeviceJoinTransportOutcome::Abandoned(_)) => {
+            pairing
+                .abandon(&layout)
+                .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
+            Err(JoinDevicePairingError::Abandoned)
+        }
+        Ok(coven::DeviceJoinTransportOutcome::Cancelled(_)) => {
+            pairing
+                .finish(&layout)
+                .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
             Err(JoinDevicePairingError::Abandoned)
         }
         Err(error) => {

@@ -14,6 +14,7 @@ struct ApproveDeviceView: View {
         case waiting(BridgeDevicePairingSession)
         case confirm(BridgeDevicePairingSession, BridgePairingDevice)
         case approving(BridgeDevicePairingSession, BridgePairingDevice)
+        case cancelling
     }
 
     @State
@@ -36,14 +37,13 @@ struct ApproveDeviceView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { onDismiss() }
-                            .disabled(isApproving)
+                        Button("Done") { Task { await dismissPairing() } }
+                            .disabled(isCancelling)
                     }
                 }
         }
         .task { await startPairing() }
-        .onDisappear { cancelPairing() }
-        .interactiveDismissDisabled(isApproving)
+        .onDisappear { Task { _ = await cancelPairing() } }
     }
 
     @ViewBuilder
@@ -56,13 +56,26 @@ struct ApproveDeviceView: View {
         case .confirm(let session, let device):
             confirmStep(session, device)
         case .approving:
-            ProgressView("Approving device...")
+            VStack(spacing: 12) {
+                ProgressView("Approving device...")
+                if let error {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+        case .cancelling:
+            ProgressView(QueueSummary.message("core.pairing.cancelling"))
         }
     }
 
-    private var isApproving: Bool {
-        if case .approving = step { return true }
-        return false
+    private var isCancelling: Bool {
+        if case .cancelling = step {
+            true
+        }
+        else {
+            false
+        }
     }
 
     private func waitingStep(_ session: BridgeDevicePairingSession) -> some View {
@@ -116,10 +129,12 @@ struct ApproveDeviceView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("Check that this matches the fingerprint shown on the new device before approving.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            Text(
+                "Check that this matches the fingerprint shown on the new device before approving."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
 
             if let error {
                 Text(error)
@@ -128,7 +143,7 @@ struct ApproveDeviceView: View {
             }
 
             HStack(spacing: 12) {
-                Button("Cancel") { onDismiss() }
+                Button("Cancel") { Task { await dismissPairing() } }
                     .buttonStyle(.bordered)
                 Button("Approve") { approve(session, device) }
                     .buttonStyle(.borderedProminent)
@@ -184,6 +199,10 @@ struct ApproveDeviceView: View {
                 onApproved()
                 onDismiss()
             }
+            catch BridgeError.Cancelled {
+                completed = true
+                activeSession = nil
+            }
             catch {
                 logger.error("Failed to approve paired device: \(error.localizedDescription)")
                 self.error = error.displayLine
@@ -192,14 +211,27 @@ struct ApproveDeviceView: View {
         }
     }
 
-    private func cancelPairing() {
-        pairingTask?.cancel()
-        guard !completed, let session = activeSession else { return }
+    private func dismissPairing() async {
+        if await cancelPairing() {
+            onDismiss()
+        }
+    }
+
+    private func cancelPairing() async -> Bool {
+        guard !completed, let session = activeSession else { return true }
+        let previousStep = step
+        step = .cancelling
         do {
-            try session.cancel()
+            try await session.cancel()
+            pairingTask?.cancel()
+            activeSession = nil
+            return true
         }
         catch {
             logger.error("Failed to cancel device pairing: \(error.localizedDescription)")
+            self.error = error.displayLine
+            step = previousStep
+            return false
         }
     }
 }
