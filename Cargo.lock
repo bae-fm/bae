@@ -642,30 +642,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-smithy-http-client"
-version = "1.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a2f165a7feee6f263028b899d0a181987f4fa7179a6411a32a439fba7c5f769"
-dependencies = [
- "aws-smithy-async",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
- "h2",
- "http 1.4.0",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "pin-project-lite",
- "rustls",
- "rustls-native-certs",
- "rustls-pki-types",
- "tokio",
- "tokio-rustls",
- "tower",
- "tracing",
-]
-
-[[package]]
 name = "aws-smithy-json"
 version = "0.62.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,7 +1533,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1581,7 +1557,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1604,7 +1580,7 @@ dependencies = [
 [[package]]
 name = "coven-domain"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "base64",
  "chrono",
@@ -1626,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "async-trait",
  "base64",
@@ -1648,7 +1624,7 @@ dependencies = [
 [[package]]
 name = "coven-keys"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1677,7 +1653,7 @@ dependencies = [
 [[package]]
 name = "coven-protocol"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1697,7 +1673,7 @@ dependencies = [
 [[package]]
 name = "coven-replication"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1721,14 +1697,13 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=8d8717ff07a621ac98eb8e1c8461801d41fdcf98#8d8717ff07a621ac98eb8e1c8461801d41fdcf98"
+source = "git+https://github.com/bae-fm/coven?rev=4a1e7db3753f6ab96c3555aab670dd021ad4d9a1#4a1e7db3753f6ab96c3555aab670dd021ad4d9a1"
 dependencies = [
  "async-trait",
  "aws-config",
  "aws-credential-types",
  "aws-sdk-s3",
  "aws-sdk-sts",
- "aws-smithy-http-client",
  "axum 0.7.9",
  "base64",
  "bytes",
@@ -1748,6 +1723,7 @@ dependencies = [
  "serde_urlencoded",
  "sha1 0.11.0",
  "sha2 0.11.0",
+ "smithy-transport-reqwest",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -2291,7 +2267,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2710,25 +2686,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "h2"
-version = "0.4.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f44da3a8150a6703ed5d34e164b875fd14c2cdab9af1252a9a1020bde2bdc54"
-dependencies = [
- "atomic-waker",
- "bytes",
- "fnv",
- "futures-core",
- "futures-sink",
- "http 1.4.0",
- "indexmap",
- "slab",
- "tokio",
- "tokio-util",
- "tracing",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2928,7 +2885,6 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-core",
- "h2",
  "http 1.4.0",
  "http-body 1.0.1",
  "httparse",
@@ -2951,7 +2907,6 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
- "rustls-native-certs",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",
@@ -3736,7 +3691,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4694,7 +4649,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4706,7 +4661,6 @@ dependencies = [
  "aws-lc-rs",
  "log",
  "once_cell",
- "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -4753,7 +4707,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5192,6 +5146,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
+name = "smithy-transport-reqwest"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "566dc85be03a09c384f77a122188d9af000e1f1bd23551b346a9b555838da7e1"
+dependencies = [
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "http 1.4.0",
+ "parking_lot",
+ "reqwest",
+]
+
+[[package]]
 name = "socket-pktinfo"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5209,7 +5176,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5347,7 +5314,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5797,7 +5764,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6247,7 +6214,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
