@@ -1,5 +1,11 @@
 use super::*;
 
+async fn report_background_task_exit(task_name: &'static str, task: tokio::task::JoinHandle<()>) {
+    if let Err(error) = task.await {
+        tracing::error!(task = task_name, %error, "background task failed");
+    }
+}
+
 impl LibraryManager {
     /// Open coven through the top-level builder and create the library manager
     /// over the resulting handle.
@@ -212,7 +218,7 @@ impl LibraryManager {
         events: crate::sync::upload_observer::UploadObserverEvents,
     ) {
         let sync = self.sync.clone();
-        self.runtime_handle.spawn(async move {
+        self.spawn_supervised_task("upload observer event processor", async move {
             events
                 .run(move || {
                     let sync = sync.clone();
@@ -225,22 +231,31 @@ impl LibraryManager {
     }
 
     pub(super) fn start_queue_workers(&self) {
-        self.spawn_queue_worker(|manager| async move {
+        self.spawn_queue_worker("download queue worker", |manager| async move {
             manager.run_download_worker().await;
         });
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        self.spawn_queue_worker(|manager| async move {
+        self.spawn_queue_worker("output queue worker", |manager| async move {
             manager.run_output_worker().await;
         });
     }
 
-    pub(super) fn spawn_queue_worker<F, Fut>(&self, worker: F)
+    fn spawn_queue_worker<F, Fut>(&self, task_name: &'static str, worker: F)
     where
         F: FnOnce(Self) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
         let manager = self.clone();
-        self.runtime_handle.spawn(worker(manager));
+        self.spawn_supervised_task(task_name, worker(manager));
+    }
+
+    fn spawn_supervised_task<F>(&self, task_name: &'static str, task: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let task = self.runtime_handle.spawn(task);
+        self.runtime_handle
+            .spawn(report_background_task_exit(task_name, task));
     }
 
     pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {
@@ -412,13 +427,13 @@ impl LibraryManager {
     pub fn start(&self) {
         let outbox = self.database.subscribe_cloud_outbox();
         let sync = self.sync.clone();
-        self.runtime_handle.spawn(async move {
+        self.spawn_supervised_task("cloud outbox subscription", async move {
             sync.run_cloud_outbox_subscription(outbox).await;
         });
 
         let mut rx = self.database.subscribe_sync_status();
         let lm = self.clone();
-        self.runtime_handle.spawn(async move {
+        self.spawn_supervised_task("sync status subscription", async move {
             loop {
                 let status = rx.borrow_and_update().clone();
                 // Fold coven's sync-loop status onto bae's flat banner state: a
@@ -583,5 +598,29 @@ impl LibraryManager {
     /// `OutboxChanged` event arrives.
     pub async fn outbox_snapshot(&self) -> Result<crate::library::OutboxSnapshot, LibraryError> {
         self.sync.outbox_snapshot().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn panicked_background_task_is_logged() {
+        let logs = crate::test_logs::capture_warn_logs_async(|| async {
+            report_background_task_exit(
+                "test worker",
+                tokio::spawn(async { panic!("worker panic") }),
+            )
+            .await;
+        })
+        .await;
+
+        assert!(
+            logs.contains("background task failed")
+                && logs.contains("test worker")
+                && logs.contains("panicked"),
+            "the task failure must be named in the log, got: {logs}"
+        );
     }
 }

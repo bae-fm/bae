@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::backtrace::Backtrace;
+use std::sync::{Arc, Once};
 
 use bae_core::app::{bootstrap, BootstrapError};
 use bae_core::diagnostics::{
@@ -112,6 +113,7 @@ impl BridgeDiagnostics {
 #[uniffi::export]
 pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagnostics> {
     configure_logging();
+    install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
     let ids = Arc::new(coven::UuidProvider);
     let inner = match Diagnostics::configure(config.into_core(), clock, ids) {
@@ -122,6 +124,33 @@ pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagn
         }
     };
     Arc::new(BridgeDiagnostics { inner })
+}
+
+fn install_panic_logging() {
+    static INSTALL: Once = Once::new();
+    INSTALL.call_once(|| {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |panic| {
+            let message = if let Some(message) = panic.payload().downcast_ref::<&str>() {
+                (*message).to_string()
+            } else if let Some(message) = panic.payload().downcast_ref::<String>() {
+                message.clone()
+            } else {
+                "non-string panic payload".to_string()
+            };
+            let location = panic.location().map(|location| {
+                format!(
+                    "{}:{}:{}",
+                    location.file(),
+                    location.line(),
+                    location.column()
+                )
+            });
+            let backtrace = Backtrace::force_capture();
+            tracing::error!(%message, ?location, %backtrace, "process panicked");
+            previous(panic);
+        }));
+    });
 }
 
 #[uniffi::export]
@@ -435,6 +464,42 @@ mod tests {
         assert_eq!(
             core.fields()["screen"],
             serde_json::Value::String("settings".to_string())
+        );
+    }
+
+    #[test]
+    fn detached_panics_are_emitted_through_tracing() {
+        const CHILD_PROCESS: &str = "BAE_TEST_DETACHED_PANIC";
+        const TEST_NAME: &str = "init::tests::detached_panics_are_emitted_through_tracing";
+
+        if std::env::var_os(CHILD_PROCESS).is_some() {
+            let subscriber = tracing_subscriber::fmt()
+                .with_ansi(false)
+                .without_time()
+                .with_writer(std::io::stdout)
+                .finish();
+            tracing::subscriber::with_default(subscriber, || {
+                configure_diagnostics(BridgeDiagnosticsConfig::Disabled);
+                panic!("detached panic test");
+            });
+        }
+
+        let output = std::process::Command::new(
+            std::env::current_exe().expect("resolve the bridge test executable"),
+        )
+        .args(["--exact", TEST_NAME, "--nocapture"])
+        .env(CHILD_PROCESS, "1")
+        .output()
+        .expect("run the detached-panic child process");
+
+        assert!(!output.status.success(), "the child process must panic");
+        let logs = String::from_utf8(output.stdout).expect("panic logs are UTF-8");
+        assert!(
+            logs.contains("process panicked")
+                && logs.contains("detached panic test")
+                && logs.contains("bae-bridge/src/init.rs")
+                && logs.contains("backtrace="),
+            "the panic and its diagnostics must reach tracing, got: {logs}"
         );
     }
 }
