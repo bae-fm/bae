@@ -299,28 +299,6 @@ impl BridgeBarcodeProgress {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn barcode_progress_failure_crosses_bridge() {
-        let progress = bae_core::identify::BarcodeProgress::Failed {
-            failure: bae_core::signals::LookupFailure::Diagnostic {
-                detail: "provider lookup failed".to_string(),
-            },
-        };
-
-        let view = bae_core::identify::BarcodeProgressView::from(progress);
-        match BridgeBarcodeProgress::from_view(view) {
-            BridgeBarcodeProgress::Failed {
-                failure: BridgeLookupFailure::Diagnostic { detail },
-            } => assert_eq!(detail, "provider lookup failed"),
-            other => panic!("expected failed barcode progress, got {other:?}"),
-        }
-    }
-}
-
 #[cfg(feature = "desktop")]
 impl BridgeReleaseGroup {
     pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
@@ -545,4 +523,26 @@ fn results_and_status_map(
         })
         .unzip();
     (results, status_map(statuses))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn barcode_progress_failure_crosses_bridge() {
+        let progress = bae_core::identify::BarcodeProgress::Failed {
+            failure: bae_core::signals::LookupFailure::Diagnostic {
+                detail: "provider lookup failed".to_string(),
+            },
+        };
+
+        let view = bae_core::identify::BarcodeProgressView::from(progress);
+        match BridgeBarcodeProgress::from_view(view) {
+            BridgeBarcodeProgress::Failed {
+                failure: BridgeLookupFailure::Diagnostic { detail },
+            } => assert_eq!(detail, "provider lookup failed"),
+            other => panic!("expected failed barcode progress, got {other:?}"),
+        }
+    }
 }
