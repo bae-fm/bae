@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Za početak se pridružite fonoteci s jednog od svojih drugih uređaja</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_join_library">Pridruži se fonoteci</string>
-    <string name="onboarding_scan_qr">Skeniraj QR za oporavak</string>
     <string name="onboarding_paste_code">Zalijepi kod za oporavak</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
     <string name="onboarding_paste_code_instructions">Zalijepite kod za oporavak ove fonoteke (iz bae → Postavke → Kod za oporavak na drugom uređaju).</string>

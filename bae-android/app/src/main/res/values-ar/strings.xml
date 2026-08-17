@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">انضم إلى مكتبة من أحد أجهزتك الأخرى للبدء</string>
     <string name="onboarding_icon_description">أيقونة bae</string>
     <string name="onboarding_join_library">الانضمام إلى مكتبة</string>
-    <string name="onboarding_scan_qr">مسح QR الاسترداد</string>
     <string name="onboarding_paste_code">لصق رمز الاسترداد</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
     <string name="onboarding_paste_code_instructions">الصق رمز استرداد هذه المكتبة (من bae → الإعدادات → رمز الاسترداد على جهاز آخر).</string>

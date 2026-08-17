@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">શરૂ કરવા તમારા બીજા ઉપકરણોમાંથી કોઈ એકમાંથી લાઇબ્રેરીમાં જોડાઓ</string>
     <string name="onboarding_icon_description">bae ચિહ્ન</string>
     <string name="onboarding_join_library">લાઇબ્રેરીમાં જોડાઓ</string>
-    <string name="onboarding_scan_qr">પુનઃપ્રાપ્તિ QR સ્કેન કરો</string>
     <string name="onboarding_paste_code">પુનઃપ્રાપ્તિ કોડ ચોંટાડો</string>
     <string name="onboarding_camera_permission_required">QR કોડ સ્કેન કરવા કેમેરાની પરવાનગી જરૂરી છે</string>
     <string name="onboarding_paste_code_instructions">આ લાઇબ્રેરીનો પુનઃપ્રાપ્તિ કોડ ચોંટાડો (બીજા ઉપકરણ પર bae → સેટિંગ્સ → પુનઃપ્રાપ્તિ કોડ માંથી).</string>

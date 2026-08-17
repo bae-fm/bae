@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">从你的另一台设备加入曲库以开始使用</string>
     <string name="onboarding_icon_description">bae 图标</string>
     <string name="onboarding_join_library">加入曲库</string>
-    <string name="onboarding_scan_qr">扫描恢复二维码</string>
     <string name="onboarding_paste_code">粘贴恢复代码</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
     <string name="onboarding_paste_code_instructions">粘贴此曲库的恢复代码（来自另一台设备上的 bae → 设置 → 恢复代码）。</string>

@@ -177,7 +177,6 @@
     <string name="onboarding_tagline">Join a library from one of your other devices to get started</string>
     <string name="onboarding_icon_description">bae icon</string>
     <string name="onboarding_join_library">Join a library</string>
-    <string name="onboarding_scan_qr">Scan recovery QR</string>
     <string name="onboarding_paste_code">Paste recovery code</string>
     <string name="onboarding_camera_permission_required">Camera permission is required to scan QR codes</string>
     <string name="onboarding_paste_code_instructions">Paste this library\'s recovery code (from bae → Settings → Recovery code on another device).</string>

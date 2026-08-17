@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">開始するには、ほかのデバイスからライブラリに参加してください</string>
     <string name="onboarding_icon_description">bae アイコン</string>
     <string name="onboarding_join_library">ライブラリに参加</string>
-    <string name="onboarding_scan_qr">リカバリーQRをスキャン</string>
     <string name="onboarding_paste_code">リカバリーコードを貼り付け</string>
     <string name="onboarding_camera_permission_required">QRコードをスキャンするにはカメラの許可が必要です</string>
     <string name="onboarding_paste_code_instructions">このライブラリのリカバリーコードを貼り付けてください（別のデバイスのbae → 設定 → リカバリーコードから）。</string>

@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">За да започнете, присъединете се към библиотека от някое от другите си устройства</string>
     <string name="onboarding_icon_description">икона на bae</string>
     <string name="onboarding_join_library">Присъединяване към библиотека</string>
-    <string name="onboarding_scan_qr">Сканиране на QR за възстановяване</string>
     <string name="onboarding_paste_code">Поставяне на код за възстановяване</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
     <string name="onboarding_paste_code_instructions">Поставете кода за възстановяване на тази библиотека (от bae → Настройки → Код за възстановяване на друго устройство).</string>

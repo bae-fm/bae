@@ -201,33 +201,33 @@ class JoinLauncher(
         val trimmed = raw.trim()
         if (trimmed.isEmpty()) {
             decodedOffer = null
-            return
-        }
-        val decoded = runCatching { decodeDevicePairingOffer(trimmed) }
-        decodedOffer = decoded
-        val offer = decoded.getOrNull() ?: return
-        if (!offer.needsOauth) return
-
-        isAuthorizing = true
-        authorizationJob =
-            scope.launch {
-                try {
-                    oauthTokenJson =
-                        resolveOauthToken(
-                            oauthLinking,
-                            oauthLinkingError,
-                            context,
-                            offer.cloudProvider,
-                        )
-                    isAuthorizing = false
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error("Failed to authorize device pairing", e)
-                    isAuthorizing = false
-                    error = e.message ?: context.getString(R.string.onboarding_oauth_unconfigured)
-                }
+        } else {
+            val decoded = runCatching { decodeDevicePairingOffer(trimmed) }
+            decodedOffer = decoded
+            val offer = decoded.getOrNull()
+            if (offer?.needsOauth == true) {
+                isAuthorizing = true
+                authorizationJob =
+                    scope.launch {
+                        try {
+                            oauthTokenJson =
+                                resolveOauthToken(
+                                    oauthLinking,
+                                    oauthLinkingError,
+                                    context,
+                                    offer.cloudProvider,
+                                )
+                            isAuthorizing = false
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            logger.error("Failed to authorize device pairing", e)
+                            isAuthorizing = false
+                            error = e.message ?: context.getString(R.string.onboarding_oauth_unconfigured)
+                        }
+                    }
             }
+        }
     }
 
     fun reset() {

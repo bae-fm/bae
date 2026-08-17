@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">सुरू करण्यासाठी तुमच्या दुसऱ्या डिव्हाइसमधून संग्रहालयात जोडा</string>
     <string name="onboarding_icon_description">bae चिन्ह</string>
     <string name="onboarding_join_library">संग्रहालयात जोडा</string>
-    <string name="onboarding_scan_qr">पुनर्प्राप्ती QR स्कॅन करा</string>
     <string name="onboarding_paste_code">पुनर्प्राप्ती संकेत पेस्ट करा</string>
     <string name="onboarding_camera_permission_required">QR संकेत स्कॅन करण्यासाठी कॅमेरा परवानगी आवश्यक आहे</string>
     <string name="onboarding_paste_code_instructions">या संग्रहालयाचा पुनर्प्राप्ती संकेत पेस्ट करा (दुसऱ्या डिव्हाइसवरील bae → सेटिंग्ज → पुनर्प्राप्ती संकेत मधून).</string>

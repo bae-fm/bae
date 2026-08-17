@@ -59,12 +59,6 @@ private class OnboardingIdleCallbacks(
     val onJoinLibrary: () -> Unit,
 )
 
-/** Which onboarding code the QR scanner is currently capturing. */
-private enum class ScanTarget {
-    RESTORE_CODE,
-    PAIRING_CODE,
-}
-
 /**
  * Returns a callback that opens the scanner for a [ScanTarget], requesting camera
  * permission first when it isn't already held. Requesting a scan clears the
@@ -112,20 +106,38 @@ private fun rememberScanRequest(
 @Composable
 private fun OnboardingScanner(
     target: ScanTarget,
-    onScanned: (ScanTarget, String) -> Unit,
+    onScanned: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val instructions =
         when (target) {
-            ScanTarget.RESTORE_CODE -> stringResource(R.string.qr_scanner_instructions)
+            ScanTarget.ANY_SETUP_CODE -> null
             ScanTarget.PAIRING_CODE -> stringResource(R.string.onboarding_join_pairing_instructions)
         }
     QRScannerScreen(
-        onScanned = { code -> onScanned(target, code) },
+        onScanned = onScanned,
         onDismiss = onDismiss,
         instructions = instructions,
     )
 }
+
+@Composable
+private fun rememberCodeRouter(
+    launcher: LinkLauncher,
+    joinLauncher: JoinLauncher,
+    oauthLinking: OAuthLinker?,
+    oauthLinkingError: String?,
+    setShowJoin: (Boolean) -> Unit,
+): OnboardingCodeRouter =
+    remember(launcher, joinLauncher, oauthLinking, oauthLinkingError) {
+        OnboardingCodeRouter(
+            launcher,
+            joinLauncher,
+            oauthLinking,
+            oauthLinkingError,
+            setShowJoin,
+        )
+    }
 
 @Composable
 fun OnboardingScreen(
@@ -140,12 +152,12 @@ fun OnboardingScreen(
     var showJoin by remember { mutableStateOf(false) }
     // Non-null while the scanner is open, identifying which code it captures.
     var scanTarget by remember { mutableStateOf<ScanTarget?>(null) }
+    val codeRouter =
+        rememberCodeRouter(launcher, joinLauncher, oauthLinking, oauthLinkingError) { showJoin = it }
 
     val onRequestScan =
         rememberScanRequest(
-            setError = { target, message ->
-                if (target == ScanTarget.PAIRING_CODE) joinLauncher.error = message else launcher.error = message
-            },
+            setError = codeRouter::setScanError,
             onOpen = { scanTarget = it },
         )
 
@@ -153,19 +165,9 @@ fun OnboardingScreen(
         scanTarget != null -> {
             OnboardingScanner(
                 target = scanTarget!!,
-                onScanned = { target, code ->
+                onScanned = { code ->
                     scanTarget = null
-                    when (target) {
-                        ScanTarget.RESTORE_CODE -> launcher.link(code, oauthLinking, oauthLinkingError)
-
-                        // Fill the pairing field so the preview and provider check
-                        // show before the joiner commits to Join.
-                        ScanTarget.PAIRING_CODE -> joinLauncher.updatePairingCode(
-                            code,
-                            oauthLinking,
-                            oauthLinkingError,
-                        )
-                    }
+                    codeRouter.route(code)
                 },
                 onDismiss = { scanTarget = null },
             )
@@ -201,7 +203,7 @@ fun OnboardingScreen(
                 launcher = launcher,
                 oauthLinking = oauthLinking,
                 oauthLinkingError = oauthLinkingError,
-                onRequestScan = { onRequestScan(ScanTarget.RESTORE_CODE) },
+                onRequestScan = { onRequestScan(ScanTarget.ANY_SETUP_CODE) },
                 onJoinLibrary = { showJoin = true },
             )
         }
@@ -271,7 +273,7 @@ private fun OnboardingIdleContent(
         }
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedButton(onClick = callbacks.onScanQR, modifier = buttonWidth) {
-            Text(stringResource(R.string.onboarding_scan_qr))
+            Text(stringResource(R.string.pairing_scan_code))
         }
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedButton(onClick = callbacks.onShowPasteDialog, modifier = buttonWidth) {

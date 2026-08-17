@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Başlamak için diğer cihazlarınızdan birindeki arşive katılın</string>
     <string name="onboarding_icon_description">bae simgesi</string>
     <string name="onboarding_join_library">Arşive katıl</string>
-    <string name="onboarding_scan_qr">Kurtarma QR\'ını tara</string>
     <string name="onboarding_paste_code">Kurtarma kodunu yapıştır</string>
     <string name="onboarding_camera_permission_required">QR kodlarını taramak için kamera izni gerekli</string>
     <string name="onboarding_paste_code_instructions">Bu arşivin kurtarma kodunu yapıştırın (başka bir cihazda bae → Ayarlar → Kurtarma kodu).</string>

@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">ప్రారంభించడానికి మీ ఇతర పరికరాలలో ఒకదాని నుంచి లైబ్రరీలో చేరండి</string>
     <string name="onboarding_icon_description">bae చిహ్నం</string>
     <string name="onboarding_join_library">లైబ్రరీలో చేరు</string>
-    <string name="onboarding_scan_qr">రికవరీ QRను స్కాన్ చేయి</string>
     <string name="onboarding_paste_code">రికవరీ కోడ్‌ను అతికించు</string>
     <string name="onboarding_camera_permission_required">QR కోడ్‌లను స్కాన్ చేయడానికి కెమెరా అనుమతి అవసరం</string>
     <string name="onboarding_paste_code_instructions">ఈ లైబ్రరీ పునరుద్ధరణ కోడ్‌ను అతికించండి (ఇతర పరికరంలో bae → సెట్టింగ్‌లు → పునరుద్ధరణ కోడ్ నుంచి).</string>

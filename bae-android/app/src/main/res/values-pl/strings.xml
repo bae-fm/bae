@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Aby zacząć, dołącz do biblioteki z jednego ze swoich innych urządzeń</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_join_library">Dołącz do biblioteki</string>
-    <string name="onboarding_scan_qr">Skanuj QR odzyskiwania</string>
     <string name="onboarding_paste_code">Wklej kod odzyskiwania</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>
     <string name="onboarding_paste_code_instructions">Wklej kod odzyskiwania tej biblioteki (z bae → Ustawienia → Kod odzyskiwania na innym urządzeniu).</string>

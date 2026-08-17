@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Tritt einer Mediathek von einem deiner anderen Geräte bei, um loszulegen</string>
     <string name="onboarding_icon_description">bae-Symbol</string>
     <string name="onboarding_join_library">Mediathek beitreten</string>
-    <string name="onboarding_scan_qr">Wiederherstellungs-QR scannen</string>
     <string name="onboarding_paste_code">Wiederherstellungscode einfügen</string>
     <string name="onboarding_camera_permission_required">Zum Scannen von QR-Codes ist eine Kameraberechtigung erforderlich</string>
     <string name="onboarding_paste_code_instructions">Füge den Wiederherstellungscode dieser Mediathek ein (von bae → Einstellungen → Wiederherstellungscode auf einem anderen Gerät).</string>

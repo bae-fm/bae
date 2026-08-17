@@ -149,19 +149,19 @@ private class AddDeviceModel(
     }
 
     suspend fun dismiss(): Boolean {
-        if (completed) return true
-        val active = pairing ?: return true
+        val active = pairing
+        if (completed || active == null) return true
         val previousStep = step
         step = AddDeviceStep.Cancelling
-        try {
+        return try {
             active.cancel()
             pairing = null
-            return true
+            true
         } catch (e: Exception) {
             logger.error("Failed to cancel device pairing", e)
             error = e.message ?: appContext.getString(R.string.members_pairing_failed)
             step = previousStep
-            return false
+            false
         }
     }
 }

@@ -387,6 +387,13 @@ pub fn decode_device_pairing_offer(code: String) -> Result<BridgeDevicePairingOf
     Ok(BridgeDevicePairingOffer::from_core(info))
 }
 
+/// Whether a scanned setup code belongs to the device-pairing flow. The
+/// envelope decides the destination before either payload decoder runs.
+#[uniffi::export]
+pub fn is_device_pairing_code(code: String) -> bool {
+    coven::DevicePairingOffer::is_pairing_code(&code)
+}
+
 impl BridgeDevicePairingOffer {
     fn from_core(info: bae_core::library::DevicePairingOfferInfo) -> Self {
         let bae_core::library::DevicePairingOfferInfo {
@@ -801,6 +808,14 @@ mod tests {
             std::ptr::eq(first, second),
             "repeated calls return the same runtime"
         );
+    }
+
+    #[test]
+    fn scanned_pairing_code_is_classified_by_its_envelope() {
+        assert!(is_device_pairing_code(
+            "  coven:device-pairing:not-yet-decoded  ".to_string()
+        ));
+        assert!(!is_device_pairing_code("coven:restore-payload".to_string()));
     }
 
     #[test]

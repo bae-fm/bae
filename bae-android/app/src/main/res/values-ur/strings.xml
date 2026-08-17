@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">شروع کرنے کے لیے اپنے دوسرے آلات میں سے کسی ایک سے کتب خانے میں شامل ہوں</string>
     <string name="onboarding_icon_description">bae آئیکن</string>
     <string name="onboarding_join_library">کتب خانے میں شامل ہوں</string>
-    <string name="onboarding_scan_qr">بازیابی QR اسکین کریں</string>
     <string name="onboarding_paste_code">بازیابی رمز پیسٹ کریں</string>
     <string name="onboarding_camera_permission_required">QR رمز اسکین کرنے کے لیے کیمرے کی اجازت ضروری ہے</string>
     <string name="onboarding_paste_code_instructions">اس کتب خانے کا بازیابی رمز پیسٹ کریں (دوسرے آلے پر bae → ترتیبات → بازیابی رمز سے)۔</string>

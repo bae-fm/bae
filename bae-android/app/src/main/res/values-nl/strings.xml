@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Neem deel aan een bibliotheek vanaf een van je andere apparaten om te beginnen</string>
     <string name="onboarding_icon_description">bae-pictogram</string>
     <string name="onboarding_join_library">Aan een bibliotheek deelnemen</string>
-    <string name="onboarding_scan_qr">Herstel-QR scannen</string>
     <string name="onboarding_paste_code">Herstelcode plakken</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
     <string name="onboarding_paste_code_instructions">Plak de herstelcode van deze bibliotheek (van bae → Instellingen → Herstelcode op een ander apparaat).</string>

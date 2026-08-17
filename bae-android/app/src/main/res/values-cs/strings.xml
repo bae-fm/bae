@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Začněte připojením ke knihovně z některého ze svých dalších zařízení</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_join_library">Připojit se ke knihovně</string>
-    <string name="onboarding_scan_qr">Naskenovat QR pro obnovení</string>
     <string name="onboarding_paste_code">Vložit kód pro obnovení</string>
     <string name="onboarding_camera_permission_required">Pro skenování QR kódů je vyžadováno oprávnění ke kameře</string>
     <string name="onboarding_paste_code_instructions">Vložte kód pro obnovení této knihovny (z bae → Nastavení → Kód pro obnovení na jiném zařízení).</string>

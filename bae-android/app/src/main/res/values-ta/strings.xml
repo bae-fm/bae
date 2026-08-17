@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">தொடங்க, உங்கள் மற்றொரு சாதனத்தில் உள்ள நூலகத்தில் சேரவும்</string>
     <string name="onboarding_icon_description">bae சின்னம்</string>
     <string name="onboarding_join_library">நூலகத்தில் சேர்</string>
-    <string name="onboarding_scan_qr">மீட்பு QR-ஐ ஸ்கேன் செய்</string>
     <string name="onboarding_paste_code">மீட்பு குறியீட்டை ஒட்டு</string>
     <string name="onboarding_camera_permission_required">QR குறியீடுகளை வருட கேமரா அனுமதி தேவை</string>
     <string name="onboarding_paste_code_instructions">இந்த நூலகத்தின் மீட்பு குறியீட்டை ஒட்டவும் (மற்றொரு சாதனத்தில் bae → அமைப்புகள் → மீட்பு குறியீடு).</string>

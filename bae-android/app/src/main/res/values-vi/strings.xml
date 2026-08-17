@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Tham gia thư viện từ một thiết bị khác của bạn để bắt đầu</string>
     <string name="onboarding_icon_description">biểu tượng bae</string>
     <string name="onboarding_join_library">Tham gia thư viện</string>
-    <string name="onboarding_scan_qr">Quét QR khôi phục</string>
     <string name="onboarding_paste_code">Dán mã khôi phục</string>
     <string name="onboarding_camera_permission_required">Cần quyền camera để quét mã QR</string>
     <string name="onboarding_paste_code_instructions">Dán mã khôi phục của thư viện này (từ bae → Cài đặt → Mã khôi phục trên thiết bị khác).</string>

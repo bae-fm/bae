@@ -49,7 +49,7 @@ private const val TAG = "QRScannerScreen"
 fun QRScannerScreen(
     onScanned: (String) -> Unit,
     onDismiss: () -> Unit,
-    instructions: String = stringResource(R.string.qr_scanner_instructions),
+    instructions: String? = stringResource(R.string.qr_scanner_instructions),
 ) {
     val context = LocalContext.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -197,19 +197,21 @@ private fun decodeQrFrame(
 @Composable
 private fun QRScannerOverlay(
     modifier: Modifier,
-    instructions: String,
+    instructions: String?,
     onDismiss: () -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.padding(32.dp),
     ) {
-        Text(
-            text = instructions,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White,
-            modifier = Modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp)).padding(8.dp),
-        )
+        if (instructions != null) {
+            Text(
+                text = instructions,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White,
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp)).padding(8.dp),
+            )
+        }
         Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
             Text(stringResource(R.string.cancel))
         }

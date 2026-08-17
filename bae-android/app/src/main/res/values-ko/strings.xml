@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">시작하려면 다른 기기 중 하나에서 라이브러리에 참여하세요</string>
     <string name="onboarding_icon_description">bae 아이콘</string>
     <string name="onboarding_join_library">라이브러리 참여</string>
-    <string name="onboarding_scan_qr">복구 QR 스캔</string>
     <string name="onboarding_paste_code">복구 코드 붙여넣기</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
     <string name="onboarding_paste_code_instructions">이 라이브러리의 복구 코드를 붙여넣으세요(다른 기기에서 bae → 설정 → 복구 코드).</string>

@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">כדי להתחיל, הצטרפו לספרייה מאחד המכשירים האחרים שלכם</string>
     <string name="onboarding_icon_description">סמל bae</string>
     <string name="onboarding_join_library">הצטרף לספרייה</string>
-    <string name="onboarding_scan_qr">סרוק QR לשחזור</string>
     <string name="onboarding_paste_code">הדבק קוד שחזור</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
     <string name="onboarding_paste_code_instructions">הדביקו את קוד השחזור של הספרייה הזו (מתוך bae → הגדרות → קוד שחזור במכשיר אחר).</string>

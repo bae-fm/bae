@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Únete a una biblioteca desde otro de tus dispositivos para empezar</string>
     <string name="onboarding_icon_description">icono de bae</string>
     <string name="onboarding_join_library">Unirse a una biblioteca</string>
-    <string name="onboarding_scan_qr">Escanear QR de recuperación</string>
     <string name="onboarding_paste_code">Pegar código de recuperación</string>
     <string name="onboarding_camera_permission_required">Se necesita permiso de cámara para escanear códigos QR</string>
     <string name="onboarding_paste_code_instructions">Pega el código de recuperación de esta biblioteca (desde bae → Ajustes → Código de recuperación en otro dispositivo).</string>

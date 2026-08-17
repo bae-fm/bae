@@ -57,78 +57,9 @@ fun JoinLibraryScreen(
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = joinLauncher.pairingCode,
-            onValueChange = {
-                joinLauncher.updatePairingCode(it, oauthLinking, oauthLinkingError)
-            },
-            label = { Text(stringResource(R.string.pairing_code)) },
-            placeholder = { Text(stringResource(R.string.pairing_code_placeholder)) },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-            minLines = 3,
-            maxLines = 5,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(onClick = onRequestScan, modifier = Modifier.width(220.dp)) {
-            Text(stringResource(R.string.pairing_scan_code))
-        }
-
-        val decoded = joinLauncher.decodedOffer
-        if (decoded != null) {
-            Spacer(modifier = Modifier.height(20.dp))
-            decoded.fold(
-                onSuccess = { offer ->
-                    PairingOfferRow(
-                        label = stringResource(R.string.pairing_library),
-                        value = offer.libraryName,
-                    )
-                    PairingOfferRow(
-                        label = stringResource(R.string.pairing_provider),
-                        value = cloudProviderLabel(offer.cloudProvider),
-                    )
-                },
-                onFailure = {
-                    Text(
-                        text = stringResource(R.string.pairing_code_invalid),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                },
-            )
-        }
-
-        if (joinLauncher.isAuthorizing) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.width(20.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(stringResource(R.string.pairing_authorizing))
-            }
-        }
-        if (joinLauncher.isJoining) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.width(20.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    stringResource(
-                        if (joinLauncher.joiningFingerprint == null) {
-                            R.string.pairing_starting
-                        } else {
-                            R.string.pairing_waiting_for_approval
-                        },
-                    ),
-                )
-            }
-            joinLauncher.joiningFingerprint?.let {
-                Text(
-                    text = stringResource(R.string.onboarding_join_fingerprint, it),
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-        }
+        PairingCodeEntry(joinLauncher, oauthLinking, oauthLinkingError, onRequestScan)
+        PairingOfferPreview(joinLauncher)
+        PairingActivity(joinLauncher)
         joinLauncher.error?.let {
             Spacer(modifier = Modifier.height(12.dp))
             Text(text = it, color = MaterialTheme.colorScheme.error)
@@ -144,6 +75,90 @@ fun JoinLibraryScreen(
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+    }
+}
+
+@Composable
+private fun PairingCodeEntry(
+    joinLauncher: JoinLauncher,
+    oauthLinking: OAuthLinker?,
+    oauthLinkingError: String?,
+    onRequestScan: () -> Unit,
+) {
+    OutlinedTextField(
+        value = joinLauncher.pairingCode,
+        onValueChange = {
+            joinLauncher.updatePairingCode(it, oauthLinking, oauthLinkingError)
+        },
+        label = { Text(stringResource(R.string.pairing_code)) },
+        placeholder = { Text(stringResource(R.string.pairing_code_placeholder)) },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+        minLines = 3,
+        maxLines = 5,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedButton(onClick = onRequestScan, modifier = Modifier.width(220.dp)) {
+        Text(stringResource(R.string.pairing_scan_code))
+    }
+}
+
+@Composable
+private fun PairingOfferPreview(joinLauncher: JoinLauncher) {
+    val decoded = joinLauncher.decodedOffer ?: return
+    Spacer(modifier = Modifier.height(20.dp))
+    decoded.fold(
+        onSuccess = { offer ->
+            PairingOfferRow(
+                label = stringResource(R.string.pairing_library),
+                value = offer.libraryName,
+            )
+            PairingOfferRow(
+                label = stringResource(R.string.pairing_provider),
+                value = cloudProviderLabel(offer.cloudProvider),
+            )
+        },
+        onFailure = {
+            Text(
+                text = stringResource(R.string.pairing_code_invalid),
+                color = MaterialTheme.colorScheme.error,
+            )
+        },
+    )
+}
+
+@Composable
+private fun PairingActivity(joinLauncher: JoinLauncher) {
+    if (joinLauncher.isAuthorizing) {
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(stringResource(R.string.pairing_authorizing))
+        }
+    }
+    if (joinLauncher.isJoining) {
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                stringResource(
+                    if (joinLauncher.joiningFingerprint == null) {
+                        R.string.pairing_starting
+                    } else {
+                        R.string.pairing_waiting_for_approval
+                    },
+                ),
+            )
+        }
+        joinLauncher.joiningFingerprint?.let {
+            Text(
+                text = stringResource(R.string.onboarding_join_fingerprint, it),
+                fontFamily = FontFamily.Monospace,
+            )
+        }
     }
 }
 

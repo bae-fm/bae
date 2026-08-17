@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">শুরু করতে আপনার অন্য কোনো ডিভাইস থেকে একটি লাইব্রেরিতে যোগ দিন</string>
     <string name="onboarding_icon_description">bae আইকন</string>
     <string name="onboarding_join_library">লাইব্রেরিতে যোগ দিন</string>
-    <string name="onboarding_scan_qr">রিকভারি QR স্ক্যান করুন</string>
     <string name="onboarding_paste_code">রিকভারি কোড পেস্ট করুন</string>
     <string name="onboarding_camera_permission_required">QR কোড স্ক্যান করতে ক্যামেরার অনুমতি প্রয়োজন</string>
     <string name="onboarding_paste_code_instructions">এই লাইব্রেরির পুনরুদ্ধার কোড পেস্ট করুন (অন্য ডিভাইসে bae → সেটিংস → পুনরুদ্ধার কোড থেকে)।</string>

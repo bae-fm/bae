@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">शुरू करने के लिए अपने किसी दूसरे उपकरण से लाइब्रेरी से जुड़ें</string>
     <string name="onboarding_icon_description">bae आइकन</string>
     <string name="onboarding_join_library">लाइब्रेरी से जुड़ें</string>
-    <string name="onboarding_scan_qr">पुनर्प्राप्ति QR स्कैन करें</string>
     <string name="onboarding_paste_code">पुनर्प्राप्ति कोड पेस्ट करें</string>
     <string name="onboarding_camera_permission_required">QR कोड स्कैन करने के लिए कैमरा अनुमति आवश्यक है</string>
     <string name="onboarding_paste_code_instructions">इस लाइब्रेरी का पुनर्प्राप्ति कोड पेस्ट करें (दूसरे उपकरण पर bae → सेटिंग्स → पुनर्प्राप्ति कोड से)।</string>

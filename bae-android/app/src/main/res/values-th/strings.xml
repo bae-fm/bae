@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">เข้าร่วมคลังจากอุปกรณ์อื่นของคุณเพื่อเริ่มต้น</string>
     <string name="onboarding_icon_description">ไอคอน bae</string>
     <string name="onboarding_join_library">เข้าร่วมคลัง</string>
-    <string name="onboarding_scan_qr">สแกน QR กู้คืน</string>
     <string name="onboarding_paste_code">วางรหัสกู้คืน</string>
     <string name="onboarding_camera_permission_required">ต้องให้สิทธิ์กล้องเพื่อสแกนรหัส QR</string>
     <string name="onboarding_paste_code_instructions">วางรหัสกู้คืนของคลังนี้ (จาก bae → การตั้งค่า → รหัสกู้คืน บนอุปกรณ์อื่น)</string>

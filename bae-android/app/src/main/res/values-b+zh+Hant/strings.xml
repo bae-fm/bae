@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">從你的其他裝置加入資料庫以開始使用</string>
     <string name="onboarding_icon_description">bae 圖示</string>
     <string name="onboarding_join_library">加入資料庫</string>
-    <string name="onboarding_scan_qr">掃描復原 QR</string>
     <string name="onboarding_paste_code">貼上復原碼</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
     <string name="onboarding_paste_code_instructions">貼上此資料庫的復原碼（來自另一台裝置的 bae → 設定 → 復原碼）。</string>

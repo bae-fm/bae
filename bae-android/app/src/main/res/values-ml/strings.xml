@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">തുടങ്ങാൻ നിങ്ങളുടെ മറ്റൊരു ഉപകരണത്തിൽ നിന്നുള്ള ശേഖരത്തിൽ ചേരുക</string>
     <string name="onboarding_icon_description">bae ഐക്കൺ</string>
     <string name="onboarding_join_library">ലൈബ്രറിയിൽ ചേരുക</string>
-    <string name="onboarding_scan_qr">വീണ്ടെടുപ്പ് QR സ്കാൻ ചെയ്യുക</string>
     <string name="onboarding_paste_code">വീണ്ടെടുപ്പ് കോഡ് ഒട്ടിക്കുക</string>
     <string name="onboarding_camera_permission_required">QR കോഡുകൾ സ്കാൻ ചെയ്യാൻ ക്യാമറ അനുമതി ആവശ്യമാണ്</string>
     <string name="onboarding_paste_code_instructions">ഈ ശേഖരത്തിന്റെ വീണ്ടെടുപ്പ് കോഡ് ഒട്ടിക്കുക (മറ്റൊരു ഉപകരണത്തിലെ bae → ക്രമീകരണങ്ങൾ → വീണ്ടെടുപ്പ് കോഡ് എന്നതിൽ നിന്ന്).</string>

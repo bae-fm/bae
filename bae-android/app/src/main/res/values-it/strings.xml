@@ -139,7 +139,6 @@
     <string name="onboarding_tagline">Unisciti a una libreria da uno dei tuoi altri dispositivi per iniziare</string>
     <string name="onboarding_icon_description">icona bae</string>
     <string name="onboarding_join_library">Unisciti a una libreria</string>
-    <string name="onboarding_scan_qr">Scansiona QR di recupero</string>
     <string name="onboarding_paste_code">Incolla codice di recupero</string>
     <string name="onboarding_camera_permission_required">È necessario il permesso della fotocamera per scansionare codici QR</string>
     <string name="onboarding_paste_code_instructions">Incolla il codice di recupero di questa libreria (da bae → Impostazioni → Codice di recupero su un altro dispositivo).</string>
