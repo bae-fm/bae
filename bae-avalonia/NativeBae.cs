@@ -260,8 +260,10 @@ internal static partial class NativeBae
     /// Decode a pasted invite for UI preview. Reads the same bytes the join runs
     /// on, so the preview and the join cannot disagree about the library.
     /// </summary>
-    internal static BridgeInviteCodeInfo DecodeInviteCode(string pasted) =>
-        BaeBridgeMethods.DecodeScannedInvite(InviteBytes(pasted));
+    internal static BridgeDeviceInviteInfo DecodeDeviceInvitation(
+        string pasted,
+        string joinRequestCode) =>
+        BaeBridgeMethods.DecodeScannedInvite(InviteBytes(pasted), joinRequestCode);
 
     /// <summary>
     /// Join a shared library from a pasted invite and return its id.
@@ -675,14 +677,16 @@ internal static partial class NativeBae
     internal static (BridgeMembership? Membership, string? Error) GetMembers(AppHandle handle) =>
         CaptureBridgeValue(() => Await(() => handle.GetMembers()));
 
-    internal static string? InviteMember(AppHandle handle, string publicKeyHex) =>
-        CaptureValue(() => Await(() => handle.InviteMember(publicKeyHex, providerAccountEmail: null)));
+    internal static (byte[]? Invitation, string? Error) BeginDeviceInvite(
+        AppHandle handle,
+        string joinRequestCode) =>
+        CaptureBridgeValue(() => Await(() => handle.BeginDeviceInvite(joinRequestCode)));
 
-    /// <summary>Approve a joining device by its public key, baking in the OAuth
-    /// account address to share the provider folder to; returns the invite code to
-    /// hand back, or the error line.</summary>
-    internal static string? InviteMember(AppHandle handle, string publicKeyHex, string? providerAccountEmail) =>
-        CaptureValue(() => Await(() => handle.InviteMember(publicKeyHex, providerAccountEmail)));
+    internal static string? DriveDeviceJoin(AppHandle handle, byte[] invitation) =>
+        CaptureError(() => Await(() => handle.DriveDeviceJoin(invitation)));
+
+    internal static string? CancelDeviceInvite(AppHandle handle, byte[] invitation) =>
+        CaptureError(() => Await(() => handle.CancelDeviceInvite(invitation)));
 
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
         CaptureError(() => Await(() => handle.RemoveMember(publicKeyHex)));

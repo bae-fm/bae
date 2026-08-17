@@ -40,11 +40,17 @@ internal sealed class SyncService
     public Func<Task<(bool Current, (BridgeMembership? Membership, string? Error) Result)>> GetMembers { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: GetMembers not wired");
 
-    /// <summary>Approve a joining device by its public key, returning the invite
-    /// code to hand back (or the error line). The email is baked in so the approver
-    /// can share the OAuth folder.</summary>
-    public Func<string, string?, Task<(bool Current, string? InviteCode)>> InviteMember { get; init; }
-        = (_, _) => throw new InvalidOperationException("SyncService stub: InviteMember not wired");
+    /// <summary>Create the sealed invitation for one exact join request.</summary>
+    public Func<string, Task<(bool Current, (byte[]? Invitation, string? Error) Result)>> BeginDeviceInvite { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: BeginDeviceInvite not wired");
+
+    /// <summary>Keep the owner side of the invitation alive until its recipient joins.</summary>
+    public Func<byte[], Task<(bool Current, string? Error)>> DriveDeviceJoin { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: DriveDeviceJoin not wired");
+
+    /// <summary>Withdraw an invitation whose owner-side driver is no longer shown.</summary>
+    public Func<byte[], Task<(bool Current, string? Error)>> CancelDeviceInvite { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: CancelDeviceInvite not wired");
 
     /// <summary>Remove a device from the library and rotate the library key.</summary>
     public Func<string, Task<(bool Current, string? Error)>> RemoveMember { get; init; }
@@ -127,8 +133,12 @@ internal sealed class SyncService
                 NativeBae.SaveSyncConfig(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage)),
         GenerateRestoreCode = () => session.RunForCurrentHandle(NativeBae.GenerateRestoreCode),
         GetMembers = () => session.RunForCurrentHandle(NativeBae.GetMembers),
-        InviteMember = (publicKeyHex, email) =>
-            session.RunForCurrentHandle(handle => NativeBae.InviteMember(handle, publicKeyHex, email)),
+        BeginDeviceInvite = joinRequestCode =>
+            session.RunForCurrentHandle(handle => NativeBae.BeginDeviceInvite(handle, joinRequestCode)),
+        DriveDeviceJoin = invitation =>
+            session.RunForCurrentHandle(handle => NativeBae.DriveDeviceJoin(handle, invitation)),
+        CancelDeviceInvite = invitation =>
+            session.RunForCurrentHandle(handle => NativeBae.CancelDeviceInvite(handle, invitation)),
         RemoveMember = publicKeyHex =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveMember(handle, publicKeyHex)),
         CloudOnlyReleaseCount = () => session.RunForCurrentHandle(NativeBae.CloudOnlyReleaseCount),

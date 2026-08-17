@@ -26,7 +26,7 @@ struct JoinCodeExchange: View {
     let joinRequest: Result<BridgeJoinRequest, Error>?
     @Binding
     var inviteCodeInput: String
-    let decodedInvite: Result<BridgeInviteCodeInfo, Error>?
+    let decodedInvite: Result<BridgeDeviceInviteInfo, Error>?
     let oauthConnected: Bool
     let isJoining: Bool
     let error: String?

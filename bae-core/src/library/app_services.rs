@@ -695,9 +695,8 @@ impl AppServices {
     delegate_async!(manager, cloud_only_release_count => cloud_only_release_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
-    delegate_async!(manager, invite_member => invite_member(public_key_hex: &str, provider_account_email: Option<&str>) -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, begin_device_invite => begin_device_invite(join_request_code: &str) -> Result<Vec<u8>, crate::library::LibraryError>);
-    delegate_async!(manager, drive_device_join => drive_device_join(invite_bytes: Vec<u8>) -> Result<crate::library::DeviceJoinOutcome, crate::library::LibraryError>);
+    delegate_async!(manager, drive_device_join => drive_device_join(invite_bytes: Vec<u8>) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_device_invite => cancel_device_invite(invite_bytes: Vec<u8>) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(public_key_hex: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, outbox_snapshot => outbox_snapshot() -> Result<crate::library::OutboxSnapshot, crate::library::LibraryError>);

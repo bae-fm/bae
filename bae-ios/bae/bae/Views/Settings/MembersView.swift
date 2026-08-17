@@ -82,7 +82,7 @@ struct MembersView: View {
         }
         .sheet(isPresented: $showApprove) {
             ApproveDeviceView(
-                invite: sync.inviteMember,
+                sync: sync,
                 onDismiss: { showApprove = false },
                 onApproved: { load() }
             )

@@ -152,6 +152,10 @@ pub enum LibraryError {
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
+    #[error("Device invitation error: {0}")]
+    DeviceInvite(#[from] coven::BeginDeviceInviteError),
+    #[error("The device join was ended by its joining device")]
+    DeviceJoinAbandoned,
     /// A bae-level input validation failed (an empty library name). bae's own
     /// validation, not coven's — the detail is log-only, so the user sees the
     /// generic settings line.
@@ -189,6 +193,8 @@ impl LibraryError {
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
+            LibraryError::DeviceInvite(error) => device_invite_category(error),
+            LibraryError::DeviceJoinAbandoned => C::Membership,
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
@@ -251,11 +257,9 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         SyncError::Setup(_) => C::Credentials,
         SyncError::Membership(_) => C::Membership,
         SyncError::DeviceJoin(_) => C::Membership,
-        // Admitting a device: a malformed join-request code, or the handshake's
-        // storage transport failing (including the deadline that means the other
-        // device never took its step). Both are the membership operation failing,
-        // not the library or this device's credentials.
-        SyncError::InvalidJoinRequest(_) => C::Membership,
+        // The handshake's storage transport failing (including the deadline
+        // that means the other device never took its step) is the membership
+        // operation failing, not the library or this device's credentials.
         SyncError::DeviceJoinTransport(_) => C::Membership,
         // The other membership operations that carry a pasted/scanned code —
         // excluding a device from the store, promoting a member to owner — and a
@@ -277,6 +281,14 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         | SyncError::RoutingEncryption(_)
         | SyncError::BlobUpload(_)
         | SyncError::Loop(_) => C::Internal,
+    }
+}
+
+fn device_invite_category(error: &coven::BeginDeviceInviteError) -> crate::ui::UiErrorCategory {
+    match error {
+        coven::BeginDeviceInviteError::Sync(error) => sync_category(error),
+        coven::BeginDeviceInviteError::JoinRequest(_)
+        | coven::BeginDeviceInviteError::DeviceInvite(_) => crate::ui::UiErrorCategory::Membership,
     }
 }
 

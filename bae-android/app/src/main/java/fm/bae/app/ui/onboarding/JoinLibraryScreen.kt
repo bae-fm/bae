@@ -339,7 +339,7 @@ private fun InvitePreviewRow(
 private fun InvitePreviewContentDecodedPreview() {
     BaeTheme {
         InvitePreviewContent(
-            preview = JoinInvitePreview.Decoded(info = PreviewData.inviteCodeInfo(), mismatch = null),
+            preview = JoinInvitePreview.Decoded(info = PreviewData.deviceInviteInfo(), mismatch = null),
         )
     }
 }

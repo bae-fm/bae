@@ -147,20 +147,6 @@ impl LibraryManager {
         self.sync.get_members().await
     }
 
-    /// Approve a device into the library by its public key, wrapping the library
-    /// key to it and signing a membership entry. Returns the invite code to hand
-    /// back to the joining device. bae adds every device as a `Member`; the
-    /// founding device is the `Owner`.
-    pub async fn invite_member(
-        &self,
-        public_key_hex: &str,
-        provider_account_email: Option<&str>,
-    ) -> Result<String, LibraryError> {
-        self.sync
-            .invite_member(public_key_hex, provider_account_email)
-            .await
-    }
-
     /// Mint the scannable device-join invite for a device that asked to join,
     /// returning the payload the UI renders as a QR code. The joining device must
     /// hand over its join-request code first — see
@@ -175,10 +161,7 @@ impl LibraryManager {
     /// Drive this device's side of an invited join to the attempt's end. Run this
     /// while the invite is on screen; it returns once the joining device is in or
     /// the attempt ended without it.
-    pub async fn drive_device_join(
-        &self,
-        invite_bytes: Vec<u8>,
-    ) -> Result<crate::library::sync_controller::DeviceJoinOutcome, LibraryError> {
+    pub async fn drive_device_join(&self, invite_bytes: Vec<u8>) -> Result<(), LibraryError> {
         self.sync.drive_device_join(invite_bytes).await
     }
 

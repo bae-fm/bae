@@ -91,9 +91,9 @@ pub struct BridgeJoinRequest {
     pub fingerprint: String,
 }
 
-/// Decoded invite code info for UI preview (before joining).
+/// Opened device-invitation info for UI preview (before joining).
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeInviteCodeInfo {
+pub struct BridgeDeviceInviteInfo {
     pub library_id: String,
     pub library_name: String,
     pub owner_pubkey: String,

@@ -22,16 +22,6 @@ use crate::sync::S3ConfigData;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::ExactCloudHome;
 
-/// How a device join this library invited ended. The payloads coven returns
-/// (the activation, the abandonment) are protocol records bae keeps nothing
-/// from — the UI only distinguishes "the device is in" from "the attempt ended
-/// without it".
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DeviceJoinOutcome {
-    Joined,
-    Abandoned,
-}
-
 use crate::sync::device_join_timing;
 
 /// Owns the sync/upload state and the cloud-connection lifecycle. Holds clones of
@@ -281,34 +271,15 @@ impl SyncController {
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
-    /// Approve a device into the library by its public key, wrapping the library
-    /// key to it and signing a membership entry. Returns the invite code to hand
-    /// back to the joining device. bae adds every device as a `Member`; the
-    /// founding device is the `Owner`.
-    pub(crate) async fn invite_member(
-        &self,
-        public_key_hex: &str,
-        provider_account_email: Option<&str>,
-    ) -> Result<String, LibraryError> {
-        Ok(self
-            .database
-            .invite_member(
-                public_key_hex,
-                provider_account_email,
-                crate::sync::membership::MemberRole::Member,
-            )
-            .await?)
-    }
-
     /// Mint the scannable device-join invite for a device that has asked to join,
     /// returning the payload bytes the UI renders as a QR code.
     ///
     /// `join_request_code` is the code the *joining* device produced with
     /// [`crate::sync::membership::generate_join_request`] and handed over first:
     /// the offer is signed for that device's key, so the owner cannot mint this
-    /// payload without it. The returned bytes carry both the invite code (the
-    /// joining device's provider credentials) and the join offer with its
-    /// transport slots, so scanning it is everything that device needs.
+    /// payload without it. The returned bytes carry the joining device's sealed
+    /// provider credentials and the join offer with its transport slots, so
+    /// scanning it is everything that device needs.
     ///
     /// Minting only publishes the offer. [`drive_device_join`](Self::drive_device_join)
     /// must then run on this device to admit the joiner.
@@ -343,7 +314,7 @@ impl SyncController {
     pub(crate) async fn drive_device_join(
         &self,
         invite_bytes: Vec<u8>,
-    ) -> Result<DeviceJoinOutcome, LibraryError> {
+    ) -> Result<(), LibraryError> {
         let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
             .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
         let outcome = self
@@ -354,10 +325,10 @@ impl SyncController {
                 device_join_timing(),
             )
             .await?;
-        Ok(match outcome {
-            coven::DeviceJoinDriveOutcome::Activated(_) => DeviceJoinOutcome::Joined,
-            coven::DeviceJoinDriveOutcome::Abandoned(_) => DeviceJoinOutcome::Abandoned,
-        })
+        match outcome {
+            coven::DeviceJoinDriveOutcome::Activated(_) => Ok(()),
+            coven::DeviceJoinDriveOutcome::Abandoned(_) => Err(LibraryError::DeviceJoinAbandoned),
+        }
     }
 
     /// Withdraw an invite this device minted, unwinding the attempt through the

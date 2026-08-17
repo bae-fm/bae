@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeInviteCodeInfo
+import uniffi.bae_bridge.BridgeDeviceInviteInfo
 
 /**
  * The invite-preview mapping — how a decode attempt plus this build's provider
@@ -17,8 +17,8 @@ class JoinInvitePreviewTest {
     private fun invite(
         needsOauth: Boolean,
         provider: BridgeCloudProvider,
-    ): BridgeInviteCodeInfo =
-        BridgeInviteCodeInfo(
+    ): BridgeDeviceInviteInfo =
+        BridgeDeviceInviteInfo(
             libraryId = "lib-1",
             libraryName = "bae Library",
             ownerPubkey = "pubkey-1",
@@ -36,7 +36,7 @@ class JoinInvitePreviewTest {
 
     @Test
     fun undecodableCodeIsInvalidAndBlocked() {
-        val decode = Result.failure<BridgeInviteCodeInfo>(IllegalArgumentException("bad code"))
+        val decode = Result.failure<BridgeDeviceInviteInfo>(IllegalArgumentException("bad code"))
         val preview = joinInvitePreview(decode, oauthSupported = true, oauthTokenHeld = false)
         assertEquals(JoinInvitePreview.Invalid, preview)
         assertFalse(joinEnabled(preview))

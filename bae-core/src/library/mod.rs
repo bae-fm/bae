@@ -29,7 +29,6 @@ pub use save::SaveService;
 pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
 /// How a device join this library invited ended. The controller itself stays
 /// crate-private; this outcome is part of the public sharing surface.
-pub use sync_controller::DeviceJoinOutcome;
 pub use upload_throughput::UploadThroughput;
 
 #[cfg(test)]

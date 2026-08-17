@@ -294,23 +294,11 @@ impl Database {
         self.inner.handle.get_members().await
     }
 
-    pub(crate) async fn invite_member(
-        &self,
-        public_key_hex: &str,
-        provider_account_email: Option<&str>,
-        role: coven::MemberRole,
-    ) -> Result<String, coven::SyncError> {
-        self.inner
-            .handle
-            .invite_member(public_key_hex, provider_account_email, role)
-            .await
-    }
-
     pub(crate) async fn begin_device_invite(
         &self,
         join_request_code: &str,
         role: coven::MemberRole,
-    ) -> Result<coven::DeviceJoinInvite, coven::SyncError> {
+    ) -> Result<coven::DeviceJoinInvite, coven::BeginDeviceInviteError> {
         self.inner
             .handle
             .begin_device_invite(join_request_code, role)

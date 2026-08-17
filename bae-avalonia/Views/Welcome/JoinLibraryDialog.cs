@@ -70,7 +70,7 @@ internal sealed class JoinLibraryDialog
         var cancel = new Button { Content = Loc.Chrome("action.cancel") };
         column.Children.Add(DialogUi.Actions(cancel, join));
 
-        BridgeInviteCodeInfo? decoded = null;
+        BridgeDeviceInviteInfo? decoded = null;
         string? oauthTokenJson = null;
 
         void ShowStatus(string message)
@@ -93,11 +93,15 @@ internal sealed class JoinLibraryDialog
             {
                 return;
             }
+            if (_joinRequestCode is not { } joinRequestCode)
+            {
+                return;
+            }
 
-            BridgeInviteCodeInfo info;
+            BridgeDeviceInviteInfo info;
             try
             {
-                info = NativeBae.DecodeInviteCode(code);
+                info = NativeBae.DecodeDeviceInvitation(code, joinRequestCode);
             }
             catch (BridgeException exception)
             {
@@ -195,14 +199,16 @@ internal sealed class JoinLibraryDialog
             _openLibrary(libraryId);
         };
 
-        _ = GenerateJoinCode(deviceCodeHost);
+        _ = GenerateJoinCode(
+            deviceCodeHost,
+            () => DecodeInvite(inviteBox.Text?.Trim() ?? string.Empty));
 
         return new ScrollViewer { Content = column, MaxHeight = 560 };
     }
 
     // Generate this device's join-request code off the UI thread, then render it as
     // selectable text with a copy button, plus its fingerprint.
-    private async Task GenerateJoinCode(StackPanel host)
+    private async Task GenerateJoinCode(StackPanel host, Action requestReady)
     {
         BridgeJoinRequest request;
         try
@@ -221,6 +227,7 @@ internal sealed class JoinLibraryDialog
         }
 
         _joinRequestCode = request.Code;
+        requestReady();
         host.Children.Clear();
 
         // The QR is a visual transport of the same code shown below it, scanned by

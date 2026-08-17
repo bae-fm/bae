@@ -74,7 +74,11 @@
             Sync(
                 generateRestoreCode: { "recovery-code-preview" },
                 getMembers: { membership },
-                inviteMember: { _, _ in "invite-code-preview" },
+                beginDeviceInvite: { _ in
+                    Data("device-invitation-preview".utf8)
+                },
+                driveDeviceJoin: { _ in },
+                cancelDeviceInvite: { _ in },
                 cloudOnlyReleaseCount: { 0 },
             )
         }

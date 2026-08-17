@@ -45,7 +45,7 @@ struct JoinLibraryView: View {
     /// `.success(info)` for a valid code, `.failure(error)` for an unparseable
     /// one.
     @State
-    private var decodedInvite: Result<BridgeInviteCodeInfo, Error>?
+    private var decodedInvite: Result<BridgeDeviceInviteInfo, Error>?
     @State
     private var isJoining = false
     /// The in-flight join, owned so a superseding join and the view's disappear
@@ -120,11 +120,7 @@ struct JoinLibraryView: View {
         }
         .padding(.horizontal)
         .onChange(of: inviteCodeInput) { _, newInput in
-            let trimmed = newInput.trimmingCharacters(in: .whitespaces)
-            decodedInvite =
-                trimmed.isEmpty
-                ? nil
-                : Result { try setup.decodeInviteCode(newInput) }
+            decodeInvitation(newInput)
         }
         .onDisappear {
             genTask?.cancel()
@@ -209,6 +205,7 @@ struct JoinLibraryView: View {
                 try generate(email)
             }
             joinRequest = .success(generated)
+            decodeInvitation(inviteCodeInput)
         }
         catch is CancellationError {
             logger.debug("join request generation cancelled")
@@ -218,6 +215,21 @@ struct JoinLibraryView: View {
                 "Failed to generate join request: \(error.localizedDescription)"
             )
             joinRequest = .failure(error)
+        }
+    }
+
+    private func decodeInvitation(_ input: String) {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            decodedInvite = nil
+            return
+        }
+        guard case .success(let request) = joinRequest else {
+            decodedInvite = nil
+            return
+        }
+        decodedInvite = Result {
+            try setup.decodeDeviceInvitation(input, request.code)
         }
     }
 

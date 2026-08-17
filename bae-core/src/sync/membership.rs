@@ -106,7 +106,7 @@ pub struct JoinRequestInfo {
 }
 
 /// Decode a join-request code to preview the joining device before approving it.
-pub fn decode_join_request(code: &str) -> Result<JoinRequestInfo, coven::JoinCodeError> {
+pub fn decode_join_request(code: &str) -> Result<JoinRequestInfo, coven::JoinRequestError> {
     let req = coven::decode_join_request(code)?;
     Ok(JoinRequestInfo {
         fingerprint: pubkey_fingerprint(&req.public_key),
@@ -115,9 +115,9 @@ pub fn decode_join_request(code: &str) -> Result<JoinRequestInfo, coven::JoinCod
     })
 }
 
-/// UI-ready info from a decoded invite code, with the owner's fingerprint
+/// UI-ready info opened from a device invitation, with the owner's fingerprint
 /// precomputed for the join preview.
-pub struct InviteCodeInfo {
+pub struct DeviceInviteInfo {
     pub library_id: String,
     pub library_name: String,
     pub owner_pubkey: String,
@@ -126,10 +126,26 @@ pub struct InviteCodeInfo {
     pub needs_oauth: bool,
 }
 
-/// Decode an invite code and return UI-ready info for the join preview.
-pub fn decode_invite_code_info(code: &str) -> Result<InviteCodeInfo, coven::JoinCodeError> {
-    let info = coven::decode_invite_code_info(code)?;
-    Ok(InviteCodeInfo {
+#[derive(Debug, thiserror::Error)]
+pub enum DeviceInviteInspectionError {
+    #[error("device invitation wire: {0}")]
+    Wire(#[source] Box<coven::BootstrapError>),
+    #[error("device invitation recipient: {0}")]
+    Recipient(#[source] coven::DeviceInviteError),
+}
+
+/// Open the scanned invitation with the pending identity that generated
+/// `join_request_code` and return the fields the join preview renders.
+pub fn inspect_device_invite(
+    scanned: &[u8],
+    join_request_code: &str,
+) -> Result<DeviceInviteInfo, DeviceInviteInspectionError> {
+    let invitation = coven::DeviceJoinInvite::from_bytes(scanned)
+        .map_err(|error| DeviceInviteInspectionError::Wire(Box::new(error)))?;
+    let info = invitation
+        .inspect(join_request_code)
+        .map_err(DeviceInviteInspectionError::Recipient)?;
+    Ok(DeviceInviteInfo {
         owner_fingerprint: pubkey_fingerprint(&info.owner_pubkey),
         library_id: info.store_id,
         library_name: info.store_name,

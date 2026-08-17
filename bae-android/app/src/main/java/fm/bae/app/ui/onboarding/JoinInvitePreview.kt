@@ -1,6 +1,6 @@
 package fm.bae.app.ui.onboarding
 
-import uniffi.bae_bridge.BridgeInviteCodeInfo
+import uniffi.bae_bridge.BridgeDeviceInviteInfo
 
 /**
  * What the invite-code entry shows once the joiner types or scans a code,
@@ -18,7 +18,7 @@ sealed interface JoinInvitePreview {
      * blocked and the mismatch notice renders under the preview rows.
      */
     data class Decoded(
-        val info: BridgeInviteCodeInfo,
+        val info: BridgeDeviceInviteInfo,
         val mismatch: ProviderMismatch?,
     ) : JoinInvitePreview
 
@@ -52,7 +52,7 @@ enum class ProviderMismatch {
  * picked, so the eventual join can reuse that token.
  */
 fun joinInvitePreview(
-    decode: Result<BridgeInviteCodeInfo>?,
+    decode: Result<BridgeDeviceInviteInfo>?,
     oauthSupported: Boolean,
     oauthTokenHeld: Boolean,
 ): JoinInvitePreview {

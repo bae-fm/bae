@@ -95,12 +95,12 @@ struct OnboardingView: View {
     @State
     private var genTask: Task<Void, Never>?
     @State
-    private var inviteCodeInput = ""
-    /// The decode of the current invite-code input: `nil` when empty,
+    private var deviceInvitationInput = ""
+    /// The decode of the current device-invitation input: `nil` when empty,
     /// `.success(info)` for a valid code, `.failure(error)` for an unparseable
     /// one.
     @State
-    private var decodedInvite: Result<BridgeInviteCodeInfo, Error>?
+    private var decodedInvitation: Result<BridgeDeviceInviteInfo, Error>?
     @State
     private var showInviteScanner = false
 
@@ -224,8 +224,8 @@ extension OnboardingView {
                 else {
                     JoinCodeExchange(
                         joinRequest: joinRequest,
-                        inviteCode: $inviteCodeInput,
-                        decodedInvite: decodedInvite,
+                        deviceInvitation: $deviceInvitationInput,
+                        decodedInvitation: decodedInvitation,
                         joinTokenJson: joinTokenJson,
                         error: error,
                         onRetryGenerate: {
@@ -239,13 +239,8 @@ extension OnboardingView {
                                 onError: { error = $0 }
                             )
                         },
-                        onInviteChanged: { newInput in
-                            let trimmed = newInput.trimmingCharacters(
-                                in: .whitespaces
-                            )
-                            decodedInvite =
-                                trimmed.isEmpty
-                                ? nil : Result { try decodeInvite(pasted: trimmed) }
+                        onInvitationChanged: { _ in
+                            decodeDeviceInvitationInput()
                         }
                     )
                 }
@@ -265,8 +260,8 @@ extension OnboardingView {
                             joinRequest = nil
                             joinTokenJson = nil
                             joinEmail = nil
-                            inviteCodeInput = ""
-                            decodedInvite = nil
+                            deviceInvitationInput = ""
+                            decodedInvitation = nil
                         }
                         error = nil
                     }
@@ -295,7 +290,7 @@ extension OnboardingView {
     /// Whether the Join button should be enabled: a valid invite code, plus the
     /// up-front OAuth token held when the picked provider needs it.
     fileprivate var joinReady: Bool {
-        guard case .success(let info) = decodedInvite else {
+        guard case .success(let info) = decodedInvitation else {
             return false
         }
         #if BAE_OAUTH_PROVIDERS
@@ -390,6 +385,7 @@ extension OnboardingView {
             }
             try Task.checkCancellation()
             joinRequest = .success(generated)
+            decodeDeviceInvitationInput()
         }
         catch is CancellationError {
             logger.debug("join request generation cancelled")
@@ -408,7 +404,7 @@ extension OnboardingView {
     /// in-flight one through the operation's own token, so the bridge stops its
     /// blocking work rather than running to completion on a stale library.
     func join() {
-        guard case .success = decodedInvite else {
+        guard case .success = decodedInvitation else {
             logger.warning("join tapped without a decoded invite code")
             return
         }
@@ -419,7 +415,7 @@ extension OnboardingView {
             logger.warning("join tapped before the join-request code was ready")
             return
         }
-        let code = inviteCodeInput.trimmingCharacters(
+        let code = deviceInvitationInput.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
         let joinRequestCode = request.code
@@ -490,8 +486,24 @@ extension OnboardingView {
         return bytes
     }
 
-    private func decodeInvite(pasted: String) throws -> BridgeInviteCodeInfo {
-        try decodeScannedInvite(scanned: try inviteBytes(pasted: pasted))
+    private func decodeDeviceInvitationInput() {
+        let trimmed = deviceInvitationInput.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !trimmed.isEmpty else {
+            decodedInvitation = nil
+            return
+        }
+        guard case .success(let request) = joinRequest else {
+            decodedInvitation = nil
+            return
+        }
+        decodedInvitation = Result {
+            try decodeScannedInvite(
+                scanned: try inviteBytes(pasted: trimmed),
+                joinRequestCode: request.code
+            )
+        }
     }
 
     private func runJoin(

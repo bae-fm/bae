@@ -15,7 +15,10 @@ private let bridgeDiscoverLibraries = discoverLibraries
 private let bridgeRemoveLocalLibrary = removeLocalLibrary(libraryId:)
 private let bridgeCreateLibrary = createLibrary(name:)
 private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
-private let bridgeDecodeScannedInvite = decodeScannedInvite(scanned:)
+private let bridgeDecodeScannedInvite = decodeScannedInvite(
+    scanned:
+    joinRequestCode:
+)
 private let bridgeRestoreFromCode = restoreFromCode(code:oauthTokenJson:)
 private let bridgeGenerateJoinRequest = generateJoinRequest(email:)
 private let bridgeJoinFromScannedInviteOperation =
@@ -81,8 +84,9 @@ final class LibrarySetup: Sendable, Observable {
         @Sendable (_ code: String) throws -> BridgeRestoreCodeInfo
     /// Preview a pasted invite. The payload is bytes carried as base64, so both
     /// this and the join decode the same text the same way.
-    let decodeInviteCode:
-        @Sendable (_ pasted: String) throws -> BridgeInviteCodeInfo
+    let decodeDeviceInvitation:
+        @Sendable (_ pasted: String, _ joinRequestCode: String) throws ->
+            BridgeDeviceInviteInfo
     let restoreFromCode:
         @Sendable (_ code: String, _ oauthTokenJson: String?) throws ->
             BridgeLibrary
@@ -121,8 +125,10 @@ final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable (String) throws -> BridgeRestoreCodeInfo = {
                 _ in throw StubError.notImplemented
             },
-        decodeInviteCode:
-            @escaping @Sendable (String) throws -> BridgeInviteCodeInfo = {
+        decodeDeviceInvitation:
+            @escaping @Sendable (String, String) throws ->
+            BridgeDeviceInviteInfo = {
+                _,
                 _ in throw StubError.notImplemented
             },
         restoreFromCode:
@@ -156,7 +162,7 @@ final class LibrarySetup: Sendable, Observable {
         self.removeLocalLibrary = removeLocalLibrary
         self.createLibrary = createLibrary
         self.decodeRestoreCode = decodeRestoreCode
-        self.decodeInviteCode = decodeInviteCode
+        self.decodeDeviceInvitation = decodeDeviceInvitation
         self.restoreFromCode = restoreFromCode
         self.generateJoinRequest = generateJoinRequest
         self.joinFromCode = joinFromCode
@@ -177,8 +183,8 @@ final class LibrarySetup: Sendable, Observable {
             removeLocalLibrary: bridgeRemoveLocalLibrary,
             createLibrary: { try bridgeCreateLibrary(nil) },
             decodeRestoreCode: bridgeDecodeRestoreCode,
-            decodeInviteCode: {
-                try bridgeDecodeScannedInvite(inviteBytes(pasted: $0))
+            decodeDeviceInvitation: {
+                try bridgeDecodeScannedInvite(inviteBytes(pasted: $0), $1)
             },
             restoreFromCode: bridgeRestoreFromCode,
             generateJoinRequest: bridgeGenerateJoinRequest,

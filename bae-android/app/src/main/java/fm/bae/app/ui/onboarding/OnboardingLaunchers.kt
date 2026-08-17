@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeInviteCodeInfo
+import uniffi.bae_bridge.BridgeDeviceInviteInfo
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinFromCodeOperation
 import uniffi.bae_bridge.RestoreFromCodeOperation
@@ -111,13 +111,16 @@ private class JoinFlow(
  */
 private class ScannedInvite(
     val bytes: ByteArray,
-    val info: BridgeInviteCodeInfo,
+    val info: BridgeDeviceInviteInfo,
 )
 
 /** Decode base64 invite text into its bundle and preview, or throw if it is neither. */
-private fun scanInvite(pasted: String): ScannedInvite {
+private fun scanInvite(
+    pasted: String,
+    joinRequestCode: String,
+): ScannedInvite {
     val bytes = Base64.getDecoder().decode(pasted)
-    return ScannedInvite(bytes, decodeScannedInvite(bytes))
+    return ScannedInvite(bytes, decodeScannedInvite(bytes, joinRequestCode))
 }
 
 private suspend fun resolveOauthToken(
@@ -247,7 +250,13 @@ class JoinLauncher(
         inviteInput = raw
         error = null
         val trimmed = raw.trim()
-        scannedInvite = if (trimmed.isEmpty()) null else runCatching { scanInvite(trimmed) }
+        val joinRequestCode = requestCode
+        scannedInvite =
+            if (trimmed.isEmpty() || joinRequestCode == null) {
+                null
+            } else {
+                runCatching { scanInvite(trimmed, joinRequestCode) }
+            }
     }
 
     /**
@@ -293,6 +302,7 @@ class JoinLauncher(
                     val request = withContext(Dispatchers.IO) { generateJoinRequest(email) }
                     requestCode = request.code
                     fingerprint = request.fingerprint
+                    updateInvite(inviteInput)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {

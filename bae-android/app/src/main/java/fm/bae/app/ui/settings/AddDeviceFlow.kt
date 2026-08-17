@@ -51,6 +51,7 @@ import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.decodeJoinRequest
+import java.util.Base64
 
 private const val TAG = "bae.AddDeviceFlow"
 private val logger = BaeLogger(TAG)
@@ -60,6 +61,7 @@ private class AddDeviceActions(
     val onScan: () -> Unit,
     val onPaste: () -> Unit,
     val onConfirm: (AddDeviceStep.Confirm) -> Unit,
+    val onRetry: () -> Unit,
     val onDismiss: () -> Unit,
 )
 
@@ -70,7 +72,7 @@ private sealed interface AddDeviceStep {
 
     /** Confirm the fingerprint of the device about to be invited. */
     data class Confirm(
-        val pubkey: String,
+        val joinRequestCode: String,
         val fingerprint: String,
         val providerAccountEmail: String?,
     ) : AddDeviceStep
@@ -80,16 +82,15 @@ private sealed interface AddDeviceStep {
 
     /** Show the invite code to hand back to the joining device. */
     data class Invited(
-        val inviteCode: String,
+        val invitationCode: String,
     ) : AddDeviceStep
 }
 
 /**
- * Drives the owner's approve-a-device flow: decode the captured request code into
- * the confirm step, then mint the invite code through the bridge runtime. Refreshes the
- * member list on a successful invite ([onInvited]) so a newly-approved device
- * shows up. Created once per sheet via [remember]; the screen reads [step]/[error]
- * and the dialog calls [capture]/[approve].
+ * Drives the owner's approve-a-device flow: decode the captured request, create
+ * its sealed invitation, and keep the owner-side join driver alive until the
+ * new device finishes joining. The member list refreshes only after that join
+ * completes.
  */
 private class AddDeviceModel(
     private val session: OpenLibrary,
@@ -100,6 +101,8 @@ private class AddDeviceModel(
         private set
     var error by mutableStateOf<String?>(null)
         private set
+    private var invitation: ByteArray? = null
+    private var dismissed = false
 
     fun clearError() {
         error = null
@@ -113,7 +116,7 @@ private class AddDeviceModel(
         error = null
         try {
             val request = decodeJoinRequest(code)
-            step = AddDeviceStep.Confirm(request.pubkey, request.fingerprint, request.email)
+            step = AddDeviceStep.Confirm(code, request.fingerprint, request.email)
         } catch (e: Exception) {
             logger.error("Failed to decode join request", e)
             error = e.message ?: appContext.getString(R.string.members_add_decode_failed)
@@ -122,12 +125,9 @@ private class AddDeviceModel(
 
     suspend fun approve(device: AddDeviceStep.Confirm) {
         step = AddDeviceStep.Inviting
-        val inviteCode =
+        val created =
             try {
-                session.appHandle.inviteMember(
-                    publicKeyHex = device.pubkey,
-                    providerAccountEmail = device.providerAccountEmail,
-                )
+                session.appHandle.beginDeviceInvite(device.joinRequestCode)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -136,17 +136,56 @@ private class AddDeviceModel(
                 step = AddDeviceStep.Capture
                 return
             }
-        onInvited()
-        step = AddDeviceStep.Invited(inviteCode)
+        invitation = created
+        if (dismissed) {
+            cancelInvitation(created)
+            return
+        }
+        step = AddDeviceStep.Invited(Base64.getEncoder().encodeToString(created))
+        drive(created)
+    }
+
+    suspend fun retry() {
+        val created = invitation ?: return
+        error = null
+        drive(created)
+    }
+
+    suspend fun dismiss() {
+        dismissed = true
+        invitation?.let { cancelInvitation(it) }
+    }
+
+    private suspend fun drive(created: ByteArray) {
+        try {
+            session.appHandle.driveDeviceJoin(created)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (!dismissed) {
+                logger.error("Failed while waiting for the invited device to join", e)
+                error = e.message ?: appContext.getString(R.string.members_invite_failed)
+            }
+            return
+        }
+        if (!dismissed) onInvited()
+    }
+
+    private suspend fun cancelInvitation(created: ByteArray) {
+        try {
+            session.appHandle.cancelDeviceInvite(created)
+        } catch (e: Exception) {
+            logger.error("Failed to cancel device invitation", e)
+        }
     }
 }
 
 /**
  * The owner's side of approving a device: scan or paste the joining device's
- * request code, confirm the two devices show the same fingerprint, approve it
- * (which mints an invite code wrapped to that device's key), and present the
- * invite code for the joiner to enter. Reuses the shared [QRScannerScreen] for
- * the capture step and the camera-permission pattern from onboarding.
+ * request code, confirm the two devices show the same fingerprint, approve it,
+ * and present the sealed invitation while the owner waits for the joiner.
+ * Reuses the shared [QRScannerScreen] for the capture step and the
+ * camera-permission pattern from onboarding.
  */
 @Composable
 fun AddDeviceSheet(
@@ -156,7 +195,12 @@ fun AddDeviceSheet(
 ) {
     val appContext = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
-    val model = remember { AddDeviceModel(session, appContext, onInvited) }
+    val model = remember {
+        AddDeviceModel(session, appContext) {
+            onInvited()
+            onDismiss()
+        }
+    }
     var showScanner by remember { mutableStateOf(false) }
     var showPasteDialog by remember { mutableStateOf(false) }
     var pasteInput by remember { mutableStateOf("") }
@@ -194,7 +238,13 @@ fun AddDeviceSheet(
                     showPasteDialog = true
                 },
                 onConfirm = { device -> scope.launch { model.approve(device) } },
-                onDismiss = onDismiss,
+                onRetry = { scope.launch { model.retry() } },
+                onDismiss = {
+                    scope.launch {
+                        model.dismiss()
+                        onDismiss()
+                    }
+                },
             ),
     )
 
@@ -249,10 +299,10 @@ private fun AddDeviceDialog(
         onDismissRequest = actions.onDismiss,
         title = { Text(stringResource(R.string.members_add_device)) },
         text = { AddDeviceDialogContent(step = step, error = error) },
-        confirmButton = { AddDeviceConfirmButton(step = step, actions = actions) },
+        confirmButton = { AddDeviceConfirmButton(step = step, error = error, actions = actions) },
         dismissButton = {
-            if (step !is AddDeviceStep.Invited) {
-                TextButton(onClick = actions.onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = actions.onDismiss) {
+                Text(stringResource(if (step is AddDeviceStep.Invited) R.string.close else R.string.cancel))
             }
         },
     )
@@ -306,7 +356,7 @@ private fun AddDeviceDialogContent(
             }
 
             is AddDeviceStep.Invited -> {
-                InviteCodeBlock(inviteCode = step.inviteCode)
+                InviteCodeBlock(inviteCode = step.invitationCode)
             }
         }
         error?.let {
@@ -350,6 +400,7 @@ private fun InviteCodeBlock(inviteCode: String) {
 @Composable
 private fun AddDeviceConfirmButton(
     step: AddDeviceStep,
+    error: String?,
     actions: AddDeviceActions,
 ) {
     when (step) {
@@ -368,9 +419,10 @@ private fun AddDeviceConfirmButton(
 
         AddDeviceStep.Inviting -> {}
 
-        is AddDeviceStep.Invited -> {
-            TextButton(onClick = actions.onDismiss) { Text(stringResource(R.string.close)) }
-        }
+        is AddDeviceStep.Invited ->
+            if (error != null) {
+                TextButton(onClick = actions.onRetry) { Text(stringResource(R.string.retry)) }
+            }
     }
 }
 
@@ -416,7 +468,7 @@ private fun PasteJoinRequestDialog(
 }
 
 private val previewAddDeviceActions =
-    AddDeviceActions(onScan = {}, onPaste = {}, onConfirm = {}, onDismiss = {})
+    AddDeviceActions(onScan = {}, onPaste = {}, onConfirm = {}, onRetry = {}, onDismiss = {})
 
 @Preview(showBackground = true)
 @Composable
@@ -431,7 +483,7 @@ private fun AddDeviceDialogCapturePreview() {
 private fun AddDeviceDialogInvitedPreview() {
     BaeTheme {
         AddDeviceDialog(
-            step = AddDeviceStep.Invited(inviteCode = "bae://invite/placeholder-code"),
+            step = AddDeviceStep.Invited(invitationCode = "device-invitation-preview"),
             error = null,
             actions = previewAddDeviceActions,
         )

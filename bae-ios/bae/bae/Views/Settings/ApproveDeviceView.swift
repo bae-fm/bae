@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import SwiftUI
 import UIKit
 import os.log
@@ -7,29 +8,29 @@ private let logger = Logger.bae("ApproveDevice")
 
 /// Owner-side flow for adding a device: read the joining device's join-request
 /// code (camera scan or pasted text), preview its public key, approve it, then
-/// show the invite code to carry back to that device.
-///
-/// `invite` is `Sync.inviteMember`: it takes the joining device's public key
-/// plus any provider account email and returns the invite code. The sheet
-/// drives a small step machine so each stage renders only what that stage
-/// needs. Presented as a sheet from `MembersView`.
+/// show the sealed invitation while both devices complete the join.
 struct ApproveDeviceView: View {
-    let invite:
-        @Sendable (_ publicKeyHex: String, _ providerAccountEmail: String?)
-            async throws -> String
+    let sync: Sync
     let onDismiss: () -> Void
     /// Called once a device has been approved, so the caller can refresh its
     /// member list.
     let onApproved: () -> Void
 
-    /// Where the flow is. `capture` reads the join-request code; `confirm`
-    /// previews the decoded device; `inviting` runs the approval; `invited`
-    /// shows the resulting invite code.
+    private struct JoinRequestSelection {
+        let code: String
+        let info: BridgeJoinRequestInfo
+    }
+
+    private struct DeviceInvitation {
+        let bytes: Data
+        let code: String
+    }
+
     private enum Step {
         case capture
-        case confirm(BridgeJoinRequestInfo)
-        case inviting(BridgeJoinRequestInfo)
-        case invited(code: String)
+        case confirm(JoinRequestSelection)
+        case inviting(JoinRequestSelection)
+        case invited(DeviceInvitation)
     }
 
     @State
@@ -37,13 +38,13 @@ struct ApproveDeviceView: View {
     @State
     private var pasteInput = ""
     @State
-    private var providerAccountEmail = ""
-    @State
     private var error: String?
     @State
     private var inviteTask: Task<Void, Never>?
     @State
     private var showScanner = false
+    @State
+    private var isPresented = false
 
     var body: some View {
         NavigationStack {
@@ -58,7 +59,8 @@ struct ApproveDeviceView: View {
                     }
                 }
         }
-        .onDisappear { inviteTask?.cancel() }
+        .onAppear { isPresented = true }
+        .onDisappear { withdrawInvitation() }
         .fullScreenCover(isPresented: $showScanner) {
             scannerSheet
         }
@@ -69,8 +71,8 @@ struct ApproveDeviceView: View {
         switch step {
         case .capture:
             captureStep
-        case .confirm(let info):
-            confirmStep(info)
+        case .confirm(let request):
+            confirmStep(request)
         case .inviting:
             VStack(spacing: 12) {
                 ProgressView()
@@ -78,8 +80,8 @@ struct ApproveDeviceView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-        case .invited(let code):
-            invitedStep(code)
+        case .invited(let invitation):
+            invitedStep(invitation)
         }
     }
 
@@ -140,7 +142,7 @@ struct ApproveDeviceView: View {
 
     // MARK: - Confirm
 
-    private func confirmStep(_ info: BridgeJoinRequestInfo) -> some View {
+    private func confirmStep(_ request: JoinRequestSelection) -> some View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "iphone.and.arrow.forward")
@@ -149,9 +151,9 @@ struct ApproveDeviceView: View {
             VStack(spacing: 4) {
                 Text("Approve this device?")
                     .font(.headline)
-                Text(info.fingerprint)
+                Text(request.info.fingerprint)
                     .font(.system(.body, design: .monospaced))
-                if let email = info.email {
+                if let email = request.info.email {
                     Text(email)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -176,7 +178,7 @@ struct ApproveDeviceView: View {
                     step = .capture
                 }
                 .buttonStyle(.bordered)
-                Button("Approve") { approve(info) }
+                Button("Approve") { approve(request) }
                     .buttonStyle(.borderedProminent)
             }
             Spacer()
@@ -185,7 +187,7 @@ struct ApproveDeviceView: View {
 
     // MARK: - Invited
 
-    private func invitedStep(_ code: String) -> some View {
+    private func invitedStep(_ invitation: DeviceInvitation) -> some View {
         VStack(spacing: 16) {
             Spacer()
             Text("Enter this code on the new device.")
@@ -194,9 +196,15 @@ struct ApproveDeviceView: View {
                 .multilineTextAlignment(.center)
 
             CodeShareBlock(
-                code: code,
+                code: invitation.code,
                 contentDescription: "Invite code"
             )
+            if let error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+                Button("Retry") { retry(invitation) }
+            }
             Spacer()
         }
     }
@@ -226,9 +234,11 @@ struct ApproveDeviceView: View {
             }
         }
     }
+}
 
-    // MARK: - Actions
+// MARK: - Actions
 
+private extension ApproveDeviceView {
     private func decode(_ raw: String) {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -237,9 +247,8 @@ struct ApproveDeviceView: View {
         }
         do {
             let info = try decodeJoinRequest(code: trimmed)
-            providerAccountEmail = info.email ?? ""
             error = nil
-            step = .confirm(info)
+            step = .confirm(JoinRequestSelection(code: trimmed, info: info))
         }
         catch {
             logger.error(
@@ -249,19 +258,23 @@ struct ApproveDeviceView: View {
         }
     }
 
-    private func approve(_ info: BridgeJoinRequestInfo) {
-        let pubkey = info.pubkey
-        let email = providerAccountEmail.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+    private func approve(_ request: JoinRequestSelection) {
         error = nil
-        step = .inviting(info)
+        step = .inviting(request)
         inviteTask?.cancel()
         inviteTask = Task { @MainActor in
             do {
-                let code = try await invite(pubkey, email.isEmpty ? nil : email)
-                step = .invited(code: code)
-                onApproved()
+                let bytes = try await sync.beginDeviceInvite(request.code)
+                let invitation = DeviceInvitation(
+                    bytes: bytes,
+                    code: bytes.base64EncodedString()
+                )
+                guard isPresented else {
+                    try await sync.cancelDeviceInvite(bytes)
+                    return
+                }
+                step = .invited(invitation)
+                await drive(invitation)
             }
             catch is CancellationError {
                 logger.debug("device approval cancelled")
@@ -270,8 +283,55 @@ struct ApproveDeviceView: View {
                 logger.error(
                     "Failed to approve device: \(error.localizedDescription)"
                 )
+                if isPresented {
+                    self.error = error.displayLine
+                    step = .confirm(request)
+                }
+            }
+        }
+    }
+
+    private func retry(_ invitation: DeviceInvitation) {
+        error = nil
+        inviteTask?.cancel()
+        inviteTask = Task { @MainActor in await drive(invitation) }
+    }
+
+    private func drive(_ invitation: DeviceInvitation) async {
+        do {
+            try await sync.driveDeviceJoin(invitation.bytes)
+            try Task.checkCancellation()
+            guard isPresented else { return }
+            step = .capture
+            onApproved()
+            onDismiss()
+        }
+        catch is CancellationError {
+            logger.debug("device join driver cancelled")
+        }
+        catch {
+            logger.error(
+                "Failed to finish device join: \(error.localizedDescription)"
+            )
+            if isPresented {
                 self.error = error.displayLine
-                step = .confirm(info)
+                step = .invited(invitation)
+            }
+        }
+    }
+
+    private func withdrawInvitation() {
+        isPresented = false
+        guard case .invited(let invitation) = step else { return }
+        inviteTask?.cancel()
+        Task {
+            do {
+                try await sync.cancelDeviceInvite(invitation.bytes)
+            }
+            catch {
+                logger.error(
+                    "Failed to withdraw device invitation: \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -280,7 +340,7 @@ struct ApproveDeviceView: View {
 #if DEBUG
 #Preview {
     ApproveDeviceView(
-        invite: { _, _ in "PREVIEW-INVITE-CODE" },
+        sync: .stub(),
         onDismiss: {},
         onApproved: {}
     )

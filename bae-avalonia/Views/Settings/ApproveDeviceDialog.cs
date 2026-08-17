@@ -9,10 +9,9 @@ namespace Bae.Desktop;
 
 // Owner-side approve flow, presented in the settings window's modal host: a single
 // dialog whose body swaps between steps — capture (scan or paste the new device's
-// join-request code) → confirm (its fingerprint) → invited (the invite code to
-// enter on the new device). Approve wraps the library key to the device and signs
-// a membership entry; the invite code it returns is the new device's way in.
-// Mirrors macOS's ApproveDeviceSheet.
+// join-request code) → confirm (its fingerprint) → invited (the sealed
+// invitation to enter on the new device). The owner-side driver stays alive
+// until that exact device joins or the dialog withdraws the invitation.
 internal sealed class ApproveDeviceDialog
 {
     private readonly AppService _app;
@@ -24,14 +23,30 @@ internal sealed class ApproveDeviceDialog
 
     public Control Build(Action close)
     {
+        byte[]? invitation = null;
+        var dismissed = false;
         var body = new StackPanel { Spacing = 12 };
 
         var column = DialogUi.Column();
         column.Children.Add(DialogUi.Title(Loc.Chrome("members.approve.title")));
         column.Children.Add(new ScrollViewer { Content = body, MaxHeight = 520 });
         var done = new Button { Content = Loc.Chrome("action.done") };
-        done.Click += (_, _) => close();
+        done.Click += async (_, _) => await WithdrawAndClose();
         column.Children.Add(DialogUi.Actions(done));
+
+        async Task WithdrawAndClose()
+        {
+            dismissed = true;
+            if (invitation is { } created)
+            {
+                var (current, error) = await _app.Sync.CancelDeviceInvite(created);
+                if (current && error is not null)
+                {
+                    BaeDiagnostics.Logger.Error($"Failed to cancel device invitation: {error}");
+                }
+            }
+            close();
+        }
 
         void ShowCapture()
         {
@@ -71,7 +86,7 @@ internal sealed class ApproveDeviceDialog
                     return;
                 }
 
-                ShowConfirm(info);
+                ShowConfirm(code, info);
             }
 
             decode.Click += (_, _) => TryDecode(pasteBox.Text?.Trim() ?? string.Empty);
@@ -85,7 +100,7 @@ internal sealed class ApproveDeviceDialog
             };
         }
 
-        void ShowConfirm(BridgeJoinRequestInfo info)
+        void ShowConfirm(string joinRequestCode, BridgeJoinRequestInfo info)
         {
             body.Children.Clear();
             var heading = new TextBlock { Text = Loc.Chrome("members.approve.confirm_title"), FontWeight = FontWeight.SemiBold };
@@ -111,13 +126,17 @@ internal sealed class ApproveDeviceDialog
                 error[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
                 error.IsVisible = true;
 
-                var (current, code) = await _app.Sync.InviteMember(info.Pubkey, info.Email);
+                var (current, result) = await _app.Sync.BeginDeviceInvite(joinRequestCode);
                 if (!current)
                 {
                     return;
                 }
-                if (code is null)
+                if (result.Invitation is not { } created)
                 {
+                    if (result.Error is { } invitationError)
+                    {
+                        BaeDiagnostics.Logger.Error($"Failed to create device invitation: {invitationError}");
+                    }
                     error.Text = Loc.Chrome("members.approve.failed");
                     error[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
                     error.IsVisible = true;
@@ -126,15 +145,22 @@ internal sealed class ApproveDeviceDialog
                     return;
                 }
 
-                ShowInvited(code);
+                invitation = created;
+                if (dismissed)
+                {
+                    await _app.Sync.CancelDeviceInvite(created);
+                    return;
+                }
+                ShowInvited(created);
             };
 
             body.Children.Add(DialogUi.Actions(back, approve));
             body.Children.Add(error);
         }
 
-        void ShowInvited(string code)
+        void ShowInvited(byte[] created)
         {
+            var code = Convert.ToBase64String(created);
             body.Children.Clear();
             body.Children.Add(DialogUi.Body(Loc.Chrome("members.approve.invited_hint")));
 
@@ -150,6 +176,37 @@ internal sealed class ApproveDeviceDialog
             copy.Click += (_, _) => ClipboardHelper.CopyToClipboard(copy, code);
             body.Children.Add(codeBox);
             body.Children.Add(copy);
+
+            var status = DialogUi.Danger();
+            var retry = new Button { Content = Loc.Chrome("library.retry"), IsVisible = false };
+            retry.Click += async (_, _) => await DriveJoin(created, status, retry);
+            body.Children.Add(status);
+            body.Children.Add(DialogUi.Actions(retry));
+            _ = DriveJoin(created, status, retry);
+        }
+
+        async Task DriveJoin(byte[] created, TextBlock status, Button retry)
+        {
+            retry.IsVisible = false;
+            status.Text = Loc.Chrome("members.approve.in_progress");
+            status[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            status.IsVisible = true;
+
+            var (current, error) = await _app.Sync.DriveDeviceJoin(created);
+            if (!current || dismissed)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                status.Text = Loc.Chrome("members.approve.failed");
+                status[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
+                retry.IsVisible = true;
+                return;
+            }
+
+            invitation = null;
+            close();
         }
 
         ShowCapture();

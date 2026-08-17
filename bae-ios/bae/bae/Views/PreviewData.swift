@@ -203,7 +203,7 @@ enum PreviewData {
         fingerprint: "ab12cd34"
     )
 
-    static let inviteInfo = BridgeInviteCodeInfo(
+    static let inviteInfo = BridgeDeviceInviteInfo(
         libraryId: "lib-preview",
         libraryName: "Preview Library",
         ownerPubkey: "owner-pubkey",

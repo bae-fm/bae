@@ -56,7 +56,7 @@
             fingerprint: "a1b2c3d4",
         )
 
-        static let welcomeInviteInfo = BridgeInviteCodeInfo(
+        static let welcomeInviteInfo = BridgeDeviceInviteInfo(
             libraryId: "lib-05",
             libraryName: "My Library",
             ownerPubkey: "00112233445566778899aabbccddeeff",
@@ -67,7 +67,7 @@
 
         /// An invite for an OAuth-backed library — previews the mismatch
         /// warning shown when the joiner hasn't signed in to that provider.
-        static let welcomeInviteInfoOauth = BridgeInviteCodeInfo(
+        static let welcomeInviteInfoOauth = BridgeDeviceInviteInfo(
             libraryId: "lib-06",
             libraryName: "Shared Library",
             ownerPubkey: "ffeeddccbbaa99887766554433221100",

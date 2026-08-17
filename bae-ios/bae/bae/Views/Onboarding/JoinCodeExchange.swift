@@ -8,8 +8,8 @@ import SwiftUI
 struct JoinCodeExchange: View {
     let joinRequest: Result<BridgeJoinRequest, Error>?
     @Binding
-    var inviteCode: String
-    let decodedInvite: Result<BridgeInviteCodeInfo, Error>?
+    var deviceInvitation: String
+    let decodedInvitation: Result<BridgeDeviceInviteInfo, Error>?
     /// The OAuth token captured when the provider was picked, or `nil` for
     /// S3/iCloud. A decoded invite that needs OAuth is only joinable once this
     /// is held, so its absence drives the "go back and choose the provider"
@@ -18,7 +18,7 @@ struct JoinCodeExchange: View {
     let error: String?
     let onRetryGenerate: () -> Void
     let onScanInvite: () -> Void
-    let onInviteChanged: (String) -> Void
+    let onInvitationChanged: (String) -> Void
 
     var body: some View {
         List {
@@ -89,7 +89,7 @@ struct JoinCodeExchange: View {
         .foregroundStyle(.secondary)
 
         HStack(spacing: 8) {
-            TextField("Paste invite code", text: $inviteCode)
+            TextField("Paste invite code", text: $deviceInvitation)
                 .font(.body.monospaced())
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -97,11 +97,11 @@ struct JoinCodeExchange: View {
                 onScanInvite()
             }
         }
-        .onChange(of: inviteCode) { _, newInput in
-            onInviteChanged(newInput)
+        .onChange(of: deviceInvitation) { _, newInput in
+            onInvitationChanged(newInput)
         }
 
-        if case .success(let info) = decodedInvite {
+        if case .success(let info) = decodedInvitation {
             LabeledContent("Library", value: info.libraryName)
             LabeledContent(
                 "Provider",
@@ -132,7 +132,7 @@ struct JoinCodeExchange: View {
             }
             #endif
         }
-        else if case .failure(let decodeError) = decodedInvite {
+        else if case .failure(let decodeError) = decodedInvitation {
             Text(decodeError.displayLine ?? "")
                 .foregroundStyle(.red)
                 .font(.callout)
@@ -144,13 +144,13 @@ struct JoinCodeExchange: View {
 #Preview {
     JoinCodeExchange(
         joinRequest: .success(PreviewData.joinRequest),
-        inviteCode: .constant(""),
-        decodedInvite: .success(PreviewData.inviteInfo),
+        deviceInvitation: .constant(""),
+        decodedInvitation: .success(PreviewData.inviteInfo),
         joinTokenJson: nil,
         error: nil,
         onRetryGenerate: {},
         onScanInvite: {},
-        onInviteChanged: { _ in }
+        onInvitationChanged: { _ in }
     )
 }
 #endif

@@ -98,7 +98,7 @@ use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeErr
 
 use crate::get_cloudkit_ops;
 use crate::types::{
-    BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo, BridgeJoinRequest,
+    BridgeCloudProvider, BridgeDeviceInviteInfo, BridgeError, BridgeJoinRequest,
     BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo,
 };
 
@@ -456,32 +456,24 @@ impl BridgeJoinRequestInfo {
     }
 }
 
-/// Decode an invite code string and return info for UI preview (before joining).
-#[uniffi::export]
-pub fn decode_invite_code(code: String) -> Result<BridgeInviteCodeInfo, BridgeError> {
-    let info =
-        bae_core::sync::membership::decode_invite_code_info(&code).map_err(BridgeError::config)?;
-    Ok(BridgeInviteCodeInfo::from_core(info))
-}
-
 /// Decode a scanned invite bundle for UI preview.
 ///
-/// The scanned payload carries the invite code inside it alongside the owner's
-/// signed join offer, so the preview the joiner confirms — which library, which
-/// provider, whose fingerprint — comes from the same bytes the join will run on.
-/// Decoding the code separately would let the two disagree.
+/// The provider credentials are sealed to the pending identity represented by
+/// `join_request_code`, so the preview and join must use the exact request this
+/// device generated for this exchange.
 #[uniffi::export]
-pub fn decode_scanned_invite(scanned: Vec<u8>) -> Result<BridgeInviteCodeInfo, BridgeError> {
-    let invite = coven::DeviceJoinInvite::from_bytes(&scanned)
-        .map_err(|error| BridgeError::config(error.to_string()))?;
-    let info = bae_core::sync::membership::decode_invite_code_info(&invite.invite_code)
+pub fn decode_scanned_invite(
+    scanned: Vec<u8>,
+    join_request_code: String,
+) -> Result<BridgeDeviceInviteInfo, BridgeError> {
+    let info = bae_core::sync::membership::inspect_device_invite(&scanned, &join_request_code)
         .map_err(BridgeError::config)?;
-    Ok(BridgeInviteCodeInfo::from_core(info))
+    Ok(BridgeDeviceInviteInfo::from_core(info))
 }
 
-impl BridgeInviteCodeInfo {
-    fn from_core(info: bae_core::sync::membership::InviteCodeInfo) -> Self {
-        let bae_core::sync::membership::InviteCodeInfo {
+impl BridgeDeviceInviteInfo {
+    fn from_core(info: bae_core::sync::membership::DeviceInviteInfo) -> Self {
+        let bae_core::sync::membership::DeviceInviteInfo {
             library_id,
             library_name,
             owner_pubkey,
@@ -489,7 +481,7 @@ impl BridgeInviteCodeInfo {
             cloud_provider,
             needs_oauth,
         } = info;
-        BridgeInviteCodeInfo {
+        BridgeDeviceInviteInfo {
             library_id,
             library_name,
             owner_pubkey,
@@ -555,8 +547,8 @@ async fn join_from_scanned_invite_config(
 /// code.
 ///
 /// `scanned` is the raw payload bytes read from the QR — it carries both the
-/// invite code (this device's cloud-provider credentials) and the owner's signed
-/// join offer with the storage slots the handshake runs through.
+/// sealed cloud-provider credentials and the owner's signed join offer with the
+/// storage slots the handshake runs through.
 ///
 /// `join_request_code` is the code this device's own `generate_join_request`
 /// produced (`BridgeJoinRequest.code`) and which the owner scanned first to mint

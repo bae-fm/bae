@@ -59,7 +59,7 @@ struct MembersSection: View {
         }
         .sheet(isPresented: $showApprove) {
             ApproveDeviceSheet(
-                invite: sync.inviteMember,
+                sync: sync,
                 onDismiss: { showApprove = false },
                 onApproved: { load() },
             )

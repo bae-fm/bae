@@ -686,22 +686,6 @@ impl AppHandle {
         .await
     }
 
-    /// Approve a joining device by its public key (from its join-request code),
-    /// returning the invite code to hand back to that device.
-    pub async fn invite_member(
-        self: std::sync::Arc<Self>,
-        public_key_hex: String,
-        provider_account_email: Option<String>,
-    ) -> Result<String, BridgeError> {
-        self.run_exported(move |this| async move {
-            Ok(this
-                .services
-                .invite_member(&public_key_hex, provider_account_email.as_deref())
-                .await?)
-        })
-        .await
-    }
-
     /// Mint the scannable invite for a device that asked to join, returning the
     /// payload bytes to render as a QR code.
     ///
@@ -726,19 +710,15 @@ impl AppHandle {
 
     /// Run this device's side of a join it invited, until the joining device is
     /// in or the attempt ends. Call this while the invite is displayed; it
-    /// returns `true` when the device joined, `false` when the attempt ended
-    /// without it.
+    /// returns only after the device joined; an ended attempt is an error the
+    /// owner UI displays.
     pub async fn drive_device_join(
         self: std::sync::Arc<Self>,
         invite: Vec<u8>,
-    ) -> Result<bool, BridgeError> {
-        self.run_exported(move |this| async move {
-            use bae_core::library::DeviceJoinOutcome;
-            Ok(matches!(
-                this.services.drive_device_join(invite).await?,
-                DeviceJoinOutcome::Joined
-            ))
-        })
+    ) -> Result<(), BridgeError> {
+        self.run_exported(
+            move |this| async move { Ok(this.services.drive_device_join(invite).await?) },
+        )
         .await
     }
 
