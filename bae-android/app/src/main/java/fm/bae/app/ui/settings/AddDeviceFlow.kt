@@ -43,9 +43,9 @@ import fm.bae.app.ui.onboarding.AdmittingDeviceProgress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeDevicePairingSession
 import uniffi.bae_bridge.AdmittingDeviceJoinProgressCallback
 import uniffi.bae_bridge.BridgeAdmittingDeviceJoinProgress
+import uniffi.bae_bridge.BridgeDevicePairingSession
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePairingDevice
 

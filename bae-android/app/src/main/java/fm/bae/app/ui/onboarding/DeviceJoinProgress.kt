@@ -28,11 +28,17 @@ internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
     val context = LocalContext.current
     val bytes =
         when (progress) {
-            is BridgeJoiningDeviceJoinProgress.DownloadingSnapshot ->
+            is BridgeJoiningDeviceJoinProgress.DownloadingSnapshot -> {
                 progress.bytesDone to progress.bytesTotal
-            is BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles ->
+            }
+
+            is BridgeJoiningDeviceJoinProgress.DownloadingLibraryFiles -> {
                 progress.bytesDone to progress.bytesTotal
-            else -> null
+            }
+
+            else -> {
+                null
+            }
         }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (bytes != null && bytes.second > 0uL) {

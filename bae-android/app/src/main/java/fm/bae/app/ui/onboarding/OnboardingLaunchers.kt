@@ -18,9 +18,9 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDevicePairingOffer
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinDevicePairingOperation
-import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.JoiningDeviceJoinProgressCallback
 import uniffi.bae_bridge.RestoreFromCodeOperation
 import uniffi.bae_bridge.decodeDevicePairingOffer
