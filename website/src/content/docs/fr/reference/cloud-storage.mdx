@@ -9,11 +9,11 @@ L’emplacement cloud est un emplacement unique dans un stockage que l’utilisa
 
 | Provider | Auth | Access for a new device |
 |---|---|---|
-| S3-compatible | Access key + secret | Credentials embedded in the invite |
-| Google Drive | OAuth (PKCE) | Folder shared to the joiner's account |
-| Dropbox | OAuth (PKCE) | Folder shared to the joiner's account |
-| OneDrive | OAuth (PKCE) | Folder shared to the joiner's account |
-| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+| S3-compatible | Access key + secret | Informations d'identification scellées sur l'appareil approuvé lors du couplage |
+| Google Drive | OAuth (PKCE) | Le compte du nouvel appareil est approuvé, puis le dossier est partagé |
+| Dropbox | OAuth (PKCE) | Le compte du nouvel appareil est approuvé, puis le dossier est partagé |
+| OneDrive | OAuth (PKCE) | Le compte du nouvel appareil est approuvé, puis le dossier est partagé |
+| iCloud (CloudKit) | Apple ID, no sign-in | Partage CloudKit accepté lors du couplage |
 
 Compatible S3 couvre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO et tout autre service qui parle l’API ; bucket, région, endpoint et préfixe de clé sont configurables, et le bucket est sondé avant l’enregistrement de la configuration afin qu’une faute de frappe échoue à la configuration, pas à la première synchronisation. Les fournisseurs OAuth existent seulement dans l’édition complète **bae** ; les versions **baeium** les excluent à la compilation.
 

@@ -9,11 +9,11 @@ description: ಒದಗಿಸುವವರು, ದೃಢೀಕರಣ, ಮತ್ತ
 
 | ಒದಗಿಸುವವರು | ದೃಢೀಕರಣ | ಹೊಸ ಸಾಧನಕ್ಕೆ ಪ್ರವೇಶ |
 |---|---|---|
-| S3-compatible | Access ಕೀ + secret | ಪ್ರಮಾಣಪತ್ರಗಳು ಆಹ್ವಾನದೊಳಗೆ ಸೇರಿರುವವು |
-| Google Drive | OAuth (PKCE) | ಕಡತಕೋಶ joiner ಖಾತೆಗೆ ಹಂಚಲ್ಪಡುತ್ತದೆ |
-| Dropbox | OAuth (PKCE) | ಕಡತಕೋಶ joiner ಖಾತೆಗೆ ಹಂಚಲ್ಪಡುತ್ತದೆ |
-| OneDrive | OAuth (PKCE) | ಕಡತಕೋಶ joiner ಖಾತೆಗೆ ಹಂಚಲ್ಪಡುತ್ತದೆ |
-| iCloud (CloudKit) | Apple ID, sign-in ಇಲ್ಲ | CloudKit share ಅನ್ನು joiner ಸ್ವೀಕರಿಸುತ್ತದೆ |
+| S3-compatible | Access ಕೀ + secret | ಜೋಡಣೆಯ ಸಮಯದಲ್ಲಿ ಅನುಮೋದಿತ ಸಾಧನಕ್ಕೆ ರುಜುವಾತುಗಳನ್ನು ಮುಚ್ಚಲಾಗಿದೆ |
+| Google Drive | OAuth (PKCE) | ಹೊಸ ಸಾಧನದ ಖಾತೆಯನ್ನು ಅನುಮೋದಿಸಲಾಗಿದೆ, ನಂತರ ಫೋಲ್ಡರ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲಾಗಿದೆ |
+| Dropbox | OAuth (PKCE) | ಹೊಸ ಸಾಧನದ ಖಾತೆಯನ್ನು ಅನುಮೋದಿಸಲಾಗಿದೆ, ನಂತರ ಫೋಲ್ಡರ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲಾಗಿದೆ |
+| OneDrive | OAuth (PKCE) | ಹೊಸ ಸಾಧನದ ಖಾತೆಯನ್ನು ಅನುಮೋದಿಸಲಾಗಿದೆ, ನಂತರ ಫೋಲ್ಡರ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲಾಗಿದೆ |
+| iCloud (CloudKit) | Apple ID, sign-in ಇಲ್ಲ | ಜೋಡಿಸುವಾಗ ಕ್ಲೌಡ್‌ಕಿಟ್ ಹಂಚಿಕೆಯನ್ನು ಸ್ವೀಕರಿಸಲಾಗಿದೆ |
 
 S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ಮತ್ತು API ಮಾತನಾಡುವ ಇನ್ನಾವುದನ್ನಾದರೂ ಒಳಗೊಂಡಿದೆ; bucket, region, endpoint, ಮತ್ತು ಕೀ prefix ವಿನ್ಯಾಸಗೊಳಿಸಬಹುದು, ಮತ್ತು ವಿನ್ಯಾಸ ಉಳಿಯುವ ಮೊದಲು bucket ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ, ಆದ್ದರಿಂದ typo ಮೊದಲ ಸಮನ್ವಯದಲ್ಲಿ ಅಲ್ಲ, ಸಿದ್ಧಪಡಿಸುವಾಗಲೇ ವಿಫಲವಾಗುತ್ತದೆ. OAuth ಒದಗಿಸುವವರು ಪೂರ್ಣ **bae** ಆವೃತ್ತಿಯಲ್ಲಿ ಮಾತ್ರ ಇವೆ; **baeium** builds ಅವನ್ನು ಹೊರತುಪಡಿಸಿ compile ಮಾಡುತ್ತವೆ.
 

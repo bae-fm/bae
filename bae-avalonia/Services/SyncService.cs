@@ -40,17 +40,17 @@ internal sealed class SyncService
     public Func<Task<(bool Current, (BridgeMembership? Membership, string? Error) Result)>> GetMembers { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: GetMembers not wired");
 
-    /// <summary>Create the sealed invitation for one exact join request.</summary>
-    public Func<string, Task<(bool Current, (byte[]? Invitation, string? Error) Result)>> BeginDeviceInvite { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: BeginDeviceInvite not wired");
+    public Func<Task<(bool Current, (BridgeDevicePairingSession? Session, string? Error) Result)>> StartDevicePairing { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: StartDevicePairing not wired");
 
-    /// <summary>Keep the owner side of the invitation alive until its recipient joins.</summary>
-    public Func<byte[], Task<(bool Current, string? Error)>> DriveDeviceJoin { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: DriveDeviceJoin not wired");
+    public Func<BridgeDevicePairingSession, Task<(bool Current, (BridgePairingDevice? Device, string? Error) Result)>> WaitForPairingDevice { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: WaitForPairingDevice not wired");
 
-    /// <summary>Withdraw an invitation whose owner-side driver is no longer shown.</summary>
-    public Func<byte[], Task<(bool Current, string? Error)>> CancelDeviceInvite { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: CancelDeviceInvite not wired");
+    public Func<BridgeDevicePairingSession, Task<(bool Current, string? Error)>> ApprovePairingDevice { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: ApprovePairingDevice not wired");
+
+    public Func<BridgeDevicePairingSession, (bool Current, string? Error)> CancelDevicePairing { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: CancelDevicePairing not wired");
 
     /// <summary>Remove a device from the library and rotate the library key.</summary>
     public Func<string, Task<(bool Current, string? Error)>> RemoveMember { get; init; }
@@ -116,12 +116,6 @@ internal sealed class SyncService
     public Func<IReadOnlyList<string>> AvailableCloudProviders { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: AvailableCloudProviders not wired");
 
-    /// <summary>Decode a joining device's request code into its fingerprint / public
-    /// key / email, for the owner-side approve flow. Throws on an unparseable code.
-    /// Handle-less.</summary>
-    public Func<string, BridgeJoinRequestInfo> DecodeJoinRequest { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: DecodeJoinRequest not wired");
-
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static SyncService FromSession(SessionStore session) => new()
     {
@@ -133,12 +127,13 @@ internal sealed class SyncService
                 NativeBae.SaveSyncConfig(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage)),
         GenerateRestoreCode = () => session.RunForCurrentHandle(NativeBae.GenerateRestoreCode),
         GetMembers = () => session.RunForCurrentHandle(NativeBae.GetMembers),
-        BeginDeviceInvite = joinRequestCode =>
-            session.RunForCurrentHandle(handle => NativeBae.BeginDeviceInvite(handle, joinRequestCode)),
-        DriveDeviceJoin = invitation =>
-            session.RunForCurrentHandle(handle => NativeBae.DriveDeviceJoin(handle, invitation)),
-        CancelDeviceInvite = invitation =>
-            session.RunForCurrentHandle(handle => NativeBae.CancelDeviceInvite(handle, invitation)),
+        StartDevicePairing = () => session.RunForCurrentHandle(NativeBae.StartDevicePairing),
+        WaitForPairingDevice = pairing =>
+            session.RunForCurrentHandle(_ => NativeBae.WaitForPairingDevice(pairing)),
+        ApprovePairingDevice = pairing =>
+            session.RunForCurrentHandle(_ => NativeBae.ApprovePairingDevice(pairing)),
+        CancelDevicePairing = pairing =>
+            session.WithCurrentHandle(_ => NativeBae.CancelDevicePairing(pairing)),
         RemoveMember = publicKeyHex =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveMember(handle, publicKeyHex)),
         CloudOnlyReleaseCount = () => session.RunForCurrentHandle(NativeBae.CloudOnlyReleaseCount),
@@ -155,6 +150,5 @@ internal sealed class SyncService
         SyncStatus = () => session.WithCurrentHandle(NativeBae.SyncStatus),
         OutboxSnapshot = () => session.RunForCurrentHandle(NativeBae.OutboxSnapshot),
         AvailableCloudProviders = NativeBae.AvailableCloudProviders,
-        DecodeJoinRequest = NativeBae.DecodeJoinRequest,
     };
 }

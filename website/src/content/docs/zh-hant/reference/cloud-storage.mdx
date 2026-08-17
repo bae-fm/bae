@@ -9,11 +9,11 @@ description: 提供者、驗證，以及雲端主目錄的形狀
 
 | 提供者 | 驗證 | 新裝置的存取權 |
 |---|---|---|
-| S3-compatible | Access key + secret | 憑證嵌入邀請中 |
-| Google Drive | OAuth (PKCE) | 資料夾分享給加入者的帳號 |
-| Dropbox | OAuth (PKCE) | 資料夾分享給加入者的帳號 |
-| OneDrive | OAuth (PKCE) | 資料夾分享給加入者的帳號 |
-| iCloud (CloudKit) | Apple ID，無需登入 | 加入者接受 CloudKit share |
+| S3-compatible | Access key + secret | 配對期間將憑證密封到已核准的裝置上 |
+| Google Drive | OAuth (PKCE) | 新設備的帳戶獲得批准，然後共享資料夾 |
+| Dropbox | OAuth (PKCE) | 新設備的帳戶獲得批准，然後共享資料夾 |
+| OneDrive | OAuth (PKCE) | 新設備的帳戶獲得批准，然後共享資料夾 |
+| iCloud (CloudKit) | Apple ID，無需登入 | 配對期間接受 CloudKit 分享 |
 
 S3-compatible 涵蓋 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用該 API 的服務；bucket、region、endpoint 與 key prefix 可設定，而且 bucket 會在儲存設定前被探測，讓打字錯誤在設定時失敗，而不是第一次同步時才失敗。OAuth 提供者只存在於完整 **bae** 版本；**baeium** 建置會把它們編譯出去。
 

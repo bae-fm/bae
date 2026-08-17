@@ -4,8 +4,8 @@
 
     // Preview fixtures for the settings flows — the save-format presets and
     // their filename tokens, plus the Library membership chain (this device as
-    // owner plus one removable member), a decoded join request, a `Sync` whose
-    // reads serve those fixtures, and connected/erroring config stores. Generic
+    // owner plus one removable member), a `Sync` whose reads serve those
+    // fixtures, and connected/erroring config stores. Generic
     // placeholder identities throughout; the pubkeys and fingerprints are
     // arbitrary hex.
     extension PreviewData {
@@ -74,11 +74,6 @@
             Sync(
                 generateRestoreCode: { "recovery-code-preview" },
                 getMembers: { membership },
-                beginDeviceInvite: { _ in
-                    Data("device-invitation-preview".utf8)
-                },
-                driveDeviceJoin: { _ in },
-                cancelDeviceInvite: { _ in },
                 cloudOnlyReleaseCount: { 0 },
             )
         }

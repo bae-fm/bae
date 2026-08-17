@@ -17,14 +17,14 @@ Pri svakom povlačenju autor svakog skupa promjena provjerava se prema tom zapis
 
 ## Rukovanje pridruživanja
 
-Dodavanje uređaja razmjena je dva koda s izričitom ljudskom provjerom u sredini:
+Dodavanje uređaja je jedna lokalna sesija uparivanja s eksplicitnom ljudskom provjerom:
 
-1. Uređaj koji se pridružuje generira svoj par ključeva i prikazuje **join request**: svoj javni ključ, kratak njegov otisak i (za OAuth pružatelje) račun u oblaku s kojim treba podijeliti mapu.
-2. Vlasnik dekodira zahtjev, a dva zaslona prikazuju isti otisak. Čovjek provjerava da se podudaraju; to je korak koji zaustavlja zamijenjeni ključ.
-3. Odobrenje odjednom radi tri stvari: daje računu novog člana pristup mjestu u oblaku (dijeljenje mape na potrošačkim oblacima, ugrađene vjerodajnice na S3, CloudKit dijeljenje na iCloudu), zapečaćuje ključ biblioteke za javni ključ novog člana i potpisuje zapis članstva koji ga dodaje. Sve se pakira u **invite code**.
-4. Uređaj koji se pridružuje troši pozivnicu, otpečaćuje ključ, pokreće se iz najnovije snimke i sinkronizira.
+1. Vlasnik pokreće **Dodajte uređaj**. bae kratko sluša lokalnu mrežu i prikazuje jedan kod za uparivanje. Sadrži adrese slušatelja, efemerni ključ sesije, naziv biblioteke, davatelja i rok trajanja - bez ključa biblioteke ili trajnih vjerodajnica za pohranu.
+2. Uređaj koji se pridružuje skenira kod, stvara svoj par ključeva uređaja, prijavljuje se davatelju kada je to potrebno i šalje svoj potpisani javni ključ i identitet računa davatelja putem šifrirane lokalne veze. Oba uređaja pokazuju isti otisak prsta.
+3. Vlasnik uspoređuje otiske prstiju i potvrđuje točan identitet. Odobrenje daje pristup svom računu u oblaku gdje je to potrebno, potpisuje unos članstva i pečati ključ knjižnice i konačni pristup pohrani javnom ključu novog uređaja.
+4. Zapečaćeni paket vraća se putem iste provjerene lokalne veze. Uređaj koji se pridružuje otvara ga, pokreće se iz pohrane u oblaku i započinje sinkronizaciju.
 
-Pozivnica je zapečaćena za ključ koji je zatražio: presretanje ne daje ništa.
+Isteklo, prekinuto ili odbijeno uparivanje ne daje ništa.
 
 ## Opoziv
 

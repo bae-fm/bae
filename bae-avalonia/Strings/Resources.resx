@@ -83,16 +83,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>view in library</value></data>
   <data name="join.title" xml:space="preserve"><value>join a library</value></data>
-  <data name="join.intro" xml:space="preserve"><value>add this device to a library you already have on another device.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>this device's code</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>on a device already in your library, open settings → devices → add a device and scan or paste this.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>this device: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>couldn't generate this device's code</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>invite code</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>once that device approves this one, enter the invite code it shows.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>paste invite code</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>invalid invite code</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · owner {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Scan the pairing code shown on a device already in your library.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Paste pairing code</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>This pairing code is not valid.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>join</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>joining {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>couldn't join the library</value></data>
@@ -129,16 +123,13 @@
   <data name="members.remove" xml:space="preserve"><value>remove</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>this device will lose access and the library key will be rotated. click remove again to confirm.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>add a device</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>on the new device, open join a library and show its code. scan it here, or paste it below.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>paste the device's code</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>decode</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>invalid device code</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>approve this device?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>it will be added to your library and able to sync. you'll get a code to enter on it.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>approve</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>approving device…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>couldn't approve this device</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>enter this code on the new device.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Scan this code on the device joining your library.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>approve this device?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>it will be added to your library and able to sync.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>approve</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>approving device…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>couldn't approve this device</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Waiting for the device…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>go to album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
@@ -492,4 +483,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Refreshing…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Combine as One Release</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Keep as Separate Releases</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Starting pairing…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Waiting for approval…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Fingerprint: {fingerprint}</value></data>
 </root>

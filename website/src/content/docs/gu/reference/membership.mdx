@@ -17,14 +17,14 @@ bae માં ક્યાંય account system નથી. Device ની identit
 
 ## Join handshake
 
-Device ઉમેરવું વચ્ચે explicit human verification સાથે two-code exchange છે:
+ઉપકરણ ઉમેરવું એ સ્પષ્ટ માનવીય ચકાસણી સાથેનું એક સ્થાનિક જોડાણ સત્ર છે:
 
-1. Joining device પોતાની keypair generate કરે છે અને **join request** બતાવે છે: તેની public key, તેનો short fingerprint, અને (OAuth providers માટે) folder share કરવાનું cloud account.
-2. Owner request decode કરે છે, અને બે screens એ જ fingerprint બતાવે છે. Human check કરે છે કે તેઓ match કરે; આ step swapped key ને હરાવે છે.
-3. Approval એકસાથે ત્રણ કામ કરે છે: newcomer ના account ને cloud home access આપે છે (consumer clouds પર folder share, S3 પર embedded credentials, iCloud પર CloudKit share), library key ને newcomer ની public key માટે seal કરે છે, અને તેને add કરતી membership entry sign કરે છે. આ બધું **invite code** માં packed છે.
-4. Joining device invite consume કરે છે, key unseal કરે છે, latest snapshot માંથી bootstrap કરે છે, અને sync કરે છે.
+1. માલિક **ઉપકરણ ઉમેરો** શરૂ કરે છે. bae સ્થાનિક નેટવર્ક પર સંક્ષિપ્તમાં સાંભળે છે અને એક જોડી કોડ બતાવે છે. તેમાં શ્રોતા સરનામાં, એક ક્ષણિક સત્ર કી, લાઇબ્રેરીનું નામ, પ્રદાતા અને સમાપ્તિ સમાવે છે — કોઈ લાઇબ્રેરી કી અથવા કાયમી સ્ટોરેજ ઓળખપત્રો નથી.
+2. જોડાવાનું ઉપકરણ કોડને સ્કેન કરે છે, તેની ઉપકરણ કી-પેયર બનાવે છે, જ્યારે જરૂરી હોય ત્યારે પ્રદાતામાં સાઇન ઇન કરે છે, અને એન્ક્રિપ્ટેડ સ્થાનિક કનેક્શન દ્વારા તેની સાઇન કરેલ સાર્વજનિક કી અને પ્રદાતા એકાઉન્ટ ઓળખ મોકલે છે. બંને ઉપકરણો સમાન ફિંગરપ્રિન્ટ દર્શાવે છે.
+3. માલિક ફિંગરપ્રિન્ટ્સની તુલના કરે છે અને તે ચોક્કસ ઓળખને મંજૂર કરે છે. મંજૂરી જ્યાં જરૂરી હોય ત્યાં તેના ક્લાઉડ એકાઉન્ટની ઍક્સેસ આપે છે, સભ્યપદની એન્ટ્રી પર સહી કરે છે અને નવા ઉપકરણની સાર્વજનિક કી પર લાઇબ્રેરી કી અને અંતિમ સ્ટોરેજ ઍક્સેસને સીલ કરે છે.
+4. સીલબંધ પેકેજ સમાન પ્રમાણિત સ્થાનિક કનેક્શન દ્વારા પરત આવે છે. જોડાવાનું ઉપકરણ તેને ખોલે છે, ક્લાઉડ સ્ટોરેજમાંથી બુટસ્ટ્રેપ કરે છે અને સમન્વય કરવાનું શરૂ કરે છે.
 
-Invite requesting key માટે sealed છે: તેને intercept કરવાથી કશું મળતું નથી.
+સમાપ્ત થયેલ, વિક્ષેપિત અથવા નકારેલ જોડી કંઈપણ અનુદાન આપતું નથી.
 
 ## Revocation
 

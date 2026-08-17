@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>क्लाउड</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>लायब्ररीमध्ये पहा</value></data>
   <data name="join.title" xml:space="preserve"><value>संग्रहालयात जोडा</value></data>
-  <data name="join.intro" xml:space="preserve"><value>हे डिव्हाइस तुमच्या दुसऱ्या डिव्हाइसवरील संग्रहालयात जोडा.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>या डिव्हाइसचा संकेत</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>तुमच्या संग्रहालयात आधीपासून असलेल्या डिव्हाइसवर, सेटिंग्ज → डिव्हाइसेस → डिव्हाइस जोडा उघडा आणि हे स्कॅन किंवा पेस्ट करा.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>हे डिव्हाइस: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>या डिव्हाइसचा संकेत तयार करता आला नाही</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>आमंत्रण संकेत</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>ते डिव्हाइस हे मंजूर केल्यावर, ते दाखवत असलेला आमंत्रण संकेत प्रविष्ट करा.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>आमंत्रण संकेत पेस्ट करा</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>अवैध आमंत्रण संकेत</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · मालक {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>तुमच्या संग्रहालयात आधीपासून असलेल्या डिव्हाइसवर दाखवलेला पेअरिंग संकेत स्कॅन करा.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>पेअरिंग संकेत पेस्ट करा</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>हा पेअरिंग संकेत वैध नाही.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>जोडा</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} मध्ये जोडत आहे…</value></data>
   <data name="join.failed" xml:space="preserve"><value>संग्रहालयात जोडता आले नाही</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>काढा</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>या डिव्हाइसचा प्रवेश जाईल आणि संग्रहालय कळ फिरवली जाईल. पुष्टी करण्यासाठी काढा पुन्हा क्लिक करा.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>डिव्हाइस जोडा</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>नवीन डिव्हाइसवर संग्रहालयात जोडा उघडा आणि त्याचा संकेत दाखवा. तो इथे स्कॅन करा, किंवा खाली पेस्ट करा.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>डिव्हाइसचा संकेत पेस्ट करा</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>डीकोड करा</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>अवैध डिव्हाइस संकेत</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>हे डिव्हाइस मंजूर करायचे?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ते तुमच्या संग्रहालयात जोडले जाईल आणि समक्रमण करू शकेल. त्यावर प्रविष्ट करण्यासाठी तुम्हाला संकेत मिळेल.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>मंजूर करा</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>डिव्हाइस मंजूर करत आहे…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>हे डिव्हाइस मंजूर करता आले नाही</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>हा संकेत नवीन डिव्हाइसवर प्रविष्ट करा.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>तुमच्या संग्रहालयात जोडल्या जाणाऱ्या डिव्हाइसवर हा संकेत स्कॅन करा.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>हे डिव्हाइस मंजूर करायचे?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>ते तुमच्या संग्रहालयात जोडले जाईल आणि समक्रमण करू शकेल.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>मंजूर करा</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>डिव्हाइस मंजूर करत आहे…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>हे डिव्हाइस मंजूर करता आले नाही</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>डिव्हाइसची प्रतीक्षा करत आहे…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>अल्बमवर जा</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>हटवा</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>आउटबॉक्स लोड करता आला नाही</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>रीफ्रेश होत आहे…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>एक रिलीज म्हणून एकत्र करा</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>स्वतंत्र रिलीज म्हणून ठेवा</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>पेअरिंग सुरू होत आहे…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>मंजुरीची प्रतीक्षा करत आहे…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>बोटखूण: {fingerprint}</value></data>
 </root>

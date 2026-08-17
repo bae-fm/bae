@@ -8,7 +8,7 @@ import Testing
 struct QRScannerViewTests {
     @Test("a camera pixel buffer containing a QR code yields its payload")
     func decodesQRCodeFromPixelBuffer() throws {
-        let payload = "bae-device-invite"
+        let payload = "bae-device-pairing"
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(payload.utf8)
         let image = try #require(filter.outputImage)

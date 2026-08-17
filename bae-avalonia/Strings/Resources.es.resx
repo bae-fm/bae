@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Nube</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ver en la biblioteca</value></data>
   <data name="join.title" xml:space="preserve"><value>unirse a una biblioteca</value></data>
-  <data name="join.intro" xml:space="preserve"><value>añade este dispositivo a una biblioteca que ya tienes en otro dispositivo.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>código de este dispositivo</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>en un dispositivo que ya esté en tu biblioteca, abre ajustes → dispositivos → añadir un dispositivo y escanea o pega esto.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>este dispositivo: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>no se pudo generar el código de este dispositivo</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>código de invitación</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>cuando ese dispositivo apruebe este, introduce el código de invitación que muestre.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>pegar código de invitación</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>código de invitación no válido</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · propietario {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Escanea el código de emparejamiento que se muestra en un dispositivo que ya está en tu biblioteca.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Pega el código de emparejamiento</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Este código de emparejamiento no es válido.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>unirse</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>uniéndose a {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>no se pudo unir a la biblioteca</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>eliminar</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>este dispositivo perderá acceso y se rotará la clave de la biblioteca. haz clic en eliminar otra vez para confirmar.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>añadir un dispositivo</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>en el dispositivo nuevo, abre unirse a una biblioteca y muestra su código. escanéalo aquí o pégalo abajo.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>pegar el código del dispositivo</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>decodificar</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>código de dispositivo no válido</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>¿aprobar este dispositivo?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>se añadirá a tu biblioteca y podrá sincronizarse. recibirás un código para introducir en él.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>aprobar</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>aprobando dispositivo…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>no se pudo aprobar este dispositivo</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>introduce este código en el dispositivo nuevo.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Escanea este código en el dispositivo que se va a unir a tu biblioteca.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>¿aprobar este dispositivo?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>se añadirá a tu biblioteca y podrá sincronizarse.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>aprobar</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>aprobando dispositivo…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>no se pudo aprobar este dispositivo</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Esperando al dispositivo…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ir al álbum</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>eliminar</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>no se pudo cargar la bandeja de salida</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Actualizando…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Combinar como un solo lanzamiento</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Mantener como lanzamientos separados</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Iniciando emparejamiento…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Esperando aprobación…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Huella: {fingerprint}</value></data>
 </root>

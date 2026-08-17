@@ -5,7 +5,7 @@ import os.log
 private let logger = Logger.bae("MembersView")
 
 /// The Members screen: lists the devices in this library's membership chain,
-/// lets an owner approve a new device (which hands back an invite code), and
+/// lets an owner approve a new device through a local pairing session, and
 /// lets an owner remove a device (which rotates the library key). The list loads
 /// when the screen appears and after each approve/remove so the chain stays
 /// current. Reading the chain and the mutations all run off the main thread.

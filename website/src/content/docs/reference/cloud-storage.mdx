@@ -9,11 +9,11 @@ The cloud home is one location in storage the user already owns. Every provider 
 
 | Provider | Auth | Access for a new device |
 |---|---|---|
-| S3-compatible | Access key + secret | Credentials embedded in the invite |
-| Google Drive | OAuth (PKCE) | Folder shared to the joiner's account |
-| Dropbox | OAuth (PKCE) | Folder shared to the joiner's account |
-| OneDrive | OAuth (PKCE) | Folder shared to the joiner's account |
-| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+| S3-compatible | Access key + secret | Credentials sealed to the approved device during pairing |
+| Google Drive | OAuth (PKCE) | New device's account approved, then the folder is shared |
+| Dropbox | OAuth (PKCE) | New device's account approved, then the folder is shared |
+| OneDrive | OAuth (PKCE) | New device's account approved, then the folder is shared |
+| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted during pairing |
 
 S3-compatible covers AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, and anything else speaking the API; bucket, region, endpoint, and key prefix are configurable, and the bucket is probed before the config is saved so a typo fails at setup, not at the first sync. The OAuth providers exist only in the full **bae** edition; **baeium** builds compile them out.
 

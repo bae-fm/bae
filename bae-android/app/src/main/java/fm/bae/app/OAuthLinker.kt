@@ -23,21 +23,11 @@ interface OAuthLinker {
 
     /**
      * Run the OAuth flow for [provider] and return the token JSON to hand to
-     * `restoreFromCode`.
+     * a restore or device-pairing operation.
      */
     suspend fun authorize(
         context: Context,
         provider: BridgeCloudProvider,
-    ): String
-
-    /**
-     * Turn an OAuth token into the account email so the joiner can bake it into
-     * its join-request. Routed through this interface because the underlying
-     * `fetchAccountEmail` bridge binding exists only in the full edition.
-     */
-    suspend fun fetchAccountEmail(
-        provider: BridgeCloudProvider,
-        oauthTokenJson: String,
     ): String
 
     companion object {

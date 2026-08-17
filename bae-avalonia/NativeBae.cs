@@ -220,61 +220,19 @@ internal static partial class NativeBae
     internal static string OAuthAuthorize(BridgeCloudProvider provider) => throw new InvalidOperationException();
 #endif
 
-    /// <summary>
-    /// This device's join-request code and the fingerprint it encodes, to hand
-    /// to an existing member for approval. The joining device has no library yet,
-    /// so this needs no handle; it only requires <see cref="Startup"/>.
-    /// </summary>
-    /// <param name="email">The OAuth account address the joiner authenticated as,
-    /// baked into the code so the approver can share the OAuth folder to it; null
-    /// for S3, which shares no folder.</param>
-    internal static BridgeJoinRequest GenerateJoinRequest(string? email = null) =>
-        BaeBridgeMethods.GenerateJoinRequest(email);
+    internal static BridgeDevicePairingOffer DecodeDevicePairingOffer(string code) =>
+        BaeBridgeMethods.DecodeDevicePairingOffer(code);
 
-    /// <summary>
-    /// Decode a join-request code for owner-side approval.
-    /// </summary>
-    internal static BridgeJoinRequestInfo DecodeJoinRequest(string code) =>
-        BaeBridgeMethods.DecodeJoinRequest(code);
+    internal static Task<JoinDevicePairingOperation> PrepareJoinDevicePairing(
+        string code,
+        string? oauthTokenJson) =>
+        BaeBridgeMethods.JoinDevicePairingOperation(code, oauthTokenJson);
 
-    /// <summary>
-    /// The invite bundle behind what the joiner pasted or scanned. The invite is
-    /// the owner's signed join offer — a byte payload, not a human-typed code —
-    /// so it travels as base64 wherever it has to be text.
-    /// </summary>
-    internal static byte[] InviteBytes(string pasted)
-    {
-        try
-        {
-            return Convert.FromBase64String(pasted.Trim());
-        }
-        catch (FormatException)
-        {
-            throw new BridgeException.Diagnostic(
-                new BridgeErrorCategory.Config(),
-                "the pasted invite is not base64 an invite bundle could be read from");
-        }
-    }
+    internal static string JoinDevicePairing(JoinDevicePairingOperation operation) =>
+        operation.Join().Id;
 
-    /// <summary>
-    /// Decode a pasted invite for UI preview. Reads the same bytes the join runs
-    /// on, so the preview and the join cannot disagree about the library.
-    /// </summary>
-    internal static BridgeDeviceInviteInfo DecodeDeviceInvitation(
-        string pasted,
-        string joinRequestCode) =>
-        BaeBridgeMethods.DecodeScannedInvite(InviteBytes(pasted), joinRequestCode);
-
-    /// <summary>
-    /// Join a shared library from a pasted invite and return its id.
-    /// <paramref name="joinRequestCode"/> is the code this device's own
-    /// <see cref="GenerateJoinRequest"/> minted — coven needs it back to promote
-    /// that pending identity into the store's custody. For OAuth providers pass
-    /// the token JSON from <see cref="OAuthAuthorize"/>; for credential providers
-    /// pass null. Blocks on a cloud pull — call off the UI thread.
-    /// </summary>
-    internal static string JoinFromCode(string pasted, string joinRequestCode, string? oauthTokenJson) =>
-        BaeBridgeMethods.JoinFromScannedInvite(InviteBytes(pasted), joinRequestCode, oauthTokenJson).Id;
+    internal static void CancelJoinDevicePairing(JoinDevicePairingOperation operation) =>
+        operation.Cancel();
 
     /// <summary>
     /// Decode a restore code for UI preview — which library it names, whose cloud
@@ -677,16 +635,18 @@ internal static partial class NativeBae
     internal static (BridgeMembership? Membership, string? Error) GetMembers(AppHandle handle) =>
         CaptureBridgeValue(() => Await(() => handle.GetMembers()));
 
-    internal static (byte[]? Invitation, string? Error) BeginDeviceInvite(
-        AppHandle handle,
-        string joinRequestCode) =>
-        CaptureBridgeValue(() => Await(() => handle.BeginDeviceInvite(joinRequestCode)));
+    internal static (BridgeDevicePairingSession? Session, string? Error) StartDevicePairing(AppHandle handle) =>
+        CaptureBridgeValue(() => Await(() => handle.StartDevicePairing()));
 
-    internal static string? DriveDeviceJoin(AppHandle handle, byte[] invitation) =>
-        CaptureError(() => Await(() => handle.DriveDeviceJoin(invitation)));
+    internal static (BridgePairingDevice? Device, string? Error) WaitForPairingDevice(
+        BridgeDevicePairingSession pairing) =>
+        CaptureBridgeValue(() => Await(() => pairing.WaitForDevice()));
 
-    internal static string? CancelDeviceInvite(AppHandle handle, byte[] invitation) =>
-        CaptureError(() => Await(() => handle.CancelDeviceInvite(invitation)));
+    internal static string? ApprovePairingDevice(BridgeDevicePairingSession pairing) =>
+        CaptureError(() => Await(() => pairing.Approve()));
+
+    internal static string? CancelDevicePairing(BridgeDevicePairingSession pairing) =>
+        CaptureError(pairing.Cancel);
 
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
         CaptureError(() => Await(() => handle.RemoveMember(publicKeyHex)));

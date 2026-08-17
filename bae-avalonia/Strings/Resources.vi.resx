@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Đám mây</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>xem trong thư viện</value></data>
   <data name="join.title" xml:space="preserve"><value>tham gia thư viện</value></data>
-  <data name="join.intro" xml:space="preserve"><value>thêm thiết bị này vào thư viện bạn đã có trên thiết bị khác.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>mã của thiết bị này</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>trên thiết bị đã có trong thư viện của bạn, mở cài đặt → thiết bị → thêm thiết bị rồi quét hoặc dán mã này.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>thiết bị này: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>không thể tạo mã của thiết bị này</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>mã mời</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>sau khi thiết bị đó phê duyệt thiết bị này, nhập mã mời mà nó hiển thị.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>dán mã mời</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>mã mời không hợp lệ</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · chủ sở hữu {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Quét mã ghép đôi hiển thị trên một thiết bị đã có trong thư viện của bạn.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Dán mã ghép đôi</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Mã ghép đôi này không hợp lệ.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>tham gia</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>đang tham gia {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>không thể tham gia thư viện</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>xóa</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>thiết bị này sẽ mất quyền truy cập và khóa thư viện sẽ được xoay vòng. bấm xóa lần nữa để xác nhận.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>thêm thiết bị</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>trên thiết bị mới, mở tham gia thư viện và hiển thị mã của thiết bị. quét tại đây hoặc dán bên dưới.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>dán mã của thiết bị</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>giải mã</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>mã thiết bị không hợp lệ</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>phê duyệt thiết bị này?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>thiết bị sẽ được thêm vào thư viện của bạn và có thể đồng bộ hóa. bạn sẽ nhận được mã để nhập trên thiết bị đó.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>phê duyệt</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>đang phê duyệt thiết bị…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>không thể phê duyệt thiết bị này</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>nhập mã này trên thiết bị mới.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Quét mã này trên thiết bị đang tham gia thư viện của bạn.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>phê duyệt thiết bị này?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>thiết bị sẽ được thêm vào thư viện của bạn và có thể đồng bộ hóa.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>phê duyệt</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>đang phê duyệt thiết bị…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>không thể phê duyệt thiết bị này</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Đang chờ thiết bị…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>đi tới album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>xóa</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>không thể tải hộp gửi</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Đang làm mới…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Kết hợp thành một bản phát hành</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Giữ thành các bản phát hành riêng</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Đang bắt đầu ghép đôi…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Đang chờ phê duyệt…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Dấu vân tay: {fingerprint}</value></data>
 </root>

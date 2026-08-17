@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>క్లౌడ్</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>లైబ్రరీలో చూడండి</value></data>
   <data name="join.title" xml:space="preserve"><value>లైబ్రరీలో చేరు</value></data>
-  <data name="join.intro" xml:space="preserve"><value>ఈ పరికరాన్ని మీకు ఇప్పటికే మరో పరికరంలో ఉన్న లైబ్రరీకి జోడించండి.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>ఈ పరికరం కోడ్</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>మీ లైబ్రరీలో ఇప్పటికే ఉన్న పరికరంలో సెట్టింగ్‌లు → పరికరాలు → పరికరాన్ని జోడించు తెరిచి దీన్ని స్కాన్ చేయండి లేదా అతికించండి.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>ఈ పరికరం: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>ఈ పరికరం కోడ్‌ను సృష్టించలేకపోయింది</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>ఆహ్వాన కోడ్</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>ఆ పరికరం దీన్ని ఆమోదించిన తర్వాత, అది చూపించే ఆహ్వాన కోడ్‌ను నమోదు చేయండి.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>ఆహ్వాన కోడ్‌ను అతికించు</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>చెల్లని ఆహ్వాన కోడ్</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · యజమాని {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>మీ లైబ్రరీలో ఇప్పటికే ఉన్న పరికరంలో చూపిన జత చేసే కోడ్‌ను స్కాన్ చేయండి.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>జత చేసే కోడ్‌ను అతికించండి</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>ఈ జత చేసే కోడ్ చెల్లదు.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>చేరు</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name}లో చేరుతోంది…</value></data>
   <data name="join.failed" xml:space="preserve"><value>లైబ్రరీలో చేరలేకపోయింది</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>తీసివేయి</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>ఈ పరికరం ప్రవేశం కోల్పోతుంది మరియు లైబ్రరీ కీ మార్చబడుతుంది. నిర్ధారించడానికి తీసివేయి మళ్లీ క్లిక్ చేయండి.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>పరికరాన్ని జోడించు</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>కొత్త పరికరంలో లైబ్రరీలో చేరండి తెరిచి దాని కోడ్ చూపించండి. దాన్ని ఇక్కడ స్కాన్ చేయండి, లేదా క్రింద అతికించండి.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>పరికరం కోడ్‌ను అతికించు</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>డీకోడ్</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>చెల్లని పరికరం కోడ్</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించాలా?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ఇది మీ లైబ్రరీకి జోడించబడుతుంది మరియు సమకాలీకరించగలదు. అందులో నమోదు చేయడానికి మీకు ఒక కోడ్ వస్తుంది.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>ఆమోదించు</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>పరికరాన్ని ఆమోదిస్తోంది…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించలేకపోయింది</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>ఈ కోడ్‌ను కొత్త పరికరంలో నమోదు చేయండి.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>మీ లైబ్రరీలో చేరే పరికరంలో ఈ కోడ్‌ను స్కాన్ చేయండి.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించాలా?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>ఇది మీ లైబ్రరీకి జోడించబడుతుంది మరియు సమకాలీకరించగలదు.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>ఆమోదించు</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>పరికరాన్ని ఆమోదిస్తోంది…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించలేకపోయింది</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>పరికరం కోసం వేచి ఉంది…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ఆల్బమ్‌కు వెళ్లండి</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>తొలగించు</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>బయటికి పంపే పెట్టెను లోడ్ చేయలేకపోయింది</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>రిఫ్రెష్ అవుతోంది…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>ఒక విడుదలగా కలపండి</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>వేర్వేరు విడుదలలుగా ఉంచండి</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>జత చేయడం ప్రారంభమవుతోంది…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>ఆమోదం కోసం వేచి ఉంది…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ఫింగర్‌ప్రింట్: {fingerprint}</value></data>
 </root>

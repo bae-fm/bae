@@ -17,14 +17,14 @@ Mỗi owner ghi một stream chỉ thêm gồm các mục thành viên đã ký 
 
 ## Bắt tay tham gia
 
-Thêm thiết bị là trao đổi hai mã với bước xác minh rõ ràng của con người ở giữa:
+Việc thêm thiết bị là một phiên ghép nối cục bộ có xác minh rõ ràng của con người:
 
-1. Thiết bị tham gia tạo cặp khóa và hiển thị một **join request**: khóa công khai của nó, vân tay ngắn của khóa, và (với nhà cung cấp OAuth) tài khoản đám mây để chia sẻ thư mục tới.
-2. Một owner giải mã yêu cầu, và hai màn hình hiển thị cùng vân tay. Con người kiểm tra chúng khớp; đây là bước đánh bại khóa bị tráo.
-3. Phê duyệt làm ba việc cùng lúc: cấp cho tài khoản của thiết bị mới quyền truy cập nhà trên đám mây (chia sẻ thư mục trên đám mây tiêu dùng, thông tin xác thực nhúng trên S3, CloudKit share trên iCloud), niêm phong khóa thư viện cho khóa công khai của thiết bị mới, và ký một mục thành viên thêm thiết bị đó. Tất cả được đóng gói vào một **invite code**.
-4. Thiết bị tham gia dùng lời mời, mở niêm phong khóa, khởi tạo từ snapshot mới nhất và đồng bộ.
+1. Chủ sở hữu khởi động **Thêm thiết bị**. bae nghe ngắn gọn trên mạng cục bộ và hiển thị một mã ghép nối. Nó chứa địa chỉ người nghe, khóa phiên tạm thời, tên thư viện, nhà cung cấp và thời hạn sử dụng — không có khóa thư viện hoặc thông tin xác thực lưu trữ lâu dài.
+2. Thiết bị tham gia quét mã, tạo cặp khóa thiết bị, đăng nhập vào nhà cung cấp khi được yêu cầu và gửi khóa công khai đã ký và danh tính tài khoản nhà cung cấp thông qua kết nối cục bộ được mã hóa. Cả hai thiết bị đều hiển thị cùng một dấu vân tay.
+3. Chủ sở hữu đối chiếu dấu vân tay và xác nhận danh tính chính xác đó. Phê duyệt cấp quyền truy cập tài khoản đám mây của nó khi được yêu cầu, ký tên vào mục nhập thành viên và niêm phong khóa thư viện cũng như quyền truy cập bộ nhớ cuối cùng vào khóa chung của thiết bị mới.
+4. Gói hàng được niêm phong sẽ quay trở lại thông qua cùng một kết nối cục bộ đã được xác thực. Thiết bị tham gia sẽ mở nó, khởi động từ bộ lưu trữ đám mây và bắt đầu đồng bộ hóa.
 
-Lời mời được niêm phong cho khóa yêu cầu: chặn được nó cũng không cấp gì.
+Việc ghép nối đã hết hạn, bị gián đoạn hoặc bị từ chối sẽ không mang lại kết quả gì.
 
 ## Thu hồi
 

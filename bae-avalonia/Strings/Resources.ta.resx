@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>மேகம்</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>நூலகத்தில் பார்</value></data>
   <data name="join.title" xml:space="preserve"><value>நூலகத்தில் சேர்</value></data>
-  <data name="join.intro" xml:space="preserve"><value>இந்த சாதனத்தை உங்கள் மற்றொரு சாதனத்தில் ஏற்கனவே உள்ள நூலகத்தில் சேர்க்கவும்.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>இந்த சாதனத்தின் குறியீடு</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>உங்கள் நூலகத்தில் ஏற்கனவே உள்ள சாதனத்தில் அமைப்புகள் → சாதனங்கள் → சாதனத்தைச் சேர் என்பதைத் திறந்து இதை வருடவும் அல்லது ஒட்டவும்.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>இந்த சாதனம்: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>இந்த சாதனத்தின் குறியீட்டை உருவாக்க முடியவில்லை</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>அழைப்புக் குறியீடு</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>அந்த சாதனம் இதற்கு ஒப்புதல் அளித்ததும், அது காட்டும் அழைப்புக் குறியீட்டை உள்ளிடவும்.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>அழைப்புக் குறியீட்டை ஒட்டு</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>தவறான அழைப்புக் குறியீடு</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · உரிமையாளர் {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>உங்கள் நூலகத்தில் ஏற்கனவே உள்ள சாதனத்தில் காட்டப்படும் இணைத்தல் குறியீட்டை வருடவும்.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>இணைத்தல் குறியீட்டை ஒட்டவும்</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>இந்த இணைத்தல் குறியீடு செல்லாது.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>சேர்</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name}-இல் சேர்கிறது…</value></data>
   <data name="join.failed" xml:space="preserve"><value>நூலகத்தில் சேர முடியவில்லை</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>நீக்கு</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>இந்த சாதனம் அணுகலை இழக்கும்; நூலக விசை மாற்றப்படும். உறுதிப்படுத்த நீக்கு என்பதை மீண்டும் கிளிக் செய்யவும்.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>சாதனத்தைச் சேர்க்கவும்</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>புதிய சாதனத்தில் நூலகத்தில் சேர் என்பதைத் திறந்து அதன் குறியீட்டை காட்டவும். அதை இங்கே வருடவும், அல்லது கீழே ஒட்டவும்.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>சாதனத்தின் குறியீட்டை ஒட்டு</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>குறியீடு அவிழ்</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>தவறான சாதனக் குறியீடு</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>இந்த சாதனத்துக்கு ஒப்புதல் அளிக்கவா?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>இது உங்கள் நூலகத்தில் சேர்க்கப்பட்டு ஒத்திசைக்க முடியும். அதில் உள்ளிட ஒரு குறியீடு கிடைக்கும்.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>ஒப்புதல் அளி</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>சாதனத்துக்கு ஒப்புதல் அளிக்கப்படுகிறது…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>இந்த சாதனத்துக்கு ஒப்புதல் அளிக்க முடியவில்லை</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>இந்த குறியீட்டை புதிய சாதனத்தில் உள்ளிடவும்.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>உங்கள் நூலகத்தில் சேரும் சாதனத்தில் இந்தக் குறியீட்டை வருடவும்.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>இந்த சாதனத்துக்கு ஒப்புதல் அளிக்கவா?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>இது உங்கள் நூலகத்தில் சேர்க்கப்பட்டு ஒத்திசைக்க முடியும்.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>ஒப்புதல் அளி</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>சாதனத்துக்கு ஒப்புதல் அளிக்கப்படுகிறது…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>இந்த சாதனத்துக்கு ஒப்புதல் அளிக்க முடியவில்லை</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>சாதனத்திற்காகக் காத்திருக்கிறது…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ஆல்பத்திற்குச் செல்</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>நீக்கு</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>வெளிச்செல்லும் பெட்டியை ஏற்ற முடியவில்லை</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>புதுப்பிக்கிறது…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>ஒரு வெளியீடாக இணை</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>தனித்தனி வெளியீடுகளாக வைத்திரு</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>இணைத்தல் தொடங்குகிறது…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>ஒப்புதலுக்காகக் காத்திருக்கிறது…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>கைரேகை: {fingerprint}</value></data>
 </root>

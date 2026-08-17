@@ -9,11 +9,11 @@ Cloudový domov je jedno místo v úložišti, které už uživatel vlastní. Ka
 
 | Poskytovatel | Ověření | Přístup pro nové zařízení |
 |---|---|---|
-| Kompatibilní se S3 | Access key + secret | Přihlašovací údaje vložené v pozvánce |
-| Google Drive | OAuth (PKCE) | Složka sdílená s účtem připojujícího se zařízení |
-| Dropbox | OAuth (PKCE) | Složka sdílená s účtem připojujícího se zařízení |
-| OneDrive | OAuth (PKCE) | Složka sdílená s účtem připojujícího se zařízení |
-| iCloud (CloudKit) | Apple ID, bez přihlášení | Sdílení CloudKit přijaté připojujícím se zařízením |
+| Kompatibilní se S3 | Access key + secret | Přihlašovací údaje zapečetěné na schváleném zařízení během párování |
+| Google Drive | OAuth (PKCE) | Účet nového zařízení byl schválen a složka je sdílena |
+| Dropbox | OAuth (PKCE) | Účet nového zařízení byl schválen a složka je sdílena |
+| OneDrive | OAuth (PKCE) | Účet nového zařízení byl schválen a složka je sdílena |
+| iCloud (CloudKit) | Apple ID, bez přihlášení | Sdílení CloudKit přijato během párování |
 
 Kompatibilita se S3 zahrnuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO a cokoli dalšího, co mluví tímto API; bucket, region, endpoint a předpona klíčů jsou nastavitelné a bucket se vyzkouší před uložením konfigurace, takže překlep selže při nastavení, ne při první synchronizaci. Poskytovatelé OAuth existují jen v úplné edici **bae**; sestavení **baeium** je vynechávají.
 

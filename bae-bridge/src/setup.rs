@@ -94,12 +94,12 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use bae_core::config::Config;
-use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeError};
+use bae_core::library::{CancellationToken, JoinDevicePairingError, RestoreFromCodeError};
 
 use crate::get_cloudkit_ops;
 use crate::types::{
-    BridgeCloudProvider, BridgeDeviceInviteInfo, BridgeError, BridgeJoinRequest,
-    BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo,
+    BridgeCloudProvider, BridgeDevicePairingOffer, BridgeError, BridgeLibrary,
+    BridgeRestoreCodeInfo,
 };
 
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
@@ -379,261 +379,141 @@ impl RestoreFromCodeOperation {
 // Membership: joining a library and managing devices
 // =============================================================================
 
-/// Generate this device's join-request code and the fingerprint it encodes, to
-/// hand to an existing member for approval. Safe to call before any library
-/// exists on this device (the joining device has no library yet); it only needs
-/// the keyring initialized.
-///
-/// `email` is the OAuth account address the joiner authenticated as, baked into
-/// the code so the approver can share the OAuth folder to it; `None` for S3. The
-/// caller runs the OAuth flow and `fetch_account_email` first, then passes the
-/// result here.
+/// Decode the one pairing code displayed by an existing device.
 #[uniffi::export]
-pub fn generate_join_request(email: Option<String>) -> Result<BridgeJoinRequest, BridgeError> {
-    let request = bae_core::sync::membership::generate_join_request(email)
-        .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))?;
-    Ok(BridgeJoinRequest::from_core(request))
+pub fn decode_device_pairing_offer(code: String) -> Result<BridgeDevicePairingOffer, BridgeError> {
+    let info =
+        bae_core::library::inspect_device_pairing_offer(&code).map_err(BridgeError::config)?;
+    Ok(BridgeDevicePairingOffer::from_core(info))
 }
 
-impl BridgeJoinRequest {
-    fn from_core(request: bae_core::sync::membership::JoinRequest) -> Self {
-        let bae_core::sync::membership::JoinRequest { code, fingerprint } = request;
-        BridgeJoinRequest { code, fingerprint }
-    }
-}
-
-/// Fetch the email of the OAuth account `oauth_token_json` authenticated, so the
-/// joiner can bake it into its join-request. The caller runs `oauth_authorize`
-/// (or `oauth_begin`/`oauth_complete`) first and passes the resulting token JSON.
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export]
-pub fn fetch_account_email(
-    provider: BridgeCloudProvider,
-    oauth_token_json: String,
-) -> Result<String, BridgeError> {
-    let tokens = parse_oauth_tokens(&oauth_token_json)?;
-    let core_provider = provider.into_core();
-    on_worker(move || async move {
-        bae_core::sync::membership::fetch_account_email(core_provider, &tokens)
-            .await
-            .map_err(|e| BridgeError::config(format!("Failed to fetch account email: {e}")))
-    })
-}
-
-/// Decode a join-request code to preview the joining device before approving it.
-#[uniffi::export]
-pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, BridgeError> {
-    let req =
-        bae_core::sync::membership::decode_join_request(&code).map_err(BridgeError::config)?;
-    Ok(BridgeJoinRequestInfo::from_core(req))
-}
-
-impl BridgeJoinRequestInfo {
-    fn from_core(req: bae_core::sync::membership::JoinRequestInfo) -> Self {
-        let bae_core::sync::membership::JoinRequestInfo {
-            pubkey,
-            fingerprint,
-            email,
-        } = req;
-        BridgeJoinRequestInfo {
-            pubkey,
-            fingerprint,
-            email,
-        }
-    }
-}
-
-/// Decode a scanned invite bundle for UI preview.
-///
-/// The provider credentials are sealed to the pending identity represented by
-/// `join_request_code`, so the preview and join must use the exact request this
-/// device generated for this exchange.
-#[uniffi::export]
-pub fn decode_scanned_invite(
-    scanned: Vec<u8>,
-    join_request_code: String,
-) -> Result<BridgeDeviceInviteInfo, BridgeError> {
-    let info = bae_core::sync::membership::inspect_device_invite(&scanned, &join_request_code)
-        .map_err(BridgeError::config)?;
-    Ok(BridgeDeviceInviteInfo::from_core(info))
-}
-
-impl BridgeDeviceInviteInfo {
-    fn from_core(info: bae_core::sync::membership::DeviceInviteInfo) -> Self {
-        let bae_core::sync::membership::DeviceInviteInfo {
-            library_id,
+impl BridgeDevicePairingOffer {
+    fn from_core(info: bae_core::library::DevicePairingOfferInfo) -> Self {
+        let bae_core::library::DevicePairingOfferInfo {
             library_name,
-            owner_pubkey,
-            owner_fingerprint,
             cloud_provider,
             needs_oauth,
+            expires_at_unix_seconds,
         } = info;
-        BridgeDeviceInviteInfo {
-            library_id,
+        BridgeDevicePairingOffer {
             library_name,
-            owner_pubkey,
-            owner_fingerprint,
             cloud_provider: BridgeCloudProvider::from_core(&cloud_provider),
             needs_oauth,
+            expires_at_unix_seconds,
         }
     }
 }
 
-fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
+fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError {
     use crate::types::BridgeErrorCategory;
     match error {
-        JoinFromCodeError::Cancelled => BridgeError::Cancelled,
+        JoinDevicePairingError::Cancelled => BridgeError::Cancelled,
         // Both devices must be running the join at once. These two are the
         // "nothing is wrong with the code, the other side isn't there" ends, kept
         // apart from a genuine failure so the UI can tell the user what to do.
-        JoinFromCodeError::OwnerOffline => BridgeError::diagnostic(
+        JoinDevicePairingError::OwnerOffline => BridgeError::diagnostic(
             BridgeErrorCategory::Membership,
-            "the inviting device is not running the join — open bae on it and show the invite again",
+            "the existing device is not accepting this pairing — open bae on it and show a pairing code",
         ),
-        JoinFromCodeError::Abandoned => BridgeError::diagnostic(
+        JoinDevicePairingError::Abandoned => BridgeError::diagnostic(
             BridgeErrorCategory::Membership,
-            "the inviting device ended this join",
+            "the existing device ended this pairing",
         ),
-        JoinFromCodeError::Join(error) => {
+        JoinDevicePairingError::Join(error) => {
             BridgeError::internal(format!("Failed to join library: {error}"))
         }
     }
 }
 
-async fn join_from_scanned_invite_config(
-    scanned: Vec<u8>,
-    join_request_code: String,
-    oauth_tokens: Option<coven::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    cancel: Option<CancellationToken>,
+async fn join_device_pairing_config(
+    prepared: bae_core::library::PreparedDevicePairingJoin,
+    cancel: CancellationToken,
 ) -> Result<Config, BridgeError> {
-    match cancel {
-        Some(cancel) => bae_core::library::join_from_scanned_bundle_cancellable(
-            &scanned,
-            &join_request_code,
-            oauth_tokens,
-            cloudkit_ops,
-            cancel,
-            |status| info!("{}", status),
-        )
-        .await
-        .map_err(join_error_to_bridge),
-        None => bae_core::library::join_from_scanned_bundle(
-            &scanned,
-            &join_request_code,
-            oauth_tokens,
-            cloudkit_ops,
-            |status| info!("{}", status),
-        )
-        .await
-        .map_err(join_error_to_bridge),
-    }
-}
-
-/// Join a shared library from an invite scanned off the inviting device's QR
-/// code.
-///
-/// `scanned` is the raw payload bytes read from the QR — it carries both the
-/// sealed cloud-provider credentials and the owner's signed join offer with the
-/// storage slots the handshake runs through.
-///
-/// `join_request_code` is the code this device's own `generate_join_request`
-/// produced (`BridgeJoinRequest.code`) and which the owner scanned first to mint
-/// the invite — coven minted a pending identity for it at that point, and a
-/// completed join promotes that same identity into this store's own identity
-/// custody, so the caller must keep and pass back the exact code it generated.
-///
-/// The inviting device has to be running its side of the join while this runs.
-///
-/// For OAuth providers, the caller must first run the OAuth flow (`oauth_authorize`
-/// on desktop, or `oauth_begin`/`oauth_complete` on mobile) and pass the token
-/// JSON as `oauth_token_json`.
-#[uniffi::export]
-pub fn join_from_scanned_invite(
-    scanned: Vec<u8>,
-    join_request_code: String,
-    oauth_token_json: Option<String>,
-) -> Result<BridgeLibrary, BridgeError> {
-    on_worker(move || async move {
-        let oauth_tokens = oauth_token_json
-            .map(|json| parse_oauth_tokens(&json))
-            .transpose()?;
-
-        let config = join_from_scanned_invite_config(
-            scanned,
-            join_request_code,
-            oauth_tokens,
-            get_cloudkit_ops(),
-            None,
-        )
-        .await?;
-
-        BridgeLibrary::from_core(&config)
+    bae_core::library::join_prepared_device_pairing_cancellable(prepared, cancel, |status| {
+        info!("{}", status)
     })
+    .await
+    .map_err(join_error_to_bridge)
 }
 
 #[derive(uniffi::Object)]
-pub struct JoinFromCodeOperation {
-    scanned: Vec<u8>,
-    join_request_code: String,
-    oauth_tokens: Option<coven::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+pub struct JoinDevicePairingOperation {
+    fingerprint: String,
+    state: Mutex<JoinDevicePairingOperationState>,
     cancel: CancellationToken,
-    started: Mutex<bool>,
 }
 
-#[uniffi::export]
-pub fn join_from_scanned_invite_operation(
-    scanned: Vec<u8>,
-    join_request_code: String,
+enum JoinDevicePairingOperationState {
+    Prepared(bae_core::library::PreparedDevicePairingJoin),
+    Started,
+    Abandoned,
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn join_device_pairing_operation(
+    pairing_code: String,
     oauth_token_json: Option<String>,
-) -> Result<Arc<JoinFromCodeOperation>, BridgeError> {
+) -> Result<Arc<JoinDevicePairingOperation>, BridgeError> {
     let oauth_tokens = oauth_token_json
         .map(|json| parse_oauth_tokens(&json))
         .transpose()?;
-    Ok(Arc::new(JoinFromCodeOperation {
-        scanned,
-        join_request_code,
+    let prepared = bae_core::library::prepare_device_pairing_join(
+        &pairing_code,
         oauth_tokens,
-        cloudkit_ops: get_cloudkit_ops(),
+        get_cloudkit_ops(),
+    )
+    .await
+    .map_err(join_error_to_bridge)?;
+    let fingerprint = prepared.fingerprint();
+    Ok(Arc::new(JoinDevicePairingOperation {
+        fingerprint,
+        state: Mutex::new(JoinDevicePairingOperationState::Prepared(prepared)),
         cancel: CancellationToken::new(),
-        started: Mutex::new(false),
     }))
 }
 
 #[uniffi::export]
-impl JoinFromCodeOperation {
+impl JoinDevicePairingOperation {
+    pub fn fingerprint(&self) -> String {
+        self.fingerprint.clone()
+    }
+
     pub fn join(&self) -> Result<BridgeLibrary, BridgeError> {
-        {
-            let mut started = lock_bridge_mutex(&self.started);
-            if *started {
-                return Err(BridgeError::internal(
-                    "join operation already started".to_string(),
-                ));
+        let prepared = {
+            let mut state = lock_bridge_mutex(&self.state);
+            match std::mem::replace(&mut *state, JoinDevicePairingOperationState::Started) {
+                JoinDevicePairingOperationState::Prepared(prepared) => prepared,
+                previous @ JoinDevicePairingOperationState::Started => {
+                    *state = previous;
+                    return Err(BridgeError::internal(
+                        "join operation already started".to_string(),
+                    ));
+                }
+                previous @ JoinDevicePairingOperationState::Abandoned => {
+                    *state = previous;
+                    return Err(BridgeError::Cancelled);
+                }
             }
-            *started = true;
-        }
-        let scanned = self.scanned.clone();
-        let join_request_code = self.join_request_code.clone();
-        let oauth_tokens = self.oauth_tokens.clone();
-        let cloudkit_ops = self.cloudkit_ops.clone();
+        };
         let cancel = self.cancel.clone();
         on_worker(move || async move {
-            let config = join_from_scanned_invite_config(
-                scanned,
-                join_request_code,
-                oauth_tokens,
-                cloudkit_ops,
-                Some(cancel),
-            )
-            .await?;
+            let config = join_device_pairing_config(prepared, cancel).await?;
 
             BridgeLibrary::from_core(&config)
         })
     }
 
-    pub fn cancel(&self) {
-        self.cancel.cancel();
+    pub fn cancel(&self) -> Result<(), BridgeError> {
+        let mut state = lock_bridge_mutex(&self.state);
+        match &*state {
+            JoinDevicePairingOperationState::Prepared(prepared) => {
+                prepared.abandon().map_err(join_error_to_bridge)?;
+                *state = JoinDevicePairingOperationState::Abandoned;
+            }
+            JoinDevicePairingOperationState::Started => self.cancel.cancel(),
+            JoinDevicePairingOperationState::Abandoned => {}
+        }
+        Ok(())
     }
 }
 

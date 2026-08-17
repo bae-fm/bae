@@ -9,11 +9,11 @@ description: प्रदाता, प्रमाणीकरण, और क�
 
 | प्रदाता | प्रमाणीकरण | नए उपकरण के लिए पहुंच |
 |---|---|---|
-| S3-compatible | Access कुंजी + secret | invite में रखे credentials |
-| Google Drive | OAuth (PKCE) | जुड़ने वाले खाते से साझा फोल्डर |
-| Dropbox | OAuth (PKCE) | जुड़ने वाले खाते से साझा फोल्डर |
-| OneDrive | OAuth (PKCE) | जुड़ने वाले खाते से साझा फोल्डर |
-| iCloud (CloudKit) | Apple ID, sign-in नहीं | जुड़ने वाले द्वारा स्वीकार किया गया CloudKit share |
+| S3-compatible | Access कुंजी + secret | पेयरिंग के दौरान स्वीकृत डिवाइस पर क्रेडेंशियल सील कर दिए गए |
+| Google Drive | OAuth (PKCE) | नए डिवाइस का खाता स्वीकृत हो जाता है, फिर फ़ोल्डर साझा किया जाता है |
+| Dropbox | OAuth (PKCE) | नए डिवाइस का खाता स्वीकृत हो जाता है, फिर फ़ोल्डर साझा किया जाता है |
+| OneDrive | OAuth (PKCE) | नए डिवाइस का खाता स्वीकृत हो जाता है, फिर फ़ोल्डर साझा किया जाता है |
+| iCloud (CloudKit) | Apple ID, sign-in नहीं | पेयरिंग के दौरान CloudKit शेयर स्वीकार किया गया |
 
 S3-compatible में AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO और API बोलने वाली कोई भी चीज आती है; bucket, region, endpoint और कुंजी prefix बदले जा सकते हैं, और config save होने से पहले bucket जांची जाती है ताकि typo setup पर ही विफल हो, पहले समन्वय पर नहीं। OAuth providers केवल पूरी **bae** edition में होते हैं; **baeium** builds उन्हें compile out करते हैं।
 

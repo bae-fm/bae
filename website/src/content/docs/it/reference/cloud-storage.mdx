@@ -9,11 +9,11 @@ La home cloud è una posizione nello spazio che l'utente possiede già. Ogni pro
 
 | Provider | Auth | Accesso per un nuovo dispositivo |
 |---|---|---|
-| Compatibile con S3 | Access key + secret | Credenziali incorporate nell'invito |
-| Google Drive | OAuth (PKCE) | Cartella condivisa con l'account di chi si unisce |
-| Dropbox | OAuth (PKCE) | Cartella condivisa con l'account di chi si unisce |
-| OneDrive | OAuth (PKCE) | Cartella condivisa con l'account di chi si unisce |
-| iCloud (CloudKit) | Apple ID, nessun accesso | Condivisione CloudKit accettata da chi si unisce |
+| Compatibile con S3 | Access key + secret | Credenziali sigillate sul dispositivo approvato durante l'associazione |
+| Google Drive | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
+| Dropbox | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
+| OneDrive | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
+| iCloud (CloudKit) | Apple ID, nessun accesso | Condivisione CloudKit accettata durante l'associazione |
 
 Compatibile con S3 copre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualunque altro servizio parli l'API; bucket, regione, endpoint e prefisso chiave sono configurabili, e il bucket viene provato prima che la configurazione sia salvata così un errore di battitura fallisce alla configurazione, non alla prima sincronizzazione. I provider OAuth esistono solo nell'edizione completa **bae**; le build **baeium** li compilano fuori.
 

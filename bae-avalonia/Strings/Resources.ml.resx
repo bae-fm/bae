@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>ക്ലൗഡ്</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ലൈബ്രറിയിൽ കാണുക</value></data>
   <data name="join.title" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരുക</value></data>
-  <data name="join.intro" xml:space="preserve"><value>നിങ്ങളുടെ മറ്റൊരു ഉപകരണത്തിലുള്ള ശേഖരത്തിലേക്ക് ഈ ഉപകരണം ചേർക്കുക.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>ഈ ഉപകരണത്തിന്റെ കോഡ്</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>നിങ്ങളുടെ ശേഖരത്തിൽ ഇതിനകം ഉള്ള ഉപകരണത്തിൽ ക്രമീകരണങ്ങൾ → ഉപകരണങ്ങൾ → ഉപകരണം ചേർക്കുക തുറന്ന് ഇത് സ്കാൻ ചെയ്യുക അല്ലെങ്കിൽ ഒട്ടിക്കുക.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>ഈ ഉപകരണം: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>ഈ ഉപകരണത്തിന്റെ കോഡ് സൃഷ്ടിക്കാനായില്ല</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>ക്ഷണ കോഡ്</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>ആ ഉപകരണം ഇതിനെ അംഗീകരിച്ചാൽ, അത് കാണിക്കുന്ന ക്ഷണ കോഡ് നൽകുക.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>ക്ഷണ കോഡ് ഒട്ടിക്കുക</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>അസാധുവായ ക്ഷണ കോഡ്</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · ഉടമ {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>നിങ്ങളുടെ ശേഖരത്തിൽ ഇതിനകം ഉള്ള ഉപകരണത്തിൽ കാണിച്ചിരിക്കുന്ന പെയറിംഗ് കോഡ് സ്കാൻ ചെയ്യുക.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>പെയറിംഗ് കോഡ് ഒട്ടിക്കുക</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>ഈ പെയറിംഗ് കോഡ് സാധുവല്ല.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>ചേരുക</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name}-ൽ ചേരുന്നു…</value></data>
   <data name="join.failed" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരാനായില്ല</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>ഈ ഉപകരണത്തിന് പ്രവേശനം നഷ്ടപ്പെടും, ശേഖര കീ മാറ്റപ്പെടും. സ്ഥിരീകരിക്കാൻ നീക്കം ചെയ്യുക വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>ഉപകരണം ചേർക്കുക</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>പുതിയ ഉപകരണത്തിൽ ശേഖരത്തിൽ ചേരുക തുറന്ന് അതിന്റെ കോഡ് കാണിക്കുക. അത് ഇവിടെ സ്കാൻ ചെയ്യുക, അല്ലെങ്കിൽ താഴെ ഒട്ടിക്കുക.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ഉപകരണത്തിന്റെ കോഡ് ഒട്ടിക്കുക</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>ഡീകോഡ് ചെയ്യുക</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>അസാധുവായ ഉപകരണ കോഡ്</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കണോ?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ഇത് നിങ്ങളുടെ ശേഖരത്തിലേക്ക് ചേർക്കപ്പെടുകയും സമന്വയിപ്പിക്കാൻ കഴിയുകയും ചെയ്യും. അതിൽ നൽകാനുള്ള കോഡ് നിങ്ങൾക്ക് ലഭിക്കും.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>അംഗീകരിക്കുക</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>ഉപകരണം അംഗീകരിക്കുന്നു…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കാനായില്ല</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>ഈ കോഡ് പുതിയ ഉപകരണത്തിൽ നൽകുക.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>നിങ്ങളുടെ ശേഖരത്തിൽ ചേരുന്ന ഉപകരണത്തിൽ ഈ കോഡ് സ്കാൻ ചെയ്യുക.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കണോ?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>ഇത് നിങ്ങളുടെ ശേഖരത്തിലേക്ക് ചേർക്കപ്പെടുകയും സമന്വയിപ്പിക്കാൻ കഴിയുകയും ചെയ്യും.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>അംഗീകരിക്കുക</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>ഉപകരണം അംഗീകരിക്കുന്നു…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കാനായില്ല</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>ഉപകരണത്തിനായി കാത്തിരിക്കുന്നു…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ആൽബത്തിലേക്ക് പോകുക</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ഇല്ലാതാക്കുക</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് ലോഡ് ചെയ്യാനായില്ല</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>പുതുക്കുന്നു…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>ഒരു റിലീസായി സംയോജിപ്പിക്കുക</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>വെവ്വേറെ റിലീസുകളായി സൂക്ഷിക്കുക</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>പെയറിംഗ് ആരംഭിക്കുന്നു…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>അനുമതിക്കായി കാത്തിരിക്കുന്നു…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>വിരലടയാളം: {fingerprint}</value></data>
 </root>

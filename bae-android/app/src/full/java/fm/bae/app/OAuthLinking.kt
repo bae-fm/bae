@@ -97,18 +97,6 @@ class OAuthLinking private constructor(
         }
     }
 
-    /**
-     * Fetch the account email for [provider] from an OAuth token. The bridge
-     * call is a blocking network request, so it runs off the main thread.
-     */
-    override suspend fun fetchAccountEmail(
-        provider: BridgeCloudProvider,
-        oauthTokenJson: String,
-    ): String =
-        withContext(Dispatchers.IO) {
-            uniffi.bae_bridge.fetchAccountEmail(provider, oauthTokenJson)
-        }
-
     companion object {
         /**
          * Set while an auth flow awaits its redirect; completed by

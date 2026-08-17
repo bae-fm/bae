@@ -9,7 +9,7 @@ Tout ce que bae place dans un emplacement cloud opaque est chiffré avant de qui
 
 Une bibliothèque opaque a un secret racine : une clé aléatoire de 256 bits créée quand l’emplacement est créé. Elle vit dans le trousseau du système d’exploitation, jamais dans un fichier ; sur les plateformes Apple, l’entrée de trousseau se synchronise via le trousseau iCloud. La configuration de bae ne stocke qu’une empreinte de la clé, suffisante pour distinguer une mauvaise clé d’une bonne au déverrouillage sans conserver le secret.
 
-La clé voyage entre appareils de deux manières, toutes deux décrites dans [Identité et appartenance](/fr/reference/membership) : scellée avec la clé publique d’un appareil approuvé pendant une invitation, et portée dans un code de récupération.
+La clé circule entre les appareils de deux manières, toutes deux décrites dans [Identité et appartenance](/fr/reference/membership) : scellée à la clé publique d'un appareil approuvé lors de l'association de l'appareil et transportée dans un code de récupération.
 
 ## Générations
 

@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>क्लाउड</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>लाइब्रेरी में देखें</value></data>
   <data name="join.title" xml:space="preserve"><value>लाइब्रेरी से जुड़ें</value></data>
-  <data name="join.intro" xml:space="preserve"><value>इस उपकरण को उस लाइब्रेरी में जोड़ें जो आपके पास पहले से दूसरे उपकरण पर है।</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>इस उपकरण का कोड</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>आपकी लाइब्रेरी में पहले से मौजूद उपकरण पर सेटिंग्स → उपकरण → उपकरण जोड़ें खोलें और इसे स्कैन या पेस्ट करें।</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>यह उपकरण: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>इस उपकरण का कोड नहीं बनाया जा सका</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>आमंत्रण कोड</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>जब वह उपकरण इसे मंजूर कर दे, तो उसका दिखाया आमंत्रण कोड दर्ज करें।</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>आमंत्रण कोड पेस्ट करें</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>अमान्य आमंत्रण कोड</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · मालिक {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>अपनी लाइब्रेरी में पहले से मौजूद उपकरण पर दिखाया गया पेयरिंग कोड स्कैन करें।</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>पेयरिंग कोड पेस्ट करें</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>यह पेयरिंग कोड मान्य नहीं है।</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>जुड़ें</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} से जुड़ा जा रहा है…</value></data>
   <data name="join.failed" xml:space="preserve"><value>लाइब्रेरी से जुड़ा नहीं जा सका</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>हटाएं</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>यह उपकरण पहुंच खो देगा और लाइब्रेरी कुंजी घुमाई जाएगी। पुष्टि करने के लिए हटाएं पर फिर क्लिक करें।</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>उपकरण जोड़ें</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>नए उपकरण पर लाइब्रेरी से जुड़ें खोलें और उसका कोड दिखाएं। इसे यहां स्कैन करें, या नीचे पेस्ट करें।</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>उपकरण का कोड पेस्ट करें</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>डिकोड करें</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>अमान्य उपकरण कोड</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>इस उपकरण को मंजूर करें?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>यह आपकी लाइब्रेरी में जोड़ा जाएगा और समन्वयन कर सकेगा। आपको उस पर दर्ज करने के लिए कोड मिलेगा।</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>मंजूर करें</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>उपकरण मंजूर हो रहा है…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>यह उपकरण मंजूर नहीं किया जा सका</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>यह कोड नए उपकरण पर दर्ज करें।</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>अपनी लाइब्रेरी से जुड़ने वाले उपकरण पर यह कोड स्कैन करें।</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>इस उपकरण को मंजूर करें?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>यह आपकी लाइब्रेरी में जोड़ा जाएगा और समन्वयन कर सकेगा।</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>मंजूर करें</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>उपकरण मंजूर हो रहा है…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>यह उपकरण मंजूर नहीं किया जा सका</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>उपकरण की प्रतीक्षा हो रही है…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>एल्बम पर जाएँ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>हटाएं</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>आउटबॉक्स लोड नहीं हो सका</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>रीफ़्रेश हो रहा है…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>एक रिलीज़ के रूप में जोड़ें</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>अलग रिलीज़ के रूप में रखें</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>पेयरिंग शुरू हो रही है…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>मंज़ूरी की प्रतीक्षा…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>फिंगरप्रिंट: {fingerprint}</value></data>
 </root>

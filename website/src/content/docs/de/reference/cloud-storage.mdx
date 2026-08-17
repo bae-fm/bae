@@ -9,11 +9,11 @@ Das Cloud-Zuhause ist ein Ort in Speicher, den der Benutzer bereits besitzt. Jed
 
 | Anbieter | Auth | Zugriff für ein neues Gerät |
 |---|---|---|
-| S3-kompatibel | Access key + secret | Zugangsdaten in der Einladung eingebettet |
-| Google Drive | OAuth (PKCE) | Ordner für das Konto des Beitretenden freigegeben |
-| Dropbox | OAuth (PKCE) | Ordner für das Konto des Beitretenden freigegeben |
-| OneDrive | OAuth (PKCE) | Ordner für das Konto des Beitretenden freigegeben |
-| iCloud (CloudKit) | Apple-ID, keine Anmeldung | CloudKit-Freigabe vom Beitretenden angenommen |
+| S3-kompatibel | Access key + secret | Anmeldedaten werden während der Kopplung an das zugelassene Gerät versiegelt |
+| Google Drive | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
+| Dropbox | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
+| OneDrive | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
+| iCloud (CloudKit) | Apple-ID, keine Anmeldung | CloudKit-Freigabe während der Kopplung akzeptiert |
 
 S3-kompatibel umfasst AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO und alles andere, das die API spricht; Bucket, Region, Endpoint und Schlüsselpräfix sind konfigurierbar, und der Bucket wird geprüft, bevor die Konfiguration gespeichert wird, damit ein Tippfehler bei der Einrichtung fehlschlägt, nicht bei der ersten Synchronisierung. Die OAuth-Anbieter existieren nur in der vollständigen **bae**-Edition; **baeium**-Builds kompilieren sie heraus.
 

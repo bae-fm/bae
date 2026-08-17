@@ -12,11 +12,11 @@ Dwie różne drogi, dla dwóch różnych sytuacji:
 
 ## Dodawanie urządzenia
 
-Na nowym urządzeniu wybierz **Join a library**. Pokazuje ono krótki kod, również jako QR: prośbę o dołączenie, zawierającą klucz publiczny urządzenia i odcisk, który można odczytać na głos.
+Na urządzeniu, które ma już bibliotekę, właściciel otwiera Ustawienia, Urządzenia, **Dodaj urządzenie**. bae pokazuje jeden kod parowania jako QR i rozpoczyna nasłuchiwanie w sieci lokalnej.
 
-Na urządzeniu, które już ma bibliotekę, właściciel otwiera Settings, Devices, **Add a device** i skanuje albo wkleja tę prośbę. bae pokazuje odcisk dołączającego urządzenia; potwierdź, że pasuje do tego, co pokazuje nowe urządzenie. Zatwierdzenie tworzy kod zaproszenia: przekaż go z powrotem nowemu urządzeniu (zeskanuj QR albo wklej), a nowe urządzenie pobierze bibliotekę i zacznie synchronizować.
+Na nowym urządzeniu wybierz **Dołącz do biblioteki** i zeskanuj ten kod. Gdy zostaniesz o to poproszony, zaloguj się do dostawcy pamięci masowej. Na obu urządzeniach widać odcisk palca nowego urządzenia; porównaj je, a następnie zatwierdź na istniejącym urządzeniu. Nowe urządzenie uzyskuje zapieczętowany dostęp przez to samo połączenie lokalne, pobiera bibliotekę i rozpoczyna synchronizację. Żaden kod nie wraca.
 
-Za tym uzgodnieniem stoi to: urządzenie zatwierdzające nadaje nowemu urządzeniu dostęp do domu w chmurze (chmury konsumenckie udostępniają folder kontu nowego urządzenia; zaproszenia S3 zawierają dane dostępowe) i zamyka klucz szyfrowania biblioteki dla klucza publicznego nowego urządzenia. Zaproszenie jest bezużyteczne dla każdego innego urządzenia. Szczegóły są w [Tożsamość i członkostwo](/pl/reference/membership).
+Kod parowania nie zawiera klucza biblioteki ani poświadczeń trwałego magazynu, a przerwane lub odrzucone parowanie nic nie daje. Szczegóły w: [Tożsamość i członkostwo](/pl/reference/membership).
 
 ## Członkowie i role
 

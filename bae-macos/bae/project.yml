@@ -56,7 +56,8 @@ targets:
         BaeGitCommit: $(BAE_GIT_COMMIT)
         BaeCovenRev: $(BAE_COVEN_REV)
         BaeSentryDsn: $(BAE_SENTRY_DSN)
-        NSCameraUsageDescription: bae uses the camera to scan a device's code when adding it to your library.
+        NSCameraUsageDescription: bae uses the camera to scan codes when pairing or recovering a library.
+        NSLocalNetworkUsageDescription: bae pairs devices and finds speakers and TVs on your local network.
         CFBundleDocumentTypes:
           - CFBundleTypeName: Folder
             LSItemContentTypes:

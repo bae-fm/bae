@@ -198,18 +198,11 @@ enum PreviewData {
 
     // MARK: - Join flow
 
-    static let joinRequest = BridgeJoinRequest(
-        code: "PREVIEW-JOIN-CODE",
-        fingerprint: "ab12cd34"
-    )
-
-    static let inviteInfo = BridgeDeviceInviteInfo(
-        libraryId: "lib-preview",
+    static let pairingOffer = BridgeDevicePairingOffer(
         libraryName: "Preview Library",
-        ownerPubkey: "owner-pubkey",
-        ownerFingerprint: "ef56ab78",
         cloudProvider: .s3,
-        needsOauth: false
+        needsOauth: false,
+        expiresAtUnixSeconds: 1_900_000_000
     )
 
     static let cloudProviders: [BridgeCloudProvider] = availableCloudProviders()

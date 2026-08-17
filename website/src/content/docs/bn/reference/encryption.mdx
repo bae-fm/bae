@@ -9,7 +9,7 @@ Opaque মেঘ-ঘরে bae যা রাখে সব ডিভাইস ছ
 
 Opaque লাইব্রেরির একটি root secret আছে: home তৈরি হলে mint করা random 256-bit কী। এটি OS keyring-এ থাকে, কখনও ফাইল-এ নয়; Apple প্ল্যাটফর্ম-এ keyring entry iCloud Keychain দিয়ে সিঙ্ক হয়। bae-এর config শুধু কী-এর fingerprint রাখে, unlock-এর সময় secret না ধরেই ভুল কী থেকে ঠিক কী আলাদা করার জন্য যথেষ্ট।
 
-Key ডিভাইসগুলোর মধ্যে দুইভাবে যায়, দুটিই [পরিচয় ও সদস্যপদ](/bn/reference/membership)-এ বর্ণিত: invite-এর সময় approved ডিভাইস-এর public কী-তে sealed, এবং recovery code-এর ভেতরে carried।
+কী দুটি উপায়ে ডিভাইসের মধ্যে ভ্রমণ করে, উভয়ই [পরিচয় এবং সদস্যপদ](/bn/reference/membership)-এ বর্ণিত হয়েছে: ডিভাইস জোড়া দেওয়ার সময় একটি অনুমোদিত ডিভাইসের সর্বজনীন কীতে সিল করা হয় এবং একটি পুনরুদ্ধার কোডের মধ্যে বহন করা হয়।
 
 ## জেনারেশন
 

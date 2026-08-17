@@ -17,14 +17,14 @@ Przy każdym pobraniu autor każdego zestawu zmian jest sprawdzany względem teg
 
 ## Uzgodnienie dołączenia
 
-Dodanie urządzenia to wymiana dwóch kodów z jawną weryfikacją przez człowieka pośrodku:
+Dodanie urządzenia to jedna lokalna sesja parowania z wyraźną weryfikacją przez człowieka:
 
-1. Dołączające urządzenie generuje parę kluczy i pokazuje **join request**: swój klucz publiczny, krótki odcisk klucza i (dla dostawców OAuth) konto chmury, któremu trzeba udostępnić folder.
-2. Owner dekoduje prośbę, a dwa ekrany pokazują ten sam odcisk. Człowiek sprawdza, że pasują; to ten krok pokonuje podmieniony klucz.
-3. Zatwierdzenie robi trzy rzeczy naraz: nadaje kontu nowego urządzenia dostęp do domu w chmurze (udostępnienie folderu w chmurach konsumenckich, osadzone dane dostępowe w S3, udział CloudKit w iCloud), zamyka klucz biblioteki dla klucza publicznego nowego urządzenia i podpisuje wpis członkostwa dodający je. Wszystko jest spakowane w **invite code**.
-4. Dołączające urządzenie zużywa zaproszenie, otwiera klucz, uruchamia się z najnowszej migawki i synchronizuje.
+1. Właściciel uruchamia **Dodaj urządzenie**. bae nasłuchuje przez chwilę w sieci lokalnej i wyświetla jeden kod parowania. Zawiera adresy odbiorników, efemeryczny klucz sesji, nazwę biblioteki, dostawcę i datę wygaśnięcia — nie ma klucza biblioteki ani poświadczeń trwałego magazynu.
+2. Dołączające urządzenie skanuje kod, tworzy swoją parę kluczy, w razie potrzeby loguje się do dostawcy i wysyła swój podpisany klucz publiczny oraz tożsamość konta dostawcy poprzez szyfrowane połączenie lokalne. Obydwa urządzenia pokazują ten sam odcisk palca.
+3. Właściciel porównuje odciski palców i potwierdza tę dokładną tożsamość. Zatwierdzenie zapewnia dostęp do konta w chmurze, jeśli jest to wymagane, podpisuje wpis członkostwa i pieczętuje klucz biblioteki oraz ostateczny dostęp do klucza publicznego nowego urządzenia.
+4. Zapieczętowana przesyłka powraca tym samym uwierzytelnionym połączeniem lokalnym. Dołączające urządzenie otwiera je, ładuje dane z pamięci w chmurze i rozpoczyna synchronizację.
 
-Zaproszenie jest zamknięte dla żądającego klucza: jego przechwycenie niczego nie daje.
+Parowanie wygasłe, przerwane lub odrzucone nic nie daje.
 
 ## Odwołanie
 

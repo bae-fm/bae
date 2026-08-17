@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>ક્લાઉડ</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>લાઇબ્રેરીમાં જુઓ</value></data>
   <data name="join.title" xml:space="preserve"><value>લાઇબ્રેરીમાં જોડાઓ</value></data>
-  <data name="join.intro" xml:space="preserve"><value>આ ઉપકરણને તમારા બીજા ઉપકરણ પર પહેલેથી રહેલી લાઇબ્રેરીમાં ઉમેરો.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>આ ઉપકરણનો કોડ</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>તમારી લાઇબ્રેરીમાં પહેલેથી રહેલા ઉપકરણ પર સેટિંગ્સ → ઉપકરણો → ઉપકરણ ઉમેરો ખોલો અને આ સ્કેન કરો અથવા ચોંટાડો.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>આ ઉપકરણ: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>આ ઉપકરણનો કોડ બનાવી શકાયો નહીં</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>આમંત્રણ કોડ</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>તે ઉપકરણ આને મંજૂર કરે પછી, તે બતાવે તે આમંત્રણ કોડ દાખલ કરો.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>આમંત્રણ કોડ ચોંટાડો</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>અમાન્ય આમંત્રણ કોડ</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · માલિક {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>તમારી લાઇબ્રેરીમાં પહેલેથી રહેલા ઉપકરણ પર દેખાતો પેરિંગ કોડ સ્કેન કરો.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>પેરિંગ કોડ ચોંટાડો</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>આ પેરિંગ કોડ માન્ય નથી.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>જોડાઓ</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} જોડાઈ રહ્યું છે…</value></data>
   <data name="join.failed" xml:space="preserve"><value>લાઇબ્રેરીમાં જોડાઈ શકાયું નહીં</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>દૂર કરો</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>આ ઉપકરણ ઍક્સેસ ગુમાવશે અને લાઇબ્રેરી કી ફેરવાશે. પુષ્ટિ કરવા દૂર કરો પર ફરી ક્લિક કરો.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>ઉપકરણ ઉમેરો</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>નવા ઉપકરણ પર લાઇબ્રેરીમાં જોડાઓ ખોલો અને તેનો કોડ બતાવો. તેને અહીં સ્કેન કરો, અથવા નીચે ચોંટાડો.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ઉપકરણનો કોડ ચોંટાડો</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>ડિકોડ કરો</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>અમાન્ય ઉપકરણ કોડ</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>આ ઉપકરણ મંજૂર કરવું?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>તે તમારી લાઇબ્રેરીમાં ઉમેરાશે અને સમન્વયન કરી શકશે. તેમાં દાખલ કરવા તમને કોડ મળશે.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>મંજૂર કરો</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>ઉપકરણ મંજૂર થઈ રહ્યું છે…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>આ ઉપકરણ મંજૂર કરી શકાયું નહીં</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>નવા ઉપકરણ પર આ કોડ દાખલ કરો.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>તમારી લાઇબ્રેરીમાં જોડાતા ઉપકરણ પર આ કોડ સ્કેન કરો.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>આ ઉપકરણ મંજૂર કરવું?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>તે તમારી લાઇબ્રેરીમાં ઉમેરાશે અને સમન્વયન કરી શકશે.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>મંજૂર કરો</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>ઉપકરણ મંજૂર થઈ રહ્યું છે…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>આ ઉપકરણ મંજૂર કરી શકાયું નહીં</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>ઉપકરણની રાહ જોવાઈ રહી છે…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>આલ્બમ પર જાઓ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>કાઢી નાખો</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>આઉટબોક્સ લોડ કરી શકાયું નહીં</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>રિફ્રેશ થઈ રહ્યું છે…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>એક રિલીઝ તરીકે જોડો</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>અલગ રિલીઝ તરીકે રાખો</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>પેરિંગ શરૂ થઈ રહ્યું છે…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>મંજૂરીની રાહ જોવાઈ રહી છે…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ફિંગરપ્રિન્ટ: {fingerprint}</value></data>
 </root>

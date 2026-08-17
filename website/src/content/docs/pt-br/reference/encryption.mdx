@@ -9,7 +9,7 @@ Tudo que bae coloca em um local opaco na nuvem é criptografado antes de sair do
 
 Uma biblioteca opaca tem um segredo raiz: uma chave aleatória de 256 bits criada quando o local é criado. Ela vive no chaveiro do sistema operacional, nunca em um arquivo; em plataformas Apple, a entrada do chaveiro sincroniza pelo iCloud Keychain. A configuração de bae armazena só uma impressão digital da chave, suficiente para distinguir uma chave errada de uma certa ao desbloquear sem guardar o segredo.
 
-A chave viaja entre dispositivos de duas formas, ambas descritas em [Identidade e associação](/pt-br/reference/membership): selada para a chave pública de um dispositivo aprovado durante um convite e carregada dentro de um código de recuperação.
+A chave viaja entre dispositivos de duas maneiras, ambas descritas em [Identidade e adesão](/pt-br/reference/membership): selada à chave pública de um dispositivo aprovado durante o emparelhamento do dispositivo e transportada dentro de um código de recuperação.
 
 ## Gerações
 

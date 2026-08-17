@@ -25,8 +25,7 @@ private const val QR_SIZE_PX = 512
 
 /**
  * Render [text] as a QR code square. The same image is shown wherever a device
- * presents a code for another device's camera: the joiner's join-request code in
- * onboarding, and the invite code an owner hands back after approval. Returns
+ * presents its pairing offer for a joining device's camera. Returns
  * null only if ZXing rejects the payload (e.g. too long to encode), which the
  * caller renders around — the copyable text is always shown alongside.
  */
@@ -75,7 +74,7 @@ private fun BitMatrix.toBitmap(): Bitmap {
 private fun QRCodeImagePreview() {
     BaeTheme {
         QRCodeImage(
-            text = "bae://join/placeholder-code",
+            text = "bae://pair/placeholder-code",
             contentDescription = null,
             modifier = Modifier.size(200.dp),
         )

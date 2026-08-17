@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Облак</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>преглед в библиотеката</value></data>
   <data name="join.title" xml:space="preserve"><value>присъединяване към библиотека</value></data>
-  <data name="join.intro" xml:space="preserve"><value>добавете това устройство към библиотека, която вече имате на друго устройство.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>кодът на това устройство</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>на устройство, което вече е във вашата библиотека, отворете настройки → устройства → добавяне на устройство и сканирайте или поставете това.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>това устройство: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>кодът на това устройство не можа да бъде генериран</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>код за покана</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>след като това устройство одобри това, въведете кода за покана, който показва.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>поставяне на код за покана</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>невалиден код за покана</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · собственик {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Сканирайте кода за сдвояване, показан на устройство, което вече е в библиотеката ви.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Поставете кода за сдвояване</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Този код за сдвояване е невалиден.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>присъединяване</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>присъединяване към {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>присъединяването към библиотеката не бе успешно</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>премахване</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>това устройство ще загуби достъп и ключът на библиотеката ще бъде сменен. щракнете отново върху премахване, за да потвърдите.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>добавяне на устройство</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>на новото устройство отворете присъединяване към библиотека и покажете кода му. сканирайте го тук или го поставете по-долу.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>поставете кода на устройството</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>декодиране</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>невалиден код на устройство</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>одобряване на това устройство?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>то ще бъде добавено към библиотеката ви и ще може да се синхронизира. ще получите код, който да въведете на него.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>одобряване</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>одобряване на устройството…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>това устройство не можа да бъде одобрено</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>въведете този код на новото устройство.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Сканирайте този код на устройството, което се присъединява към библиотеката ви.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>одобряване на това устройство?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>то ще бъде добавено към библиотеката ви и ще може да се синхронизира.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>одобряване</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>одобряване на устройството…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>това устройство не можа да бъде одобрено</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Изчакване на устройството…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>отиди към албума</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>изтриване</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>изходящата опашка не може да бъде заредена</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Обновяване…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Обединяване като едно издание</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Запазване като отделни издания</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Стартиране на сдвояването…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Изчакване на одобрение…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Отпечатък: {fingerprint}</value></data>
 </root>

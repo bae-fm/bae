@@ -9,11 +9,11 @@ description: 提供商、认证，以及云端主目录的形态
 
 | Provider | Auth | Access for a new device |
 |---|---|---|
-| S3-compatible | Access key + secret | Credentials embedded in the invite |
-| Google Drive | OAuth (PKCE) | Folder shared to the joiner's account |
-| Dropbox | OAuth (PKCE) | Folder shared to the joiner's account |
-| OneDrive | OAuth (PKCE) | Folder shared to the joiner's account |
-| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+| S3-compatible | Access key + secret | 配对期间将凭证密封到批准的设备上 |
+| Google Drive | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
+| Dropbox | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
+| OneDrive | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
+| iCloud (CloudKit) | Apple ID, no sign-in | 配对期间接受 CloudKit 共享 |
 
 S3-compatible 覆盖 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用该 API 的其他服务；bucket、region、endpoint 和 key prefix 可配置，并会在保存配置前探测 bucket，因此拼写错误会在设置时失败，而不是第一次同步时失败。OAuth providers 只存在于完整 **bae** 版本；**baeium** 构建会编译掉它们。
 

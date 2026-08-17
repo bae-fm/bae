@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>雲端</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>在資料庫中檢視</value></data>
   <data name="join.title" xml:space="preserve"><value>加入資料庫</value></data>
-  <data name="join.intro" xml:space="preserve"><value>將此裝置加入你另一台裝置上已有的資料庫。</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>此裝置的代碼</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>在已加入你資料庫的裝置上，開啟設定 → 裝置 → 加入裝置，然後掃描或貼上這段代碼。</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>此裝置：{fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>無法產生此裝置的代碼</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>邀請碼</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>該裝置核准此裝置後，輸入它顯示的邀請碼。</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>貼上邀請碼</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>邀請碼無效</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · 擁有者 {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>掃描已加入你資料庫的裝置上顯示的配對碼。</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>貼上配對碼</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>此配對碼無效。</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>加入</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>正在加入 {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>無法加入資料庫</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>移除</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>此裝置將失去存取權，資料庫金鑰也會輪替。再次按下移除以確認。</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>加入裝置</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>在新裝置上開啟加入資料庫並顯示其代碼。在此掃描，或貼到下方。</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>貼上裝置代碼</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>解碼</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>裝置代碼無效</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>要核准此裝置嗎？</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>它會加入你的資料庫並可同步。你會取得要在該裝置上輸入的代碼。</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>核准</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>正在核准裝置…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>無法核准此裝置</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>在新裝置輸入此代碼。</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>在要加入你資料庫的裝置上掃描此代碼。</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>要核准此裝置嗎？</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>它會加入你的資料庫並可同步。</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>核准</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>正在核准裝置…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>無法核准此裝置</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>正在等待裝置…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>前往專輯</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>刪除</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>無法載入寄件匣</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>正在重新整理…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>合併為一個發行版本</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>保留為個別的發行版本</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>正在開始配對…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>正在等待核准…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>指紋：{fingerprint}</value></data>
 </root>

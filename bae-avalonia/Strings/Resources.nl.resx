@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>weergeven in bibliotheek</value></data>
   <data name="join.title" xml:space="preserve"><value>aan een bibliotheek deelnemen</value></data>
-  <data name="join.intro" xml:space="preserve"><value>voeg dit apparaat toe aan een bibliotheek die je al op een ander apparaat hebt.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>code van dit apparaat</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>open op een apparaat dat al in je bibliotheek staat instellingen → apparaten → apparaat toevoegen en scan of plak dit.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>dit apparaat: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>kan de code van dit apparaat niet genereren</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>uitnodigingscode</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>zodra dat apparaat dit apparaat goedkeurt, voer je de uitnodigingscode in die het toont.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>uitnodigingscode plakken</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>ongeldige uitnodigingscode</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · eigenaar {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Scan de koppelingscode die wordt weergegeven op een apparaat dat al in je bibliotheek staat.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Koppelingscode plakken</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Deze koppelingscode is ongeldig.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>deelnemen</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>deelnemen aan {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>kan niet deelnemen aan de bibliotheek</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>verwijderen</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>dit apparaat verliest toegang en de bibliotheeksleutel wordt vernieuwd. klik opnieuw op verwijderen om te bevestigen.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>apparaat toevoegen</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>open op het nieuwe apparaat aan een bibliotheek deelnemen en toon de code. scan deze hier of plak deze hieronder.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>plak de code van het apparaat</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>decoderen</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>ongeldige apparaatcode</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>dit apparaat goedkeuren?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>het wordt aan je bibliotheek toegevoegd en kan synchroniseren. je krijgt een code om erop in te voeren.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>goedkeuren</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>apparaat goedkeuren…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>kan dit apparaat niet goedkeuren</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>voer deze code in op het nieuwe apparaat.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Scan deze code op het apparaat dat aan je bibliotheek deelneemt.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>dit apparaat goedkeuren?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>het wordt aan je bibliotheek toegevoegd en kan synchroniseren.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>goedkeuren</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>apparaat goedkeuren…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>kan dit apparaat niet goedkeuren</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Wachten op het apparaat…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ga naar album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>verwijderen</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>kan de outbox niet laden</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Vernieuwen…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Combineren als één uitgave</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Behouden als afzonderlijke uitgaven</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Koppelen wordt gestart…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Wachten op goedkeuring…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Vingerafdruk: {fingerprint}</value></data>
 </root>

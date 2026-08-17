@@ -12,11 +12,11 @@ Two different doors, for two different situations:
 
 ## Adding a device
 
-On the new device, choose **Join a library**. It shows a short code, also as a QR: the join request, carrying the device's public key and a fingerprint you can read aloud.
+On a device that already has the library, an owner opens Settings, Devices, **Add a device**. bae shows one pairing code as a QR and starts listening on the local network.
 
-On a device that already has the library, an owner opens Settings, Devices, **Add a device**, and scans or pastes that request. bae shows the joining device's fingerprint; confirm it matches what the new device displays. Approving produces an invite code: hand it back to the new device (scan the QR or paste it), and the new device downloads the library and starts syncing.
+On the new device, choose **Join a library** and scan that code. Sign in to the storage provider when asked. Both devices show the new device's fingerprint; compare them, then approve on the existing device. The new device receives its sealed access through the same local connection, downloads the library, and starts syncing. No code travels back.
 
-Behind the handshake: the approving device grants the newcomer access to the cloud home (consumer clouds share the folder to the newcomer's account; S3 invites embed credentials) and seals the library's encryption key to the newcomer's public key. The invite is useless to any other device. Details in [Identity and membership](/reference/membership).
+The pairing code contains neither the library key nor lasting storage credentials, and an interrupted or rejected pairing grants nothing. Details in [Identity and membership](/reference/membership).
 
 ## Members and roles
 

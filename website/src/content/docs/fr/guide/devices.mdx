@@ -12,11 +12,11 @@ Deux portes différentes, pour deux situations différentes :
 
 ## Ajouter un appareil
 
-Sur le nouvel appareil, choisissez **Join a library**. Il affiche un code court, aussi sous forme de QR : la demande de jonction, qui porte la clé publique de l’appareil et une empreinte que vous pouvez lire à voix haute.
+Sur un appareil disposant déjà de la bibliothèque, un propriétaire ouvre Paramètres, Appareils, **Ajouter un appareil**. bae affiche un code d'association sous forme de QR et commence à écouter sur le réseau local.
 
-Sur un appareil qui possède déjà la bibliothèque, un propriétaire ouvre Réglages, Appareils, **Add a device**, puis scanne ou colle cette demande. bae affiche l’empreinte de l’appareil qui rejoint ; confirmez qu’elle correspond à ce que le nouvel appareil affiche. L’approbation produit un code d’invitation : remettez-le au nouvel appareil (scannez le QR ou collez-le), et le nouvel appareil télécharge la bibliothèque puis commence la synchronisation.
+Sur le nouvel appareil, choisissez **Rejoindre une bibliothèque** et scannez ce code. Connectez-vous au fournisseur de stockage lorsque vous y êtes invité. Les deux appareils affichent l'empreinte digitale du nouvel appareil ; comparez-les, puis approuvez sur l’appareil existant. Le nouvel appareil reçoit son accès scellé via la même connexion locale, télécharge la bibliothèque et démarre la synchronisation. Aucun code ne revient.
 
-Derrière cette poignée de main : l’appareil approbateur accorde au nouvel arrivant l’accès à l’emplacement cloud (les clouds grand public partagent le dossier avec le compte du nouvel arrivant ; les invitations S3 embarquent des identifiants) et scelle la clé de chiffrement de la bibliothèque avec la clé publique du nouvel arrivant. L’invitation ne sert à aucun autre appareil. Détails dans [Identité et appartenance](/fr/reference/membership).
+Le code de couplage ne contient ni la clé de bibliothèque ni les informations d'identification de stockage durables, et un couplage interrompu ou rejeté n'accorde rien. Détails dans [Identité et appartenance](/fr/reference/membership).
 
 ## Membres et rôles
 

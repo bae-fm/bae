@@ -9,7 +9,7 @@ Alles, was bae in ein undurchsichtiges Cloud-Zuhause legt, wird verschlüsselt, 
 
 Eine undurchsichtige Mediathek hat ein Wurzelgeheimnis: einen zufälligen 256-Bit-Schlüssel, der beim Erstellen des Zuhauses erzeugt wird. Er lebt im OS-Schlüsselbund, nie in einer Datei; auf Apple-Plattformen synchronisiert der Schlüsselbundeintrag über den iCloud-Schlüsselbund. Die Konfiguration von bae speichert nur einen Fingerabdruck des Schlüssels, genug, um beim Entsperren einen falschen Schlüssel von einem richtigen zu unterscheiden, ohne das Geheimnis zu halten.
 
-Der Schlüssel wandert auf zwei Arten zwischen Geräten, beide beschrieben in [Identität und Mitgliedschaft](/de/reference/membership): während einer Einladung für den öffentlichen Schlüssel eines bestätigten Geräts verschlossen und innerhalb eines Wiederherstellungscodes getragen.
+Der Schlüssel wird auf zwei Arten zwischen Geräten übertragen, die beide in [Identität und Mitgliedschaft](/de/reference/membership) beschrieben sind: während der Gerätekopplung an den öffentlichen Schlüssel eines zugelassenen Geräts versiegelt und in einem Wiederherstellungscode enthalten.
 
 ## Generationen
 

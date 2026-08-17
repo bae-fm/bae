@@ -6,7 +6,7 @@ using QRCoder;
 namespace Bae.Desktop;
 
 /// <summary>
-/// Renders a string (a join-request, invite, or recovery code) to a QR
+/// Renders a pairing or recovery code to a QR
 /// <see cref="Bitmap"/> — the analog of macOS's <c>QRCode.image(from:)</c>. The
 /// codes are scanned by another device's camera, so the image is just a visual
 /// transport of the same text shown beside it.
@@ -40,8 +40,9 @@ public static class QrCode
             using var stream = new MemoryStream(bytes);
             return new Bitmap(stream);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            BaeDiagnostics.Logger.Error("Failed to encode QR code.", exception);
             // An over-long payload (past QR's capacity) or an encoder failure returns
             // null; the caller falls back to the copyable text always shown beside it.
             return null;

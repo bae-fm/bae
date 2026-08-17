@@ -9,11 +9,11 @@ description: فراہم کنندگان، تصدیق، اور کلاؤڈ گھر �
 
 | فراہم کنندہ | Auth | Access for a new آلہ |
 |---|---|---|
-| S3-compatible | Access کلید + secret | Credentials embedded in the invite |
-| Google Drive | OAuth (PKCE) | پوشہ shared to the joiner's اکاؤنٹ |
-| Dropbox | OAuth (PKCE) | پوشہ shared to the joiner's اکاؤنٹ |
-| OneDrive | OAuth (PKCE) | پوشہ shared to the joiner's اکاؤنٹ |
-| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+| S3-compatible | Access کلید + secret | جوڑا بنانے کے دوران منظور شدہ ڈیوائس پر اسناد سیل کر دی گئیں۔ |
+| Google Drive | OAuth (PKCE) | نئے آلے کے اکاؤنٹ کی منظوری دی گئی، پھر فولڈر کا اشتراک کیا جاتا ہے۔ |
+| Dropbox | OAuth (PKCE) | نئے آلے کے اکاؤنٹ کی منظوری دی گئی، پھر فولڈر کا اشتراک کیا جاتا ہے۔ |
+| OneDrive | OAuth (PKCE) | نئے آلے کے اکاؤنٹ کی منظوری دی گئی، پھر فولڈر کا اشتراک کیا جاتا ہے۔ |
+| iCloud (CloudKit) | Apple ID, no sign-in | جوڑا بنانے کے دوران CloudKit کا حصہ قبول کر لیا گیا۔ |
 
 S3-compatible میں AWS، Backblaze B2، Cloudflare R2، Wasabi، MinIO، اور API بولنے والی ہر چیز آتی ہے؛ bucket، region، endpoint، اور کلید prefix قابل ترتیب ہیں، اور config محفوظ ہونے سے پہلے bucket جانچا جاتا ہے تاکہ typo setup پر ناکام ہو، پہلی ہم آہنگی پر نہیں۔ OAuth فراہم کنندگان صرف پوری **bae** edition میں موجود ہیں؛ **baeium** builds انہیں compile out کرتی ہیں۔
 

@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Bulut</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>kitaplıkta görüntüle</value></data>
   <data name="join.title" xml:space="preserve"><value>kitaplığa katıl</value></data>
-  <data name="join.intro" xml:space="preserve"><value>bu cihazı başka bir cihazda zaten sahip olduğunuz bir kitaplığa ekleyin.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>bu cihazın kodu</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>kitaplığınızdaki bir cihazda ayarlar → cihazlar → cihaz ekle'yi açın ve bunu tarayın veya yapıştırın.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>bu cihaz: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>bu cihazın kodu oluşturulamadı</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>davet kodu</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>o cihaz bunu onayladıktan sonra gösterdiği davet kodunu girin.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>davet kodunu yapıştır</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>geçersiz davet kodu</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · sahip {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Kitaplığınızda zaten bulunan bir cihazda gösterilen eşleştirme kodunu tarayın.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Eşleştirme kodunu yapıştırın</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Bu eşleştirme kodu geçerli değil.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>katıl</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} kitaplığına katılınıyor…</value></data>
   <data name="join.failed" xml:space="preserve"><value>kitaplığa katılınamadı</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>kaldır</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>bu cihaz erişimi kaybedecek ve kitaplık anahtarı döndürülecek. onaylamak için kaldır'a yeniden tıklayın.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>cihaz ekle</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>yeni cihazda kitaplığa katıl'ı açıp kodunu gösterin. burada tarayın veya aşağıya yapıştırın.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>cihazın kodunu yapıştır</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>çöz</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>geçersiz cihaz kodu</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>bu cihaz onaylansın mı?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>kitaplığınıza eklenecek ve eşzamanlayabilecek. ona girmek için bir kod alacaksınız.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>onayla</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>cihaz onaylanıyor…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>bu cihaz onaylanamadı</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>bu kodu yeni cihazda girin.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Bu kodu kitaplığınıza katılan cihazda tarayın.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>bu cihaz onaylansın mı?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>kitaplığınıza eklenecek ve eşzamanlayabilecek.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>onayla</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>cihaz onaylanıyor…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>bu cihaz onaylanamadı</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Cihaz bekleniyor…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>albüme git</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>sil</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>giden kutusu yüklenemedi</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Yenileniyor…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Tek yayın olarak birleştir</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Ayrı yayınlar olarak tut</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Eşleştirme başlatılıyor…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Onay bekleniyor…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Parmak izi: {fingerprint}</value></data>
 </root>

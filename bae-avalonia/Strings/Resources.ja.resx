@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>クラウド</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ライブラリで表示</value></data>
   <data name="join.title" xml:space="preserve"><value>ライブラリに参加</value></data>
-  <data name="join.intro" xml:space="preserve"><value>このデバイスを、別のデバイスにある既存のライブラリへ追加します。</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>このデバイスのコード</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>すでにライブラリにあるデバイスで、設定 → デバイス → デバイスを追加を開き、これをスキャンするか貼り付けてください。</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>このデバイス: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>このデバイスのコードを生成できませんでした</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>招待コード</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>そのデバイスがこのデバイスを承認したら、表示される招待コードを入力してください。</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>招待コードを貼り付け</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>招待コードが無効です</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · 所有者 {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>すでにライブラリにあるデバイスに表示されたペアリングコードをスキャンしてください。</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>ペアリングコードを貼り付け</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>このペアリングコードは無効です。</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>参加</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name}に参加中…</value></data>
   <data name="join.failed" xml:space="preserve"><value>ライブラリに参加できませんでした</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>削除</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>このデバイスはアクセスできなくなり、ライブラリキーがローテーションされます。確認するには、もう一度削除をクリックしてください。</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>デバイスを追加</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>新しいデバイスで「ライブラリに参加」を開き、コードを表示します。ここでスキャンするか、下に貼り付けてください。</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>デバイスのコードを貼り付け</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>デコード</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>デバイスコードが無効です</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>このデバイスを承認しますか？</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ライブラリに追加され、同期できるようになります。そのデバイスに入力するコードが発行されます。</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>承認</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>デバイスを承認中…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>このデバイスを承認できませんでした</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>このコードを新しいデバイスに入力してください。</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>ライブラリに参加するデバイスでこのコードをスキャンしてください。</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>このデバイスを承認しますか？</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>ライブラリに追加され、同期できるようになります。</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>承認</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>デバイスを承認中…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>このデバイスを承認できませんでした</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>デバイスを待機中…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>アルバムへ移動</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>削除</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>送信箱を読み込めませんでした</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>更新中…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>1つのリリースとして結合</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>個別のリリースとして保持</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>ペアリングを開始中…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>承認を待っています…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>フィンガープリント: {fingerprint}</value></data>
 </root>

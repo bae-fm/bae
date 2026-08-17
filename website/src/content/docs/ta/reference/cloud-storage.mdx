@@ -9,11 +9,11 @@ description: Providers, authentication, மேகம் home இன் வடி
 
 | Provider | Auth | Access for a new சாதனம் |
 |---|---|---|
-| S3-compatible | Access விசை + secret | Credentials embedded in the invite |
-| Google Drive | OAuth (PKCE) | Folder shared to the joiner's கணக்கு |
-| Dropbox | OAuth (PKCE) | Folder shared to the joiner's கணக்கு |
-| OneDrive | OAuth (PKCE) | Folder shared to the joiner's கணக்கு |
-| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+| S3-compatible | Access விசை + secret | இணைக்கும் போது அங்கீகரிக்கப்பட்ட சாதனத்திற்குச் சான்றுகள் சீல் வைக்கப்பட்டுள்ளன |
+| Google Drive | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
+| Dropbox | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
+| OneDrive | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
+| iCloud (CloudKit) | Apple ID, no sign-in | இணைக்கும் போது CloudKit பகிர்வு ஏற்றுக்கொள்ளப்பட்டது |
 
 S3-compatible என்பது AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, மற்றும் அந்த API பேசும் எதையும் உள்ளடக்கும்; bucket, region, endpoint, விசை prefix ஆகியவை configurable. config save ஆகும் முன் bucket probed செய்யப்படும்; typo முதல் ஒத்திசைவு இல் அல்ல setup இல் fail ஆகும். OAuth providers முழு **bae** edition இல் மட்டும் உள்ளன; **baeium** builds அவற்றை compile செய்யாது.
 

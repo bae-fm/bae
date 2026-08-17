@@ -12,11 +12,11 @@ Due porte diverse, per due situazioni diverse:
 
 ## Aggiungere un dispositivo
 
-Sul nuovo dispositivo, scegli **Unisciti a una libreria**. Mostra un codice breve, anche come QR: la richiesta di unione, con la chiave pubblica del dispositivo e un'impronta che puoi leggere ad alta voce.
+Su un dispositivo che dispone già della libreria, il proprietario apre Impostazioni, Dispositivi, **Aggiungi un dispositivo**. bae mostra un codice di accoppiamento come QR e inizia ad ascoltare sulla rete locale.
 
-Su un dispositivo che ha già la libreria, un proprietario apre Impostazioni, Dispositivi, **Aggiungi un dispositivo**, e scansiona o incolla quella richiesta. bae mostra l'impronta del dispositivo che si sta unendo; conferma che corrisponda a ciò che mostra il nuovo dispositivo. L'approvazione produce un codice di invito: restituiscilo al nuovo dispositivo (scansiona il QR o incollalo), e il nuovo dispositivo scarica la libreria e inizia a sincronizzare.
+Sul nuovo dispositivo, scegli **Unisciti a una biblioteca** e scansiona il codice. Accedi al provider di archiviazione quando richiesto. Entrambi i dispositivi mostrano l'impronta digitale del nuovo dispositivo; confrontali, quindi approvali sul dispositivo esistente. Il nuovo dispositivo riceve l'accesso sigillato tramite la stessa connessione locale, scarica la libreria e avvia la sincronizzazione. Nessun codice torna indietro.
 
-Dietro la stretta di mano: il dispositivo che approva concede al nuovo arrivato l'accesso alla home cloud (i cloud consumer condividono la cartella con l'account del nuovo arrivato; gli inviti S3 incorporano credenziali) e sigilla la chiave di cifratura della libreria sulla chiave pubblica del nuovo arrivato. L'invito è inutile per qualunque altro dispositivo. Dettagli in [Identità e appartenenza](/it/reference/membership).
+Il codice di abbinamento non contiene né la chiave della libreria né credenziali di archiviazione durature e un abbinamento interrotto o rifiutato non garantisce nulla. Dettagli in [Identità e appartenenza](/it/reference/membership).
 
 ## Membri e ruoli
 

@@ -17,14 +17,14 @@ Bij elke pull wordt de auteur van elke changeset tegen dit record gecontroleerd:
 
 ## De toetredingshanddruk
 
-Een apparaat toevoegen is een uitwisseling met twee codes en expliciete menselijke verificatie in het midden:
+Het toevoegen van een apparaat is één lokale koppelingssessie met expliciete menselijke verificatie:
 
-1. Het toetredende apparaat genereert zijn sleutelpaar en toont een **join request**: zijn publieke sleutel, een korte vingerafdruk daarvan, en (voor OAuth-providers) het cloudaccount waarmee de map moet worden gedeeld.
-2. Een eigenaar decodeert het verzoek, en de twee schermen tonen dezelfde vingerafdruk. De mens controleert dat ze overeenkomen; dit is de stap die een verwisselde sleutel verslaat.
-3. Goedkeuring doet drie dingen tegelijk: geeft het account van de nieuwkomer toegang tot de cloud-home (mapshare op consumentenclouds, ingesloten inloggegevens op S3, een CloudKit-share op iCloud), sluit de bibliotheeksleutel af voor de publieke sleutel van de nieuwkomer, en ondertekent een lidmaatschapsvermelding die hem toevoegt. Alles wordt verpakt in een **invite code**.
-4. Het toetredende apparaat gebruikt de uitnodiging, opent de sleutel, bootstrapt vanaf de laatste snapshot en synchroniseert.
+1. Een eigenaar start **Voeg een apparaat toe**. bae luistert kort op het lokale netwerk en toont één koppelingscode. Het bevat de luisteraaradressen, een kortstondige sessiesleutel, de bibliotheeknaam, de provider en een vervaldatum: geen bibliotheeksleutel of permanente opslagreferenties.
+2. Het aangesloten apparaat scant de code, maakt het apparaatsleutelpaar aan, meldt zich indien nodig aan bij de provider en verzendt de ondertekende openbare sleutel en de identiteit van het provideraccount via de gecodeerde lokale verbinding. Beide toestellen tonen dezelfde vingerafdruk.
+3. De eigenaar vergelijkt de vingerafdrukken en keurt de exacte identiteit goed. Goedkeuring verleent waar nodig toegang tot het cloudaccount, ondertekent de lidmaatschapsinschrijving en verzegelt de bibliotheeksleutel en de definitieve opslagtoegang tot de openbare sleutel van het nieuwe apparaat.
+4. Het verzegelde pakket keert terug via dezelfde geauthenticeerde lokale verbinding. Het aangesloten apparaat opent het, start op vanuit de cloudopslag en begint met synchroniseren.
 
-De uitnodiging is afgesloten voor de verzoekende sleutel: onderscheppen geeft niets.
+Een verlopen, onderbroken of afgewezen koppeling levert niets op.
 
 ## Intrekking
 

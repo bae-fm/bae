@@ -6,7 +6,7 @@ private let logger = Logger.bae("MembersSection")
 
 /// Device-management rows for the current library's membership chain: lists the
 /// devices (with this device flagged), lets an owner approve a new device
-/// (handing back an invite code) and remove a device (which rotates the library
+/// through a local pairing session and remove a device (which rotates the library
 /// key). Rendered inside the Library settings Form, below the Sync section and
 /// only while sync is connected — the underlying membership calls require an
 /// active sync manager. The list loads when the section appears and after each

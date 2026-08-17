@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>in Bibliothek anzeigen</value></data>
   <data name="join.title" xml:space="preserve"><value>Mediathek beitreten</value></data>
-  <data name="join.intro" xml:space="preserve"><value>dieses Gerät zu einer Mediathek hinzufügen, die du bereits auf einem anderen Gerät hast.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>Code dieses Geräts</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>öffne auf einem Gerät, das bereits in deiner Mediathek ist, Einstellungen → Geräte → Gerät hinzufügen und scanne dies oder füge es ein.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>dieses Gerät: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>der Code dieses Geräts konnte nicht erstellt werden</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>Einladungscode</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>sobald dieses Gerät dieses hier genehmigt, gib den angezeigten Einladungscode ein.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>Einladungscode einfügen</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>ungültiger Einladungscode</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · Besitzer {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Scanne den Kopplungscode, der auf einem Gerät angezeigt wird, das bereits in deiner Mediathek ist.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Kopplungscode einfügen</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Dieser Kopplungscode ist ungültig.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>beitreten</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} wird beigetreten…</value></data>
   <data name="join.failed" xml:space="preserve"><value>der Mediathek konnte nicht beigetreten werden</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>entfernen</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>dieses Gerät verliert den Zugriff und der Mediatheksschlüssel wird rotiert. klicke erneut auf Entfernen, um zu bestätigen.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>Gerät hinzufügen</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>öffne auf dem neuen Gerät Mediathek beitreten und zeige den Code an. scanne ihn hier oder füge ihn unten ein.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>Code des Geräts einfügen</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>decodieren</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>ungültiger Gerätecode</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>dieses Gerät genehmigen?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>es wird deiner Mediathek hinzugefügt und kann synchronisieren. du erhältst einen Code, den du dort eingibst.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>genehmigen</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>Gerät wird genehmigt…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>dieses Gerät konnte nicht genehmigt werden</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>gib diesen Code auf dem neuen Gerät ein.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Scanne diesen Code auf dem Gerät, das deiner Mediathek beitritt.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>dieses Gerät genehmigen?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>es wird deiner Mediathek hinzugefügt und kann synchronisieren.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>genehmigen</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>Gerät wird genehmigt…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>dieses Gerät konnte nicht genehmigt werden</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Warten auf das Gerät…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>zum Album wechseln</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>löschen</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>Postausgang konnte nicht geladen werden</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Wird aktualisiert …</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Als eine Veröffentlichung zusammenfassen</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Als separate Veröffentlichungen beibehalten</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Kopplung wird gestartet…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Warten auf Bestätigung…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Fingerabdruck: {fingerprint}</value></data>
 </root>

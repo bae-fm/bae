@@ -37,9 +37,9 @@
 		<string>_raop._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>bae uses the camera to scan a QR code from your music library.</string>
+	<string>bae uses the camera to scan codes when pairing or recovering a library.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>bae finds speakers and TVs on your network to play to them.</string>
+	<string>bae pairs devices and finds speakers and TVs on your local network.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

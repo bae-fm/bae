@@ -12,11 +12,11 @@ Dvoja različita vrata, za dvije različite situacije:
 
 ## Dodavanje uređaja
 
-Na novom uređaju odaberite **Join a library**. Prikazuje kratak kod, također kao QR: zahtjev za pridruživanje, s javnim ključem uređaja i otiskom koji možete pročitati naglas.
+Na uređaju koji već ima biblioteku, vlasnik otvara Postavke, Uređaji, **Dodajte uređaj**. bae prikazuje jedan kod za uparivanje kao QR i počinje slušati na lokalnoj mreži.
 
-Na uređaju koji već ima biblioteku vlasnik otvara Settings, Devices, **Add a device** i skenira ili lijepi taj zahtjev. bae prikazuje otisak uređaja koji se pridružuje; potvrdite da se podudara s onim što prikazuje novi uređaj. Odobrenje proizvodi pozivni kod: vratite ga novom uređaju (skenirajte QR ili ga zalijepite), a novi uređaj preuzima biblioteku i počinje sinkronizirati.
+Na novom uređaju odaberite **Pridružite se knjižnici** i skenirajte taj kod. Prijavite se kod davatelja pohrane kada se to od vas zatraži. Oba uređaja prikazuju otisak prsta novog uređaja; usporedite ih, a zatim odobrite na postojećem uređaju. Novi uređaj dobiva zapečaćeni pristup putem iste lokalne veze, preuzima biblioteku i započinje sinkronizaciju. Nikakav kod ne putuje natrag.
 
-Iza rukovanja: uređaj koji odobrava daje novom članu pristup mjestu u oblaku (potrošački oblaci dijele mapu s računom novog člana; S3 pozivnice ugrađuju vjerodajnice) i zapečaćuje ključ šifriranja biblioteke za javni ključ novog člana. Pozivnica je beskorisna za bilo koji drugi uređaj. Pojedinosti su u [Identitetu i članstvu](/hr/reference/membership).
+Kod za uparivanje ne sadrži ni ključ knjižnice ni vjerodajnice za trajnu pohranu, a prekinuto ili odbijeno uparivanje ne daje ništa. Pojedinosti u [Identitet i članstvo](/hr/reference/membership).
 
 ## Članovi i uloge
 

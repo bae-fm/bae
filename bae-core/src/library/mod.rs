@@ -1,5 +1,6 @@
 pub mod app_services;
 mod browse;
+mod device_pairing;
 pub mod download_snapshot;
 mod local_lifecycle;
 pub mod manager;
@@ -13,6 +14,9 @@ pub(crate) mod sync_controller;
 pub mod upload_throughput;
 pub use app_services::*;
 pub use browse::*;
+pub use device_pairing::{
+    inspect_device_pairing_offer, DevicePairingOfferInfo, DevicePairingSession, PairingDevice,
+};
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
 };
@@ -33,6 +37,8 @@ pub use upload_throughput::UploadThroughput;
 
 #[cfg(test)]
 mod creation_tests;
+#[cfg(test)]
+mod device_pairing_tests;
 #[cfg(test)]
 mod local_lifecycle_tests;
 
@@ -291,7 +297,7 @@ pub async fn restore_from_code_cancellable(
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum JoinFromCodeError {
+pub enum JoinDevicePairingError {
     #[error("join cancelled")]
     Cancelled,
     /// The owner's device never took its next step in the handshake before the
@@ -307,68 +313,48 @@ pub enum JoinFromCodeError {
     Join(String),
 }
 
-impl From<LibraryCodeOperationError> for JoinFromCodeError {
+impl From<LibraryCodeOperationError> for JoinDevicePairingError {
     fn from(error: LibraryCodeOperationError) -> Self {
         match error {
-            LibraryCodeOperationError::Cancelled => JoinFromCodeError::Cancelled,
-            LibraryCodeOperationError::Failed(error) => JoinFromCodeError::Join(error),
+            LibraryCodeOperationError::Cancelled => JoinDevicePairingError::Cancelled,
+            LibraryCodeOperationError::Failed(error) => JoinDevicePairingError::Join(error),
         }
     }
 }
 
-/// Join a shared library from an invite the owner's device displayed as a QR
-/// code. Wraps coven's `join_with_scanned_invite`, supplying bae's app dir,
-/// clock, id source, and blob plan. For an OAuth provider the caller fetches
-/// `oauth_tokens` first (the joining device authorizes its own cloud account),
-/// exactly as restore does.
-///
-/// `scanned` is the payload bytes read off the QR: it carries both the invite
-/// code — which is where this device's provider credentials come from — and the
-/// owner's signed join offer with the storage slots the two devices exchange the
-/// rest of the handshake through.
-///
-/// `join_request_code` is the code this device's own
-/// [`crate::sync::membership::generate_join_request`] produced when it asked to
-/// join, and which the owner scanned/received to mint the invite: coven minted a
-/// pending identity for it at that point, and a completed join promotes that same
-/// identity into this store's own identity custody, so the caller must keep and
-/// pass back the exact code it generated.
-///
-/// The owner's device must be running its side of the handshake while this runs.
-/// If it never appears, this fails with [`JoinFromCodeError::OwnerOffline`].
-pub async fn join_from_scanned_bundle(
-    scanned: &[u8],
-    join_request_code: &str,
+#[derive(Clone)]
+pub struct PreparedDevicePairingJoin {
+    pairing: coven::PreparedDevicePairing,
+    layout: coven::StoreLayout,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    on_status: impl Fn(&str),
-) -> Result<Config, JoinFromCodeError> {
-    join_from_scanned_bundle_inner(
-        scanned,
-        join_request_code,
-        oauth_tokens,
-        cloudkit_ops,
-        None,
-        on_status,
-    )
-    .await
 }
 
-pub async fn join_from_scanned_bundle_cancellable(
-    scanned: &[u8],
-    join_request_code: &str,
+impl PreparedDevicePairingJoin {
+    pub fn fingerprint(&self) -> String {
+        crate::sync::membership::pubkey_fingerprint(self.pairing.request().public_key())
+    }
+
+    pub fn abandon(&self) -> Result<(), JoinDevicePairingError> {
+        self.pairing
+            .clone()
+            .abandon(&self.layout)
+            .map_err(|error| JoinDevicePairingError::Join(error.to_string()))
+    }
+}
+
+pub async fn prepare_device_pairing_join(
+    pairing_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    cancel: CancellationToken,
-    on_status: impl Fn(&str),
-) -> Result<Config, JoinFromCodeError> {
-    join_from_scanned_bundle_inner(
-        scanned,
-        join_request_code,
+) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
+    let app_dir = crate::config::bae_dir()
+        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    prepare_device_pairing_join_at(
+        pairing_code,
         oauth_tokens,
         cloudkit_ops,
-        Some(cancel),
-        on_status,
+        library_layout(app_dir),
     )
     .await
 }
@@ -409,26 +395,48 @@ async fn restore_from_code_inner(
     finish_code_operation(result, &layout, bridge)
 }
 
-async fn join_from_scanned_bundle_inner(
-    scanned: &[u8],
-    join_request_code: &str,
+async fn prepare_device_pairing_join_at(
+    pairing_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    cancel: Option<CancellationToken>,
+    layout: coven::StoreLayout,
+) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
+    let offer = coven::DevicePairingOffer::decode(pairing_code)
+        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    let provider_account_email =
+        pairing_provider_account_email(offer.cloud_provider().clone(), oauth_tokens.as_ref())
+            .await?;
+    let pairing =
+        coven::PreparedDevicePairing::open_or_create(pairing_code, provider_account_email, &layout)
+            .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    Ok(PreparedDevicePairingJoin {
+        pairing,
+        layout,
+        oauth_tokens,
+        cloudkit_ops,
+    })
+}
+
+pub async fn join_prepared_device_pairing_cancellable(
+    prepared: PreparedDevicePairingJoin,
+    cancel: CancellationToken,
     on_status: impl Fn(&str),
-) -> Result<Config, JoinFromCodeError> {
-    let app_dir = crate::config::bae_dir().map_err(|e| JoinFromCodeError::Join(e.to_string()))?;
-    let (rx, bridge) = cancel_receiver(cancel);
-    // Same default custody choice as `restore_from_code_inner` above.
-    let layout = library_layout(app_dir);
-    let result = crate::sync::join_with_scanned_invite(
-        scanned,
-        join_request_code,
+) -> Result<Config, JoinDevicePairingError> {
+    let PreparedDevicePairingJoin {
+        pairing,
+        layout,
+        oauth_tokens,
+        cloudkit_ops,
+    } = prepared;
+    let local_cancel = cancel.clone();
+    let (rx, bridge) = cancel_receiver(Some(cancel));
+    let result = coven::join_with_device_pairing(
+        &pairing,
         layout.clone(),
         crate::sync::synced_tables(),
         crate::migrations::all(),
         // Upload verification is local host policy and does not come from the
-        // scanned invite.
+        // scanned pairing offer.
         coven::ExactUploadVerification::MetadataHash,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
@@ -447,25 +455,74 @@ async fn join_from_scanned_bundle_inner(
     match result {
         Ok(coven::DeviceJoinTransportOutcome::Joined(coven_config)) => {
             let store_dir = layout.store_dir(&coven_config.store_id);
-            save_coven_library(coven_config, store_dir).map_err(JoinFromCodeError::Join)
+            save_coven_library(coven_config, store_dir).map_err(JoinDevicePairingError::Join)
         }
         // The owner gave up on this attempt before it completed. Not a failure of
         // this device — a distinct end the UI reports as such.
-        Ok(coven::DeviceJoinTransportOutcome::Abandoned(_)) => Err(JoinFromCodeError::Abandoned),
-        Err(coven::BootstrapError::Cancelled) => Err(JoinFromCodeError::Cancelled),
-        Err(error) => Err(classify_join_error(error)),
+        Ok(coven::DeviceJoinTransportOutcome::Abandoned(_)) => {
+            Err(JoinDevicePairingError::Abandoned)
+        }
+        Err(error) => {
+            let error = if local_cancel.is_cancelled() {
+                JoinDevicePairingError::Cancelled
+            } else {
+                classify_join_error(error)
+            };
+            if matches!(
+                error,
+                JoinDevicePairingError::Cancelled | JoinDevicePairingError::Abandoned
+            ) {
+                pairing
+                    .abandon(&layout)
+                    .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
+            }
+            Err(error)
+        }
     }
 }
 
 /// Map coven's bootstrap failure onto bae's join outcome. A transport wait that
 /// ran out its deadline means the owner's device never took its next step, which
 /// the UI reports as "the other device has to be open", not as an internal error.
-fn classify_join_error(error: coven::BootstrapError) -> JoinFromCodeError {
-    if let coven::BootstrapError::DeviceJoinTransport(coven::DeviceJoinTransportError::Timeout {
-        ..
-    }) = &error
-    {
-        return JoinFromCodeError::OwnerOffline;
+fn classify_join_error(error: coven::BootstrapError) -> JoinDevicePairingError {
+    match &error {
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Unavailable(_)) => {
+            JoinDevicePairingError::OwnerOffline
+        }
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Cancelled) => {
+            JoinDevicePairingError::Abandoned
+        }
+        coven::BootstrapError::Cancelled => JoinDevicePairingError::Cancelled,
+        _ => JoinDevicePairingError::Join(error.to_string()),
     }
-    JoinFromCodeError::Join(error.to_string())
+}
+
+#[cfg(feature = "oauth-providers")]
+async fn pairing_provider_account_email(
+    provider: crate::config::CloudProvider,
+    oauth_tokens: Option<&coven::OAuthTokens>,
+) -> Result<Option<String>, JoinDevicePairingError> {
+    if !provider.needs_oauth() {
+        return Ok(None);
+    }
+    let tokens = oauth_tokens.ok_or_else(|| {
+        JoinDevicePairingError::Join(format!("{provider:?} pairing requires OAuth authorization"))
+    })?;
+    coven::fetch_account_email(provider, tokens)
+        .await
+        .map(Some)
+        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))
+}
+
+#[cfg(not(feature = "oauth-providers"))]
+async fn pairing_provider_account_email(
+    provider: crate::config::CloudProvider,
+    _oauth_tokens: Option<&coven::OAuthTokens>,
+) -> Result<Option<String>, JoinDevicePairingError> {
+    if provider.needs_oauth() {
+        return Err(JoinDevicePairingError::Join(format!(
+            "{provider:?} pairing requires an OAuth-enabled build"
+        )));
+    }
+    Ok(None)
 }

@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>کلاؤڈ</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>لائبریری میں دیکھیں</value></data>
   <data name="join.title" xml:space="preserve"><value>کتب خانے میں شامل ہوں</value></data>
-  <data name="join.intro" xml:space="preserve"><value>اس آلے کو ایسے کتب خانے میں شامل کریں جو آپ کے دوسرے آلے پر پہلے سے ہے۔</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>اس آلے کا رمز</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>اپنے کتب خانے میں پہلے سے موجود آلے پر ترتیبات → آلات → آلہ شامل کریں کھولیں اور اسے اسکین یا پیسٹ کریں۔</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>یہ آلہ: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>اس آلے کا رمز نہیں بن سکا</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>دعوتی رمز</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>جب وہ آلہ اس کو منظور کر دے، تو دکھایا گیا دعوتی رمز درج کریں۔</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>دعوتی رمز پیسٹ کریں</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>غلط دعوتی رمز</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · مالک {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>اپنے کتب خانے میں پہلے سے موجود آلے پر دکھایا گیا جوڑی بنانے کا رمز اسکین کریں۔</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>جوڑی بنانے کا رمز پیسٹ کریں</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>جوڑی بنانے کا یہ رمز درست نہیں ہے۔</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>شامل ہوں</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} میں شامل ہو رہا ہے…</value></data>
   <data name="join.failed" xml:space="preserve"><value>کتب خانے میں شامل نہیں ہو سکا</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>ہٹائیں</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>یہ آلہ رسائی کھو دے گا اور کتب خانے کی کلید تبدیل ہو گی۔ تصدیق کے لیے ہٹائیں دوبارہ کلک کریں۔</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>آلہ شامل کریں</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>نئے آلے پر کتب خانے میں شامل ہوں کھولیں اور اس کا رمز دکھائیں۔ اسے یہاں اسکین کریں، یا نیچے پیسٹ کریں۔</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>آلے کا رمز پیسٹ کریں</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>ڈی کوڈ کریں</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>غلط آلہ رمز</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>یہ آلہ منظور کریں؟</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>یہ آپ کے کتب خانے میں شامل ہو گا اور ہم وقت سازی کر سکے گا۔ آپ کو اس پر درج کرنے کے لیے رمز ملے گا۔</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>منظور کریں</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>آلہ منظور ہو رہا ہے…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>یہ آلہ منظور نہیں ہو سکا</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>یہ رمز نئے آلے پر درج کریں۔</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>اپنے کتب خانے میں شامل ہونے والے آلے پر یہ رمز اسکین کریں۔</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>یہ آلہ منظور کریں؟</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>یہ آپ کے کتب خانے میں شامل ہو گا اور ہم وقت سازی کر سکے گا۔</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>منظور کریں</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>آلہ منظور ہو رہا ہے…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>یہ آلہ منظور نہیں ہو سکا</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>آلے کا انتظار ہے…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>البم پر جائیں</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>حذف کریں</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>آؤٹ باکس لوڈ نہیں ہو سکا</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>تازہ کیا جا رہا ہے…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>ایک ریلیز کے طور پر یکجا کریں</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>الگ ریلیزز کے طور پر رکھیں</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>جوڑی بنانا شروع ہو رہا ہے…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>منظوری کا انتظار ہے…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>فنگرپرنٹ: {fingerprint}</value></data>
 </root>

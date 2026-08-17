@@ -9,11 +9,11 @@ De cloud-home is een locatie in opslag die de gebruiker al bezit. Elke provider 
 
 | Provider | Auth | Toegang voor een nieuw apparaat |
 |---|---|---|
-| S3-compatible | Access key + secret | Inloggegevens in de uitnodiging |
-| Google Drive | OAuth (PKCE) | Map gedeeld met het account van de toetreder |
-| Dropbox | OAuth (PKCE) | Map gedeeld met het account van de toetreder |
-| OneDrive | OAuth (PKCE) | Map gedeeld met het account van de toetreder |
-| iCloud (CloudKit) | Apple ID, geen login | CloudKit-share geaccepteerd door de toetreder |
+| S3-compatible | Access key + secret | Inloggegevens die tijdens het koppelen op het goedgekeurde apparaat zijn verzegeld |
+| Google Drive | OAuth (PKCE) | Het account van het nieuwe apparaat is goedgekeurd en de map wordt gedeeld |
+| Dropbox | OAuth (PKCE) | Het account van het nieuwe apparaat is goedgekeurd en de map wordt gedeeld |
+| OneDrive | OAuth (PKCE) | Het account van het nieuwe apparaat is goedgekeurd en de map wordt gedeeld |
+| iCloud (CloudKit) | Apple ID, geen login | CloudKit-share geaccepteerd tijdens het koppelen |
 
 S3-compatible omvat AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, en alles wat verder de API spreekt; bucket, regio, endpoint en key prefix zijn configureerbaar, en de bucket wordt getest voordat de configuratie wordt opgeslagen zodat een typefout bij het instellen faalt, niet bij de eerste sync. De OAuth-providers bestaan alleen in de volledige **bae**-editie; **baeium**-builds compileren ze eruit.
 

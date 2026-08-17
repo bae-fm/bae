@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A full-screen QR scanner with a close button, used for both the recovery-code
-/// and invite-code scans. The owner decides what a scanned code does and how the
+/// A full-screen QR scanner with a close button, used for both recovery and
+/// device-pairing scans. The owner decides what a scanned code does and how the
 /// sheet dismisses.
 struct ScannerSheet: View {
     let onScanned: (String) -> Void

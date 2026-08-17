@@ -9,11 +9,11 @@ description: プロバイダー、認証、クラウドホームの形
 
 | プロバイダー | 認証 | 新しいデバイスへのアクセス |
 |---|---|---|
-| S3-compatible | Access key + secret | 認証情報を招待に埋め込み |
-| Google Drive | OAuth (PKCE) | フォルダーを参加者のアカウントへ共有 |
-| Dropbox | OAuth (PKCE) | フォルダーを参加者のアカウントへ共有 |
-| OneDrive | OAuth (PKCE) | フォルダーを参加者のアカウントへ共有 |
-| iCloud (CloudKit) | Apple ID、サインインなし | 参加者が CloudKit 共有を受け入れ |
+| S3-compatible | Access key + secret | ペアリング中に承認されたデバイスに認証情報が封印される |
+| Google Drive | OAuth (PKCE) | 新しいデバイスのアカウントが承認され、フォルダーが共有されます |
+| Dropbox | OAuth (PKCE) | 新しいデバイスのアカウントが承認され、フォルダーが共有されます |
+| OneDrive | OAuth (PKCE) | 新しいデバイスのアカウントが承認され、フォルダーが共有されます |
+| iCloud (CloudKit) | Apple ID、サインインなし | ペアリング中に CloudKit 共有が受け入れられました |
 
 S3 互換は、AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO、API を話すその他すべてを含みます。バケット、リージョン、エンドポイント、キープレフィックスを設定でき、設定を保存する前にバケットを検査するため、タイプミスは初回同期ではなく設定時に失敗します。OAuth プロバイダーは完全版 **bae** エディションにだけ存在します。**baeium** ビルドではコンパイルされません。
 

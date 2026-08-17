@@ -17,14 +17,14 @@ Chaque propriétaire écrit un flux append-only d’entrées d’appartenance si
 
 ## L’échange de jonction
 
-Ajouter un appareil est un échange à deux codes avec vérification humaine explicite au milieu :
+L'ajout d'un appareil correspond à une session d'appairage locale avec vérification humaine explicite :
 
-1. L’appareil qui rejoint génère sa paire de clés et affiche une **join request** : sa clé publique, une courte empreinte de celle-ci et (pour les fournisseurs OAuth) le compte cloud avec lequel partager le dossier.
-2. Un propriétaire décode la demande, et les deux écrans affichent la même empreinte. L’humain vérifie qu’elles correspondent ; c’est l’étape qui empêche une clé remplacée.
-3. L’approbation fait trois choses à la fois : accorder au compte du nouvel arrivant l’accès à l’emplacement cloud (partage de dossier sur les clouds grand public, identifiants embarqués sur S3, partage CloudKit sur iCloud), sceller la clé de bibliothèque avec la clé publique du nouvel arrivant et signer une entrée d’appartenance qui l’ajoute. Tout cela est empaqueté dans un **invite code**.
-4. L’appareil qui rejoint consomme l’invitation, déscelle la clé, s’amorce depuis le dernier instantané et se synchronise.
+1. Un propriétaire démarre **Ajouter un appareil**. bae écoute brièvement sur le réseau local et affiche un code d'appairage. Il contient les adresses des auditeurs, une clé de session éphémère, le nom de la bibliothèque, le fournisseur et une date d'expiration – aucune clé de bibliothèque ni informations d'identification de stockage durables.
+2. L'appareil qui rejoint scanne le code, crée sa paire de clés d'appareil, se connecte au fournisseur si nécessaire et envoie sa clé publique signée et l'identité du compte du fournisseur via la connexion locale cryptée. Les deux appareils affichent la même empreinte digitale.
+3. Le propriétaire compare les empreintes digitales et approuve cette identité exacte. L'approbation accorde à son compte cloud l'accès si nécessaire, signe l'entrée d'adhésion et scelle la clé de bibliothèque et l'accès au stockage final à la clé publique du nouvel appareil.
+4. Le colis scellé est renvoyé via la même connexion locale authentifiée. Le périphérique qui rejoint l'ouvre, démarre à partir du stockage cloud et commence la synchronisation.
 
-L’invitation est scellée pour la clé qui l’a demandée : l’intercepter n’accorde rien.
+Un appariement expiré, interrompu ou rejeté n’accorde rien.
 
 ## Révocation
 

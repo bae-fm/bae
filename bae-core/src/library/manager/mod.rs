@@ -152,8 +152,12 @@ pub enum LibraryError {
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
-    #[error("Device invitation error: {0}")]
-    DeviceInvite(#[from] coven::BeginDeviceInviteError),
+    #[error("Device pairing start error: {0}")]
+    DevicePairingStart(#[from] coven::StartDevicePairingError),
+    #[error("Device pairing approval error: {0}")]
+    DevicePairingApproval(#[source] Box<coven::ApproveDevicePairingError>),
+    #[error("Device pairing transport error: {0}")]
+    DevicePairingTransport(#[from] coven::DevicePairingTransportError),
     #[error("The device join was ended by its joining device")]
     DeviceJoinAbandoned,
     /// A bae-level input validation failed (an empty library name). bae's own
@@ -168,6 +172,12 @@ pub enum LibraryError {
     /// Establishing this store's device identity failed.
     #[error("Identity error: {0}")]
     Identity(#[from] coven::IdentityError),
+}
+
+impl From<coven::ApproveDevicePairingError> for LibraryError {
+    fn from(error: coven::ApproveDevicePairingError) -> Self {
+        Self::DevicePairingApproval(Box::new(error))
+    }
 }
 
 /// A stored fragment we refuse to join onto a local path surfaces as an import
@@ -193,7 +203,9 @@ impl LibraryError {
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
-            LibraryError::DeviceInvite(error) => device_invite_category(error),
+            LibraryError::DevicePairingStart(_)
+            | LibraryError::DevicePairingApproval(_)
+            | LibraryError::DevicePairingTransport(_) => C::Membership,
             LibraryError::DeviceJoinAbandoned => C::Membership,
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::Export(_) => C::Export,
@@ -264,7 +276,7 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         // The other membership operations that carry a pasted/scanned code —
         // excluding a device from the store, promoting a member to owner — and a
         // code that doesn't decode as the operation it was pasted into. Same
-        // class as an invalid join request: the membership operation failed, not
+        // class as an invalid membership-operation code: the membership operation failed, not
         // the library or this device's credentials.
         SyncError::InvalidMembershipOperationCode(_) => C::Membership,
         SyncError::DeviceExclusion(_) => C::Membership,
@@ -281,14 +293,6 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         | SyncError::RoutingEncryption(_)
         | SyncError::BlobUpload(_)
         | SyncError::Loop(_) => C::Internal,
-    }
-}
-
-fn device_invite_category(error: &coven::BeginDeviceInviteError) -> crate::ui::UiErrorCategory {
-    match error {
-        coven::BeginDeviceInviteError::Sync(error) => sync_category(error),
-        coven::BeginDeviceInviteError::JoinRequest(_)
-        | coven::BeginDeviceInviteError::DeviceInvite(_) => crate::ui::UiErrorCategory::Membership,
     }
 }
 
@@ -369,6 +373,11 @@ impl SyncStatusSnapshot {
 #[cfg(test)]
 mod sync_indicator_tests {
     use super::*;
+
+    #[test]
+    fn library_error_fits_the_workspace_result_error_limit() {
+        assert!(std::mem::size_of::<LibraryError>() <= 128);
+    }
 
     fn snapshot(
         sync_ready: bool,

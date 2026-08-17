@@ -17,14 +17,14 @@ Her çekmede, her changeset'in yazarı bu kayda göre denetlenir: güncel member
 
 ## Katılma el sıkışması
 
-Aygıt ekleme, ortasında açık insan doğrulaması bulunan iki kodlu değiş tokuştur:
+Cihaz eklemek, açık bir insan doğrulaması ile yerel bir eşleştirme oturumudur:
 
-1. Katılan aygıt keypair üretir ve bir **join request** gösterir: public key'i, onun kısa parmak izi ve (OAuth sağlayıcıları için) klasörün paylaşılacağı bulut hesabı.
-2. Bir owner isteği çözer ve iki ekran aynı parmak izini gösterir. İnsan eşleştiklerini denetler; değiştirilen anahtarı boşa çıkaran adım budur.
-3. Onay aynı anda üç şey yapar: yeni gelenin hesabına bulut evine erişim verir (tüketici bulutlarında klasör paylaşımı, S3'te gömülü kimlik bilgileri, iCloud'da CloudKit paylaşımı), kitaplık anahtarını yeni gelenin public key'ine mühürler ve onu ekleyen bir üyelik girdisi imzalar. Hepsi bir **invite code** içine paketlenir.
-4. Katılan aygıt daveti tüketir, anahtarı açar, en son snapshot'tan başlar ve eşzamanlar.
+1. Bir sahip **Cihaz ekle** cihazını başlatır. bae yerel ağı kısaca dinler ve bir eşleştirme kodunu gösterir. Dinleyici adreslerini, geçici bir oturum anahtarını, kitaplık adını, sağlayıcıyı ve son kullanma tarihini içerir; kitaplık anahtarı veya kalıcı depolama kimlik bilgileri yoktur.
+2. Katılan cihaz kodu tarar, cihaz anahtar çiftini oluşturur, gerektiğinde sağlayıcıda oturum açar ve imzalanmış genel anahtarını ve sağlayıcı hesap kimliğini şifrelenmiş yerel bağlantı üzerinden gönderir. Her iki cihaz da aynı parmak izini gösteriyor.
+3. Sahibi parmak izlerini karşılaştırır ve bu kesin kimliği onaylar. Onay, gerektiğinde bulut hesabına erişim izni verir, üyelik girişini imzalar ve kitaplık anahtarını ve yeni cihazın genel anahtarına son depolama erişimini mühürler.
+4. Mühürlü paket aynı kimliği doğrulanmış yerel bağlantı üzerinden geri döner. Katılan cihaz onu açar, bulut depolama alanından önyükleme yapar ve senkronizasyona başlar.
 
-Davet isteyen anahtara mühürlenmiştir: ele geçirmek hiçbir şey kazandırmaz.
+Süresi dolmuş, kesintiye uğramış veya reddedilmiş bir eşleştirme hiçbir şey sağlamaz.
 
 ## Geri alma
 

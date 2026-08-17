@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>云端</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>在库中查看</value></data>
   <data name="join.title" xml:space="preserve"><value>加入曲库</value></data>
-  <data name="join.intro" xml:space="preserve"><value>将此设备添加到你另一台设备上已有的曲库。</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>此设备的代码</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>在已加入你曲库的设备上，打开 设置 → 设备 → 添加设备，然后扫描或粘贴此代码。</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>此设备：{fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>无法生成此设备的代码</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>邀请码</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>那台设备批准此设备后，输入它显示的邀请码。</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>粘贴邀请码</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>邀请码无效</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · 所有者 {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>扫描已加入你曲库的设备上显示的配对码。</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>粘贴配对码</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>此配对码无效。</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>加入</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>正在加入 {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>无法加入曲库</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>移除</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>此设备将失去访问权限，并且曲库密钥将被轮换。再次点击移除以确认。</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>添加设备</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>在新设备上打开“加入曲库”并显示它的代码。在这里扫描，或粘贴到下方。</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>粘贴设备代码</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>解码</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>设备代码无效</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>批准此设备？</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>它将被添加到你的曲库并可同步。你会获得一个需要在它上面输入的代码。</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>批准</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>正在批准设备…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>无法批准此设备</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>在新设备上输入此代码。</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>在要加入你曲库的设备上扫描此代码。</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>批准此设备？</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>它将被添加到你的曲库并可同步。</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>批准</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>正在批准设备…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>无法批准此设备</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>正在等待设备…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>转到专辑</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>删除</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>无法加载发件箱</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>正在刷新…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>合并为一个发行版</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>保留为单独的发行版</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>正在开始配对…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>正在等待批准…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>指纹：{fingerprint}</value></data>
 </root>

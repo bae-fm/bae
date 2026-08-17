@@ -12,11 +12,11 @@ Zwei verschiedene Türen für zwei verschiedene Situationen:
 
 ## Ein Gerät hinzufügen
 
-Wähle auf dem neuen Gerät **Einer Mediathek beitreten**. Es zeigt einen kurzen Code, auch als QR-Code: die Beitrittsanfrage mit dem öffentlichen Schlüssel des Geräts und einem Fingerabdruck, den du vorlesen kannst.
+Auf einem Gerät, das bereits über die Bibliothek verfügt, öffnet ein Besitzer Einstellungen, Geräte, **Fügen Sie ein Gerät hinzu**. bae zeigt einen Kopplungscode als QR an und beginnt, das lokale Netzwerk abzuhören.
 
-Auf einem Gerät, das die Mediathek bereits hat, öffnet ein Besitzer Einstellungen, Geräte, **Gerät hinzufügen** und scannt diese Anfrage oder fügt sie ein. bae zeigt den Fingerabdruck des beitretenden Geräts; bestätige, dass er zu dem passt, was das neue Gerät anzeigt. Die Bestätigung erzeugt einen Einladungscode: Gib ihn an das neue Gerät zurück (QR-Code scannen oder einfügen), und das neue Gerät lädt die Mediathek herunter und beginnt zu synchronisieren.
+Wählen Sie auf dem neuen Gerät **Treten Sie einer Bibliothek bei** und scannen Sie den Code. Melden Sie sich beim Speicheranbieter an, wenn Sie dazu aufgefordert werden. Auf beiden Geräten wird der Fingerabdruck des neuen Geräts angezeigt; Vergleichen Sie sie und genehmigen Sie sie dann auf dem vorhandenen Gerät. Das neue Gerät erhält seinen versiegelten Zugriff über dieselbe lokale Verbindung, lädt die Bibliothek herunter und beginnt mit der Synchronisierung. Kein Code reist zurück.
 
-Hinter dem Austausch: Das bestätigende Gerät gewährt dem Neuankömmling Zugriff auf das Cloud-Zuhause (Verbraucher-Clouds geben den Ordner für das Konto des Neuankömmlings frei; S3-Einladungen enthalten Zugangsdaten) und verschließt den Verschlüsselungsschlüssel der Mediathek für den öffentlichen Schlüssel des Neuankömmlings. Die Einladung ist für jedes andere Gerät nutzlos. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
+Der Kopplungscode enthält weder den Bibliotheksschlüssel noch dauerhafte Speicherzugangsdaten, und eine unterbrochene oder abgelehnte Kopplung gewährt keine Gewährung. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
 
 ## Mitglieder und Rollen
 

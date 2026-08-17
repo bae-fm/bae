@@ -17,14 +17,14 @@ Při každém stažení změn se autor každého changesetu kontroluje proti tom
 
 ## Připojovací handshake
 
-Přidání zařízení je výměna dvou kódů s výslovným lidským ověřením uprostřed:
+Přidání zařízení je jedna místní párovací relace s explicitním ověřením člověkem:
 
-1. Připojující se zařízení vygeneruje svůj pár klíčů a zobrazí **join request**: svůj veřejný klíč, krátký otisk tohoto klíče a (u poskytovatelů OAuth) cloudový účet, se kterým se má složka sdílet.
-2. Vlastník žádost dekóduje a obě obrazovky zobrazí stejný otisk. Člověk ověří, že se shodují; tento krok brání podstrčenému klíči.
-3. Schválení udělá tři věci najednou: udělí účtu nováčka přístup ke cloudovému domovu (sdílení složky u spotřebitelských cloudů, vložené přihlašovací údaje u S3, sdílení CloudKit u iCloudu), zapečetí klíč knihovny pro veřejný klíč nováčka a podepíše záznam členství, který ho přidává. Všechno se zabalí do **invite code**.
-4. Připojující se zařízení pozvánku spotřebuje, odpečetí klíč, nastartuje se z posledního snapshotu a synchronizuje.
+1. Vlastník spustí zařízení **Přidejte zařízení**. bae krátce poslouchá v místní síti a ukazuje jeden párovací kód. Obsahuje adresy posluchačů, dočasný klíč relace, název knihovny, poskytovatele a vypršení platnosti – žádný klíč knihovny ani trvalé pověření úložiště.
+2. Připojované zařízení naskenuje kód, vytvoří svůj pár klíčů zařízení, v případě potřeby se přihlásí k poskytovateli a odešle svůj podepsaný veřejný klíč a identitu účtu poskytovatele prostřednictvím šifrovaného místního připojení. Obě zařízení zobrazují stejný otisk prstu.
+3. Majitel porovná otisky prstů a schválí přesnou identitu. Schválení uděluje svému cloudovému účtu přístup tam, kde je to požadováno, podepisuje záznam o členství a zapečetí klíč knihovny a konečný přístup k úložišti veřejnému klíči nového zařízení.
+4. Zapečetěný balík se vrací přes stejné ověřené místní připojení. Připojované zařízení jej otevře, spustí se z cloudového úložiště a spustí se synchronizace.
 
-Pozvánka je zapečetěná pro žádající klíč: její zachycení nic neudělí.
+Vypršené, přerušené nebo odmítnuté párování nic neuděluje.
 
 ## Odebrání
 

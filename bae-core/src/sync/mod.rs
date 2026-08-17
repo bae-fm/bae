@@ -9,9 +9,7 @@
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
 // unchanged. Blob-key derivation is coven's, reached through
 // `CovenHandle::blob_cloud_key`.
-pub use coven::{
-    decode_restore_code_info, join_with_scanned_invite, restore_from_code, RestoreSource,
-};
+pub use coven::{decode_restore_code_info, restore_from_code, RestoreSource};
 
 /// How often a device-join transport wait looks for the counterpart's next
 /// artifact, and how long it keeps looking. Shared by both sides of the join —

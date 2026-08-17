@@ -9,7 +9,7 @@ Alles wat bae in een opaque cloud-home zet wordt versleuteld voordat het het app
 
 Een opaque bibliotheek heeft een rootgeheim: een willekeurige 256-bit sleutel die wordt gemaakt wanneer de home wordt aangemaakt. Hij staat in de OS-sleutelbos, nooit in een bestand; op Apple-platforms synchroniseert de sleutelbosvermelding via iCloud Keychain. De configuratie van bae bewaart alleen een vingerafdruk van de sleutel, genoeg om bij ontgrendelen een verkeerde sleutel van een juiste te onderscheiden zonder het geheim vast te houden.
 
-De sleutel reist op twee manieren tussen apparaten, beide beschreven in [Identiteit en lidmaatschap](/nl/reference/membership): afgesloten voor de publieke sleutel van een goedgekeurd apparaat tijdens een uitnodiging, en gedragen in een herstelcode.
+De sleutel reist op twee manieren tussen apparaten, beide beschreven in [Identiteit en lidmaatschap](/nl/reference/membership): verzegeld aan de openbare sleutel van een goedgekeurd apparaat tijdens het koppelen van apparaten, en opgenomen in een herstelcode.
 
 ## Generaties
 

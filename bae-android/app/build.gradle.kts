@@ -152,6 +152,7 @@ android {
         // (e.g. the dropped-release skip log). Return defaults instead of throwing
         // so the JVM tests don't need Robolectric just to no-op a log line.
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
     }
 
     lint {
@@ -212,8 +213,10 @@ dependencies {
     implementation("androidx.browser:browser:1.8.0")
     implementation("io.sentry:sentry-android-ndk:8.16.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.15.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
     // The screenshotTest source set renders @Preview scenes via layoutlib; it
     // needs the tooling on its own classpath (the BOM keeps it on the same
     // Compose version as the app).

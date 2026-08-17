@@ -251,7 +251,7 @@ public sealed class ActivationIntentModelTests
 
     [Theory]
     [InlineData("bae://album/anything")]
-    [InlineData("bae://invite?code=x")]
+    [InlineData("bae://unknown?value=x")]
     [InlineData("bae://")]
     [InlineData("bae:import")]
     public void UnknownHostsAndPaths_ReturnNull(string arg)

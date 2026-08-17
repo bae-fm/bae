@@ -9,11 +9,11 @@ Mjesto u oblaku jedna je lokacija u pohrani koju korisnik već posjeduje. Svaki 
 
 | Pružatelj | Autentifikacija | Pristup za novi uređaj |
 |---|---|---|
-| S3-kompatibilno | Pristupni ključ + tajna | Vjerodajnice ugrađene u pozivnicu |
-| Google Drive | OAuth (PKCE) | Mapa podijeljena s računom pridružitelja |
-| Dropbox | OAuth (PKCE) | Mapa podijeljena s računom pridružitelja |
-| OneDrive | OAuth (PKCE) | Mapa podijeljena s računom pridružitelja |
-| iCloud (CloudKit) | Apple ID, bez prijave | CloudKit dijeljenje koje pridružitelj prihvaća |
+| S3-kompatibilno | Pristupni ključ + tajna | Vjerodajnice su zapečaćene na odobrenom uređaju tijekom uparivanja |
+| Google Drive | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
+| Dropbox | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
+| OneDrive | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
+| iCloud (CloudKit) | Apple ID, bez prijave | CloudKit dijeljenje prihvaćeno tijekom uparivanja |
 
 S3-kompatibilno pokriva AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i sve drugo što govori API; spremnik, regija, krajnja točka i prefiks ključa mogu se konfigurirati, a spremnik se ispituje prije spremanja konfiguracije pa se tipfeler ruši pri postavljanju, ne pri prvoj sinkronizaciji. OAuth pružatelji postoje samo u punom izdanju **bae**; gradnje **baeium** ih izostavljaju pri prevođenju.
 

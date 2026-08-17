@@ -26,6 +26,7 @@ it	Follower
 it	OK
 it	Password
 it	Provider
+it	pairing_provider
 it	S3-compatible
 it	Secret Key
 it	Volume
@@ -49,6 +50,7 @@ nl	Label
 nl	OK
 nl	Presets
 nl	Provider
+nl	pairing_provider
 nl	Release
 nl	Release %lld
 nl	Releases

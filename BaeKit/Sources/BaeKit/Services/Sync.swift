@@ -11,17 +11,10 @@ public final class Sync: Sendable, Observable {
     /// whether the running device is an owner. Reads the membership chain from
     /// cloud storage, so it runs off the main thread.
     public let getMembers: @Sendable () async throws -> BridgeMembership
-    /// Admit the device represented by its join request and return the sealed
-    /// invitation bytes shown to that device.
-    public let beginDeviceInvite:
-        @Sendable (_ joinRequestCode: String) async throws -> Data
-    /// Drive the admitting side while the invitation is visible. Returns only
-    /// after the joining device is active.
-    public let driveDeviceJoin:
-        @Sendable (_ invitation: Data) async throws -> Void
-    /// Withdraw an invitation and complete its cleanup.
-    public let cancelDeviceInvite:
-        @Sendable (_ invitation: Data) async throws -> Void
+    /// Start the owner-side local pairing session whose one code the joining
+    /// device scans.
+    public let startDevicePairing:
+        @Sendable () async throws -> BridgeDevicePairingSession
     /// Remove a device from the library and rotate the library key.
     public let removeMember:
         @Sendable (_ publicKeyHex: String) async throws -> Void
@@ -73,16 +66,9 @@ public final class Sync: Sendable, Observable {
         getMembers: @escaping @Sendable () async throws -> BridgeMembership = {
             throw StubError.notImplemented
         },
-        beginDeviceInvite:
-            @escaping @Sendable (String) async throws -> Data = { _ in
-                throw StubError.notImplemented
-            },
-        driveDeviceJoin:
-            @escaping @Sendable (Data) async throws -> Void = { _ in
-                throw StubError.notImplemented
-            },
-        cancelDeviceInvite:
-            @escaping @Sendable (Data) async throws -> Void = { _ in
+        startDevicePairing:
+            @escaping @Sendable () async throws -> BridgeDevicePairingSession =
+            {
                 throw StubError.notImplemented
             },
         removeMember: @escaping @Sendable (String) async throws -> Void = {
@@ -114,9 +100,7 @@ public final class Sync: Sendable, Observable {
         self.saveSyncConfig = saveSyncConfig
         self.generateRestoreCode = generateRestoreCode
         self.getMembers = getMembers
-        self.beginDeviceInvite = beginDeviceInvite
-        self.driveDeviceJoin = driveDeviceJoin
-        self.cancelDeviceInvite = cancelDeviceInvite
+        self.startDevicePairing = startDevicePairing
         self.removeMember = removeMember
         self.cloudOnlyReleaseCount = cloudOnlyReleaseCount
         self.retryOutbox = retryOutbox
@@ -136,13 +120,7 @@ public final class Sync: Sendable, Observable {
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
             generateRestoreCode: { try await handle.generateRestoreCode() },
             getMembers: { try await handle.getMembers() },
-            beginDeviceInvite: {
-                try await handle.beginDeviceInvite(joinRequestCode: $0)
-            },
-            driveDeviceJoin: { try await handle.driveDeviceJoin(invite: $0) },
-            cancelDeviceInvite: {
-                try await handle.cancelDeviceInvite(invite: $0)
-            },
+            startDevicePairing: { try await handle.startDevicePairing() },
             removeMember: { try await handle.removeMember(publicKeyHex: $0) },
             cloudOnlyReleaseCount: {
                 try await handle.cloudOnlyReleaseCount()

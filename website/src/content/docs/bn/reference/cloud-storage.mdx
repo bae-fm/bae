@@ -9,11 +9,11 @@ description: Provider, authentication, এবং মেঘ-ঘরের আক�
 
 | Provider | Auth | নতুন ডিভাইসের প্রবেশাধিকার |
 |---|---|---|
-| S3-compatible | Access কী + secret | আমন্ত্রণে থাকা credential |
-| Google Drive | OAuth (PKCE) | Joiner-এর অ্যাকাউন্ট-এ shared ফোল্ডার |
-| Dropbox | OAuth (PKCE) | Joiner-এর অ্যাকাউন্ট-এ shared ফোল্ডার |
-| OneDrive | OAuth (PKCE) | Joiner-এর অ্যাকাউন্ট-এ shared ফোল্ডার |
-| iCloud (CloudKit) | Apple ID, sign-in নেই | Joiner CloudKit share গ্রহণ করে |
+| S3-compatible | Access কী + secret | পেয়ারিংয়ের সময় অনুমোদিত ডিভাইসে শংসাপত্রগুলি সিল করা হয়েছে |
+| Google Drive | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
+| Dropbox | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
+| OneDrive | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
+| iCloud (CloudKit) | Apple ID, sign-in নেই | পেয়ার করার সময় ক্লাউডকিট শেয়ার গ্রহণ করা হয়েছে |
 
 S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, এবং API বলা অন্য সবকিছু কভার করে; bucket, region, endpoint, এবং কী prefix configurable, আর config save করার আগে bucket probe করা হয় যাতে typo setup-এই fail করে, প্রথম সিঙ্কে নয়। OAuth provider শুধু full **bae** edition-এ থাকে; **baeium** build সেগুলো compile করে না।
 

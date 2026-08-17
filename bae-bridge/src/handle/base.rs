@@ -686,54 +686,6 @@ impl AppHandle {
         .await
     }
 
-    /// Mint the scannable invite for a device that asked to join, returning the
-    /// payload bytes to render as a QR code.
-    ///
-    /// `join_request_code` is the joining device's own `generate_join_request`
-    /// code, handed over first — the offer is signed for that device's key, so
-    /// this payload cannot be minted without it.
-    ///
-    /// Minting only publishes the offer: `drive_device_join` must then run on
-    /// this device, while the code is on screen, to admit the joiner.
-    pub async fn begin_device_invite(
-        self: std::sync::Arc<Self>,
-        join_request_code: String,
-    ) -> Result<Vec<u8>, BridgeError> {
-        self.run_exported(move |this| async move {
-            Ok(this
-                .services
-                .begin_device_invite(&join_request_code)
-                .await?)
-        })
-        .await
-    }
-
-    /// Run this device's side of a join it invited, until the joining device is
-    /// in or the attempt ends. Call this while the invite is displayed; it
-    /// returns only after the device joined; an ended attempt is an error the
-    /// owner UI displays.
-    pub async fn drive_device_join(
-        self: std::sync::Arc<Self>,
-        invite: Vec<u8>,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(
-            move |this| async move { Ok(this.services.drive_device_join(invite).await?) },
-        )
-        .await
-    }
-
-    /// Withdraw an invite this device minted, so a joining device that already
-    /// scanned it is told to stop.
-    pub async fn cancel_device_invite(
-        self: std::sync::Arc<Self>,
-        invite: Vec<u8>,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            Ok(this.services.cancel_device_invite(invite).await?)
-        })
-        .await
-    }
-
     /// Remove a device from the library and rotate the library key.
     pub async fn remove_member(
         self: std::sync::Arc<Self>,

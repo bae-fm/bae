@@ -8546,196 +8546,6 @@
         }
       }
     },
-    "Add this device to a library you already have on another device." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add this device to a library you already have on another device."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "أضف هذا الجهاز إلى مكتبة لديك بالفعل على جهاز آخر."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавете това устройство към библиотека, която вече имате на друго устройство."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "অন্য ডিভাইসে ইতিমধ্যে থাকা একটি লাইব্রেরিতে এই ডিভাইসটি যোগ করুন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Přidejte toto zařízení ke knihovně, kterou už máte v jiném zařízení."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Füge dieses Gerät einer Bibliothek hinzu, die du schon auf einem anderen Gerät hast."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añade este dispositivo a una biblioteca que ya tengas en otro dispositivo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajoutez cet appareil à une bibliothèque que vous avez déjà sur un autre appareil."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આ ડિવાઇસને એવી લાઇબ્રેરીમાં ઉમેરો જે તમારી પાસે બીજા ડિવાઇસ પર પહેલેથી છે."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הוסף מכשיר זה לספרייה שכבר יש לך במכשיר אחר."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "इस डिवाइस को उस लाइब्रेरी में जोड़ें जो आपके पास पहले से दूसरे डिवाइस पर है."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dodajte ovaj uređaj knjižnici koju već imate na drugom uređaju."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aggiungi questo dispositivo a una libreria che hai già su un altro dispositivo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "別のデバイスに既にあるライブラリにこのデバイスを追加します。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಇನ್ನೊಂದು ಸಾಧನದಲ್ಲಿ ಈಗಾಗಲೇ ಇರುವ ಲೈಬ್ರರಿಗೆ ಈ ಸಾಧನವನ್ನು ಸೇರಿಸಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다른 기기에 이미 있는 보관함에 이 기기를 추가합니다."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "മറ്റൊരു ഉപകരണത്തിൽ ഇതിനകം ഉള്ള ലൈബ്രറിയിലേക്ക് ഈ ഉപകരണം ചേർക്കുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "दुसऱ्या डिव्हाइसवर आधीपासून असलेल्या लायब्ररीत हे डिव्हाइस जोडा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voeg dit apparaat toe aan een bibliotheek die je al op een ander apparaat hebt."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਉਸ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰੋ ਜੋ ਤੁਹਾਡੇ ਕੋਲ ਪਹਿਲਾਂ ਹੀ ਕਿਸੇ ਹੋਰ ਡਿਵਾਈਸ 'ਤੇ ਹੈ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dodaj to urządzenie do biblioteki, którą masz już na innym urządzeniu."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adicione este dispositivo a uma biblioteca que você já tem em outro dispositivo."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "மற்றொரு சாதனத்தில் ஏற்கனவே உள்ள லைப்ரரியில் இந்தச் சாதனத்தைச் சேர்க்கவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "మరో పరికరంలో ఇప్పటికే ఉన్న లైబ్రరీకి ఈ పరికరాన్ని జోడించండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เพิ่มอุปกรณ์นี้ในคลังที่คุณมีอยู่แล้วบนอุปกรณ์อื่น"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu cihazı başka bir cihazda zaten sahip olduğun bir kitaplığa ekle."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Додайте цей пристрій до бібліотеки, яка вже є на іншому пристрої."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اس آلے کو اس لائبریری میں شامل کریں جو آپ کے پاس پہلے سے کسی اور آلے پر ہے۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thêm thiết bị này vào thư viện bạn đã có trên thiết bị khác."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "将此设备添加到你已在其他设备上拥有的资料库。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "將此裝置加入你已在其他裝置上擁有的資料庫。"
-          }
-        }
-      }
-    },
     "Add to Queue" : {
       "comment" : "Menu item: append to the playback queue",
       "extractionState" : "stale",
@@ -16965,6 +16775,197 @@
         }
       }
     },
+    "Check that this matches the fingerprint shown on the new device before approving." : {
+      "comment" : "Device pairing: instruction before the owner approves the displayed identity.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تحقق من أن هذا يطابق البصمة المعروضة على الجهاز الجديد قبل الموافقة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преди одобряване проверете дали това съвпада с отпечатъка, показан на новото устройство."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অনুমোদনের আগে এটি নতুন ডিভাইসে দেখানো ফিঙ্গারপ্রিন্টের সঙ্গে মেলে কিনা পরীক্ষা করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Před schválením zkontrolujte, že se shoduje s otiskem zobrazeným na novém zařízení."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfe vor dem Genehmigen, dass dies mit dem Fingerabdruck auf dem neuen Gerät übereinstimmt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check that this matches the fingerprint shown on the new device before approving."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprueba que coincida con la huella mostrada en el dispositivo nuevo antes de aprobarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifiez que cela correspond à l’empreinte affichée sur le nouvel appareil avant d’approuver."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "મંજૂર કરતાં પહેલાં તપાસો કે આ નવા ઉપકરણ પર દેખાતા ફિંગરપ્રિન્ટ સાથે મેળ ખાય છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לפני האישור, בדקו שזה תואם לטביעת האצבע שמוצגת במכשיר החדש."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मंजूर करने से पहले जांचें कि यह नए उपकरण पर दिखाए गए फिंगरप्रिंट से मेल खाता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prije odobravanja provjerite podudara li se ovo s otiskom prikazanim na novom uređaju."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prima di approvare, verifica che corrisponda all\\'impronta mostrata sul nuovo dispositivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "承認する前に、新しいデバイスに表示されているフィンガープリントと一致することを確認してください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಅನುಮೋದಿಸುವ ಮೊದಲು ಇದು ಹೊಸ ಸಾಧನದಲ್ಲಿ ತೋರಿಸಲಾದ fingerprint ಗೆ ಹೊಂದುತ್ತದೆಯೇ ಪರಿಶೀಲಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "승인하기 전에 새 기기에 표시된 지문과 일치하는지 확인하세요."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "അംഗീകരിക്കുന്നതിന് മുമ്പ് ഇത് പുതിയ ഉപകരണത്തിൽ കാണുന്ന വിരലടയാളവുമായി പൊരുത്തപ്പെടുന്നുണ്ടോ എന്ന് പരിശോധിക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मंजूर करण्यापूर्वी हे नवीन डिव्हाइसवर दिसणाऱ्या fingerprint शी जुळते का ते तपासा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controleer vóór goedkeuring of dit overeenkomt met de vingerafdruk op het nieuwe apparaat."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਮਨਜ਼ੂਰ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਜਾਂਚੋ ਕਿ ਇਹ ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਦਿਖਾਏ fingerprint ਨਾਲ ਮਿਲਦਾ ਹੈ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przed zatwierdzeniem sprawdź, czy zgadza się z odciskiem wyświetlanym na nowym urządzeniu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifique se isto corresponde à impressão digital mostrada no novo dispositivo antes de aprovar."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ஒப்புதல் அளிக்கும் முன் இது புதிய சாதனத்தில் காட்டப்படும் கைரேகையுடன் பொருந்துகிறதா எனச் சரிபார்க்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఆమోదించే ముందు ఇది కొత్త పరికరంలో చూపిన ఫింగర్‌ప్రింట్‌తో సరిపోతుందో చూడండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตรวจสอบว่าสิ่งนี้ตรงกับลายนิ้วมือที่แสดงบนอุปกรณ์ใหม่ก่อนอนุมัติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Onaylamadan önce bunun yeni cihazda gösterilen parmak iziyle eşleştiğini kontrol edin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед схваленням перевірте, що це збігається з відбитком, показаним на новому пристрої."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "منظوری سے پہلے جانچیں کہ یہ نئے آلے پر دکھائے گئے فنگرپرنٹ سے ملتا ہے۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra giá trị này khớp với dấu vân tay hiển thị trên thiết bị mới trước khi phê duyệt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "批准前，请确认这与新设备上显示的指纹一致。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "核准前，請確認這與新裝置顯示的指紋相符。"
+          }
+        }
+      }
+    },
     "Choose a scanned folder to search for metadata" : {
       "comment" : "Import: placeholder description when no folder is selected",
       "localizations" : {
@@ -17152,197 +17153,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "選擇已掃描的資料夾以搜尋中繼資料"
-          }
-        }
-      }
-    },
-    "Choose the cloud provider the library you're joining uses." : {
-      "comment" : "Join flow: provider picker prompt shown before generating this device's join code",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اختر مزود السحابة الذي تستخدمه المكتبة التي تنضم إليها."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изберете облачния доставчик, който използва библиотеката, към която се присъединявате."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "আপনি যে লাইব্রেরিতে যোগ দিচ্ছেন সেটি যে ক্লাউড প্রদানকারী ব্যবহার করে তা বাছুন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyberte cloudového poskytovatele, kterého používá knihovna, ke které se připojujete."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle den Cloud-Anbieter aus, den die Mediathek verwendet, der du beitrittst."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose the cloud provider the library you're joining uses."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige el proveedor en la nube que usa la biblioteca a la que te estás uniendo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisissez le fournisseur cloud utilisé par la bibliothèque que vous rejoignez."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "તમે જોડાઈ રહ્યા છો તે લાઇબ્રેરી જે ક્લાઉડ પ્રદાતા વાપરે છે તે પસંદ કરો."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בחרו את ספק הענן שבו משתמשת הספרייה שאליה מצטרפים."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "जिस लाइब्रेरी से आप जुड़ रहे हैं, उसका क्लाउड प्रदाता चुनें।"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odaberite pružatelja oblaka koji koristi fonoteka kojoj se pridružujete."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scegli il provider cloud usato dalla libreria a cui ti stai unendo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "参加するライブラリで使われているクラウドプロバイダーを選択してください。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ನೀವು ಸೇರುತ್ತಿರುವ ಲೈಬ್ರರಿ ಬಳಸುವ ಕ್ಲೌಡ್ ಪೂರೈಕೆದಾರರನ್ನು ಆಯ್ಕೆಮಾಡಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "참여하려는 라이브러리가 사용하는 클라우드 공급자를 선택하세요."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "നിങ്ങൾ ചേരുന്ന ശേഖരം ഉപയോഗിക്കുന്ന ക്ലൗഡ് ദാതാവിനെ തിരഞ്ഞെടുക്കുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "तुम्ही जोडत असलेले संग्रहालय वापरत असलेला क्लाउड प्रदाता निवडा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kies de cloudprovider die wordt gebruikt door de bibliotheek waaraan je deelneemt."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਜਿਸ ਲਾਇਬ੍ਰੇਰੀ ਨਾਲ ਤੁਸੀਂ ਜੁੜ ਰਹੇ ਹੋ, ਉਹ ਵਰਤਦੀ ਕਲਾਊਡ ਪ੍ਰਦਾਤਾ ਚੁਣੋ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz dostawcę chmury używanego przez bibliotekę, do której dołączasz."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha o provedor de nuvem usado pela biblioteca à qual você está entrando."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "நீங்கள் சேரும் நூலகம் பயன்படுத்தும் மேக வழங்குநரைத் தேர்வு செய்யவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "మీరు చేరుతున్న లైబ్రరీ ఉపయోగించే క్లౌడ్ ప్రదాతను ఎంచుకోండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เลือกผู้ให้บริการคลาวด์ที่คลังที่คุณกำลังเข้าร่วมใช้อยู่"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katıldığınız arşivin kullandığı bulut sağlayıcısını seçin."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виберіть хмарного провайдера, який використовує бібліотека, до якої ви приєднуєтеся."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "وہ کلاؤڈ فراہم کنندہ منتخب کریں جسے شامل ہونے والا کتب خانہ استعمال کرتا ہے۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn nhà cung cấp đám mây mà thư viện bạn đang tham gia sử dụng."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择你要加入的曲库所使用的云服务提供商。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇你要加入的資料庫所使用的雲端提供者。"
           }
         }
       }
@@ -32492,196 +32302,6 @@
         }
       }
     },
-    "Enter this code on the new device." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter this code on the new device."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "أدخل هذا الرمز على الجهاز الجديد."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Въведете този код на новото устройство."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "নতুন ডিভাইসে এই কোডটি লিখুন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zadejte tento kód v novém zařízení."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gib diesen Code auf dem neuen Gerät ein."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Introduce este código en el dispositivo nuevo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saisissez ce code sur le nouvel appareil."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "નવા ડિવાઇસ પર આ કોડ દાખલ કરો."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הזן קוד זה במכשיר החדש."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "नए डिवाइस पर यह कोड दर्ज करें."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unesite ovaj kôd na novom uređaju."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inserisci questo codice sul nuovo dispositivo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新しいデバイスでこのコードを入力してください。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಹೊಸ ಸಾಧನದಲ್ಲಿ ಈ ಕೋಡ್ ನಮೂದಿಸಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "새 기기에서 이 코드를 입력하세요."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "പുതിയ ഉപകരണത്തിൽ ഈ കോഡ് നൽകുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "नवीन डिव्हाइसवर हा कोड प्रविष्ट करा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voer deze code in op het nieuwe apparaat."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਨਵੀਂ ਡਿਵਾਈਸ 'ਤੇ ਇਹ ਕੋਡ ਦਰਜ ਕਰੋ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wpisz ten kod na nowym urządzeniu."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Digite este código no novo dispositivo."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "புதிய சாதனத்தில் இந்தக் குறியீட்டை உள்ளிடவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "కొత్త పరికరంలో ఈ కోడ్‌ను నమోదు చేయండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ป้อนรหัสนี้บนอุปกรณ์ใหม่"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu kodu yeni cihazda gir."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Введіть цей код на новому пристрої."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "نئے آلے پر یہ کوڈ درج کریں۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nhập mã này trên thiết bị mới."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在新设备上输入此代码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在新裝置上輸入此代碼。"
-          }
-        }
-      }
-    },
     "Error" : {
       "comment" : "Global error alert title",
       "extractionState" : "stale",
@@ -41303,196 +40923,6 @@
         }
       }
     },
-    "It will be added to your library and able to sync. You'll get a code to enter on it." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "It will be added to your library and able to sync. You'll get a code to enter on it."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "سيُضاف إلى مكتبتك وسيتمكن من المزامنة. ستحصل على رمز لإدخاله عليه."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "То ще бъде добавено към библиотеката ви и ще може да се синхронизира. Ще получите код, който да въведете на него."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "এটি আপনার লাইব্রেরিতে যোগ হবে এবং সিঙ্ক করতে পারবে। এতে লেখার জন্য আপনি একটি কোড পাবেন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bude přidáno do vaší knihovny a bude moci synchronizovat. Dostanete kód, který na něm zadáte."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Es wird deiner Bibliothek hinzugefügt und kann synchronisieren. Du bekommst einen Code, den du darauf eingibst."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se añadirá a tu biblioteca y podrá sincronizar. Recibirás un código para introducir en él."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Il sera ajouté à votre bibliothèque et pourra synchroniser. Vous recevrez un code à saisir dessus."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "તે તમારી લાઇબ્રેરીમાં ઉમેરાશે અને સિંક કરી શકશે. તેના પર દાખલ કરવા માટે તમને એક કોડ મળશે."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הוא יתווסף לספרייה שלך ויוכל להסתנכרן. תקבל קוד להזין בו."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "यह आपकी लाइब्रेरी में जुड़ जाएगा और सिंक कर सकेगा. आपको उस पर दर्ज करने के लिए एक कोड मिलेगा."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bit će dodan u vašu knjižnicu i moći će se sinkronizirati. Dobit ćete kôd koji ćete unijeti na njemu."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verrà aggiunto alla tua libreria e potrà sincronizzare. Riceverai un codice da inserire su di esso."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ライブラリに追加され、同期できるようになります。そのデバイスで入力するコードが表示されます。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಅದು ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರುತ್ತದೆ ಮತ್ತು ಸಿಂಕ್ ಮಾಡಬಹುದು. ಅದರಲ್ಲಿ ನಮೂದಿಸಲು ನಿಮಗೆ ಕೋಡ್ ಸಿಗುತ್ತದೆ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기기가 보관함에 추가되고 동기화할 수 있게 됩니다. 그 기기에서 입력할 코드를 받게 됩니다."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "അത് നിങ്ങളുടെ ലൈബ്രറിയിൽ ചേർക്കപ്പെടുകയും സമന്വയിപ്പിക്കാനാവുകയും ചെയ്യും. അതിൽ നൽകാനുള്ള കോഡ് നിങ്ങൾക്ക് ലഭിക്കും."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ते तुमच्या लायब्ररीत जोडले जाईल आणि सिंक करू शकेल. त्यावर प्रविष्ट करण्यासाठी तुम्हाला एक कोड मिळेल."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Het wordt aan je bibliotheek toegevoegd en kan synchroniseren. Je krijgt een code om erop in te voeren."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਇਹ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋ ਜਾਵੇਗੀ ਅਤੇ ਸਿੰਕ ਕਰ ਸਕੇਗੀ। ਤੁਹਾਨੂੰ ਉਸ 'ਤੇ ਦਰਜ ਕਰਨ ਲਈ ਇੱਕ ਕੋਡ ਮਿਲੇਗਾ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zostanie dodane do Twojej biblioteki i będzie mogło synchronizować. Otrzymasz kod do wpisania na nim."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ele será adicionado à sua biblioteca e poderá sincronizar. Você receberá um código para digitar nele."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "அது உங்கள் லைப்ரரியில் சேர்க்கப்பட்டு ஒத்திசைக்க முடியும். அதில் உள்ளிட ஒரு குறியீடு கிடைக்கும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "అది మీ లైబ్రరీకి జోడించబడి సమకాలీకరించగలదు. దానిపై నమోదు చేయడానికి మీకు ఒక కోడ్ లభిస్తుంది."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "อุปกรณ์จะถูกเพิ่มในคลังของคุณและซิงค์ได้ คุณจะได้รับรหัสเพื่อป้อนบนอุปกรณ์นั้น"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığına eklenecek ve eşitleyebilecek. Üzerinde girmen için bir kod alacaksın."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Його буде додано до вашої бібліотеки, і він зможе синхронізуватися. Ви отримаєте код, який введете на ньому."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "یہ آپ کی لائبریری میں شامل ہو جائے گا اور مطابقت پذیری کر سکے گا۔ آپ کو اس پر درج کرنے کے لیے ایک کوڈ ملے گا۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thiết bị sẽ được thêm vào thư viện của bạn và có thể đồng bộ. Bạn sẽ nhận được một mã để nhập trên đó."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "它将加入你的资料库并可以同步。你会得到一个在其上输入的代码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "它將加入你的資料庫並可同步。你會取得一組在其上輸入的代碼。"
-          }
-        }
-      }
-    },
     "It will lose access and the library key will be rotated. Devices still in the library re-key automatically." : {
       "localizations" : {
         "en" : {
@@ -41869,196 +41299,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "加入資料庫"
-          }
-        }
-      }
-    },
-    "Joining library..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Joining library..."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "جارٍ الانضمام إلى المكتبة..."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Присъединяване към библиотеката..."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "লাইব্রেরিতে যোগ দেওয়া হচ্ছে..."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Připojování ke knihovně..."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothek wird beigetreten ..."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uniéndose a la biblioteca..."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connexion à la bibliothèque..."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "લાઇબ્રેરીમાં જોડાઈ રહ્યાં છીએ..."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מצטרף לספרייה..."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "लाइब्रेरी में शामिल हो रहे हैं..."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pridruživanje knjižnici..."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unione alla libreria..."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ライブラリに参加中..."
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಲೈಬ್ರರಿಗೆ ಸೇರುತ್ತಿದೆ..."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "보관함 참여 중..."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ലൈബ്രറിയിൽ ചേരുന്നു..."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "लायब्ररीत सामील होत आहे..."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deelnemen aan bibliotheek..."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋ ਰਹੇ ਹਾਂ..."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dołączanie do biblioteki..."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Participando da biblioteca..."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "லைப்ரரியில் சேர்கிறது..."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "లైబ్రరీలో చేరుతోంది..."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "กำลังเข้าร่วมคลัง..."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığa katılınıyor..."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приєднання до бібліотеки..."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "لائبریری میں شامل ہو رہے ہیں..."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang tham gia thư viện..."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在加入资料库..."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在加入資料庫..."
           }
         }
       }
@@ -52625,576 +51865,6 @@
         }
       }
     },
-    "On a device already in your library, open Settings → Members → Add a device and scan or paste this." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On a device already in your library, open Settings → Members → Add a device and scan or paste this."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "على جهاز موجود بالفعل في مكتبتك، افتح الإعدادات ← الأعضاء ← إضافة جهاز ثم امسح هذا أو الصقه."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На устройство, което вече е в библиотеката ви, отворете Настройки → Членове → Добавяне на устройство и сканирайте или поставете това."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "আপনার লাইব্রেরিতে ইতিমধ্যে থাকা একটি ডিভাইসে সেটিংস → সদস্য → একটি ডিভাইস যোগ করুন খুলুন এবং এটি স্ক্যান বা পেস্ট করুন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "V zařízení, které už je ve vaší knihovně, otevřete Nastavení → Členové → Přidat zařízení a naskenujte nebo vložte toto."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffne auf einem Gerät, das schon in deiner Bibliothek ist, Einstellungen → Mitglieder → Gerät hinzufügen und scanne dies oder füge es ein."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En un dispositivo que ya esté en tu biblioteca, abre Ajustes → Miembros → Añadir un dispositivo y escanea o pega esto."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sur un appareil déjà dans votre bibliothèque, ouvrez Réglages → Membres → Ajouter un appareil, puis scannez ou collez ceci."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "તમારી લાઇબ્રેરીમાં પહેલેથી હોય તેવા ડિવાઇસ પર સેટિંગ્સ → સભ્યો → ડિવાઇસ ઉમેરો ખોલો અને આ સ્કૅન કરો અથવા પેસ્ટ કરો."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "במכשיר שכבר בספרייה שלך, פתח הגדרות ← חברים ← הוספת מכשיר וסרוק או הדבק את זה."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "आपकी लाइब्रेरी में पहले से मौजूद डिवाइस पर सेटिंग्स → सदस्य → डिवाइस जोड़ें खोलें और इसे स्कैन या पेस्ट करें."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na uređaju koji je već u vašoj knjižnici otvorite Postavke → Članovi → Dodaj uređaj pa skenirajte ili zalijepite ovo."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Su un dispositivo già nella tua libreria, apri Impostazioni → Membri → Aggiungi un dispositivo e scansiona o incolla questo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "既にライブラリにあるデバイスで、設定 → メンバー → デバイスを追加 を開き、これをスキャンするか貼り付けてください。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿ ಈಗಾಗಲೇ ಇರುವ ಸಾಧನದಲ್ಲಿ ಸೆಟ್ಟಿಂಗ್ಸ್ → ಸದಸ್ಯರು → ಸಾಧನ ಸೇರಿಸಿ ತೆರೆದು ಇದನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ಅಂಟಿಸಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "보관함에 이미 있는 기기에서 설정 → 구성원 → 기기 추가를 열고 이것을 스캔하거나 붙여넣으세요."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "നിങ്ങളുടെ ലൈബ്രറിയിൽ ഇതിനകം ഉള്ള ഒരു ഉപകരണത്തിൽ ക്രമീകരണങ്ങൾ → അംഗങ്ങൾ → ഒരു ഉപകരണം ചേർക്കുക തുറന്ന് ഇത് സ്കാൻ ചെയ്യുകയോ ഒട്ടിക്കുകയോ ചെയ്യുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "तुमच्या लायब्ररीत आधीपासून असलेल्या डिव्हाइसवर सेटिंग्ज → सदस्य → डिव्हाइस जोडा उघडा आणि हे स्कॅन करा किंवा पेस्ट करा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open op een apparaat dat al in je bibliotheek zit Instellingen → Leden → Apparaat toevoegen en scan of plak dit."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਪਹਿਲਾਂ ਤੋਂ ਮੌਜੂਦ ਡਿਵਾਈਸ 'ਤੇ ਸੈਟਿੰਗਾਂ → ਮੈਂਬਰ → ਡਿਵਾਈਸ ਸ਼ਾਮਲ ਕਰੋ ਖੋਲ੍ਹੋ ਅਤੇ ਇਸਨੂੰ ਸਕੈਨ ਜਾਂ ਪੇਸਟ ਕਰੋ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na urządzeniu, które jest już w Twojej bibliotece, otwórz Ustawienia → Członkowie → Dodaj urządzenie i zeskanuj lub wklej to."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Em um dispositivo que já está na sua biblioteca, abra Ajustes → Membros → Adicionar um dispositivo e escaneie ou cole isto."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "உங்கள் லைப்ரரியில் ஏற்கனவே உள்ள சாதனத்தில் அமைப்புகள் → உறுப்பினர்கள் → சாதனத்தைச் சேர் திறந்து இதை ஸ்கேன் செய்யவும் அல்லது ஒட்டவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "మీ లైబ్రరీలో ఇప్పటికే ఉన్న పరికరంలో సెట్టింగ్‌లు → సభ్యులు → పరికరాన్ని జోడించండి తెరిచి దీన్ని స్కాన్ చేయండి లేదా అతికించండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "บนอุปกรณ์ที่อยู่ในคลังของคุณแล้ว เปิดการตั้งค่า → สมาชิก → เพิ่มอุปกรณ์ แล้วสแกนหรือวางสิ่งนี้"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığında zaten olan bir cihazda Ayarlar → Üyeler → Cihaz ekle'yi aç ve bunu tara ya da yapıştır."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На пристрої, що вже в бібліотеці, відкрийте Налаштування → Учасники → Додати пристрій і скануйте або вставте це."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اپنی لائبریری میں پہلے سے موجود آلے پر سیٹنگز ← اراکین ← آلہ شامل کریں کھولیں اور اسے اسکین یا پیسٹ کریں۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trên thiết bị đã có trong thư viện, mở Cài đặt → Thành viên → Thêm thiết bị rồi quét hoặc dán mã này."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在已在你资料库中的设备上，打开设置 → 成员 → 添加设备，然后扫描或粘贴此代码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在已於你資料庫中的裝置上，開啟設定 → 成員 → 加入裝置，然後掃描或貼上此代碼。"
-          }
-        }
-      }
-    },
-    "On the new device, open Join a library and show its code. Scan it here, or paste it below." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On the new device, open Join a library and show its code. Scan it here, or paste it below."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "على الجهاز الجديد، افتح «الانضمام إلى مكتبة» واعرض رمزه. امسحه هنا أو الصقه أدناه."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На новото устройство отворете „Присъединяване към библиотека“ и покажете кода му. Сканирайте го тук или го поставете по-долу."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "নতুন ডিভাইসে «একটি লাইব্রেরিতে যোগ দিন» খুলুন এবং তার কোড দেখান। এখানে স্ক্যান করুন, বা নিচে পেস্ট করুন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "V novém zařízení otevřete „Připojit se ke knihovně“ a zobrazte jeho kód. Naskenujte ho zde, nebo ho vložte níže."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffne auf dem neuen Gerät „Bibliothek beitreten“ und zeige dessen Code. Scanne ihn hier oder füge ihn unten ein."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En el dispositivo nuevo, abre «Unirse a una biblioteca» y muestra su código. Escanéalo aquí o pégalo abajo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sur le nouvel appareil, ouvrez « Rejoindre une bibliothèque » et affichez son code. Scannez-le ici, ou collez-le ci-dessous."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "નવા ડિવાઇસ પર «લાઇબ્રેરીમાં જોડાઓ» ખોલો અને તેનો કોડ બતાવો. તેને અહીં સ્કૅન કરો, અથવા નીચે પેસ્ટ કરો."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "במכשיר החדש, פתח «הצטרפות לספרייה» והצג את הקוד שלו. סרוק אותו כאן, או הדבק אותו למטה."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "नए डिवाइस पर «लाइब्रेरी में शामिल हों» खोलें और उसका कोड दिखाएं. उसे यहां स्कैन करें, या नीचे पेस्ट करें."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na novom uređaju otvorite „Pridruži se knjižnici“ i prikažite njegov kôd. Skenirajte ga ovdje ili ga zalijepite ispod."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sul nuovo dispositivo, apri «Unisciti a una libreria» e mostra il suo codice. Scansionalo qui, oppure incollalo qui sotto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新しいデバイスで「ライブラリに参加」を開き、そのコードを表示してください。ここでスキャンするか、下に貼り付けてください。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಹೊಸ ಸಾಧನದಲ್ಲಿ «ಲೈಬ್ರರಿಗೆ ಸೇರಿ» ತೆರೆದು ಅದರ ಕೋಡ್ ತೋರಿಸಿ. ಅದನ್ನು ಇಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ, ಅಥವಾ ಕೆಳಗೆ ಅಂಟಿಸಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "새 기기에서 '보관함 참여'를 열어 코드를 표시하세요. 여기서 스캔하거나 아래에 붙여넣으세요."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "പുതിയ ഉപകരണത്തിൽ «ഒരു ലൈബ്രറിയിൽ ചേരുക» തുറന്ന് അതിന്റെ കോഡ് കാണിക്കുക. അത് ഇവിടെ സ്കാൻ ചെയ്യുക, അല്ലെങ്കിൽ താഴെ ഒട്ടിക്കുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "नवीन डिव्हाइसवर «लायब्ररीत सामील व्हा» उघडा आणि त्याचा कोड दाखवा. तो येथे स्कॅन करा, किंवा खाली पेस्ट करा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open op het nieuwe apparaat 'Deelnemen aan bibliotheek' en toon de code ervan. Scan die hier, of plak hem hieronder."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਨਵੀਂ ਡਿਵਾਈਸ 'ਤੇ «ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ» ਖੋਲ੍ਹੋ ਅਤੇ ਉਸਦਾ ਕੋਡ ਦਿਖਾਓ। ਇਸਨੂੰ ਇੱਥੇ ਸਕੈਨ ਕਰੋ, ਜਾਂ ਹੇਠਾਂ ਪੇਸਟ ਕਰੋ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na nowym urządzeniu otwórz „Dołącz do biblioteki” i pokaż jego kod. Zeskanuj go tutaj lub wklej poniżej."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No novo dispositivo, abra «Participar de uma biblioteca» e mostre o código dele. Escaneie-o aqui ou cole-o abaixo."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "புதிய சாதனத்தில் «லைப்ரரியில் சேர்» திறந்து அதன் குறியீட்டைக் காட்டவும். அதை இங்கே ஸ்கேன் செய்யவும், அல்லது கீழே ஒட்டவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "కొత్త పరికరంలో «లైబ్రరీలో చేరండి» తెరిచి దాని కోడ్‌ను చూపించండి. దాన్ని ఇక్కడ స్కాన్ చేయండి, లేదా కింద అతికించండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "บนอุปกรณ์ใหม่ เปิด «เข้าร่วมคลัง» และแสดงรหัสของมัน สแกนที่นี่ หรือวางด้านล่าง"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yeni cihazda «Bir kitaplığa katıl»ı aç ve kodunu göster. Burada tara ya da aşağıya yapıştır."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На новому пристрої відкрийте «Приєднатися до бібліотеки» й покажіть його код. Скануйте його тут або вставте нижче."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "نئے آلے پر «لائبریری میں شامل ہوں» کھولیں اور اس کا کوڈ دکھائیں۔ اسے یہاں اسکین کریں، یا نیچے پیسٹ کریں۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trên thiết bị mới, mở «Tham gia thư viện» và hiển thị mã của nó. Quét mã tại đây, hoặc dán bên dưới."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在新设备上打开「加入资料库」并显示其代码。在此扫描，或在下方粘贴。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在新裝置上開啟「加入資料庫」並顯示其代碼。在此掃描，或在下方貼上。"
-          }
-        }
-      }
-    },
-    "Once that device approves this one, enter the invite code it shows." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Once that device approves this one, enter the invite code it shows."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "بعد أن يوافق ذلك الجهاز على هذا الجهاز، أدخل رمز الدعوة الذي يعرضه."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "След като онова устройство одобри това, въведете кода за покана, който то показва."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "সেই ডিভাইসটি এটিকে অনুমোদন করলে, সেটিতে দেখানো আমন্ত্রণ কোডটি লিখুন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jakmile ono zařízení toto schválí, zadejte kód pozvánky, který zobrazí."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sobald jenes Gerät dieses genehmigt, gib den Einladungscode ein, den es anzeigt."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuando ese dispositivo apruebe este, introduce el código de invitación que muestre."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une fois que cet appareil aura approuvé celui-ci, saisissez le code d'invitation qu'il affiche."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "તે ડિવાઇસ આને મંજૂરી આપે પછી, તે બતાવે તે આમંત્રણ કોડ દાખલ કરો."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לאחר שהמכשיר ההוא יאשר את זה, הזן את קוד ההזמנה שהוא מציג."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "जब वह डिवाइस इसे स्वीकृत कर दे, तो उस पर दिखने वाला आमंत्रण कोड दर्ज करें."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kad onaj uređaj odobri ovaj, unesite kôd pozivnice koji prikaže."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quando quel dispositivo approva questo, inserisci il codice di invito che mostra."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "そのデバイスがこのデバイスを承認したら、表示される招待コードを入力してください。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಆ ಸಾಧನ ಇದನ್ನು ಅನುಮೋದಿಸಿದ ನಂತರ, ಅದು ತೋರಿಸುವ ಆಹ್ವಾನ ಕೋಡ್ ನಮೂದಿಸಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "그 기기가 이 기기를 승인하면, 표시되는 초대 코드를 입력하세요."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ആ ഉപകരണം ഇതിനെ അംഗീകരിച്ചാൽ, അത് കാണിക്കുന്ന ക്ഷണ കോഡ് നൽകുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ते डिव्हाइस याला मंजुरी देईल तेव्हा, ते दाखवत असलेला आमंत्रण कोड प्रविष्ट करा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zodra dat apparaat dit apparaat goedkeurt, voer je de uitnodigingscode in die het toont."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਜਦੋਂ ਉਹ ਡਿਵਾਈਸ ਇਸਨੂੰ ਮਨਜ਼ੂਰ ਕਰ ਦੇਵੇ, ਤਾਂ ਉਸ 'ਤੇ ਦਿਖਾਇਆ ਸੱਦਾ ਕੋਡ ਦਰਜ ਕਰੋ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gdy tamto urządzenie zatwierdzi to urządzenie, wpisz kod zaproszenia, który pokaże."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quando aquele dispositivo aprovar este, digite o código de convite que ele mostrar."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "அந்தச் சாதனம் இதை ஒப்புக்கொண்டதும், அது காட்டும் அழைப்புக் குறியீட்டை உள்ளிடவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఆ పరికరం దీన్ని ఆమోదించిన తర్వాత, అది చూపే ఆహ్వాన కోడ్‌ను నమోదు చేయండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เมื่ออุปกรณ์นั้นอนุมัติอุปกรณ์นี้แล้ว ให้ป้อนรหัสเชิญที่แสดง"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O cihaz bunu onayladığında, gösterdiği davet kodunu gir."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Коли той пристрій схвалить цей, введіть код запрошення, який він покаже."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "جب وہ آلہ اسے منظور کر لے تو اس پر دکھایا گیا دعوتی کوڈ درج کریں۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Khi thiết bị đó phê duyệt thiết bị này, hãy nhập mã mời nó hiển thị."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "当那台设备批准此设备后，输入它显示的邀请码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "當那台裝置核准此裝置後，輸入它顯示的邀請碼。"
-          }
-        }
-      }
-    },
     "One" : {
       "comment" : "Playback menu: Repeat submenu item, repeat the current track",
       "extractionState" : "stale",
@@ -55491,6 +54161,197 @@
         }
       }
     },
+    "Pairing code" : {
+      "comment" : "Device pairing: label for the one code shown by an existing device.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "رمز الاقتران"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код за сдвояване"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "পেয়ারিং কোড"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Párovací kód"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplungscode"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pairing code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código de emparejamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code d’association"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પેરિંગ કોડ"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוד צימוד"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेयरिंग कोड"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kod za uparivanje"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codice di abbinamento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペアリングコード"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಜೋಡಣೆ ಕೋಡ್"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "페어링 코드"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പെയറിംഗ് കോഡ്"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेअरिंग संकेत"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppelingscode"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਪੇਅਰਿੰਗ ਕੋਡ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kod parowania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código de pareamento"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இணைத்தல் குறியீடு"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "జత చేసే కోడ్"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รหัสจับคู่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eşleştirme kodu"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код сполучення"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جوڑی بنانے کا رمز"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mã ghép đôi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配对码"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配對碼"
+          }
+        }
+      }
+    },
     "Password" : {
       "comment" : "Subsonic settings: password field label",
       "localizations" : {
@@ -55869,6 +54730,197 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "密碼已儲存"
+          }
+        }
+      }
+    },
+    "Paste pairing code" : {
+      "comment" : "Device pairing: placeholder for entering the code from an existing device.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الصق رمز الاقتران"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поставете кода за сдвояване"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "পেয়ারিং কোড পেস্ট করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vložte párovací kód"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplungscode einfügen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste pairing code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega el código de emparejamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coller le code d’association"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પેરિંગ કોડ ચોંટાડો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הדבק קוד צימוד"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेयरिंग कोड पेस्ट करें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zalijepi kod za uparivanje"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incolla il codice di abbinamento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペアリングコードを貼り付け"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಜೋಡಣೆ ಕೋಡ್ ಅಂಟಿಸಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "페어링 코드 붙여넣기"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പെയറിംഗ് കോഡ് ഒട്ടിക്കുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेअरिंग संकेत पेस्ट करा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppelingscode plakken"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਪੇਅਰਿੰਗ ਕੋਡ ਪੇਸਟ ਕਰੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wklej kod parowania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cole o código de pareamento"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இணைத்தல் குறியீட்டை ஒட்டவும்"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "జత చేసే కోడ్‌ను అతికించండి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วางรหัสจับคู่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eşleştirme kodunu yapıştırın"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставте код сполучення"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جوڑی بنانے کا رمز پیسٹ کریں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dán mã ghép đôi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粘贴配对码"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼上配對碼"
           }
         }
       }
@@ -74523,192 +73575,384 @@
         }
       }
     },
-    "Scan invite code" : {
+    "Scan the pairing code shown on a device already in your library." : {
+      "comment" : "Device pairing: instruction on the joining device.",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan invite code"
-          }
-        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مسح رمز الدعوة"
+            "value" : "امسح رمز الاقتران المعروض على جهاز موجود بالفعل في مكتبتك."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сканиране на код за покана"
+            "value" : "Сканирайте кода за сдвояване, показан на устройство, което вече е в библиотеката ви."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "আমন্ত্রণ কোড স্ক্যান করুন"
+            "value" : "আপনার লাইব্রেরিতে ইতিমধ্যে থাকা একটি ডিভাইসে দেখানো পেয়ারিং কোডটি স্ক্যান করুন।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naskenovat kód pozvánky"
+            "value" : "Naskenujte párovací kód zobrazený na zařízení, které už je ve vaší knihovně."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einladungscode scannen"
+            "value" : "Scanne den Kopplungscode, der auf einem Gerät angezeigt wird, das bereits in deiner Mediathek ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan the pairing code shown on a device already in your library."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escanear código de invitación"
+            "value" : "Escanea el código de emparejamiento que se muestra en un dispositivo que ya está en tu biblioteca."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanner le code d'invitation"
+            "value" : "Scannez le code d’association affiché sur un appareil déjà présent dans votre bibliothèque."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "આમંત્રણ કોડ સ્કૅન કરો"
+            "value" : "તમારી લાઇબ્રેરીમાં પહેલેથી રહેલા ઉપકરણ પર દેખાતો પેરિંગ કોડ સ્કેન કરો."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סריקת קוד הזמנה"
+            "value" : "סרקו את קוד הצימוד שמוצג במכשיר שכבר נמצא בספרייה שלכם."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "आमंत्रण कोड स्कैन करें"
+            "value" : "अपनी लाइब्रेरी में पहले से मौजूद उपकरण पर दिखाया गया पेयरिंग कोड स्कैन करें।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skeniraj kôd pozivnice"
+            "value" : "Skenirajte kod za uparivanje prikazan na uređaju koji je već u vašoj fonoteci."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scansiona codice di invito"
+            "value" : "Scansiona il codice di abbinamento mostrato su un dispositivo già nella tua libreria."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "招待コードをスキャン"
+            "value" : "すでにライブラリにあるデバイスに表示されたペアリングコードをスキャンしてください。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಆಹ್ವಾನ ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ"
+            "value" : "ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿ ಈಗಾಗಲೇ ಇರುವ ಸಾಧನದಲ್ಲಿ ತೋರಿಸಲಾದ ಜೋಡಣೆ ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "초대 코드 스캔"
+            "value" : "이미 라이브러리에 있는 기기에 표시된 페어링 코드를 스캔하세요."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ക്ഷണ കോഡ് സ്കാൻ ചെയ്യുക"
+            "value" : "നിങ്ങളുടെ ശേഖരത്തിൽ ഇതിനകം ഉള്ള ഉപകരണത്തിൽ കാണിച്ചിരിക്കുന്ന പെയറിംഗ് കോഡ് സ്കാൻ ചെയ്യുക."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "आमंत्रण कोड स्कॅन करा"
+            "value" : "तुमच्या संग्रहालयात आधीपासून असलेल्या डिव्हाइसवर दाखवलेला पेअरिंग संकेत स्कॅन करा."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uitnodigingscode scannen"
+            "value" : "Scan de koppelingscode die wordt weergegeven op een apparaat dat al in je bibliotheek staat."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਸੱਦਾ ਕੋਡ ਸਕੈਨ ਕਰੋ"
+            "value" : "ਆਪਣੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਪਹਿਲਾਂ ਤੋਂ ਮੌਜੂਦ ਡਿਵਾਈਸ ਉੱਤੇ ਦਿਖਾਇਆ ਪੇਅਰਿੰਗ ਕੋਡ ਸਕੈਨ ਕਰੋ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeskanuj kod zaproszenia"
+            "value" : "Zeskanuj kod parowania wyświetlany na urządzeniu, które jest już w Twojej bibliotece."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escanear código de convite"
+            "value" : "Escaneie o código de pareamento exibido em um dispositivo que já está na sua biblioteca."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "அழைப்புக் குறியீட்டை ஸ்கேன் செய்"
+            "value" : "உங்கள் நூலகத்தில் ஏற்கனவே உள்ள சாதனத்தில் காட்டப்படும் இணைத்தல் குறியீட்டை வருடவும்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఆహ్వాన కోడ్‌ను స్కాన్ చేయండి"
+            "value" : "మీ లైబ్రరీలో ఇప్పటికే ఉన్న పరికరంలో చూపిన జత చేసే కోడ్‌ను స్కాన్ చేయండి."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "สแกนรหัสเชิญ"
+            "value" : "สแกนรหัสจับคู่ที่แสดงบนอุปกรณ์ที่อยู่ในคลังของคุณแล้ว"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Davet kodunu tara"
+            "value" : "Kitaplığınızda zaten bulunan bir cihazda gösterilen eşleştirme kodunu tarayın."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сканувати код запрошення"
+            "value" : "Відскануйте код сполучення, показаний на пристрої, який уже є у вашій бібліотеці."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "دعوتی کوڈ اسکین کریں"
+            "value" : "اپنے کتب خانے میں پہلے سے موجود آلے پر دکھایا گیا جوڑی بنانے کا رمز اسکین کریں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quét mã mời"
+            "value" : "Quét mã ghép đôi hiển thị trên một thiết bị đã có trong thư viện của bạn."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "扫描邀请码"
+            "value" : "扫描已加入你曲库的设备上显示的配对码。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "掃描邀請碼"
+            "value" : "掃描已加入你資料庫的裝置上顯示的配對碼。"
+          }
+        }
+      }
+    },
+    "Scan this code on the device joining your library." : {
+      "comment" : "Device pairing: instruction on the existing device.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "امسح هذا الرمز على الجهاز الذي ينضم إلى مكتبتك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сканирайте този код на устройството, което се присъединява към библиотеката ви."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আপনার লাইব্রেরিতে যোগ দেওয়া ডিভাইসে এই কোডটি স্ক্যান করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naskenujte tento kód na zařízení, které se připojuje k vaší knihovně."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanne diesen Code auf dem Gerät, das deiner Mediathek beitritt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan this code on the device joining your library."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanea este código en el dispositivo que se va a unir a tu biblioteca."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scannez ce code sur l’appareil qui rejoint votre bibliothèque."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "તમારી લાઇબ્રેરીમાં જોડાતા ઉપકરણ પર આ કોડ સ્કેન કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרקו את הקוד הזה במכשיר שמצטרף לספרייה שלכם."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अपनी लाइब्रेरी से जुड़ने वाले उपकरण पर यह कोड स्कैन करें।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skenirajte ovaj kod na uređaju koji se pridružuje vašoj fonoteci."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scansiona questo codice sul dispositivo che si unisce alla tua libreria."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ライブラリに参加するデバイスでこのコードをスキャンしてください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರುವ ಸಾಧನದಲ್ಲಿ ಈ ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브러리에 참여할 기기에서 이 코드를 스캔하세요."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "നിങ്ങളുടെ ശേഖരത്തിൽ ചേരുന്ന ഉപകരണത്തിൽ ഈ കോഡ് സ്കാൻ ചെയ്യുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "तुमच्या संग्रहालयात जोडल्या जाणाऱ्या डिव्हाइसवर हा संकेत स्कॅन करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan deze code op het apparaat dat aan je bibliotheek deelneemt."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਆਪਣੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਣ ਵਾਲੇ ਡਿਵਾਈਸ ਉੱਤੇ ਇਹ ਕੋਡ ਸਕੈਨ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeskanuj ten kod na urządzeniu, które dołącza do Twojej biblioteki."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escaneie este código no dispositivo que está entrando na sua biblioteca."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "உங்கள் நூலகத்தில் சேரும் சாதனத்தில் இந்தக் குறியீட்டை வருடவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మీ లైబ్రరీలో చేరే పరికరంలో ఈ కోడ్‌ను స్కాన్ చేయండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สแกนรหัสนี้บนอุปกรณ์ที่จะเข้าร่วมคลังของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu kodu kitaplığınıza katılan cihazda tarayın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відскануйте цей код на пристрої, який приєднується до вашої бібліотеки."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اپنے کتب خانے میں شامل ہونے والے آلے پر یہ رمز اسکین کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quét mã này trên thiết bị đang tham gia thư viện của bạn."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在要加入你曲库的设备上扫描此代码。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在要加入你資料庫的裝置上掃描此代碼。"
           }
         }
       }
@@ -80461,6 +79705,197 @@
         }
       }
     },
+    "Starting pairing..." : {
+      "comment" : "Device pairing: progress while the existing device starts listening.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بدء الاقتران…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стартиране на сдвояването…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "পেয়ারিং শুরু হচ্ছে…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spouštění párování…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplung wird gestartet…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting pairing..."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciando emparejamiento…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrage de l’association…"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પેરિંગ શરૂ થઈ રહ્યું છે…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתחיל צימוד…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेयरिंग शुरू हो रही है…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokretanje uparivanja…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avvio dell’abbinamento…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペアリングを開始中…"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಜೋಡಣೆ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "페어링 시작 중…"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പെയറിംഗ് ആരംഭിക്കുന്നു…"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेअरिंग सुरू होत आहे…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppelen wordt gestart…"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਪੇਅਰਿੰਗ ਸ਼ੁਰੂ ਹੋ ਰਹੀ ਹੈ…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozpoczynanie parowania…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciando pareamento…"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இணைத்தல் தொடங்குகிறது…"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "జత చేయడం ప్రారంభమవుతోంది…"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังเริ่มจับคู่…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eşleştirme başlatılıyor…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск сполучення…"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جوڑی بنانا شروع ہو رہا ہے…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang bắt đầu ghép đôi…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在开始配对…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在開始配對…"
+          }
+        }
+      }
+    },
     "Starting re-identify..." : {
       "comment" : "Re-identify sheet: initial progress label",
       "extractionState" : "stale",
@@ -85629,197 +85064,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此資料庫尚未同步。移除它將永久刪除其目錄——專輯、中繼資料編輯與播放記錄。你資料夾中的音訊檔案不會被刪除。"
-          }
-        }
-      }
-    },
-    "This library needs a signed-in provider. Go back and choose the provider it uses." : {
-      "comment" : "Join flow: the picked provider does not match the library's OAuth provider",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تحتاج هذه المكتبة إلى موفر تم تسجيل الدخول إليه. ارجع واختر الموفر الذي تستخدمه."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тази библиотека изисква доставчик с влязъл профил. Върнете се и изберете доставчика, който използва."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "এই লাইব্রেরির জন্য সাইন-ইন করা প্রদানকারী দরকার। ফিরে যান এবং এটি যে প্রদানকারী ব্যবহার করে সেটি বেছে নিন।"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tato knihovna vyžaduje přihlášeného poskytovatele. Vraťte se a vyberte poskytovatele, kterého používá."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Bibliothek benötigt einen angemeldeten Anbieter. Gehe zurück und wähle den Anbieter aus, den sie verwendet."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This library needs a signed-in provider. Go back and choose the provider it uses."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta biblioteca necesita un proveedor con sesión iniciada. Vuelve atrás y elige el proveedor que usa."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette bibliothèque nécessite un fournisseur connecté. Revenez en arrière et choisissez le fournisseur qu’elle utilise."
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આ લાઇબ્રેરીને સાઇન-ઇન કરેલા પ્રોવાઇડરની જરૂર છે. પાછા જાઓ અને તે જે પ્રોવાઇડરનો ઉપયોગ કરે છે તે પસંદ કરો."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הספרייה הזו צריכה ספק שמחוברים אליו. חזור ובחר את הספק שהיא משתמשת בו."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "इस लाइब्रेरी के लिए साइन-इन किया हुआ प्रदाता चाहिए। वापस जाएँ और वह प्रदाता चुनें जिसका यह उपयोग करती है।"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ova biblioteka zahtijeva prijavljenog pružatelja. Vratite se i odaberite pružatelja kojeg koristi."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Questa libreria richiede un provider con accesso effettuato. Torna indietro e scegli il provider che usa."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このライブラリにはサインイン済みのプロバイダーが必要です。戻って、このライブラリが使用するプロバイダーを選択してください。"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಈ ಲೈಬ್ರರಿಗೆ ಸೈನ್ ಇನ್ ಮಾಡಿದ ಪ್ರೊವೈಡರ್ ಅಗತ್ಯವಿದೆ. ಹಿಂದಿರುಗಿ ಇದು ಬಳಸುವ ಪ್ರೊವೈಡರ್ ಆಯ್ಕೆಮಾಡಿ."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 라이브러리에는 로그인된 제공업체가 필요합니다. 돌아가서 이 라이브러리가 사용하는 제공업체를 선택하세요."
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഈ ലൈബ്രറിയ്ക്ക് സൈൻ ഇൻ ചെയ്ത പ്രൊവൈഡർ വേണം. തിരികെ പോയി ഇത് ഉപയോഗിക്കുന്ന പ്രൊവൈഡർ തിരഞ്ഞെടുക്കുക."
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "या लायब्ररीसाठी साइन-इन केलेला प्रदाता आवश्यक आहे. मागे जा आणि ती वापरत असलेला प्रदाता निवडा."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deze bibliotheek heeft een ingelogde provider nodig. Ga terug en kies de provider die deze gebruikt."
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਸਾਈਨ-ਇਨ ਕੀਤਾ ਪ੍ਰੋਵਾਈਡਰ ਚਾਹੀਦਾ ਹੈ। ਵਾਪਸ ਜਾਓ ਅਤੇ ਉਹ ਪ੍ਰੋਵਾਈਡਰ ਚੁਣੋ ਜੋ ਇਹ ਵਰਤਦੀ ਹੈ।"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ta biblioteka wymaga zalogowanego dostawcy. Wróć i wybierz dostawcę, którego używa."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta biblioteca precisa de um provedor com sessão iniciada. Volte e escolha o provedor que ela usa."
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "இந்த நூலகத்திற்கு உள்நுழைந்த வழங்குநர் தேவை. திரும்பிச் சென்று இது பயன்படுத்தும் வழங்குநரைத் தேர்வு செய்யவும்."
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఈ లైబ్రరీకి సైన్ ఇన్ చేసిన ప్రొవైడర్ అవసరం. తిరిగి వెళ్లి ఇది ఉపయోగించే ప్రొవైడర్‌ను ఎంచుకోండి."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ไลบรารีนี้ต้องใช้ผู้ให้บริการที่ลงชื่อเข้าใช้แล้ว กลับไปและเลือกผู้ให้บริการที่ไลบรารีนี้ใช้"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu arşiv, oturum açılmış bir sağlayıcı gerektirir. Geri dönüp kullandığı sağlayıcıyı seçin."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Для цієї бібліотеки потрібен постачальник із виконаним входом. Поверніться та виберіть постачальника, якого вона використовує."
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اس لائبریری کو سائن اِن شدہ فراہم کنندہ درکار ہے۔ واپس جائیں اور وہ فراہم کنندہ منتخب کریں جو یہ استعمال کرتی ہے۔"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thư viện này cần một nhà cung cấp đã đăng nhập. Hãy quay lại và chọn nhà cung cấp mà thư viện sử dụng."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此资料库需要已登录的提供方。请返回并选择它使用的提供方。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此資料庫需要已登入的提供者。請返回並選擇它使用的提供者。"
           }
         }
       }
@@ -95014,6 +94258,388 @@
         }
       }
     },
+    "Waiting for approval..." : {
+      "comment" : "Device pairing: progress after the joining device sends its identity.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "في انتظار الموافقة…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изчакване на одобрение…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অনুমোদনের অপেক্ষায়…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeká se na schválení…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warten auf Bestätigung…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for approval..."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando aprobación…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente d’approbation…"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "મંજૂરીની રાહ જોવાઈ રહી છે…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בהמתנה לאישור…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मंज़ूरी की प्रतीक्षा…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čekanje odobrenja…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In attesa di approvazione…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "承認を待っています…"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "승인 대기 중…"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "അനുമതിക്കായി കാത്തിരിക്കുന്നു…"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मंजुरीची प्रतीक्षा करत आहे…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wachten op goedkeuring…"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਮਨਜ਼ੂਰੀ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oczekiwanie na zatwierdzenie…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando aprovação…"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ஒப்புதலுக்காகக் காத்திருக்கிறது…"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఆమోదం కోసం వేచి ఉంది…"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังรอการอนุมัติ…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Onay bekleniyor…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очікування схвалення…"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "منظوری کا انتظار ہے…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang chờ phê duyệt…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待批准…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待核准…"
+          }
+        }
+      }
+    },
+    "Waiting for the device..." : {
+      "comment" : "Device pairing: progress while the existing device waits for a joiner.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "في انتظار الجهاز…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изчакване на устройството…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডিভাইসের জন্য অপেক্ষা করা হচ্ছে…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čekání na zařízení…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warten auf das Gerät…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the device..."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando al dispositivo…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de l’appareil…"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ઉપકરણની રાહ જોવાઈ રહી છે…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין למכשיר…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "उपकरण की प्रतीक्षा हो रही है…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čekanje uređaja…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In attesa del dispositivo…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイスを待機中…"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಸಾಧನಕ್ಕಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기를 기다리는 중…"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഉപകരണത്തിനായി കാത്തിരിക്കുന്നു…"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डिव्हाइसची प्रतीक्षा करत आहे…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wachten op het apparaat…"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਡਿਵਾਈਸ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oczekiwanie na urządzenie…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando o dispositivo…"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "சாதனத்திற்காகக் காத்திருக்கிறது…"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "పరికరం కోసం వేచి ఉంది…"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังรออุปกรณ์…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cihaz bekleniyor…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очікування пристрою…"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آلے کا انتظار ہے…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang chờ thiết bị…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待设备…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待裝置…"
+          }
+        }
+      }
+    },
     "Waiting to be identified" : {
       "comment" : "Still-identifying row (queued phase): the sweep hasn't reached this candidate yet.",
       "localizations" : {
@@ -101724,7 +101350,7 @@
       }
     },
     "Join" : {
-      "comment" : "Join-library flow: button submitting the pasted invite code",
+      "comment" : "Join-library flow: button starting the device-pairing connection",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -102296,197 +101922,6 @@
         }
       }
     },
-    "Decode" : {
-      "comment" : "Approve-device sheet: button decoding the pasted device code",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Decode"
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "فك الترميز"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Декодиране"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ডিকোড করুন"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dekódovat"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dekodieren"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Decodificar"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Décoder"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ડીકોડ કરો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "פענוח"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "डिकोड करें"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dekodiraj"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Decodifica"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デコード"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಡಿಕೋಡ್ ಮಾಡಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "디코딩"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഡീകോഡ് ചെയ്യുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "डीकोड करा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Decoderen"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਡੀਕੋਡ ਕਰੋ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dekoduj"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Decodificar"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "டீகோட்"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "డీకోడ్ చేయండి"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ถอดรหัส"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çöz"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Декодувати"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ڈی کوڈ کریں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giải mã"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "解码"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "解碼"
-          }
-        }
-      }
-    },
     "Scan" : {
       "comment" : "Device pairing: button opening the QR-code scanner",
       "localizations" : {
@@ -102865,388 +102300,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拷貝代碼"
-          }
-        }
-      }
-    },
-    "Invite code" : {
-      "comment" : "Join-library flow: label over the invite-code field",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invite code"
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "رمز الدعوة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Код за покана"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "আমন্ত্রণ কোড"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kód pozvánky"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einladungscode"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código de invitación"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code d'invitation"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આમંત્રણ કોડ"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "קוד הזמנה"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "आमंत्रण कोड"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kôd pozivnice"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codice di invito"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "招待コード"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಆಹ್ವಾನ ಕೋಡ್"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "초대 코드"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ക്ഷണ കോഡ്"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "आमंत्रण कोड"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uitnodigingscode"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਸੱਦਾ ਕੋਡ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kod zaproszenia"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código de convite"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "அழைப்புக் குறியீடு"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఆహ్వాన కోడ్"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "รหัสเชิญ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Davet kodu"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Код запрошення"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "دعوتی کوڈ"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mã mời"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "邀请码"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "邀請碼"
-          }
-        }
-      }
-    },
-    "Paste invite code" : {
-      "comment" : "Join-library flow: placeholder in the invite-code field",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste invite code"
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الصق رمز الدعوة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поставете кода за покана"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "আমন্ত্রণ কোড পেস্ট করুন"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vložte kód pozvánky"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einladungscode einfügen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega el código de invitación"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collez le code d'invitation"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આમંત્રણ કોડ પેસ્ટ કરો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הדבק את קוד ההזמנה"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "आमंत्रण कोड पेस्ट करें"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zalijepite kôd pozivnice"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Incolla il codice di invito"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "招待コードを貼り付け"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಆಹ್ವಾನ ಕೋಡ್ ಅಂಟಿಸಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "초대 코드 붙여넣기"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ക്ഷണ കോഡ് ഒട്ടിക്കുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "आमंत्रण कोड पेस्ट करा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plak uitnodigingscode"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਸੱਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wklej kod zaproszenia"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cole o código de convite"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "அழைப்புக் குறியீட்டை ஒட்டவும்"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఆహ్వాన కోడ్‌ను అతికించండి"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "วางรหัสเชิญ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Davet kodunu yapıştır"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вставте код запрошення"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "دعوتی کوڈ پیسٹ کریں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dán mã mời"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "粘贴邀请码"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "貼上邀請碼"
           }
         }
       }
@@ -103820,388 +102873,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除此裝置？"
-          }
-        }
-      }
-    },
-    "This device's code" : {
-      "comment" : "Device pairing: header over the code this device shows the approver",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This device's code"
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "رمز هذا الجهاز"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Кодът на това устройство"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "এই ডিভাইসের কোড"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kód tohoto zařízení"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code dieses Geräts"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código de este dispositivo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code de cet appareil"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આ ડિવાઇસનો કોડ"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הקוד של מכשיר זה"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "इस डिवाइस का कोड"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kôd ovog uređaja"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codice di questo dispositivo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このデバイスのコード"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಈ ಸಾಧನದ ಕೋಡ್"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 기기의 코드"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഈ ഉപകരണത്തിന്റെ കോഡ്"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "या डिव्हाइसचा कोड"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code van dit apparaat"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਇਸ ਡਿਵਾਈਸ ਦਾ ਕੋਡ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kod tego urządzenia"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código deste dispositivo"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "இந்தச் சாதனத்தின் குறியீடு"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ఈ పరికరం కోడ్"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "รหัสของอุปกรณ์นี้"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu cihazın kodu"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Код цього пристрою"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اس آلے کا کوڈ"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mã của thiết bị này"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此设备的代码"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此裝置的代碼"
-          }
-        }
-      }
-    },
-    "Paste the device's code" : {
-      "comment" : "Approve-device sheet: placeholder for the joining device's pasted code",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste the device's code"
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الصق رمز الجهاز"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поставете кода на устройството"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ডিভাইসের কোড পেস্ট করুন"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vložte kód zařízení"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code des Geräts einfügen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega el código del dispositivo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collez le code de l'appareil"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ડિવાઇસનો કોડ પેસ્ટ કરો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הדבק את קוד המכשיר"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "डिवाइस का कोड पेस्ट करें"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zalijepite kôd uređaja"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Incolla il codice del dispositivo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デバイスのコードを貼り付け"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಸಾಧನದ ಕೋಡ್ ಅಂಟಿಸಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기기의 코드 붙여넣기"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ഉപകരണത്തിന്റെ കോഡ് ഒട്ടിക്കുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "डिव्हाइसचा कोड पेस्ट करा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plak de code van het apparaat"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਡਿਵਾਈਸ ਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wklej kod urządzenia"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cole o código do dispositivo"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "சாதனத்தின் குறியீட்டை ஒட்டவும்"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "పరికరం కోడ్‌ను అతికించండి"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "วางรหัสของอุปกรณ์"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cihazın kodunu yapıştır"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вставте код пристрою"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "آلے کا کوڈ پیسٹ کریں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dán mã của thiết bị"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "粘贴设备代码"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "貼上裝置代碼"
           }
         }
       }

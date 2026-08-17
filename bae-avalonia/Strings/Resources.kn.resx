@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದಲ್ಲಿ ನೋಡಿ</value></data>
   <data name="join.title" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಿ</value></data>
-  <data name="join.intro" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಮತ್ತೊಂದು ಸಾಧನದಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸಿ.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>ಈ ಸಾಧನದ ಕೋಡ್</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿರುವ ಸಾಧನದಲ್ಲಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳು → ಸಾಧನಗಳು → ಸಾಧನ ಸೇರಿಸಿ ತೆರೆಯಿರಿ ಮತ್ತು ಇದನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ಅಂಟಿಸಿ.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>ಈ ಸಾಧನ: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>ಈ ಸಾಧನದ ಕೋಡ್ ಸೃಷ್ಟಿಸಲಾಗಲಿಲ್ಲ</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>ಆಹ್ವಾನ ಕೋಡ್</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>ಆ ಸಾಧನ ಇದನ್ನು ಅನುಮೋದಿಸಿದ ನಂತರ, ಅದು ತೋರಿಸುವ ಆಹ್ವಾನ ಕೋಡ್ ನಮೂದಿಸಿ.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>ಆಹ್ವಾನ ಕೋಡ್ ಅಂಟಿಸಿ</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>ಅಮಾನ್ಯ ಆಹ್ವಾನ ಕೋಡ್</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · ಮಾಲೀಕ {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿ ಈಗಾಗಲೇ ಇರುವ ಸಾಧನದಲ್ಲಿ ತೋರಿಸಲಾದ ಜೋಡಣೆ ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>ಜೋಡಣೆ ಕೋಡ್ ಅಂಟಿಸಿ</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>ಈ ಜೋಡಣೆ ಕೋಡ್ ಮಾನ್ಯವಾಗಿಲ್ಲ.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>ಸೇರಿ</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} ಸೇರುತ್ತಿದೆ…</value></data>
   <data name="join.failed" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಲಾಗಲಿಲ್ಲ</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>ಈ ಸಾಧನ ಪ್ರವೇಶ ಕಳೆದುಕೊಳ್ಳುತ್ತದೆ ಮತ್ತು ಲೈಬ್ರರಿ ಕೀಲಿ ತಿರುಗಿಸಲಾಗುತ್ತದೆ. ದೃಢೀಕರಿಸಲು ತೆಗೆದುಹಾಕಿ ಅನ್ನು ಮತ್ತೆ ಕ್ಲಿಕ್ ಮಾಡಿ.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>ಸಾಧನ ಸೇರಿಸಿ</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>ಹೊಸ ಸಾಧನದಲ್ಲಿ ಲೈಬ್ರರಿಗೆ ಸೇರ್ಪಡೆ ತೆರೆಯಿರಿ ಮತ್ತು ಅದರ ಕೋಡ್ ತೋರಿಸಿ. ಅದನ್ನು ಇಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ, ಅಥವಾ ಕೆಳಗೆ ಅಂಟಿಸಿ.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ಸಾಧನದ ಕೋಡ್ ಅಂಟಿಸಿ</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>ಡಿಕೋಡ್</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>ಅಮಾನ್ಯ ಸಾಧನ ಕೋಡ್</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಬೇಕೇ?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ಇದು ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸಲಾಗುತ್ತದೆ ಮತ್ತು ಸಮಕಾಲೀಕರಿಸಲು ಸಾಧ್ಯವಾಗುತ್ತದೆ. ಅದರಲ್ಲಿ ನಮೂದಿಸಲು ನಿಮಗೆ ಕೋಡ್ ಸಿಗುತ್ತದೆ.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>ಅನುಮೋದಿಸಿ</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>ಸಾಧನ ಅನುಮೋದಿಸಲಾಗುತ್ತಿದೆ…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಲಾಗಲಿಲ್ಲ</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>ಈ ಕೋಡ್ ಅನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ನಮೂದಿಸಿ.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರುವ ಸಾಧನದಲ್ಲಿ ಈ ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಬೇಕೇ?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>ಇದು ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸಲಾಗುತ್ತದೆ ಮತ್ತು ಸಮಕಾಲೀಕರಿಸಲು ಸಾಧ್ಯವಾಗುತ್ತದೆ.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>ಅನುಮೋದಿಸಿ</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>ಸಾಧನ ಅನುಮೋದಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>ಸಾಧನಕ್ಕಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ಆಲ್ಬಂಗೆ ಹೋಗಿ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ಅಳಿಸಿ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>ರಿಫ್ರೆಶ್ ಆಗುತ್ತಿದೆ…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>ಒಂದು ಬಿಡುಗಡೆಯಾಗಿ ಸಂಯೋಜಿಸಿ</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>ಪ್ರತ್ಯೇಕ ಬಿಡುಗಡೆಗಳಾಗಿ ಇರಿಸಿ</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>ಜೋಡಣೆ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ಬೆರಳಚ್ಚು: {fingerprint}</value></data>
 </root>

@@ -9,11 +9,11 @@ Dom w chmurze to jedno miejsce w przechowywaniu, które użytkownik już posiada
 
 | Dostawca | Uwierzytelnianie | Dostęp dla nowego urządzenia |
 |---|---|---|
-| Zgodny z S3 | Access key + secret | Dane dostępowe osadzone w zaproszeniu |
-| Google Drive | OAuth (PKCE) | Folder udostępniony kontu dołączającego |
-| Dropbox | OAuth (PKCE) | Folder udostępniony kontu dołączającego |
-| OneDrive | OAuth (PKCE) | Folder udostępniony kontu dołączającego |
-| iCloud (CloudKit) | Apple ID, bez logowania | Udział CloudKit przyjęty przez dołączającego |
+| Zgodny z S3 | Access key + secret | Dane uwierzytelniające przypisane do zatwierdzonego urządzenia podczas parowania |
+| Google Drive | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
+| Dropbox | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
+| OneDrive | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
+| iCloud (CloudKit) | Apple ID, bez logowania | Udział CloudKit zaakceptowany podczas parowania |
 
 Zgodność z S3 obejmuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i wszystko inne, co mówi tym API; bucket, region, endpoint i prefiks klucza są konfigurowalne, a bucket jest sprawdzany przed zapisaniem konfiguracji, żeby literówka zatrzymała konfigurację, a nie pierwszą synchronizację. Dostawcy OAuth istnieją tylko w pełnej edycji **bae**; kompilacje **baeium** kompilują je poza aplikacją.
 

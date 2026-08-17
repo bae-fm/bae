@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>ਕਲਾਊਡ</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਵੇਖੋ</value></data>
   <data name="join.title" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ</value></data>
-  <data name="join.intro" xml:space="preserve"><value>ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਉਸ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰੋ ਜੋ ਤੁਹਾਡੇ ਕੋਲ ਕਿਸੇ ਹੋਰ ਡਿਵਾਈਸ ਉੱਤੇ ਪਹਿਲਾਂ ਹੀ ਹੈ।</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>ਇਸ ਡਿਵਾਈਸ ਦਾ ਕੋਡ</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>ਆਪਣੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਪਹਿਲਾਂ ਹੀ ਮੌਜੂਦ ਡਿਵਾਈਸ ਉੱਤੇ ਸੈਟਿੰਗਾਂ → ਡਿਵਾਈਸਾਂ → ਡਿਵਾਈਸ ਜੋੜੋ ਖੋਲ੍ਹੋ ਅਤੇ ਇਹ ਸਕੈਨ ਜਾਂ ਪੇਸਟ ਕਰੋ।</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>ਇਹ ਡਿਵਾਈਸ: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>ਇਸ ਡਿਵਾਈਸ ਦਾ ਕੋਡ ਬਣਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>ਸੱਦਾ ਕੋਡ</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>ਜਦੋਂ ਉਹ ਡਿਵਾਈਸ ਇਸਨੂੰ ਮਨਜ਼ੂਰ ਕਰ ਦੇਵੇ, ਉਹ ਜੋ ਸੱਦਾ ਕੋਡ ਦਿਖਾਉਂਦਾ ਹੈ ਉਹ ਦਾਖਲ ਕਰੋ।</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>ਸੱਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>ਅਵੈਧ ਸੱਦਾ ਕੋਡ</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · ਮਾਲਕ {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>ਆਪਣੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਪਹਿਲਾਂ ਤੋਂ ਮੌਜੂਦ ਡਿਵਾਈਸ ਉੱਤੇ ਦਿਖਾਇਆ ਪੇਅਰਿੰਗ ਕੋਡ ਸਕੈਨ ਕਰੋ।</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>ਪੇਅਰਿੰਗ ਕੋਡ ਪੇਸਟ ਕਰੋ</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>ਇਹ ਪੇਅਰਿੰਗ ਕੋਡ ਜਾਇਜ਼ ਨਹੀਂ ਹੈ।</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>ਸ਼ਾਮਲ ਹੋਵੋ</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>{name} ਵਿੱਚ ਸ਼ਾਮਲ ਹੋ ਰਿਹਾ ਹੈ…</value></data>
   <data name="join.failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਨਹੀਂ ਹੋ ਸਕਿਆ</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>ਹਟਾਓ</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>ਇਹ ਡਿਵਾਈਸ ਪਹੁੰਚ ਗੁਆ ਦੇਵੇਗਾ ਅਤੇ ਲਾਇਬ੍ਰੇਰੀ ਕੁੰਜੀ ਬਦਲੀ ਜਾਵੇਗੀ। ਪੁਸ਼ਟੀ ਲਈ ਹਟਾਓ ਮੁੜ ਕਲਿੱਕ ਕਰੋ।</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>ਡਿਵਾਈਸ ਸ਼ਾਮਲ ਕਰੋ</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਲਾਇਬ੍ਰੇਰੀ ਨਾਲ ਜੁੜੋ ਖੋਲ੍ਹੋ ਅਤੇ ਉਸਦਾ ਕੋਡ ਦਿਖਾਓ। ਇਸਨੂੰ ਇੱਥੇ ਸਕੈਨ ਕਰੋ, ਜਾਂ ਹੇਠਾਂ ਪੇਸਟ ਕਰੋ।</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ਡਿਵਾਈਸ ਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>ਡੀਕੋਡ ਕਰੋ</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>ਅਵੈਧ ਡਿਵਾਈਸ ਕੋਡ</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>ਇਹ ਡਿਵਾਈਸ ਮਨਜ਼ੂਰ ਕਰਨਾ ਹੈ?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ਇਹ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੇਗਾ ਅਤੇ ਸਮਕਾਲੀਕਰਨ ਕਰ ਸਕੇਗਾ। ਤੁਹਾਨੂੰ ਇਸ ਉੱਤੇ ਦਾਖਲ ਕਰਨ ਲਈ ਇੱਕ ਕੋਡ ਮਿਲੇਗਾ।</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>ਮਨਜ਼ੂਰ ਕਰੋ</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>ਡਿਵਾਈਸ ਮਨਜ਼ੂਰ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮਨਜ਼ੂਰ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਇਹ ਕੋਡ ਦਾਖਲ ਕਰੋ।</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>ਆਪਣੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਣ ਵਾਲੇ ਡਿਵਾਈਸ ਉੱਤੇ ਇਹ ਕੋਡ ਸਕੈਨ ਕਰੋ।</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>ਇਹ ਡਿਵਾਈਸ ਮਨਜ਼ੂਰ ਕਰਨਾ ਹੈ?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>ਇਹ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੇਗਾ ਅਤੇ ਸਮਕਾਲੀਕਰਨ ਕਰ ਸਕੇਗਾ।</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>ਮਨਜ਼ੂਰ ਕਰੋ</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>ਡਿਵਾਈਸ ਮਨਜ਼ੂਰ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮਨਜ਼ੂਰ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>ਡਿਵਾਈਸ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ਐਲਬਮ 'ਤੇ ਜਾਓ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ਮਿਟਾਓ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ਆਉਟਬਾਕਸ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>ਤਾਜ਼ਾ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>ਇੱਕ ਰਿਲੀਜ਼ ਵਜੋਂ ਜੋੜੋ</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>ਵੱਖਰੀਆਂ ਰਿਲੀਜ਼ਾਂ ਵਜੋਂ ਰੱਖੋ</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>ਪੇਅਰਿੰਗ ਸ਼ੁਰੂ ਹੋ ਰਹੀ ਹੈ…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>ਮਨਜ਼ੂਰੀ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ਉਂਗਲ-ਛਾਪ: {fingerprint}</value></data>
 </root>

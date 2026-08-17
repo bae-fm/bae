@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>zobrazit v knihovně</value></data>
   <data name="join.title" xml:space="preserve"><value>připojit se ke knihovně</value></data>
-  <data name="join.intro" xml:space="preserve"><value>přidat toto zařízení do knihovny, kterou už máte na jiném zařízení.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>kód tohoto zařízení</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>na zařízení, které už je ve vaší knihovně, otevřete nastavení → zařízení → přidat zařízení a naskenujte nebo vložte toto.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>toto zařízení: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>nepodařilo se vygenerovat kód tohoto zařízení</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>zvací kód</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>jakmile toto zařízení schválí, zadejte zvací kód, který zobrazí.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>vložit zvací kód</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>neplatný zvací kód</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · vlastník {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Naskenujte párovací kód zobrazený na zařízení, které už je ve vaší knihovně.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Vložte párovací kód</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Tento párovací kód není platný.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>připojit se</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>připojuje se k {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>nepodařilo se připojit ke knihovně</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>odebrat</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>toto zařízení ztratí přístup a klíč knihovny bude obměněn. potvrďte dalším kliknutím na odebrat.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>přidat zařízení</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>na novém zařízení otevřete připojit se ke knihovně a zobrazte jeho kód. naskenujte ho tady nebo ho vložte níže.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>vložit kód zařízení</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>dekódovat</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>neplatný kód zařízení</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>schválit toto zařízení?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>bude přidáno do vaší knihovny a bude se moct synchronizovat. dostanete kód, který na něm zadáte.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>schválit</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>zařízení se schvaluje…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>toto zařízení se nepodařilo schválit</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>zadejte tento kód na novém zařízení.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Naskenujte tento kód na zařízení, které se připojuje k vaší knihovně.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>schválit toto zařízení?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>bude přidáno do vaší knihovny a bude se moct synchronizovat.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>schválit</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>zařízení se schvaluje…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>toto zařízení se nepodařilo schválit</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Čekání na zařízení…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>přejít na album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>smazat</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nelze načíst odchozí frontu</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Obnovování…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Sloučit jako jedno vydání</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Ponechat jako samostatná vydání</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Spouštění párování…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Čeká se na schválení…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Otisk: {fingerprint}</value></data>
 </root>

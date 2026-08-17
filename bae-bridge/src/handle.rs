@@ -19,12 +19,13 @@ use crate::types::{
     BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCloudHomeKeyState, BridgeComposerDetail,
     BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
     BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
-    BridgeMetadataSource, BridgePlaybackValues, BridgeQueueSnapshot, BridgeQueueUpcomingPage,
-    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
-    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
-    BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack,
-    BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail,
-    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeMetadataSource, BridgePairingDevice, BridgePlaybackValues, BridgeQueueSnapshot,
+    BridgeQueueUpcomingPage, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
+    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
+    BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow, BridgeStorageSort,
+    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
+    BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeStorageMode, BridgeSubsonicServerStatus};
@@ -45,7 +46,9 @@ mod base;
 mod cloud_operations;
 mod collection_subscription;
 mod configuration;
+mod device_pairing;
 pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
+pub use device_pairing::BridgeDevicePairingSession;
 #[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]
 mod desktop;
 #[cfg(feature = "desktop")]

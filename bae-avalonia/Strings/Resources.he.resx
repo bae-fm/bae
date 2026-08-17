@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>ענן</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>הצג בספרייה</value></data>
   <data name="join.title" xml:space="preserve"><value>הצטרף לספרייה</value></data>
-  <data name="join.intro" xml:space="preserve"><value>הוסיפו את המכשיר הזה לספרייה שכבר יש לכם במכשיר אחר.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>הקוד של המכשיר הזה</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>במכשיר שכבר נמצא בספרייה שלך, פתחו הגדרות → מכשירים → הוספת מכשיר וסרקו או הדביקו את זה.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>המכשיר הזה: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>לא ניתן ליצור את הקוד של המכשיר הזה</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>קוד הזמנה</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>אחרי שהמכשיר הזה יאשר את המכשיר הזה, הזינו את קוד ההזמנה שהוא מציג.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>הדבק קוד הזמנה</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>קוד הזמנה לא תקין</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · בעלים {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>סרקו את קוד הצימוד שמוצג במכשיר שכבר נמצא בספרייה שלכם.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>הדבק קוד צימוד</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>קוד הצימוד הזה אינו תקין.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>הצטרף</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>מצטרף אל {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>לא ניתן להצטרף לספרייה</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>הסר</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>המכשיר הזה יאבד גישה ומפתח הספרייה יוחלף. לחצו שוב על הסר כדי לאשר.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>הוסף מכשיר</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>במכשיר החדש, פתחו הצטרפות לספרייה והציגו את הקוד שלו. סרקו אותו כאן, או הדביקו אותו למטה.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>הדבק את הקוד של המכשיר</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>פענוח</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>קוד מכשיר לא תקין</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>לאשר את המכשיר הזה?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>הוא יתווסף לספרייה שלך ויוכל להסתנכרן. תקבלו קוד להזין בו.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>אשר</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>מאשר מכשיר…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>לא ניתן לאשר את המכשיר הזה</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>הזינו את הקוד הזה במכשיר החדש.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>סרקו את הקוד הזה במכשיר שמצטרף לספרייה שלכם.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>לאשר את המכשיר הזה?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>הוא יתווסף לספרייה שלך ויוכל להסתנכרן.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>אשר</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>מאשר מכשיר…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>לא ניתן לאשר את המכשיר הזה</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>ממתין למכשיר…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>מעבר לאלבום</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>מחק</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>לא ניתן לטעון את תיבת היוצא</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>מתבצע רענון…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>שלב כמהדורה אחת</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>השאר כמהדורות נפרדות</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>מתחיל צימוד…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>בהמתנה לאישור…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>טביעת אצבע: {fingerprint}</value></data>
 </root>

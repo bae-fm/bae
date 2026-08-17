@@ -12,11 +12,11 @@ Dos puertas distintas, para dos situaciones distintas:
 
 ## Agregar un dispositivo
 
-En el dispositivo nuevo, elige **Join a library**. Muestra un código corto, también como QR: la solicitud de unión, con la clave pública del dispositivo y una huella que puedes leer en voz alta.
+En un dispositivo que ya tiene la biblioteca, el propietario abre Configuración, Dispositivos, **Agregar un dispositivo**. bae muestra un código de emparejamiento como QR y comienza a escuchar en la red local.
 
-En un dispositivo que ya tiene la biblioteca, un propietario abre Settings, Devices, **Add a device**, y escanea o pega esa solicitud. bae muestra la huella del dispositivo que se une; confirma que coincide con lo que muestra el dispositivo nuevo. Aprobar produce un código de invitación: entrégaselo al dispositivo nuevo (escanea el QR o pégalo), y el dispositivo nuevo descarga la biblioteca y empieza a sincronizar.
+En el nuevo dispositivo, elija **Únase a una biblioteca** y escanee ese código. Inicie sesión en el proveedor de almacenamiento cuando se le solicite. Ambos dispositivos muestran la huella digital del nuevo dispositivo; compárelos y luego apruebe en el dispositivo existente. El nuevo dispositivo recibe su acceso sellado a través de la misma conexión local, descarga la biblioteca y comienza a sincronizarse. Ningún código regresa.
 
-Detrás del intercambio: el dispositivo aprobador concede al recién llegado acceso al hogar en la nube (las nubes de consumo comparten la carpeta con la cuenta del recién llegado; las invitaciones S3 incluyen credenciales) y sella la clave de cifrado de la biblioteca para la clave pública del recién llegado. La invitación es inútil para cualquier otro dispositivo. Detalles en [Identidad y membresía](/es/reference/membership).
+El código de emparejamiento no contiene ni la clave de la biblioteca ni las credenciales de almacenamiento duradero, y un emparejamiento interrumpido o rechazado no otorga nada. Detalles en [Identidad y membresía](/es/reference/membership).
 
 ## Miembros y roles
 

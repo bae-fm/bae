@@ -16,7 +16,6 @@ import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeDeviceInviteInfo
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryImageType
 import uniffi.bae_bridge.BridgeMember
@@ -278,19 +277,6 @@ object PreviewData {
             titleKey = "core.playback.side_pause.title",
             sideLetter = "B",
             messageKey = "core.playback.side_pause.message",
-        )
-
-    fun deviceInviteInfo(
-        cloudProvider: BridgeCloudProvider = BridgeCloudProvider.S3,
-        needsOauth: Boolean = false,
-    ): BridgeDeviceInviteInfo =
-        BridgeDeviceInviteInfo(
-            libraryId = "lib-1",
-            libraryName = "Library Name",
-            ownerPubkey = placeholderPubkey,
-            ownerFingerprint = "0a1b2c3d",
-            cloudProvider = cloudProvider,
-            needsOauth = needsOauth,
         )
 
     fun galleryItem(

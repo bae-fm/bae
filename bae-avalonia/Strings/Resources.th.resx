@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>คลาวด์</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ดูในคลัง</value></data>
   <data name="join.title" xml:space="preserve"><value>เข้าร่วมคลัง</value></data>
-  <data name="join.intro" xml:space="preserve"><value>เพิ่มอุปกรณ์นี้ไปยังคลังที่คุณมีอยู่แล้วบนอุปกรณ์อื่น</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>รหัสของอุปกรณ์นี้</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>บนอุปกรณ์ที่อยู่ในคลังของคุณแล้ว ให้เปิด การตั้งค่า → อุปกรณ์ → เพิ่มอุปกรณ์ แล้วสแกนหรือวางรหัสนี้</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>อุปกรณ์นี้: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>สร้างรหัสของอุปกรณ์นี้ไม่ได้</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>รหัสเชิญ</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>เมื่ออุปกรณ์นั้นอนุมัติอุปกรณ์นี้แล้ว ให้ป้อนรหัสเชิญที่แสดง</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>วางรหัสเชิญ</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>รหัสเชิญไม่ถูกต้อง</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · เจ้าของ {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>สแกนรหัสจับคู่ที่แสดงบนอุปกรณ์ที่อยู่ในคลังของคุณแล้ว</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>วางรหัสจับคู่</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>รหัสจับคู่นี้ไม่ถูกต้อง</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>เข้าร่วม</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>กำลังเข้าร่วม {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>เข้าร่วมคลังไม่ได้</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>ลบ</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>อุปกรณ์นี้จะสูญเสียสิทธิ์เข้าถึงและคีย์คลังจะถูกหมุนเวียน คลิกลบอีกครั้งเพื่อยืนยัน</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>เพิ่มอุปกรณ์</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>บนอุปกรณ์ใหม่ ให้เปิด เข้าร่วมคลัง แล้วแสดงรหัสของอุปกรณ์นั้น สแกนที่นี่หรือวางด้านล่าง</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>วางรหัสของอุปกรณ์</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>ถอดรหัส</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>รหัสอุปกรณ์ไม่ถูกต้อง</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>อนุมัติอุปกรณ์นี้หรือไม่</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>อุปกรณ์นี้จะถูกเพิ่มไปยังคลังของคุณและสามารถซิงค์ได้ คุณจะได้รับรหัสเพื่อป้อนบนอุปกรณ์นั้น</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>อนุมัติ</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>กำลังอนุมัติอุปกรณ์…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>อนุมัติอุปกรณ์นี้ไม่ได้</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>ป้อนรหัสนี้บนอุปกรณ์ใหม่</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>สแกนรหัสนี้บนอุปกรณ์ที่จะเข้าร่วมคลังของคุณ</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>อนุมัติอุปกรณ์นี้หรือไม่</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>อุปกรณ์นี้จะถูกเพิ่มไปยังคลังของคุณและสามารถซิงค์ได้</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>อนุมัติ</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>กำลังอนุมัติอุปกรณ์…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>อนุมัติอุปกรณ์นี้ไม่ได้</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>กำลังรออุปกรณ์…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ไปที่อัลบั้ม</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ลบ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>โหลดกล่องขาออกไม่ได้</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>กำลังรีเฟรช…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>รวมเป็นรีลีสเดียว</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>เก็บเป็นรีลีสแยกกัน</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>กำลังเริ่มจับคู่…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>กำลังรอการอนุมัติ…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ลายนิ้วมือ: {fingerprint}</value></data>
 </root>

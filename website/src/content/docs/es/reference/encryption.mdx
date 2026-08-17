@@ -9,7 +9,7 @@ Todo lo que bae pone en un hogar opaco en la nube se cifra antes de salir del di
 
 Una biblioteca opaca tiene un secreto raíz: una clave aleatoria de 256 bits creada cuando se crea el hogar. Vive en el llavero del sistema operativo, nunca en un archivo; en plataformas Apple la entrada del llavero se sincroniza mediante iCloud Keychain. La configuración de bae guarda solo una huella de la clave, suficiente para distinguir una clave incorrecta de una correcta al desbloquear sin conservar el secreto.
 
-La clave viaja entre dispositivos de dos formas, ambas descritas en [Identidad y membresía](/es/reference/membership): sellada para la clave pública de un dispositivo aprobado durante una invitación, y transportada dentro de un código de recuperación.
+La clave viaja entre dispositivos de dos maneras, ambas descritas en [Identidad y membresía](/es/reference/membership): sellada a la clave pública de un dispositivo aprobado durante el emparejamiento del dispositivo y transportada dentro de un código de recuperación.
 
 ## Generaciones
 

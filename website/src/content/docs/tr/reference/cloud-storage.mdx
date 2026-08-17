@@ -9,11 +9,11 @@ Bulut evi, kullanıcının zaten sahip olduğu depolamadaki tek konumdur. Her sa
 
 | Sağlayıcı | Auth | Yeni aygıt için erişim |
 |---|---|---|
-| S3 uyumlu | Access key + secret | Kimlik bilgileri davetin içine gömülür |
-| Google Drive | OAuth (PKCE) | Klasör katılanın hesabıyla paylaşılır |
-| Dropbox | OAuth (PKCE) | Klasör katılanın hesabıyla paylaşılır |
-| OneDrive | OAuth (PKCE) | Klasör katılanın hesabıyla paylaşılır |
-| iCloud (CloudKit) | Apple ID, giriş yok | CloudKit paylaşımı katılan tarafından kabul edilir |
+| S3 uyumlu | Access key + secret | Eşleştirme sırasında onaylı cihaza mühürlenen kimlik bilgileri |
+| Google Drive | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
+| Dropbox | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
+| OneDrive | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
+| iCloud (CloudKit) | Apple ID, giriş yok | Eşleştirme sırasında CloudKit paylaşımı kabul edildi |
 
 S3 uyumlu; AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO ve API'yi konuşan başka her şeyi kapsar. Bucket, region, endpoint ve key prefix yapılandırılabilir; bucket yapılandırma kaydedilmeden önce yoklanır, böylece yazım hatası ilk eşzamanlamada değil kurulumda başarısız olur. OAuth sağlayıcıları yalnızca tam **bae** edisyonunda vardır; **baeium** derlemeleri onları dışarıda derler.
 

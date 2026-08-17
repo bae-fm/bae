@@ -17,14 +17,14 @@ Em cada pull, o autor de cada changeset é conferido contra esse registro: assin
 
 ## O aperto de mão de entrada
 
-Adicionar um dispositivo é uma troca de dois códigos com verificação humana explícita no meio:
+Adicionar um dispositivo é uma sessão de emparelhamento local com verificação humana explícita:
 
-1. O dispositivo que entra gera seu par de chaves e mostra uma **join request**: sua chave pública, uma impressão digital curta dela e (para provedores OAuth) a conta de nuvem com a qual compartilhar a pasta.
-2. Um proprietário decodifica a solicitação, e as duas telas mostram a mesma impressão digital. A pessoa confere que elas correspondem; esta é a etapa que derrota uma chave trocada.
-3. A aprovação faz três coisas de uma vez: concede à conta do recém-chegado acesso ao local na nuvem (compartilhamento de pasta em nuvens de consumidor, credenciais embutidas em S3, um compartilhamento CloudKit no iCloud), sela a chave da biblioteca para a chave pública do recém-chegado e assina uma entrada de associação adicionando-o. Tudo isso é empacotado em um **invite code**.
-4. O dispositivo que entra consome o convite, abre a chave, inicializa a partir do snapshot mais recente e sincroniza.
+1. Um proprietário inicia **Adicionar um dispositivo**. bae escuta brevemente na rede local e mostra um código de emparelhamento. Ele contém os endereços do ouvinte, uma chave de sessão efêmera, o nome da biblioteca, o provedor e uma expiração – nenhuma chave de biblioteca ou credenciais de armazenamento duradouras.
+2. O dispositivo associado verifica o código, cria seu par de chaves de dispositivo, acessa o provedor quando necessário e envia sua chave pública assinada e a identidade da conta do provedor por meio da conexão local criptografada. Ambos os dispositivos mostram a mesma impressão digital.
+3. O proprietário compara as impressões digitais e aprova a identidade exata. A aprovação concede acesso à sua conta na nuvem quando necessário, assina a entrada de membro e sela a chave da biblioteca e o acesso final ao armazenamento à chave pública do novo dispositivo.
+4. O pacote lacrado retorna pela mesma conexão local autenticada. O dispositivo de adesão o abre, inicializa a partir do armazenamento em nuvem e inicia a sincronização.
 
-O convite é selado para a chave solicitante: interceptá-lo não concede nada.
+Um emparelhamento expirado, interrompido ou rejeitado não concede nada.
 
 ## Revogação
 

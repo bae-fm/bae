@@ -175,14 +175,14 @@ private final class CameraCapture: @unchecked Sendable {
 /// surface is a text field rather than a dedicated capture pane. Reports the
 /// first decoded code and is otherwise dismissable, so the paste field behind it
 /// remains the fallback.
-struct InviteScannerSheet: View {
+struct PairingScannerSheet: View {
     let onScan: (String) -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Scan invite code")
+                Text("Pairing code")
                     .font(.headline)
                 Spacer()
                 Button("Cancel") { onDismiss() }

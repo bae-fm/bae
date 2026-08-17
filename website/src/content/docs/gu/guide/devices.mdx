@@ -12,11 +12,11 @@ bae account નથી. Device ની ઓળખ તે પોતે બનાવ�
 
 ## Device ઉમેરવું
 
-નવા device પર, **Join a library** પસંદ કરો. તે ટૂંકો code બતાવે છે, QR તરીકે પણ: join request, જેમાં device ની public key અને તમે જોરથી વાંચી શકો એવો fingerprint હોય છે.
+પહેલેથી જ લાઇબ્રેરી ધરાવતા ઉપકરણ પર, માલિક સેટિંગ્સ, ઉપકરણો, **ઉપકરણ ઉમેરો** ખોલે છે. bae QR તરીકે એક પેરિંગ કોડ બતાવે છે અને સ્થાનિક નેટવર્ક પર સાંભળવાનું શરૂ કરે છે.
 
-જે device પાસે પહેલેથી લાઇબ્રેરી છે તેના પર owner Settings, Devices, **Add a device** ખોલે છે, અને તે request scan અથવા paste કરે છે. bae જોડાતા device નો fingerprint બતાવે છે; તે નવા device પર દેખાતા fingerprint સાથે મેળ ખાય છે તેની ખાતરી કરો. Approve કરવાથી invite code બને છે: તે નવા device ને આપો (QR scan કરો અથવા paste કરો), અને નવું device લાઇબ્રેરી download કરે છે અને syncing શરૂ કરે છે.
+નવા ઉપકરણ પર, **પુસ્તકાલયમાં જોડાઓ** પસંદ કરો અને તે કોડ સ્કેન કરો. જ્યારે પૂછવામાં આવે ત્યારે સ્ટોરેજ પ્રદાતામાં સાઇન ઇન કરો. બંને ઉપકરણો નવા ઉપકરણની ફિંગરપ્રિન્ટ દર્શાવે છે; તેમની સરખામણી કરો, પછી હાલના ઉપકરણ પર મંજૂર કરો. નવું ઉપકરણ સમાન સ્થાનિક કનેક્શન દ્વારા તેની સીલબંધ ઍક્સેસ મેળવે છે, લાઇબ્રેરી ડાઉનલોડ કરે છે અને સિંક કરવાનું શરૂ કરે છે. કોઈ કોડ પાછા ફરતો નથી.
 
-Handshake પાછળ: approving device નવા device ને cloud home નો access આપે છે (consumer clouds folder ને નવા device ના account સાથે share કરે છે; S3 invites credentials embed કરે છે) અને લાઇબ્રેરીની encryption key ને નવા device ની public key માટે seal કરે છે. Invite બીજા કોઈ device માટે બેકાર છે. વિગતો [Identity અને membership](/gu/reference/membership) માં છે.
+પેરિંગ કોડમાં ન તો લાઇબ્રેરી કી અથવા સ્થાયી સ્ટોરેજ ઓળખપત્રો શામેલ નથી, અને વિક્ષેપિત અથવા નકારેલ જોડી કંઈપણ અનુદાન આપતું નથી. [ઓળખ અને સભ્યપદ](/gu/reference/membership) માં વિગતો.
 
 ## Members અને roles
 

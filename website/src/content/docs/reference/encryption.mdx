@@ -9,7 +9,7 @@ Everything bae puts in an opaque cloud home is encrypted before it leaves the de
 
 An opaque library has one root secret: a random 256-bit key minted when the home is created. It lives in the OS keyring, never in a file; on Apple platforms the keyring entry syncs through iCloud Keychain. bae's config stores only a fingerprint of the key, enough to tell a wrong key from a right one at unlock without holding the secret.
 
-The key travels between devices in two ways, both described in [Identity and membership](/reference/membership): sealed to an approved device's public key during an invite, and carried inside a recovery code.
+The key travels between devices in two ways, both described in [Identity and membership](/reference/membership): sealed to an approved device's public key during device pairing, and carried inside a recovery code.
 
 ## Generations
 

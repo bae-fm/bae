@@ -61,7 +61,7 @@ private class OnboardingIdleCallbacks(
 /** Which onboarding code the QR scanner is currently capturing. */
 private enum class ScanTarget {
     RESTORE_CODE,
-    INVITE_CODE,
+    PAIRING_CODE,
 }
 
 /**
@@ -117,7 +117,7 @@ private fun OnboardingScanner(
     val instructions =
         when (target) {
             ScanTarget.RESTORE_CODE -> stringResource(R.string.qr_scanner_instructions)
-            ScanTarget.INVITE_CODE -> stringResource(R.string.qr_scanner_invite_instructions)
+            ScanTarget.PAIRING_CODE -> stringResource(R.string.onboarding_join_pairing_instructions)
         }
     QRScannerScreen(
         onScanned = { code -> onScanned(target, code) },
@@ -143,7 +143,7 @@ fun OnboardingScreen(
     val onRequestScan =
         rememberScanRequest(
             setError = { target, message ->
-                if (target == ScanTarget.INVITE_CODE) joinLauncher.error = message else launcher.error = message
+                if (target == ScanTarget.PAIRING_CODE) joinLauncher.error = message else launcher.error = message
             },
             onOpen = { scanTarget = it },
         )
@@ -157,9 +157,13 @@ fun OnboardingScreen(
                     when (target) {
                         ScanTarget.RESTORE_CODE -> launcher.link(code, oauthLinking, oauthLinkingError)
 
-                        // Fill the invite field so the preview and provider check
+                        // Fill the pairing field so the preview and provider check
                         // show before the joiner commits to Join.
-                        ScanTarget.INVITE_CODE -> joinLauncher.updateInvite(code)
+                        ScanTarget.PAIRING_CODE -> joinLauncher.updatePairingCode(
+                            code,
+                            oauthLinking,
+                            oauthLinkingError,
+                        )
                     }
                 },
                 onDismiss = { scanTarget = null },
@@ -171,7 +175,10 @@ fun OnboardingScreen(
         }
 
         joinLauncher.isJoining -> {
-            OnboardingProgress(linking = false) { joinLauncher.cancel() }
+            OnboardingProgress(
+                linking = false,
+                joiningFingerprint = joinLauncher.joiningFingerprint,
+            ) { joinLauncher.cancel() }
         }
 
         showJoin -> {
@@ -179,9 +186,9 @@ fun OnboardingScreen(
                 joinLauncher = joinLauncher,
                 oauthLinking = oauthLinking,
                 oauthLinkingError = oauthLinkingError,
-                onRequestScan = { onRequestScan(ScanTarget.INVITE_CODE) },
+                onRequestScan = { onRequestScan(ScanTarget.PAIRING_CODE) },
                 onBack = {
-                    joinLauncher.resetProvider()
+                    joinLauncher.reset()
                     showJoin = false
                 },
             )
@@ -296,20 +303,23 @@ private fun OnboardingIdleContent(
  * own library when [linking], or joining an existing library otherwise.
  */
 @Composable
-private fun OnboardingProgress(
+internal fun OnboardingProgress(
     linking: Boolean,
+    joiningFingerprint: String? = null,
     onCancel: () -> Unit,
 ) {
     if (linking) {
         ProgressScreen(
             R.string.onboarding_connecting_title,
             R.string.onboarding_connecting_body,
+            null,
             onCancel,
         )
     } else {
         ProgressScreen(
             R.string.onboarding_joining_title,
             R.string.onboarding_joining_body,
+            joiningFingerprint,
             onCancel,
         )
     }
@@ -319,6 +329,7 @@ private fun OnboardingProgress(
 private fun ProgressScreen(
     @StringRes titleRes: Int,
     @StringRes bodyRes: Int,
+    joiningFingerprint: String?,
     onCancel: () -> Unit,
 ) {
     OnboardingContainer {
@@ -336,6 +347,15 @@ private fun ProgressScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        joiningFingerprint?.let {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.onboarding_join_fingerprint, it),
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                textAlign = TextAlign.Center,
+            )
+        }
         Spacer(modifier = Modifier.height(24.dp))
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
     }

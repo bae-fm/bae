@@ -9,11 +9,11 @@ O local na nuvem é uma localização no armazenamento que o usuário já possui
 
 | Provedor | Autenticação | Acesso para um dispositivo novo |
 |---|---|---|
-| Compatível com S3 | Chave de acesso + segredo | Credenciais embutidas no convite |
-| Google Drive | OAuth (PKCE) | Pasta compartilhada com a conta de quem entra |
-| Dropbox | OAuth (PKCE) | Pasta compartilhada com a conta de quem entra |
-| OneDrive | OAuth (PKCE) | Pasta compartilhada com a conta de quem entra |
-| iCloud (CloudKit) | Apple ID, sem login | Compartilhamento CloudKit aceito por quem entra |
+| Compatível com S3 | Chave de acesso + segredo | Credenciais seladas ao dispositivo aprovado durante o emparelhamento |
+| Google Drive | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
+| Dropbox | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
+| OneDrive | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
+| iCloud (CloudKit) | Apple ID, sem login | Compartilhamento do CloudKit aceito durante o emparelhamento |
 
 Compatível com S3 cobre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualquer outro que fale a API; bucket, região, endpoint e prefixo de chave são configuráveis, e o bucket é testado antes de a configuração ser salva para que erro de digitação falhe na configuração, não na primeira sincronização. Os provedores OAuth existem só na edição **bae** completa; builds **baeium** os compilam fora.
 

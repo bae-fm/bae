@@ -9,11 +9,11 @@ description: 제공자, 인증, 클라우드 홈의 형태
 
 | 제공자 | 인증 | 새 기기의 접근 |
 |---|---|---|
-| S3-compatible | Access key + secret | 초대에 포함된 자격 증명 |
-| Google Drive | OAuth (PKCE) | 참가자의 계정에 폴더 공유 |
-| Dropbox | OAuth (PKCE) | 참가자의 계정에 폴더 공유 |
-| OneDrive | OAuth (PKCE) | 참가자의 계정에 폴더 공유 |
-| iCloud (CloudKit) | Apple ID, 로그인 없음 | 참가자가 수락한 CloudKit 공유 |
+| S3-compatible | Access key + secret | 페어링 중에 승인된 장치에 자격 증명이 봉인됩니다. |
+| Google Drive | OAuth (PKCE) | 새 장치의 계정이 승인되면 폴더가 공유됩니다. |
+| Dropbox | OAuth (PKCE) | 새 장치의 계정이 승인되면 폴더가 공유됩니다. |
+| OneDrive | OAuth (PKCE) | 새 장치의 계정이 승인되면 폴더가 공유됩니다. |
+| iCloud (CloudKit) | Apple ID, 로그인 없음 | 페어링 중에 CloudKit 공유가 허용됨 |
 
 S3 호환은 AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, 그리고 API를 말하는 다른 모든 것을 포함합니다. bucket, region, endpoint, key prefix를 설정할 수 있고, 설정을 저장하기 전에 버킷을 검사하므로 오타는 첫 동기화가 아니라 설정 때 실패합니다. OAuth 제공자는 전체 **bae** 에디션에만 있습니다. **baeium** 빌드는 이를 컴파일에서 제외합니다.
 

@@ -17,14 +17,14 @@ On every pull, each changeset's author is checked against this record: signed by
 
 ## The join handshake
 
-Adding a device is a two-code exchange with explicit human verification in the middle:
+Adding a device is one local pairing session with explicit human verification:
 
-1. The joining device generates its keypair and shows a **join request**: its public key, a short fingerprint of it, and (for OAuth providers) the cloud account to share the folder with.
-2. An owner decodes the request, and the two screens show the same fingerprint. The human checks they match; this is the step that defeats a swapped key.
-3. Approval does three things at once: grants the newcomer's account access to the cloud home (folder share on consumer clouds, embedded credentials on S3, a CloudKit share on iCloud), seals the library key to the newcomer's public key, and signs a membership entry adding it. All of it is packed into an **invite code**.
-4. The joining device consumes the invite, unseals the key, bootstraps from the latest snapshot, and syncs.
+1. An owner starts **Add a device**. bae listens briefly on the local network and shows one pairing code. It contains the listener addresses, an ephemeral session key, the library name, the provider, and an expiry — no library key or lasting storage credentials.
+2. The joining device scans the code, creates its device keypair, signs in to the provider when required, and sends its signed public key and provider account identity through the encrypted local connection. Both devices show the same fingerprint.
+3. The owner compares the fingerprints and approves that exact identity. Approval grants its cloud account access where required, signs the membership entry, and seals the library key and final storage access to the new device's public key.
+4. The sealed package returns through the same authenticated local connection. The joining device opens it, bootstraps from cloud storage, and starts syncing.
 
-The invite is sealed to the requesting key: intercepting it grants nothing.
+An expired, interrupted, or rejected pairing grants nothing.
 
 ## Revocation
 

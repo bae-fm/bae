@@ -46,7 +46,7 @@ struct OnboardingView: View {
     let onLinked: (BridgeLibrary) -> Void
 
     /// Which screen onboarding is showing. `entry` is the chooser; `join` shows
-    /// this device's code and accepts an invite code; while a `LinkFlow` is in
+    /// the pairing-code entry; while a `LinkFlow` is in
     /// flight the linking screen replaces both.
     private enum Mode {
         case entry
@@ -65,49 +65,25 @@ struct OnboardingView: View {
     private var pasteInput = ""
 
     // Join-a-library flow
-    /// The cloud provider the joiner picked for the library it's adding this
-    /// device to. `nil` until picked — while `nil` the join flow shows the
-    /// provider picker and no code is generated yet. Picking an OAuth provider
-    /// authenticates up front so the account email lands in the join-request;
-    /// picking S3/iCloud generates the code with no email.
     @State
-    private var joinProvider: BridgeCloudProvider?
-    /// The OAuth token captured up front for the picked provider, held so the
-    /// eventual join reuses it instead of authenticating a second time. `nil`
-    /// for S3/iCloud.
+    private var pairingCodeInput = ""
     @State
     private var joinTokenJson: String?
-    /// The account email fetched from the picked OAuth provider, baked into the
-    /// join-request so the approver shares the OAuth folder to it. `nil` for
-    /// S3/iCloud. Held so a code retry reuses it without re-authenticating.
-    @State
-    private var joinEmail: String?
-    /// True while authenticating with the picked OAuth provider before the code
-    /// is generated.
     @State
     private var isAuthorizing = false
-    /// This device's join-request code and a short fingerprint of its public
-    /// key, generated once a provider is picked (and, for OAuth, authenticated)
-    /// and shown for an existing member to scan or paste. `nil` while generating;
-    /// `.failure` if generation fails.
     @State
-    private var joinRequest: Result<BridgeJoinRequest, Error>?
+    private var decodedPairingOffer: Result<BridgeDevicePairingOffer, Error>?
     @State
-    private var genTask: Task<Void, Never>?
+    private var authorizationTask: Task<Void, Never>?
     @State
-    private var deviceInvitationInput = ""
-    /// The decode of the current device-invitation input: `nil` when empty,
-    /// `.success(info)` for a valid code, `.failure(error)` for an unparseable
-    /// one.
-    @State
-    private var decodedInvitation: Result<BridgeDeviceInviteInfo, Error>?
-    @State
-    private var showInviteScanner = false
+    private var showPairingScanner = false
 
     @State
     private var error: String?
     @State
     private var linkFlow: LinkFlow?
+    @State
+    private var linkingContext = OnboardingLinkingScreen.Context.librarySetup
     #if BAE_OAUTH_PROVIDERS
     @State
     private var presentationAnchor: ASPresentationAnchor?
@@ -116,7 +92,10 @@ struct OnboardingView: View {
     var body: some View {
         Group {
             if linkFlow != nil {
-                OnboardingLinkingScreen(onCancel: { cancelLink() })
+                OnboardingLinkingScreen(
+                    context: linkingContext,
+                    onCancel: { cancelLink() }
+                )
             }
             else {
                 switch mode {
@@ -149,35 +128,33 @@ struct OnboardingView: View {
             ScannerSheet(
                 onScanned: { code in
                     showScanner = false
-                    showInviteScanner = false
+                    showPairingScanner = false
                     link(code: code)
                 },
                 onError: { message in
                     showScanner = false
-                    showInviteScanner = false
                     error = message
                 },
                 onClose: {
                     showScanner = false
-                    showInviteScanner = false
                 }
             )
         }
-        .fullScreenCover(isPresented: $showInviteScanner) {
+        .fullScreenCover(isPresented: $showPairingScanner) {
             ScannerSheet(
                 onScanned: { code in
                     showScanner = false
-                    showInviteScanner = false
-                    inviteCodeInput = code
+                    showPairingScanner = false
+                    pairingCodeInput = code
                 },
                 onError: { message in
                     showScanner = false
-                    showInviteScanner = false
+                    showPairingScanner = false
                     error = message
                 },
                 onClose: {
                     showScanner = false
-                    showInviteScanner = false
+                    showPairingScanner = false
                 }
             )
         }
@@ -193,7 +170,7 @@ struct OnboardingView: View {
         }
         .onDisappear {
             linkFlow?.cancel()
-            genTask?.cancel()
+            authorizationTask?.cancel()
         }
         #if BAE_OAUTH_PROVIDERS
         // Captures the host window so the OAuth web-auth session has a
@@ -212,66 +189,33 @@ struct OnboardingView: View {
 extension OnboardingView {
     fileprivate var joinView: some View {
         NavigationStack {
-            Group {
-                if joinProvider == nil {
-                    JoinProviderPicker(
-                        providers: availableCloudProviders(),
-                        isAuthorizing: isAuthorizing,
-                        error: error,
-                        onSelect: { selectJoinProvider($0) }
+            JoinPairingOffer(
+                pairingCode: $pairingCodeInput,
+                decodedOffer: decodedPairingOffer,
+                isAuthorizing: isAuthorizing,
+                error: error,
+                onScan: {
+                    error = nil
+                    CameraPermission.requestThenScan(
+                        present: { showPairingScanner = true },
+                        onError: { error = $0 }
                     )
-                }
-                else {
-                    JoinCodeExchange(
-                        joinRequest: joinRequest,
-                        deviceInvitation: $deviceInvitationInput,
-                        decodedInvitation: decodedInvitation,
-                        joinTokenJson: joinTokenJson,
-                        error: error,
-                        onRetryGenerate: {
-                            genTask?.cancel()
-                            genTask = Task { await generateJoinCode() }
-                        },
-                        onScanInvite: {
-                            error = nil
-                            CameraPermission.requestThenScan(
-                                present: { showInviteScanner = true },
-                                onError: { error = $0 }
-                            )
-                        },
-                        onInvitationChanged: { _ in
-                            decodeDeviceInvitationInput()
-                        }
-                    )
-                }
-            }
+                },
+                onCodeChanged: { decodePairingOffer($0) }
+            )
             .navigationTitle("Join a library")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") {
-                        if joinProvider == nil {
-                            mode = .entry
-                        }
-                        else {
-                            // Return to the provider picker; drop the generated
-                            // code and any OAuth token so re-picking starts clean.
-                            joinProvider = nil
-                            joinRequest = nil
-                            joinTokenJson = nil
-                            joinEmail = nil
-                            deviceInvitationInput = ""
-                            decodedInvitation = nil
-                        }
+                        mode = .entry
                         error = nil
                     }
                     .disabled(isAuthorizing)
                 }
-                if joinProvider != nil {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Join") { join() }
-                            .disabled(!joinReady)
-                    }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Join") { join() }
+                        .disabled(!joinReady)
                 }
             }
         }
@@ -279,18 +223,17 @@ extension OnboardingView {
         // nothing leaks across attempts. The code is generated only once the
         // joiner picks a provider.
         .task {
-            joinProvider = nil
+            pairingCodeInput = ""
             joinTokenJson = nil
-            joinEmail = nil
-            joinRequest = nil
+            decodedPairingOffer = nil
             error = nil
         }
     }
 
-    /// Whether the Join button should be enabled: a valid invite code, plus the
+    /// Whether the Join button should be enabled: a valid pairing code, plus the
     /// up-front OAuth token held when the picked provider needs it.
     fileprivate var joinReady: Bool {
-        guard case .success(let info) = decodedInvitation else {
+        guard case .success(let info) = decodedPairingOffer else {
             return false
         }
         #if BAE_OAUTH_PROVIDERS
@@ -305,125 +248,56 @@ extension OnboardingView {
         return true
     }
 
-    /// Pick the provider the target library uses. For an OAuth provider this
-    /// authenticates and fetches the account email up front (baked into the
-    /// generated code and reused for the eventual join); for S3/iCloud it goes
-    /// straight to generating a code with no email.
-    private func selectJoinProvider(_ provider: BridgeCloudProvider) {
-        genTask?.cancel()
+    private func decodePairingOffer(_ input: String) {
+        authorizationTask?.cancel()
         error = nil
         joinTokenJson = nil
-        joinEmail = nil
-        genTask = Task { await prepareJoin(provider: provider) }
-    }
-
-    private func prepareJoin(provider: BridgeCloudProvider) async {
-        #if BAE_OAUTH_PROVIDERS
-        switch provider {
-        case .googleDrive, .dropbox, .oneDrive:
-            isAuthorizing = true
+        isAuthorizing = false
+        let code = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else {
+            decodedPairingOffer = nil
+            return
+        }
+        let decoded = Result { try decodeDevicePairingOffer(code: code) }
+        decodedPairingOffer = decoded
+        guard case .success(let offer) = decoded, offer.needsOauth else { return }
+        isAuthorizing = true
+        authorizationTask = Task {
             do {
-                guard let token = try await oauthToken(provider: provider)
-                else {
-                    // Cancelled, or unavailable with `error` already set.
+                guard let token = try await oauthToken(provider: offer.cloudProvider) else {
                     isAuthorizing = false
                     return
                 }
-                let email = try await fetchAccountEmailDetached(
-                    provider: provider,
-                    tokenJson: token
-                )
+                try Task.checkCancellation()
                 joinTokenJson = token
-                joinEmail = email
+                isAuthorizing = false
             }
             catch {
                 isAuthorizing = false
                 if !isLinkCancellation(error) {
                     self.error = error.displayLine
                 }
-                return
             }
-            isAuthorizing = false
-        default:
-            break
-        }
-        #endif
-        joinProvider = provider
-        await generateJoinCode()
-    }
-
-    #if BAE_OAUTH_PROVIDERS
-    /// Turn the OAuth token into the account email off the main thread — the
-    /// bridge call is synchronous and hits the network.
-    private func fetchAccountEmailDetached(
-        provider: BridgeCloudProvider,
-        tokenJson: String
-    ) async throws -> String {
-        try await Task.detached {
-            try fetchAccountEmail(
-                provider: provider,
-                oauthTokenJson: tokenJson
-            )
-        }
-        .value
-    }
-    #endif
-
-    private func generateJoinCode() async {
-        joinRequest = nil
-        let email = joinEmail
-        do {
-            let generated = try await withTaskCancellationHandler {
-                let detached = Task.detached { () throws -> BridgeJoinRequest in
-                    try generateJoinRequest(email: email)
-                }
-                return try await detached.value
-            } onCancel: {
-                // generateJoinRequest is a synchronous bridge call with no
-                // cancellation token; the detached worker runs to completion and
-                // its result is dropped.
-            }
-            try Task.checkCancellation()
-            joinRequest = .success(generated)
-            decodeDeviceInvitationInput()
-        }
-        catch is CancellationError {
-            logger.debug("join request generation cancelled")
-        }
-        catch {
-            logger.error(
-                "Failed to generate join request: \(error.localizedDescription)"
-            )
-            joinRequest = .failure(error)
         }
     }
 
-    /// Join the library from the current invite code: decode it, run cloud
+    /// Join the library from the current pairing code: decode it, run cloud
     /// sign-in when the provider needs it, then run the cancellable join
     /// operation. A superseding join (or the view disappearing) cancels the
     /// in-flight one through the operation's own token, so the bridge stops its
     /// blocking work rather than running to completion on a stale library.
     func join() {
-        guard case .success = decodedInvitation else {
-            logger.warning("join tapped without a decoded invite code")
+        guard case .success = decodedPairingOffer else {
+            logger.warning("join tapped without a decoded pairing code")
             return
         }
-        // The code minted by this device's own generateJoinRequest — coven
-        // needs it back to promote that pending identity into this store's
-        // custody.
-        guard case .success(let request) = joinRequest else {
-            logger.warning("join tapped before the join-request code was ready")
-            return
-        }
-        let code = deviceInvitationInput.trimmingCharacters(
+        let code = pairingCodeInput.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        let joinRequestCode = request.code
-        // Reuse the token captured when the provider was picked — no second
-        // OAuth at join time.
         let tokenJson = joinTokenJson
         error = nil
         cancelLink()
+        linkingContext = .devicePairing(fingerprint: nil)
         let flow = LinkFlow { flow in
             Task {
                 defer {
@@ -433,7 +307,6 @@ extension OnboardingView {
                 }
                 await performJoin(
                     code: code,
-                    joinRequestCode: joinRequestCode,
                     tokenJson: tokenJson,
                     flow: flow
                 )
@@ -445,14 +318,12 @@ extension OnboardingView {
 
     private func performJoin(
         code: String,
-        joinRequestCode: String,
         tokenJson: String?,
         flow: LinkFlow
     ) async {
         do {
             try await runJoin(
                 code: code,
-                joinRequestCode: joinRequestCode,
                 tokenJson: tokenJson,
                 flow: flow
             )
@@ -467,57 +338,26 @@ extension OnboardingView {
         }
     }
 
-    /// The invite bundle behind what the joiner pasted or scanned.
-    ///
-    /// The invite is a byte payload — the owner's signed join offer, not a
-    /// human-typed code — so it travels as base64 wherever it has to be text.
-    /// A QR scan hands back that same text, so both entry paths decode here.
-    private func inviteBytes(pasted: String) throws -> Data {
-        guard
-            let bytes = Data(
-                base64Encoded: pasted.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-        else {
-            throw BridgeError.Diagnostic(
-                category: .config,
-                detail: "the pasted invite is not base64 an invite bundle could be read from"
-            )
-        }
-        return bytes
-    }
-
-    private func decodeDeviceInvitationInput() {
-        let trimmed = deviceInvitationInput.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        guard !trimmed.isEmpty else {
-            decodedInvitation = nil
-            return
-        }
-        guard case .success(let request) = joinRequest else {
-            decodedInvitation = nil
-            return
-        }
-        decodedInvitation = Result {
-            try decodeScannedInvite(
-                scanned: try inviteBytes(pasted: trimmed),
-                joinRequestCode: request.code
-            )
-        }
-    }
-
     private func runJoin(
         code: String,
-        joinRequestCode: String,
         tokenJson: String?,
         flow: LinkFlow
     ) async throws {
-        let operation = try joinFromScannedInviteOperation(
-            scanned: try inviteBytes(pasted: code),
-            joinRequestCode: joinRequestCode,
+        let operation = try await joinDevicePairingOperation(
+            pairingCode: code,
             oauthTokenJson: tokenJson
         )
-        flow.bridgeCancel = { operation.cancel() }
+        linkingContext = .devicePairing(fingerprint: operation.fingerprint())
+        flow.bridgeCancel = {
+            do {
+                try operation.cancel()
+            }
+            catch {
+                logger.error(
+                    "Failed to cancel device pairing: \(error.localizedDescription)"
+                )
+            }
+        }
         let libraryInfo = try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return
@@ -526,7 +366,14 @@ extension OnboardingView {
                 }
                 .value
         } onCancel: {
-            operation.cancel()
+            do {
+                try operation.cancel()
+            }
+            catch {
+                logger.error(
+                    "Failed to cancel device pairing: \(error.localizedDescription)"
+                )
+            }
         }
         try Task.checkCancellation()
         onLinked(libraryInfo)
@@ -548,6 +395,7 @@ extension OnboardingView {
     func link(code: String) {
         error = nil
         cancelLink()
+        linkingContext = .librarySetup
         let flow = LinkFlow { flow in
             Task {
                 defer {

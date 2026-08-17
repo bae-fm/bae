@@ -17,14 +17,14 @@ En cada descarga, el autor de cada changeset se comprueba contra este registro: 
 
 ## El intercambio de unión
 
-Agregar un dispositivo es un intercambio de dos códigos con verificación humana explicita en medio:
+Agregar un dispositivo es una sesión de emparejamiento local con verificación humana explícita:
 
-1. El dispositivo que se une genera su par de claves y muestra una **solicitud de unión**: su clave pública, una huella corta de ella y (para proveedores OAuth) la cuenta de nube con la que compartir la carpeta.
-2. Un propietario decodifica la solicitud, y las dos pantallas muestran la misma huella. La persona comprueba que coincidan; este es el paso que derrota una clave sustituida.
-3. La aprobación hace tres cosas a la vez: concede a la cuenta del recién llegado acceso al hogar en la nube (carpeta compartida en nubes de consumo, credenciales incrustadas en S3, un recurso compartido de CloudKit en iCloud), sella la clave de biblioteca para la clave pública del recién llegado, y firma una entrada de membresía que lo agrega. Todo se empaqueta en un **código de invitación**.
-4. El dispositivo que se une consume la invitación, abre la clave, arranca desde el snapshot más reciente y sincroniza.
+1. Un propietario inicia **Agregar un dispositivo**. bae escucha brevemente en la red local y muestra un código de emparejamiento. Contiene las direcciones del oyente, una clave de sesión efímera, el nombre de la biblioteca, el proveedor y una fecha de vencimiento: no hay clave de biblioteca ni credenciales de almacenamiento duraderas.
+2. El dispositivo que se une escanea el código, crea su par de claves de dispositivo, inicia sesión en el proveedor cuando es necesario y envía su clave pública firmada y la identidad de la cuenta del proveedor a través de la conexión local cifrada. Ambos dispositivos muestran la misma huella digital.
+3. El propietario compara las huellas dactilares y aprueba esa identidad exacta. La aprobación otorga acceso a su cuenta en la nube cuando sea necesario, firma la entrada de membresía y sella la clave de la biblioteca y el acceso final al almacenamiento de la clave pública del nuevo dispositivo.
+4. El paquete sellado regresa a través de la misma conexión local autenticada. El dispositivo que se une lo abre, arranca desde el almacenamiento en la nube y comienza a sincronizarse.
 
-La invitación está sellada para la clave solicitante: interceptarla no concede nada.
+Un emparejamiento vencido, interrumpido o rechazado no otorga nada.
 
 ## Revocación
 

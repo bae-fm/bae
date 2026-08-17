@@ -9,11 +9,11 @@ description: సేవలు, ధృవీకరణ, మేఘ నిల్వ �
 
 | సేవ | ధృవీకరణ | కొత్త పరికరానికి ప్రాప్యత |
 |---|---|---|
-| S3-compatible | Access కీ + secret | Credentials invite లో embed అవుతాయి |
-| Google Drive | OAuth (PKCE) | సంచయం చేరేవారి ఖాతాకు share అవుతుంది |
-| Dropbox | OAuth (PKCE) | సంచయం చేరేవారి ఖాతాకు share అవుతుంది |
-| OneDrive | OAuth (PKCE) | సంచయం చేరేవారి ఖాతాకు share అవుతుంది |
-| iCloud (CloudKit) | Apple ID, sign-in లేదు | CloudKit share చేరేవారు అంగీకరిస్తారు |
+| S3-compatible | Access కీ + secret | జత చేసే సమయంలో ఆమోదించబడిన పరికరానికి ఆధారాలు సీలు చేయబడ్డాయి |
+| Google Drive | OAuth (PKCE) | కొత్త పరికరం ఖాతా ఆమోదించబడింది, ఆపై ఫోల్డర్ భాగస్వామ్యం చేయబడుతుంది |
+| Dropbox | OAuth (PKCE) | కొత్త పరికరం ఖాతా ఆమోదించబడింది, ఆపై ఫోల్డర్ భాగస్వామ్యం చేయబడుతుంది |
+| OneDrive | OAuth (PKCE) | కొత్త పరికరం ఖాతా ఆమోదించబడింది, ఆపై ఫోల్డర్ భాగస్వామ్యం చేయబడుతుంది |
+| iCloud (CloudKit) | Apple ID, sign-in లేదు | జత చేసే సమయంలో క్లౌడ్‌కిట్ భాగస్వామ్యం ఆమోదించబడింది |
 
 S3-compatible అంటే AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, API మాట్లాడే మిగతావన్నీ; bucket, region, endpoint, కీ prefix configure చేయవచ్చు, config save కాకముందే bucket probe అవుతుంది కాబట్టి typo మొదటి సమకాలీకరణ వద్ద కాదు setup దగ్గరే fail అవుతుంది. OAuth providers పూర్తి **bae** edition లో మాత్రమే ఉంటాయి; **baeium** builds వాటిని compile చేయవు.
 

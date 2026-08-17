@@ -12,11 +12,11 @@ Duas portas diferentes, para duas situações diferentes:
 
 ## Adicionando um dispositivo
 
-No dispositivo novo, escolha **Join a library**. Ele mostra um código curto, também como QR: a solicitação de entrada, carregando a chave pública do dispositivo e uma impressão digital que você pode ler em voz alta.
+Em um dispositivo que já possui a biblioteca, o proprietário abre Configurações, Dispositivos, **Adicionar um dispositivo**. bae mostra um código de emparelhamento como um QR e começa a escutar na rede local.
 
-Em um dispositivo que já tem a biblioteca, um proprietário abre Ajustes, Dispositivos, **Add a device**, e escaneia ou cola essa solicitação. bae mostra a impressão digital do dispositivo que está entrando; confirme que ela corresponde ao que o dispositivo novo exibe. Aprovar produz um código de convite: entregue-o de volta ao dispositivo novo (escaneie o QR ou cole), e o dispositivo novo baixa a biblioteca e começa a sincronizar.
+No novo dispositivo, escolha **Junte-se a uma biblioteca** e leia esse código. Faça login no provedor de armazenamento quando solicitado. Ambos os dispositivos mostram a impressão digital do novo dispositivo; compare-os e aprove no dispositivo existente. O novo dispositivo recebe acesso selado por meio da mesma conexão local, baixa a biblioteca e inicia a sincronização. Nenhum código viaja de volta.
 
-Por trás do aperto de mão: o dispositivo aprovador concede ao recém-chegado acesso ao local na nuvem (nuvens de consumidor compartilham a pasta com a conta do recém-chegado; convites S3 embutem credenciais) e sela a chave de criptografia da biblioteca para a chave pública do recém-chegado. O convite é inútil para qualquer outro dispositivo. Detalhes em [Identidade e associação](/pt-br/reference/membership).
+O código de emparelhamento não contém a chave da biblioteca nem as credenciais de armazenamento duradouro, e um emparelhamento interrompido ou rejeitado não concede nada. Detalhes em [Identidade e adesão](/pt-br/reference/membership).
 
 ## Membros e funções
 

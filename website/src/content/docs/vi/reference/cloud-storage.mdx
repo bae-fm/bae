@@ -9,11 +9,11 @@ Nhà trên đám mây là một vị trí trong lưu trữ mà người dùng đ
 
 | Nhà cung cấp | Xác thực | Truy cập cho thiết bị mới |
 |---|---|---|
-| Tương thích S3 | Access key + secret | Thông tin xác thực nhúng trong lời mời |
-| Google Drive | OAuth (PKCE) | Thư mục được chia sẻ tới tài khoản của thiết bị tham gia |
-| Dropbox | OAuth (PKCE) | Thư mục được chia sẻ tới tài khoản của thiết bị tham gia |
-| OneDrive | OAuth (PKCE) | Thư mục được chia sẻ tới tài khoản của thiết bị tham gia |
-| iCloud (CloudKit) | Apple ID, không đăng nhập | Thiết bị tham gia chấp nhận CloudKit share |
+| Tương thích S3 | Access key + secret | Thông tin xác thực được niêm phong cho thiết bị được phê duyệt trong quá trình ghép nối |
+| Google Drive | OAuth (PKCE) | Tài khoản của thiết bị mới đã được phê duyệt, sau đó thư mục sẽ được chia sẻ |
+| Dropbox | OAuth (PKCE) | Tài khoản của thiết bị mới đã được phê duyệt, sau đó thư mục sẽ được chia sẻ |
+| OneDrive | OAuth (PKCE) | Tài khoản của thiết bị mới đã được phê duyệt, sau đó thư mục sẽ được chia sẻ |
+| iCloud (CloudKit) | Apple ID, không đăng nhập | Chia sẻ CloudKit được chấp nhận trong quá trình ghép nối |
 
 Tương thích S3 bao phủ AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, và bất kỳ thứ gì khác nói API này; bucket, region, endpoint và tiền tố khóa có thể cấu hình, và bucket được kiểm tra trước khi cấu hình được lưu để lỗi gõ sai thất bại lúc thiết lập, không phải ở lần đồng bộ đầu. Các nhà cung cấp OAuth chỉ tồn tại trong phiên bản **bae** đầy đủ; bản dựng **baeium** biên dịch loại bỏ chúng.
 

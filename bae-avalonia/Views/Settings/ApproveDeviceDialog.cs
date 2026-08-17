@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -7,11 +8,7 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// Owner-side approve flow, presented in the settings window's modal host: a single
-// dialog whose body swaps between steps — capture (scan or paste the new device's
-// join-request code) → confirm (its fingerprint) → invited (the sealed
-// invitation to enter on the new device). The owner-side driver stays alive
-// until that exact device joins or the dialog withdraws the invitation.
+/// <summary>Display one pairing code, review the joining identity, and admit it.</summary>
 internal sealed class ApproveDeviceDialog
 {
     private readonly AppService _app;
@@ -23,193 +20,162 @@ internal sealed class ApproveDeviceDialog
 
     public Control Build(Action close)
     {
-        byte[]? invitation = null;
-        var dismissed = false;
+        BridgeDevicePairingSession? pairing = null;
+        var completed = false;
+        var approving = false;
         var body = new StackPanel { Spacing = 12 };
-
         var column = DialogUi.Column();
         column.Children.Add(DialogUi.Title(Loc.Chrome("members.approve.title")));
         column.Children.Add(new ScrollViewer { Content = body, MaxHeight = 520 });
         var done = new Button { Content = Loc.Chrome("action.done") };
-        done.Click += async (_, _) => await WithdrawAndClose();
+        done.Click += (_, _) =>
+        {
+            if (approving)
+            {
+                return;
+            }
+            CancelPairing();
+            close();
+        };
         column.Children.Add(DialogUi.Actions(done));
 
-        async Task WithdrawAndClose()
+        void CancelPairing()
         {
-            dismissed = true;
-            if (invitation is { } created)
+            if (completed || approving || pairing is null)
             {
-                var (current, error) = await _app.Sync.CancelDeviceInvite(created);
-                if (current && error is not null)
-                {
-                    BaeDiagnostics.Logger.Error($"Failed to cancel device invitation: {error}");
-                }
+                return;
             }
-            close();
+            var (current, error) = _app.Sync.CancelDevicePairing(pairing);
+            if (current && error is not null)
+            {
+                BaeDiagnostics.Logger.Error($"Failed to cancel device pairing: {error}");
+            }
+            pairing = null;
         }
 
-        void ShowCapture()
+        void ShowError(string message)
         {
-            body.Children.Clear();
-            body.Children.Add(DialogUi.Body(Loc.Chrome("members.approve.capture_hint")));
-
-            var pasteBox = new TextBox
-            {
-                Watermark = Loc.Chrome("members.approve.paste_placeholder"),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-            };
-            var decode = new Button { Content = Loc.Chrome("members.approve.decode") };
-            var scan = new Button { Content = Loc.Chrome("action.scan") };
-            var captureRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { pasteBox, decode, scan } };
-            body.Children.Add(captureRow);
-
             var error = DialogUi.Danger();
-            body.Children.Add(error);
-
-            void TryDecode(string code)
-            {
-                if (string.IsNullOrWhiteSpace(code))
-                {
-                    return;
-                }
-
-                BridgeJoinRequestInfo info;
-                try
-                {
-                    info = _app.Sync.DecodeJoinRequest(code);
-                }
-                catch (BridgeException exception)
-                {
-                    BaeDiagnostics.Logger.Error("Failed to decode join request.", exception);
-                    error.Text = Loc.Chrome("members.approve.invalid_request");
-                    error.IsVisible = true;
-                    return;
-                }
-
-                ShowConfirm(code, info);
-            }
-
-            decode.Click += (_, _) => TryDecode(pasteBox.Text?.Trim() ?? string.Empty);
-            scan.Click += async (_, _) =>
-            {
-                var scanned = await QrScanner.ScanFromFileAsync(scan);
-                if (scanned is not null)
-                {
-                    TryDecode(scanned.Trim());
-                }
-            };
-        }
-
-        void ShowConfirm(string joinRequestCode, BridgeJoinRequestInfo info)
-        {
-            body.Children.Clear();
-            var heading = new TextBlock { Text = Loc.Chrome("members.approve.confirm_title"), FontWeight = FontWeight.SemiBold };
-            heading[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
-            body.Children.Add(heading);
-            body.Children.Add(new TextBlock { Text = info.Fingerprint, FontFamily = new FontFamily("monospace") });
-            if (!string.IsNullOrEmpty(info.Email))
-            {
-                body.Children.Add(DialogUi.Body(info.Email));
-            }
-            body.Children.Add(DialogUi.Body(Loc.Chrome("members.approve.confirm_hint")));
-
-            var error = DialogUi.Danger();
-
-            var back = new Button { Content = Loc.Chrome("action.back") };
-            back.Click += (_, _) => ShowCapture();
-            var approve = DialogUi.Primary(Loc.Chrome("members.approve.confirm"));
-            approve.Click += async (_, _) =>
-            {
-                approve.IsEnabled = false;
-                back.IsEnabled = false;
-                error.Text = Loc.Chrome("members.approve.in_progress");
-                error[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-                error.IsVisible = true;
-
-                var (current, result) = await _app.Sync.BeginDeviceInvite(joinRequestCode);
-                if (!current)
-                {
-                    return;
-                }
-                if (result.Invitation is not { } created)
-                {
-                    if (result.Error is { } invitationError)
-                    {
-                        BaeDiagnostics.Logger.Error($"Failed to create device invitation: {invitationError}");
-                    }
-                    error.Text = Loc.Chrome("members.approve.failed");
-                    error[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
-                    error.IsVisible = true;
-                    approve.IsEnabled = true;
-                    back.IsEnabled = true;
-                    return;
-                }
-
-                invitation = created;
-                if (dismissed)
-                {
-                    await _app.Sync.CancelDeviceInvite(created);
-                    return;
-                }
-                ShowInvited(created);
-            };
-
-            body.Children.Add(DialogUi.Actions(back, approve));
+            error.Text = message;
+            error.IsVisible = true;
             body.Children.Add(error);
         }
 
-        void ShowInvited(byte[] created)
+        void ShowWaiting(BridgeDevicePairingSession session)
         {
-            var code = Convert.ToBase64String(created);
             body.Children.Clear();
-            body.Children.Add(DialogUi.Body(Loc.Chrome("members.approve.invited_hint")));
-
+            body.Children.Add(DialogUi.Body(Loc.Chrome("members.pairing.scan_hint")));
+            var code = session.Code();
+            if (QrCode.Image(code) is { } qr)
+            {
+                body.Children.Add(new Image
+                {
+                    Source = qr,
+                    Width = 220,
+                    Height = 220,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                });
+            }
             var codeBox = new TextBox
             {
                 Text = code,
                 IsReadOnly = true,
                 TextWrapping = TextWrapping.Wrap,
                 FontFamily = new FontFamily("monospace"),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             var copy = new Button { Content = Loc.Chrome("action.copy") };
             copy.Click += (_, _) => ClipboardHelper.CopyToClipboard(copy, code);
             body.Children.Add(codeBox);
             body.Children.Add(copy);
-
-            var status = DialogUi.Danger();
-            var retry = new Button { Content = Loc.Chrome("library.retry"), IsVisible = false };
-            retry.Click += async (_, _) => await DriveJoin(created, status, retry);
-            body.Children.Add(status);
-            body.Children.Add(DialogUi.Actions(retry));
-            _ = DriveJoin(created, status, retry);
+            body.Children.Add(DialogUi.Body(Loc.Chrome("members.pairing.waiting")));
         }
 
-        async Task DriveJoin(byte[] created, TextBlock status, Button retry)
+        void ShowConfirm(BridgeDevicePairingSession session, BridgePairingDevice device)
         {
-            retry.IsVisible = false;
-            status.Text = Loc.Chrome("members.approve.in_progress");
-            status[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            status.IsVisible = true;
+            body.Children.Clear();
+            var heading = new TextBlock
+            {
+                Text = Loc.Chrome("members.pairing.confirm_title"),
+                FontWeight = FontWeight.SemiBold,
+            };
+            heading[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
+            body.Children.Add(heading);
+            body.Children.Add(new TextBlock { Text = device.Fingerprint, FontFamily = new FontFamily("monospace") });
+            if (!string.IsNullOrEmpty(device.Email))
+            {
+                body.Children.Add(DialogUi.Body(device.Email));
+            }
+            body.Children.Add(DialogUi.Body(Loc.Chrome("members.pairing.confirm_hint")));
+            var add = DialogUi.Primary(Loc.Chrome("members.pairing.add"));
+            add.Click += async (_, _) => await Approve(session, device, add);
+            body.Children.Add(DialogUi.Actions(add));
+        }
 
-            var (current, error) = await _app.Sync.DriveDeviceJoin(created);
-            if (!current || dismissed)
+        async Task WaitForDevice(BridgeDevicePairingSession session)
+        {
+            var (current, result) = await _app.Sync.WaitForPairingDevice(session);
+            if (!current || pairing != session)
             {
                 return;
             }
+            if (result.Device is { } device)
+            {
+                ShowConfirm(session, device);
+                return;
+            }
+            ShowError(Loc.Chrome("members.pairing.failed"));
+        }
+
+        async Task Approve(
+            BridgeDevicePairingSession session,
+            BridgePairingDevice device,
+            Button add)
+        {
+            approving = true;
+            done.IsEnabled = false;
+            add.IsEnabled = false;
+            body.Children.Add(DialogUi.Body(Loc.Chrome("members.pairing.adding")));
+            var (current, error) = await _app.Sync.ApprovePairingDevice(session);
+            if (!current)
+            {
+                return;
+            }
+            approving = false;
+            done.IsEnabled = true;
             if (error is not null)
             {
-                status.Text = Loc.Chrome("members.approve.failed");
-                status[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeDangerBrush");
-                retry.IsVisible = true;
+                BaeDiagnostics.Logger.Error($"Failed to approve paired device: {error}");
+                ShowConfirm(session, device);
+                ShowError(Loc.Chrome("members.pairing.failed"));
                 return;
             }
-
-            invitation = null;
+            completed = true;
+            pairing = null;
             close();
         }
 
-        ShowCapture();
+        async Task Start()
+        {
+            body.Children.Add(new Spinner { Width = 20, Height = 20 });
+            var (current, result) = await _app.Sync.StartDevicePairing();
+            if (!current)
+            {
+                return;
+            }
+            if (result.Session is not { } session)
+            {
+                body.Children.Clear();
+                ShowError(Loc.Chrome("members.pairing.failed"));
+                return;
+            }
+            pairing = session;
+            ShowWaiting(session);
+            await WaitForDevice(session);
+        }
+
+        _ = Start();
+        column.DetachedFromVisualTree += (_, _) => CancelPairing();
         return column;
     }
 }

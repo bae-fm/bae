@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Oblak</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>prikaži u fonoteci</value></data>
   <data name="join.title" xml:space="preserve"><value>pridruži se fonoteci</value></data>
-  <data name="join.intro" xml:space="preserve"><value>dodajte ovaj uređaj u fonoteku koju već imate na drugom uređaju.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>kod ovog uređaja</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>na uređaju koji je već u vašoj fonoteci otvorite postavke → uređaji → dodaj uređaj i skenirajte ili zalijepite ovo.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>ovaj uređaj: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>nije moguće generirati kod ovog uređaja</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>pozivni kod</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>nakon što taj uređaj odobri ovaj, unesite pozivni kod koji prikaže.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>zalijepi pozivni kod</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>neispravan pozivni kod</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · vlasnik {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Skenirajte kod za uparivanje prikazan na uređaju koji je već u vašoj fonoteci.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Zalijepi kod za uparivanje</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Ovaj kod za uparivanje nije valjan.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>pridruži se</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>pridruživanje {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>nije se moguće pridružiti fonoteci</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>ukloni</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>ovaj uređaj izgubit će pristup, a ključ fonoteke bit će rotiran. kliknite ukloni ponovno za potvrdu.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>dodaj uređaj</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>na novom uređaju otvorite pridruži se fonoteci i prikažite njegov kod. skenirajte ga ovdje ili ga zalijepite ispod.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>zalijepi kod uređaja</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>dekodiraj</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>neispravan kod uređaja</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>odobriti ovaj uređaj?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>bit će dodan u vašu fonoteku i moći će se sinkronizirati. dobit ćete kod koji trebate unijeti na njemu.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>odobri</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>odobravanje uređaja…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>nije moguće odobriti ovaj uređaj</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>unesite ovaj kod na novom uređaju.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Skenirajte ovaj kod na uređaju koji se pridružuje vašoj fonoteci.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>odobriti ovaj uređaj?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>bit će dodan u vašu fonoteku i moći će se sinkronizirati.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>odobri</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>odobravanje uređaja…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>nije moguće odobriti ovaj uređaj</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Čekanje uređaja…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>idi na album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>izbriši</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nije moguće učitati izlazni red</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Osvježavanje…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Spoji kao jedno izdanje</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Zadrži kao odvojena izdanja</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Pokretanje uparivanja…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Čekanje odobrenja…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Otisak: {fingerprint}</value></data>
 </root>

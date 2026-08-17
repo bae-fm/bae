@@ -72,36 +72,20 @@ pub enum BridgeMemberRole {
     Follower,
 }
 
-/// Decoded join-request code: the joining device's public key and its
-/// fingerprint, shown to an existing member for approval before inviting it.
+/// The existing device's pairing offer, decoded before provider authorization.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeJoinRequestInfo {
-    pub pubkey: String,
-    /// Short display identity — the first 8 characters of the pubkey.
-    pub fingerprint: String,
-    pub email: Option<String>,
-}
-
-/// This device's join-request code and the fingerprint it encodes, so the
-/// joining device shows its own identity without decoding the code it generated.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeJoinRequest {
-    pub code: String,
-    /// Short display identity — the first 8 characters of this device's pubkey.
-    pub fingerprint: String,
-}
-
-/// Opened device-invitation info for UI preview (before joining).
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDeviceInviteInfo {
-    pub library_id: String,
+pub struct BridgeDevicePairingOffer {
     pub library_name: String,
-    pub owner_pubkey: String,
-    /// Short display identity of the library owner — the first 8 characters of
-    /// the owner pubkey.
-    pub owner_fingerprint: String,
     pub cloud_provider: BridgeCloudProvider,
     pub needs_oauth: bool,
+    pub expires_at_unix_seconds: i64,
+}
+
+/// The exact joining identity waiting for approval on the existing device.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePairingDevice {
+    pub fingerprint: String,
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

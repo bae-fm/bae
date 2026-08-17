@@ -294,35 +294,28 @@ impl Database {
         self.inner.handle.get_members().await
     }
 
-    pub(crate) async fn begin_device_invite(
+    pub(crate) async fn start_device_pairing(
         &self,
-        join_request_code: &str,
-        role: coven::MemberRole,
-    ) -> Result<coven::DeviceJoinInvite, coven::BeginDeviceInviteError> {
-        self.inner
-            .handle
-            .begin_device_invite(join_request_code, role)
-            .await
+    ) -> Result<coven::DevicePairingHost, coven::StartDevicePairingError> {
+        self.inner.handle.start_device_pairing().await
     }
 
-    pub(crate) async fn drive_device_join(
+    pub(crate) async fn approve_device_pairing(
         &self,
-        invite: &coven::DeviceJoinInvite,
-        policy: coven::DeviceJoinApprovalPolicy<'_>,
-        timing: coven::DeviceJoinTransportTiming,
-    ) -> Result<coven::DeviceJoinDriveOutcome, coven::SyncError> {
+        host: &coven::DevicePairingHost,
+        request: &coven::DevicePairingRequest,
+    ) -> Result<coven::DeviceJoinDriveOutcome, coven::ApproveDevicePairingError> {
         self.inner
             .handle
-            .drive_device_join(invite, policy, None, timing)
+            .approve_device_pairing(
+                host,
+                request,
+                coven::MemberRole::Member,
+                coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
+                None,
+                crate::sync::device_join_timing(),
+            )
             .await
-    }
-
-    pub(crate) async fn cancel_device_invite(
-        &self,
-        invite: &coven::DeviceJoinInvite,
-        timing: coven::DeviceJoinTransportTiming,
-    ) -> Result<coven::DeviceJoinCleanupActivation, coven::SyncError> {
-        self.inner.handle.cancel_device_invite(invite, timing).await
     }
 
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), coven::SyncError> {

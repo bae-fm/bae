@@ -147,27 +147,10 @@ impl LibraryManager {
         self.sync.get_members().await
     }
 
-    /// Mint the scannable device-join invite for a device that asked to join,
-    /// returning the payload the UI renders as a QR code. The joining device must
-    /// hand over its join-request code first — see
-    /// `SyncController::begin_device_invite`.
-    pub async fn begin_device_invite(
+    pub async fn start_device_pairing(
         &self,
-        join_request_code: &str,
-    ) -> Result<Vec<u8>, LibraryError> {
-        self.sync.begin_device_invite(join_request_code).await
-    }
-
-    /// Drive this device's side of an invited join to the attempt's end. Run this
-    /// while the invite is on screen; it returns once the joining device is in or
-    /// the attempt ended without it.
-    pub async fn drive_device_join(&self, invite_bytes: Vec<u8>) -> Result<(), LibraryError> {
-        self.sync.drive_device_join(invite_bytes).await
-    }
-
-    /// Withdraw an invite this device minted.
-    pub async fn cancel_device_invite(&self, invite_bytes: Vec<u8>) -> Result<(), LibraryError> {
-        self.sync.cancel_device_invite(invite_bytes).await
+    ) -> Result<crate::library::DevicePairingSession, LibraryError> {
+        self.sync.start_device_pairing().await
     }
 
     /// Remove a device from the library and rotate the library key so the removed

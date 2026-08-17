@@ -9,11 +9,11 @@ Cloud home એ user પાસે પહેલેથી હોય તે storage 
 
 | Provider | Auth | નવા device માટે access |
 |---|---|---|
-| S3-compatible | Access key + secret | Invite માં embedded credentials |
-| Google Drive | OAuth (PKCE) | Folder joiner ના account સાથે shared |
-| Dropbox | OAuth (PKCE) | Folder joiner ના account સાથે shared |
-| OneDrive | OAuth (PKCE) | Folder joiner ના account સાથે shared |
-| iCloud (CloudKit) | Apple ID, sign-in નહીં | Joiner દ્વારા accepted CloudKit share |
+| S3-compatible | Access key + secret | જોડી બનાવવા દરમિયાન માન્ય ઉપકરણ પર ઓળખપત્રો સીલ કરવામાં આવ્યા છે |
+| Google Drive | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
+| Dropbox | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
+| OneDrive | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
+| iCloud (CloudKit) | Apple ID, sign-in નહીં | જોડી બનાવતી વખતે CloudKit શેર સ્વીકારવામાં આવ્યો |
 
 S3-compatible માં AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, અને API બોલતું બીજું બધું આવે છે; bucket, region, endpoint, અને key prefix configurable છે, અને config save થાય તે પહેલાં bucket probe થાય છે જેથી typo setup વખતે fail થાય, પહેલી sync વખતે નહીં. OAuth providers ફક્ત full **bae** edition માં છે; **baeium** builds તેમને compile out કરે છે.
 

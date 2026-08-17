@@ -82,16 +82,10 @@
   <data name="import.storage.cloud" xml:space="preserve"><value>Хмара</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>переглянути в бібліотеці</value></data>
   <data name="join.title" xml:space="preserve"><value>приєднатися до бібліотеки</value></data>
-  <data name="join.intro" xml:space="preserve"><value>додайте цей пристрій до бібліотеки, яка вже є на іншому пристрої.</value></data>
-  <data name="join.this_device_code" xml:space="preserve"><value>код цього пристрою</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>на пристрої, який уже є у вашій бібліотеці, відкрийте налаштування → пристрої → додати пристрій і відскануйте або вставте це.</value></data>
-  <data name="join.fingerprint" xml:space="preserve"><value>цей пристрій: {fingerprint}</value></data>
-  <data name="join.generate_failed" xml:space="preserve"><value>не вдалося створити код цього пристрою</value></data>
-  <data name="join.invite_label" xml:space="preserve"><value>код запрошення</value></data>
-  <data name="join.invite_hint" xml:space="preserve"><value>коли той пристрій схвалить цей, введіть код запрошення, який він покаже.</value></data>
-  <data name="join.invite_placeholder" xml:space="preserve"><value>вставити код запрошення</value></data>
-  <data name="join.invalid_invite" xml:space="preserve"><value>недійсний код запрошення</value></data>
-  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · власник {fingerprint}</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Відскануйте код сполучення, показаний на пристрої, який уже є у вашій бібліотеці.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Вставте код сполучення</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Цей код сполучення недійсний.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>приєднатися</value></data>
   <data name="join.in_progress" xml:space="preserve"><value>приєднання до {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>не вдалося приєднатися до бібліотеки</value></data>
@@ -128,16 +122,13 @@
   <data name="members.remove" xml:space="preserve"><value>видалити</value></data>
   <data name="members.remove_confirm" xml:space="preserve"><value>цей пристрій втратить доступ, а ключ бібліотеки буде оновлено. натисніть видалити ще раз, щоб підтвердити.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>додати пристрій</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>на новому пристрої відкрийте приєднання до бібліотеки й покажіть його код. відскануйте його тут або вставте нижче.</value></data>
-  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>вставте код пристрою</value></data>
-  <data name="members.approve.decode" xml:space="preserve"><value>декодувати</value></data>
-  <data name="members.approve.invalid_request" xml:space="preserve"><value>недійсний код пристрою</value></data>
-  <data name="members.approve.confirm_title" xml:space="preserve"><value>схвалити цей пристрій?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>його буде додано до вашої бібліотеки, і він зможе синхронізуватися. ви отримаєте код, який треба ввести на ньому.</value></data>
-  <data name="members.approve.confirm" xml:space="preserve"><value>схвалити</value></data>
-  <data name="members.approve.in_progress" xml:space="preserve"><value>схвалення пристрою…</value></data>
-  <data name="members.approve.failed" xml:space="preserve"><value>не вдалося схвалити цей пристрій</value></data>
-  <data name="members.approve.invited_hint" xml:space="preserve"><value>введіть цей код на новому пристрої.</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Відскануйте цей код на пристрої, який приєднується до вашої бібліотеки.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>схвалити цей пристрій?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>його буде додано до вашої бібліотеки, і він зможе синхронізуватися.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>схвалити</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>схвалення пристрою…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>не вдалося схвалити цей пристрій</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Очікування пристрою…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>перейти до альбому</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>видалити</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>не вдалося завантажити чергу надсилання</value></data>
@@ -465,4 +456,7 @@
   <data name="import.folder.refreshing" xml:space="preserve"><value>Оновлення…</value></data>
   <data name="import.release.one" xml:space="preserve"><value>Об’єднати як один реліз</value></data>
   <data name="import.release.separate" xml:space="preserve"><value>Залишити як окремі релізи</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Запуск сполучення…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Очікування схвалення…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Відбиток: {fingerprint}</value></data>
 </root>

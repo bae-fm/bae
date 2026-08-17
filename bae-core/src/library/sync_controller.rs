@@ -22,8 +22,6 @@ use crate::sync::S3ConfigData;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::ExactCloudHome;
 
-use crate::sync::device_join_timing;
-
 /// Owns the sync/upload state and the cloud-connection lifecycle. Holds clones of
 /// the handles the sync paths need (config, database, and diagnostics) plus the
 /// transient upload-pipeline state. Cloned alongside the
@@ -271,78 +269,14 @@ impl SyncController {
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
-    /// Mint the scannable device-join invite for a device that has asked to join,
-    /// returning the payload bytes the UI renders as a QR code.
-    ///
-    /// `join_request_code` is the code the *joining* device produced with
-    /// [`crate::sync::membership::generate_join_request`] and handed over first:
-    /// the offer is signed for that device's key, so the owner cannot mint this
-    /// payload without it. The returned bytes carry the joining device's sealed
-    /// provider credentials and the join offer with its transport slots, so
-    /// scanning it is everything that device needs.
-    ///
-    /// Minting only publishes the offer. [`drive_device_join`](Self::drive_device_join)
-    /// must then run on this device to admit the joiner.
-    pub(crate) async fn begin_device_invite(
+    pub(crate) async fn start_device_pairing(
         &self,
-        join_request_code: &str,
-    ) -> Result<Vec<u8>, LibraryError> {
-        Ok(self
-            .database
-            .begin_device_invite(
-                join_request_code,
-                crate::sync::membership::MemberRole::Member,
-            )
-            .await?
-            .to_bytes())
-    }
-
-    /// Drive this device's side of a join it invited, to the attempt's end.
-    ///
-    /// Runs the admitting half of the handshake — approving the joiner's provider
-    /// access, registering it, and finalizing its activation — publishing each
-    /// artifact through the transport and waiting for the joiner's next one. The
-    /// approval is [`AutoApproveSelfIssued`](coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued):
-    /// the attempt is one this device itself minted, and the user already approved
-    /// it by choosing to show the QR — coven still refuses any request that does
-    /// not match that attempt.
-    ///
-    /// Returns when the attempt reaches a terminal state this side owns; the
-    /// joining device completes its own last step. A joining device that never
-    /// scans the code leaves this waiting until the transport deadline, which
-    /// surfaces as [`LibraryError::Sync`].
-    pub(crate) async fn drive_device_join(
-        &self,
-        invite_bytes: Vec<u8>,
-    ) -> Result<(), LibraryError> {
-        let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
-            .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
-        let outcome = self
-            .database
-            .drive_device_join(
-                &invite,
-                coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
-                device_join_timing(),
-            )
-            .await?;
-        match outcome {
-            coven::DeviceJoinDriveOutcome::Activated(_) => Ok(()),
-            coven::DeviceJoinDriveOutcome::Abandoned(_) => Err(LibraryError::DeviceJoinAbandoned),
-        }
-    }
-
-    /// Withdraw an invite this device minted, unwinding the attempt through the
-    /// transport so a joining device that already scanned it is told to stop.
-    pub(crate) async fn cancel_device_invite(
-        &self,
-        invite_bytes: Vec<u8>,
-    ) -> Result<(), LibraryError> {
-        let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
-            .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
-        self.database
-            .cancel_device_invite(&invite, device_join_timing())
-            .await?;
-        Ok(())
+    ) -> Result<crate::library::DevicePairingSession, LibraryError> {
+        let host = self.database.start_device_pairing().await?;
+        Ok(crate::library::DevicePairingSession::new(
+            self.database.clone(),
+            host,
+        ))
     }
 
     /// Remove a device from the library and rotate the library key so the removed

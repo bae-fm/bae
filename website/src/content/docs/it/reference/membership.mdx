@@ -17,14 +17,14 @@ A ogni pull, l'autore di ogni changeset viene controllato contro questo record: 
 
 ## La stretta di mano di unione
 
-Aggiungere un dispositivo è uno scambio di due codici con verifica umana esplicita nel mezzo:
+L'aggiunta di un dispositivo è una sessione di accoppiamento locale con verifica umana esplicita:
 
-1. Il dispositivo che si unisce genera la propria coppia di chiavi e mostra una **richiesta di unione**: la sua chiave pubblica, una breve impronta di essa e (per i provider OAuth) l'account cloud con cui condividere la cartella.
-2. Un proprietario decodifica la richiesta, e le due schermate mostrano la stessa impronta. La persona controlla che corrispondano; questo è il passaggio che sconfigge una chiave scambiata.
-3. L'approvazione fa tre cose insieme: concede all'account del nuovo arrivato accesso alla home cloud (condivisione cartella sui cloud consumer, credenziali incorporate su S3, una condivisione CloudKit su iCloud), sigilla la chiave della libreria sulla chiave pubblica del nuovo arrivato e firma una voce di appartenenza che lo aggiunge. Tutto viene impacchettato in un **codice di invito**.
-4. Il dispositivo che si unisce consuma l'invito, apre la chiave, si avvia dallo snapshot più recente e sincronizza.
+1. Un proprietario avvia **Aggiungi un dispositivo**. bae ascolta brevemente sulla rete locale e mostra un codice di accoppiamento. Contiene gli indirizzi del listener, una chiave di sessione temporanea, il nome della libreria, il provider e una scadenza: nessuna chiave di libreria o credenziali di archiviazione durature.
+2. Il dispositivo che si unisce esegue la scansione del codice, crea la coppia di chiavi del dispositivo, accede al provider quando richiesto e invia la chiave pubblica firmata e l'identità dell'account del provider tramite la connessione locale crittografata. Entrambi i dispositivi mostrano la stessa impronta digitale.
+3. Il proprietario confronta le impronte digitali e approva l'identità esatta. L'approvazione garantisce l'accesso all'account cloud ove richiesto, firma la voce di adesione e sigilla la chiave della libreria e l'accesso finale all'archiviazione alla chiave pubblica del nuovo dispositivo.
+4. Il pacco sigillato ritorna attraverso la stessa connessione locale autenticata. Il dispositivo di unione lo apre, esegue il bootstrap dall'archivio cloud e avvia la sincronizzazione.
 
-L'invito è sigillato sulla chiave richiedente: intercettarlo non concede nulla.
+Un abbinamento scaduto, interrotto o rifiutato non garantisce nulla.
 
 ## Revoca
 

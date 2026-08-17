@@ -9,11 +9,11 @@ El hogar en la nube es una ubicación en almacenamiento que el usuario ya posee.
 
 | Proveedor | Auth | Acceso para un dispositivo nuevo |
 |---|---|---|
-| Compatible con S3 | Access key + secret | Credenciales incluidas en la invitación |
-| Google Drive | OAuth (PKCE) | Carpeta compartida con la cuenta de quien se une |
-| Dropbox | OAuth (PKCE) | Carpeta compartida con la cuenta de quien se une |
-| OneDrive | OAuth (PKCE) | Carpeta compartida con la cuenta de quien se une |
-| iCloud (CloudKit) | Apple ID, sin inicio de sesión | Recurso compartido de CloudKit aceptado por quien se une |
+| Compatible con S3 | Access key + secret | Credenciales selladas al dispositivo aprobado durante el emparejamiento |
+| Google Drive | OAuth (PKCE) | Se aprueba la cuenta del nuevo dispositivo y luego se comparte la carpeta |
+| Dropbox | OAuth (PKCE) | Se aprueba la cuenta del nuevo dispositivo y luego se comparte la carpeta |
+| OneDrive | OAuth (PKCE) | Se aprueba la cuenta del nuevo dispositivo y luego se comparte la carpeta |
+| iCloud (CloudKit) | Apple ID, sin inicio de sesión | Compartir CloudKit aceptado durante el emparejamiento |
 
 Compatible con S3 cubre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO y cualquier otro que hable la API; bucket, región, endpoint y prefijo de clave son configurables, y el bucket se prueba antes de guardar la configuración para que un error de tipeo falle al configurar, no en la primera sincronización. Los proveedores OAuth existen solo en la edición completa **bae**; las compilaciones **baeium** los excluyen.
 

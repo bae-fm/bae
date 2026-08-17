@@ -12,11 +12,11 @@ Dvoje dveře pro dvě různé situace:
 
 ## Přidání zařízení
 
-Na novém zařízení zvolte **Join a library**. Zobrazí krátký kód, také jako QR: žádost o připojení, která nese veřejný klíč zařízení a otisk, který můžete přečíst nahlas.
+Na zařízení, které již knihovnu má, vlastník otevře Nastavení, Zařízení, **Přidejte zařízení**. bae zobrazí jeden párovací kód jako QR a začne poslouchat v místní síti.
 
-Na zařízení, které knihovnu už má, otevře vlastník Settings, Devices, **Add a device** a tuto žádost naskenuje nebo vloží. bae zobrazí otisk připojovaného zařízení; potvrďte, že odpovídá tomu, co zobrazuje nové zařízení. Schválení vytvoří zvací kód: předejte ho novému zařízení (naskenujte QR nebo ho vložte) a nové zařízení stáhne knihovnu a začne se synchronizovat.
+Na novém zařízení vyberte **Připojte se do knihovny** a naskenujte tento kód. Až budete požádáni, přihlaste se k poskytovateli úložiště. Obě zařízení zobrazují otisk prstu nového zařízení; porovnejte je a poté schválte na stávajícím zařízení. Nové zařízení obdrží svůj uzavřený přístup prostřednictvím stejného místního připojení, stáhne knihovnu a spustí synchronizaci. Žádný kód neputuje zpět.
 
-Za tímto postupem: schvalující zařízení udělí nováčkovi přístup ke cloudovému domovu (spotřebitelské cloudy sdílí složku s účtem nováčka; pozvánky S3 obsahují přihlašovací údaje) a zapečetí šifrovací klíč knihovny pro veřejný klíč nováčka. Pozvánka je pro jakékoli jiné zařízení nepoužitelná. Detaily jsou v [Identitě a členství](/cs/reference/membership).
+Párovací kód neobsahuje ani klíč knihovny, ani trvalé pověření úložiště a přerušené nebo odmítnuté párování nic neuděluje. Podrobnosti v [Identita a členství](/cs/reference/membership).
 
 ## Členové a role
 
