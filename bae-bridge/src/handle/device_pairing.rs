@@ -1,4 +1,5 @@
 use super::*;
+use crate::types::{AdmittingDeviceJoinProgressCallback, BridgeAdmittingDeviceJoinProgress};
 
 #[derive(uniffi::Object)]
 pub struct BridgeDevicePairingSession {
@@ -45,13 +46,19 @@ impl BridgeDevicePairingSession {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl BridgeDevicePairingSession {
-    pub async fn approve(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+    pub async fn approve(
+        self: std::sync::Arc<Self>,
+        progress: Box<dyn AdmittingDeviceJoinProgressCallback>,
+    ) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run_to_completion(
             runtime,
             "device pairing approval",
             move || async move {
-                self.inner.approve().await?;
+                let on_progress = move |value| {
+                    progress.on_progress(BridgeAdmittingDeviceJoinProgress::from_core(value));
+                };
+                self.inner.approve(&on_progress).await?;
                 Ok(())
             },
         )

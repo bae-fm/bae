@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
+import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
@@ -19,6 +20,8 @@ import uniffi.bae_bridge.BridgeDevicePairingOffer
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinDevicePairingOperation
+import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
+import uniffi.bae_bridge.JoiningDeviceJoinProgressCallback
 import uniffi.bae_bridge.RestoreFromCodeOperation
 import uniffi.bae_bridge.decodeDevicePairingOffer
 import uniffi.bae_bridge.decodeRestoreCode
@@ -67,6 +70,7 @@ private class JoinFlow(
         pairingCode: String,
         oauthTokenJson: String?,
         onPrepared: (String) -> Unit,
+        onProgress: (BridgeJoiningDeviceJoinProgress) -> Unit,
         onJoined: (BridgeLibrary) -> Unit,
     ) {
         val started =
@@ -76,7 +80,17 @@ private class JoinFlow(
             )
         operation = started
         onPrepared(started.fingerprint())
-        onJoined(withContext(Dispatchers.IO) { started.join() })
+        onJoined(
+            withContext(Dispatchers.IO) {
+                started.join(
+                    object : JoiningDeviceJoinProgressCallback {
+                        override fun onProgress(progress: BridgeJoiningDeviceJoinProgress) {
+                            onProgress(progress)
+                        }
+                    },
+                )
+            },
+        )
     }
 
     fun cancel() {
@@ -159,6 +173,8 @@ class JoinLauncher(
         private set
     var joiningFingerprint by mutableStateOf<String?>(null)
         private set
+    var joinProgress by mutableStateOf<BridgeJoiningDeviceJoinProgress?>(null)
+        private set
 
     private var oauthTokenJson: String? = null
     private var authorizationJob: Job? = null
@@ -179,6 +195,7 @@ class JoinLauncher(
         pairingCode = raw
         error = null
         joiningFingerprint = null
+        joinProgress = null
         oauthTokenJson = null
         isAuthorizing = false
         val trimmed = raw.trim()
@@ -223,6 +240,7 @@ class JoinLauncher(
         decodedOffer = null
         error = null
         joiningFingerprint = null
+        joinProgress = null
     }
 
     fun join() {
@@ -235,11 +253,21 @@ class JoinLauncher(
         lateinit var started: JoinFlow
         val launched =
             scope.launch(start = CoroutineStart.LAZY) {
+                val progressDelivery =
+                    ConflatedProgressDelivery<BridgeJoiningDeviceJoinProgress>(scope) {
+                        joinProgress = it
+                    }
                 try {
                     started.execute(
                         code,
                         token,
-                        onPrepared = { joiningFingerprint = it },
+                        onPrepared = {
+                            joiningFingerprint = it
+                            joinProgress = BridgeJoiningDeviceJoinProgress.WaitingForApproval
+                        },
+                        onProgress = { progress ->
+                            progressDelivery.offer(progress)
+                        },
                         onJoined,
                     )
                 } catch (e: BridgeException.Cancelled) {
@@ -250,7 +278,9 @@ class JoinLauncher(
                 } catch (e: Exception) {
                     error = e.toString()
                 } finally {
+                    progressDelivery.close()
                     joiningFingerprint = null
+                    joinProgress = null
                     if (flow === started) flow = null
                 }
             }
@@ -264,5 +294,6 @@ class JoinLauncher(
         flow?.cancel()
         flow = null
         joiningFingerprint = null
+        joinProgress = null
     }
 }

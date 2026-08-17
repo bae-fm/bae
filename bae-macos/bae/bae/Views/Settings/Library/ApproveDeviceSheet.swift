@@ -16,7 +16,11 @@ struct ApproveDeviceSheet: View {
         case starting
         case waiting(BridgeDevicePairingSession)
         case confirm(BridgeDevicePairingSession, BridgePairingDevice)
-        case approving(BridgeDevicePairingSession, BridgePairingDevice)
+        case approving(
+            BridgeDevicePairingSession,
+            BridgePairingDevice,
+            BridgeAdmittingDeviceJoinProgress
+        )
         case cancelling
     }
 
@@ -62,9 +66,9 @@ struct ApproveDeviceSheet: View {
             waitingStep(session)
         case .confirm(let session, let device):
             confirmStep(session, device)
-        case .approving:
+        case .approving(_, _, let progress):
             VStack(spacing: 12) {
-                ProgressView("Approving device...")
+                DeviceJoinProgressView(admitting: progress)
                 if let error {
                     Text(error)
                         .foregroundStyle(.red)
@@ -201,11 +205,14 @@ struct ApproveDeviceSheet: View {
         _ device: BridgePairingDevice
     ) {
         error = nil
-        step = .approving(session, device)
+        step = .approving(session, device, .preparingInvitation)
         pairingTask?.cancel()
         pairingTask = Task {
             do {
-                try await session.approve()
+                let progress = AdmittingDeviceJoinProgressSink {
+                    step = .approving(session, device, $0)
+                }
+                try await session.approve(progress: progress)
                 try Task.checkCancellation()
                 completed = true
                 activeSession = nil

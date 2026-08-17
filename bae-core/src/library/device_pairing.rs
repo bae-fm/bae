@@ -144,7 +144,10 @@ impl DevicePairingSession {
         Ok(device)
     }
 
-    pub async fn approve(&self) -> Result<(), LibraryError> {
+    pub async fn approve(
+        &self,
+        on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
+    ) -> Result<(), LibraryError> {
         let request = self.reviewed_request.lock().await.clone().ok_or_else(|| {
             LibraryError::Validation("no pairing device was reviewed".to_string())
         })?;
@@ -162,7 +165,12 @@ impl DevicePairingSession {
             })?;
         let result = self
             .database
-            .approve_device_pairing(&self.host, &request, self.approval_cancel.subscribe())
+            .approve_device_pairing(
+                &self.host,
+                &request,
+                on_progress,
+                self.approval_cancel.subscribe(),
+            )
             .await;
         {
             let mut state = self

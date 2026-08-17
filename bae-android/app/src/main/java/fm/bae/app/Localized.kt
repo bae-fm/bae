@@ -121,3 +121,8 @@ internal fun clockText(
 
 /** Format a byte count for the current locale (e.g. "35 MB" / "35 Mo"). */
 fun Context.formatFileSize(bytes: Long): String = Formatter.formatFileSize(this, bytes)
+
+fun ULong.requireDisplayableByteCount(): Long {
+    require(this <= Long.MAX_VALUE.toULong()) { "byte count exceeds display range" }
+    return toLong()
+}

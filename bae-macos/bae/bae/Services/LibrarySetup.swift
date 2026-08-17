@@ -6,7 +6,8 @@ import Foundation
 /// or abandoned join stops instead of completing against a stale library.
 struct JoinOperation: Sendable {
     let fingerprint: String
-    let join: @Sendable () throws -> BridgeLibrary
+    let join:
+        @Sendable (JoiningDeviceJoinProgressCallback) throws -> BridgeLibrary
     let cancel: @Sendable () throws -> Void
 }
 
@@ -141,7 +142,9 @@ final class LibrarySetup: Sendable, Observable {
                 )
                 return JoinOperation(
                     fingerprint: operation.fingerprint(),
-                    join: { try operation.join() },
+                    join: { progress in
+                        try operation.join(progress: progress)
+                    },
                     cancel: { try operation.cancel() }
                 )
             },

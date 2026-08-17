@@ -8,6 +8,7 @@ struct JoinPairingOffer: View {
     let isAuthorizing: Bool
     let isJoining: Bool
     let joiningFingerprint: String?
+    let joinProgress: BridgeJoiningDeviceJoinProgress?
     let error: String?
     let joinReady: Bool
     let onScan: () -> Void
@@ -40,11 +41,13 @@ struct JoinPairingOffer: View {
                 progress("Signing in...")
             }
             else if isJoining {
-                progress(
-                    joiningFingerprint == nil
-                        ? "Starting pairing..."
-                        : "Waiting for approval..."
-                )
+                if let joinProgress {
+                    DeviceJoinProgressView(joining: joinProgress)
+                        .padding(.bottom, 12)
+                }
+                else {
+                    progress("Starting pairing...")
+                }
             }
 
             HStack(spacing: 12) {

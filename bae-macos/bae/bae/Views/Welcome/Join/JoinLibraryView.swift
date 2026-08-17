@@ -33,6 +33,8 @@ struct JoinLibraryView: View {
     @State
     private var joiningFingerprint: String?
     @State
+    private var joinProgress: BridgeJoiningDeviceJoinProgress?
+    @State
     private var error: String?
 
     var body: some View {
@@ -54,6 +56,7 @@ struct JoinLibraryView: View {
                 isAuthorizing: isAuthorizing,
                 isJoining: isJoining,
                 joiningFingerprint: joiningFingerprint,
+                joinProgress: joinProgress,
                 error: error,
                 joinReady: joinReady,
                 onScan: { showScanner = true },
@@ -143,6 +146,7 @@ struct JoinLibraryView: View {
         let token = oauthTokenJson
         joinTask?.cancel()
         isJoining = true
+        joinProgress = nil
         error = nil
         joinTask = Task {
             let operation: JoinOperation
@@ -150,14 +154,19 @@ struct JoinLibraryView: View {
                 operation = try await setup.joinDevicePairing(code, token)
                 try Task.checkCancellation()
                 joiningFingerprint = operation.fingerprint
+                joinProgress = .waitingForApproval
             }
             catch {
                 isJoining = false
+                joinProgress = nil
                 self.error = error.displayLine
                 return
             }
             do {
-                let detached = Task.detached { try operation.join() }
+                let progress = JoiningDeviceJoinProgressSink {
+                    joinProgress = $0
+                }
+                let detached = Task.detached { try operation.join(progress) }
                 let library = try await withTaskCancellationHandler {
                     try await detached.value
                 } onCancel: {
@@ -174,6 +183,7 @@ struct JoinLibraryView: View {
                 try Task.checkCancellation()
                 isJoining = false
                 joiningFingerprint = nil
+                joinProgress = nil
                 onLibraryReady(library)
             }
             catch is CancellationError {
@@ -182,6 +192,7 @@ struct JoinLibraryView: View {
             catch {
                 isJoining = false
                 joiningFingerprint = nil
+                joinProgress = nil
                 self.error = error.displayLine
             }
         }

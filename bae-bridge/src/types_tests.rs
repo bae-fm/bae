@@ -49,6 +49,9 @@ mod loc_key_coverage {
         "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",
+        // Device-pairing cancellation has no phase enum because cancellation is
+        // the command currently being awaited, not pairing progress.
+        "core.pairing.cancelling",
         // Upload rows localize typed image kinds; original filenames render
         // verbatim and covers reuse the file-role cover key.
         "core.outbox.file.artist_image",
@@ -88,7 +91,7 @@ mod loc_key_coverage {
     /// re-derives the key, asserted equal to the production fn's output — so a
     /// new variant fails to compile here.
     fn produced_keys() -> Vec<String> {
-        let mut keys = Vec::new();
+        let mut keys = super::device_pairing_progress_tests::progress_keys();
 
         // bridge_transfer_action_key — every variant carries a key.
         for a in [

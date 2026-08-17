@@ -228,8 +228,16 @@ internal static partial class NativeBae
         string? oauthTokenJson) =>
         BaeBridgeMethods.JoinDevicePairingOperation(code, oauthTokenJson);
 
-    internal static string JoinDevicePairing(JoinDevicePairingOperation operation) =>
-        operation.Join().Id;
+    internal sealed class JoiningDeviceJoinProgressSink(
+        Action<BridgeJoiningDeviceJoinProgress> apply) : JoiningDeviceJoinProgressCallback
+    {
+        public void OnProgress(BridgeJoiningDeviceJoinProgress progress) => apply(progress);
+    }
+
+    internal static string JoinDevicePairing(
+        JoinDevicePairingOperation operation,
+        Action<BridgeJoiningDeviceJoinProgress> onProgress) =>
+        operation.Join(new JoiningDeviceJoinProgressSink(onProgress)).Id;
 
     internal static void CancelJoinDevicePairing(JoinDevicePairingOperation operation) =>
         operation.Cancel();
@@ -642,8 +650,17 @@ internal static partial class NativeBae
         BridgeDevicePairingSession pairing) =>
         CaptureBridgeValue(() => Await(() => pairing.WaitForDevice()));
 
-    internal static string? ApprovePairingDevice(BridgeDevicePairingSession pairing) =>
-        CaptureError(() => Await(() => pairing.Approve()));
+    internal sealed class AdmittingDeviceJoinProgressSink(
+        Action<BridgeAdmittingDeviceJoinProgress> apply) : AdmittingDeviceJoinProgressCallback
+    {
+        public void OnProgress(BridgeAdmittingDeviceJoinProgress progress) => apply(progress);
+    }
+
+    internal static string? ApprovePairingDevice(
+        BridgeDevicePairingSession pairing,
+        Action<BridgeAdmittingDeviceJoinProgress> onProgress) =>
+        CaptureError(() => Await(() => pairing.Approve(
+            new AdmittingDeviceJoinProgressSink(onProgress))));
 
     internal static string? CancelDevicePairing(BridgeDevicePairingSession pairing) =>
         CaptureError(() => Await(() => pairing.Cancel()));

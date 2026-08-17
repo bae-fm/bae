@@ -140,8 +140,17 @@ internal sealed class ApproveDeviceDialog
             Button add)
         {
             add.IsEnabled = false;
-            body.Children.Add(DialogUi.Body(Loc.Chrome("members.pairing.adding")));
-            var (current, error) = await _app.Sync.ApprovePairingDevice(session);
+            var progress = new ContentControl
+            {
+                Content = DeviceJoinProgressView.Build(
+                    BridgeAdmittingDeviceJoinProgress.PreparingInvitation),
+            };
+            body.Children.Add(progress);
+            var progressDelivery = new LatestUiValue<BridgeAdmittingDeviceJoinProgress>(
+                value => progress.Content = DeviceJoinProgressView.Build(value));
+            var (current, error) = await _app.Sync.ApprovePairingDevice(
+                session,
+                progressDelivery.Offer);
             if (!current || pairing != session)
             {
                 return;

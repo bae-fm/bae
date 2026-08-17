@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The connecting screen shown while a restore or join runs: a spinner and a
@@ -9,15 +10,21 @@ struct OnboardingLinkingScreen: View {
     }
 
     let context: Context
+    let joinProgress: BridgeJoiningDeviceJoinProgress?
     let onCancel: () -> Void
 
     var body: some View {
         OnboardingScreen {
-            ProgressView()
-                .controlSize(.large)
-            Text(title)
-                .font(.headline)
-                .multilineTextAlignment(.center)
+            if let joinProgress {
+                DeviceJoinProgressView(joining: joinProgress)
+            }
+            else {
+                ProgressView()
+                    .controlSize(.large)
+                Text(title)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+            }
             if case .devicePairing(let fingerprint) = context,
                 let fingerprint
             {
@@ -51,6 +58,10 @@ struct OnboardingLinkingScreen: View {
 
 #if DEBUG
 #Preview {
-    OnboardingLinkingScreen(context: .librarySetup, onCancel: {})
+    OnboardingLinkingScreen(
+        context: .librarySetup,
+        joinProgress: nil,
+        onCancel: {}
+    )
 }
 #endif

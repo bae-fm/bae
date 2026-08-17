@@ -46,8 +46,8 @@ internal sealed class SyncService
     public Func<BridgeDevicePairingSession, Task<(bool Current, (BridgePairingDevice? Device, string? Error) Result)>> WaitForPairingDevice { get; init; }
         = _ => throw new InvalidOperationException("SyncService stub: WaitForPairingDevice not wired");
 
-    public Func<BridgeDevicePairingSession, Task<(bool Current, string? Error)>> ApprovePairingDevice { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: ApprovePairingDevice not wired");
+    public Func<BridgeDevicePairingSession, Action<BridgeAdmittingDeviceJoinProgress>, Task<(bool Current, string? Error)>> ApprovePairingDevice { get; init; }
+        = (_, _) => throw new InvalidOperationException("SyncService stub: ApprovePairingDevice not wired");
 
     public Func<BridgeDevicePairingSession, Task<(bool Current, string? Error)>> CancelDevicePairing { get; init; }
         = _ => throw new InvalidOperationException("SyncService stub: CancelDevicePairing not wired");
@@ -130,8 +130,8 @@ internal sealed class SyncService
         StartDevicePairing = () => session.RunForCurrentHandle(NativeBae.StartDevicePairing),
         WaitForPairingDevice = pairing =>
             session.RunForCurrentHandle(_ => NativeBae.WaitForPairingDevice(pairing)),
-        ApprovePairingDevice = pairing =>
-            session.RunForCurrentHandle(_ => NativeBae.ApprovePairingDevice(pairing)),
+        ApprovePairingDevice = (pairing, onProgress) =>
+            session.RunForCurrentHandle(_ => NativeBae.ApprovePairingDevice(pairing, onProgress)),
         CancelDevicePairing = pairing =>
             session.RunForCurrentHandle(_ => NativeBae.CancelDevicePairing(pairing)),
         RemoveMember = publicKeyHex =>

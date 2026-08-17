@@ -17,7 +17,7 @@ extension BridgeDownloadTransferProgress {
 }
 
 extension UInt64 {
-    fileprivate var formattedDownloadBytes: String {
+    var formattedDownloadBytes: String {
         precondition(
             self <= UInt64(Int64.max),
             "download byte count exceeds display range"

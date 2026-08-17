@@ -44,6 +44,7 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.BridgeLibrary
 
 private const val TAG = "bae.OnboardingScreen"
@@ -178,6 +179,7 @@ fun OnboardingScreen(
             OnboardingProgress(
                 linking = false,
                 joiningFingerprint = joinLauncher.joiningFingerprint,
+                joinProgress = joinLauncher.joinProgress,
             ) { joinLauncher.cancel() }
         }
 
@@ -306,6 +308,7 @@ private fun OnboardingIdleContent(
 internal fun OnboardingProgress(
     linking: Boolean,
     joiningFingerprint: String? = null,
+    joinProgress: BridgeJoiningDeviceJoinProgress? = null,
     onCancel: () -> Unit,
 ) {
     if (linking) {
@@ -316,12 +319,30 @@ internal fun OnboardingProgress(
             onCancel,
         )
     } else {
-        ProgressScreen(
-            R.string.onboarding_joining_title,
-            R.string.onboarding_joining_body,
-            joiningFingerprint,
-            onCancel,
-        )
+        OnboardingContainer {
+            if (joinProgress != null) {
+                JoiningDeviceProgress(joinProgress)
+            } else {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = stringResource(R.string.onboarding_joining_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            joiningFingerprint?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.onboarding_join_fingerprint, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+        }
     }
 }
 

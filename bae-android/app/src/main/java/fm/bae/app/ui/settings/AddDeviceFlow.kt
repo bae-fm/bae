@@ -35,13 +35,17 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.components.QRCodeImage
+import fm.bae.app.ui.onboarding.AdmittingDeviceProgress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDevicePairingSession
+import uniffi.bae_bridge.AdmittingDeviceJoinProgressCallback
+import uniffi.bae_bridge.BridgeAdmittingDeviceJoinProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePairingDevice
 
@@ -61,7 +65,9 @@ private sealed interface AddDeviceStep {
         val device: BridgePairingDevice,
     ) : AddDeviceStep
 
-    data object Approving : AddDeviceStep
+    data class Approving(
+        val progress: BridgeAdmittingDeviceJoinProgress,
+    ) : AddDeviceStep
 
     data object Cancelling : AddDeviceStep
 }
@@ -69,6 +75,7 @@ private sealed interface AddDeviceStep {
 private class AddDeviceModel(
     private val session: OpenLibrary,
     private val appContext: Context,
+    private val scope: CoroutineScope,
     private val onAdded: () -> Unit,
 ) {
     var step by mutableStateOf<AddDeviceStep>(AddDeviceStep.Starting)
@@ -109,9 +116,21 @@ private class AddDeviceModel(
 
     suspend fun approve(device: AddDeviceStep.Confirm) {
         error = null
-        step = AddDeviceStep.Approving
+        step = AddDeviceStep.Approving(BridgeAdmittingDeviceJoinProgress.PREPARING_INVITATION)
+        val progress =
+            ConflatedProgressDelivery<BridgeAdmittingDeviceJoinProgress>(scope) {
+                if (step is AddDeviceStep.Approving) {
+                    step = AddDeviceStep.Approving(it)
+                }
+            }
         try {
-            device.session.approve()
+            device.session.approve(
+                object : AdmittingDeviceJoinProgressCallback {
+                    override fun onProgress(value: BridgeAdmittingDeviceJoinProgress) {
+                        progress.offer(value)
+                    }
+                },
+            )
             completed = true
             pairing = null
             onAdded()
@@ -124,6 +143,8 @@ private class AddDeviceModel(
             logger.error("Failed to approve paired device", e)
             error = e.message ?: appContext.getString(R.string.members_pairing_failed)
             step = device
+        } finally {
+            progress.close()
         }
     }
 
@@ -155,7 +176,7 @@ fun AddDeviceSheet(
     val scope = rememberCoroutineScope()
     val model =
         remember {
-            AddDeviceModel(session, appContext) {
+            AddDeviceModel(session, appContext, scope) {
                 onInvited()
                 onDismiss()
             }
@@ -214,7 +235,7 @@ private fun AddDeviceContent(
             AddDeviceStep.Starting -> PairingProgress(R.string.pairing_starting)
             is AddDeviceStep.Waiting -> PairingCode(step.code)
             is AddDeviceStep.Confirm -> PairingDevice(step.device)
-            AddDeviceStep.Approving -> PairingProgress(R.string.members_pairing_approving)
+            is AddDeviceStep.Approving -> AdmittingDeviceProgress(step.progress)
             AddDeviceStep.Cancelling -> PairingProgress(R.string.core_pairing_cancelling)
         }
         error?.let {

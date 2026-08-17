@@ -420,7 +420,7 @@ async fn prepare_device_pairing_join_at(
 pub async fn join_prepared_device_pairing_cancellable(
     prepared: PreparedDevicePairingJoin,
     cancel: CancellationToken,
-    on_status: impl Fn(&str),
+    on_progress: coven::JoiningDeviceJoinProgressObserver,
 ) -> Result<Config, JoinDevicePairingError> {
     let PreparedDevicePairingJoin {
         pairing,
@@ -445,7 +445,7 @@ pub async fn join_prepared_device_pairing_cancellable(
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),
         crate::sync::device_join_timing(),
-        on_status,
+        on_progress,
         &rx,
     )
     .await;

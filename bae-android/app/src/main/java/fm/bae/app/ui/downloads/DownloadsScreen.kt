@@ -36,6 +36,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.formatFileSize
+import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -245,11 +246,6 @@ private fun BridgeDownloadTransferProgress.bytesProgressText(context: Context): 
             "total" to context.formatFileSize(bytesTotal.requireDisplayableByteCount()),
         ),
     )
-
-private fun ULong.requireDisplayableByteCount(): Long {
-    require(this <= Long.MAX_VALUE.toULong()) { "download byte count exceeds display range" }
-    return toLong()
-}
 
 @Preview(showBackground = true)
 @Composable

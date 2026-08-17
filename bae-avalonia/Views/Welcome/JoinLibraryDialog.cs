@@ -46,7 +46,7 @@ internal sealed class JoinLibraryDialog
         var fingerprint = DialogUi.Body(string.Empty);
         fingerprint.IsVisible = false;
         column.Children.Add(fingerprint);
-        var progress = DialogUi.Body(string.Empty);
+        var progress = new ContentControl();
         progress.IsVisible = false;
         column.Children.Add(progress);
         var status = DialogUi.Danger();
@@ -85,7 +85,7 @@ internal sealed class JoinLibraryDialog
 
         void ShowProgress(string message)
         {
-            progress.Text = message;
+            progress.Content = DialogUi.Body(message);
             progress.IsVisible = true;
             status.IsVisible = false;
         }
@@ -193,8 +193,15 @@ internal sealed class JoinLibraryDialog
                 fingerprint.Text = Loc.Chrome("join.fingerprint", "fingerprint", operation.Fingerprint());
                 fingerprint.IsVisible = true;
                 ShowProgress(Loc.Chrome("join.waiting_approval"));
+                var progressDelivery = new LatestUiValue<BridgeJoiningDeviceJoinProgress>(
+                    value =>
+                    {
+                        progress.Content = DeviceJoinProgressView.Build(value);
+                        status.IsVisible = false;
+                        progress.IsVisible = true;
+                    });
                 var libraryId = await Task.Run(() =>
-                    NativeBae.JoinDevicePairing(operation));
+                    NativeBae.JoinDevicePairing(operation, progressDelivery.Offer));
                 joined = true;
                 joinOperation = null;
                 operation.Dispose();

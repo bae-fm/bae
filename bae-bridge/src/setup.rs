@@ -98,8 +98,8 @@ use bae_core::library::{CancellationToken, JoinDevicePairingError, RestoreFromCo
 
 use crate::get_cloudkit_ops;
 use crate::types::{
-    BridgeCloudProvider, BridgeDevicePairingOffer, BridgeError, BridgeLibrary,
-    BridgeRestoreCodeInfo,
+    BridgeCloudProvider, BridgeDevicePairingOffer, BridgeError, BridgeJoiningDeviceJoinProgress,
+    BridgeLibrary, BridgeRestoreCodeInfo, JoiningDeviceJoinProgressCallback,
 };
 
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
@@ -428,12 +428,14 @@ fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError {
 async fn join_device_pairing_config(
     prepared: bae_core::library::PreparedDevicePairingJoin,
     cancel: CancellationToken,
+    progress: Arc<dyn JoiningDeviceJoinProgressCallback>,
 ) -> Result<Config, BridgeError> {
-    bae_core::library::join_prepared_device_pairing_cancellable(prepared, cancel, |status| {
-        info!("{}", status)
-    })
-    .await
-    .map_err(join_error_to_bridge)
+    let on_progress: coven::JoiningDeviceJoinProgressObserver = Arc::new(move |value| {
+        progress.on_progress(BridgeJoiningDeviceJoinProgress::from_core(value));
+    });
+    bae_core::library::join_prepared_device_pairing_cancellable(prepared, cancel, on_progress)
+        .await
+        .map_err(join_error_to_bridge)
 }
 
 #[derive(uniffi::Object)]
@@ -478,7 +480,10 @@ impl JoinDevicePairingOperation {
         self.fingerprint.clone()
     }
 
-    pub fn join(&self) -> Result<BridgeLibrary, BridgeError> {
+    pub fn join(
+        &self,
+        progress: Box<dyn JoiningDeviceJoinProgressCallback>,
+    ) -> Result<BridgeLibrary, BridgeError> {
         let prepared = {
             let mut state = lock_bridge_mutex(&self.state);
             match std::mem::replace(&mut *state, JoinDevicePairingOperationState::Started) {
@@ -496,8 +501,9 @@ impl JoinDevicePairingOperation {
             }
         };
         let cancel = self.cancel.clone();
+        let progress = Arc::from(progress);
         on_worker(move || async move {
-            let config = join_device_pairing_config(prepared, cancel).await?;
+            let config = join_device_pairing_config(prepared, cancel, progress).await?;
 
             BridgeLibrary::from_core(&config)
         })

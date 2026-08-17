@@ -84,6 +84,8 @@ struct OnboardingView: View {
     private var linkFlow: LinkFlow?
     @State
     private var linkingContext = OnboardingLinkingScreen.Context.librarySetup
+    @State
+    private var joinProgress: BridgeJoiningDeviceJoinProgress?
     #if BAE_OAUTH_PROVIDERS
     @State
     private var presentationAnchor: ASPresentationAnchor?
@@ -94,6 +96,7 @@ struct OnboardingView: View {
             if linkFlow != nil {
                 OnboardingLinkingScreen(
                     context: linkingContext,
+                    joinProgress: joinProgress,
                     onCancel: { cancelLink() }
                 )
             }
@@ -298,6 +301,7 @@ extension OnboardingView {
         error = nil
         cancelLink()
         linkingContext = .devicePairing(fingerprint: nil)
+        joinProgress = nil
         let flow = LinkFlow { flow in
             Task {
                 defer {
@@ -348,6 +352,7 @@ extension OnboardingView {
             oauthTokenJson: tokenJson
         )
         linkingContext = .devicePairing(fingerprint: operation.fingerprint())
+        joinProgress = .waitingForApproval
         flow.bridgeCancel = {
             do {
                 try operation.cancel()
@@ -360,9 +365,12 @@ extension OnboardingView {
         }
         let libraryInfo = try await withTaskCancellationHandler {
             try Task.checkCancellation()
+            let progress = JoiningDeviceJoinProgressSink {
+                joinProgress = $0
+            }
             return
                 try await Task.detached {
-                    try operation.join()
+                    try operation.join(progress: progress)
                 }
                 .value
         } onCancel: {
@@ -386,6 +394,7 @@ extension OnboardingView {
     func cancelLink() {
         linkFlow?.cancel()
         linkFlow = nil
+        joinProgress = nil
     }
 
     /// Decode the recovery code, run cloud sign-in when required, inject the
@@ -396,6 +405,7 @@ extension OnboardingView {
         error = nil
         cancelLink()
         linkingContext = .librarySetup
+        joinProgress = nil
         let flow = LinkFlow { flow in
             Task {
                 defer {

@@ -304,6 +304,7 @@ impl Database {
         &self,
         host: &coven::DevicePairingHost,
         request: &coven::DevicePairingRequest,
+        on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
         cancel: tokio::sync::watch::Receiver<bool>,
     ) -> Result<coven::DeviceJoinDriveOutcome, coven::ApproveDevicePairingError> {
         self.inner
@@ -314,6 +315,7 @@ impl Database {
                 coven::MemberRole::Member,
                 coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
                 None,
+                on_progress,
                 crate::sync::device_join_timing(),
                 cancel,
             )
