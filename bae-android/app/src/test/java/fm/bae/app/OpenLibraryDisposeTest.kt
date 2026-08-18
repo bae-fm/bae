@@ -1,10 +1,12 @@
 package fm.bae.app
 
 import android.os.Looper
+import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryStore
+import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SyncStatusStore
@@ -80,8 +82,12 @@ class OpenLibraryDisposeTest {
                         library = LibraryStore(),
                         config = ConfigStore(BridgeFixtures.config()),
                         syncStatus = SyncStatusStore(),
-                        downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
-                        outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
+                        transfers =
+                            LibraryTransferStores(
+                                artworkLoading = ArtworkLoadingStore {},
+                                downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
+                                outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
+                            ),
                         cast = CastStore(),
                     ),
                 runtime =
