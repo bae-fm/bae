@@ -213,10 +213,11 @@ impl crate::types::BridgeOutboxPauseState {
 
 impl crate::types::BridgeUploadProgress {
     pub(super) fn from_core(p: bae_core::library::UploadProgress) -> Self {
-        // `activity()` borrows `&p`; compute it before destructuring `p`.
+        // Derived fields borrow `&p`; compute them before destructuring `p`.
         let activity = p
             .activity()
             .map(crate::types::BridgeUploadActivity::from_core);
+        let can_cancel = p.can_cancel();
         let bae_core::library::UploadProgress {
             queued,
             preparing,
@@ -251,6 +252,7 @@ impl crate::types::BridgeUploadProgress {
             work_done,
             work_total,
             activity,
+            can_cancel,
         }
     }
 }

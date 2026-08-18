@@ -169,7 +169,8 @@ public sealed class ImportSectionViewTests
         var progress = new BridgeUploadProgress(
             0, 1, 0, 0, 0, 0, 0, 0,
             5, 10, 0, 0, false, 5, 20,
-            BridgeUploadActivity.Preparing);
+            BridgeUploadActivity.Preparing,
+            true);
         app.StorageStore.ApplyOutbox(Outbox(7, progress));
 
         var activeRow = CandidateRow(view);
@@ -352,7 +353,7 @@ public sealed class ImportSectionViewTests
             },
         new BridgeUploadProgress(
             0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, true, 0, 0, null),
+            0, 0, 0, 0, true, 0, 0, null, false),
         0,
         [],
         BridgeOutboxPauseState.Running,

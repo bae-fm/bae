@@ -339,6 +339,37 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
     manager.cancel_release_transition(REL_NONE).await.unwrap();
 }
 
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn publishing_release_cannot_report_a_successful_cancel() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("publishing-cancel"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&release.id)
+            .await
+            .unwrap(),
+        Some(coven::MakeRemoteProgress::Publishing)
+    );
+
+    let error = manager
+        .cancel_release_transition(&release.id)
+        .await
+        .expect_err("a publishing Store write cannot be cancelled");
+
+    assert!(error.to_string().contains("already publishing"));
+}
+
 // Needs the test-utils mock cloud home: a Remote release implies a connected
 // home, which the make-Local read storage is built over (the cancel fires
 // before any blob is read, so the home is never actually called).

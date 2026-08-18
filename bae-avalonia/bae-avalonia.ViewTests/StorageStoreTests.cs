@@ -145,6 +145,18 @@ public sealed class StorageStoreTests
         Assert.True(store.CanCancelUpload("release-a"));
     }
 
+    [Fact]
+    public void PublishingUploadCannotBeCancelled()
+    {
+        var store = StoreReturningRevision(2);
+        store.ApplyOutbox(OutboxWithRelease(
+            revision: 2,
+            activity: BridgeUploadActivity.Publishing,
+            canCancel: false));
+
+        Assert.False(store.CanCancelUpload("release-a"));
+    }
+
     private static StorageStore StoreReturningRevision(ulong revision)
     {
         var store = new StorageStore(new DownloadsService
@@ -163,12 +175,18 @@ public sealed class StorageStoreTests
             ["release-a"],
             () => Task.FromResult<string?>(null));
 
-    private static BridgeOutboxSnapshot OutboxWithRelease(ulong revision)
+    private static BridgeOutboxSnapshot OutboxWithRelease(
+        ulong revision,
+        BridgeUploadActivity activity = BridgeUploadActivity.Queued,
+        bool canCancel = true)
     {
+        var queued = activity == BridgeUploadActivity.Queued ? 1U : 0U;
+        var publishing = activity == BridgeUploadActivity.Publishing ? 1U : 0U;
         var progress = new BridgeUploadProgress(
-            1, 0, 0, 0, 0, 0, 0, 0,
+            queued, 0, 0, 0, 0, 0, publishing, 0,
             0, 10, 0, 0, false, 0, 20,
-            BridgeUploadActivity.Queued);
+            activity,
+            canCancel);
         return new BridgeOutboxSnapshot(
             revision,
             [],
@@ -192,7 +210,7 @@ public sealed class StorageStoreTests
         new Dictionary<string, BridgeUploadProgress>(),
         new BridgeUploadProgress(
             0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, true, 0, 0, null),
+            0, 0, 0, 0, true, 0, 0, null, false),
         0,
         [],
         BridgeOutboxPauseState.Running,

@@ -128,7 +128,7 @@ pub struct BridgeDeleteOp {
 
 /// Per-state counts, byte progress, and a derived badge `activity`. Used
 /// per-release (the storage-row badge reads `activity`; storage-action gates
-/// read the counts) and as the overall total (queue counts, ETA, summary band).
+/// read `can_cancel`) and as the overall total (queue counts, ETA, summary band).
 /// Provider-complete files remain counted until publication, so the fraction
 /// stays cumulative over the full durable release transition and across restarts.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -152,6 +152,9 @@ pub struct BridgeUploadProgress {
     /// The badge activity for this slice; `None` when idle. Per-release entries
     /// always belong to an unfinished transition, so theirs is always set.
     pub activity: Option<BridgeUploadActivity>,
+    /// Whether coven can still unwind this transition. False after publication
+    /// begins and while cancellation is already in progress.
+    pub can_cancel: bool,
 }
 
 impl Default for BridgeUploadProgress {
@@ -173,6 +176,7 @@ impl Default for BridgeUploadProgress {
             work_done: 0,
             work_total: 0,
             activity: None,
+            can_cancel: false,
         }
     }
 }

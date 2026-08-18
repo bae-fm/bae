@@ -432,6 +432,22 @@ fn upload_file_op_flattens_state_into_fields() {
 }
 
 #[test]
+fn upload_progress_preserves_core_cancellation_availability() {
+    let queued = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
+        queued: 1,
+        ..Default::default()
+    });
+    assert!(queued.can_cancel);
+
+    let publishing =
+        crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
+            publishing: 1,
+            ..Default::default()
+        });
+    assert!(!publishing.can_cancel);
+}
+
+#[test]
 fn composer_detail_conversion_preserves_work_groups() {
     let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
     let detail = ComposerDetail {

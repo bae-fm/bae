@@ -208,6 +208,13 @@ impl UploadProgress {
             || self.cancelling > 0
     }
 
+    /// Whether coven can still unwind this make-Remote transition. Publishing
+    /// has committed the provider objects and is activating the release, while
+    /// cancelling already represents the requested unwind.
+    pub fn can_cancel(&self) -> bool {
+        self.has_transition() && self.publishing == 0 && self.cancelling == 0
+    }
+
     /// The badge activity for this slice: active uploads outrank failures
     /// awaiting retry, which outrank items still only queued. `None` when
     /// nothing is pending.

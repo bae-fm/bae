@@ -124,18 +124,28 @@ struct OutboxStoreHasPendingCloudWorkTests {
 @Suite("StorageStatusBand cloud-transition actions")
 @MainActor
 struct StorageStatusBandCloudTransitionTests {
-    @Test("only a durable transition that is not already cancelling can be cancelled")
+    @Test("only an unwindable durable transition can be cancelled")
     func cancellationAvailabilityFollowsTheProjectedPhase() {
         var active = OutboxStore.emptySnapshot.total
         active.queued = 1
         active.activity = .queued
+        active.canCancel = true
         #expect(StorageUploadObservation.active(active).canCancel)
 
         var cancelling = active
         cancelling.queued = 0
         cancelling.cancelling = 1
         cancelling.activity = .cancelling
+        cancelling.canCancel = false
         #expect(StorageUploadObservation.active(cancelling).canCancel == false)
+
+        var publishing = active
+        publishing.queued = 0
+        publishing.publishing = 1
+        publishing.activity = .publishing
+        publishing.canCancel = false
+        #expect(StorageUploadObservation.active(publishing).canCancel == false)
+
         #expect(StorageUploadObservation.queueing.canCancel == false)
         #expect(StorageUploadObservation.awaiting.canCancel == false)
     }

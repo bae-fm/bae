@@ -119,7 +119,7 @@ internal sealed class StorageStore
 
     public bool CanCancelUpload(string releaseId) =>
         _outbox?.PerRelease.TryGetValue(releaseId, out var progress) == true
-        && progress.Activity != BridgeUploadActivity.Cancelling;
+        && progress.CanCancel;
 
     private void BeginCloudUpload(string releaseId)
     {

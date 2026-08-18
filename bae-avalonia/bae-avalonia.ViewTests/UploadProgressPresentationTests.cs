@@ -90,5 +90,6 @@ public sealed class UploadProgressPresentationTests
             false,
             0,
             20,
-            BridgeUploadActivity.Queued);
+            BridgeUploadActivity.Queued,
+            true);
 }

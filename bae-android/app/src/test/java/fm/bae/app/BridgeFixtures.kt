@@ -231,6 +231,7 @@ object BridgeFixtures {
                     workDone = 0uL,
                     workTotal = 0uL,
                     activity = null,
+                    canCancel = false,
                 ),
             pendingDeletes = 0u,
             summaryParts = emptyList(),

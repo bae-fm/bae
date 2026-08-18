@@ -140,6 +140,7 @@ fn upload_groups_group_a_releases_files_with_aggregate_progress() {
     assert_eq!(group.progress.queued, 2);
     assert_eq!(group.progress.uploading, 0);
     assert_eq!(group.progress.preparation_bytes_total, 1100);
+    assert!(group.progress.can_cancel());
 }
 
 #[test]
@@ -503,6 +504,7 @@ fn publishing_intent_keeps_the_release_visible_after_upload_rows_leave() {
     assert_eq!(snapshot.upload_groups.len(), 1);
     assert_eq!(snapshot.total.publishing, 1);
     assert_eq!(snapshot.total.activity(), Some(UploadActivity::Publishing));
+    assert!(!snapshot.total.can_cancel());
 }
 
 #[test]

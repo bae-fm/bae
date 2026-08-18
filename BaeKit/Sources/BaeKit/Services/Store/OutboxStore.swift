@@ -176,6 +176,7 @@ public class OutboxStore {
                 workDone: 0,
                 workTotal: 0,
                 activity: nil,
+                canCancel: false,
             ),
             pendingDeletes: 0,
             summaryParts: [],
@@ -244,14 +245,14 @@ public enum StorageUploadObservation: Equatable {
     case active(BridgeUploadProgress)
 
     /// Cancellation only targets work coven has durably admitted. The command
-    /// handoff has nothing to cancel yet, and a cancelling intent must not be
-    /// submitted twice.
+    /// handoff has nothing to cancel yet. Core owns whether an admitted phase
+    /// can still be unwound.
     public var canCancel: Bool {
         switch self {
         case .queueing, .awaiting:
             false
         case .active(let progress):
-            progress.activity != .cancelling
+            progress.canCancel
         }
     }
 

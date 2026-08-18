@@ -221,7 +221,8 @@
                 uploadBytesTotalComplete: false,
                 workDone: 105_000_000,
                 workTotal: 298_000_000,
-                activity: activity
+                activity: activity,
+                canCancel: true
             )
         }
 
@@ -263,7 +264,8 @@
                 uploadBytesTotalComplete: true,
                 workDone: 36_000_000,
                 workTotal: 36_000_000,
-                activity: .publishing
+                activity: .publishing,
+                canCancel: false
             )
         )
 
@@ -313,7 +315,8 @@
                     uploadBytesTotalComplete: false,
                     workDone: 141_000_000,
                     workTotal: 334_000_000,
-                    activity: .uploading
+                    activity: .uploading,
+                    canCancel: false
                 ),
                 pendingDeletes: UInt32(deletes.count),
                 summaryParts: [
