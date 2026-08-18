@@ -53,6 +53,19 @@ public sealed class UploadProgressPresentationTests
                 snapshot));
     }
 
+    [Fact]
+    public void FailedAttemptIsPresentedAsRetrying()
+    {
+        var progress = Progress(
+            queued: 0,
+            failed: 1,
+            activity: BridgeUploadActivity.Retrying);
+
+        Assert.Equal(
+            Loc.Core("core.outbox.retrying", "count", 1),
+            UploadProgressPresentation.ActivityLabel(progress));
+    }
+
     private static BridgeOutboxSnapshot Snapshot(
         ulong revision,
         BridgeUploadProgress? progress = null) =>
@@ -73,13 +86,16 @@ public sealed class UploadProgressPresentationTests
             0,
             null);
 
-    private static BridgeUploadProgress Progress() =>
+    private static BridgeUploadProgress Progress(
+        uint queued = 1,
+        uint failed = 0,
+        BridgeUploadActivity? activity = null) =>
         new(
-            1,
+            queued,
             0,
             0,
             0,
-            0,
+            failed,
             0,
             0,
             0,
@@ -90,6 +106,6 @@ public sealed class UploadProgressPresentationTests
             false,
             0,
             20,
-            BridgeUploadActivity.Queued,
+            activity ?? BridgeUploadActivity.Queued,
             true);
 }

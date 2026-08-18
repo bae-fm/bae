@@ -11,7 +11,7 @@ extension BridgeUploadProgress {
             case .publishing: ("core.outbox.publishing", publishing)
             case .uploading: ("core.queue.uploading", uploading)
             case .preparing: ("core.outbox.preparing", preparing)
-            case .retrying: ("core.queue.failed", failed)
+            case .retrying: ("core.outbox.retrying", failed)
             case .prepared: ("core.outbox.prepared", prepared)
             case .queued: ("core.queue.queued", queued)
             case .uploaded: ("core.outbox.uploaded", uploaded)

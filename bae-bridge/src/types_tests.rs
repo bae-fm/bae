@@ -52,6 +52,7 @@ mod loc_key_coverage {
         "core.outbox.uploaded",
         "core.outbox.publishing",
         "core.outbox.cancelling",
+        "core.outbox.retrying",
         "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",

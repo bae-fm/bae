@@ -272,6 +272,18 @@ struct CloudImportQueuePresentationTests {
         #expect(line?.contains(incompleteTotal) == false)
     }
 
+    @Test("a failed attempt is presented as retrying")
+    func failedAttemptIsRetrying() {
+        var progress = OutboxStore.emptySnapshot.total
+        progress.failed = 1
+        progress.activity = .retrying
+
+        #expect(
+            progress.activityText
+                == QueueSummary.countLabel("core.outbox.retrying", 1)
+        )
+    }
+
     @Test("waiting for the first retained queue value is still queued")
     func awaitingQueueIsQueued() {
         #expect(

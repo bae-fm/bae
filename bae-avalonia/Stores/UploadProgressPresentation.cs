@@ -80,7 +80,7 @@ internal static class UploadProgressPresentation
             BridgeUploadActivity.Publishing => Loc.Core("core.outbox.publishing", "count", progress.Publishing),
             BridgeUploadActivity.Uploading => Loc.Core("core.queue.uploading", "count", progress.Uploading),
             BridgeUploadActivity.Preparing => Loc.Core("core.outbox.preparing", "count", progress.Preparing),
-            BridgeUploadActivity.Retrying => Loc.Core("core.queue.failed", "count", progress.Failed),
+            BridgeUploadActivity.Retrying => Loc.Core("core.outbox.retrying", "count", progress.Failed),
             BridgeUploadActivity.Prepared => Loc.Core("core.outbox.prepared", "count", progress.Prepared),
             BridgeUploadActivity.Queued => Loc.Core("core.queue.queued", "count", progress.Queued),
             BridgeUploadActivity.Uploaded => Loc.Core("core.outbox.uploaded", "count", progress.Uploaded),
