@@ -299,6 +299,10 @@ fn a_recorded_failure_derives_failed_with_its_error() {
         Some(UploadActivity::Retrying),
         "a failure awaiting retry outranks the file still only queued"
     );
+    assert!(snapshot
+        .summary_parts()
+        .iter()
+        .any(|part| part.key == "core.outbox.retrying" && part.count == 1));
     let failed = snapshot.upload_groups[0]
         .files
         .iter()

@@ -572,7 +572,7 @@ impl OutboxSnapshot {
             ("core.outbox.publishing", self.total.publishing),
             ("core.queue.uploading", self.total.uploading),
             ("core.outbox.preparing", self.total.preparing),
-            ("core.queue.failed", self.total.failed),
+            ("core.outbox.retrying", self.total.failed),
             ("core.outbox.prepared", self.total.prepared),
             ("core.queue.queued", self.total.queued),
             ("core.outbox.uploaded", self.total.uploaded),
