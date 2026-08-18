@@ -85,6 +85,7 @@ public final class ReleaseSummary: Identifiable {
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
         cover = bridge.cover
+        transfer = Self.transferState(from: bridge.transferAction)
     }
 
     /// Per-field conditional assignment. Only fields that changed

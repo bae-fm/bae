@@ -34,6 +34,7 @@ private func makeBridgeRelease(
     storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
+    transferAction: BridgeReleaseStorageAction? = nil,
     totalDuration: BridgeDurationUnits? = .hoursAndMinutes(
         hours: 1,
         minutes: 45
@@ -54,7 +55,7 @@ private func makeBridgeRelease(
         storageState: storageState,
         pinned: pinned,
         storageActions: storageActions,
-        transferAction: nil,
+        transferAction: transferAction,
         tracks: [],
         trackGroups: [],
         files: [],
@@ -430,6 +431,18 @@ struct InternReleaseSummaryTests {
                     imageType: .cover
                 )
         )
+    }
+
+    @MainActor
+    @Test("intern from BridgeRelease preserves an active storage transition")
+    func internFromBridgeReleasePreservesTransfer() {
+        let store = LibraryStore()
+
+        let summary = store.internReleaseSummary(
+            makeBridgeRelease(transferAction: .makeRemote)
+        )
+
+        #expect(summary.transfer != nil)
     }
 
     @MainActor
