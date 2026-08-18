@@ -16,6 +16,7 @@ internal sealed class StorageStore
     private BridgeOutboxSnapshot? _outbox;
     private BridgeDownloadSnapshot? _downloadsSnapshot;
     private BridgeOutputSnapshot? _outputSnapshot;
+    private readonly Dictionary<string, CloudUploadHandoff> _cloudUploadHandoffs = new();
     public event Action? Changed;
 
     public StorageStore(DownloadsService downloads)
@@ -32,6 +33,15 @@ internal sealed class StorageStore
             return;
         }
         _outbox = snapshot;
+        foreach (var (releaseId, handoff) in _cloudUploadHandoffs.ToArray())
+        {
+            if (snapshot.PerRelease.ContainsKey(releaseId)
+                || handoff is CloudUploadHandoff.Awaiting awaiting
+                    && snapshot.Revision >= awaiting.Revision)
+            {
+                _cloudUploadHandoffs.Remove(releaseId);
+            }
+        }
         Changed?.Invoke();
     }
 
@@ -97,7 +107,63 @@ internal sealed class StorageStore
             return (new List<string>(), Loc.Chrome("outbox.read_failed"));
         }
 
-        return (releaseIds.Where(snapshot.PerRelease.ContainsKey).ToList(), null);
+        return (
+            releaseIds.Where(id =>
+                snapshot.PerRelease.ContainsKey(id)
+                || _cloudUploadHandoffs.ContainsKey(id)).ToList(),
+            null);
+    }
+
+    public CloudUploadHandoff? UploadHandoff(string releaseId) =>
+        _cloudUploadHandoffs.GetValueOrDefault(releaseId);
+
+    public bool CanCancelUpload(string releaseId) =>
+        _outbox?.PerRelease.TryGetValue(releaseId, out var progress) == true
+        && progress.Activity != BridgeUploadActivity.Cancelling;
+
+    private void BeginCloudUpload(string releaseId)
+    {
+        if (_outbox?.PerRelease.ContainsKey(releaseId) == true
+            || !_cloudUploadHandoffs.TryAdd(releaseId, new CloudUploadHandoff.Queueing()))
+        {
+            throw new InvalidOperationException(
+                $"Release {releaseId} already has a cloud upload transition");
+        }
+        Changed?.Invoke();
+    }
+
+    private void CloudUploadQueued(string releaseId, ulong revision)
+    {
+        if (!_cloudUploadHandoffs.ContainsKey(releaseId)
+            && _outbox?.PerRelease.ContainsKey(releaseId) != true)
+        {
+            throw new InvalidOperationException(
+                $"Release {releaseId} received a cloud queue receipt without its foreground command");
+        }
+        if (_outbox?.PerRelease.ContainsKey(releaseId) == true
+            || _outbox?.Revision >= revision)
+        {
+            _cloudUploadHandoffs.Remove(releaseId);
+        }
+        else
+        {
+            _cloudUploadHandoffs[releaseId] = new CloudUploadHandoff.Awaiting(revision);
+        }
+        Changed?.Invoke();
+    }
+
+    private void EndCloudUploadCommandWithoutReceipt(string releaseId)
+    {
+        if (_cloudUploadHandoffs.Remove(releaseId))
+        {
+            Changed?.Invoke();
+            return;
+        }
+        if (_outbox?.PerRelease.ContainsKey(releaseId) != true)
+        {
+            throw new InvalidOperationException(
+                $"Release {releaseId} ended cloud upload without its foreground command or outbox state");
+        }
     }
 
     // Of the given releases, those queued or downloading in the pin queue. The pin
@@ -148,15 +214,40 @@ internal sealed class StorageStore
             case BridgeReleaseStorageAction.Unpin:
                 return await FirstErrorAcross(releaseIds, _downloads.UnpinRelease);
             case BridgeReleaseStorageAction.MakeRemote:
-                // Manage without a local pinned copy (false).
-                return await FirstErrorAcross(
-                    releaseIds, releaseId => _downloads.MakeReleaseRemote(releaseId, false));
+                return await MoveToCloudAcross(releaseIds);
             case BridgeReleaseStorageAction.MakeLocal:
                 throw new InvalidOperationException(
                     "make-local storage actions must choose a destination before running");
             default:
                 throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action");
         }
+    }
+
+    private async System.Threading.Tasks.Task<string?> MoveToCloudAcross(
+        List<string> releaseIds)
+    {
+        foreach (var releaseId in releaseIds)
+        {
+            BeginCloudUpload(releaseId);
+            var (current, result) = await _downloads.MakeReleaseRemote(releaseId, false);
+            if (!current)
+            {
+                EndCloudUploadCommandWithoutReceipt(releaseId);
+                return null;
+            }
+            if (result.Error is { } error)
+            {
+                EndCloudUploadCommandWithoutReceipt(releaseId);
+                return error;
+            }
+            if (result.Revision is not { } revision)
+            {
+                EndCloudUploadCommandWithoutReceipt(releaseId);
+                return null;
+            }
+            CloudUploadQueued(releaseId, revision);
+        }
+        return null;
     }
 
     // Run a per-release transition across the selection, stopping at the first
@@ -178,4 +269,10 @@ internal sealed class StorageStore
 
         return null;
     }
+}
+
+internal abstract record CloudUploadHandoff
+{
+    internal sealed record Queueing : CloudUploadHandoff;
+    internal sealed record Awaiting(ulong Revision) : CloudUploadHandoff;
 }

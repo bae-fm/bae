@@ -71,6 +71,20 @@ internal sealed partial class StorageDialog
             {
                 return UploadBadgeLabel(progress);
             }
+            if (_app.StorageStore.UploadHandoff(releaseId) is { } handoff)
+            {
+                return handoff switch
+                {
+                    CloudUploadHandoff.Queueing => Loc.Core(
+                        BridgeDisplay.TransferVerbKey("manage")
+                            ?? throw new InvalidOperationException(
+                                "Move to Cloud has no transfer label key")),
+                    CloudUploadHandoff.Awaiting =>
+                        Loc.Core("core.queue.queued", "count", 1),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(handoff), handoff, "Unknown cloud upload handoff"),
+                };
+            }
             return DialogPrimitives.RestingStorageLabel(
                 row.Release.StorageState == BridgeReleaseStorageState.Remote, row.Release.Pinned);
         }
@@ -657,8 +671,9 @@ internal sealed partial class StorageDialog
             if (transitioning.Count > 0)
             {
                 var cancellable = transitioning.Where(id =>
-                    !outboxProgress.TryGetValue(id, out var progress)
-                    || progress.Activity != BridgeUploadActivity.Cancelling).ToList();
+                    _app.StorageStore.UploadHandoff(id) is null
+                    && (!outboxProgress.ContainsKey(id)
+                        || _app.StorageStore.CanCancelUpload(id))).ToList();
                 if (cancellable.Count > 0)
                 {
                     var cancel = new MenuItem { Header = Loc.Chrome("action.cancel") };

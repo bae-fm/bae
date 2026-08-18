@@ -473,8 +473,16 @@ internal static partial class NativeBae
     internal static string? UnpinRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(() => handle.UnpinRelease(releaseId)));
 
-    internal static string? MakeReleaseRemote(AppHandle handle, string releaseId, bool pin) =>
-        CaptureError(() => Await(() => handle.MakeReleaseRemote(releaseId, pin)));
+    internal static (ulong? Revision, string? Error) MakeReleaseRemote(
+        AppHandle handle,
+        string releaseId,
+        bool pin)
+    {
+        ulong? revision = null;
+        var error = CaptureError(() =>
+            revision = Await(() => handle.MakeReleaseRemote(releaseId, pin)));
+        return (revision, error);
+    }
 
     internal static string? MakeReleaseLocal(AppHandle handle, string releaseId, string newPath) =>
         CaptureError(() => Await(() => handle.MakeReleaseLocal(releaseId, newPath)));
