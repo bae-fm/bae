@@ -519,7 +519,8 @@ internal sealed partial class StorageDialog
 
             // Uploads: one expandable row per release — title, file count, cumulative
             // byte progress, an aggregate state badge, and the per-file list inside.
-            // Right-click cancels the release's transition.
+            // Right-click cancels while core reports that the transition can
+            // still unwind.
             foreach (var group in snapshot.UploadGroups)
             {
                 var titleLine = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -580,7 +581,7 @@ internal sealed partial class StorageDialog
                     IsExpanded = true,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 };
-                if (group.Progress.Activity != BridgeUploadActivity.Cancelling)
+                if (group.Progress.CanCancel)
                 {
                     expander.ContextFlyout = CancelFlyout(() => _app.Sync.CancelReleaseTransition(group.ReleaseId));
                 }

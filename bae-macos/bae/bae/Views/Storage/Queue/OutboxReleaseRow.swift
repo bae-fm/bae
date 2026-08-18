@@ -5,7 +5,7 @@ import SwiftUI
 /// the release title, its file count and cumulative byte progress, a
 /// determinate progress bar, and an aggregate state badge. Expanded (the
 /// default), it lists every file with its own state and live progress.
-/// Right-click to cancel the release's transition.
+/// Right-click to cancel while core reports that the transition can unwind.
 struct OutboxReleaseRow: View {
     let group: BridgeUploadReleaseGroup
     let onCancel: () -> Void
@@ -52,7 +52,7 @@ struct OutboxReleaseRow: View {
             .padding(.vertical, 6)
             .contentShape(Rectangle())
             .contextMenu {
-                if group.progress.activity != .cancelling {
+                if group.progress.canCancel {
                     Button("Cancel", role: .destructive, action: onCancel)
                 }
             }
