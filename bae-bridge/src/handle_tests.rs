@@ -435,9 +435,11 @@ fn upload_file_op_flattens_state_into_fields() {
 fn upload_progress_preserves_core_cancellation_availability() {
     let queued = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
         queued: 1,
+        retrying: 2,
         ..Default::default()
     });
     assert!(queued.can_cancel);
+    assert_eq!(queued.retrying, 2);
 
     let publishing =
         crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {

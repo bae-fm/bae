@@ -143,7 +143,7 @@ pub struct UploadProgress {
     pub preparing: u32,
     pub prepared: u32,
     pub uploading: u32,
-    pub failed: u32,
+    pub retrying: u32,
     pub uploaded: u32,
     pub publishing: u32,
     pub cancelling: u32,
@@ -166,7 +166,7 @@ impl Default for UploadProgress {
             preparing: 0,
             prepared: 0,
             uploading: 0,
-            failed: 0,
+            retrying: 0,
             uploaded: 0,
             publishing: 0,
             cancelling: 0,
@@ -202,7 +202,7 @@ impl UploadProgress {
             || self.preparing > 0
             || self.prepared > 0
             || self.uploading > 0
-            || self.failed > 0
+            || self.retrying > 0
             || self.uploaded > 0
             || self.publishing > 0
             || self.cancelling > 0
@@ -227,7 +227,7 @@ impl UploadProgress {
             Some(UploadActivity::Uploading)
         } else if self.preparing > 0 {
             Some(UploadActivity::Preparing)
-        } else if self.failed > 0 {
+        } else if self.retrying > 0 {
             Some(UploadActivity::Retrying)
         } else if self.prepared > 0 {
             Some(UploadActivity::Prepared)
@@ -334,14 +334,20 @@ impl UploadProgress {
                     .expect("upload work progress overflow");
             }
             UploadState::RetryingPreparation { .. } => {
-                self.failed = self.failed.checked_add(1).expect("upload count overflow");
+                self.retrying = self
+                    .retrying
+                    .checked_add(1)
+                    .expect("upload retry count overflow");
                 self.upload_bytes_total_complete = false;
             }
             UploadState::RetryingUpload {
                 bytes_total: upload_total,
                 ..
             } => {
-                self.failed = self.failed.checked_add(1).expect("upload count overflow");
+                self.retrying = self
+                    .retrying
+                    .checked_add(1)
+                    .expect("upload retry count overflow");
                 self.preparation_bytes_done = self
                     .preparation_bytes_done
                     .checked_add(bytes_total)
@@ -359,7 +365,10 @@ impl UploadProgress {
                 bytes_total: upload_total,
                 ..
             } => {
-                self.failed = self.failed.checked_add(1).expect("upload count overflow");
+                self.retrying = self
+                    .retrying
+                    .checked_add(1)
+                    .expect("upload retry count overflow");
                 self.preparation_bytes_done = self
                     .preparation_bytes_done
                     .checked_add(bytes_total)
@@ -418,10 +427,10 @@ impl UploadProgress {
             .uploading
             .checked_add(progress.uploading)
             .expect("upload count overflow");
-        self.failed = self
-            .failed
-            .checked_add(progress.failed)
-            .expect("upload count overflow");
+        self.retrying = self
+            .retrying
+            .checked_add(progress.retrying)
+            .expect("upload retry count overflow");
         self.uploaded = self
             .uploaded
             .checked_add(progress.uploaded)
@@ -572,7 +581,7 @@ impl OutboxSnapshot {
             ("core.outbox.publishing", self.total.publishing),
             ("core.queue.uploading", self.total.uploading),
             ("core.outbox.preparing", self.total.preparing),
-            ("core.outbox.retrying", self.total.failed),
+            ("core.outbox.retrying", self.total.retrying),
             ("core.outbox.prepared", self.total.prepared),
             ("core.queue.queued", self.total.queued),
             ("core.outbox.uploaded", self.total.uploaded),

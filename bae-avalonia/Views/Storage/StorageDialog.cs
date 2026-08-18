@@ -425,7 +425,7 @@ internal sealed partial class StorageDialog
             var retry = new Button
             {
                 Content = Loc.Chrome("outbox.retry_now"),
-                IsEnabled = snapshot.Total.Failed > 0,
+                IsEnabled = snapshot.Total.Retrying > 0,
             };
             retry.Click += async (_, _) =>
             {

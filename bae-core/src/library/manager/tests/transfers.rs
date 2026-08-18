@@ -433,7 +433,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.total.uploading, 0);
-    assert_eq!(snap.total.failed, 0);
+    assert_eq!(snap.total.retrying, 0);
     assert_eq!(snap.total.preparation_bytes_total, 1000);
     assert_eq!(snap.total.upload_bytes_done, 0);
     assert_eq!(snap.upload_groups.len(), 1);
@@ -479,9 +479,9 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         "the entry was attempted and sealed nothing"
     );
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.total.failed, 1);
+    assert_eq!(snap.total.retrying, 1);
     assert_eq!(snap.total.queued, 0);
-    assert_eq!(snap.upload_groups[0].progress.failed, 1);
+    assert_eq!(snap.upload_groups[0].progress.retrying, 1);
     let failure = manager
         .database
         .first_queued_upload_failure_for_test()
@@ -495,7 +495,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     manager.cancel_release_upload(&release.id).await.unwrap();
     let snap = manager.outbox_snapshot().await.unwrap();
     assert!(snap.upload_groups.is_empty());
-    assert_eq!(snap.total.failed, 0);
+    assert_eq!(snap.total.retrying, 0);
 }
 
 /// A cover upload is carried by the `covers` row whose primary key is the

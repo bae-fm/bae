@@ -55,7 +55,7 @@ fn activity_ranks_the_real_upload_journey() {
         match set {
             0 => progress.queued = 1,
             1 => progress.prepared = 1,
-            2 => progress.failed = 1,
+            2 => progress.retrying = 1,
             3 => progress.preparing = 1,
             4 => progress.uploading = 1,
             5 => progress.publishing = 1,
@@ -282,17 +282,17 @@ fn upload_state_uses_the_blob_bearing_table_and_row() {
     );
 }
 
-/// A queue entry coven has recorded a failed attempt on derives as `Failed`,
+/// A queue entry coven has recorded a failed attempt on derives as retrying,
 /// so the release badge reads "Retrying" rather than "Queued".
 #[test]
-fn a_recorded_failure_derives_failed_with_its_error() {
+fn a_recorded_failure_derives_retrying_with_its_error() {
     let mut queue = two_queued_uploads();
     queue.uploads[1].attempt_count = 1;
     queue.uploads[1].last_error = Some("boom".to_string());
 
     let snapshot = build(queue, &HashMap::new());
 
-    assert_eq!(snapshot.total.failed, 1);
+    assert_eq!(snapshot.total.retrying, 1);
     assert_eq!(snapshot.total.queued, 1);
     assert_eq!(
         snapshot.total.activity(),
@@ -404,7 +404,7 @@ fn created_file_with_a_terminalization_error_remains_retryable() {
 
     let snapshot = build(queue, &HashMap::new());
 
-    assert_eq!(snapshot.total.failed, 1);
+    assert_eq!(snapshot.total.retrying, 1);
     assert_eq!(snapshot.total.work_done, snapshot.total.work_total);
     assert_eq!(
         snapshot.upload_groups[0].files[0].state,

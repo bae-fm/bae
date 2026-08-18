@@ -12,7 +12,7 @@ internal sealed partial class StorageDialog
     private static BridgeDownloadTransferProgress? DownloadProgress(BridgeDownloadState state) =>
         state is BridgeDownloadState.Active active ? active.Progress : null;
 
-    // Core decides the outbox summary's parts (uploading/failed/queued/pending
+    // Core decides the outbox summary's parts (uploading/retrying/queued/pending
     // deletes), their order, and the drop-if-zero rule; this only localizes and
     // joins them.
     private static string OutboxSummary(BridgeOutboxSnapshot snapshot) =>

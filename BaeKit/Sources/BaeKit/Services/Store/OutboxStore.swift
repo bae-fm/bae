@@ -164,7 +164,7 @@ public class OutboxStore {
                 preparing: 0,
                 prepared: 0,
                 uploading: 0,
-                failed: 0,
+                retrying: 0,
                 uploaded: 0,
                 publishing: 0,
                 cancelling: 0,

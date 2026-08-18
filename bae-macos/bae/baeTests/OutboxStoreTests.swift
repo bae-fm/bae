@@ -275,7 +275,7 @@ struct CloudImportQueuePresentationTests {
     @Test("a failed attempt is presented as retrying")
     func failedAttemptIsRetrying() {
         var progress = OutboxStore.emptySnapshot.total
-        progress.failed = 1
+        progress.retrying = 1
         progress.activity = .retrying
 
         #expect(

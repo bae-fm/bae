@@ -219,7 +219,7 @@ object BridgeFixtures {
                     preparing = 0u,
                     prepared = 0u,
                     uploading = 0u,
-                    failed = 0u,
+                    retrying = 0u,
                     uploaded = 0u,
                     publishing = 0u,
                     cancelling = 0u,

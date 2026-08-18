@@ -53,7 +53,7 @@ struct OutboxSection: View {
                     pauseRequested: snapshot.pauseRequested,
                     pauseStatusText: Self.pauseStatusText(snapshot.pauseState),
                     summaryText: snapshot.summaryText,
-                    retryDisabled: snapshot.total.failed == 0,
+                    retryDisabled: snapshot.total.retrying == 0,
                     onSetPaused: { paused in
                         Task {
                             await Self.setPaused(

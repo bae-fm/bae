@@ -1,5 +1,62 @@
 # Cloud upload user journey
 
+## Status
+
+### Implemented and verified
+
+- Both import and Storage Manager hand off to the same coven outbox. The
+  initiating surface remains in an in-flight state until the retained outbox
+  revision contains the release, so it does not briefly return to Local.
+- Coven's public outbox live query is the durable source for queued, prepared,
+  retry-wait, uploaded, cancelling, and publishing work. bae reacts to both that
+  query and its batch display-data query; missing release or filename context
+  fails the projection.
+- Source preparation and provider upload publish retained in-memory byte
+  progress rather than writing progress ticks to SQLite. Coven samples buffer
+  progress every 300 ms and sends the exact terminal count.
+- Import rows, release storage state, Storage Manager rows, and queue sections
+  consume the same bridge snapshot. Foreground storage actions remain visible
+  until the retained queue takes ownership.
+- The user-visible retry state is named Retrying, and its explanatory text says
+  the work remains pending and will retry. Pause, retry, and cancellation
+  controls dispatch absolute commands to coven.
+- Durable enrollment and library installation are separate from this journey;
+  their coven and bae changes have been committed, pushed, and exercised on
+  Android and macOS.
+- The public core and bridge upload-progress count is named `retrying` instead
+  of `failed`, and the macOS, Android-fixture, and Avalonia consumers read that
+  field. Core, bridge, Avalonia model and view, Android unit-test compile, and
+  macOS baeTests gates pass against the combined checkout.
+
+### Remaining evidence and work
+
+- Run one provider-backed release from each entrypoint through preparation,
+  upload, publication, and the final Cloud or Pinned state. Record the retained
+  phase sequence and byte counters so the UI assertions are tied to actual
+  provider behavior.
+- Exercise provider failure, retry, pause, resume, cancellation, and app restart
+  against durable queue rows. Fix any phase, action, or progress disagreement
+  with a failing test at its owning layer.
+- Verify aggregate throughput and estimated completion start only when every
+  provider denominator is known, reset after the active batch ends, and never
+  reuse preparation bytes as provider bytes.
+- Verify terminal publication removes the outbox release without a Local-state
+  flash on the import row, release row, album details, Storage Manager, or queue
+  panel.
+
+### Environment facts learned while landing
+
+- Android host-JVM unit tests that boot `BaeApp` (Robolectric) cannot run on
+  the macOS dev host: the JNA AAR carries no host `libjnidispatch`, and there
+  is no host build of `libbae_bridge` for the unit-test classpath. CI's ubuntu
+  runner is where that suite actually runs. Making the suite host-runnable
+  needs a host-feature bridge dylib plus desktop-JNA test wiring — its own
+  concern.
+- `xcodebuild test` fails with a LaunchServices `childPID > 0` assertion when
+  run from a Background launchd session (tmux); the test host launches
+  suspended and is never resumed. Running the same command from the `gui/501`
+  domain (a one-shot LaunchAgent, or a shell in the Aqua session) works.
+
 ## Entry from Import
 
 The user chooses Cloud, optionally Pinned, and confirms an import. The import
@@ -35,7 +92,7 @@ missing display context fails the projection. No partial or default-labelled
 snapshot is published.
 
 The UI displays Queued with exact source-byte totals. Restarting the app reads
-the same durable rows, so queued, prepared, failed, uploaded, cancelling, and
+the same durable rows, so queued, prepared, retrying, uploaded, cancelling, and
 publishing work remains visible without waiting for a new callback.
 
 ## Source preparation
@@ -75,11 +132,12 @@ throughput lifecycle so a later batch does not inherit stale samples.
 ## Pause and resume
 
 Pause is an absolute target command. Coven checks it before admitting each
-upload entry; entries already in progress are allowed to finish. The snapshot therefore has
-three effective states: Running, Pausing while that write remains active, and
-Paused once no provider write is active. Throughput and ETA are hidden after
-pause is requested, while the progress bar remains active during Pausing and is
-dimmed only once fully Paused. Resume wakes the sync loop immediately.
+upload entry; entries already in progress are allowed to finish. The snapshot
+therefore has three effective states: Running, Pausing while that write remains
+active, and Paused once no provider write is active. Throughput and ETA are
+hidden after pause is requested, while the progress bar remains active during
+Pausing and is dimmed only once fully Paused. Resume wakes the sync loop
+immediately.
 
 ## Failure and retry
 

@@ -58,7 +58,7 @@ public sealed class UploadProgressPresentationTests
     {
         var progress = Progress(
             queued: 0,
-            failed: 1,
+            retrying: 1,
             activity: BridgeUploadActivity.Retrying);
 
         Assert.Equal(
@@ -88,14 +88,14 @@ public sealed class UploadProgressPresentationTests
 
     private static BridgeUploadProgress Progress(
         uint queued = 1,
-        uint failed = 0,
+        uint retrying = 0,
         BridgeUploadActivity? activity = null) =>
         new(
             queued,
             0,
             0,
             0,
-            failed,
+            retrying,
             0,
             0,
             0,
