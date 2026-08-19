@@ -42,10 +42,11 @@ pub enum ImportEvent {
         progress: ImportProgress,
     },
     /// Per-track loudness measurement progress for an importing candidate: a
-    /// high-frequency tick routed to a native leaf view rather than the candidate
-    /// row's coarse step. Separate from `ImportProgress` so it bypasses the
-    /// release/import progress subscribers — it carries the candidate key, not a
-    /// release or import id.
+    /// high-frequency tick routed to a native leaf view, which draws the track
+    /// count and a live bar. Separate from `ImportProgress` so this cadence
+    /// bypasses the release/import progress subscribers — it carries the
+    /// candidate key, not a release or import id. The same pass reports its
+    /// coarse percent to the candidate row through `ImportProgress`.
     ImportLoudnessProgress {
         candidate_key: String,
         tracks_done: u32,

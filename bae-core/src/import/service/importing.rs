@@ -666,6 +666,8 @@ impl ImportService {
             &file_ids,
             tracks_to_files,
             candidate_key,
+            &db_release.id,
+            import_id,
         )
         .await;
         db_release.album_loudness_lufs = loudness.album_loudness_lufs;

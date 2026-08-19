@@ -776,9 +776,9 @@ pub enum ImportPhase {
     /// Reading and hashing each source file before it is registered. Per-file
     /// progress fills the percent.
     ReadingFiles,
-    /// Decoding each track to measure its loudness and true peak. Per-track
-    /// progress arrives on the dedicated `ImportLoudnessProgress` event, not the
-    /// coarse percent.
+    /// Decoding each track to measure its loudness and true peak. Frames
+    /// measured fill the percent, on whole-percent moves; the per-track detail
+    /// arrives on the dedicated `ImportLoudnessProgress` event.
     MeasuringLoudness,
     /// Writing the album/release/track rows and committing the import.
     Finalizing,
