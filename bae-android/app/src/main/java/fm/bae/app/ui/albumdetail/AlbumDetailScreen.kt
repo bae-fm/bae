@@ -101,7 +101,14 @@ fun AlbumDetailScreen(
 ) {
     val query by session.libraryQueries.album.state
         .collectAsState()
-    val detail = query.value
+    // The album query is one shared slot: right after navigation it still
+    // holds the previous album's delivered value. Rendering that value — or
+    // seeding any state from it — put the previous album's release id into
+    // this screen's selection, which the newly delivered release list then
+    // never contained, leaving a header with no track list on every first
+    // visit. Only a value for this album exists as far as this screen is
+    // concerned.
+    val detail = query.value?.takeIf { it.album.id == albumId }
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
@@ -115,18 +122,6 @@ fun AlbumDetailScreen(
     }
 
     val loadError = albumLoadError(query, appContext)
-
-    LaunchedEffect(detail) {
-        if (selectedReleaseId == null && detail != null) {
-            val primary = detail.album.primaryReleaseId
-            selectedReleaseId =
-                if (detail.releases.any { it.id == primary }) {
-                    primary
-                } else {
-                    detail.releases.firstOrNull()?.id
-                }
-        }
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AlbumDetailTopBar(onBack = onBack)
@@ -142,7 +137,14 @@ fun AlbumDetailScreen(
                         modifier = Modifier.align(Alignment.TopCenter).padding(8.dp),
                     )
                 }
+                // The user's explicit choice when it names one of this album's
+                // releases; the album's primary (falling back to first)
+                // otherwise. Derived rather than seeded into state, so a
+                // release list arriving after composition needs no correcting
+                // write-back.
                 val release = loaded.releases.firstOrNull { it.id == selectedReleaseId }
+                    ?: loaded.releases.firstOrNull { it.id == loaded.album.primaryReleaseId }
+                    ?: loaded.releases.firstOrNull()
                 AlbumDetailContent(
                     detail = loaded,
                     selectedRelease = release,
