@@ -455,7 +455,14 @@ impl LibraryManager {
                         | SyncLoopStatus::Blocked { success, .. } => {
                             (Some(None), Some(success.last_sync_time.clone()))
                         }
-                        SyncLoopStatus::Failed { error } => (Some(Some(error.to_string())), None),
+                        SyncLoopStatus::Failed { error } => {
+                            // The loop itself never logs its fault (it only
+                            // ships it into this watch), and the UI localizes
+                            // it down to a generic line — without this record
+                            // a failing cycle is invisible in the log.
+                            tracing::warn!("sync loop failed: {error}");
+                            (Some(Some(error.to_string())), None)
+                        }
                     };
                 let mut changed = false;
                 let mut new_failure = false;
