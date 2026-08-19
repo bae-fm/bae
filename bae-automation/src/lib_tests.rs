@@ -24,33 +24,16 @@ fn every_tool_input_schema_has_root_object_type() {
 /// reads as if the release had been found by searching: a wrong answer
 /// that looks like a right one.
 mod candidate_lookup {
+    use super::snapshot_mirror::{folder_candidate, snapshot, state_over};
     use super::*;
 
-    fn candidate(key: &str) -> AutomationCandidate {
-        AutomationCandidate::Valid {
-            common: AutomationCandidateCommon {
-                key: key.to_string(),
-                path: key.to_string(),
-                name: "Album".to_string(),
-                watched_folder_path: "/music".to_string(),
-                skipped: false,
-                is_added: false,
-                runtime: None,
-            },
-            track_count: 11,
-            format_label: "FLAC".to_string(),
-            content_hash: "hash".to_string(),
-        }
-    }
-
     fn state_holding(key: &str) -> AutomationState {
-        let state = AutomationState::new();
-        state
-            .candidates
-            .write()
-            .expect("candidate index poisoned")
-            .insert(key.to_string(), candidate(key));
-        state
+        state_over(snapshot(
+            vec![folder_candidate(key)],
+            Vec::new(),
+            Vec::new(),
+        ))
+        .1
     }
 
     #[test]
@@ -77,16 +60,18 @@ mod candidate_lookup {
         );
     }
 
-    /// A candidate with no runtime at all still resolves: its identify
-    /// pipeline simply hasn't run, which is a state a caller may legitimately
-    /// prefetch against.
+    /// A candidate whose identify pipeline hasn't run still resolves: idle is a
+    /// state a caller may legitimately prefetch against, distinct from a key
+    /// that names nothing.
     #[test]
     fn a_candidate_with_no_identify_evidence_still_resolves() {
         let state = state_holding("/music/Album");
         let found = state.get_candidate("/music/Album").expect("resolves");
         assert!(matches!(
             found,
-            AutomationCandidate::Valid { ref common, .. } if common.runtime.is_none()
+            AutomationCandidate::Valid { ref runtime, .. }
+                if matches!(runtime.identify_state, AutomationIdentifyState::Idle)
+                    && runtime.import_status.is_none()
         ));
     }
 }
@@ -206,25 +191,15 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
 }
 
 #[test]
-fn import_progress_step_and_phase_serialize_snake_case() {
-    let preparing = automation_import_progress(ImportProgress::Preparing {
-        import_id: "imp-1".to_string(),
-        step: PrepareStep::ReadingFolder,
-        album_title: "Album Title".to_string(),
-        artist_name: "Artist Name".to_string(),
-    });
+fn import_step_and_phase_serialize_snake_case() {
+    let preparing = automation_import_step(ImportStep::Preparing(PrepareStep::ReadingFolder));
     let json = serde_json::to_value(preparing).unwrap();
     assert_eq!(json["kind"], "preparing");
     assert_eq!(json["step"], "reading_folder");
 
-    let progress = automation_import_progress(ImportProgress::Progress {
-        id: "id-1".to_string(),
-        percent: 50,
-        phase: ImportPhase::ReadingFiles,
-        import_id: "imp-1".to_string(),
-    });
-    let json = serde_json::to_value(progress).unwrap();
-    assert_eq!(json["kind"], "progress");
+    let running = automation_import_step(ImportStep::Running(ImportPhase::ReadingFiles));
+    let json = serde_json::to_value(running).unwrap();
+    assert_eq!(json["kind"], "running");
     assert_eq!(json["phase"], "reading_files");
 }
 
@@ -442,93 +417,231 @@ mod identify_mirrors {
     }
 }
 
-/// The candidate index serves state, so it must start FROM the state: the
-/// import scanner runs from bootstrap, while event indexing starts with the
-/// automation surface — every candidate discovered in between is unknown to a
-/// purely event-built index, and its first update latched the whole surface
-/// `Failed`. Seeding from the candidate snapshot before pumping events makes
-/// updates to pre-existing candidates ordinary; an unknown key after the seed
-/// stays a loud failure, because then it is a real contradiction.
-mod seeded_index {
+/// The surface mirrors the import service's published candidate state, so what
+/// it lists is whatever that state currently says — and a key the state does not
+/// carry is simply absent, never a contradiction to latch on. The event-built
+/// index had to classify every update it could not place, and each class it had
+/// not thought of (candidates discovered before it subscribed, paths a
+/// `FolderReleaseBoundary` hides) took the whole surface down until it was
+/// special-cased.
+mod snapshot_mirror {
     use super::*;
-    use bae_core::import::folder_scanner::CategorizedFiles;
-    use bae_core::import::ImportCandidatesSnapshot;
+    use bae_core::identify::IdentifyState;
+    use bae_core::import::folder_scanner::{
+        CategorizedFiles, FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey,
+        InvalidCandidate, InvalidReason, ReleaseFileScope,
+    };
+    use bae_core::import::{
+        CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
+        ImportCandidatesSnapshot, ImportStep, ImportedRelease, RuntimeImportCandidateSnapshot,
+    };
     use std::path::PathBuf;
 
-    fn snapshot_with(path: &str) -> ImportCandidatesSnapshot {
+    pub(super) fn idle_runtime() -> CandidateRuntimeSnapshot {
+        CandidateRuntimeSnapshot {
+            identify_state: IdentifyState::Idle,
+            toolbar: Vec::new(),
+            signals: None,
+            import_status: None,
+        }
+    }
+
+    pub(super) fn folder_candidate(path: &str) -> FolderImportCandidateSnapshot {
+        FolderImportCandidateSnapshot {
+            candidate: FolderCandidate {
+                path: PathBuf::from(path),
+                file_root: PathBuf::from(path),
+                name: format!("Candidate {path}"),
+                files: CategorizedFiles {
+                    files: Vec::new(),
+                    format_label: "FLAC".to_string(),
+                },
+                watched_folder_path: "/music".to_string(),
+                scope: ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                display_path: path.trim_start_matches('/').to_string(),
+                resolved_boundaries: Vec::new(),
+                combine_ancestor_key: None,
+            },
+            runtime: idle_runtime(),
+            actionable: true,
+            skipped: false,
+            is_added: false,
+        }
+    }
+
+    fn invalid_candidate(path: &str) -> InvalidCandidate {
+        InvalidCandidate {
+            path: PathBuf::from(path),
+            name: format!("Invalid {path}"),
+            watched_folder_path: "/music".to_string(),
+            display_path: path.trim_start_matches('/').to_string(),
+            resolved_boundaries: Vec::new(),
+            reason: InvalidReason::NoValidAudio,
+        }
+    }
+
+    /// A boundary hiding `candidate_keys`: tentative paths the import service
+    /// has withdrawn from its candidate list while the user decides whether the
+    /// folder is one release or several. Runtime updates still arrive for them.
+    fn boundary(hidden: &[&str]) -> FolderReleaseBoundary {
+        FolderReleaseBoundary {
+            key: FolderReleaseDecisionKey {
+                watched_folder_path: "/music".to_string(),
+                relative_folder_path: "Between The Buttons".to_string(),
+            },
+            name: "Between The Buttons".to_string(),
+            display_path: "Between The Buttons".to_string(),
+            shared_file_count: 2,
+            tree_rows: Vec::new(),
+            candidate_keys: hidden.iter().map(|key| key.to_string()).collect(),
+        }
+    }
+
+    pub(super) fn snapshot(
+        folder_candidates: Vec<FolderImportCandidateSnapshot>,
+        invalid_candidates: Vec<InvalidCandidate>,
+        boundaries: Vec<FolderReleaseBoundary>,
+    ) -> ImportCandidatesSnapshot {
         ImportCandidatesSnapshot {
             watched_folders: Vec::new(),
-            folder_candidates: vec![bae_core::import::FolderImportCandidateSnapshot {
-                candidate: bae_core::import::folder_scanner::FolderCandidate {
-                    path: PathBuf::from(path),
-                    file_root: PathBuf::from(path),
-                    name: format!("Candidate {path}"),
-                    files: CategorizedFiles {
-                        files: Vec::new(),
-                        format_label: "FLAC".to_string(),
-                    },
-                    watched_folder_path: "/music".to_string(),
-                    scope: bae_core::import::folder_scanner::ReleaseFileScope::Recursive,
-                    file_edit_revision: 0,
-                    display_path: path.trim_start_matches('/').to_string(),
-                    resolved_boundaries: Vec::new(),
-                    combine_ancestor_key: None,
-                },
-                runtime: bae_core::import::CandidateRuntimeSnapshot {
-                    identify_state: bae_core::identify::IdentifyState::Idle,
-                    toolbar: Vec::new(),
-                    signals: None,
-                    import_status: None,
-                },
-                actionable: true,
-                skipped: false,
-                is_added: false,
-            }],
+            folder_candidates,
             runtime_candidates: Vec::new(),
-            invalid_candidates: Vec::new(),
-            boundaries: Vec::new(),
+            invalid_candidates,
+            boundaries,
             folder_scan_statuses: Vec::new(),
         }
     }
 
-    #[test]
-    fn an_update_to_a_seeded_candidate_keeps_the_surface_available() {
-        let state = AutomationState::new();
-        assert!(state.start_event_indexing());
-        state.seed_candidates(snapshot_with("/music/A"));
-
-        state.apply_event(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-            candidate_key: "/music/A".to_string(),
-            skipped: true,
-        }));
-
-        assert!(
-            matches!(state.event_indexing(), AutomationEventIndexing::Started),
-            "an update to a seeded candidate must not fail the surface"
-        );
-        let candidate = state
-            .get_candidate("/music/A")
-            .expect("seeded candidate resolves");
-        assert!(candidate.common().skipped, "the update landed on the seed");
+    /// A state reading one watch, returned with the sender so a test can publish
+    /// the next snapshot — which is how every update reaches this surface.
+    pub(super) fn state_over(
+        snapshot: ImportCandidatesSnapshot,
+    ) -> (watch::Sender<ImportCandidatesSnapshot>, AutomationState) {
+        let (tx, rx) = watch::channel(snapshot);
+        (tx, AutomationState::new(rx))
     }
 
+    fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {
+        candidates.iter().map(AutomationCandidate::key).collect()
+    }
+
+    /// The listing is the snapshot's folder and invalid candidates, in path
+    /// order. Paths a boundary hides are not candidates: the import service is
+    /// not publishing them, so this surface does not invent them — and does not
+    /// treat their existence in `candidate_keys` as an inconsistency either.
     #[test]
-    fn an_update_to_an_unknown_candidate_still_fails_loud() {
-        let state = AutomationState::new();
-        assert!(state.start_event_indexing());
-        state.seed_candidates(snapshot_with("/music/A"));
+    fn a_boundary_s_hidden_keys_are_absent_rather_than_a_contradiction() {
+        let hidden = "/music/Between The Buttons US [Polydor P25L 25040]";
+        let (_tx, state) = state_over(snapshot(
+            vec![folder_candidate("/music/B"), folder_candidate("/music/A")],
+            vec![invalid_candidate("/music/C")],
+            vec![boundary(&[hidden])],
+        ));
 
-        state.apply_event(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-            candidate_key: "/music/NEVER-SEEN".to_string(),
-            skipped: true,
-        }));
-
-        assert!(
-            matches!(
-                state.event_indexing(),
-                AutomationEventIndexing::Failed { .. }
-            ),
-            "an unknown key after the seed is a real contradiction"
+        assert_eq!(
+            keys(&state.list_candidates()),
+            vec!["/music/A", "/music/B", "/music/C"]
         );
+        let error = state
+            .get_candidate(hidden)
+            .expect_err("a hidden path names no candidate a caller can act on");
+        assert_eq!(error.kind(), "not_found");
+        assert_eq!(
+            keys(&state.list_candidates()),
+            vec!["/music/A", "/music/B", "/music/C"],
+            "the refused request left nothing latched"
+        );
+    }
+
+    /// `reidentify:` runtime entries name releases, not scanned folders. They
+    /// carry runtime but no candidate, so they are not listed — and, unlike the
+    /// event index, their updates are not an unknown key to fail on.
+    #[test]
+    fn runtime_only_entries_are_not_candidates() {
+        let mut snapshot = snapshot(vec![folder_candidate("/music/A")], Vec::new(), Vec::new());
+        snapshot.runtime_candidates = vec![RuntimeImportCandidateSnapshot {
+            key: "reidentify:release-1".to_string(),
+            runtime: idle_runtime(),
+        }];
+        let (_tx, state) = state_over(snapshot);
+
+        assert_eq!(keys(&state.list_candidates()), vec!["/music/A"]);
+        assert_eq!(
+            state
+                .get_candidate("reidentify:release-1")
+                .expect_err("a re-identify run is not an import candidate")
+                .kind(),
+            "not_found"
+        );
+    }
+
+    /// Updates arrive as a new snapshot value. The surface reads the latest one,
+    /// so a candidate that changed reads changed and one that is gone is gone —
+    /// with no accumulated state that a missed or unplaceable update could
+    /// corrupt.
+    #[test]
+    fn the_latest_snapshot_is_the_answer() {
+        let (tx, state) = state_over(snapshot(
+            vec![folder_candidate("/music/A"), folder_candidate("/music/B")],
+            Vec::new(),
+            Vec::new(),
+        ));
+
+        let mut skipped = folder_candidate("/music/A");
+        skipped.skipped = true;
+        skipped.runtime.import_status = Some(CandidateImportStatusSnapshot::Complete {
+            release: ImportedRelease {
+                release_id: "release-1".to_string(),
+                album_id: "album-1".to_string(),
+            },
+        });
+        tx.send(snapshot(vec![skipped], Vec::new(), Vec::new()))
+            .expect("the state holds the receiver");
+
+        assert_eq!(keys(&state.list_candidates()), vec!["/music/A"]);
+        let candidate = state.get_candidate("/music/A").expect("still published");
+        assert!(candidate.common().skipped, "the new value is what is read");
+        assert!(matches!(
+            candidate,
+            AutomationCandidate::Valid { ref runtime, .. }
+                if matches!(
+                    runtime.import_status,
+                    Some(AutomationImportStatus::Complete { ref release_id, .. })
+                        if release_id == "release-1"
+                )
+        ));
+        assert_eq!(
+            state
+                .get_candidate("/music/B")
+                .expect_err("a candidate the service dropped is gone")
+                .kind(),
+            "not_found"
+        );
+    }
+
+    /// The runtime a candidate carries is the import service's own, converted
+    /// whole: identify state, toolbar, signals, and the candidate's import run.
+    #[test]
+    fn a_candidate_carries_the_import_service_s_runtime() {
+        let mut running = folder_candidate("/music/A");
+        running.runtime.import_status = Some(CandidateImportStatusSnapshot::Importing {
+            progress_percent: 42,
+            step: Some(ImportStep::Running(
+                bae_core::import::ImportPhase::MeasuringLoudness,
+            )),
+        });
+        let (_tx, state) = state_over(snapshot(vec![running], Vec::new(), Vec::new()));
+
+        let candidate = state.get_candidate("/music/A").expect("published");
+        let json = serde_json::to_value(&candidate).unwrap();
+        assert_eq!(json["runtime"]["import_status"]["kind"], "importing");
+        assert_eq!(json["runtime"]["import_status"]["progress_percent"], 42);
+        assert_eq!(json["runtime"]["import_status"]["step"]["kind"], "running");
+        assert_eq!(
+            json["runtime"]["import_status"]["step"]["phase"],
+            "measuring_loudness"
+        );
+        assert_eq!(json["runtime"]["identify_state"]["kind"], "idle");
     }
 }

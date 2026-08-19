@@ -30,16 +30,9 @@ impl From<McpConfig> for AutomationMcpConfig {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationStatus {
     pub config: AutomationConfig,
-    pub event_indexing: AutomationEventIndexing,
+    /// Candidates the import service is currently publishing. Read from its
+    /// snapshot, so it needs no indexing state to qualify it.
     pub candidate_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationEventIndexing {
-    Started,
-    NotStarted,
-    Failed { message: String },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -70,6 +63,10 @@ pub enum AutomationCandidate {
         track_count: u32,
         format_label: String,
         content_hash: String,
+        /// What the identify and import pipelines have recorded against this
+        /// candidate. Every scanned folder carries one — idle until something
+        /// runs — because the import service keeps it alongside the candidate.
+        runtime: AutomationCandidateRuntime,
     },
     Invalid {
         #[serde(flatten)]
@@ -80,12 +77,6 @@ pub enum AutomationCandidate {
 
 impl AutomationCandidate {
     pub(super) fn common(&self) -> &AutomationCandidateCommon {
-        match self {
-            Self::Valid { common, .. } | Self::Invalid { common, .. } => common,
-        }
-    }
-
-    pub(super) fn common_mut(&mut self) -> &mut AutomationCandidateCommon {
         match self {
             Self::Valid { common, .. } | Self::Invalid { common, .. } => common,
         }
@@ -108,15 +99,15 @@ pub struct AutomationCandidateCommon {
     pub watched_folder_path: String,
     pub skipped: bool,
     pub is_added: bool,
-    pub runtime: Option<AutomationCandidateRuntime>,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+/// Mirrors bae-core's `import::CandidateRuntimeSnapshot`.
+#[derive(Debug, Clone, Serialize)]
 pub struct AutomationCandidateRuntime {
-    pub identify_state: Option<AutomationIdentifyState>,
-    pub toolbar: Option<Vec<AutomationToolbarSignal>>,
+    pub identify_state: AutomationIdentifyState,
+    pub toolbar: Vec<AutomationToolbarSignal>,
     pub signals: Option<AutomationSignals>,
-    pub progress: Option<AutomationImportProgress>,
+    pub import_status: Option<AutomationImportStatus>,
 }
 
 /// Mirrors bae-core's `signals::LookupFailure`.
@@ -585,35 +576,36 @@ pub enum AutomationImportPhase {
     Finalizing,
 }
 
+/// Where a candidate's own import run stands, mirroring bae-core's
+/// `import::CandidateImportStatusSnapshot`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationImportProgress {
-    Preparing {
-        import_id: String,
-        step: AutomationPrepareStep,
-        album_title: String,
-        artist_name: String,
-    },
-    Progress {
-        id: String,
-        percent: u8,
-        phase: AutomationImportPhase,
-        import_id: String,
+pub enum AutomationImportStatus {
+    Importing {
+        progress_percent: u32,
+        step: Option<AutomationImportStep>,
     },
     Complete {
-        id: String,
-        import_id: String,
+        release_id: String,
         album_id: String,
     },
-    RemoteUploadQueued {
-        id: String,
-        import_id: String,
+    CloudUploadQueued {
+        release_id: String,
         album_id: String,
+        outbox_revision: u64,
     },
-    Failed {
+    Error {
         error: String,
-        import_id: String,
     },
+}
+
+/// Mirrors bae-core's `import::ImportStep`: the preparation step before the
+/// running phases, or the running phase itself.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationImportStep {
+    Preparing { step: AutomationPrepareStep },
+    Running { phase: AutomationImportPhase },
 }
 
 #[derive(Debug, Clone, Serialize)]

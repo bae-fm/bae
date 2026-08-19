@@ -273,7 +273,6 @@ struct BaeMcpServer {
 
 impl BaeMcpServer {
     fn new(automation: Automation) -> Self {
-        automation.start_event_indexing();
         Self { automation }
     }
 }

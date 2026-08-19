@@ -52,8 +52,7 @@ impl std::error::Error for DesktopSubsonicConfigError {}
 
 impl DesktopServices {
     pub async fn start(services: AppServices, runtime: Handle) -> Self {
-        let automation = Automation::new(services.clone(), runtime.clone());
-        automation.start_event_indexing();
+        let automation = Automation::new(services.clone());
         let token_manager = services.clone();
         let controller = McpServerController::new(
             automation,
