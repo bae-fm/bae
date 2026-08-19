@@ -205,3 +205,12 @@ the object kinds to the coven agent.
 
 Also pending: user still afk — phone off adb (Android first-tap bug
 waits), Storage Manager journey run waits for a syncing app.
+
+- PITFALL (cost a debugging spiral twice): never test app launches while the
+  display is asleep or the screen locked. Sleeping display = no window
+  presentation, parked keychain reads, boots that look "broken". Check
+  `screencapture` ground truth or `pmset -g log | grep "Display is turned"`
+  BEFORE diagnosing a launch. Related: never launch the app by name
+  (`open -a bae` / AppleScript "bae") — only by full derivedData path; and
+  never via launchd exec for interactive use (no LS registration, no windows,
+  duplicate-instance magnet). File logs now in ~/.bae/logs/.
