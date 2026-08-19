@@ -161,7 +161,22 @@ internal sealed partial class SettingsWindow
             },
         };
 
+        // A failure belongs to the provider this library is configured for: the
+        // row offers to retry that provider's connection, and the recorded error
+        // outlives a disconnect (nothing clears it once the loop is gone), so a
+        // disconnected library would otherwise wear a stale failure over its
+        // set-up button. macOS and iOS gate it the same way.
+        var syncFailure = new SyncFailureView(async () =>
+        {
+            var (current, error) = await _app.Sync.ReconnectSync();
+            if (current && error is not null)
+            {
+                syncStatus.Text = error;
+            }
+        });
+
         content.Children.Add(syncStatus);
+        content.Children.Add(syncFailure);
         content.Children.Add(ButtonRow(disconnect, syncNow));
         var storageColumn = new StackPanel { Spacing = 4 };
         var storageCaption = SecondaryLabel(Loc.Chrome("settings.storage.mode"));
@@ -173,6 +188,11 @@ internal sealed partial class SettingsWindow
         content.Children.Add(s3Form);
 
         renderers.Add(fresh =>
-            syncStatus.Text = fresh.SyncStatusText(_app.SyncStatusStore.SyncReady));
+        {
+            syncStatus.Text = fresh.SyncStatusText(_app.SyncStatusStore.SyncReady);
+            syncFailure.Render(
+                fresh.SyncProvider is null ? null : _app.SyncStatusStore.ErrorText,
+                _app.SyncStatusStore.ErrorDetail);
+        });
     }
 }

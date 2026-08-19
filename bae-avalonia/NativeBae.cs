@@ -517,6 +517,9 @@ internal static partial class NativeBae
 
     internal static string? RetryOutbox(AppHandle handle) => CaptureError(() => Await(() => handle.RetryOutbox()));
 
+    internal static string? ReconnectSync(AppHandle handle) =>
+        CaptureError(() => Await(() => handle.ReconnectSync()));
+
     internal static string? SetSyncPaused(AppHandle handle, bool paused) =>
         CaptureError(() => Await(() => handle.SetSyncPaused(paused)));
 

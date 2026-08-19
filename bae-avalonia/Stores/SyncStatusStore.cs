@@ -9,10 +9,16 @@ namespace Bae.Desktop;
 internal sealed class SyncStatusStore
 {
     private readonly Func<BridgeSyncStatusSnapshot, BridgeSyncIndicator> _indicatorFor;
+    private readonly Func<BridgeException, string?> _lineFor;
 
-    // The localized sync-error line, or null when sync is healthy. Kept for the
-    // reconnect banner; the toolbar badge is driven by Indicator.
+    // The localized sync-error line, or null when sync is healthy. Read by the
+    // sync failure row; the toolbar badge is driven by Indicator.
     public string? ErrorText { get; private set; }
+
+    // The concrete fault behind ErrorText — the untranslated chain core recorded,
+    // as one line. ErrorText names only a category ("Something went wrong."), so
+    // the row renders this under it; null when the failure carries no diagnostic.
+    public string? ErrorDetail { get; private set; }
 
     // The badge state, decided by core (error > syncing > synced > idle). The UI
     // maps it to a label and colour and never re-derives which state wins.
@@ -27,19 +33,22 @@ internal sealed class SyncStatusStore
     public event Action? Changed;
 
     public SyncStatusStore()
-        : this(BaeBridgeMethods.BridgeSyncIndicator)
+        : this(BaeBridgeMethods.BridgeSyncIndicator, BridgeDisplay.LocalizedLine)
     {
     }
 
     internal SyncStatusStore(
-        Func<BridgeSyncStatusSnapshot, BridgeSyncIndicator> indicatorFor)
+        Func<BridgeSyncStatusSnapshot, BridgeSyncIndicator> indicatorFor,
+        Func<BridgeException, string?>? lineFor = null)
     {
         _indicatorFor = indicatorFor;
+        _lineFor = lineFor ?? BridgeDisplay.LocalizedLine;
     }
 
     public void Apply(BridgeSyncStatusSnapshot status)
     {
-        ErrorText = status.Error is null ? null : BridgeDisplay.LocalizedLine(status.Error);
+        ErrorText = status.Error is null ? null : _lineFor(status.Error);
+        ErrorDetail = status.Error is null ? null : BridgeDisplay.FaultSummary(status.Error);
         Indicator = _indicatorFor(status);
         LastSyncTime = Indicator is BridgeSyncIndicator.Synced synced
             ? SyncIndicatorModel.FormatSyncTime(synced.LastSyncTime)

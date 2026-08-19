@@ -66,6 +66,15 @@ internal sealed class SyncService
     public Func<Task<(bool Current, string? Error)>> RetryOutbox { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: RetryOutbox not wired");
 
+    /// <summary>
+    /// Retry the provider this library is already configured for: connects when a
+    /// failed launch left no connection, and wakes the loop when there is one, so
+    /// a failure the user has since fixed clears without relaunching. A retry that
+    /// fails is recorded as the sync-status error the failure row renders.
+    /// </summary>
+    public Func<Task<(bool Current, string? Error)>> ReconnectSync { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: ReconnectSync not wired");
+
     /// <summary>Rename a library by id.</summary>
     public Func<string, string, (bool Current, string? Error)> RenameLibrary { get; init; }
         = (_, _) => throw new InvalidOperationException("SyncService stub: RenameLibrary not wired");
@@ -141,6 +150,7 @@ internal sealed class SyncService
             session.RunForCurrentHandle(handle => NativeBae.RemoveMember(handle, publicKeyHex)),
         CloudOnlyReleaseCount = () => session.RunForCurrentHandle(NativeBae.CloudOnlyReleaseCount),
         RetryOutbox = () => session.RunForCurrentHandle(NativeBae.RetryOutbox),
+        ReconnectSync = () => session.RunForCurrentHandle(NativeBae.ReconnectSync),
         RenameLibrary = (libraryId, newName) =>
             session.WithCurrentHandle(handle => NativeBae.RenameLibrary(handle, libraryId, newName)),
         CancelReleaseTransition = releaseId =>

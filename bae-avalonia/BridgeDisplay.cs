@@ -89,6 +89,37 @@ internal static class BridgeDisplay
         return key is null ? null : Loc.Core(key);
     }
 
+    // How much of a diagnostic chain fits on one secondary line under the
+    // localized headline.
+    private const int FaultSummaryLength = 180;
+
+    /// <summary>
+    /// The concrete fault as one compact line, for rendering beside
+    /// <see cref="LocalizedLine(BridgeException)"/>. That line names a category —
+    /// "Something went wrong." — so a surface showing only it says nothing about
+    /// what failed. This is the first line of the untranslated diagnostic chain,
+    /// bounded so it fits under a headline. Null when the failure carries no
+    /// diagnostic (a keyed not-found, a cancellation) or carries a blank one,
+    /// which is not a fault name.
+    /// </summary>
+    internal static string? FaultSummary(BridgeException exception)
+    {
+        if (exception is not BridgeException.Diagnostic diagnostic)
+        {
+            return null;
+        }
+        var detail = diagnostic.detail;
+        var lineEnd = detail.IndexOfAny(new[] { '\r', '\n' });
+        var firstLine = (lineEnd < 0 ? detail : detail[..lineEnd]).Trim();
+        if (firstLine.Length == 0)
+        {
+            return null;
+        }
+        return firstLine.Length <= FaultSummaryLength
+            ? firstLine
+            : firstLine[..FaultSummaryLength] + "…";
+    }
+
     internal static string LocalizedLine(BridgeLookupFailure failure)
     {
         var key = BaeBridgeMethods.BridgeLookupFailureKey(failure);
