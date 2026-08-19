@@ -45,12 +45,28 @@ impl UploadThroughput {
 
     /// Start one provider transfer. Concurrent transfers share one aggregate
     /// measurement; the first transfer after an idle interval resets it.
+    ///
+    /// Every public entry point captures its timestamp AFTER acquiring the
+    /// state lock. Captured before, two threads can interleave so that an
+    /// older timestamp is applied after a newer one reset the measurement,
+    /// and the "clock regressed" invariants below fire on a race rather than
+    /// a real clock fault — a live panic that poisoned this mutex and took
+    /// the whole sync stack down with it. Under the lock, mutex ordering plus
+    /// `Instant`'s monotonicity make out-of-order timestamps unrepresentable;
+    /// the `_at` variants exist for tests, which own their ordering.
     pub fn begin(&self) {
-        self.begin_at(Instant::now());
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        Self::begin_locked(&mut state, now);
     }
 
+    #[cfg(test)]
     fn begin_at(&self, now: Instant) {
         let mut state = self.state.lock().unwrap();
+        Self::begin_locked(&mut state, now);
+    }
+
+    fn begin_locked(state: &mut ThroughputState, now: Instant) {
         if state.active_uploads == 0 {
             state.samples.clear();
             state.measurement_started = Some(now);
@@ -72,11 +88,18 @@ impl UploadThroughput {
 
     /// Record the provider-byte delta from one coalesced upload-progress report.
     pub fn record(&self, bytes: u64) {
-        self.record_at(bytes, Instant::now());
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        self.record_locked(&mut state, bytes, now);
     }
 
+    #[cfg(test)]
     fn record_at(&self, bytes: u64, now: Instant) {
         let mut state = self.state.lock().unwrap();
+        self.record_locked(&mut state, bytes, now);
+    }
+
+    fn record_locked(&self, state: &mut ThroughputState, bytes: u64, now: Instant) {
         assert!(
             state.active_uploads > 0,
             "provider bytes arrived without an active transfer"
@@ -88,11 +111,18 @@ impl UploadThroughput {
     /// Bytes per second over the rolling window. Zero when no samples have
     /// landed in the window.
     pub fn bytes_per_sec(&self) -> u64 {
-        self.bytes_per_sec_at(Instant::now())
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        self.bytes_per_sec_locked(&mut state, now)
     }
 
+    #[cfg(test)]
     fn bytes_per_sec_at(&self, now: Instant) -> u64 {
         let mut state = self.state.lock().unwrap();
+        self.bytes_per_sec_locked(&mut state, now)
+    }
+
+    fn bytes_per_sec_locked(&self, state: &mut ThroughputState, now: Instant) -> u64 {
         if state.active_uploads == 0 {
             return 0;
         }
@@ -214,6 +244,30 @@ mod tests {
         tracker.record_at(1, now);
 
         tracker.bytes_per_sec_at(now);
+    }
+
+    /// Public entry points capture their timestamps under the state lock, so
+    /// concurrent begin/record/read/end interleavings can never construct an
+    /// out-of-order timestamp pair — the exact race that panicked live and
+    /// poisoned this mutex for the rest of the process.
+    #[test]
+    fn concurrent_use_never_regresses_the_clock() {
+        let tracker = std::sync::Arc::new(UploadThroughput::with_window(Duration::from_millis(50)));
+        let mut workers = Vec::new();
+        for _ in 0..4 {
+            let tracker = std::sync::Arc::clone(&tracker);
+            workers.push(std::thread::spawn(move || {
+                for _ in 0..5_000 {
+                    tracker.begin();
+                    tracker.record(1);
+                    tracker.bytes_per_sec();
+                    tracker.end();
+                }
+            }));
+        }
+        for worker in workers {
+            worker.join().expect("no worker panicked");
+        }
     }
 
     #[test]
