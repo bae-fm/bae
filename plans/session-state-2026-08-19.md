@@ -214,3 +214,17 @@ waits), Storage Manager journey run waits for a syncing app.
   (`open -a bae` / AppleScript "bae") — only by full derivedData path; and
   never via launchd exec for interactive use (no LS registration, no windows,
   duplicate-instance magnet). File logs now in ~/.bae/logs/.
+
+## Sync-efficiency mandate (2026-08-19 ~13:15, user-issued)
+
+"Fix this implementation: redesign whatever needs redesign, remove as much
+as possible, add as little as possible (but add enough), make it as
+efficient as possible. Greenfield; wipe ~/.bae when done." Dispatched to the
+coven agent as architect+implementer; design doc first
+(coven plans/sync-efficiency-redesign.md), then serial branches.
+Measured diseases driving it: canonical_input quadratic rows (223MB/385
+commits; phone materialize 245s of a 391s pull), idle ack commits growing
+history every 30s per device, serial fetch shapes in pull (blobs 80s),
+per-cycle verifier rebuild duplicating durable knowledge. Live validation
+protocol: merge → pin → rebuild mac+phone → wipe ~/.bae → re-pair → measure
+(cycle stage timings + DB size + settled-cycle read counts).
