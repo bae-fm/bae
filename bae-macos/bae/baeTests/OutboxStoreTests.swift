@@ -34,8 +34,7 @@ struct OutboxStoreHasPendingCloudWorkTests {
                         BridgeUploadFileOp(
                             fileId: "file-1",
                             label: .filename(name: "01 Track Title.flac"),
-                            bytesDone: 0,
-                            progressBytesTotal: 0,
+                            bar: nil,
                             sourceBytesTotal: 1000,
                             state: .queued,
                             lastError: nil
@@ -56,7 +55,9 @@ struct OutboxStoreHasPendingCloudWorkTests {
         #expect(store.hasPendingCloudWork)
     }
 
-    @Test("an imported cloud release distinguishes awaiting, active, and finished")
+    @Test(
+        "an imported cloud release distinguishes awaiting, active, and finished"
+    )
     func importedCloudReleaseLifecycle() {
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
         #expect(
@@ -241,35 +242,56 @@ struct CloudImportQueuePresentationTests {
     func activeUploadIncludesPhaseAndBytes() {
         var progress = OutboxStore.emptySnapshot.total
         progress.uploading = 1
-        progress.uploadBytesDone = 600
-        progress.uploadBytesTotal = 1016
-        progress.uploadBytesTotalComplete = true
+        progress.bar = BridgeUploadBar(
+            phase: .uploading,
+            bytesDone: 600,
+            bytesTotal: 1016
+        )
         progress.activity = .uploading
 
         let line = UploadObservation.active(progress).statusText
         let done = Int64(600).formatted(.byteCount(style: .file))
         let total = Int64(1016).formatted(.byteCount(style: .file))
 
-        #expect(line?.contains(QueueSummary.countLabel("core.queue.uploading", 1)) == true)
+        #expect(
+            line?.contains(QueueSummary.countLabel("core.queue.uploading", 1))
+                == true
+        )
         #expect(line?.contains(done) == true)
         #expect(line?.contains(total) == true)
     }
 
-    @Test("upload bytes stay hidden until every provider denominator is known")
-    func incompleteProviderTotalIsNotPresentedAsTheReleaseTotal() {
+    @Test("the byte label counts the phase the bar fills with, not the badge")
+    func byteLabelFollowsTheBarsOwnPhase() {
         var progress = OutboxStore.emptySnapshot.total
         progress.queued = 1
         progress.uploading = 1
-        progress.uploadBytesDone = 600
-        progress.uploadBytesTotal = 1016
-        progress.uploadBytesTotalComplete = false
+        // A file is uploading, but another is still unprepared, so core counts
+        // the queue's source bytes; the badge still leads with the upload.
+        let bar = BridgeUploadBar(
+            phase: .preparing,
+            bytesDone: 1_000,
+            bytesTotal: 1_100
+        )
+        progress.bar = bar
         progress.activity = .uploading
 
         let line = UploadObservation.active(progress).statusText
-        let incompleteTotal = Int64(1016).formatted(.byteCount(style: .file))
 
-        #expect(line?.contains(QueueSummary.countLabel("core.queue.uploading", 1)) == true)
-        #expect(line?.contains(incompleteTotal) == false)
+        #expect(
+            line?.contains(QueueSummary.countLabel("core.queue.uploading", 1))
+                == true
+        )
+        #expect(line?.contains(bar.text) == true)
+        #expect(
+            bar.text
+                != BridgeUploadBar(
+                    phase: .uploading,
+                    bytesDone: 1_000,
+                    bytesTotal: 1_100
+                )
+                .text
+        )
     }
 
     @Test("a failed attempt is presented as retrying")
@@ -300,8 +322,11 @@ struct CloudImportQueuePresentationTests {
     @Test("the import row keeps a progress bar through the cloud transition")
     func cloudTransitionProgressBar() {
         var progress = OutboxStore.emptySnapshot.total
-        progress.workDone = 500
-        progress.workTotal = 2_000
+        progress.bar = BridgeUploadBar(
+            phase: .uploading,
+            bytesDone: 500,
+            bytesTotal: 2_000
+        )
 
         #expect(UploadObservation.awaiting.progressBar == .indeterminate)
         #expect(
@@ -315,7 +340,9 @@ struct CloudImportQueuePresentationTests {
 @Suite("Storage cloud-upload handoff")
 @MainActor
 struct StorageCloudUploadHandoffTests {
-    @Test("the row remains in a cloud transition until its retained queue value arrives")
+    @Test(
+        "the row remains in a cloud transition until its retained queue value arrives"
+    )
     func commandHandsOffWithoutAStandingLocalFrame() {
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
 

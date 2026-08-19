@@ -40,9 +40,9 @@ struct OutboxReleaseRow: View {
 
                 Spacer()
 
-                ProgressTrackBar(progress: group.progress.fraction)
+                ProgressTrackBar(progress: group.progress.bar?.fraction ?? 0)
                     .frame(width: 140)
-                    .opacity(group.progress.workTotal > 0 ? 1 : 0)
+                    .opacity(group.progress.bar == nil ? 0 : 1)
 
                 UploadActivityLabel(progress: group.progress)
                     .font(.caption)
@@ -66,8 +66,8 @@ struct OutboxReleaseRow: View {
 
     private var releaseDetail: String {
         let files = String(localized: "\(group.files.count) files")
-        guard let stage = group.progress.stageBytesText else { return files }
-        return "\(files) \u{b7} \(stage)"
+        guard let bar = group.progress.bar else { return files }
+        return "\(files) \u{b7} \(bar.text)"
     }
 }
 

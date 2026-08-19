@@ -53,6 +53,47 @@ public sealed class UploadProgressPresentationTests
                 snapshot));
     }
 
+    // The bar and its label read the same two numbers off the same phase, so a
+    // queue counting source bytes cannot be captioned with provider bytes.
+    [Fact]
+    public void TheBarLabelCountsTheBarsOwnPhase()
+    {
+        var preparing = new BridgeUploadBar(
+            BridgeUploadPhase.Preparing,
+            1_000,
+            1_100);
+        var uploading = new BridgeUploadBar(
+            BridgeUploadPhase.Uploading,
+            1_000,
+            1_100);
+
+        Assert.Equal(
+            Loc.Core(
+                BaeBridgeMethods.BridgeUploadPhaseBytesKey(
+                    BridgeUploadPhase.Preparing),
+                new Dictionary<string, object?>
+                {
+                    ["done"] = Loc.Bytes(1_000),
+                    ["total"] = Loc.Bytes(1_100),
+                }),
+            UploadProgressPresentation.BarLabel(preparing));
+        Assert.NotEqual(
+            UploadProgressPresentation.BarLabel(preparing),
+            UploadProgressPresentation.BarLabel(uploading));
+        Assert.Equal(
+            1_000d / 1_100d,
+            UploadProgressPresentation.BarFraction(preparing));
+    }
+
+    // A release down to its make-Remote transition, or one being cancelled, has
+    // no bytes to count: no bar, no byte caption.
+    [Fact]
+    public void ASliceWithoutBytesDrawsNoBar()
+    {
+        Assert.Equal(string.Empty, UploadProgressPresentation.BarLabel(null));
+        Assert.Null(UploadProgressPresentation.BarFraction(null));
+    }
+
     [Fact]
     public void FailedAttemptIsPresentedAsRetrying()
     {
@@ -89,7 +130,8 @@ public sealed class UploadProgressPresentationTests
     private static BridgeUploadProgress Progress(
         uint queued = 1,
         uint retrying = 0,
-        BridgeUploadActivity? activity = null) =>
+        BridgeUploadActivity? activity = null,
+        BridgeUploadBar? bar = null) =>
         new(
             queued,
             0,
@@ -99,13 +141,7 @@ public sealed class UploadProgressPresentationTests
             0,
             0,
             0,
-            0,
-            10,
-            0,
-            0,
-            false,
-            0,
-            20,
+            bar,
             activity ?? BridgeUploadActivity.Queued,
             true);
 }

@@ -184,7 +184,7 @@ public sealed class StorageStoreTests
         var publishing = activity == BridgeUploadActivity.Publishing ? 1U : 0U;
         var progress = new BridgeUploadProgress(
             queued, 0, 0, 0, 0, 0, publishing, 0,
-            0, 10, 0, 0, false, 0, 20,
+            new BridgeUploadBar(BridgeUploadPhase.Preparing, 0, 20),
             activity,
             canCancel);
         return new BridgeOutboxSnapshot(
@@ -209,8 +209,7 @@ public sealed class StorageStoreTests
         [],
         new Dictionary<string, BridgeUploadProgress>(),
         new BridgeUploadProgress(
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, true, 0, 0, null, false),
+            0, 0, 0, 0, 0, 0, 0, 0, null, null, false),
         0,
         [],
         BridgeOutboxPauseState.Running,

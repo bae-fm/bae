@@ -67,14 +67,14 @@ fn activity_ranks_the_real_upload_journey() {
 }
 
 #[test]
-#[should_panic(expected = "upload work progress overflow")]
-fn aggregate_progress_cannot_wrap_its_work_counter() {
+#[should_panic(expected = "provider byte progress overflow")]
+fn aggregate_progress_cannot_wrap_its_byte_counters() {
     let mut total = UploadProgress {
-        work_done: u64::MAX,
+        upload_bytes_done: u64::MAX,
         ..Default::default()
     };
     let next = UploadProgress {
-        work_done: 1,
+        upload_bytes_done: 1,
         ..Default::default()
     };
 
@@ -447,7 +447,16 @@ fn created_file_with_a_terminalization_error_remains_retryable() {
     let snapshot = build(queue, &HashMap::new());
 
     assert_eq!(snapshot.total.retrying, 1);
-    assert_eq!(snapshot.total.work_done, snapshot.total.work_total);
+    // The provider object exists; only publication failed, so the bar stands
+    // at the end of the upload phase rather than resetting.
+    assert_eq!(
+        snapshot.total.bar(),
+        Some(UploadBar {
+            phase: UploadPhase::Uploading,
+            bytes_done: 116,
+            bytes_total: 116,
+        })
+    );
     assert_eq!(
         snapshot.upload_groups[0].files[0].state,
         UploadState::RetryingPublication {
@@ -525,8 +534,6 @@ fn durable_and_streamed_upload_phases_never_collapse_back_to_queued() {
     assert_eq!(snapshot.total.preparation_bytes_done, 1100);
     assert_eq!(snapshot.total.upload_bytes_done, 1400);
     assert_eq!(snapshot.total.upload_bytes_total, 2016);
-    assert_eq!(snapshot.total.work_done, 2139);
-    assert_eq!(snapshot.total.work_total, 2200);
 }
 
 #[test]
@@ -629,4 +636,159 @@ fn provider_progress_rejects_bytes_beyond_its_denominator() {
         },
         100,
     );
+}
+
+#[test]
+fn a_slice_counts_source_bytes_until_every_provider_size_is_exact() {
+    // The large file is uploading; the small one has not been prepared, so no
+    // exact provider denominator exists for the slice yet.
+    let mut queue = two_queued_uploads();
+    queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
+    queue.uploads[1].provider_bytes_total = Some(1016);
+    let transient = HashMap::from([(
+        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        TransientUploadState::Uploading {
+            bytes_done: 250,
+            bytes_total: 1016,
+        },
+    )]);
+
+    let snapshot = build(queue, &transient);
+
+    // Source bytes, against the source total — never 250 provider bytes under a
+    // source denominator, and never the source size standing in for the
+    // unknown provider one.
+    assert_eq!(
+        snapshot.total.bar(),
+        Some(UploadBar {
+            phase: UploadPhase::Preparing,
+            bytes_done: 1000,
+            bytes_total: 1100,
+        })
+    );
+}
+
+#[test]
+fn a_slice_counts_provider_bytes_once_every_upload_is_prepared() {
+    let mut queue = two_queued_uploads();
+    for (upload, provider_total) in queue.uploads.iter_mut().zip([116, 1016]) {
+        upload.phase = coven::QueuedUploadPhase::Prepared;
+        upload.provider_bytes_total = Some(provider_total);
+    }
+    let transient = HashMap::from([(
+        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        TransientUploadState::Uploading {
+            bytes_done: 250,
+            bytes_total: 1016,
+        },
+    )]);
+
+    let snapshot = build(queue, &transient);
+
+    assert_eq!(
+        snapshot.total.bar(),
+        Some(UploadBar {
+            phase: UploadPhase::Uploading,
+            bytes_done: 250,
+            bytes_total: 1132,
+        })
+    );
+}
+
+#[test]
+fn a_queued_slice_counts_the_source_bytes_it_has_yet_to_read() {
+    let snapshot = build(two_queued_uploads(), &HashMap::new());
+
+    assert_eq!(
+        snapshot.total.bar(),
+        Some(UploadBar {
+            phase: UploadPhase::Preparing,
+            bytes_done: 0,
+            bytes_total: 1100,
+        })
+    );
+}
+
+#[test]
+fn cancelling_and_publishing_slices_carry_no_byte_counters() {
+    let cancelling = UploadProgress {
+        cancelling: 1,
+        preparation_bytes_done: 500,
+        preparation_bytes_total: 1100,
+        upload_bytes_total_complete: false,
+        ..Default::default()
+    };
+    assert_eq!(cancelling.bar(), None);
+
+    // A release down to its make-Remote transition has no upload rows left to
+    // count.
+    let publishing = UploadProgress {
+        publishing: 1,
+        ..Default::default()
+    };
+    assert_eq!(publishing.bar(), None);
+}
+
+#[test]
+fn a_files_bar_counts_the_phase_that_file_is_in() {
+    assert_eq!(
+        UploadState::Preparing {
+            bytes_done: 40,
+            bytes_total: 100,
+        }
+        .bar(),
+        Some(UploadBar {
+            phase: UploadPhase::Preparing,
+            bytes_done: 40,
+            bytes_total: 100,
+        })
+    );
+    assert_eq!(
+        UploadState::Uploading {
+            bytes_done: 40,
+            bytes_total: 116,
+        }
+        .bar(),
+        Some(UploadBar {
+            phase: UploadPhase::Uploading,
+            bytes_done: 40,
+            bytes_total: 116,
+        })
+    );
+    // Resting states render their state and size; a bar there would draw
+    // motion that is not happening.
+    for state in [
+        UploadState::Queued,
+        UploadState::Prepared { bytes_total: 116 },
+        UploadState::RetryingPreparation {
+            last_error: "read failed".to_string(),
+        },
+        UploadState::RetryingUpload {
+            last_error: "provider refused".to_string(),
+            bytes_total: 116,
+        },
+        UploadState::RetryingPublication {
+            last_error: "publication failed".to_string(),
+            bytes_total: 116,
+        },
+        UploadState::Uploaded { bytes_total: 116 },
+    ] {
+        assert_eq!(state.bar(), None, "{state:?} must not draw a bar");
+    }
+}
+
+#[test]
+#[should_panic(expected = "upload progress cannot exceed its exact total")]
+fn a_bar_rejects_progress_beyond_its_denominator() {
+    let progress = UploadProgress {
+        uploaded: 1,
+        preparation_bytes_done: 100,
+        preparation_bytes_total: 100,
+        upload_bytes_done: 200,
+        upload_bytes_total: 116,
+        upload_bytes_total_complete: true,
+        ..Default::default()
+    };
+
+    progress.bar();
 }

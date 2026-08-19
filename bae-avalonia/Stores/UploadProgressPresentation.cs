@@ -88,38 +88,31 @@ internal static class UploadProgressPresentation
                 "An active cloud upload has no projected activity"),
         };
 
-    public static string StageBytesLabel(BridgeUploadProgress progress)
-    {
-        var (done, total) = progress.Activity switch
-        {
-            BridgeUploadActivity.Preparing =>
-                (progress.PreparationBytesDone, progress.PreparationBytesTotal),
-            BridgeUploadActivity.Uploading when progress.UploadBytesTotalComplete =>
-                (progress.UploadBytesDone, progress.UploadBytesTotal),
-            _ => (0UL, 0UL),
-        };
-        return total == 0
+    // "Uploading 3 MB of 221.2 MB": the phase the bar fills with, then the
+    // exact bytes it fills with. Both come off the bar itself, so the text and
+    // the fill always count the same thing.
+    public static string BarLabel(BridgeUploadBar? bar) =>
+        bar is null
             ? string.Empty
             : Loc.Core(
-                "core.outbox.bytes_progress",
+                BaeBridgeMethods.BridgeUploadPhaseBytesKey(bar.Phase),
                 new Dictionary<string, object?>
                 {
-                    ["done"] = Loc.Bytes(checked((long)done)),
-                    ["total"] = Loc.Bytes(checked((long)total)),
+                    ["done"] = Loc.Bytes(checked((long)bar.BytesDone)),
+                    ["total"] = Loc.Bytes(checked((long)bar.BytesTotal)),
                 });
-    }
 
-    public static double? WorkFraction(BridgeUploadProgress progress)
+    public static double? BarFraction(BridgeUploadBar? bar)
     {
-        if (progress.WorkTotal == 0)
+        if (bar is null || bar.BytesTotal == 0)
         {
             return null;
         }
-        if (progress.WorkDone > progress.WorkTotal)
+        if (bar.BytesDone > bar.BytesTotal)
         {
             throw new InvalidOperationException(
-                "Cloud upload work cannot exceed its exact total");
+                "Cloud upload progress cannot exceed its exact total");
         }
-        return (double)progress.WorkDone / progress.WorkTotal;
+        return (double)bar.BytesDone / bar.BytesTotal;
     }
 }

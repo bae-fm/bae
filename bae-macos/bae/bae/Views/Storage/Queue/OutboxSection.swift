@@ -74,7 +74,7 @@ struct OutboxSection: View {
                     leading: { collapseButton }
                 )
                 if !collapsed {
-                    if snapshot.total.workTotal > 0 {
+                    if snapshot.total.bar != nil {
                         OutboxTotalProgress(snapshot: snapshot)
                     }
                     Divider()

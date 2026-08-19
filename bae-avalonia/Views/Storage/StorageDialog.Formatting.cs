@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
@@ -31,7 +30,7 @@ internal sealed partial class StorageDialog
             : string.Empty;
 
     private static string OutboxBytesLabel(BridgeOutboxSnapshot snapshot) =>
-        UploadProgressPresentation.StageBytesLabel(snapshot.Total);
+        UploadProgressPresentation.BarLabel(snapshot.Total.Bar);
 
     // A release group's aggregate badge, mirroring the macOS queue pane: the
     // dominant activity. Provider-complete releases remain through publication;
@@ -41,7 +40,7 @@ internal sealed partial class StorageDialog
         UploadProgressPresentation.ActivityLabel(progress);
 
     private static string UploadBytesLabel(BridgeUploadProgress progress) =>
-        UploadProgressPresentation.StageBytesLabel(progress);
+        UploadProgressPresentation.BarLabel(progress.Bar);
 
     private static string FileStateLabel(BridgeUploadFileState state) => state switch
     {
@@ -62,26 +61,12 @@ internal sealed partial class StorageDialog
         _ => throw new ArgumentOutOfRangeException(nameof(label), label, "Unknown upload file label"),
     };
 
-    // A file's byte text: "6.2 MB of 12.4 MB" while transferring; just the size
-    // otherwise.
-    private static string FileBytesLabel(BridgeUploadFileOp file)
-    {
-        var sourceSize = Loc.Bytes(checked((long)file.SourceBytesTotal));
-        if ((file.State != BridgeUploadFileState.Preparing
-            && file.State != BridgeUploadFileState.Uploading)
-            || file.ProgressBytesTotal == 0)
-        {
-            return sourceSize;
-        }
-        var total = Loc.Bytes(checked((long)file.ProgressBytesTotal));
-        return Loc.Core(
-            "core.outbox.bytes_progress",
-            new Dictionary<string, object?>
-            {
-                ["done"] = Loc.Bytes(checked((long)file.BytesDone)),
-                ["total"] = total,
-            });
-    }
+    // A file's byte text: "Uploading 6.2 MB of 12.4 MB" while a phase counts
+    // its bytes; just the size once it is at rest.
+    private static string FileBytesLabel(BridgeUploadFileOp file) =>
+        file.Bar is null
+            ? Loc.Bytes(checked((long)file.SourceBytesTotal))
+            : UploadProgressPresentation.BarLabel(file.Bar);
 
     private static string DeleteLabel(BridgeDeleteOp delete) =>
         $"{delete.Namespace}/{delete.BlobId} — {Loc.Chrome("outbox.delete.kind")}";

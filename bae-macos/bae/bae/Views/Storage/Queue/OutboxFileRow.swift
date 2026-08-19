@@ -3,9 +3,9 @@ import Foundation
 import SwiftUI
 
 /// One file inside an expanded release row: state icon, name, and — while the
-/// file transfers — a live determinate bar with its byte progress. Completed
-/// files read as a checkmark with their size; a failed file carries its error
-/// as a tooltip and waits for the next retry.
+/// file transfers — a live determinate bar with the byte progress of the phase
+/// it is in. Completed files read as a checkmark with their size; a failed file
+/// carries its error as a tooltip and waits for the next retry.
 struct OutboxFileRow: View {
     let file: BridgeUploadFileOp
 
@@ -21,15 +21,18 @@ struct OutboxFileRow: View {
 
             Spacer()
 
-            ProgressTrackBar(progress: fraction)
+            ProgressTrackBar(progress: file.bar?.fraction ?? 0)
                 .frame(width: 140)
-                .opacity(showsProgress ? 1 : 0)
+                .opacity(file.bar == nil ? 0 : 1)
 
             Text(bytesText)
                 .font(.caption)
                 .monospacedDigit()
+                .lineLimit(1)
                 .foregroundStyle(.tertiary)
-                .frame(width: 130, alignment: .leading)
+                // Wide enough for the phase-named form ("Uploading 6.2 MB of
+                // 12.4 MB"), which is what a transferring file reads as.
+                .frame(width: 190, alignment: .leading)
         }
         .padding(.leading, 44)
         .padding(.trailing)
@@ -79,34 +82,13 @@ struct OutboxFileRow: View {
         return error
     }
 
-    private var fraction: Double {
-        guard file.progressBytesTotal > 0 else { return 0 }
-        precondition(
-            file.bytesDone <= file.progressBytesTotal,
-            "upload file progress cannot exceed its exact total"
-        )
-        return Double(file.bytesDone) / Double(file.progressBytesTotal)
-    }
-
-    private var showsProgress: Bool {
-        (file.state == .preparing || file.state == .uploading)
-            && file.progressBytesTotal > 0
-    }
-
-    /// "6.2 MB of 12.4 MB" while transferring; just the size otherwise.
+    /// "Uploading 6.2 MB of 12.4 MB" while a phase is counting this file's
+    /// bytes — the same numbers the bar beside it fills with. A file at rest
+    /// has no bar and reads as its own size.
     private var bytesText: String {
-        let sourceSize = Int64(file.sourceBytesTotal)
+        file.bar?.text
+            ?? Int64(file.sourceBytesTotal)
             .formatted(.byteCount(style: .file))
-        guard file.state == .preparing || file.state == .uploading,
-            file.progressBytesTotal > 0
-        else { return sourceSize }
-        let total = Int64(file.progressBytesTotal)
-            .formatted(.byteCount(style: .file))
-        return String(
-            format: QueueSummary.message("core.outbox.bytes_progress"),
-            Int64(file.bytesDone).formatted(.byteCount(style: .file)),
-            total
-        )
     }
 }
 

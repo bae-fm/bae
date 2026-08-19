@@ -53,7 +53,6 @@ mod loc_key_coverage {
         "core.outbox.publishing",
         "core.outbox.cancelling",
         "core.outbox.retrying",
-        "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",
         // Device-pairing cancellation has no phase enum because cancellation is
@@ -120,6 +119,17 @@ mod loc_key_coverage {
         // bridge_sheet_refused_codec_key — one key, no variants to walk.
         keys.push(bridge_sheet_refused_codec_key());
         keys.push(bridge_sheet_refused_unreadable_key());
+
+        // bridge_upload_phase_bytes_key — each phase names itself beside the
+        // bar it labels.
+        for phase in [BridgeUploadPhase::Preparing, BridgeUploadPhase::Uploading] {
+            let expected = match phase {
+                BridgeUploadPhase::Preparing => "core.outbox.bytes.preparing",
+                BridgeUploadPhase::Uploading => "core.outbox.bytes.uploading",
+            };
+            assert_eq!(bridge_upload_phase_bytes_key(phase), expected);
+            keys.push(expected.to_string());
+        }
 
         // bridge_file_role_key — every role the scan can propose has a name.
         for role in [

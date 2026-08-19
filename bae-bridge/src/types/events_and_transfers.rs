@@ -89,6 +89,39 @@ pub enum BridgeUploadActivity {
     Uploaded,
 }
 
+/// Which phase's bytes a progress bar counts. Mirror of bae-core's
+/// `UploadPhase`. Preparation reads plaintext source bytes; the provider write
+/// sends encrypted bytes of a different size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadPhase {
+    Preparing,
+    Uploading,
+}
+
+/// One phase-scoped progress bar: bytes done and the exact total, both in
+/// `phase`'s own units. Mirror of bae-core's `UploadBar`. The UI fills the bar
+/// from these two numbers and writes its label from the same two, so fill and
+/// text always count the same thing; `bridge_upload_phase_bytes_key` gives the
+/// label its phase-naming catalog key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeUploadBar {
+    pub phase: BridgeUploadPhase,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+}
+
+/// Localization key for a progress bar's label, which names the phase and
+/// counts its bytes ("Preparing 3 MB of 224.2 MB"). The UI resolves it against
+/// the `Core` table with the bar's own `bytes_done` and `bytes_total`.
+#[uniffi::export]
+pub fn bridge_upload_phase_bytes_key(phase: BridgeUploadPhase) -> String {
+    match phase {
+        BridgeUploadPhase::Preparing => "core.outbox.bytes.preparing",
+        BridgeUploadPhase::Uploading => "core.outbox.bytes.uploading",
+    }
+    .to_string()
+}
+
 /// One file's state in the queue pane's per-file rows. A file inside an
 /// unfinished release transition can render as `Uploaded`, showing that its
 /// provider write finished while other files or publication remain.
@@ -126,12 +159,13 @@ pub struct BridgeDeleteOp {
     pub created_at: i64,
 }
 
-/// Per-state counts, byte progress, and a derived badge `activity`. Used
-/// per-release (the storage-row badge reads `activity`; storage-action gates
-/// read `can_cancel`) and as the overall total (queue counts, ETA, summary band).
-/// Provider-complete files remain counted until publication, so the fraction
-/// stays cumulative over the full durable release transition and across restarts.
-#[derive(Debug, Clone, uniffi::Record)]
+/// Per-state counts, the phase-scoped progress `bar`, and a derived badge
+/// `activity`. Used per-release (the storage-row badge reads `activity`;
+/// storage-action gates read `can_cancel`) and as the overall total (queue
+/// counts, ETA, summary band). Provider-complete files remain counted until
+/// publication, so the slice stays whole over the full durable release
+/// transition and across restarts.
+#[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
     pub preparing: u32,
@@ -141,44 +175,16 @@ pub struct BridgeUploadProgress {
     pub uploaded: u32,
     pub publishing: u32,
     pub cancelling: u32,
-    pub preparation_bytes_done: u64,
-    pub preparation_bytes_total: u64,
-    pub upload_bytes_done: u64,
-    pub upload_bytes_total: u64,
-    /// Whether the provider-byte total covers every upload in this slice.
-    pub upload_bytes_total_complete: bool,
-    pub work_done: u64,
-    pub work_total: u64,
+    /// The bar this slice draws, counting one phase's bytes against that
+    /// phase's exact total. `None` while there are no bytes to count — a
+    /// release down to its make-Remote transition, or one being cancelled.
+    pub bar: Option<BridgeUploadBar>,
     /// The badge activity for this slice; `None` when idle. Per-release entries
     /// always belong to an unfinished transition, so theirs is always set.
     pub activity: Option<BridgeUploadActivity>,
     /// Whether coven can still unwind this transition. False after publication
     /// begins and while cancellation is already in progress.
     pub can_cancel: bool,
-}
-
-impl Default for BridgeUploadProgress {
-    fn default() -> Self {
-        Self {
-            queued: 0,
-            preparing: 0,
-            prepared: 0,
-            uploading: 0,
-            retrying: 0,
-            uploaded: 0,
-            publishing: 0,
-            cancelling: 0,
-            preparation_bytes_done: 0,
-            preparation_bytes_total: 0,
-            upload_bytes_done: 0,
-            upload_bytes_total: 0,
-            upload_bytes_total_complete: true,
-            work_done: 0,
-            work_total: 0,
-            activity: None,
-            can_cancel: false,
-        }
-    }
 }
 
 /// A queued download's state.
@@ -430,16 +436,15 @@ pub struct BridgeOutputSnapshot {
 
 /// One file in a release's upload group: what the queue pane's per-file rows
 /// render. Mirror of bae-core's `UploadFileOp`, with the state flattened into
-/// `state` + progress fields + `last_error` so the UI doesn't switch on
-/// associated data. `source_bytes_total` is the displayed local file size;
-/// `progress_bytes_total` is the exact denominator of the active preparation
-/// or provider-transfer phase.
+/// `state` + `bar` + `last_error` so the UI doesn't switch on associated data.
+/// `source_bytes_total` is the displayed local file size; `bar` is present only
+/// while this file is moving bytes, and then counts the phase it is moving them
+/// in.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
     pub file_id: String,
     pub label: BridgeUploadFileLabel,
-    pub bytes_done: u64,
-    pub progress_bytes_total: u64,
+    pub bar: Option<BridgeUploadBar>,
     pub source_bytes_total: u64,
     pub state: BridgeUploadFileState,
     pub last_error: Option<String>,
@@ -482,8 +487,8 @@ pub struct BridgeOutboxSnapshot {
     /// Per-release aggregate derived from `upload_groups`, keyed by release id.
     /// Releases with no unfinished make-Remote transition are absent.
     pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
-    /// Sum across all uploads. `work_done/work_total` is the two-stage progress
-    /// bar; preparation and provider byte counters remain separate.
+    /// Sum across all uploads: the queue counts and the queue-wide progress
+    /// bar.
     pub total: BridgeUploadProgress,
     /// Derived from `deletes.len()`.
     pub pending_deletes: u32,

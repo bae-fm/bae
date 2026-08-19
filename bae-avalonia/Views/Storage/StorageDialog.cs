@@ -467,15 +467,16 @@ internal sealed partial class StorageDialog
             band.Children.Add(pause);
             outboxPanel.Children.Add(band);
 
-            // Master progress strip: the complete preparation + provider pipeline.
-            // The caption keeps each stage's byte units separate.
-            if (snapshot.Total.WorkTotal > 0)
+            // Master progress strip: the phase the queue is in, filling with
+            // that phase's own bytes. The caption names the phase and counts
+            // the same bytes.
+            if (snapshot.Total.Bar is { } totalBar)
             {
                 outboxPanel.Children.Add(new ProgressBar
                 {
                     Minimum = 0,
-                    Maximum = checked((long)snapshot.Total.WorkTotal),
-                    Value = checked((long)snapshot.Total.WorkDone),
+                    Maximum = checked((long)totalBar.BytesTotal),
+                    Value = checked((long)totalBar.BytesDone),
                     Opacity = fullyPaused ? 0.4 : 1.0,
                 });
                 var detail = new List<string>();
@@ -533,13 +534,13 @@ internal sealed partial class StorageDialog
                 titleLine.Children.Add(Secondary(UploadBadgeLabel(group.Progress)));
                 var header = new StackPanel { Spacing = 2 };
                 header.Children.Add(titleLine);
-                if (group.Progress.WorkTotal > 0)
+                if (group.Progress.Bar is { } groupBar)
                 {
                     header.Children.Add(new ProgressBar
                     {
                         Minimum = 0,
-                        Maximum = checked((long)group.Progress.WorkTotal),
-                        Value = checked((long)group.Progress.WorkDone),
+                        Maximum = checked((long)groupBar.BytesTotal),
+                        Value = checked((long)groupBar.BytesDone),
                     });
                 }
 
@@ -549,15 +550,13 @@ internal sealed partial class StorageDialog
                     var fileGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
                     var fileColumn = new StackPanel { Spacing = 2 };
                     fileColumn.Children.Add(Primary($"{UploadFileLabel(file.Label)} · {FileBytesLabel(file)}"));
-                    if ((file.State == BridgeUploadFileState.Preparing
-                        || file.State == BridgeUploadFileState.Uploading)
-                        && file.ProgressBytesTotal > 0)
+                    if (file.Bar is { } fileBar)
                     {
                         fileColumn.Children.Add(new ProgressBar
                         {
                             Minimum = 0,
-                            Maximum = checked((long)file.ProgressBytesTotal),
-                            Value = checked((long)file.BytesDone),
+                            Maximum = checked((long)fileBar.BytesTotal),
+                            Value = checked((long)fileBar.BytesDone),
                         });
                     }
                     Grid.SetColumn(fileColumn, 0);

@@ -168,13 +168,7 @@ public class OutboxStore {
                 uploaded: 0,
                 publishing: 0,
                 cancelling: 0,
-                preparationBytesDone: 0,
-                preparationBytesTotal: 0,
-                uploadBytesDone: 0,
-                uploadBytesTotal: 0,
-                uploadBytesTotalComplete: true,
-                workDone: 0,
-                workTotal: 0,
+                bar: nil,
                 activity: nil,
                 canCancel: false,
             ),
@@ -193,8 +187,8 @@ public enum UploadObservation: Equatable {
     case finished
 
     /// The retained queue state rendered by Import after its local commit has
-    /// finished. Active work names the dominant phase and, while bytes are
-    /// moving, the exact stage numerator and denominator.
+    /// finished. Active work names the dominant phase and, while a phase is
+    /// counting bytes, that phase's own numerator and denominator.
     public var statusText: String? {
         switch self {
         case .awaiting:
@@ -205,7 +199,7 @@ public enum UploadObservation: Equatable {
                     "an active cloud upload has no projected activity"
                 )
             }
-            return [phase, progress.stageBytesText]
+            return [phase, progress.bar?.text]
                 .compactMap { $0 }
                 .joined(separator: " \u{00B7} ")
         case .finished:
@@ -224,15 +218,15 @@ public enum UploadObservation: Equatable {
         return statusText
     }
 
-    /// Whether the row has no cloud transition, has work whose denominator is
-    /// not available yet, or has exact two-stage progress.
+    /// Whether the row has no cloud transition, has work with no phase counting
+    /// bytes for it yet, or has exact progress through the phase it is in.
     public var progressBar: CloudTransitionProgress? {
         switch self {
         case .awaiting:
             return .indeterminate
         case .active(let progress):
-            return progress.workTotal > 0
-                ? .determinate(progress.fraction) : .indeterminate
+            return progress.bar.map { .determinate($0.fraction) }
+                ?? .indeterminate
         case .finished:
             return nil
         }
@@ -277,8 +271,8 @@ public enum StorageUploadObservation: Equatable {
         case .queueing, .awaiting:
             return .indeterminate
         case .active(let progress):
-            return progress.workTotal > 0
-                ? .determinate(progress.fraction) : .indeterminate
+            return progress.bar.map { .determinate($0.fraction) }
+                ?? .indeterminate
         }
     }
 }

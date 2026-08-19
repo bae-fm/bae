@@ -87,6 +87,73 @@ pub enum UploadState {
     },
 }
 
+/// Which phase's bytes a progress bar counts. Preparation reads plaintext
+/// source bytes; the provider write sends encrypted bytes of a different size.
+/// The two are different quantities for the same file, so a bar counts one or
+/// the other and says which — never a blend of both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UploadPhase {
+    Preparing,
+    Uploading,
+}
+
+/// One phase-scoped progress bar: how far this slice has come through `phase`,
+/// in that phase's own byte units, against that phase's exact denominator. The
+/// label beside the bar counts these same two numbers, so its fill and its text
+/// can never disagree about what is being measured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UploadBar {
+    pub phase: UploadPhase,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+}
+
+impl UploadBar {
+    fn new(phase: UploadPhase, bytes_done: u64, bytes_total: u64) -> Self {
+        assert!(
+            bytes_done <= bytes_total,
+            "upload progress cannot exceed its exact total"
+        );
+        Self {
+            phase,
+            bytes_done,
+            bytes_total,
+        }
+    }
+}
+
+impl UploadState {
+    /// The file row's bar, present only while this file is moving bytes right
+    /// now. A queued, prepared, retrying, or finished file renders its state and
+    /// its size instead: a bar there would draw motion that is not happening.
+    pub fn bar(&self) -> Option<UploadBar> {
+        match self {
+            Self::Preparing {
+                bytes_done,
+                bytes_total,
+            } => Some(UploadBar::new(
+                UploadPhase::Preparing,
+                *bytes_done,
+                *bytes_total,
+            )),
+            Self::Uploading {
+                bytes_done,
+                bytes_total,
+            } => Some(UploadBar::new(
+                UploadPhase::Uploading,
+                *bytes_done,
+                *bytes_total,
+            )),
+            Self::Queued
+            | Self::Prepared { .. }
+            | Self::RetryingPreparation { .. }
+            | Self::RetryingUpload { .. }
+            | Self::RetryingPublication { .. }
+            | Self::Uploaded { .. } => None,
+        }
+    }
+}
+
 /// Buffer-cadence facts that are true only while this process performs work.
 /// Coven's durable upload phase remains the restart truth.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,9 +201,10 @@ pub enum UploadActivity {
     Uploaded,
 }
 
-/// Upload progress as the UI renders it: per-phase counts, each I/O stage's
-/// native byte units, and one two-stage work fraction for progress bars. Serves
-/// both a release and the whole queue.
+/// Upload progress as the UI renders it: per-phase counts plus each I/O stage's
+/// native byte units. Serves both a release and the whole queue. The bar the UI
+/// draws comes from [`UploadProgress::bar`], which picks one phase and counts
+/// only that phase's bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadProgress {
     pub queued: u32,
@@ -154,9 +222,6 @@ pub struct UploadProgress {
     /// Whether `upload_bytes_total` covers every upload in this slice. Provider
     /// byte sizes become exact only after preparation finishes.
     pub upload_bytes_total_complete: bool,
-    /// Two-stage work: source preparation plus provider upload.
-    pub work_done: u64,
-    pub work_total: u64,
 }
 
 impl Default for UploadProgress {
@@ -175,23 +240,37 @@ impl Default for UploadProgress {
             upload_bytes_done: 0,
             upload_bytes_total: 0,
             upload_bytes_total_complete: true,
-            work_done: 0,
-            work_total: 0,
         }
     }
 }
 
 impl UploadProgress {
-    fn scaled_stage_work(done: u64, total: u64, weight: u64) -> u64 {
-        assert!(
-            done <= total,
-            "upload progress cannot exceed its exact total"
-        );
-        if total == 0 {
-            return 0;
+    /// The bar this slice draws. A slice counts source bytes until every one of
+    /// its uploads has an exact provider denominator; only then can a bar count
+    /// provider bytes without substituting source size for an unknown total. So
+    /// preparation fills 0→100% in source bytes, then upload fills 0→100% in
+    /// provider bytes.
+    ///
+    /// `None` when there are no upload rows to count (a group down to its
+    /// make-Remote transition) and while cancelling unwinds them — the bytes
+    /// that phase counted are being discarded.
+    pub fn bar(&self) -> Option<UploadBar> {
+        if self.preparation_bytes_total == 0 || self.cancelling > 0 {
+            return None;
         }
-        let scaled = u128::from(done) * u128::from(weight) / u128::from(total);
-        u64::try_from(scaled).expect("scaled upload work fits its source-byte weight")
+        Some(if self.upload_bytes_total_complete {
+            UploadBar::new(
+                UploadPhase::Uploading,
+                self.upload_bytes_done,
+                self.upload_bytes_total,
+            )
+        } else {
+            UploadBar::new(
+                UploadPhase::Preparing,
+                self.preparation_bytes_done,
+                self.preparation_bytes_total,
+            )
+        })
     }
 
     /// True while this slice still belongs to an unfinished make-Remote
@@ -245,10 +324,6 @@ impl UploadProgress {
             .preparation_bytes_total
             .checked_add(bytes_total)
             .expect("upload byte total overflow");
-        self.work_total = self
-            .work_total
-            .checked_add(bytes_total.checked_mul(2).expect("upload work overflow"))
-            .expect("upload work total overflow");
         match state {
             UploadState::Queued => {
                 self.queued = self.queued.checked_add(1).expect("upload count overflow");
@@ -274,10 +349,6 @@ impl UploadProgress {
                     .preparation_bytes_done
                     .checked_add(*bytes_done)
                     .expect("preparation byte progress overflow");
-                self.work_done = self
-                    .work_done
-                    .checked_add(*bytes_done)
-                    .expect("upload work progress overflow");
                 self.upload_bytes_total_complete = false;
             }
             UploadState::Prepared {
@@ -292,10 +363,6 @@ impl UploadProgress {
                     .upload_bytes_total
                     .checked_add(*upload_total)
                     .expect("provider byte total overflow");
-                self.work_done = self
-                    .work_done
-                    .checked_add(bytes_total)
-                    .expect("upload work progress overflow");
             }
             UploadState::Uploading {
                 bytes_done,
@@ -321,17 +388,6 @@ impl UploadProgress {
                     .upload_bytes_total
                     .checked_add(*upload_total)
                     .expect("provider byte total overflow");
-                let completed_work = bytes_total
-                    .checked_add(Self::scaled_stage_work(
-                        *bytes_done,
-                        *upload_total,
-                        bytes_total,
-                    ))
-                    .expect("upload work progress overflow");
-                self.work_done = self
-                    .work_done
-                    .checked_add(completed_work)
-                    .expect("upload work progress overflow");
             }
             UploadState::RetryingPreparation { .. } => {
                 self.retrying = self
@@ -356,10 +412,6 @@ impl UploadProgress {
                     .upload_bytes_total
                     .checked_add(*upload_total)
                     .expect("provider byte total overflow");
-                self.work_done = self
-                    .work_done
-                    .checked_add(bytes_total)
-                    .expect("upload work progress overflow");
             }
             UploadState::RetryingPublication {
                 bytes_total: upload_total,
@@ -381,10 +433,6 @@ impl UploadProgress {
                     .upload_bytes_total
                     .checked_add(*upload_total)
                     .expect("provider byte total overflow");
-                self.work_done = self
-                    .work_done
-                    .checked_add(bytes_total.checked_mul(2).expect("upload work overflow"))
-                    .expect("upload work progress overflow");
             }
             UploadState::Uploaded {
                 bytes_total: upload_total,
@@ -402,10 +450,6 @@ impl UploadProgress {
                     .upload_bytes_total
                     .checked_add(*upload_total)
                     .expect("provider byte total overflow");
-                self.work_done = self
-                    .work_done
-                    .checked_add(bytes_total.checked_mul(2).expect("upload work overflow"))
-                    .expect("upload work progress overflow");
             }
         }
     }
@@ -460,14 +504,6 @@ impl UploadProgress {
             .checked_add(progress.upload_bytes_total)
             .expect("provider byte total overflow");
         self.upload_bytes_total_complete &= progress.upload_bytes_total_complete;
-        self.work_done = self
-            .work_done
-            .checked_add(progress.work_done)
-            .expect("upload work progress overflow");
-        self.work_total = self
-            .work_total
-            .checked_add(progress.work_total)
-            .expect("upload work total overflow");
     }
 }
 

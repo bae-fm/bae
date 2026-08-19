@@ -149,8 +149,7 @@
             BridgeUploadFileOp(
                 fileId: "f-1",
                 label: .cover,
-                bytesDone: 24_100_000,
-                progressBytesTotal: 24_100_000,
+                bar: nil,
                 sourceBytesTotal: 24_000_000,
                 state: .uploaded,
                 lastError: nil
@@ -158,8 +157,11 @@
             BridgeUploadFileOp(
                 fileId: "f-2",
                 label: .filename(name: "02 Track Title.flac"),
-                bytesDone: 10_000_000,
-                progressBytesTotal: 31_000_000,
+                bar: BridgeUploadBar(
+                    phase: .preparing,
+                    bytesDone: 10_000_000,
+                    bytesTotal: 31_000_000
+                ),
                 sourceBytesTotal: 31_000_000,
                 state: .preparing,
                 lastError: nil
@@ -167,8 +169,7 @@
             BridgeUploadFileOp(
                 fileId: "f-3",
                 label: .filename(name: "03 Track Title.flac"),
-                bytesDone: 28_000_000,
-                progressBytesTotal: 28_000_000,
+                bar: nil,
                 sourceBytesTotal: 28_000_000,
                 state: .prepared,
                 lastError: nil
@@ -176,8 +177,11 @@
             BridgeUploadFileOp(
                 fileId: "f-4",
                 label: .filename(name: "04 Track Title.flac"),
-                bytesDone: 12_400_000,
-                progressBytesTotal: 26_100_000,
+                bar: BridgeUploadBar(
+                    phase: .uploading,
+                    bytesDone: 12_400_000,
+                    bytesTotal: 26_100_000
+                ),
                 sourceBytesTotal: 26_000_000,
                 state: .uploading,
                 lastError: nil
@@ -185,8 +189,7 @@
             BridgeUploadFileOp(
                 fileId: "f-5",
                 label: .filename(name: "05 Track Title.flac"),
-                bytesDone: 0,
-                progressBytesTotal: 22_000_000,
+                bar: nil,
                 sourceBytesTotal: 22_000_000,
                 state: .retrying,
                 lastError: "Upload timed out; will retry."
@@ -194,8 +197,7 @@
             BridgeUploadFileOp(
                 fileId: "f-6",
                 label: .filename(name: "06 Track Title.flac"),
-                bytesDone: 0,
-                progressBytesTotal: 0,
+                bar: nil,
                 sourceBytesTotal: 18_000_000,
                 state: .queued,
                 lastError: nil
@@ -214,13 +216,11 @@
                 uploaded: 1,
                 publishing: 0,
                 cancelling: 0,
-                preparationBytesDone: 93_000_000,
-                preparationBytesTotal: 149_000_000,
-                uploadBytesDone: 36_500_000,
-                uploadBytesTotal: 50_200_000,
-                uploadBytesTotalComplete: false,
-                workDone: 105_000_000,
-                workTotal: 298_000_000,
+                bar: BridgeUploadBar(
+                    phase: .preparing,
+                    bytesDone: 93_000_000,
+                    bytesTotal: 149_000_000
+                ),
                 activity: activity,
                 canCancel: true
             )
@@ -241,8 +241,7 @@
                 BridgeUploadFileOp(
                     fileId: "g-1",
                     label: .filename(name: "01 Track Title.flac"),
-                    bytesDone: 18_100_000,
-                    progressBytesTotal: 18_100_000,
+                    bar: nil,
                     sourceBytesTotal: 18_000_000,
                     state: .uploaded,
                     lastError: nil
@@ -257,13 +256,11 @@
                 uploaded: 1,
                 publishing: 1,
                 cancelling: 0,
-                preparationBytesDone: 18_000_000,
-                preparationBytesTotal: 18_000_000,
-                uploadBytesDone: 18_100_000,
-                uploadBytesTotal: 18_100_000,
-                uploadBytesTotalComplete: true,
-                workDone: 36_000_000,
-                workTotal: 36_000_000,
+                bar: BridgeUploadBar(
+                    phase: .uploading,
+                    bytesDone: 18_100_000,
+                    bytesTotal: 18_100_000
+                ),
                 activity: .publishing,
                 canCancel: false
             )
@@ -308,13 +305,11 @@
                     uploaded: 2,
                     publishing: 1,
                     cancelling: 0,
-                    preparationBytesDone: 111_000_000,
-                    preparationBytesTotal: 167_000_000,
-                    uploadBytesDone: 54_600_000,
-                    uploadBytesTotal: 68_300_000,
-                    uploadBytesTotalComplete: false,
-                    workDone: 141_000_000,
-                    workTotal: 334_000_000,
+                    bar: BridgeUploadBar(
+                        phase: .preparing,
+                        bytesDone: 111_000_000,
+                        bytesTotal: 167_000_000
+                    ),
                     activity: .uploading,
                     canCancel: false
                 ),

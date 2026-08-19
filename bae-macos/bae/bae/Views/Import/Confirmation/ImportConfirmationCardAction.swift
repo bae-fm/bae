@@ -76,14 +76,12 @@ struct ImportConfirmationCardAction: View {
                     VStack(alignment: .trailing, spacing: 4) {
                         UploadActivityLabel(progress: progress)
                             .font(.callout)
-                        if let stageBytesText = progress.stageBytesText {
-                            Text(stageBytesText)
+                        if let bar = progress.bar {
+                            Text(bar.text)
                                 .font(.caption)
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
-                        }
-                        if progress.workTotal > 0 {
-                            ProgressTrackBar(progress: progress.fraction)
+                            ProgressTrackBar(progress: bar.fraction)
                                 .frame(width: 160)
                         }
                     }

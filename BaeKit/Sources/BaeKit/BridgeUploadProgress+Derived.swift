@@ -18,36 +18,29 @@ extension BridgeUploadProgress {
             }
         return QueueSummary.countLabel(key, count)
     }
+}
 
-    /// Source-preparation + provider-upload work as a 0...1 fraction.
+extension BridgeUploadBar {
+    /// How far through its phase this bar has come, as a 0...1 fraction.
     public var fraction: Double {
-        guard workTotal > 0 else { return 0 }
+        guard bytesTotal > 0 else { return 0 }
         precondition(
-            workDone <= workTotal,
-            "cloud upload work cannot exceed its exact total"
+            bytesDone <= bytesTotal,
+            "cloud upload progress cannot exceed its exact total"
         )
-        return Double(workDone) / Double(workTotal)
+        return Double(bytesDone) / Double(bytesTotal)
     }
 
-    /// Exact byte progress for the dominant active stage. Preparation measures
-    /// plaintext consumed; upload measures encrypted bytes sent.
-    public var stageBytesText: String? {
-        let values: (UInt64, UInt64)? =
-            switch activity {
-            case .preparing:
-                (preparationBytesDone, preparationBytesTotal)
-            case .uploading:
-                uploadBytesTotalComplete
-                    ? (uploadBytesDone, uploadBytesTotal)
-                    : nil
-            default:
-                nil
-            }
-        guard let (done, total) = values, total > 0 else { return nil }
-        return String(
-            format: QueueSummary.message("core.outbox.bytes_progress"),
-            Int64(done).formatted(.byteCount(style: .file)),
-            Int64(total).formatted(.byteCount(style: .file))
+    /// "Uploading 3 MB of 221.2 MB": the phase this bar counts, then the exact
+    /// bytes it counts them in. Reading the numbers off the bar itself is what
+    /// keeps the text and the fill measuring the same thing.
+    public var text: String {
+        String(
+            format: QueueSummary.message(
+                bridgeUploadPhaseBytesKey(phase: phase)
+            ),
+            Int64(bytesDone).formatted(.byteCount(style: .file)),
+            Int64(bytesTotal).formatted(.byteCount(style: .file))
         )
     }
 }

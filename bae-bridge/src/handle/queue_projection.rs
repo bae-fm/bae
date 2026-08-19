@@ -45,7 +45,7 @@ impl crate::types::BridgeUploadReleaseGroup {
 }
 
 impl crate::types::BridgeUploadFileOp {
-    /// Flatten core's per-file `UploadState` into `state` + `bytes_done` +
+    /// Flatten core's per-file `UploadState` into `state` + `bar` +
     /// `last_error`, so the UI reads plain fields instead of switching on
     /// associated data.
     pub(super) fn from_core(f: bae_core::library::UploadFileOp) -> Self {
@@ -56,71 +56,51 @@ impl crate::types::BridgeUploadFileOp {
             source_bytes_total,
             state,
         } = f;
-        let (state, bytes_done, progress_bytes_total, last_error) = match state {
-            UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, 0, 0, None),
-            UploadState::Preparing {
-                bytes_done,
-                bytes_total,
-            } => (
-                crate::types::BridgeUploadFileState::Preparing,
-                bytes_done,
-                bytes_total,
-                None,
-            ),
-            UploadState::Prepared { bytes_total } => (
-                crate::types::BridgeUploadFileState::Prepared,
-                0,
-                bytes_total,
-                None,
-            ),
-            UploadState::Uploading {
-                bytes_done,
-                bytes_total,
-            } => (
-                crate::types::BridgeUploadFileState::Uploading,
-                bytes_done,
-                bytes_total,
-                None,
-            ),
-            UploadState::RetryingPreparation { last_error } => (
+        let bar = state.bar().map(crate::types::BridgeUploadBar::from_core);
+        let (state, last_error) = match state {
+            UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, None),
+            UploadState::Preparing { .. } => (crate::types::BridgeUploadFileState::Preparing, None),
+            UploadState::Prepared { .. } => (crate::types::BridgeUploadFileState::Prepared, None),
+            UploadState::Uploading { .. } => (crate::types::BridgeUploadFileState::Uploading, None),
+            UploadState::RetryingPreparation { last_error }
+            | UploadState::RetryingUpload { last_error, .. }
+            | UploadState::RetryingPublication { last_error, .. } => (
                 crate::types::BridgeUploadFileState::Retrying,
-                0,
-                source_bytes_total,
                 Some(last_error),
             ),
-            UploadState::RetryingUpload {
-                last_error,
-                bytes_total,
-            } => (
-                crate::types::BridgeUploadFileState::Retrying,
-                0,
-                bytes_total,
-                Some(last_error),
-            ),
-            UploadState::RetryingPublication {
-                last_error,
-                bytes_total,
-            } => (
-                crate::types::BridgeUploadFileState::Retrying,
-                bytes_total,
-                bytes_total,
-                Some(last_error),
-            ),
-            UploadState::Uploaded { bytes_total } => (
-                crate::types::BridgeUploadFileState::Uploaded,
-                bytes_total,
-                bytes_total,
-                None,
-            ),
+            UploadState::Uploaded { .. } => (crate::types::BridgeUploadFileState::Uploaded, None),
         };
         Self {
             file_id,
             label: crate::types::BridgeUploadFileLabel::from_core(label),
-            bytes_done,
-            progress_bytes_total,
+            bar,
             source_bytes_total,
             state,
             last_error,
+        }
+    }
+}
+
+impl crate::types::BridgeUploadBar {
+    fn from_core(bar: bae_core::library::UploadBar) -> Self {
+        let bae_core::library::UploadBar {
+            phase,
+            bytes_done,
+            bytes_total,
+        } = bar;
+        Self {
+            phase: crate::types::BridgeUploadPhase::from_core(phase),
+            bytes_done,
+            bytes_total,
+        }
+    }
+}
+
+impl crate::types::BridgeUploadPhase {
+    fn from_core(phase: bae_core::library::UploadPhase) -> Self {
+        match phase {
+            bae_core::library::UploadPhase::Preparing => Self::Preparing,
+            bae_core::library::UploadPhase::Uploading => Self::Uploading,
         }
     }
 }
@@ -218,6 +198,7 @@ impl crate::types::BridgeUploadProgress {
             .activity()
             .map(crate::types::BridgeUploadActivity::from_core);
         let can_cancel = p.can_cancel();
+        let bar = p.bar().map(crate::types::BridgeUploadBar::from_core);
         let bae_core::library::UploadProgress {
             queued,
             preparing,
@@ -227,13 +208,13 @@ impl crate::types::BridgeUploadProgress {
             uploaded,
             publishing,
             cancelling,
-            preparation_bytes_done,
-            preparation_bytes_total,
-            upload_bytes_done,
-            upload_bytes_total,
-            upload_bytes_total_complete,
-            work_done,
-            work_total,
+            preparation_bytes_done: _,
+            preparation_bytes_total: _,
+            upload_bytes_done: _,
+            upload_bytes_total: _,
+            // The phase-scoped `bar` is what the UI draws and labels; the raw
+            // per-phase byte sums it derives from stay in core.
+            upload_bytes_total_complete: _,
         } = p;
         crate::types::BridgeUploadProgress {
             queued,
@@ -244,13 +225,7 @@ impl crate::types::BridgeUploadProgress {
             uploaded,
             publishing,
             cancelling,
-            preparation_bytes_done,
-            preparation_bytes_total,
-            upload_bytes_done,
-            upload_bytes_total,
-            upload_bytes_total_complete,
-            work_done,
-            work_total,
+            bar,
             activity,
             can_cancel,
         }

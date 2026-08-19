@@ -456,7 +456,7 @@ internal sealed partial class ImportSectionView
                         new[]
                         {
                         UploadProgressPresentation.ActivityLabel(active.Progress),
-                        UploadProgressPresentation.StageBytesLabel(active.Progress),
+                        UploadProgressPresentation.BarLabel(active.Progress.Bar),
                         }.Where(part => part.Length > 0)),
                     ImportUploadObservation.Finished => MetadataLine(row),
                     _ => throw new InvalidOperationException(
@@ -474,7 +474,7 @@ internal sealed partial class ImportSectionView
         {
             ImportUploadObservation.Awaiting => null,
             ImportUploadObservation.Active active =>
-                UploadProgressPresentation.WorkFraction(active.Progress),
+                UploadProgressPresentation.BarFraction(active.Progress.Bar),
             _ => throw new InvalidOperationException(
                 "a finished import has no upload progress bar"),
         };
