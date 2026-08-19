@@ -333,3 +333,24 @@ Emulator specifics: adb `input text` DOES take the full 324-char pairing
 code (tap field first; parse renders Library/Provider rows when it lands).
 Join button with keyboard up: (540,1318). Mac "Copy code": lclick -1203 521;
 Approve: lclick -1164 464 (window at -1453,21,500,688).
+
+## Agents in flight (2026-08-20 ~00:20Z refresh)
+
+- coven-2c (peer session, tmux): 3 branches — (1) device-join bootstrap
+  materializes uncovered package commits [blocks pairing], (2) publication
+  stops full-GET-verifying own blobs [branch-5 territory], (3) coven-keys
+  types errSecInteractionNotAllowed (-25308) as transient-refusal KeyError.
+  Merges: they push, I rebase + --ff-only, then bump bae's coven pin.
+- product-engineer (background): serial branches `probe-error-surfacing`
+  (SyncSetupWizard error+Connect pinned outside scroller via
+  ErrorDetailDisclosure; Avalonia syncStatus adjacent to connect) and
+  `boot-failure-surfacing` (no stuck .loading, keyring-init failure still
+  discovers, WelcomeChooseView surfaces section-load failures, KeychainService
+  refusal ≠ absent, NativeBae.Init preserves category/detail). Audit each
+  with code-review-auditor before merge.
+- Parked for after coven pin bump (PR C): typed keychain-refusal end-to-end —
+  bae BootstrapError arm + bridge category, opener refused-vs-absent outcome,
+  UnlockView copy, screen-unlock/wake re-check observers.
+- Post-fix measurements queued: Burning Spear b0bcf324 (95MB, local) is the
+  clean publish sample; emulator re-join (Member 14b484e6 exists — trash +
+  re-pair if the joiner journal won't resume) then initial-pull timing.
