@@ -292,3 +292,44 @@ write-transaction closure check (bcc08465), acknowledge-on-change
    commits appended (target 0), DB size + retained bytes/row (target
    single-digit MB / ~7KB flat), publish total (target ~1-2s at limit 8),
    phone/emulator pull times.
+
+## Pairing + publication findings (2026-08-19 ~23:30Z)
+
+Live library: rollin-kendrick (faea0b82), prefix `bae-poppin-nina-db448je`
+(user-typed; NOT bae-redesign-0819 — that prefix holds only a probe file).
+7 releases imported via scripted MCP batch; 5 moved to cloud unpinned.
+
+**Defect 1 — device join impossible between snapshots (blocks pairing).**
+Emulator pairing choreography works end to end (copy code → adb inject →
+Join → fingerprints matched 14b484e6 → mac approved, device now listed as
+Member) but bootstrap install fails loud on the joiner:
+`device join bootstrap cannot advance over unmaterialized row data at
+306d7293…/2`. Cause: install_device_join_bootstrap installs plan commits
+bare (verify(..., None, &[], None)); guard refuses package-bearing commits
+not covered by a snapshot; only snapshot is generation 0 with coverage {}
+(cadence: 100 changesets / 24h). Every join between snapshots fails.
+Fix (briefed to coven-2c, priority over branches 3-6): plan builder fetches
+packages for uncovered commits, install materializes rows for real via the
+verify call's existing packages/package_application slots.
+Emulator state: half-joined — Member on the store, no local materialized
+store, joiner journal holds the attempt. After fix: retry Join; if the app
+won't resume the attempt, trash the Member row on mac and re-pair.
+
+**Defect 2 — publication re-downloads every referenced blob.**
+"publish packages" stage: 13 blobs → 15.0s, 24 → 11.1s, 33 → 20.5s, while
+creating ONE ~74KB package object. publish_prepared_remote_object RowBlob
+arm calls verify_blob_object per blob = full GET + rehash of the encrypted
+blob it just uploaded (~200-500MB re-downloaded per publication). Fix
+(briefed to coven-2c, branch-5 territory): trust the durable Created record
+for own uploads (HEAD at most); full-content verify only for foreign
+objects, once, behind durable verified-objects. Snapshot publication has
+the same disease (publish_store verify_blob_object per snapshot blob).
+This answers the user's "publishing still seems to take quite a while".
+
+Residue cleaned: live_probe_diagnostic module removed from coven
+s3.rs; coven tree clean on main = 2b9d9261.
+
+Emulator specifics: adb `input text` DOES take the full 324-char pairing
+code (tap field first; parse renders Library/Provider rows when it lands).
+Join button with keyboard up: (540,1318). Mac "Copy code": lclick -1203 521;
+Approve: lclick -1164 464 (window at -1453,21,500,688).
