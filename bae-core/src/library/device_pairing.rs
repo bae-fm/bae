@@ -200,10 +200,15 @@ impl DevicePairingSession {
             }
         }
         self.approval_state_changed.notify_waiters();
-        let outcome = result?;
+        let outcome = result.inspect_err(|error| {
+            tracing::error!(?error, "device pairing approval failed");
+        })?;
         match outcome {
             coven::DeviceJoinDriveOutcome::Activated(_) => Ok(()),
-            coven::DeviceJoinDriveOutcome::Abandoned(_) => Err(LibraryError::DeviceJoinAbandoned),
+            coven::DeviceJoinDriveOutcome::Abandoned(abandonment) => {
+                tracing::error!(?abandonment, "device join abandoned by the joining device");
+                Err(LibraryError::DeviceJoinAbandoned)
+            }
         }
     }
 
