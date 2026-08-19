@@ -6,13 +6,6 @@ impl Automation {
         Self { services, state }
     }
 
-    pub fn status(&self) -> AutomationStatus {
-        AutomationStatus {
-            config: self.config_get(),
-            candidate_count: self.state.candidate_count(),
-        }
-    }
-
     pub fn config_get(&self) -> AutomationConfig {
         let config = self.services.get_config();
         AutomationConfig {

@@ -63,11 +63,6 @@ impl AutomationState {
         self.candidates.borrow().watched_folders.clone()
     }
 
-    fn candidate_count(&self) -> usize {
-        let snapshot = self.candidates.borrow();
-        snapshot.folder_candidates.len() + snapshot.invalid_candidates.len()
-    }
-
     fn list_candidates(&self) -> Vec<AutomationCandidate> {
         automation_candidates(&self.candidates.borrow())
     }

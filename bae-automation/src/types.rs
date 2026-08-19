@@ -28,14 +28,6 @@ impl From<McpConfig> for AutomationMcpConfig {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationStatus {
-    pub config: AutomationConfig,
-    /// Candidates the import service is currently publishing. Read from its
-    /// snapshot, so it needs no indexing state to qualify it.
-    pub candidate_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub struct AutomationWatchedFolder {
     pub path: String,
     pub name: String,
