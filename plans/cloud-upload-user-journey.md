@@ -30,29 +30,37 @@
 
 ### Remaining evidence and work
 
-- Run one provider-backed release through the Storage Manager entrypoint. The
-  import entrypoint ran live against S3 (GCS): Nebraska, 9 files, 224.2 MB,
-  Queued → Preparing → Uploading → Uploaded → Publishing → Cloud, exact
-  221.2 MB provider denominator on the FLAC, publication landed on the next
-  sync cycle (the ~30 s idle cadence bounds its latency).
-- Findings from the live import run, each needing a fix at its owning layer:
-  - The queue header and per-file bars are the two-stage work bar (completed
-    preparation fills half), but their labels count provider bytes only
-    ("3 MB of 224.2 MB" under a half-full bar). Bar and label must speak the
-    same units.
-  - The large FLAC sat at "Zero kB of 221.2 MB" while smaller files uploaded;
-    provider byte samples appeared only after the first chunk acked.
-  - Import's "Measuring loudness" step does not advance the side panel's
-    progress.
-- Exercise provider failure, retry, pause, resume, cancellation, and app restart
-  against durable queue rows. Fix any phase, action, or progress disagreement
-  with a failing test at its owning layer.
-- Verify aggregate throughput and estimated completion start only when every
-  provider denominator is known, reset after the active batch ends, and never
-  reuse preparation bytes as provider bytes.
-- Verify terminal publication removes the outbox release without a Local-state
-  flash on the import row, release row, album details, Storage Manager, or queue
-  panel.
+- VERIFIED LIVE — Storage Manager entrypoint, twice against GCS: The Original
+  Ellington Suite (22 files, 127.8 MB, Pinned kept) and Fields (16 files,
+  276.4 MB, Pinned unchecked → plain Cloud). Row shows "Queueing for Cloud" the
+  moment the sheet confirms, before outbox rows exist; queue shows per-file
+  phase-scoped bars with matching labels ("Uploading 18.6 MB of 32.3 MB"
+  provider bytes beside "Preparing 69.1 MB of 116.8 MB" source bytes); both
+  published and flipped to their exact terminal storage state.
+- FIXED EARLIER, CONFIRMED LIVE — the three findings from the first import run
+  (two-stage bar mismatch → phase-scoped bars; zero-kB provider stall →
+  256 KiB streamed reports; loudness not advancing the sidebar).
+- Pause/resume: VERIFIED at the state level — Paused badge + Resume button,
+  throughput hidden while paused, publication of already-uploaded work
+  correctly proceeds under pause. NOT yet caught mid-upload: this uplink moves
+  276 MB in ~40 s, shorter than the observation loop. Provider failure, retry,
+  cancellation, and app restart against durable rows: being exercised by hand
+  (they need either a multi-GB corpus or a network interruption for a wide
+  enough window).
+- VERIFIED — throughput/ETA gating, in code (`outbox_snapshot.rs`: ETA only
+  with complete provider denominators, an active transfer, nonzero rate;
+  throughput fed exclusively by provider-transfer deltas and zeroed on pause)
+  and live (no rate shown while paused; rate present during transfer).
+- VERIFIED LIVE — terminal publication: frames sampled through both
+  publications show transition label → Cloud, never a Local flash, on the
+  Storage Manager rows. (Sampling was ~2 s apart; the other surfaces — import
+  row, album detail, queue panel — looked right whenever captured but weren't
+  frame-stepped.)
+- Publication latency, measured live with the publish stage timings: 11.0 s
+  total for a 22-file release, 9.0 s of it in `publish packages` — the serial
+  one-PUT-per-object loop (~40 objects × ~225 ms GCS round trip). Fix in
+  flight in coven: bounded fan-out (the upload drain's shape), commit/head
+  strictly after all packages.
 
 ### Environment facts learned while landing
 
