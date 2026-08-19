@@ -268,3 +268,27 @@ milestone wipe + scripted re-import.
 Second device ready: Android emulator AVD "bae-test" (arm64, android-36.1,
 hand-written config in ~/.android/avd), bae APK installs and launches.
 Throughput-race fix landed (d1ae3a7f): timestamps under the lock.
+
+## Milestone runbook (redesign validation, ready to run)
+
+Coven main = 2b9d9261: O(commit) rows (fcec5ae8), FK-closed shared set +
+write-transaction closure check (bcc08465), acknowledge-on-change
+(2b9d9261 tip). bae pin bump in flight. Steps:
+1. Push pin, rebuild mac signed + android APK.
+2. Preserve nothing further (fixture already at ~/bae-fixtures/...).
+3. Wipe: rm -rf ~/.bae; emulator: adb -s emulator-5554 shell pm clear
+   fm.bae.app (boot AVD bae-test first).
+4. Launch app (open <derivedData path> — by path, never by name), create
+   library, configure S3: bucket bae-import-dima, region us-east1,
+   endpoint https://storage.googleapis.com, fresh prefix.
+   BLOCKED INPUT: full S3 access key (GOOG1ENARDVFDSGBLHNNQYUCZ44FCLGSP2
+   ZTMW3TLBSXE5TDDFMRSMM4NPW… tail clipped in every screenshot; secret
+   known). Ask the user for bae-import-config.txt or the key tail.
+5. Pair emulator via restore code (Settings > Connect another device;
+   drive emulator UI over adb).
+6. Scripted imports via scratchpad/mcp.py (token survives in keyring;
+   candidates re-index on scan) — rebuild ~12 releases.
+7. Measure against the frozen fixture: cycle stage timings, settled-cycle
+   commits appended (target 0), DB size + retained bytes/row (target
+   single-digit MB / ~7KB flat), publish total (target ~1-2s at limit 8),
+   phone/emulator pull times.
