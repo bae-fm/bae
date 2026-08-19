@@ -94,6 +94,81 @@ struct DisplayErrorTests {
         )
     }
 
+    /// The category line names a *class* of failure ("Something went wrong."),
+    /// so on its own it identifies nothing. `detailSummary` is the concrete
+    /// fault, short enough for every surface to render beside that line rather
+    /// than behind a control the reader has to find.
+    @Test("the concrete fault reads as a compact secondary line")
+    func detailSummaryIsTheConcreteFault() throws {
+        let displayed = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(
+                    category: .internal,
+                    detail:
+                        "sync cycle: pull Store commits: database: retained Merge replay has an unresolved foreign-key dependency"
+                ) as any Error
+            )
+        )
+
+        let summary = try #require(displayed.detailSummary)
+        #expect(summary.hasPrefix("sync cycle: pull Store commits"))
+        #expect(summary.hasSuffix("unresolved foreign-key dependency"))
+        #expect(
+            displayed.line != summary,
+            "the headline stays the localized line"
+        )
+    }
+
+    /// A multi-line chain still has to fit one secondary line, and a very long
+    /// one is cut rather than allowed to push the rest of a banner off screen —
+    /// the full text stays on `detail` for the copy button.
+    @Test(
+        "a multi-line or overlong detail summarizes to its bounded first line"
+    )
+    func detailSummaryIsBoundedToOneLine() throws {
+        let multiline = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(
+                    category: .database,
+                    detail: "no such table: albums\nbacktrace:\n  frame 0"
+                ) as any Error
+            )
+        )
+        #expect(multiline.detailSummary == "no such table: albums")
+
+        let long = String(repeating: "context ", count: 60) + "end"
+        let overlong = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(category: .database, detail: long)
+                    as any Error
+            )
+        )
+        let summary = try #require(overlong.detailSummary)
+        #expect(summary.hasSuffix("…"))
+        #expect(summary.count < long.count)
+        #expect(overlong.detail == long, "the full chain survives for copying")
+    }
+
+    /// Nothing to say means nothing shown — a blank secondary line under the
+    /// headline would read as a fault with no name.
+    @Test("an error with no detail has no summary")
+    func noDetailNoSummary() throws {
+        let notFound = try #require(
+            DisplayError(
+                BridgeError.NotFound(entity: .album, id: "a") as any Error
+            )
+        )
+        #expect(notFound.detailSummary == nil)
+
+        let blank = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(category: .internal, detail: "  \n ")
+                    as any Error
+            )
+        )
+        #expect(blank.detailSummary == nil)
+    }
+
     @Test(
         "long diagnostics expose a bounded opening excerpt and retain the full detail"
     )

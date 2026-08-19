@@ -22,6 +22,7 @@ extension BridgePlaybackErrorReason: LocalizedFailure {}
 /// arrive as typed reasons and render their generic per-category line here.
 public struct DisplayError: Equatable, Sendable {
     private static let detailExcerptLength = 400
+    private static let detailSummaryLength = 180
 
     public let line: String
     public let detail: String?
@@ -32,6 +33,27 @@ public struct DisplayError: Equatable, Sendable {
         guard let detail else { return nil }
         let excerpt = detail.prefix(Self.detailExcerptLength)
         return excerpt.endIndex == detail.endIndex ? detail : "\(excerpt)…"
+    }
+
+    /// The concrete fault as one compact line, for rendering beside `line`.
+    ///
+    /// `line` names a *category* — "Something went wrong." — so a surface
+    /// showing only it tells the user nothing about what failed, and the fault
+    /// is reachable only by whoever thinks to open a disclosure or read the log.
+    /// This is the first line of the diagnostic, bounded so it fits under a
+    /// headline; `detailExcerpt` and `detail` still carry the rest for the
+    /// disclosure and the copy button.
+    ///
+    /// `nil` when there is nothing to say: a keyed failure carries no
+    /// diagnostic, and a blank one is not a fault name.
+    public var detailSummary: String? {
+        guard let detail else { return nil }
+        let firstLine = detail.prefix { !$0.isNewline }
+            .trimmingCharacters(in: .whitespaces)
+        guard !firstLine.isEmpty else { return nil }
+        let summary = firstLine.prefix(Self.detailSummaryLength)
+        return summary.endIndex == firstLine.endIndex
+            ? firstLine : "\(summary)…"
     }
 
     /// A UI-originated error: prose the UI already localized, with no opaque

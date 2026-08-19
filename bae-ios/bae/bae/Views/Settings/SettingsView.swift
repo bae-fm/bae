@@ -342,6 +342,15 @@ private struct SyncConnectedControls: View {
                 Text(syncError.line)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                // The line above names a category; this names the fault. Without
+                // it a failing cycle reads as "Something went wrong." and the
+                // reason lives only in the device log.
+                if let fault = syncError.detailSummary {
+                    Text(fault)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
                 if reconnecting {
                     ProgressView()
                 }

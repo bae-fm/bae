@@ -627,3 +627,46 @@ fn work_detail_conversion_preserves_work_release_rows() {
     assert_eq!(release.display_name, "2026 CD");
     assert_eq!(release.format.as_deref(), Some("CD"));
 }
+
+/// A failing sync cycle's fault has to reach the front-ends, not just the log.
+/// Core records the whole chain as the sync-status error's diagnostic detail;
+/// the crossing keeps it beside the category the UI localizes, so a surface has
+/// something to render besides "Something went wrong."
+#[test]
+fn a_failed_sync_status_crosses_with_its_fault() {
+    let fault = "sync cycle: pull Store commits: database: retained Merge replay \
+                 has an unresolved foreign-key dependency";
+    let snapshot = bae_core::library::SyncStatusSnapshot {
+        error: Some(bae_core::ui::UiError::internal(fault)),
+        last_sync_time: None,
+        syncing: false,
+        sync_ready: false,
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    let Some(crate::types::BridgeError::Diagnostic { category, detail }) = bridge.error else {
+        panic!("a recorded sync failure crosses as a diagnostic");
+    };
+    assert_eq!(category, crate::types::BridgeErrorCategory::Internal);
+    assert_eq!(
+        detail, fault,
+        "the fault crosses whole, never summarized away"
+    );
+}
+
+/// A healthy cycle carries no error, so no surface renders a failure for it.
+#[test]
+fn a_healthy_sync_status_crosses_without_an_error() {
+    let snapshot = bae_core::library::SyncStatusSnapshot {
+        error: None,
+        last_sync_time: Some(1_700_000_000_000),
+        syncing: false,
+        sync_ready: true,
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    assert!(bridge.error.is_none());
+    assert!(bridge.sync_ready);
+}

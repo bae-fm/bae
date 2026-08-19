@@ -345,7 +345,7 @@ private struct LibraryBanner: View {
         // provider would wear a permanent red retry strip for a provider it no
         // longer has.
         else if let error = syncStatusStore.error, configStore.config.sync != nil {
-            banner(message: error.line) {
+            banner(message: error.line, detail: error.detailSummary) {
                 if reconnecting {
                     ProgressView()
                         .controlSize(.small)
@@ -377,15 +377,29 @@ private struct LibraryBanner: View {
         reconnecting = false
     }
 
+    /// `message` is the localized line; `detail` is the untranslated concrete
+    /// fault, rendered under it. A category line alone ("Something went wrong.")
+    /// names nothing the user or a bug report can act on, so a failure that has
+    /// a fault shows it here rather than only in the log.
     private func banner<Trailing: View>(
         message: String,
+        detail: String? = nil,
         @ViewBuilder trailing: () -> Trailing
     ) -> some View {
         HStack {
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(Color.white)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(Color.white)
+                if let detail {
+                    Text(detail)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             trailing()
         }
         .padding(.horizontal, 16)

@@ -1,11 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// Renders a user-facing error: the generic localized line, plus — when a
-/// diagnostic carries opaque detail — a collapsible disclosure exposing the
-/// untranslated Rust error chain with a copy affordance. The single surface
-/// every event-driven error reuses (sync banner, inline import error); the
-/// global alert renders the same `DisplayError` through alert actions instead.
+/// Renders a user-facing error: the generic localized line, the concrete fault
+/// beneath it, and — when there is more chain than fits — a collapsible
+/// disclosure exposing the rest with a copy affordance. The single surface every
+/// event-driven error reuses (sync banner, inline import error); the global
+/// alert renders the same `DisplayError` through alert actions instead.
+///
+/// The fault line is not behind the disclosure. Core's line names a category
+/// ("Something went wrong."), so a reader who does not open the disclosure is
+/// told nothing about what failed — which is how a failing sync cycle spent an
+/// hour looking like a generic internal error.
 struct ErrorDetailDisclosure: View {
     let error: DisplayError
     /// Tint for the line and icon — red for hard failures, orange for warnings.
@@ -27,7 +32,22 @@ struct ErrorDetailDisclosure: View {
                     .foregroundStyle(tint)
             }
 
-            if let detail = error.detail, let excerpt = error.detailExcerpt {
+            if let summary = error.detailSummary {
+                Text(summary)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Only when the chain says more than the line above already did —
+            // a disclosure that expands to the same sentence is a control that
+            // does nothing.
+            if let detail = error.detail, let excerpt = error.detailExcerpt,
+                detail != error.detailSummary
+            {
                 Button {
                     detailExpanded = !detailExpanded
                 } label: {
