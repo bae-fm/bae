@@ -802,18 +802,21 @@ fn resolve_upload_state(
             None => UploadState::Uploaded { bytes_total },
         };
     }
+    // The durable queue query and the in-process callback stream are
+    // independent feeds, so a transient can be one step ahead of or behind
+    // the row it refines: a provider write's first callback can arrive
+    // before the requery delivers the Prepared row, and a failed attempt's
+    // rollback can land while its last callback is still in flight. The
+    // durable phase is the truth; a transient that disagrees with it refines
+    // nothing and the row renders from its durable state alone until the
+    // feeds agree again.
     match transient {
         Some(TransientUploadState::Uploading {
             bytes_done,
             bytes_total,
-        }) => {
-            assert_eq!(
-                phase,
-                coven::QueuedUploadPhase::Prepared,
-                "an active provider transfer requires coven's durable Prepared phase"
-            );
-            let exact_total = provider_bytes_total
-                .expect("an active provider transfer requires a durable provider total");
+        }) if phase == coven::QueuedUploadPhase::Prepared => {
+            let exact_total =
+                provider_bytes_total.expect("a Prepared upload requires a durable provider total");
             assert_eq!(
                 bytes_total, exact_total,
                 "provider callback total must match coven's durable provider total"
@@ -823,14 +826,11 @@ fn resolve_upload_state(
                 bytes_total: exact_total,
             };
         }
-        Some(TransientUploadState::UploadStarted) => {
-            assert_eq!(
-                phase,
-                coven::QueuedUploadPhase::Prepared,
-                "an active provider transfer requires coven's durable Prepared phase"
-            );
-            let bytes_total = provider_bytes_total
-                .expect("an active provider transfer requires a durable provider total");
+        Some(TransientUploadState::UploadStarted)
+            if phase == coven::QueuedUploadPhase::Prepared =>
+        {
+            let bytes_total =
+                provider_bytes_total.expect("a Prepared upload requires a durable provider total");
             return UploadState::Uploading {
                 bytes_done: 0,
                 bytes_total,
@@ -849,7 +849,7 @@ fn resolve_upload_state(
                 bytes_total,
             };
         }
-        Some(TransientUploadState::Preparing { .. }) | None => {}
+        Some(_) | None => {}
     }
     match (phase, provider_bytes_total, last_error) {
         (coven::QueuedUploadPhase::Pending, None, Some(last_error)) => {

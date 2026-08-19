@@ -121,6 +121,48 @@ fn build(
     build_outbox_snapshot(queue, transient, &UploadThroughput::new(), false)
 }
 
+/// The durable queue query and the in-process callback stream are independent
+/// feeds: a provider callback can arrive before the requery delivers the
+/// Prepared row, and a failed attempt's rollback can land while its last
+/// callback is still in flight. A provider-transfer transient paired with a
+/// durable Pending row refines nothing — the row renders from its durable
+/// state alone.
+#[test]
+fn a_provider_transient_on_a_pending_row_is_a_stale_straggler() {
+    for straggler in [
+        TransientUploadState::UploadStarted,
+        TransientUploadState::Uploading {
+            bytes_done: 250,
+            bytes_total: 1016,
+        },
+    ] {
+        let transient = HashMap::from([(
+            UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+            straggler,
+        )]);
+
+        // No recorded failure: the durable row still reads Queued.
+        let snapshot = build(two_queued_uploads(), &transient);
+        assert_eq!(
+            snapshot.upload_groups[0].files[1].state,
+            UploadState::Queued
+        );
+        assert_eq!(snapshot.total.upload_bytes_done, 0);
+
+        // A recorded failure: the durable row reads its retry state.
+        let mut queue = two_queued_uploads();
+        queue.uploads[1].attempt_count = 1;
+        queue.uploads[1].last_error = Some("provider write failed".to_string());
+        let snapshot = build(queue, &transient);
+        assert_eq!(
+            snapshot.upload_groups[0].files[1].state,
+            UploadState::RetryingPreparation {
+                last_error: "provider write failed".to_string(),
+            }
+        );
+    }
+}
+
 #[test]
 fn upload_groups_group_a_releases_files_with_aggregate_progress() {
     let snapshot = build(two_queued_uploads(), &HashMap::new());
