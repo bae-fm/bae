@@ -130,10 +130,12 @@ public final class LibrarySessionOpener<
 
     private func run(libraryId: String) async -> Outcome {
         let makeHandle = self.makeHandle
+        logger.info("open: building core for library \(libraryId)")
         do {
             let handle = try await DetachedWork.run {
                 try makeHandle(libraryId)
             }
+            logger.info("open: core built")
             // A newer open may have superseded this one while `initApp` ran
             // (cancelling this task). Bail before producing any outcome the
             // caller would act on; `handle` drops here, freeing the core.
@@ -162,8 +164,10 @@ public final class LibrarySessionOpener<
         config: BridgeConfig
     ) async throws -> Service {
         let initialOutbox: BridgeOutboxSnapshot
+        logger.info("open: seeding outbox snapshot")
         do {
             initialOutbox = try await handle.getOutboxSnapshot()
+            logger.info("open: outbox snapshot seeded")
         }
         catch {
             logger.error("Failed to seed outbox snapshot: \(error)")
@@ -179,6 +183,7 @@ public final class LibrarySessionOpener<
             throw error
         }
         let service = makeService(handle, config, initialOutbox)
+        logger.info("open: service built and wired")
         if handle.isSyncReady() {
             service.storeRestoreCodeInKeychain(
                 libraryId: config.libraryId,

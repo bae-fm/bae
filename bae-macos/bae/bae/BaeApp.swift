@@ -351,6 +351,25 @@ extension BaeApp {
 
     private var storageManagerWindow: some Scene {
         Window("Storage Manager", id: "storage-manager") {
+            StorageManagerWindowRoot(appDelegate: appDelegate)
+        }
+        .defaultSize(width: 800, height: 500)
+        // Never restored: a restored auxiliary window marks the session as
+        // "already presented", which suppresses the primary window's launch
+        // presentation — the app then opens with only this window, and every
+        // quit re-saves that session. The primary window is the launch
+        // surface; this one exists only through View → Storage Manager.
+        .restorationBehavior(.disabled)
+    }
+
+    /// The Storage Manager window's root. A real `View` whose `body` does the
+    /// `appService` read, so Observation tracks it: a window opened (or
+    /// restored) before the library lands re-renders into the manager the
+    /// moment the open completes, instead of freezing on the placeholder.
+    private struct StorageManagerWindowRoot: View {
+        let appDelegate: AppDelegate
+
+        var body: some View {
             if let appService = appDelegate.appService {
                 appService.installEnvironment(StorageManagerView())
             }
@@ -363,7 +382,6 @@ extension BaeApp {
                 .frame(width: 300, height: 200)
             }
         }
-        .defaultSize(width: 800, height: 500)
     }
 
     private var settingsWindow: some Scene {
