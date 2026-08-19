@@ -1,9 +1,10 @@
 //! # Preview Player
 //!
 //! A self-contained second audio player for auditioning a local file before
-//! import. It owns its own audio output and runs one shared `StreamPipeline` at
-//! a time — entirely separate from the main playback pipeline. The only point of
-//! contact with the main player is that previewing pauses the main player and
+//! import. It opens its own audio output — a second one from the same device the
+//! service opened the main player's from — and runs one shared `StreamPipeline`
+//! at a time, entirely separate from the main playback pipeline. The only point
+//! of contact with the main player is that previewing pauses the main player and
 //! stopping resumes it; that coordination lives in `PlaybackService`, not here.
 //!
 //! Preview has only Idle/Playing/Paused — no Loading/Buffering state — so it
@@ -12,10 +13,12 @@
 //! keeps the ring fed; the audio callback outputs silence until the first
 //! samples land.
 
-use crate::playback::audio_output::{AudioEvent, AudioEventReceiver, AudioOutput, AudioState};
+use crate::playback::audio_output::{
+    AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioState,
+};
 use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::progress::{emit_progress, PlaybackProgress, PreviewState};
-use crate::playback::service::{default_audio_output, dispatch_command, PlaybackCommand};
+use crate::playback::service::{dispatch_command, PlaybackCommand};
 use crate::playback::source::TrackFmt;
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::stream_pipeline::{
@@ -73,9 +76,10 @@ pub(crate) struct PreviewPlayer {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     /// How often (ms) the audio callback emits position updates to the UI.
     position_update_interval_ms: u32,
-    /// Separate audio output for preview (lazily created on first play, retained
-    /// across plays). Preview's play/pause authority is this output's state
-    /// atomic — its own truth, distinct from the main player's slot.
+    /// Separate audio output for preview, opened from the service's audio device
+    /// on first play and retained across plays. Preview's play/pause authority is
+    /// this output's state atomic — its own truth, distinct from the main
+    /// player's slot.
     audio_output: Option<Box<dyn AudioOutput>>,
     /// The currently-loaded preview, if any.
     active: Option<ActivePreview>,
@@ -126,7 +130,11 @@ impl PreviewPlayer {
     /// preview first. The outcome distinguishes a clean start from a setup
     /// failure (stat/probe) and a stream-start failure, so the service reports
     /// the matching `playback_failed` operation.
-    pub(crate) async fn play(&mut self, path: String) -> PreviewPlayOutcome {
+    pub(crate) async fn play(
+        &mut self,
+        path: String,
+        audio_device: &dyn AudioOutputDevice,
+    ) -> PreviewPlayOutcome {
         // Stop the active preview without resuming main — the new preview keeps
         // main paused.
         if self.active.is_some() {
@@ -161,6 +169,7 @@ impl PreviewPlayer {
                 buffer,
                 None,
                 false,
+                audio_device,
             )
             .await;
         if started {
@@ -173,7 +182,7 @@ impl PreviewPlayer {
 
     /// Seek by slider ratio (0.0–1.0) within the active preview. A preview is a
     /// whole file, so there is no pregap to offset past.
-    pub(crate) async fn seek_by_ratio(&mut self, ratio: f64) {
+    pub(crate) async fn seek_by_ratio(&mut self, ratio: f64, audio_device: &dyn AudioOutputDevice) {
         let Some(active) = self.active.as_ref() else {
             return;
         };
@@ -182,12 +191,13 @@ impl PreviewPlayer {
             active.duration.as_millis() as u64,
             None,
         );
-        self.seek(Duration::from_millis(position_ms)).await;
+        self.seek(Duration::from_millis(position_ms), audio_device)
+            .await;
     }
 
     /// Seek within the active preview. Tears down the current pipeline (retaining
     /// the buffer) and rebuilds a fresh one seeked to `position`.
-    pub(crate) async fn seek(&mut self, position: Duration) {
+    pub(crate) async fn seek(&mut self, position: Duration, audio_device: &dyn AudioOutputDevice) {
         let Some(active) = self.active.as_ref() else {
             return;
         };
@@ -225,6 +235,7 @@ impl PreviewPlayer {
                 buffer,
                 Some(position),
                 was_paused,
+                audio_device,
             )
             .await;
 
@@ -333,12 +344,13 @@ impl PreviewPlayer {
         buffer: SharedSparseBuffer,
         seek_to: Option<Duration>,
         paused: bool,
+        audio_device: &dyn AudioOutputDevice,
     ) -> bool {
         if self.audio_output.is_none() {
-            match default_audio_output() {
+            match audio_device.open_output() {
                 Ok(output) => self.audio_output = Some(output),
                 Err(e) => {
-                    error!("Failed to create preview audio output: {:?}", e);
+                    error!("Failed to open the preview audio output: {:?}", e);
                     buffer.cancel();
                     return false;
                 }
@@ -563,7 +575,7 @@ impl PreviewPlayer {
 mod tests {
     use super::*;
     use crate::playback::audio_output::{
-        audio_event_channel, CaptureAudioOutput, FailingAudioOutput,
+        audio_event_channel, CaptureAudioDevice, FailingAudioDevice, FailingAudioOutput,
     };
     use std::sync::Arc;
 
@@ -575,10 +587,12 @@ mod tests {
         let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
         let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
         let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
-        let (output, _capture_rx) = CaptureAudioOutput::new();
-        player.audio_output = Some(Box::new(output));
+        let (device, _capture_rx) = CaptureAudioDevice::new();
 
-        let started = player.play(path.display().to_string()).await.started();
+        let started = player
+            .play(path.display().to_string(), &device)
+            .await
+            .started();
         if started {
             player.stop();
         }
@@ -588,15 +602,14 @@ mod tests {
 
     /// A failed stream start leaves no active preview and cancels the buffer — the
     /// preview side of the shared unit's failure contract (the unit cancels the
-    /// decoder; the owner cancels the buffer). A subsequent start over a working
-    /// output leaves `active` populated with the file as the current path.
+    /// decoder; the owner cancels the buffer). The same start over a device whose
+    /// outputs work leaves `active` populated with the file as the current path.
     #[tokio::test]
     async fn failed_preview_stream_start_leaves_no_active_preview() {
         let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
         let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
         let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
         let buffer = create_sparse_buffer(0);
-        player.audio_output = Some(Box::new(FailingAudioOutput));
 
         let started = player
             .start_streaming(
@@ -607,6 +620,7 @@ mod tests {
                 buffer.clone(),
                 None,
                 false,
+                &FailingAudioDevice,
             )
             .await;
 
@@ -614,9 +628,11 @@ mod tests {
         assert!(player.active.is_none());
         assert!(buffer.is_cancelled());
 
-        let (output, _capture_rx) = CaptureAudioOutput::new();
+        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+        let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+        let (device, _capture_rx) = CaptureAudioDevice::new();
         let next_buffer = create_sparse_buffer(0);
-        player.audio_output = Some(Box::new(output));
 
         let started = player
             .start_streaming(
@@ -627,6 +643,7 @@ mod tests {
                 next_buffer,
                 None,
                 false,
+                &device,
             )
             .await;
 
@@ -679,8 +696,7 @@ mod tests {
         let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
 
         // Set up an active preview over a working capture output.
-        let (output, _capture_rx) = CaptureAudioOutput::new();
-        player.audio_output = Some(Box::new(output));
+        let (device, _capture_rx) = CaptureAudioDevice::new();
         let buffer = create_sparse_buffer(0);
         assert!(
             player
@@ -692,15 +708,18 @@ mod tests {
                     buffer,
                     None,
                     false,
+                    &device,
                 )
                 .await
         );
         assert!(player.is_active());
 
-        // The rebuild output now fails; seeking must tear the preview down and
-        // notify the UI rather than leaving a torn-down zombie.
+        // The retained output now fails to build a stream — a device that went
+        // away mid-preview. Seeking must tear the preview down and notify the UI
+        // rather than leaving a torn-down zombie. (The seek reuses the retained
+        // output, so the device passed here is never opened from.)
         player.audio_output = Some(Box::new(FailingAudioOutput));
-        player.seek(Duration::from_millis(500)).await;
+        player.seek(Duration::from_millis(500), &device).await;
 
         assert!(
             !player.is_active(),

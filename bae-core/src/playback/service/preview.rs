@@ -66,7 +66,7 @@ impl PlaybackService {
         // ships the matching operation: the file couldn't be prepared, or the
         // audio stream couldn't be built.
         use crate::playback::preview_player::PreviewPlayOutcome;
-        match self.preview.play(path).await {
+        match self.preview.play(path, self.audio_device.as_ref()).await {
             PreviewPlayOutcome::Started => self.pause_main_for_preview(),
             PreviewPlayOutcome::SetupFailed => {
                 self.telemetry_playback_failed(PlaybackOperation::Preview);

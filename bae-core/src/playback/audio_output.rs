@@ -393,6 +393,18 @@ pub trait AudioOutput: Send + 'static {
     fn get_volume(&self) -> f32;
 }
 
+/// What the playback service opens its audio outputs from. The service plays
+/// through two independent local outputs — the main player's persistent one and
+/// the preview player's second one, which runs while the main player is paused —
+/// so what it is handed is the device that opens them, not a single output.
+///
+/// In production this is the system's default output device; a test substitutes
+/// a device whose outputs capture samples or refuse to build, so no test reaches
+/// for real audio hardware on either player.
+pub trait AudioOutputDevice: Send {
+    fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError>;
+}
+
 // -- Capture audio output for tests --
 
 /// Captures raw f32 samples for ground-truth comparison in tests.
@@ -431,12 +443,17 @@ impl CaptureOutputCore {
         tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
     ) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
-        let core = Self {
+        (Self::publishing_to(notify_tx), notify_rx)
+    }
+
+    /// A core publishing its buffers to an existing receiver, so every output a
+    /// capture device opens reports into the one receiver the test holds.
+    fn publishing_to(notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>) -> Self {
+        Self {
             controls: AudioOutputControls::new(1.0),
             notify_tx,
             active: Arc::new(Mutex::new(Arc::new(Mutex::new(Vec::new())))),
-        };
-        (core, notify_rx)
+        }
     }
 
     /// Mint a fresh capture buffer, make it the active one the capture thread
@@ -528,6 +545,46 @@ macro_rules! impl_capture_output_constructor {
                 let (core, notify_rx) = CaptureOutputCore::new();
                 (Self { core }, notify_rx)
             }
+
+            /// An output reporting its buffers to an existing receiver — how a
+            /// capture device opens each output it hands out, so the main
+            /// player's and the preview player's land on one receiver.
+            fn publishing_to(
+                notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+            ) -> Self {
+                Self {
+                    core: CaptureOutputCore::publishing_to(notify_tx),
+                }
+            }
+        }
+    };
+}
+
+/// Define a capture *device*: what a test hands the playback service in place of
+/// the system's audio device. Every output it opens captures into the one
+/// receiver `new()` returns, which yields one buffer per non-gapless transition
+/// across all of them, in order.
+#[cfg(feature = "test-utils")]
+macro_rules! impl_capture_audio_device {
+    ($device:ident, $output:ident) => {
+        pub struct $device {
+            notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+        }
+
+        impl $device {
+            pub fn new() -> (
+                Self,
+                tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
+            ) {
+                let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
+                (Self { notify_tx }, notify_rx)
+            }
+        }
+
+        impl AudioOutputDevice for $device {
+            fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
+                Ok(Box::new($output::publishing_to(self.notify_tx.clone())))
+            }
         }
     };
 }
@@ -569,6 +626,12 @@ impl_capture_output_constructor!(CaptureAudioOutput);
 impl_capture_output_constructor!(RealtimeCaptureAudioOutput);
 
 #[cfg(feature = "test-utils")]
+impl_capture_audio_device!(CaptureAudioDevice, CaptureAudioOutput);
+
+#[cfg(feature = "test-utils")]
+impl_capture_audio_device!(RealtimeCaptureAudioDevice, RealtimeCaptureAudioOutput);
+
+#[cfg(feature = "test-utils")]
 impl AudioOutput for CaptureAudioOutput {
     fn create_stream(
         &mut self,
@@ -604,6 +667,20 @@ impl AudioOutput for CaptureAudioOutput {
 /// they need no hardware.
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) struct FailingAudioOutput;
+
+/// A device with no hardware behind it: every output it opens is a
+/// [`FailingAudioOutput`]. What the actor-level tests hand the service — they
+/// drive its queue/command behavior and never play, so neither the main player
+/// nor a preview may reach for a real device.
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) struct FailingAudioDevice;
+
+#[cfg(any(test, feature = "test-utils"))]
+impl AudioOutputDevice for FailingAudioDevice {
+    fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
+        Ok(Box::new(FailingAudioOutput))
+    }
+}
 
 #[cfg(any(test, feature = "test-utils"))]
 impl AudioOutput for FailingAudioOutput {
@@ -743,6 +820,18 @@ impl RealtimeProbeOutput {
 impl Default for RealtimeProbeOutput {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// The device the CPU probe measures through: every output it opens paces to
+/// real time and discards its samples.
+#[cfg(feature = "test-utils")]
+pub struct RealtimeProbeDevice;
+
+#[cfg(feature = "test-utils")]
+impl AudioOutputDevice for RealtimeProbeDevice {
+    fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
+        Ok(Box::new(RealtimeProbeOutput::new()))
     }
 }
 

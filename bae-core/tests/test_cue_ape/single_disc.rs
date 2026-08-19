@@ -488,12 +488,12 @@ impl CueApeTestFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
 
-        let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
-        let playback_handle = library_manager.start_playback_service_with_output(
+        let (capture_device, capture_stream_rx) = bae_core::playback::CaptureAudioDevice::new();
+        let playback_handle = library_manager.start_playback_service_with_audio_device(
             runtime_handle,
             100,
             true,
-            Box::new(capture_output),
+            Box::new(capture_device),
         );
         let progress_rx = playback_handle.subscribe_progress();
 

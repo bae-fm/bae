@@ -334,8 +334,8 @@ impl CueFlacTestFixture {
     /// but a track can fully decode and gaplessly advance before a follow-up
     /// command lands — use `with_realtime_capture` for seek/pause tests.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
-        Self::with_capture_output(Box::new(capture_output), capture_stream_rx).await
+        let (capture_device, capture_stream_rx) = bae_core::playback::CaptureAudioDevice::new();
+        Self::with_capture_device(Box::new(capture_device), capture_stream_rx).await
     }
 
     /// Real-time-paced capture: the drain sleeps each buffer's wall-clock
@@ -343,13 +343,13 @@ impl CueFlacTestFixture {
     /// whole tracks ahead. Required for tests that play, then issue a command
     /// (seek, pause) that must land on the track under test.
     async fn with_realtime_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let (capture_output, capture_stream_rx) =
-            bae_core::playback::RealtimeCaptureAudioOutput::new();
-        Self::with_capture_output(Box::new(capture_output), capture_stream_rx).await
+        let (capture_device, capture_stream_rx) =
+            bae_core::playback::RealtimeCaptureAudioDevice::new();
+        Self::with_capture_device(Box::new(capture_device), capture_stream_rx).await
     }
 
-    async fn with_capture_output(
-        capture_output: Box<dyn bae_core::playback::AudioOutput>,
+    async fn with_capture_device(
+        capture_device: Box<dyn bae_core::playback::AudioOutputDevice>,
         capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
@@ -420,11 +420,11 @@ impl CueFlacTestFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
-        let playback_handle = library_manager.start_playback_service_with_output(
+        let playback_handle = library_manager.start_playback_service_with_audio_device(
             runtime_handle,
             100,
             true,
-            capture_output,
+            capture_device,
         );
         let progress_rx = playback_handle.subscribe_progress();
 
@@ -482,14 +482,16 @@ impl SidePauseTestFixture {
         // the decoder rather than arriving during playback. Pacing the sink to
         // wall-clock bounds how fast the boundary can arrive, and a loaded machine
         // can only slow that sink down, never speed it up.
-        let (capture_output, capture_stream_rx) =
-            bae_core::playback::RealtimeCaptureAudioOutput::new();
-        let playback_handle = setup.library_manager.start_playback_service_with_output(
-            setup.runtime_handle,
-            100,
-            true,
-            Box::new(capture_output),
-        );
+        let (capture_device, capture_stream_rx) =
+            bae_core::playback::RealtimeCaptureAudioDevice::new();
+        let playback_handle = setup
+            .library_manager
+            .start_playback_service_with_audio_device(
+                setup.runtime_handle,
+                100,
+                true,
+                Box::new(capture_device),
+            );
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {

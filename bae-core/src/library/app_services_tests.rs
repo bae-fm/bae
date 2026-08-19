@@ -70,19 +70,19 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         crate::import::cover_art::RemoteImageCache::for_test(),
     );
 
-    // A device-less output, not the real cpal sink: this test drives the
-    // playback actor for its queue behavior and never plays audio (track
-    // prep fails before any stream is built). Building a cpal output would
-    // reach for the system audio device, and on Windows a second such build
-    // on a fresh actor thread faults — cpal's process-global WASAPI device
-    // enumerator is left dangling once the first actor thread that made it
-    // exits (the enumerator dies with that thread's COM apartment), and the
+    // A device with no hardware behind it, not the real cpal sink: this test
+    // drives the playback actor for its queue behavior and never plays audio
+    // (track prep fails before any stream is built). Building a cpal output
+    // would reach for the system audio device, and on Windows a second such
+    // build on a fresh actor thread faults — cpal's process-global WASAPI
+    // device enumerator is left dangling once the first actor thread that made
+    // it exits (the enumerator dies with that thread's COM apartment), and the
     // test builds one player per case.
-    let playback = manager.start_playback_service_with_output(
+    let playback = manager.start_playback_service_with_audio_device(
         tokio::runtime::Handle::current(),
         50,
         false,
-        Box::new(crate::playback::audio_output::FailingAudioOutput),
+        Box::new(crate::playback::audio_output::FailingAudioDevice),
     );
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
