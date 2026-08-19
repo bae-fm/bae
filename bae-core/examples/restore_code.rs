@@ -34,10 +34,8 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let dev_mode = bae_core::config::Config::is_dev_mode();
-
     eprintln!(
-        "active library: {} ({}), dev_mode={dev_mode}",
+        "active library: {} ({})",
         config.store_name, config.store_id,
     );
 

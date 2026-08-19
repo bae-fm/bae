@@ -19,17 +19,11 @@ use serial_test::serial;
 use tempfile::TempDir;
 use uuid::Uuid;
 
-/// A `TempDir` standing in for the user's home directory, with the env isolated
-/// so no ambient dev secret un-locks a fixture. Bind it for the whole test — the
-/// directory (and thus `~/.bae`) is deleted when it drops.
+/// A `TempDir` standing in for the user's home directory. Bind it for the whole
+/// test — the directory (and thus `~/.bae`) is deleted when it drops.
 fn fake_home() -> TempDir {
     let tmp = TempDir::new().unwrap();
     std::env::set_var("HOME", tmp.path());
-    // A `.env` in an ancestor directory (loaded into the process env) could
-    // unlock the fixture through its opened Coven handle; drop the dev secrets
-    // so the locked branch is reached.
-    std::env::remove_var("BAE_ENCRYPTION_KEY");
-    std::env::remove_var("BAE_DISCOGS_API_KEY");
     bae_core::config::install_test_keyring();
     tmp
 }

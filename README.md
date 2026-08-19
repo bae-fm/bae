@@ -82,15 +82,9 @@ export BINDGEN_EXTRA_CLANG_ARGS="-I$FFMPEG_DIR/include ${BINDGEN_EXTRA_CLANG_ARG
 
 ./scripts/install-hooks.sh
 
-# Configure
-cp .env.example .env
-# Edit .env with your Discogs API key (from https://www.discogs.com/settings/developers)
-
 # Run
 # See bae-macos for the native macOS app
 ```
-
-Dev mode activates automatically when `.env` exists.
 
 ### Building baeium yourself
 
@@ -115,9 +109,8 @@ baeium needs nothing proprietary to build, run, or distribute.
 
 ## Configuration
 
-**Dev mode** (debug builds with `.env`): loads from `.env` file in repo root.
-
-**Production mode** (release builds without `.env`): loads secrets from system keyring, settings from `~/.bae/config.yaml`.
+Secrets live in the system keyring; settings in `~/.bae/config.yaml`. The
+Discogs API key is entered in the app's settings.
 
 ## Logging
 

@@ -3,13 +3,11 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
-mod dev;
 mod handle;
 mod keyring;
 mod save;
 mod server;
 
-pub(crate) use dev::dev_secrets;
 pub use handle::ConfigHandle;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
@@ -20,7 +18,6 @@ pub use server::{
 };
 
 use coven::{write_atomic, WriteError};
-use dev::dev_mode_enabled;
 use save::default_save_presets;
 
 /// Blob transfers bae runs at once, per direction, on a fresh library. Serial
@@ -483,10 +480,6 @@ impl Config {
             }
         };
         Ok(yaml_config.into_config(device_id, library_dir))
-    }
-
-    pub fn is_dev_mode() -> bool {
-        dev_mode_enabled()
     }
 
     /// Save the active library UUID to the global pointer file (~/.bae/active-library).

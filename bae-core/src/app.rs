@@ -157,7 +157,6 @@ where
 
     crate::audio_codec::init();
 
-    let dev_secrets = crate::config::dev_secrets();
     let config_handle = Arc::new(ConfigHandle::new(config));
 
     let library_manager = crate::library::LibraryManager::open(
@@ -174,27 +173,10 @@ where
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    if let Some(token) = dev_secrets.discogs_api_key.as_deref() {
-        library_manager
-            .set_discogs_key(token, crate::config::DiscogsValidation::Unvalidated)
-            .map_err(|error| BootstrapError::Config(error.to_string()))?;
-    }
-
     let provider_configured = config_handle.config().cloud_home.provider.is_some();
-    let mut key_state = library_manager
+    let key_state = library_manager
         .cloud_home_key_state()
         .map_err(|error| BootstrapError::Config(error.to_string()))?;
-    let mut connected_during_unlock = false;
-    if provider_configured && key_state == coven::CloudHomeKeyState::Locked {
-        if let Some(master_key) = dev_secrets.master_key.as_deref() {
-            runtime
-                .block_on(library_manager.unlock_cloud_home(master_key))
-                .map_err(|error| BootstrapError::Config(error.to_string()))?;
-            key_state = coven::CloudHomeKeyState::Available;
-            connected_during_unlock = true;
-        }
-    }
     let locked = provider_configured && key_state == coven::CloudHomeKeyState::Locked;
     let advance_active_pointer = !locked;
     if locked {
@@ -232,7 +214,7 @@ where
     // not abort the launch: the library opens, and sync reports itself not connected
     // so the UI shows its reconnect banner. Local browse and pinned playback need no
     // network, and the next launch retries the connect.
-    if provider_configured && !locked && !connected_during_unlock {
+    if provider_configured && !locked {
         runtime.block_on(library_manager.attach_and_start_sync_at_startup());
     }
 

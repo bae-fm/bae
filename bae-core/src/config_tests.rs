@@ -353,36 +353,6 @@ fn discogs_token_status_derives_from_option() {
 }
 
 #[test]
-#[serial]
-fn dev_mode_uses_dotenv_search_for_parent_env_file() {
-    let original_cwd = std::env::current_dir().unwrap();
-    let original_dev_mode = std::env::var_os("BAE_DEV_MODE");
-    let original_parent_dotenv = std::env::var_os("BAE_TEST_PARENT_DOTENV");
-
-    let tmp = TempDir::new().unwrap();
-    std::fs::write(tmp.path().join(".env"), "BAE_TEST_PARENT_DOTENV=1\n").unwrap();
-    let child = tmp.path().join("child");
-    std::fs::create_dir(&child).unwrap();
-
-    std::env::remove_var("BAE_DEV_MODE");
-    std::env::remove_var("BAE_TEST_PARENT_DOTENV");
-    std::env::set_current_dir(&child).unwrap();
-    let is_dev_mode = Config::is_dev_mode();
-
-    std::env::set_current_dir(original_cwd).unwrap();
-    match original_dev_mode {
-        Some(value) => std::env::set_var("BAE_DEV_MODE", value),
-        None => std::env::remove_var("BAE_DEV_MODE"),
-    }
-    match original_parent_dotenv {
-        Some(value) => std::env::set_var("BAE_TEST_PARENT_DOTENV", value),
-        None => std::env::remove_var("BAE_TEST_PARENT_DOTENV"),
-    }
-
-    assert!(is_dev_mode);
-}
-
-#[test]
 fn config_yaml_requires_storage() {
     // `storage` rides the flattened coven CloudHomeConfig and carries no
     // serde default: a config file without it fails to load rather than

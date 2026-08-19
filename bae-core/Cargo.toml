@@ -121,7 +121,6 @@ notify-debouncer-full = "0.7.0"
 strsim = "0.11"
 unicode-normalization = "0.1"
 # Dev-mode `.env` loading (src/config/dev.rs).
-dotenvy = "0.15"
 # Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
 # system libs. Import-only: playback derives its gain from the stored
 # measurements with plain arithmetic (no ebur128 at playback). true_peak returns
