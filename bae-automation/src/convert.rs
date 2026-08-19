@@ -99,6 +99,45 @@ pub(super) fn automation_output_snapshot(
     }
 }
 
+/// Refuse a transition the release does not currently offer, naming what core
+/// says it does offer. The available set is core's — read off the release — so
+/// this decides nothing, it only declines to call a transfer the desktop would
+/// not have offered either.
+pub(super) fn require_action(
+    summary: &AutomationReleaseSummary,
+    action: AutomationReleaseStorageAction,
+    requested: &str,
+) -> Result<(), AutomationError> {
+    if summary.storage_actions.contains(&action) {
+        return Ok(());
+    }
+    let available = summary
+        .storage_actions
+        .iter()
+        .map(storage_action_name)
+        .collect::<Vec<_>>();
+    let available = if available.is_empty() {
+        "none (this library has no cloud home)".to_string()
+    } else {
+        available.join(", ")
+    };
+    Err(AutomationError::validation(format!(
+        "release '{}' cannot {requested} right now; available: {available}",
+        summary.id
+    )))
+}
+
+/// The request name for a transition core reports as available, so a refusal
+/// lists what a caller may actually ask for.
+fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str {
+    match action {
+        AutomationReleaseStorageAction::MakeRemote => "move_to_cloud",
+        AutomationReleaseStorageAction::Pin => "pin",
+        AutomationReleaseStorageAction::Unpin => "unpin",
+        AutomationReleaseStorageAction::MakeLocal => "make_local",
+    }
+}
+
 pub(super) fn search_query(query: AutomationSearchQuery) -> SearchQuery {
     match query {
         AutomationSearchQuery::General {

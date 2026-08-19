@@ -645,3 +645,159 @@ mod snapshot_mirror {
         assert_eq!(json["runtime"]["identify_state"]["kind"], "idle");
     }
 }
+
+/// The storage tool is the scripted equivalent of the Storage Manager's row
+/// menu, so what it accepts and what it refuses have to match that menu: the
+/// wire shapes a caller sends, and core's own answer about which transitions a
+/// release currently offers.
+mod release_storage_action {
+    use super::*;
+
+    fn summary(actions: Vec<AutomationReleaseStorageAction>) -> AutomationReleaseSummary {
+        AutomationReleaseSummary {
+            id: "release-1".to_string(),
+            album_id: "album-1".to_string(),
+            format: Some("FLAC".to_string()),
+            storage_state: AutomationReleaseStorageState::Remote,
+            pinned: false,
+            storage_actions: actions,
+            transfer_action: None,
+            file_count: 11,
+            total_size: 320_000_000,
+            cover: None,
+        }
+    }
+
+    fn parse(args: Value) -> ReleaseStorageActionInput {
+        from_value::<ReleaseStorageActionInput>(args).expect("the tool's own input shape")
+    }
+
+    /// Every action a caller can ask for arrives as its Storage Manager name,
+    /// carrying whatever that transition needs — the pin choice, the folder.
+    #[test]
+    fn each_action_parses_from_its_wire_shape() {
+        let moved = parse(serde_json::json!({
+            "release_id": "release-1",
+            "action": { "kind": "move_to_cloud", "pin": true },
+        }));
+        assert_eq!(moved.release_id, "release-1");
+        assert!(matches!(
+            moved.action,
+            AutomationStorageAction::MoveToCloud { pin: true }
+        ));
+
+        assert!(matches!(
+            parse(serde_json::json!({
+                "release_id": "release-1",
+                "action": { "kind": "make_local", "destination_dir": "/music/out" },
+            }))
+            .action,
+            AutomationStorageAction::MakeLocal { destination_dir } if destination_dir == "/music/out"
+        ));
+
+        for (kind, expected) in [
+            ("pin", AutomationStorageAction::Pin),
+            ("unpin", AutomationStorageAction::Unpin),
+            ("cancel", AutomationStorageAction::Cancel),
+        ] {
+            let parsed = parse(serde_json::json!({
+                "release_id": "release-1",
+                "action": { "kind": kind },
+            }));
+            assert_eq!(
+                std::mem::discriminant(&parsed.action),
+                std::mem::discriminant(&expected),
+                "'{kind}' names its action"
+            );
+        }
+    }
+
+    /// Moving to the cloud needs the pin choice and making local needs a folder;
+    /// neither has a default this tool is entitled to invent.
+    #[test]
+    fn an_action_missing_what_it_needs_is_refused() {
+        for args in [
+            serde_json::json!({
+                "release_id": "release-1",
+                "action": { "kind": "move_to_cloud" },
+            }),
+            serde_json::json!({
+                "release_id": "release-1",
+                "action": { "kind": "make_local" },
+            }),
+        ] {
+            let error = from_value::<ReleaseStorageActionInput>(args)
+                .expect_err("an action without its required field is not an action");
+            assert_eq!(error.kind(), "validation");
+        }
+    }
+
+    /// The gate is core's list, not this tool's opinion: a transition core
+    /// offers runs, and one it doesn't is refused before any transfer starts.
+    #[test]
+    fn only_the_transitions_core_offers_are_run() {
+        let pinnable = summary(vec![
+            AutomationReleaseStorageAction::Pin,
+            AutomationReleaseStorageAction::MakeLocal,
+        ]);
+
+        require_action(&pinnable, AutomationReleaseStorageAction::Pin, "pin")
+            .expect("core offers the pin");
+
+        let error = require_action(&pinnable, AutomationReleaseStorageAction::Unpin, "unpin")
+            .expect_err("core does not offer the unpin");
+        assert_eq!(error.kind(), "validation");
+        assert!(
+            error.message().contains("pin, make_local"),
+            "the refusal names what the release does offer: {}",
+            error.message()
+        );
+    }
+
+    /// A library with no cloud home offers no transitions at all. The refusal
+    /// says so rather than listing an empty set.
+    #[test]
+    fn a_release_with_no_transitions_says_why() {
+        let error = require_action(
+            &summary(Vec::new()),
+            AutomationReleaseStorageAction::MakeRemote,
+            "move to cloud",
+        )
+        .expect_err("a library with no cloud home cannot move anything to it");
+        assert!(
+            error.message().contains("no cloud home"),
+            "unexpected refusal: {}",
+            error.message()
+        );
+    }
+
+    /// A move to the cloud reports the durable revision its uploads were queued
+    /// at — the thing a caller waits on — not a bare acknowledgement.
+    #[test]
+    fn the_outcome_carries_what_the_transition_produced() {
+        let json = serde_json::to_value(AutomationStorageActionOutcome::CloudUploadQueued {
+            release_id: "release-1".to_string(),
+            outbox_revision: 42,
+        })
+        .unwrap();
+        assert_eq!(json["kind"], "cloud_upload_queued");
+        assert_eq!(json["release_id"], "release-1");
+        assert_eq!(json["outbox_revision"], 42);
+
+        let json = serde_json::to_value(AutomationStorageActionOutcome::PinQueued {
+            release_id: "release-1".to_string(),
+        })
+        .unwrap();
+        assert_eq!(json["kind"], "pin_queued");
+    }
+
+    /// The tool is reachable by the name its schema is published under.
+    #[test]
+    fn the_tool_dispatches_by_name() {
+        assert_eq!(
+            AutomationTool::from_name("release_storage_action"),
+            Some(AutomationTool::ReleaseStorageAction)
+        );
+        assert!(!AutomationTool::ReleaseStorageAction.accepts_missing_arguments());
+    }
+}

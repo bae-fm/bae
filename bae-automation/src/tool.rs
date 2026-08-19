@@ -17,6 +17,7 @@ pub enum AutomationTool {
     ImportStart,
     ReleaseDetailGet,
     ReleaseExport,
+    ReleaseStorageAction,
     OutputStatus,
     ReleaseReidentify,
     ReleaseMetadataReset,
@@ -25,7 +26,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 20] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 21] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -117,6 +118,12 @@ impl AutomationTool {
             input: AutomationToolInput::ReleaseExport,
         },
         AutomationToolDescriptor {
+            tool: AutomationTool::ReleaseStorageAction,
+            name: "release_storage_action",
+            description: "Run a release storage transition: move to cloud (optionally pinned), pin, unpin, make local, or cancel the one in flight",
+            input: AutomationToolInput::ReleaseStorageAction,
+        },
+        AutomationToolDescriptor {
             tool: AutomationTool::OutputStatus,
             name: "output_status",
             description: "Get the export queue snapshot (per-release progress)",
@@ -205,6 +212,7 @@ enum AutomationToolInput {
     StartImport,
     ReleaseId,
     ReleaseExport,
+    ReleaseStorageAction,
     ReleaseReidentify,
     ReleaseMetadataUpdate,
     LibrarySearch,
@@ -225,6 +233,7 @@ impl AutomationToolInput {
             Self::StartImport => schema_object::<AutomationStartImport>(),
             Self::ReleaseId => schema_object::<ReleaseIdInput>(),
             Self::ReleaseExport => schema_object::<ReleaseExportInput>(),
+            Self::ReleaseStorageAction => schema_object::<ReleaseStorageActionInput>(),
             Self::ReleaseReidentify => schema_object::<ReleaseReidentifyInput>(),
             Self::ReleaseMetadataUpdate => schema_object::<ReleaseMetadataUpdateInput>(),
             Self::LibrarySearch => schema_object::<LibrarySearchInput>(),

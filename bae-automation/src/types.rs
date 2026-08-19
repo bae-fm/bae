@@ -823,6 +823,66 @@ pub struct ReleaseIdInput {
     pub release_id: String,
 }
 
+/// Which storage transition to run, with whatever that transition needs. The
+/// names are the Storage Manager's, not the core enum's: a caller asks to move a
+/// release to the cloud, not to "make remote".
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationStorageAction {
+    /// Local → Cloud. `pin` keeps the uploaded blobs offline on this device,
+    /// the same choice the desktop's move-to-cloud sheet asks for.
+    MoveToCloud { pin: bool },
+    /// Keep a cloud release offline on this device.
+    Pin,
+    /// Stop keeping a cloud release offline. Its bytes stay in the cloud.
+    Unpin,
+    /// Cloud → Local: move the files back out into `destination_dir`, which the
+    /// desktop asks for with a folder panel and a caller must supply here.
+    MakeLocal { destination_dir: String },
+    /// Cancel whichever transition is in flight — upload, pin, or make-local.
+    /// Core dispatches on what is actually running, and does nothing when
+    /// nothing is.
+    Cancel,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReleaseStorageActionInput {
+    pub release_id: String,
+    pub action: AutomationStorageAction,
+}
+
+/// What a storage action left behind. Each transition reports the durable thing
+/// it produced rather than a bare acknowledgement: a move to the cloud yields the
+/// outbox revision its uploads were queued at, which is what a caller waits on.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationStorageActionOutcome {
+    /// The uploads are queued and draining; `outbox_revision` is the durable
+    /// queue revision they were committed at. Poll the release to see it land.
+    CloudUploadQueued {
+        release_id: String,
+        outbox_revision: u64,
+    },
+    /// The pin joined the download queue, which serializes and reports it. The
+    /// bytes are not offline yet when this returns.
+    PinQueued {
+        release_id: String,
+    },
+    Unpinned {
+        release_id: String,
+    },
+    /// The files are at their new path and the cloud copies are tombstoned —
+    /// this one completes before it returns.
+    MadeLocal {
+        release_id: String,
+    },
+    /// Whatever was in flight was told to stop. A release with nothing running
+    /// reports this too: core treats the cancel as a no-op rather than an error.
+    Cancelled {
+        release_id: String,
+    },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReleaseExportInput {
     pub release_id: String,
