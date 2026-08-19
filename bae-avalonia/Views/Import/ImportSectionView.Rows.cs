@@ -390,20 +390,20 @@ internal sealed partial class ImportSectionView
     private static string? RowSubLine(
         BridgeTriageRow row,
         ImportUploadObservation? upload) => row.Placement switch
-    {
-        BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped => MetadataLine(row),
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
-            BridgeDisplay.LocalizedLine(phase.Phase),
-        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
-            MetadataLine(row),
-        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
-            row.Matched?.Artist,
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
-            BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
-        BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done =>
-            ImportSubLine(row, upload),
-        _ => null,
-    };
+        {
+            BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped => MetadataLine(row),
+            BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
+                BridgeDisplay.LocalizedLine(phase.Phase),
+            BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
+                MetadataLine(row),
+            BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
+                row.Matched?.Artist,
+            BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
+                BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
+            BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done =>
+                ImportSubLine(row, upload),
+            _ => null,
+        };
 
     private static string? MetadataLine(BridgeTriageRow row)
     {
@@ -437,35 +437,35 @@ internal sealed partial class ImportSectionView
     private static string? ImportSubLine(
         BridgeTriageRow row,
         ImportUploadObservation? upload) => row.ImportStatus switch
-    {
-        BridgeCandidateImportStatus.Importing importing => string.Join(
-            " · ",
-            new[]
-            {
+        {
+            BridgeCandidateImportStatus.Importing importing => string.Join(
+                " · ",
+                new[]
+                {
                 importing.Step is { } step ? BridgeDisplay.LocalizedLine(step) : Loc.Chrome("import.progress.identifying"),
                 (importing.ProgressPercent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
-            }.Where(part => part.Length > 0)),
-        BridgeCandidateImportStatus.Complete
-            or BridgeCandidateImportStatus.CloudUploadQueued =>
-            upload switch
-            {
-                ImportUploadObservation.Awaiting =>
-                    Loc.Core("core.queue.queued", "count", 1),
-                ImportUploadObservation.Active active => string.Join(
-                    " · ",
-                    new[]
-                    {
+                }.Where(part => part.Length > 0)),
+            BridgeCandidateImportStatus.Complete
+                or BridgeCandidateImportStatus.CloudUploadQueued =>
+                upload switch
+                {
+                    ImportUploadObservation.Awaiting =>
+                        Loc.Core("core.queue.queued", "count", 1),
+                    ImportUploadObservation.Active active => string.Join(
+                        " · ",
+                        new[]
+                        {
                         UploadProgressPresentation.ActivityLabel(active.Progress),
                         UploadProgressPresentation.StageBytesLabel(active.Progress),
-                    }.Where(part => part.Length > 0)),
-                ImportUploadObservation.Finished => MetadataLine(row),
-                _ => throw new InvalidOperationException(
-                    "a completed import has no upload observation"),
-            },
-        null => MetadataLine(row),
-        BridgeCandidateImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
-        _ => null,
-    };
+                        }.Where(part => part.Length > 0)),
+                    ImportUploadObservation.Finished => MetadataLine(row),
+                    _ => throw new InvalidOperationException(
+                        "a completed import has no upload observation"),
+                },
+            null => MetadataLine(row),
+            BridgeCandidateImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
+            _ => null,
+        };
 
     private static ProgressBar CloudProgressBar(
         ImportUploadObservation observation)
