@@ -30,10 +30,20 @@
 
 ### Remaining evidence and work
 
-- Run one provider-backed release from each entrypoint through preparation,
-  upload, publication, and the final Cloud or Pinned state. Record the retained
-  phase sequence and byte counters so the UI assertions are tied to actual
-  provider behavior.
+- Run one provider-backed release through the Storage Manager entrypoint. The
+  import entrypoint ran live against S3 (GCS): Nebraska, 9 files, 224.2 MB,
+  Queued → Preparing → Uploading → Uploaded → Publishing → Cloud, exact
+  221.2 MB provider denominator on the FLAC, publication landed on the next
+  sync cycle (the ~30 s idle cadence bounds its latency).
+- Findings from the live import run, each needing a fix at its owning layer:
+  - The queue header and per-file bars are the two-stage work bar (completed
+    preparation fills half), but their labels count provider bytes only
+    ("3 MB of 224.2 MB" under a half-full bar). Bar and label must speak the
+    same units.
+  - The large FLAC sat at "Zero kB of 221.2 MB" while smaller files uploaded;
+    provider byte samples appeared only after the first chunk acked.
+  - Import's "Measuring loudness" step does not advance the side panel's
+    progress.
 - Exercise provider failure, retry, pause, resume, cancellation, and app restart
   against durable queue rows. Fix any phase, action, or progress disagreement
   with a failing test at its owning layer.
