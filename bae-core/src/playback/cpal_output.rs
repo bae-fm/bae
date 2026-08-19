@@ -21,20 +21,14 @@ impl AudioStream for Stream {
 /// Audio output using the system audio device via CPAL.
 pub struct CpalAudioOutput {
     controls: AudioOutputControls,
-    /// macOS default-output-device change listener, present only on the main
-    /// player's output (`with_device_listener`). Held for its `Drop`, which
-    /// unregisters the CoreAudio property listener when the output goes away.
-    /// `None` on the preview player's output (no listener) and on non-macOS.
-    #[cfg(target_os = "macos")]
-    _device_listener: Option<device_listener::DefaultDeviceListener>,
 }
 
 impl CpalAudioOutput {
-    /// Build a cpal output with no default-device change listener — the preview
-    /// player's output, and the main player's output on non-macOS. Verifies a
-    /// default output device exists up front so construction fails fast when
-    /// there's no audio hardware. Without a listener, an output switch takes
-    /// effect at the next stream rebuild (stop / format change).
+    /// Build a cpal output. Verifies a default output device exists up front so
+    /// construction fails fast when there's no audio hardware. Which device the
+    /// samples land on is resolved per stream build, so an output switch takes
+    /// effect at the next rebuild — on macOS the service forces one by watching
+    /// the default device (see [`watch_default_output_device`]).
     pub fn new() -> Result<Self, AudioError> {
         let host = cpal::default_host();
         host.default_output_device()
@@ -42,32 +36,24 @@ impl CpalAudioOutput {
 
         Ok(Self {
             controls: AudioOutputControls::new(1.0),
-            #[cfg(target_os = "macos")]
-            _device_listener: None,
         })
     }
+}
 
-    /// Build the main player's cpal output with a CoreAudio listener that runs
-    /// `on_default_device_changed` whenever the system default output device
-    /// changes. The service passes a closure that dispatches `OutputDeviceChanged`,
-    /// so the persistent stream rebuilds onto the new default. macOS-only: other
-    /// platforms have no such listener and follow the output at the next rebuild.
-    #[cfg(target_os = "macos")]
-    pub fn with_device_listener(
-        on_default_device_changed: impl Fn() + Send + Sync + 'static,
-    ) -> Result<Self, AudioError> {
-        let host = cpal::default_host();
-        host.default_output_device()
-            .ok_or(AudioError::DeviceNotFound)?;
-
-        let device_listener =
-            device_listener::DefaultDeviceListener::register(Box::new(on_default_device_changed))?;
-
-        Ok(Self {
-            controls: AudioOutputControls::new(1.0),
-            _device_listener: Some(device_listener),
-        })
-    }
+/// Watch the system default output device and run `on_change` whenever it
+/// changes. The service registers this once for its lifetime and passes a
+/// closure that dispatches `OutputDeviceChanged`, so the persistent stream
+/// rebuilds onto the new default; the returned guard unregisters on drop.
+///
+/// This watches the *system*, not any one output, which is why it lives beside
+/// the outputs rather than inside one — the service opens two (main and
+/// preview) and exactly one listener may exist. macOS-only: other platforms have
+/// no such notification and follow the default device at the next rebuild.
+#[cfg(target_os = "macos")]
+pub(crate) fn watch_default_output_device(
+    on_change: impl Fn() + Send + Sync + 'static,
+) -> Result<device_listener::DefaultDeviceListener, AudioError> {
+    device_listener::DefaultDeviceListener::register(Box::new(on_change))
 }
 
 impl AudioOutput for CpalAudioOutput {
@@ -149,7 +135,7 @@ impl AudioOutput for CpalAudioOutput {
 /// which does nothing but dispatch an internal command — the actual stream
 /// rebuild happens on the service's command loop.
 #[cfg(target_os = "macos")]
-mod device_listener {
+pub(crate) mod device_listener {
     use super::AudioError;
     use coreaudio_sys::{
         kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyElementMain,
@@ -162,7 +148,7 @@ mod device_listener {
 
     /// A registered CoreAudio property listener. Removes the listener on drop but
     /// deliberately leaks the boxed callback — see `Drop` for why.
-    pub(super) struct DefaultDeviceListener {
+    pub(crate) struct DefaultDeviceListener {
         /// Raw pointer to the boxed callback handed to CoreAudio as client data.
         /// Never freed: an in-flight `listener_proc` on a CoreAudio thread could
         /// still be reading it (see `Drop`).

@@ -21,10 +21,12 @@ pub mod track_stream;
 
 #[cfg(feature = "test-utils")]
 pub use audio_output::{
-    wait_for_samples, CaptureAudioOutput, RealtimeCaptureAudioOutput, RealtimeProbeOutput,
+    wait_for_samples, CaptureAudioDevice, CaptureAudioOutput, RealtimeCaptureAudioDevice,
+    RealtimeCaptureAudioOutput, RealtimeProbeDevice, RealtimeProbeOutput,
 };
 pub use audio_output::{
-    AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
+    AudioError, AudioOutput, AudioOutputDevice, AudioState, AudioStream, CompletionEvent,
+    PositionEvent,
 };
 pub use context::{ContextSource, ContextStart};
 pub use error::PlaybackError;

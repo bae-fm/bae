@@ -45,7 +45,9 @@ use crate::diagnostics::{
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
-use crate::playback::audio_output::{AudioEvent, AudioEventReceiver, AudioOutput, AudioStream};
+use crate::playback::audio_output::{
+    AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
+};
 use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
@@ -509,6 +511,13 @@ pub struct PlaybackService {
     queue_values: tokio::sync::watch::Sender<PlaybackQueueProjection>,
     playback_queue: PlaybackQueue,
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
+    /// Where both players' outputs come from: `audio_output` below was opened
+    /// from it at startup, and the preview player opens its own second output
+    /// from it on its first play. Held so a preview follows whatever device the
+    /// service was started with — in a test, one that touches no hardware.
+    audio_device: Box<dyn AudioOutputDevice>,
+    /// The main player's output. AirPlay swaps this for the receiver sink and
+    /// puts the local one back when it ends.
     audio_output: Box<dyn AudioOutput>,
     /// The persistent output stream, present whenever playback has attached a
     /// track in some format and not yet stopped. Holds the device stream, the
@@ -605,41 +614,85 @@ fn side_pause_prompt_between(
     })
 }
 
-/// The platform's audio output, with no default-device change listener. Called on
-/// the service's dedicated thread so the sink owns any thread-bound device handle
-/// it opens there (cpal builds lazily per stream; AAudio binds its writer thread).
-/// This is the preview player's output, and the main player's on every platform
-/// but macOS, which uses `default_audio_output_with_device_listener`.
-#[cfg(not(target_os = "android"))]
-pub(crate) fn default_audio_output(
-) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-    Ok(Box::new(
-        crate::playback::cpal_output::CpalAudioOutput::new()?,
-    ))
+/// The system's audio output device: the platform sink (cpal on desktop, AAudio
+/// on Android) opened afresh for each output the service needs, plus — on macOS
+/// — the CoreAudio watch that dispatches `OutputDeviceChanged` when the system
+/// default output device changes, so the persistent stream rebuilds onto it.
+///
+/// Constructed on the service's dedicated thread, and every output opened from
+/// it likewise, so a sink owns any thread-bound device handle it opens there
+/// (cpal builds lazily per stream; AAudio binds its writer thread).
+pub(crate) struct SystemAudioOutputDevice {
+    /// Held for its `Drop`, which unregisters the CoreAudio property listener
+    /// when the service ends.
+    #[cfg(target_os = "macos")]
+    _default_device_watch: crate::playback::cpal_output::device_listener::DefaultDeviceListener,
 }
 
-#[cfg(target_os = "android")]
-pub(crate) fn default_audio_output(
-) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-    Ok(Box::new(
-        crate::playback::aaudio_output::AAudioOutput::new()?
-    ))
+impl SystemAudioOutputDevice {
+    /// Open the system device, registering the macOS default-device watch that
+    /// dispatches `OutputDeviceChanged` through `command_tx`.
+    pub(crate) fn open(
+        command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    ) -> Result<Self, crate::playback::audio_output::AudioError> {
+        #[cfg(not(target_os = "macos"))]
+        let _ = command_tx;
+        Ok(Self {
+            #[cfg(target_os = "macos")]
+            _default_device_watch: crate::playback::cpal_output::watch_default_output_device(
+                move || dispatch_command(&command_tx, PlaybackCommand::OutputDeviceChanged),
+            )?,
+        })
+    }
 }
 
-/// The main player's macOS output, which additionally registers a CoreAudio
-/// listener that dispatches `OutputDeviceChanged` through `command_tx` when the
-/// system default output device changes — so the persistent stream rebuilds onto
-/// the new default. The preview player never gets a listener (it uses
-/// `default_audio_output`), so exactly one listener exists at a time.
-#[cfg(target_os = "macos")]
-pub(crate) fn default_audio_output_with_device_listener(
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-    Ok(Box::new(
-        crate::playback::cpal_output::CpalAudioOutput::with_device_listener(move || {
-            dispatch_command(&command_tx, PlaybackCommand::OutputDeviceChanged)
-        })?,
-    ))
+impl AudioOutputDevice for SystemAudioOutputDevice {
+    #[cfg(not(target_os = "android"))]
+    fn open_output(
+        &self,
+    ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
+        Ok(Box::new(
+            crate::playback::cpal_output::CpalAudioOutput::new()?,
+        ))
+    }
+
+    #[cfg(target_os = "android")]
+    fn open_output(
+        &self,
+    ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
+        Ok(Box::new(
+            crate::playback::aaudio_output::AAudioOutput::new()?
+        ))
+    }
+}
+
+/// Open the device the service plays through, and the main player's output from
+/// it: the caller's device when one was supplied, otherwise the system's (which
+/// also registers the macOS default-device watch). `None` means the service
+/// cannot run — it has no output to play through — and its thread returns.
+fn open_audio_device_and_output(
+    custom_device: Option<Box<dyn AudioOutputDevice>>,
+    command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
+) -> Option<(Box<dyn AudioOutputDevice>, Box<dyn AudioOutput>)> {
+    let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
+        Some(device) => device,
+        None => match SystemAudioOutputDevice::open(command_tx.clone()) {
+            Ok(device) => Box::new(device),
+            Err(e) => {
+                error!("Failed to open the system audio device: {:?}", e);
+                return None;
+            }
+        },
+    };
+    // The main player's output. The preview player opens its own second output
+    // from the same device on its first play.
+    match audio_device.open_output() {
+        Ok(output) => Some((audio_device, output)),
+        Err(e) => {
+            error!("Failed to initialize audio output: {:?}", e);
+            None
+        }
+    }
 }
 
 /// Map a command to its telemetry kind, or `None` for commands that don't ship:

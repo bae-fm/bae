@@ -810,14 +810,17 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     // Build a capture-backed service directly so the test owns the stream
     // receiver and can drop it mid-session (real-time paced so the track doesn't
     // race to its end before we seek).
-    let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
+    let (capture_device, capture_stream_rx) =
+        bae_core::playback::RealtimeCaptureAudioDevice::new();
     let mut capture_stream_rx = Some(capture_stream_rx);
-    let handle = lib.library_manager.start_playback_service_with_output(
-        lib.runtime_handle,
-        100,
-        true,
-        Box::new(capture_output),
-    );
+    let handle = lib
+        .library_manager
+        .start_playback_service_with_audio_device(
+            lib.runtime_handle,
+            100,
+            true,
+            Box::new(capture_device),
+        );
     let mut progress_rx = handle.subscribe_progress();
 
     handle.play(first.clone());

@@ -18,21 +18,25 @@ impl LibraryManager {
         )
     }
 
+    /// Start playback over a caller-supplied audio device instead of the
+    /// system's: every output the service opens — the main player's and any
+    /// preview's — comes from it, so a test drives playback without touching
+    /// audio hardware.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn start_playback_service_with_output(
+    pub fn start_playback_service_with_audio_device(
         &self,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
-        audio_output: Box<dyn crate::playback::audio_output::AudioOutput>,
+        audio_device: Box<dyn crate::playback::audio_output::AudioOutputDevice>,
     ) -> crate::playback::PlaybackHandle {
-        crate::playback::PlaybackService::start_with_output(
+        crate::playback::PlaybackService::start_with_audio_device(
             self.clone(),
             self.ids.clone(),
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
-            audio_output,
+            audio_device,
         )
     }
 

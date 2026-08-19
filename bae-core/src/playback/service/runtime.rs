@@ -663,15 +663,17 @@ impl PlaybackService {
         )
     }
 
-    /// Start over a caller-supplied audio output, for tests that capture samples.
+    /// Start over a caller-supplied audio device, for tests that capture samples
+    /// — both the main player's output and any preview's come from it, so a test
+    /// touches no audio hardware.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn start_with_output(
+    pub(crate) fn start_with_audio_device(
         library_manager: LibraryManager,
         queue_ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
-        audio_output: Box<dyn AudioOutput>,
+        audio_device: Box<dyn AudioOutputDevice>,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
@@ -679,7 +681,7 @@ impl PlaybackService {
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
-            Some(audio_output),
+            Some(audio_device),
         )
     }
 
@@ -689,7 +691,7 @@ impl PlaybackService {
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
-        custom_output: Option<Box<dyn AudioOutput>>,
+        custom_device: Option<Box<dyn AudioOutputDevice>>,
     ) -> PlaybackHandle {
         let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
@@ -736,23 +738,10 @@ impl PlaybackService {
                 .build()
                 .expect("Failed to create runtime");
             rt.block_on(async move {
-                let audio_output: Box<dyn AudioOutput> = match custom_output {
-                    Some(output) => output,
-                    None => {
-                        // The main player registers the macOS default-device
-                        // listener; other platforms build the listener-less output.
-                        #[cfg(target_os = "macos")]
-                        let built = default_audio_output_with_device_listener(command_tx.clone());
-                        #[cfg(not(target_os = "macos"))]
-                        let built = default_audio_output();
-                        match built {
-                            Ok(output) => output,
-                            Err(e) => {
-                                error!("Failed to initialize audio output: {:?}", e);
-                                return;
-                            }
-                        }
-                    }
+                let Some((audio_device, audio_output)) =
+                    open_audio_device_and_output(custom_device, &command_tx)
+                else {
+                    return;
                 };
                 let preview = PreviewPlayer::new(
                     progress_tx.clone(),
@@ -767,6 +756,7 @@ impl PlaybackService {
                     queue_values,
                     playback_queue,
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
+                    audio_device,
                     audio_output,
                     output: None,
                     slot: PlaybackSlot::Stopped,
@@ -1161,7 +1151,9 @@ impl PlaybackService {
                     self.preview_toggle_pause();
                 }
                 PlaybackCommand::PreviewSeekByRatio(ratio) => {
-                    self.preview.seek_by_ratio(ratio).await;
+                    self.preview
+                        .seek_by_ratio(ratio, self.audio_device.as_ref())
+                        .await;
                 }
                 PlaybackCommand::PreviewCompleted => {
                     self.preview_completed();

@@ -418,11 +418,11 @@ impl PlaybackTestFixture {
 
         // Real-time probe sink: drives the real decode + drain at real time and
         // discards the samples, so playback CPU is measured with no device.
-        let playback_handle = library_manager.start_playback_service_with_output(
+        let playback_handle = library_manager.start_playback_service_with_audio_device(
             runtime_handle,
             100,
             true,
-            Box::new(bae_core::playback::RealtimeProbeOutput::new()),
+            Box::new(bae_core::playback::RealtimeProbeDevice),
         );
         let progress_rx = playback_handle.subscribe_progress();
 

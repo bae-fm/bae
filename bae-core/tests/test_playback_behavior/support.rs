@@ -426,12 +426,13 @@ fn start_capture_service_with_restore(
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
-    let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
-    let handle = library_manager.start_playback_service_with_output(
+    let (capture_device, capture_stream_rx) =
+        bae_core::playback::RealtimeCaptureAudioDevice::new();
+    let handle = library_manager.start_playback_service_with_audio_device(
         runtime_handle,
         100,
         restore_playback,
-        Box::new(capture_output),
+        Box::new(capture_device),
     );
     (handle, capture_stream_rx)
 }
@@ -640,13 +641,13 @@ impl PlaybackTestFixture {
         // A real-time capture sink stands in for the audio device: no hardware
         // required, and it paces the decoder to wall-clock like a real device so
         // position/seek/auto-advance timing matches production.
-        let (capture_output, capture_stream_rx) =
-            bae_core::playback::RealtimeCaptureAudioOutput::new();
-        let playback_handle = library_manager.start_playback_service_with_output(
+        let (capture_device, capture_stream_rx) =
+            bae_core::playback::RealtimeCaptureAudioDevice::new();
+        let playback_handle = library_manager.start_playback_service_with_audio_device(
             runtime_handle,
             100,
             true,
-            Box::new(capture_output),
+            Box::new(capture_device),
         );
         let progress_rx = playback_handle.subscribe_progress();
         Self {

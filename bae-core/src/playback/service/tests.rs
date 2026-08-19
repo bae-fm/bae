@@ -227,6 +227,9 @@ fn playback_service_over(
         queue_values,
         playback_queue,
         current_position_shared: Arc::new(std::sync::Mutex::new(None)),
+        // These tests drive the handlers directly and never start a preview, so
+        // no output is ever opened from this device.
+        audio_device: Box::new(crate::playback::audio_output::FailingAudioDevice),
         audio_output: Box::new(TestAudioOutput::new()),
         output: None,
         slot: PlaybackSlot::Stopped,
