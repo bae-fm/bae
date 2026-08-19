@@ -228,3 +228,19 @@ history every 30s per device, serial fetch shapes in pull (blobs 80s),
 per-cycle verifier rebuild duplicating durable knowledge. Live validation
 protocol: merge → pin → rebuild mac+phone → wipe ~/.bae → re-pair → measure
 (cycle stage timings + DB size + settled-cycle read counts).
+
+## Self-serve validation harness (working)
+
+- MCP automation: scratchpad/mcp.py (list | schema <tool> | call <tool>
+  '<json>'); token in scratchpad/mcp-token (from Settings > Automation >
+  copy-token via UI scripting); results land in scratchpad/mcp-last.json.
+  Import pipeline proven end-to-end: import_candidates_list -> import_search
+  -> import_release_prefetch -> import_start (storage_mode local|remote,
+  pin, identity_choice exact). 146 valid unadded candidates on the SMB share
+  = load corpus. Automation index seed bug fixed (commit on main) — surface
+  survives mid-scan startup now.
+- Measurement: ~/.bae/logs/bae.log.YYYY-MM-DD (file logging always on now);
+  stage timings at INFO. sync_bench example for headless cycle runs.
+  Fixture of the quadratic-era library: ~/bae-fixtures/library-quadratic-2026-08-19.
+- Second device for re-pair validation: user's phone (away for now) or the
+  Android emulator (~/.android/avd — check inventory when needed).
