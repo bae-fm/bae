@@ -643,3 +643,105 @@ async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
         .expect("the release survives the cancel");
     assert!(!after.remote, "the cancelled release stays Local");
 }
+
+/// A manager whose config names a cloud provider the host gave it no driver
+/// for, so every connect attempt fails deterministically the way a startup
+/// connect against an unreachable provider does.
+async fn setup_configured_but_unconnectable_manager() -> (LibraryManager, TempDir) {
+    let temp_dir = TempDir::new().unwrap();
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
+    let mut config = Config::with_defaults(
+        format!("test-{}", Uuid::new_v4()),
+        "test-device".to_string(),
+        library_dir,
+        "Test Library".to_string(),
+    );
+    config.cloud_home.provider = Some(crate::config::CloudProvider::CloudKit);
+    crate::config::install_test_keyring();
+    assemble_test_manager(temp_dir, config).await
+}
+
+/// Reconnect on a library with no cloud provider has nothing to reconnect to.
+/// It refuses rather than reporting a retry it never ran, and the refusal stays
+/// with its caller: a library that was never set up is not a library whose sync
+/// is failing, so the sync status it would poison stays clean.
+#[tokio::test]
+async fn reconnect_sync_refuses_a_library_with_no_provider() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    let error = manager
+        .reconnect_sync()
+        .await
+        .expect_err("reconnecting with no configured provider must fail");
+
+    assert!(
+        matches!(error, LibraryError::Sync(coven::SyncError::NotConfigured)),
+        "got {error:?}"
+    );
+    assert!(
+        manager.get_sync_status().error.is_none(),
+        "an unconfigured library reports no sync failure"
+    );
+}
+
+/// A launch whose connect failed leaves no connection and no loop, so a retry
+/// has to connect — waking a loop that was never built does nothing. The
+/// returned failure comes from the connect itself, and it replaces the older
+/// one in the sync status, so a user who retries sees why this attempt didn't
+/// take rather than the reason from launch.
+#[tokio::test]
+async fn reconnect_sync_connects_when_the_startup_connect_left_nothing_running() {
+    let (manager, _temp_dir) = setup_configured_but_unconnectable_manager().await;
+    manager.attach_and_start_sync_at_startup().await;
+    assert!(
+        !manager.is_sync_ready(),
+        "the failed startup connect left no sync loop to wake"
+    );
+
+    let error = manager
+        .reconnect_sync()
+        .await
+        .expect_err("the retry hits the same missing driver");
+
+    assert!(
+        error.to_string().contains("CloudKit driver not provided"),
+        "the failure is the connect's own, so the retry attempted one: {error}"
+    );
+    let crate::ui::UiError::Diagnostic { detail, .. } = manager
+        .get_sync_status()
+        .error
+        .expect("the retry's failure reaches the sync-failure surfaces")
+    else {
+        panic!("a sync failure carries its Rust error chain as the detail")
+    };
+    assert_eq!(
+        detail,
+        error.to_string(),
+        "the retry's failure is what those surfaces now show"
+    );
+}
+
+/// A retry that gets under way supersedes the failure that prompted it: the
+/// recorded error clears as the retry starts, so the failure banner reflects
+/// the attempt in flight instead of the one that already failed. The next
+/// cycle's own verdict then sets the error again, or leaves it clear.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn reconnect_sync_clears_the_failure_it_retries() {
+    let (manager, _temp_dir) = setup_configured_but_unconnectable_manager().await;
+    manager.attach_and_start_sync_at_startup().await;
+    assert!(manager.get_sync_status().error.is_some());
+
+    connect_test_cloud_with_sync_loop(&manager).await;
+    assert!(manager.is_sync_ready(), "a loop is running to be woken");
+
+    manager
+        .reconnect_sync()
+        .await
+        .expect("a connected library retries by waking its loop");
+
+    assert!(
+        manager.get_sync_status().error.is_none(),
+        "the stale failure is gone the moment the retry runs"
+    );
+}

@@ -715,6 +715,20 @@ impl AppHandle {
         self.services.trigger_sync();
     }
 
+    /// Retry sync with the provider this library already has configured: connect
+    /// if a failed startup left no connection, then run a cycle now. The failure
+    /// reaches the caller and is recorded as the sync-status error the failure
+    /// banner reads.
+    pub async fn reconnect_sync(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .reconnect_sync()
+                .await
+                .map_err(BridgeError::internal)
+        })
+        .await
+    }
+
     pub fn is_sync_ready(&self) -> bool {
         self.services.is_sync_ready()
     }

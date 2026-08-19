@@ -43,6 +43,14 @@ public final class Sync: Sendable, Observable {
     // macOS target periphery analyzes doesn't use it (sync is automatic there).
     /// Re-kick the sync loop now (manual pull-to-refresh / retry). Non-throwing.
     public let triggerSync: @Sendable () -> Void
+    /// Retry sync with the provider this library already has configured:
+    /// connects when a failed launch left no connection, then runs a cycle now.
+    /// Distinct from `triggerSync`, which only wakes an already-running loop and
+    /// is silently a no-op when the startup connect never landed. A failure is
+    /// recorded as the sync-status error the failure banner reads, so the banner
+    /// shows why the retry didn't take; it also throws so the caller can end its
+    /// in-progress state.
+    public let reconnectSync: @Sendable () async throws -> Void
     /// Delete the active library's encryption key from the OS keyring.
     /// The current session keeps working (the key stays in memory);
     /// the next launch lands on the unlock screen.
@@ -89,6 +97,7 @@ public final class Sync: Sendable, Observable {
         setSyncPaused: @escaping @Sendable (Bool) async throws -> Void = { _ in
         },
         triggerSync: @escaping @Sendable () -> Void = {},
+        reconnectSync: @escaping @Sendable () async throws -> Void = {},
         lockActiveLibrary: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
@@ -105,6 +114,7 @@ public final class Sync: Sendable, Observable {
         self.cloudOnlyReleaseCount = cloudOnlyReleaseCount
         self.retryOutbox = retryOutbox
         self.triggerSync = triggerSync
+        self.reconnectSync = reconnectSync
         self.renameLibrary = renameLibrary
         self.cancelReleaseTransition = cancelReleaseTransition
         self.setSyncPaused = setSyncPaused
@@ -134,6 +144,7 @@ public final class Sync: Sendable, Observable {
             },
             setSyncPaused: { try await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
+            reconnectSync: { try await handle.reconnectSync() },
             lockActiveLibrary: { try await handle.lockActiveLibrary() },
             setMaxConcurrentUploads: {
                 try handle.setMaxConcurrentUploads(n: $0)

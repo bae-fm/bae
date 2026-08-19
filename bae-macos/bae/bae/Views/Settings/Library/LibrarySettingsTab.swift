@@ -55,9 +55,15 @@ struct LibrarySettingsTab: View {
             }
 
             Section("Sync") {
-                SyncErrorBanner(onReconnect: { showSyncSetup = true })
-
+                // The failure banner belongs to a configured provider: it offers
+                // to retry that provider's connection, which is meaningless with
+                // no provider to retry. The recorded sync error outlives a
+                // disconnect (nothing clears it once the loop is gone), so
+                // rendering it on error alone would leave a stale banner over the
+                // set-up button. iOS and Android already gate it this way.
                 if let syncConfig = configStore.config.sync {
+                    SyncErrorBanner(onReconnect: reconnectSync)
+
                     ConnectedProviderControls(
                         config: syncConfig,
                         sync: sync,
@@ -125,6 +131,24 @@ struct LibrarySettingsTab: View {
                 onDone: dismissSyncSetup
             )
         #endif
+    }
+
+    /// Retry the provider the library is already configured for. The library
+    /// keeps its provider config and its keyring credentials through a failure,
+    /// so a failed sync is retried, never set up again.
+    ///
+    /// A failed retry is recorded as the sync-status error, which is what
+    /// `SyncErrorBanner` renders — it re-appears naming the new reason, so the
+    /// failure's display path is the banner the user pressed the button in.
+    private func reconnectSync() async {
+        do {
+            try await sync.reconnectSync()
+        }
+        catch {
+            logger.error(
+                "Sync reconnect failed: \(error.localizedDescription)"
+            )
+        }
     }
 
     private func connectS3(_ config: BridgeSaveSyncConfig) async throws {

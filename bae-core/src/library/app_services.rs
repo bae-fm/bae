@@ -648,6 +648,7 @@ impl AppServices {
     delegate_async!(manager, forget_library => forget_library() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unlock_cloud_home => unlock_cloud_home(serialized_master_key: &str) -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
+    delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
     delegate_sync!(manager, download_snapshot => download_snapshot() -> crate::library::DownloadSnapshot);
     delegate_sync!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> ());

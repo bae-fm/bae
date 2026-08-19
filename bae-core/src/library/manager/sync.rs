@@ -137,16 +137,49 @@ impl LibraryManager {
     pub async fn attach_and_start_sync_at_startup(&self) {
         if let Err(error) = self.attach_and_start_sync().await {
             warn!("startup sync connect failed; opening library not connected: {error}");
-            self.record_startup_sync_error(&error);
+            self.set_sync_error(Some(error.to_string()));
         }
     }
 
-    /// Write a startup connect failure into the sync-status value, matching the
-    /// sync loop's own failure path.
-    fn record_startup_sync_error(&self, error: &LibraryError) {
+    /// Retry sync against the provider this library already has configured, so a
+    /// failure a user has since fixed — an offline launch, an unreachable
+    /// endpoint, a bad object the cloud side no longer serves — clears without
+    /// relaunching the app or re-entering the provider settings.
+    ///
+    /// Two failures land here and each needs a different move. A startup connect
+    /// that failed left no connection at all, and only a fresh connect builds
+    /// one; a connected loop whose cycle failed is already backing off, and a
+    /// wake runs its next cycle now instead of up to five minutes from now.
+    /// `is_sync_ready` is what separates them: it is true only for an installed
+    /// connection with a live loop behind it.
+    ///
+    /// A connect that fails becomes this retry's recorded sync-status error, so
+    /// every surface that already renders a sync failure shows why the retry
+    /// didn't take; it is cleared the moment a retry is under way. A library
+    /// with no provider is not failing sync, it has none, so that refusal goes
+    /// back to the caller alone rather than posing as a sync failure.
+    pub async fn reconnect_sync(&self) -> Result<(), LibraryError> {
+        if !self.is_sync_configured() {
+            return Err(coven::SyncError::NotConfigured.into());
+        }
+        if !self.is_sync_ready() {
+            if let Err(error) = self.attach_and_start_sync().await {
+                warn!("sync reconnect failed: {error}");
+                self.set_sync_error(Some(error.to_string()));
+                return Err(error);
+            }
+        }
+        self.set_sync_error(None);
+        self.trigger_sync();
+        Ok(())
+    }
+
+    /// Write the sync-status error the UI's failure banner reads, matching the
+    /// sync loop's own failure path. `None` clears it.
+    fn set_sync_error(&self, error: Option<String>) {
         {
             let mut state = self.sync_status.lock().unwrap();
-            state.error = Some(error.to_string());
+            state.error = error;
         }
         self.sync_status_values.send_replace(self.get_sync_status());
     }
