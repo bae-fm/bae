@@ -441,3 +441,94 @@ mod identify_mirrors {
         assert_eq!(json["text"]["free_text"][0], "Album Title");
     }
 }
+
+/// The candidate index serves state, so it must start FROM the state: the
+/// import scanner runs from bootstrap, while event indexing starts with the
+/// automation surface — every candidate discovered in between is unknown to a
+/// purely event-built index, and its first update latched the whole surface
+/// `Failed`. Seeding from the candidate snapshot before pumping events makes
+/// updates to pre-existing candidates ordinary; an unknown key after the seed
+/// stays a loud failure, because then it is a real contradiction.
+mod seeded_index {
+    use super::*;
+    use bae_core::import::folder_scanner::CategorizedFiles;
+    use bae_core::import::ImportCandidatesSnapshot;
+    use std::path::PathBuf;
+
+    fn snapshot_with(path: &str) -> ImportCandidatesSnapshot {
+        ImportCandidatesSnapshot {
+            watched_folders: Vec::new(),
+            folder_candidates: vec![bae_core::import::FolderImportCandidateSnapshot {
+                candidate: bae_core::import::folder_scanner::FolderCandidate {
+                    path: PathBuf::from(path),
+                    file_root: PathBuf::from(path),
+                    name: format!("Candidate {path}"),
+                    files: CategorizedFiles {
+                        files: Vec::new(),
+                        format_label: "FLAC".to_string(),
+                    },
+                    watched_folder_path: "/music".to_string(),
+                    scope: bae_core::import::folder_scanner::ReleaseFileScope::Recursive,
+                    file_edit_revision: 0,
+                    display_path: path.trim_start_matches('/').to_string(),
+                    resolved_boundaries: Vec::new(),
+                    combine_ancestor_key: None,
+                },
+                runtime: bae_core::import::CandidateRuntimeSnapshot {
+                    identify_state: bae_core::identify::IdentifyState::Idle,
+                    toolbar: Vec::new(),
+                    signals: None,
+                    import_status: None,
+                },
+                actionable: true,
+                skipped: false,
+                is_added: false,
+            }],
+            runtime_candidates: Vec::new(),
+            invalid_candidates: Vec::new(),
+            boundaries: Vec::new(),
+            folder_scan_statuses: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn an_update_to_a_seeded_candidate_keeps_the_surface_available() {
+        let state = AutomationState::new();
+        assert!(state.start_event_indexing());
+        state.seed_candidates(snapshot_with("/music/A"));
+
+        state.apply_event(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+            candidate_key: "/music/A".to_string(),
+            skipped: true,
+        }));
+
+        assert!(
+            matches!(state.event_indexing(), AutomationEventIndexing::Started),
+            "an update to a seeded candidate must not fail the surface"
+        );
+        let candidate = state
+            .get_candidate("/music/A")
+            .expect("seeded candidate resolves");
+        assert!(candidate.common().skipped, "the update landed on the seed");
+    }
+
+    #[test]
+    fn an_update_to_an_unknown_candidate_still_fails_loud() {
+        let state = AutomationState::new();
+        assert!(state.start_event_indexing());
+        state.seed_candidates(snapshot_with("/music/A"));
+
+        state.apply_event(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+            candidate_key: "/music/NEVER-SEEN".to_string(),
+            skipped: true,
+        }));
+
+        assert!(
+            matches!(
+                state.event_indexing(),
+                AutomationEventIndexing::Failed { .. }
+            ),
+            "an unknown key after the seed is a real contradiction"
+        );
+    }
+}

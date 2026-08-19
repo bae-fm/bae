@@ -14,7 +14,10 @@ impl Automation {
             return;
         }
         let state = self.state.clone();
+        // Subscribe before seeding: an event emitted between the two re-applies
+        // over the seed, while the reverse order would lose it entirely.
         let mut rx = self.services.import_subscribe_events();
+        state.seed_candidates(self.services.subscribe_import_candidates().borrow().clone());
         self.runtime_handle.spawn(async move {
             loop {
                 match rx.recv().await {

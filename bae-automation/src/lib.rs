@@ -179,6 +179,29 @@ impl AutomationState {
             .insert(candidate.key().to_string(), candidate);
     }
 
+    /// Seed the index from the import service's current candidate snapshot.
+    ///
+    /// The scanner runs from bootstrap; event indexing starts with the
+    /// automation surface. An index built from events alone does not know any
+    /// candidate discovered in between, so that candidate's first update
+    /// latched the whole surface `Failed`. Seeding makes the index start from
+    /// the state it mirrors; an unknown key after the seed remains a loud
+    /// failure, because then it is a real contradiction. Called after the
+    /// event subscription exists — an event raced in between re-applies over
+    /// the seed, which is idempotent for inserts and ordinary for updates.
+    fn seed_candidates(&self, snapshot: bae_core::import::ImportCandidatesSnapshot) {
+        for folder in snapshot.folder_candidates {
+            self.insert_candidate(automation_candidate_from_folder(
+                folder.candidate,
+                folder.skipped,
+                folder.is_added,
+            ));
+        }
+        for invalid in snapshot.invalid_candidates {
+            self.insert_candidate(automation_candidate_from_invalid(invalid));
+        }
+    }
+
     fn update_candidate(
         &self,
         candidate_key: String,
