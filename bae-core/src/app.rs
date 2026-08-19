@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::config::{Config, ConfigHandle};
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
@@ -198,6 +198,16 @@ where
     let locked = provider_configured && key_state == coven::CloudHomeKeyState::Locked;
     let advance_active_pointer = !locked;
     if locked {
+        // Reads as Locked both for a genuinely missing master key and when the
+        // OS keychain refuses the read — e.g. an app relaunched by a launch
+        // agent while the screen is locked. Without this line such a boot is
+        // indistinguishable in the log from a healthy one: sync silently never
+        // starts and the first visible symptom is the absence of cycles.
+        warn!(
+            "cloud home key unavailable at startup; opening library locked, sync not started \
+             (provider {provider:?})",
+            provider = config_handle.config().cloud_home.provider
+        );
         diagnostics.event(TelemetryEvent::Anomaly {
             kind: AnomalyKind::EncryptionKeyMissing,
         });
