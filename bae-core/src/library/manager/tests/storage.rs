@@ -817,3 +817,143 @@ async fn playback_error_reason_for_file(
     demand.await.expect("demand read task");
     reason
 }
+
+/// Store a cover on `release_id` the way the importer does — the `covers` row
+/// and its blob in one coven batch — so the release carries the cover blob that
+/// coven's `make_remote` pins along with its files.
+#[cfg(feature = "test-utils")]
+async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
+    let cover = DbLibraryImage::cover(
+        release_id,
+        &Uuid::new_v4().to_string(),
+        "local",
+        None,
+        bytes,
+        manager.clock.now(),
+    );
+    manager
+        .store_library_image_blob(&cover, bytes)
+        .await
+        .unwrap();
+}
+
+/// Whether coven keeps a row's blob in `storage/pinned/`. Asked of the blob
+/// itself rather than through `release_pinned`, which answers from a
+/// representative *file* and so cannot see a stranded cover.
+#[cfg(feature = "test-utils")]
+async fn blob_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
+    let blob = manager
+        .database
+        .row_blob_ref(namespace, row_id)
+        .await
+        .expect("the blob-bearing row exists");
+    manager.database.is_pinned(&[blob]).await.unwrap()
+}
+
+/// A pinned release's cover belongs to its pinned set: coven's `make_remote`
+/// pins the whole root batch, cover included, so unpinning has to move all of it
+/// to the evictable cache. Enumerating `release_files` alone left the cover in
+/// `storage/pinned/` forever — unreachable by any later unpin, since nothing
+/// else names it.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn unpin_release_unpins_the_cover_with_its_files() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("pinned-with-cover"),
+        "Pinned With Cover",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    store_test_cover(&manager, &release.id, b"cover-bytes").await;
+
+    manager.coven_make_remote(&release.id, true).await.unwrap();
+    let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
+    assert_eq!(uploaded, 2, "the file and the cover both upload");
+    let file_id = manager.database.get_files_for_release(&release.id).await.unwrap()[0]
+        .id
+        .clone();
+    assert!(
+        blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
+        "make-Remote with pin leaves the release file pinned"
+    );
+    assert!(
+        blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        "make-Remote with pin leaves the cover pinned — it rides along in coven's batch"
+    );
+
+    manager.unpin_release(&release.id).await.unwrap();
+
+    assert!(
+        !blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
+        "the release file unpinned"
+    );
+    assert!(
+        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        "the cover unpinned with the files; nothing of the release stays pinned"
+    );
+}
+
+/// The Pin transition covers the same set make-Remote pins: pinning a Remote
+/// release from the UI must bring its cover into `storage/pinned/` too, or the
+/// cover stays evictable and an offline library loses its art. The cover's bytes
+/// count toward the Downloads pane's total, so the bar still lands exactly on
+/// its denominator.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn pin_release_pins_the_cover_and_counts_its_bytes() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let file_bytes: &[u8] = b"track-bytes";
+    let cover_bytes: &[u8] = b"cover-bytes-are-longer";
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("unpinned-with-cover"),
+        "Unpinned With Cover",
+        &[("track.flac", file_bytes)],
+    )
+    .await;
+    store_test_cover(&manager, &release.id, cover_bytes).await;
+
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    assert!(
+        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        "make-Remote without pin leaves the cover evictable"
+    );
+
+    let expected_total = (file_bytes.len() + cover_bytes.len()) as u64;
+    assert_eq!(
+        manager
+            .initial_download_progress(&release.id)
+            .await
+            .unwrap()
+            .bytes_total,
+        expected_total,
+        "the pane's denominator counts every blob the pin fetches"
+    );
+
+    let mut progress = Vec::new();
+    manager
+        .pin_release_blobs_with_progress(&release.id, |update| progress.push(update))
+        .await
+        .unwrap();
+
+    let file_id = manager.database.get_files_for_release(&release.id).await.unwrap()[0]
+        .id
+        .clone();
+    assert!(
+        blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
+        "the release file pinned"
+    );
+    assert!(
+        blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        "the cover pinned with the files"
+    );
+    let last = progress.last().expect("the pin reports progress");
+    assert_eq!(last.bytes_done, expected_total);
+    assert_eq!(last.bytes_total, expected_total);
+    assert_eq!(last.fraction, 1.0, "the bar lands on its denominator");
+}

@@ -202,24 +202,63 @@ impl LibraryManager {
         }
     }
 
+    /// Every blob a release keeps pinned: its audio files, plus its cover when it
+    /// has a `covers` row. coven's `make_remote` pins the release's whole root
+    /// batch — the cover rides along — so this is the set a pin must fetch and an
+    /// unpin must release. Both read it here rather than enumerating rows
+    /// themselves, so the two can't act on different sets: enumerating only
+    /// `release_files` stranded the cover in `storage/pinned/` on unpin (nothing
+    /// else ever names it again) and left it evictable after a Pin.
+    async fn release_pinnable_blobs(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<PinnableBlob>, LibraryError> {
+        let files = self.database.get_files_for_release(release_id).await?;
+        let mut pinnable = Vec::with_capacity(files.len() + 1);
+        for file in &files {
+            pinnable.push(PinnableBlob {
+                blob: self.release_file_row_blob_ref(&file.id).await?,
+                bytes: pinnable_bytes(release_id, &file.id, file.file_size)?,
+            });
+        }
+        let cover_type = LibraryImageType::Cover;
+        if let Some(cover) = self
+            .database
+            .find_library_image(release_id, &cover_type)
+            .await?
+        {
+            pinnable.push(PinnableBlob {
+                blob: self
+                    .image_row_blob_ref(cover_type.namespace(), release_id)
+                    .await?,
+                bytes: pinnable_bytes(release_id, release_id, cover.file_size)?,
+            });
+        }
+        Ok(pinnable)
+    }
+
     /// Pin a remote release's blobs for offline: coven fetches every blob into
     /// `storage/pinned/` (from the evictable cache if already there, else the
     /// cloud). Idempotent. Pinned-ness is coven cache state — there is no bae flag.
     /// The low-level cache op behind the "Pin" transition.
     ///
-    /// Pinned one blob at a time so the Downloads pane advances as each file lands:
-    /// coven's `pin` is a per-blob loop with no cross-blob state, so a file at a
+    /// Pinned one blob at a time so the Downloads pane advances as each blob lands:
+    /// coven's `pin` is a per-blob loop with no cross-blob state, so one at a
     /// time is the same work in the same order as handing it the whole set — and it
     /// is the only granularity coven reports at, since a single `pin` call over the
-    /// set returns nothing until every file is in.
+    /// set returns nothing until every blob is in.
+    ///
+    /// The cover's bytes count toward the pane's total like any other blob: the
+    /// pin fetches them, its size is on the `covers` row, and both ends of the
+    /// fraction come from [`Self::release_pinnable_blobs`], so the bar cannot
+    /// outrun its denominator.
     pub(crate) async fn pin_release_blobs_with_progress(
         &self,
         release_id: &str,
         mut on_progress: impl FnMut(crate::library::DownloadTransferProgress),
     ) -> Result<(), LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
-        let sizes = download_file_sizes(release_id, &files)?;
-        let bytes_total = total_bytes(release_id, &sizes)?;
+        let pinnable = self.release_pinnable_blobs(release_id).await?;
+        let bytes_total = total_bytes(release_id, &pinnable)?;
         let mut emit_progress = |bytes_done| {
             on_progress(crate::library::DownloadTransferProgress::new(
                 release_id,
@@ -231,29 +270,31 @@ impl LibraryManager {
         emit_progress(0)?;
 
         let mut bytes_done = 0u64;
-        for (file, size) in files.iter().zip(&sizes) {
-            let blob = self.release_file_row_blob_ref(&file.id).await?;
+        for entry in &pinnable {
             self.database
-                .pin(std::slice::from_ref(&blob))
+                .pin(std::slice::from_ref(&entry.blob))
                 .await
                 .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
             // Never exceeds `bytes_total`: it is the sum of these same sizes.
-            bytes_done += size;
+            bytes_done += entry.bytes;
             emit_progress(bytes_done)?;
         }
 
         Ok(())
     }
 
+    /// The Downloads pane's opening progress for a queued pin: zero of the same
+    /// total [`Self::pin_release_blobs_with_progress`] counts down, so the bar
+    /// never jumps when the pin starts reporting.
     pub(crate) async fn initial_download_progress(
         &self,
         release_id: &str,
     ) -> Result<crate::library::DownloadTransferProgress, LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
+        let pinnable = self.release_pinnable_blobs(release_id).await?;
         crate::library::DownloadTransferProgress::new(
             release_id,
             0,
-            download_total_bytes(release_id, &files)?,
+            total_bytes(release_id, &pinnable)?,
         )
     }
 
@@ -262,11 +303,12 @@ impl LibraryManager {
     /// droppable). No cloud read, no bae flag. The low-level cache op behind the
     /// "Unpin" transition.
     pub(crate) async fn unpin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
-        let mut blobs = Vec::with_capacity(files.len());
-        for file in &files {
-            blobs.push(self.release_file_row_blob_ref(&file.id).await?);
-        }
+        let blobs: Vec<coven::RowBlobRef> = self
+            .release_pinnable_blobs(release_id)
+            .await?
+            .into_iter()
+            .map(|entry| entry.blob)
+            .collect();
         self.database
             .unpin(&blobs)
             .await
@@ -303,27 +345,24 @@ fn image_ref_map(
         .collect()
 }
 
-fn download_file_sizes(release_id: &str, files: &[DbFile]) -> Result<Vec<u64>, LibraryError> {
-    files
-        .iter()
-        .map(|file| {
-            u64::try_from(file.file_size).map_err(|_| {
-                LibraryError::Storage(format!(
-                    "pin release {release_id}: file {} has negative size",
-                    file.id
-                ))
-            })
-        })
-        .collect()
+/// One blob of a release's pinned set, with the plaintext byte size its row
+/// records — what a pin fetches, and what the Downloads pane counts.
+struct PinnableBlob {
+    blob: coven::RowBlobRef,
+    bytes: u64,
 }
 
-fn download_total_bytes(release_id: &str, files: &[DbFile]) -> Result<u64, LibraryError> {
-    total_bytes(release_id, &download_file_sizes(release_id, files)?)
+fn pinnable_bytes(release_id: &str, row_id: &str, file_size: i64) -> Result<u64, LibraryError> {
+    u64::try_from(file_size).map_err(|_| {
+        LibraryError::Storage(format!(
+            "pin release {release_id}: row {row_id} has negative size"
+        ))
+    })
 }
 
-fn total_bytes(release_id: &str, sizes: &[u64]) -> Result<u64, LibraryError> {
-    sizes.iter().try_fold(0u64, |total, file_size| {
-        total.checked_add(*file_size).ok_or_else(|| {
+fn total_bytes(release_id: &str, pinnable: &[PinnableBlob]) -> Result<u64, LibraryError> {
+    pinnable.iter().try_fold(0u64, |total, entry| {
+        total.checked_add(entry.bytes).ok_or_else(|| {
             LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
         })
     })
