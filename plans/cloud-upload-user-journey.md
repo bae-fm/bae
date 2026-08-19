@@ -121,9 +121,16 @@ changed denominators, or counts beyond the denominator fail loudly.
 ## Prepared provider object
 
 When preparation commits, coven records Prepared and the exact provider-object
-size in the durable queue. The UI displays Prepared even after restart. The
-source preparation half of the two-stage work bar is complete; provider bytes
-remain untouched.
+size in the durable queue. The UI displays Prepared even after restart.
+
+Progress bars are phase-scoped: a bar always shows the current phase's bytes
+against that phase's denominator, and its label counts the same units —
+Preparing fills 0→100% in source bytes, Uploading fills 0→100% in provider
+bytes, with the phase named beside the bar. No bar mixes phases into one
+combined fill; a bar and its label never disagree about what is being counted.
+(The earlier two-stage combined work bar rendered "3 MB of 224.2 MB" under a
+half-full bar — a bar whose fill and label speak different units is the defect
+this rule exists to prevent.)
 
 ## Provider upload
 
