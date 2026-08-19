@@ -1,49 +1,14 @@
 use super::*;
 
 impl Automation {
-    pub fn new(services: AppServices, runtime_handle: tokio::runtime::Handle) -> Self {
-        Self {
-            services,
-            runtime_handle,
-            state: Arc::new(AutomationState::new()),
-        }
-    }
-
-    pub fn start_event_indexing(&self) {
-        if !self.state.start_event_indexing() {
-            return;
-        }
-        let state = self.state.clone();
-        // Subscribe before seeding: an event emitted between the two re-applies
-        // over the seed, while the reverse order would lose it entirely.
-        let mut rx = self.services.import_subscribe_events();
-        state.seed_candidates(self.services.subscribe_import_candidates().borrow().clone());
-        self.runtime_handle.spawn(async move {
-            loop {
-                match rx.recv().await {
-                    Ok(event) => state.apply_event(event),
-                    Err(error) => {
-                        let message = match error {
-                            broadcast::error::RecvError::Lagged(n) => {
-                                format!("automation import event index lagged by {n} events")
-                            }
-                            broadcast::error::RecvError::Closed => {
-                                "automation import event channel closed".to_string()
-                            }
-                        };
-                        warn!("{message}");
-                        state.fail_event_indexing(message);
-                        break;
-                    }
-                }
-            }
-        });
+    pub fn new(services: AppServices) -> Self {
+        let state = Arc::new(AutomationState::new(services.subscribe_import_candidates()));
+        Self { services, state }
     }
 
     pub fn status(&self) -> AutomationStatus {
         AutomationStatus {
             config: self.config_get(),
-            event_indexing: self.state.event_indexing(),
             candidate_count: self.state.candidate_count(),
         }
     }
@@ -135,17 +100,15 @@ impl Automation {
         }
         Ok(AutomationScanResult {
             watched_folders: self.watched_folders(),
-            candidates: self.list_candidates()?,
+            candidates: self.list_candidates(),
         })
     }
 
     fn current_watched_folders(&self) -> Vec<bae_core::import::WatchedFolder> {
-        let values = self.services.subscribe_import_candidates();
-        let folders = values.borrow().watched_folders.clone();
-        folders
+        self.state.watched_folders()
     }
 
-    pub fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
+    pub fn list_candidates(&self) -> Vec<AutomationCandidate> {
         self.state.list_candidates()
     }
 
@@ -185,8 +148,8 @@ impl Automation {
         release_id: String,
     ) -> Result<AutomationReleasePrefetch, AutomationError> {
         // Resolve the candidate before fetching anything, and hand core the key
-        // the index resolved rather than the caller's string, so the lookup is
-        // load-bearing: deleting it on its own stops compiling.
+        // the snapshot resolved rather than the caller's string, so the lookup
+        // is load-bearing: deleting it on its own stops compiling.
         //
         // Core reads a key it has recorded nothing against as "the pipeline
         // hasn't run": the right answer for a scanned candidate awaiting
@@ -365,7 +328,7 @@ impl Automation {
             }
             AutomationTool::ImportCandidatesList => {
                 expect_no_args(args, tool.name())?;
-                to_list_value("candidates", self.list_candidates()?)
+                to_list_value("candidates", self.list_candidates())
             }
             AutomationTool::ImportCandidateGet => {
                 let input: CandidateKeyInput = from_value(args)?;

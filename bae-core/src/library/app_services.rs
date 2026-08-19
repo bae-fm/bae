@@ -779,9 +779,6 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(import, import_subscribe_events => subscribe_events() -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(path: String, skipped: bool) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);

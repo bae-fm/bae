@@ -1,5 +1,9 @@
 use super::*;
 
+mod candidates;
+
+pub(crate) use candidates::*;
+
 pub(super) fn expect_no_args(args: Value, tool_name: &str) -> Result<(), AutomationError> {
     match args {
         Value::Null => Ok(()),
@@ -92,68 +96,6 @@ pub(super) fn automation_output_snapshot(
             failed: snapshot.total.failed,
         },
         paused: snapshot.paused,
-    }
-}
-
-pub(super) fn automation_candidate_from_folder(
-    candidate: FolderCandidate,
-    skipped: bool,
-    is_added: bool,
-) -> AutomationCandidate {
-    let track_count = candidate.files.track_count();
-    let format_label = candidate.files.format_label.clone();
-    AutomationCandidate::Valid {
-        common: automation_candidate_common(
-            candidate.path,
-            candidate.name,
-            candidate.watched_folder_path,
-            skipped,
-            is_added,
-        ),
-        track_count,
-        format_label,
-        content_hash: candidate.files.content_hash(),
-    }
-}
-
-pub(super) fn automation_candidate_from_invalid(
-    candidate: InvalidCandidate,
-) -> AutomationCandidate {
-    AutomationCandidate::Invalid {
-        common: automation_candidate_common(
-            candidate.path,
-            candidate.name,
-            candidate.watched_folder_path,
-            true,
-            false,
-        ),
-        invalid_reason: candidate.reason.to_string(),
-    }
-}
-
-pub(super) fn automation_candidate_common(
-    path: PathBuf,
-    name: String,
-    watched_folder_path: String,
-    skipped: bool,
-    is_added: bool,
-) -> AutomationCandidateCommon {
-    let path = path.to_string_lossy().to_string();
-    AutomationCandidateCommon {
-        key: path.clone(),
-        path,
-        name,
-        watched_folder_path,
-        skipped,
-        is_added,
-        runtime: None,
-    }
-}
-
-impl AutomationCandidateCommon {
-    pub(super) fn runtime_mut(&mut self) -> &mut AutomationCandidateRuntime {
-        self.runtime
-            .get_or_insert_with(AutomationCandidateRuntime::default)
     }
 }
 
@@ -737,55 +679,6 @@ pub(super) fn automation_import_phase(phase: ImportPhase) -> AutomationImportPha
         ImportPhase::ReadingFiles => AutomationImportPhase::ReadingFiles,
         ImportPhase::MeasuringLoudness => AutomationImportPhase::MeasuringLoudness,
         ImportPhase::Finalizing => AutomationImportPhase::Finalizing,
-    }
-}
-
-pub(super) fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgress {
-    match progress {
-        ImportProgress::Preparing {
-            import_id,
-            step,
-            album_title,
-            artist_name,
-        } => AutomationImportProgress::Preparing {
-            import_id,
-            step: automation_prepare_step(step),
-            album_title,
-            artist_name,
-        },
-        ImportProgress::Progress {
-            id,
-            percent,
-            phase,
-            import_id,
-        } => AutomationImportProgress::Progress {
-            id,
-            percent,
-            phase: automation_import_phase(phase),
-            import_id,
-        },
-        ImportProgress::Complete {
-            id,
-            import_id,
-            album_id,
-        } => AutomationImportProgress::Complete {
-            id,
-            import_id,
-            album_id,
-        },
-        ImportProgress::RemoteUploadQueued {
-            id,
-            import_id,
-            album_id,
-            outbox_revision: _,
-        } => AutomationImportProgress::RemoteUploadQueued {
-            id,
-            import_id,
-            album_id,
-        },
-        ImportProgress::Failed { error, import_id } => {
-            AutomationImportProgress::Failed { error, import_id }
-        }
     }
 }
 
