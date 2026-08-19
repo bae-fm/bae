@@ -244,3 +244,27 @@ protocol: merge → pin → rebuild mac+phone → wipe ~/.bae → re-pair → me
   Fixture of the quadratic-era library: ~/bae-fixtures/library-quadratic-2026-08-19.
 - Second device for re-pair validation: user's phone (away for now) or the
   Android emulator (~/.android/avd — check inventory when needed).
+
+## FK-closure wedge (found ~19:30Z, fix in flight)
+
+Live store wedged: every pull fails "retained Merge replay has an
+unresolved foreign-key dependency". Agent's replay-from-zero dissection:
+the sharing gate keeps a row via ONE selected gate-parent FK, and works
+gated_by_descendants keeps only works with track_works/work_artists —
+container works (work_parts parents) have neither, so all 8 parents are
+structurally excluded while their 46 work_parts children ship. 100%
+deterministic; publication order irrelevant; snapshot restore carries the
+same hole. Fix (in progress, own branch): split kept (seeding) from
+shared = closure(kept) over ALL FKs at reemit_subtrees /
+partition_outbound / snapshot keep_clause; retract mirrors closure exit;
+ALWAYS-ON FK-closure check at the publication boundary. Also real but
+separate: cycle runs pull before publish-pending, so any pull failure
+starves publication (livelock shape). Surfacing fixed on bae side
+(sync-loop faults now logged; UI still flattens to "Something went
+wrong" — core.error.category.internal — recorded, not yet fixed).
+Live prefix lwerkjvwe/ stays untouched as repro until fix lands, then
+milestone wipe + scripted re-import.
+
+Second device ready: Android emulator AVD "bae-test" (arm64, android-36.1,
+hand-written config in ~/.android/avd), bae APK installs and launches.
+Throughput-race fix landed (d1ae3a7f): timestamps under the lock.
