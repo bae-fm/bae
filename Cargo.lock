@@ -1533,7 +1533,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1557,7 +1557,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1580,7 +1580,7 @@ dependencies = [
 [[package]]
 name = "coven-domain"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "base64",
  "chrono",
@@ -1602,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "async-trait",
  "base64",
@@ -1625,7 +1625,7 @@ dependencies = [
 [[package]]
 name = "coven-keys"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1654,7 +1654,7 @@ dependencies = [
 [[package]]
 name = "coven-protocol"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1674,7 +1674,7 @@ dependencies = [
 [[package]]
 name = "coven-replication"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1698,7 +1698,7 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=cb430d5a0dcaba264aaee64ac570de85f87e392f#cb430d5a0dcaba264aaee64ac570de85f87e392f"
+source = "git+https://github.com/bae-fm/coven?rev=4e31c274a5e51ff50af44c067834254cacbf6383#4e31c274a5e51ff50af44c067834254cacbf6383"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -6214,7 +6214,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
