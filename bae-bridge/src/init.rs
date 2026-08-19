@@ -337,10 +337,47 @@ where
         .with_file(true)
 }
 
+/// Rolling file log under `~/.bae/logs/` (daily files, `bae.log.YYYY-MM-DD`),
+/// kept alongside the console and system sinks so a desktop app launched from
+/// the Finder or Dock — where stdout and stderr go nowhere — still leaves a
+/// readable trace. `None` (with a stderr complaint) when the bae directory
+/// can't be resolved: logging must never kill a launch.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn file_log_layer<S>() -> Option<impl tracing_subscriber::Layer<S>>
+where
+    S: tracing::Subscriber,
+    for<'a> S: tracing_subscriber::registry::LookupSpan<'a>,
+{
+    // The non-blocking writer flushes from a worker thread that lives as long
+    // as this guard; process-lifetime static, dropped never — the OS closes
+    // the file at exit.
+    static GUARD: std::sync::OnceLock<tracing_appender::non_blocking::WorkerGuard> =
+        std::sync::OnceLock::new();
+    let dir = match bae_core::config::bae_dir() {
+        Ok(dir) => dir.join("logs"),
+        Err(error) => {
+            eprintln!("file log disabled: cannot resolve the bae directory: {error}");
+            return None;
+        }
+    };
+    let (writer, guard) =
+        tracing_appender::non_blocking(tracing_appender::rolling::daily(dir, "bae.log"));
+    let _ = GUARD.set(guard);
+    Some(
+        tracing_subscriber::fmt::layer()
+            .with_line_number(true)
+            .with_target(false)
+            .with_file(true)
+            .with_ansi(false)
+            .with_writer(writer),
+    )
+}
+
 #[cfg(target_os = "macos")]
 fn configure_logging() {
     install_logging_subscriber!(
         fmt_log_layer(),
+        file_log_layer(),
         tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
     )
 }
@@ -373,13 +410,15 @@ fn configure_logging() {
     // `logman start ... -p "*bae-core"` — the `log stream` equivalent. The
     // fmt layer stays for console-attached runs.
     match tracing_etw::LayerBuilder::new("bae-core").build() {
-        Ok(etw_layer) => install_logging_subscriber!(fmt_log_layer(), etw_layer),
+        Ok(etw_layer) => {
+            install_logging_subscriber!(fmt_log_layer(), file_log_layer(), etw_layer)
+        }
         Err(error) => {
             // Nowhere structured to report this: ETW is the local sink and
             // building its layer is what failed. Console logging still works;
             // launch must not die over it.
             eprintln!("ETW tracing layer initialization failed: {error}");
-            install_logging_subscriber!(fmt_log_layer())
+            install_logging_subscriber!(fmt_log_layer(), file_log_layer())
         }
     }
 }
@@ -391,7 +430,7 @@ fn configure_logging() {
     target_os = "windows",
 )))]
 fn configure_logging() {
-    install_logging_subscriber!(fmt_log_layer())
+    install_logging_subscriber!(fmt_log_layer(), file_log_layer())
 }
 
 #[cfg(test)]
