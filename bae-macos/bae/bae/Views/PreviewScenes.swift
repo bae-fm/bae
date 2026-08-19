@@ -79,6 +79,7 @@
                 .environment(PreviewAudio.stub())
                 .environment(Cast.stub())
                 .environment(CastStore())
+                .environment(ArtworkLoadingStore(cancel: {}))
                 .albumDetailPreviewEnvironment(store: libraryStore)
                 .windowBackground()
         }
