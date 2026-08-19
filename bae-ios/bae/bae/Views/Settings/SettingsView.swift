@@ -1,5 +1,8 @@
 import BaeKit
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("Settings")
 
 /// Minimal per-device settings: the library's sync status, and a destructive
 /// action to remove the library from this device. Read-only otherwise — v1
@@ -272,6 +275,8 @@ private struct SyncConnectedControls: View {
 
     @State
     private var flow: DisconnectSyncFlow
+    @State
+    private var reconnecting = false
 
     private let sync: Sync
 
@@ -337,7 +342,12 @@ private struct SyncConnectedControls: View {
                 Text(syncError.line)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button("Reconnect") { sync.triggerSync() }
+                if reconnecting {
+                    ProgressView()
+                }
+                else {
+                    Button("Reconnect") { Task { await reconnect() } }
+                }
             }
             else {
                 LabeledContent(
@@ -375,6 +385,28 @@ private struct SyncConnectedControls: View {
             Text(flow.message)
         }
         .onDisappear { flow.cancelWarningTask() }
+    }
+
+    /// Retry the provider this library is already configured for. The provider
+    /// config and its keyring credentials survive a failure, so a failed sync is
+    /// retried rather than set up again — and unlike a bare sync wake, this also
+    /// connects when a failed launch left no connection to wake.
+    ///
+    /// A failed retry is recorded as the sync-status error, which is the
+    /// `syncStatusStore.error` line right above this button: it re-appears
+    /// naming the new reason, so the failure's display path is the row the user
+    /// tapped in.
+    private func reconnect() async {
+        reconnecting = true
+        do {
+            try await sync.reconnectSync()
+        }
+        catch {
+            logger.error(
+                "Sync reconnect failed: \(error.localizedDescription)"
+            )
+        }
+        reconnecting = false
     }
 }
 

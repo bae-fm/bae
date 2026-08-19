@@ -39,9 +39,11 @@ public final class Sync: Sendable, Observable {
     /// Pause or resume the cloud-upload pipeline. In-flight uploads finish; the
     /// queue stops draining until resumed.
     public let setSyncPaused: @Sendable (_ paused: Bool) async throws -> Void
-    // periphery:ignore - called from the iOS pull-to-refresh / sync-retry; the
-    // macOS target periphery analyzes doesn't use it (sync is automatic there).
-    /// Re-kick the sync loop now (manual pull-to-refresh / retry). Non-throwing.
+    // periphery:ignore - called from the iOS pull-to-refresh; the macOS target
+    // periphery analyzes doesn't use it (sync is automatic there).
+    /// Wake the sync loop to run a cycle now (manual pull-to-refresh).
+    /// Non-throwing, and a no-op when no provider is connected — a failure that
+    /// left no connection needs `reconnectSync`, which builds one.
     public let triggerSync: @Sendable () -> Void
     /// Retry sync with the provider this library already has configured:
     /// connects when a failed launch left no connection, then runs a cycle now.

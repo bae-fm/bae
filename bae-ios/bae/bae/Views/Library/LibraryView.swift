@@ -1,6 +1,9 @@
 import BaeKit
 import Combine
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("LibraryView")
 
 /// Page size for the library's paged album/composer/artist lists, shared by
 /// every grid/list slot's range fetch.
@@ -320,6 +323,9 @@ private struct LibraryBanner: View {
     @Environment(Sync.self)
     private var sync
 
+    @State
+    private var reconnecting = false
+
     var body: some View {
         if let error = configStore.lastError {
             banner(message: error.line) {
@@ -333,13 +339,42 @@ private struct LibraryBanner: View {
                 .accessibilityLabel("Dismiss")
             }
         }
-        else if let error = syncStatusStore.error {
+        // A sync failure is a failure of the provider this library is
+        // configured for. Disconnecting clears that config but leaves the
+        // recorded error behind, so without the config check a library with no
+        // provider would wear a permanent red retry strip for a provider it no
+        // longer has.
+        else if let error = syncStatusStore.error, configStore.config.sync != nil {
             banner(message: error.line) {
-                Button("Retry") { sync.triggerSync() }
-                    .font(.caption.bold())
-                    .foregroundStyle(Color.white)
+                if reconnecting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(Color.white)
+                }
+                else {
+                    Button("Retry") { Task { await reconnect() } }
+                        .font(.caption.bold())
+                        .foregroundStyle(Color.white)
+                }
             }
         }
+    }
+
+    /// Retry the provider this library is already configured for, connecting
+    /// when a failed launch left no connection rather than only waking a loop
+    /// that may not exist. A failed retry is recorded as the sync-status error
+    /// this banner renders, so it stays up naming the new reason.
+    private func reconnect() async {
+        reconnecting = true
+        do {
+            try await sync.reconnectSync()
+        }
+        catch {
+            logger.error(
+                "Sync reconnect failed: \(error.localizedDescription)"
+            )
+        }
+        reconnecting = false
     }
 
     private func banner<Trailing: View>(
