@@ -11,6 +11,14 @@
         /// check, `useCloudkit()` happily writes `provider: CloudKit` to YAML and
         /// the user discovers via the reconnect banner after the first failed
         /// sync cycle.
+        ///
+        /// This is the one CloudKit path whose message a human reads as the
+        /// headline: the wizard calls it directly and renders what it throws.
+        /// Every other `CloudKitError` in this file is thrown from a
+        /// `CloudKitDriver` method, which core turns into a `CloudHomeError`
+        /// and reports under its own localized category line, with the text
+        /// below as the copyable diagnostic. So these sentences are localized
+        /// and those stay English.
         public func checkAccountAvailable() async throws {
             let status: CKAccountStatus
             do {
@@ -22,9 +30,15 @@
                 // error, which always has one, so the fallback is the sentence
                 // without a detail rather than `Optional("…")` inside it.
                 throw CloudKitError.Storage(
-                    msg: error.displayLine.map {
-                        "Couldn't check iCloud account status: \($0)"
-                    } ?? "Couldn't check iCloud account status."
+                    msg: error.displayLine.map { line in
+                        String(
+                            localized:
+                                "Couldn't check iCloud account status: \(line)"
+                        )
+                    }
+                        ?? String(
+                            localized: "Couldn't check iCloud account status."
+                        )
                 )
             }
             let unavailableReason: String
@@ -32,20 +46,30 @@
             case .available:
                 return
             case .noAccount:
-                unavailableReason =
-                    "No iCloud account is signed in on this device. Open System Settings → Apple ID to sign in, then try again."
+                unavailableReason = String(
+                    localized:
+                        "No iCloud account is signed in on this device. Open System Settings → Apple ID to sign in, then try again."
+                )
             case .restricted:
-                unavailableReason =
-                    "iCloud is restricted on this device (parental controls or MDM). bae can't use it for sync."
+                unavailableReason = String(
+                    localized:
+                        "iCloud is restricted on this device (parental controls or MDM). bae can't use it for sync."
+                )
             case .couldNotDetermine:
-                unavailableReason =
-                    "Couldn't determine iCloud account status. Check your network and try again."
+                unavailableReason = String(
+                    localized:
+                        "Couldn't determine iCloud account status. Check your network and try again."
+                )
             case .temporarilyUnavailable:
-                unavailableReason =
-                    "iCloud is temporarily unavailable. Try again in a moment."
+                unavailableReason = String(
+                    localized:
+                        "iCloud is temporarily unavailable. Try again in a moment."
+                )
             @unknown default:
-                unavailableReason =
-                    "Unexpected iCloud account status (\(status.rawValue))."
+                unavailableReason = String(
+                    localized:
+                        "Unexpected iCloud account status (\(status.rawValue))."
+                )
             }
             throw CloudKitError.Storage(msg: unavailableReason)
         }

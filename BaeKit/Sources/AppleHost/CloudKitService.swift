@@ -320,11 +320,12 @@
 
         // MARK: - Error classification
 
-        /// Translate a CloudKit operation failure into a user-facing message that
-        /// names the account/storage condition and the recovery step. The common
-        /// `CKError` codes get specific copy; everything else falls back to the
-        /// operation label + `localizedDescription` so transient or unclassified
-        /// failures stay debuggable in logs.
+        /// Translate a CloudKit operation failure into the message core carries
+        /// as the failure's diagnostic. The four classified `CKError` codes are
+        /// recovery copy a user acts on — bae shows them under core's category
+        /// line whenever a sync cycle fails — so they are localized. The
+        /// fallback names the operation and CloudKit's own description, which is
+        /// a diagnostic for a log or a bug report, and stays English.
         private func cloudKitErrorMessage(_ error: Error, op: String) -> String
         {
             guard let ckError = error as? CKError else {
@@ -336,17 +337,25 @@
             }
             switch ckError.code {
             case .notAuthenticated:
-                return
-                    "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again."
+                return String(
+                    localized:
+                        "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again."
+                )
             case .quotaExceeded:
-                return
-                    "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing."
+                return String(
+                    localized:
+                        "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing."
+                )
             case .permissionFailure:
-                return
-                    "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on."
+                return String(
+                    localized:
+                        "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on."
+                )
             case .zoneNotFound, .userDeletedZone:
-                return
-                    "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
+                return String(
+                    localized:
+                        "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
+                )
             default:
                 // Concrete `CKError`, not a `LocalizedFailure`, so `DisplayError`
                 // always resolves it to `localizedDescription` — CloudKit's own

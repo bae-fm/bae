@@ -106123,6 +106123,2107 @@
           }
         }
       }
+    },
+    "Couldn't check iCloud account status." : {
+      "comment" : "Sync setup: the iCloud account pre-flight failed and CloudKit gave no reason",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر التحقق من حالة حساب iCloud."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Състоянието на профила в iCloud не можа да бъде проверено."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud অ্যাকাউন্টের অবস্থা যাচাই করা যায়নি।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se ověřit stav účtu iCloud."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Accountstatus konnte nicht geprüft werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't check iCloud account status."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo comprobar el estado de la cuenta de iCloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de vérifier l'état du compte iCloud."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ખાતાની સ્થિતિ ચકાસી શકાઈ નહીં."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה לבדוק את מצב חשבון ה-iCloud."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud खाते की स्थिति जाँची नहीं जा सकी."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće provjeriti stanje iCloud računa."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile verificare lo stato dell'account iCloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudアカウントの状況を確認できませんでした。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ಖಾತೆಯ ಸ್ಥಿತಿಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 계정 상태를 확인할 수 없습니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud അക്കൗണ്ട് നില പരിശോധിക്കാനായില്ല."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud खात्याची स्थिती तपासता आली नाही."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan de status van de iCloud-account niet controleren."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ਖਾਤੇ ਦੀ ਸਥਿਤੀ ਜਾਂਚੀ ਨਹੀਂ ਜਾ ਸਕੀ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się sprawdzić stanu konta iCloud."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível verificar o estado da conta do iCloud."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud கணக்கின் நிலையைச் சரிபார்க்க முடியவில்லை."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ఖాతా స్థితిని తనిఖీ చేయడం సాధ్యం కాలేదు."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตรวจสอบสถานะบัญชี iCloud ไม่ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hesabının durumu denetlenemedi."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося перевірити стан облікового запису iCloud."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud اکاؤنٹ کی صورتحال جانچی نہیں جا سکی۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể kiểm tra trạng thái tài khoản iCloud."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法检查 iCloud 账户状态。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法檢查 iCloud 帳戶狀態。"
+          }
+        }
+      }
+    },
+    "Couldn't check iCloud account status: %@" : {
+      "comment" : "Sync setup: the iCloud account pre-flight failed; %@ is CloudKit's reason",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر التحقق من حالة حساب iCloud: %@"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Състоянието на профила в iCloud не можа да бъде проверено: %@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud অ্যাকাউন্টের অবস্থা যাচাই করা যায়নি: %@"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se ověřit stav účtu iCloud: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Accountstatus konnte nicht geprüft werden: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't check iCloud account status: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo comprobar el estado de la cuenta de iCloud: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de vérifier l'état du compte iCloud : %@"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ખાતાની સ્થિતિ ચકાસી શકાઈ નહીં: %@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה לבדוק את מצב חשבון ה-iCloud‏: %@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud खाते की स्थिति जाँची नहीं जा सकी: %@"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće provjeriti stanje iCloud računa: %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile verificare lo stato dell'account iCloud: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudアカウントの状況を確認できませんでした: %@"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ಖಾತೆಯ ಸ್ಥಿತಿಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 계정 상태를 확인할 수 없음: %@"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud അക്കൗണ്ട് നില പരിശോധിക്കാനായില്ല: %@"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud खात्याची स्थिती तपासता आली नाही: %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan de status van de iCloud-account niet controleren: %@"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ਖਾਤੇ ਦੀ ਸਥਿਤੀ ਜਾਂਚੀ ਨਹੀਂ ਜਾ ਸਕੀ: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się sprawdzić stanu konta iCloud: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível verificar o estado da conta do iCloud: %@"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud கணக்கின் நிலையைச் சரிபார்க்க முடியவில்லை: %@"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ఖాతా స్థితిని తనిఖీ చేయడం సాధ్యం కాలేదు: %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตรวจสอบสถานะบัญชี iCloud ไม่ได้: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hesabının durumu denetlenemedi: %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося перевірити стан облікового запису iCloud: %@"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud اکاؤنٹ کی صورتحال جانچی نہیں جا سکی: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể kiểm tra trạng thái tài khoản iCloud: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法检查 iCloud 账户状态：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法檢查 iCloud 帳戶狀態：%@"
+          }
+        }
+      }
+    },
+    "No iCloud account is signed in on this device. Open System Settings → Apple ID to sign in, then try again." : {
+      "comment" : "Sync setup: iCloud reports no account signed in on this Mac",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يوجد حساب iCloud مسجّل الدخول على هذا الجهاز. افتح إعدادات النظام ← Apple ID لتسجيل الدخول، ثم أعد المحاولة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На това устройство няма влязъл профил в iCloud. Отворете „Системни настройки“ → Apple ID, влезте и опитайте отново."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এই ডিভাইসে কোনো iCloud অ্যাকাউন্টে সাইন ইন করা নেই। সিস্টেম সেটিংস → Apple ID খুলে সাইন ইন করুন, তারপর আবার চেষ্টা করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na tomto zařízení není přihlášen žádný účet iCloud. Otevřete Nastavení systému → Apple ID, přihlaste se a zkuste to znovu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät ist kein iCloud-Account angemeldet. Öffne „Systemeinstellungen“ → Apple-ID, melde dich an und versuche es erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No iCloud account is signed in on this device. Open System Settings → Apple ID to sign in, then try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna cuenta de iCloud con sesión iniciada en este dispositivo. Abre Ajustes del Sistema → Apple ID para iniciar sesión e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun compte iCloud n'est connecté sur cet appareil. Ouvrez Réglages Système → Identifiant Apple pour vous connecter, puis réessayez."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "આ ઉપકરણ પર કોઈ iCloud ખાતામાં સાઇન ઇન નથી. સાઇન ઇન કરવા સિસ્ટમ સેટિંગ્સ → Apple ID ખોલો, પછી ફરી પ્રયાસ કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין חשבון iCloud מחובר במכשיר הזה. פתח את הגדרות המערכת ← Apple ID כדי להתחבר, ואז נסה שוב."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इस डिवाइस पर कोई iCloud खाता साइन इन नहीं है. साइन इन करने के लिए सिस्टम सेटिंग्स → Apple ID खोलें, फिर दोबारा कोशिश करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na ovom uređaju nije prijavljen nijedan iCloud račun. Otvorite Postavke sustava → Apple ID i prijavite se, zatim pokušajte ponovno."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun account iCloud ha eseguito l'accesso su questo dispositivo. Apri Impostazioni di Sistema → ID Apple per accedere, poi riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスではiCloudアカウントにサインインしていません。「システム設定」→「Apple ID」でサインインしてから、もう一度お試しください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಈ ಸಾಧನದಲ್ಲಿ ಯಾವುದೇ iCloud ಖಾತೆಗೆ ಸೈನ್ ಇನ್ ಆಗಿಲ್ಲ. ಸೈನ್ ಇನ್ ಮಾಡಲು ಸಿಸ್ಟಂ ಸೆಟ್ಟಿಂಗ್‌ಗಳು → Apple ID ತೆರೆಯಿರಿ, ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 로그인된 iCloud 계정이 없습니다. 시스템 설정 → Apple ID에서 로그인한 다음 다시 시도하십시오."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഈ ഉപകരണത്തിൽ ഒരു iCloud അക്കൗണ്ടിലും സൈൻ ഇൻ ചെയ്തിട്ടില്ല. സൈൻ ഇൻ ചെയ്യാൻ സിസ്റ്റം ക്രമീകരണങ്ങൾ → Apple ID തുറക്കുക, തുടർന്ന് വീണ്ടും ശ്രമിക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "या डिव्हाइसवर कोणतेही iCloud खाते साइन इन केलेले नाही. साइन इन करण्यासाठी सिस्टम सेटिंग्ज → Apple ID उघडा, नंतर पुन्हा प्रयत्न करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er is op dit apparaat geen iCloud-account ingelogd. Open Systeeminstellingen → Apple ID om in te loggen en probeer het opnieuw."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਕੋਈ iCloud ਖਾਤਾ ਸਾਈਨ ਇਨ ਨਹੀਂ ਹੈ। ਸਾਈਨ ਇਨ ਕਰਨ ਲਈ ਸਿਸਟਮ ਸੈਟਿੰਗਾਂ → Apple ID ਖੋਲ੍ਹੋ, ਫਿਰ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na tym urządzeniu nie zalogowano żadnego konta iCloud. Otwórz Ustawienia systemowe → Apple ID, zaloguj się i spróbuj ponownie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma conta do iCloud está conectada neste dispositivo. Abra Ajustes do Sistema → ID Apple para entrar e tente novamente."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இந்தச் சாதனத்தில் எந்த iCloud கணக்கிலும் உள்நுழையவில்லை. உள்நுழைய கணினி அமைப்புகள் → Apple ID ஐத் திறந்து, பிறகு மீண்டும் முயற்சிக்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఈ పరికరంలో ఏ iCloud ఖాతాకూ సైన్ ఇన్ కాలేదు. సైన్ ఇన్ చేయడానికి సిస్టమ్ సెట్టింగ్‌లు → Apple ID తెరిచి, ఆపై మళ్లీ ప్రయత్నించండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีบัญชี iCloud ที่ลงชื่อเข้าใช้บนอุปกรณ์นี้ เปิดการตั้งค่าระบบ → Apple ID เพื่อลงชื่อเข้าใช้ แล้วลองอีกครั้ง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu aygıtta oturum açmış bir iCloud hesabı yok. Oturum açmak için Sistem Ayarları → Apple Kimliği'ni açın, sonra yeniden deneyin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На цьому пристрої не виконано вхід у жоден обліковий запис iCloud. Відкрийте «Системні параметри» → Apple ID, увійдіть і повторіть спробу."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اس آلے پر کوئی iCloud اکاؤنٹ سائن اِن نہیں ہے۔ سائن اِن کرنے کے لیے سسٹم سیٹنگز ← Apple ID کھولیں، پھر دوبارہ کوشش کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có tài khoản iCloud nào đăng nhập trên thiết bị này. Mở Cài đặt Hệ thống → Apple ID để đăng nhập, rồi thử lại."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此设备未登录任何 iCloud 账户。请打开“系统设置”→“Apple ID”登录后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此裝置未登入任何 iCloud 帳戶。請打開「系統設定」→「Apple ID」登入後再試一次。"
+          }
+        }
+      }
+    },
+    "iCloud is restricted on this device (parental controls or MDM). bae can't use it for sync." : {
+      "comment" : "Sync setup: iCloud is restricted by parental controls or device management",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud مقيَّد على هذا الجهاز (الرقابة الأبوية أو إدارة الأجهزة). لا يستطيع bae استخدامه للمزامنة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud е ограничен на това устройство (родителски контрол или MDM). bae не може да го използва за синхронизиране."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এই ডিভাইসে iCloud সীমাবদ্ধ (প্যারেন্টাল কন্ট্রোল বা MDM)। bae এটি সিঙ্কের জন্য ব্যবহার করতে পারে না।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud je na tomto zařízení omezen (rodičovská kontrola nebo MDM). bae jej nemůže použít k synchronizaci."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ist auf diesem Gerät eingeschränkt (Kindersicherung oder MDM). bae kann es nicht zur Synchronisierung verwenden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is restricted on this device (parental controls or MDM). bae can't use it for sync."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud está restringido en este dispositivo (controles parentales o MDM). bae no puede usarlo para sincronizar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud est restreint sur cet appareil (contrôle parental ou MDM). bae ne peut pas l'utiliser pour la synchronisation."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "આ ઉપકરણ પર iCloud પ્રતિબંધિત છે (પેરેન્ટલ કંટ્રોલ અથવા MDM). bae તેને સિંક માટે વાપરી શકતું નથી."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud מוגבל במכשיר הזה (בקרת הורים או MDM). bae לא יכול להשתמש בו לסנכרון."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इस डिवाइस पर iCloud प्रतिबंधित है (पैरेंटल कंट्रोल या MDM). bae इसे सिंक के लिए उपयोग नहीं कर सकता."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud je ograničen na ovom uređaju (roditeljski nadzor ili MDM). bae ga ne može koristiti za sinkronizaciju."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud è limitato su questo dispositivo (controlli parentali o MDM). bae non può usarlo per la sincronizzazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスではiCloudが制限されています（ペアレンタルコントロールまたはMDM）。baeは同期に使用できません。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಈ ಸಾಧನದಲ್ಲಿ iCloud ನಿರ್ಬಂಧಿತವಾಗಿದೆ (ಪೋಷಕ ನಿಯಂತ್ರಣ ಅಥವಾ MDM). bae ಅದನ್ನು ಸಿಂಕ್‌ಗಾಗಿ ಬಳಸಲಾಗದು."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에서 iCloud가 제한되어 있습니다(자녀 보호 기능 또는 MDM). bae는 동기화에 사용할 수 없습니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഈ ഉപകരണത്തിൽ iCloud നിയന്ത്രിച്ചിരിക്കുന്നു (രക്ഷാകർതൃ നിയന്ത്രണം അല്ലെങ്കിൽ MDM). bae-ക്ക് അത് സമന്വയത്തിന് ഉപയോഗിക്കാനാവില്ല."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "या डिव्हाइसवर iCloud मर्यादित आहे (पालक नियंत्रण किंवा MDM). bae ते सिंकसाठी वापरू शकत नाही."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is beperkt op dit apparaat (ouderlijk toezicht of MDM). bae kan het niet gebruiken om te synchroniseren."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ iCloud ਸੀਮਿਤ ਹੈ (ਮਾਪਿਆਂ ਦਾ ਕੰਟਰੋਲ ਜਾਂ MDM)। bae ਇਸਨੂੰ ਸਿੰਕ ਲਈ ਨਹੀਂ ਵਰਤ ਸਕਦਾ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud jest ograniczony na tym urządzeniu (kontrola rodzicielska lub MDM). bae nie może go użyć do synchronizacji."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O iCloud está restrito neste dispositivo (controles parentais ou MDM). O bae não pode usá-lo para sincronizar."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இந்தச் சாதனத்தில் iCloud கட்டுப்படுத்தப்பட்டுள்ளது (பெற்றோர் கட்டுப்பாடு அல்லது MDM). bae அதை ஒத்திசைவுக்குப் பயன்படுத்த முடியாது."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఈ పరికరంలో iCloud పరిమితం చేయబడింది (పేరెంటల్ కంట్రోల్స్ లేదా MDM). baeకి దాన్ని సింక్ కోసం ఉపయోగించడం సాధ్యం కాదు."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ถูกจำกัดบนอุปกรณ์นี้ (การควบคุมโดยผู้ปกครองหรือ MDM) bae ใช้สำหรับซิงค์ไม่ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu aygıtta iCloud kısıtlanmış (ebeveyn denetimleri veya MDM). bae bunu eşitleme için kullanamaz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud обмежено на цьому пристрої (батьківський контроль або MDM). bae не може використовувати його для синхронізації."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اس آلے پر iCloud محدود ہے (پیرنٹل کنٹرولز یا MDM)۔ bae اسے سِنک کے لیے استعمال نہیں کر سکتا۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud bị hạn chế trên thiết bị này (kiểm soát của phụ huynh hoặc MDM). bae không thể dùng nó để đồng bộ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此设备上的 iCloud 受限（家长控制或 MDM）。bae 无法用它同步。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此裝置上的 iCloud 受限（家長控制或 MDM）。bae 無法用它同步。"
+          }
+        }
+      }
+    },
+    "Couldn't determine iCloud account status. Check your network and try again." : {
+      "comment" : "Sync setup: iCloud could not report an account status, usually a network problem",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر تحديد حالة حساب iCloud. تحقّق من الشبكة وأعد المحاولة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Състоянието на профила в iCloud не можа да бъде определено. Проверете мрежата и опитайте отново."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud অ্যাকাউন্টের অবস্থা নির্ধারণ করা যায়নি। আপনার নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se zjistit stav účtu iCloud. Zkontrolujte síť a zkuste to znovu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Accountstatus konnte nicht ermittelt werden. Prüfe dein Netzwerk und versuche es erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't determine iCloud account status. Check your network and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo determinar el estado de la cuenta de iCloud. Comprueba tu red e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de déterminer l'état du compte iCloud. Vérifiez votre réseau, puis réessayez."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ખાતાની સ્થિતિ નક્કી કરી શકાઈ નહીં. તમારું નેટવર્ક તપાસો અને ફરી પ્રયાસ કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה לקבוע את מצב חשבון ה-iCloud. בדוק את הרשת ונסה שוב."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud खाते की स्थिति निर्धारित नहीं की जा सकी. अपना नेटवर्क जाँचें और दोबारा कोशिश करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće utvrditi stanje iCloud računa. Provjerite mrežu i pokušajte ponovno."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile determinare lo stato dell'account iCloud. Controlla la rete e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudアカウントの状況を判断できませんでした。ネットワークを確認してから、もう一度お試しください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ಖಾತೆಯ ಸ್ಥಿತಿಯನ್ನು ನಿರ್ಧರಿಸಲಾಗಲಿಲ್ಲ. ನಿಮ್ಮ ನೆಟ್‌ವರ್ಕ್ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 계정 상태를 확인할 수 없습니다. 네트워크를 확인한 다음 다시 시도하십시오."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud അക്കൗണ്ട് നില നിർണ്ണയിക്കാനായില്ല. നിങ്ങളുടെ നെറ്റ്‌വർക്ക് പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud खात्याची स्थिती निश्चित करता आली नाही. तुमचे नेटवर्क तपासा आणि पुन्हा प्रयत्न करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan de status van de iCloud-account niet bepalen. Controleer je netwerk en probeer het opnieuw."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ਖਾਤੇ ਦੀ ਸਥਿਤੀ ਪਤਾ ਨਹੀਂ ਲੱਗ ਸਕੀ। ਆਪਣਾ ਨੈੱਟਵਰਕ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się ustalić stanu konta iCloud. Sprawdź sieć i spróbuj ponownie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível determinar o estado da conta do iCloud. Verifique sua rede e tente novamente."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud கணக்கின் நிலையைத் தீர்மானிக்க முடியவில்லை. உங்கள் நெட்வொர்க்கைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ఖాతా స్థితిని నిర్ధారించడం సాధ్యం కాలేదు. మీ నెట్‌వర్క్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ระบุสถานะบัญชี iCloud ไม่ได้ ตรวจสอบเครือข่ายของคุณแล้วลองอีกครั้ง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hesabının durumu belirlenemedi. Ağınızı denetleyip yeniden deneyin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося визначити стан облікового запису iCloud. Перевірте мережу та повторіть спробу."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud اکاؤنٹ کی صورتحال متعین نہیں ہو سکی۔ اپنا نیٹ ورک جانچیں اور دوبارہ کوشش کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể xác định trạng thái tài khoản iCloud. Hãy kiểm tra mạng và thử lại."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法确定 iCloud 账户状态。请检查网络后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法判斷 iCloud 帳戶狀態。請檢查網路後再試一次。"
+          }
+        }
+      }
+    },
+    "iCloud is temporarily unavailable. Try again in a moment." : {
+      "comment" : "Sync setup: iCloud reports itself temporarily unavailable",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud غير متاح مؤقتًا. أعد المحاولة بعد قليل."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud временно не е достъпен. Опитайте отново след малко."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud সাময়িকভাবে অনুপলব্ধ। একটু পরে আবার চেষ্টা করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud je dočasně nedostupný. Zkuste to za chvíli znovu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ist vorübergehend nicht verfügbar. Versuche es gleich noch einmal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is temporarily unavailable. Try again in a moment."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud no está disponible temporalmente. Inténtalo de nuevo en un momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud est temporairement indisponible. Réessayez dans un instant."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud અસ્થાયી રૂપે ઉપલબ્ધ નથી. થોડી વારમાં ફરી પ્રયાસ કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud אינו זמין זמנית. נסה שוב בעוד רגע."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud अस्थायी रूप से अनुपलब्ध है. थोड़ी देर में दोबारा कोशिश करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud je privremeno nedostupan. Pokušajte ponovno za trenutak."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud non è temporaneamente disponibile. Riprova tra un momento."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudは一時的に利用できません。しばらくしてからもう一度お試しください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ. ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하십시오."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud താൽക്കാലികമായി ലഭ്യമല്ല. അൽപ്പസമയത്തിനു ശേഷം വീണ്ടും ശ്രമിക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud तात्पुरते अनुपलब्ध आहे. थोड्या वेळाने पुन्हा प्रयत्न करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ਆਰਜ਼ੀ ਤੌਰ ਉੱਤੇ ਉਪਲਬਧ ਨਹੀਂ ਹੈ। ਥੋੜ੍ਹੀ ਦੇਰ ਬਾਅਦ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud jest chwilowo niedostępny. Spróbuj ponownie za moment."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O iCloud está temporariamente indisponível. Tente novamente em instantes."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud தற்காலிகமாகக் கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud తాత్కాలికంగా అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ใช้งานไม่ได้ชั่วคราว ลองอีกครั้งในอีกสักครู่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud geçici olarak kullanılamıyor. Birazdan yeniden deneyin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud тимчасово недоступний. Повторіть спробу за мить."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud عارضی طور پر دستیاب نہیں ہے۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud tạm thời không khả dụng. Hãy thử lại sau giây lát."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 暂时不可用。请稍后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 暫時無法使用。請稍後再試。"
+          }
+        }
+      }
+    },
+    "Unexpected iCloud account status (%lld)." : {
+      "comment" : "Sync setup: CloudKit reported an account status this build does not know; %lld is the raw value",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حالة حساب iCloud غير متوقعة (%lld)."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неочаквано състояние на профила в iCloud (%lld)."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অপ্রত্যাশিত iCloud অ্যাকাউন্ট অবস্থা (%lld)।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neočekávaný stav účtu iCloud (%lld)."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unerwarteter iCloud-Accountstatus (%lld)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unexpected iCloud account status (%lld)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado inesperado de la cuenta de iCloud (%lld)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "État de compte iCloud inattendu (%lld)."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "અનપેક્ષિત iCloud ખાતાની સ્થિતિ (%lld)."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב חשבון iCloud לא צפוי (%lld)."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अप्रत्याशित iCloud खाता स्थिति (%lld)."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neočekivano stanje iCloud računa (%lld)."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stato dell'account iCloud inatteso (%lld)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "予期しないiCloudアカウントの状況（%lld）。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಅನಿರೀಕ್ಷಿತ iCloud ಖಾತೆಯ ಸ್ಥಿತಿ (%lld)."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "예기치 않은 iCloud 계정 상태(%lld)입니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "അപ്രതീക്ഷിത iCloud അക്കൗണ്ട് നില (%lld)."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अनपेक्षित iCloud खाते स्थिती (%lld)."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Onverwachte status van de iCloud-account (%lld)."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਅਣਕਿਆਸੀ iCloud ਖਾਤਾ ਸਥਿਤੀ (%lld)।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nieoczekiwany stan konta iCloud (%lld)."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado inesperado da conta do iCloud (%lld)."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "எதிர்பாராத iCloud கணக்கு நிலை (%lld)."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఊహించని iCloud ఖాతా స్థితి (%lld)."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สถานะบัญชี iCloud ที่ไม่คาดคิด (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beklenmeyen iCloud hesap durumu (%lld)."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неочікуваний стан облікового запису iCloud (%lld)."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "غیر متوقع iCloud اکاؤنٹ صورتحال (%lld)۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trạng thái tài khoản iCloud không mong đợi (%lld)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "意外的 iCloud 账户状态（%lld）。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "非預期的 iCloud 帳戶狀態（%lld）。"
+          }
+        }
+      }
+    },
+    "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again." : {
+      "comment" : "Sync failure: CloudKit refused because no iCloud account is signed in",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم تسجّل الدخول إلى iCloud. افتح إعدادات النظام ← Apple ID لتسجيل الدخول، ثم أعد المحاولة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сте влезли в iCloud. Отворете „Системни настройки“ → Apple ID, влезте и опитайте отново."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আপনি iCloud-এ সাইন ইন করেননি। সিস্টেম সেটিংস → Apple ID খুলে সাইন ইন করুন, তারপর আবার চেষ্টা করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nejste přihlášeni k iCloudu. Otevřete Nastavení systému → Apple ID, přihlaste se a zkuste to znovu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du bist nicht bei iCloud angemeldet. Öffne „Systemeinstellungen“ → Apple-ID, melde dich an und versuche es erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No has iniciado sesión en iCloud. Abre Ajustes del Sistema → Apple ID para iniciar sesión e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous n'êtes pas connecté à iCloud. Ouvrez Réglages Système → Identifiant Apple pour vous connecter, puis réessayez."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "તમે iCloud માં સાઇન ઇન નથી. સાઇન ઇન કરવા સિસ્ટમ સેટિંગ્સ → Apple ID ખોલો, પછી ફરી પ્રયાસ કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אינך מחובר ל-iCloud. פתח את הגדרות המערכת ← Apple ID כדי להתחבר, ואז נסה שוב."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप iCloud में साइन इन नहीं हैं. साइन इन करने के लिए सिस्टम सेटिंग्स → Apple ID खोलें, फिर दोबारा कोशिश करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niste prijavljeni na iCloud. Otvorite Postavke sustava → Apple ID i prijavite se, zatim pokušajte ponovno."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non hai eseguito l'accesso a iCloud. Apri Impostazioni di Sistema → ID Apple per accedere, poi riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudにサインインしていません。「システム設定」→「Apple ID」でサインインしてから、もう一度お試しください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ನೀವು iCloud ಗೆ ಸೈನ್ ಇನ್ ಆಗಿಲ್ಲ. ಸೈನ್ ಇನ್ ಮಾಡಲು ಸಿಸ್ಟಂ ಸೆಟ್ಟಿಂಗ್‌ಗಳು → Apple ID ತೆರೆಯಿರಿ, ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud에 로그인되어 있지 않습니다. 시스템 설정 → Apple ID에서 로그인한 다음 다시 시도하십시오."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "നിങ്ങൾ iCloud-ൽ സൈൻ ഇൻ ചെയ്തിട്ടില്ല. സൈൻ ഇൻ ചെയ്യാൻ സിസ്റ്റം ക്രമീകരണങ്ങൾ → Apple ID തുറക്കുക, തുടർന്ന് വീണ്ടും ശ്രമിക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "तुम्ही iCloud मध्ये साइन इन केलेले नाही. साइन इन करण्यासाठी सिस्टम सेटिंग्ज → Apple ID उघडा, नंतर पुन्हा प्रयत्न करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je bent niet ingelogd bij iCloud. Open Systeeminstellingen → Apple ID om in te loggen en probeer het opnieuw."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਤੁਸੀਂ iCloud ਵਿੱਚ ਸਾਈਨ ਇਨ ਨਹੀਂ ਹੋ। ਸਾਈਨ ਇਨ ਕਰਨ ਲਈ ਸਿਸਟਮ ਸੈਟਿੰਗਾਂ → Apple ID ਖੋਲ੍ਹੋ, ਫਿਰ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie zalogowano do iCloud. Otwórz Ustawienia systemowe → Apple ID, zaloguj się i spróbuj ponownie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você não está conectado ao iCloud. Abra Ajustes do Sistema → ID Apple para entrar e tente novamente."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நீங்கள் iCloud-இல் உள்நுழையவில்லை. உள்நுழைய கணினி அமைப்புகள் → Apple ID ஐத் திறந்து, பிறகு மீண்டும் முயற்சிக்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మీరు iCloudకి సైన్ ఇన్ కాలేదు. సైన్ ఇన్ చేయడానికి సిస్టమ్ సెట్టింగ్‌లు → Apple ID తెరిచి, ఆపై మళ్లీ ప్రయత్నించండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณยังไม่ได้ลงชื่อเข้าใช้ iCloud เปิดการตั้งค่าระบบ → Apple ID เพื่อลงชื่อเข้าใช้ แล้วลองอีกครั้ง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud'da oturum açmadınız. Oturum açmak için Sistem Ayarları → Apple Kimliği'ni açın, sonra yeniden deneyin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ви не увійшли в iCloud. Відкрийте «Системні параметри» → Apple ID, увійдіть і повторіть спробу."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آپ iCloud میں سائن اِن نہیں ہیں۔ سائن اِن کرنے کے لیے سسٹم سیٹنگز ← Apple ID کھولیں، پھر دوبارہ کوشش کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn chưa đăng nhập iCloud. Mở Cài đặt Hệ thống → Apple ID để đăng nhập, rồi thử lại."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你尚未登录 iCloud。请打开“系统设置”→“Apple ID”登录后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你尚未登入 iCloud。請打開「系統設定」→「Apple ID」登入後再試一次。"
+          }
+        }
+      }
+    },
+    "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing." : {
+      "comment" : "Sync failure: the iCloud account is out of storage",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مساحة تخزين iCloud لديك ممتلئة. حرّر مساحة من إعدادات النظام ← Apple ID ← iCloud لمواصلة المزامنة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранилището ви в iCloud е пълно. Освободете място в „Системни настройки“ → Apple ID → iCloud, за да продължите да синхронизирате."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আপনার iCloud স্টোরেজ পূর্ণ। সিঙ্ক চালিয়ে যেতে সিস্টেম সেটিংস → Apple ID → iCloud-এ জায়গা খালি করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše úložiště iCloud je plné. Uvolněte místo v Nastavení systému → Apple ID → iCloud, aby synchronizace pokračovala."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein iCloud-Speicher ist voll. Gib in „Systemeinstellungen“ → Apple-ID → iCloud Speicher frei, um weiter zu synchronisieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu almacenamiento de iCloud está lleno. Libera espacio en Ajustes del Sistema → Apple ID → iCloud para seguir sincronizando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre stockage iCloud est plein. Libérez de l'espace dans Réglages Système → Identifiant Apple → iCloud pour continuer la synchronisation."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "તમારો iCloud સંગ્રહ ભરાઈ ગયો છે. સિંક ચાલુ રાખવા સિસ્ટમ સેટિંગ્સ → Apple ID → iCloud માં જગ્યા ખાલી કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחסון ה-iCloud שלך מלא. פנה מקום בהגדרות המערכת ← Apple ID ← iCloud כדי להמשיך לסנכרן."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आपका iCloud स्टोरेज भर गया है. सिंक जारी रखने के लिए सिस्टम सेटिंग्स → Apple ID → iCloud में जगह खाली करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaša iCloud pohrana je puna. Oslobodite prostor u Postavke sustava → Apple ID → iCloud kako bi se sinkronizacija nastavila."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il tuo spazio iCloud è pieno. Libera spazio in Impostazioni di Sistema → ID Apple → iCloud per continuare la sincronizzazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudストレージがいっぱいです。同期を続けるには「システム設定」→「Apple ID」→「iCloud」で空き容量を作ってください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ನಿಮ್ಮ iCloud ಸಂಗ್ರಹ ಭರ್ತಿಯಾಗಿದೆ. ಸಿಂಕ್ ಮುಂದುವರಿಸಲು ಸಿಸ್ಟಂ ಸೆಟ್ಟಿಂಗ್‌ಗಳು → Apple ID → iCloud ನಲ್ಲಿ ಸ್ಥಳ ಖಾಲಿ ಮಾಡಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 저장 공간이 가득 찼습니다. 동기화를 계속하려면 시스템 설정 → Apple ID → iCloud에서 공간을 확보하십시오."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "നിങ്ങളുടെ iCloud സംഭരണം നിറഞ്ഞു. സമന്വയം തുടരാൻ സിസ്റ്റം ക്രമീകരണങ്ങൾ → Apple ID → iCloud-ൽ ഇടം ഒഴിവാക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "तुमचा iCloud संचय भरला आहे. सिंक सुरू ठेवण्यासाठी सिस्टम सेटिंग्ज → Apple ID → iCloud मध्ये जागा मोकळी करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je iCloud-opslag is vol. Maak ruimte vrij in Systeeminstellingen → Apple ID → iCloud om te blijven synchroniseren."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਤੁਹਾਡੀ iCloud ਸਟੋਰੇਜ ਭਰ ਗਈ ਹੈ। ਸਿੰਕ ਜਾਰੀ ਰੱਖਣ ਲਈ ਸਿਸਟਮ ਸੈਟਿੰਗਾਂ → Apple ID → iCloud ਵਿੱਚ ਥਾਂ ਖਾਲੀ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twoja pamięć iCloud jest pełna. Zwolnij miejsce w Ustawienia systemowe → Apple ID → iCloud, aby dalej synchronizować."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu armazenamento do iCloud está cheio. Libere espaço em Ajustes do Sistema → ID Apple → iCloud para continuar sincronizando."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "உங்கள் iCloud சேமிப்பு நிரம்பியுள்ளது. ஒத்திசைவைத் தொடர கணினி அமைப்புகள் → Apple ID → iCloud இல் இடத்தைக் காலி செய்யவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మీ iCloud నిల్వ నిండింది. సింక్ కొనసాగించడానికి సిస్టమ్ సెట్టింగ్‌లు → Apple ID → iCloudలో స్థలం ఖాళీ చేయండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ที่เก็บข้อมูล iCloud ของคุณเต็ม เพิ่มพื้นที่ว่างในการตั้งค่าระบบ → Apple ID → iCloud เพื่อซิงค์ต่อ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud depolama alanınız dolu. Eşitlemeyi sürdürmek için Sistem Ayarları → Apple Kimliği → iCloud'da yer açın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваше сховище iCloud заповнене. Звільніть місце в «Системні параметри» → Apple ID → iCloud, щоб синхронізація тривала."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آپ کا iCloud اسٹوریج بھر چکا ہے۔ سِنک جاری رکھنے کے لیے سسٹم سیٹنگز ← Apple ID ← iCloud میں جگہ خالی کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dung lượng iCloud của bạn đã đầy. Hãy giải phóng dung lượng trong Cài đặt Hệ thống → Apple ID → iCloud để tiếp tục đồng bộ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的 iCloud 存储空间已满。请在“系统设置”→“Apple ID”→“iCloud”中释放空间以继续同步。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的 iCloud 儲存空間已滿。請在「系統設定」→「Apple ID」→「iCloud」中釋放空間以繼續同步。"
+          }
+        }
+      }
+    },
+    "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on." : {
+      "comment" : "Sync failure: the user has turned bae off in the iCloud app list",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يملك bae إذن استخدام iCloud. افتح إعدادات النظام ← Apple ID ← iCloud ← التطبيقات التي تستخدم iCloud وفعّل bae."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae няма разрешение да използва iCloud. Отворете „Системни настройки“ → Apple ID → iCloud → Приложения, използващи iCloud, и включете bae."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ব্যবহারের অনুমতি bae-এর নেই। সিস্টেম সেটিংস → Apple ID → iCloud → iCloud ব্যবহারকারী অ্যাপ খুলে bae চালু করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nemá oprávnění používat iCloud. Otevřete Nastavení systému → Apple ID → iCloud → Apky používající iCloud a zapněte bae."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae hat keine Berechtigung für iCloud. Öffne „Systemeinstellungen“ → Apple-ID → iCloud → „Apps, die iCloud verwenden“ und aktiviere bae."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae no tiene permiso para usar iCloud. Abre Ajustes del Sistema → Apple ID → iCloud → Apps que usan iCloud y activa bae."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae n'a pas l'autorisation d'utiliser iCloud. Ouvrez Réglages Système → Identifiant Apple → iCloud → Apps utilisant iCloud, puis activez bae."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ને iCloud વાપરવાની પરવાનગી નથી. સિસ્ટમ સેટિંગ્સ → Apple ID → iCloud → iCloud વાપરતી ઍપ ખોલો અને bae ચાલુ કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ל-bae אין הרשאה להשתמש ב-iCloud. פתח את הגדרות המערכת ← Apple ID ← iCloud ← אפליקציות המשתמשות ב-iCloud והפעל את bae."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae को iCloud उपयोग करने की अनुमति नहीं है. सिस्टम सेटिंग्स → Apple ID → iCloud → iCloud उपयोग करने वाले ऐप खोलें और bae चालू करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nema dopuštenje za korištenje iClouda. Otvorite Postavke sustava → Apple ID → iCloud → Aplikacije koje koriste iCloud i uključite bae."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae non ha il permesso di usare iCloud. Apri Impostazioni di Sistema → ID Apple → iCloud → App che usano iCloud e attiva bae."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "baeにiCloudを使用する権限がありません。「システム設定」→「Apple ID」→「iCloud」→「iCloudを使用しているApp」でbaeをオンにしてください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ಬಳಸಲು bae ಗೆ ಅನುಮತಿ ಇಲ್ಲ. ಸಿಸ್ಟಂ ಸೆಟ್ಟಿಂಗ್‌ಗಳು → Apple ID → iCloud → iCloud ಬಳಸುವ ಆ್ಯಪ್‌ಗಳು ತೆರೆದು bae ಆನ್ ಮಾಡಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae에 iCloud 사용 권한이 없습니다. 시스템 설정 → Apple ID → iCloud → iCloud를 사용하는 App에서 bae를 켜십시오."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ഉപയോഗിക്കാൻ bae-ക്ക് അനുമതിയില്ല. സിസ്റ്റം ക്രമീകരണങ്ങൾ → Apple ID → iCloud → iCloud ഉപയോഗിക്കുന്ന ആപ്പുകൾ തുറന്ന് bae ഓണാക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ला iCloud वापरण्याची परवानगी नाही. सिस्टम सेटिंग्ज → Apple ID → iCloud → iCloud वापरणारे अ‍ॅप्स उघडा आणि bae चालू करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae heeft geen toestemming om iCloud te gebruiken. Open Systeeminstellingen → Apple ID → iCloud → Apps die iCloud gebruiken en schakel bae in."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ਕੋਲ iCloud ਵਰਤਣ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ। ਸਿਸਟਮ ਸੈਟਿੰਗਾਂ → Apple ID → iCloud → iCloud ਵਰਤਣ ਵਾਲੀਆਂ ਐਪਾਂ ਖੋਲ੍ਹੋ ਅਤੇ bae ਚਾਲੂ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nie ma uprawnień do iCloud. Otwórz Ustawienia systemowe → Apple ID → iCloud → Aplikacje używające iCloud i włącz bae."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae não tem permissão para usar o iCloud. Abra Ajustes do Sistema → ID Apple → iCloud → Apps Usando o iCloud e ative o bae."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-ஐப் பயன்படுத்த bae-க்கு அனுமதி இல்லை. கணினி அமைப்புகள் → Apple ID → iCloud → iCloud-ஐப் பயன்படுத்தும் ஆப்ஸ் ஐத் திறந்து bae-ஐ இயக்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ఉపయోగించడానికి baeకి అనుమతి లేదు. సిస్టమ్ సెట్టింగ్‌లు → Apple ID → iCloud → iCloud ఉపయోగించే యాప్‌లు తెరిచి baeని ఆన్ చేయండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ไม่ได้รับอนุญาตให้ใช้ iCloud เปิดการตั้งค่าระบบ → Apple ID → iCloud → แอปที่ใช้ iCloud แล้วเปิด bae"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae'nin iCloud'u kullanma izni yok. Sistem Ayarları → Apple Kimliği → iCloud → iCloud'u Kullanan Uygulamalar'ı açıp bae'yi etkinleştirin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae не має дозволу використовувати iCloud. Відкрийте «Системні параметри» → Apple ID → iCloud → «Програми, що використовують iCloud» і увімкніть bae."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae کو iCloud استعمال کرنے کی اجازت نہیں ہے۔ سسٹم سیٹنگز ← Apple ID ← iCloud ← iCloud استعمال کرنے والی ایپس کھولیں اور bae آن کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae không có quyền dùng iCloud. Mở Cài đặt Hệ thống → Apple ID → iCloud → Ứng dụng dùng iCloud rồi bật bae."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 没有使用 iCloud 的权限。请打开“系统设置”→“Apple ID”→“iCloud”→“使用 iCloud 的 App”并开启 bae。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 沒有使用 iCloud 的權限。請打開「系統設定」→「Apple ID」→「iCloud」→「使用 iCloud 的 App」並開啟 bae。"
+          }
+        }
+      }
+    },
+    "The iCloud sync zone is gone. Reconnect in sync settings to recreate it." : {
+      "comment" : "Sync failure: the CloudKit zone bae syncs through no longer exists",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختفت منطقة مزامنة iCloud. أعد الاتصال من إعدادات المزامنة لإنشائها من جديد."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зоната за синхронизиране в iCloud я няма. Свържете се отново в настройките за синхронизиране, за да я създадете наново."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud সিঙ্ক জোন আর নেই। এটি আবার তৈরি করতে সিঙ্ক সেটিংসে পুনরায় সংযোগ করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zóna synchronizace iCloud zmizela. Znovu se připojte v nastavení synchronizace, aby se vytvořila."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die iCloud-Sync-Zone ist verschwunden. Verbinde dich in den Sync-Einstellungen neu, um sie wieder anzulegen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La zona de sincronización de iCloud ha desaparecido. Vuelve a conectar en los ajustes de sincronización para recrearla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La zone de synchronisation iCloud a disparu. Reconnectez-vous dans les réglages de synchronisation pour la recréer."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud સિંક ઝોન રહ્યો નથી. તેને ફરી બનાવવા સિંક સેટિંગ્સમાં ફરી કનેક્ટ કરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אזור הסנכרון של iCloud נעלם. התחבר מחדש בהגדרות הסנכרון כדי ליצור אותו מחדש."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud सिंक ज़ोन मौजूद नहीं है. इसे दोबारा बनाने के लिए सिंक सेटिंग्स में फिर से कनेक्ट करें."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud zona sinkronizacije više ne postoji. Ponovno se povežite u postavkama sinkronizacije da biste je stvorili."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La zona di sincronizzazione iCloud non esiste più. Riconnettiti nelle impostazioni di sincronizzazione per ricrearla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudの同期ゾーンがなくなりました。同期設定で再接続すると作り直されます。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ಸಿಂಕ್ ವಲಯ ಇಲ್ಲವಾಗಿದೆ. ಅದನ್ನು ಮತ್ತೆ ರಚಿಸಲು ಸಿಂಕ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಮರುಸಂಪರ್ಕಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 동기화 영역이 사라졌습니다. 동기화 설정에서 다시 연결하면 새로 만들어집니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud സമന്വയ സോൺ ഇല്ലാതായി. അത് വീണ്ടും സൃഷ്ടിക്കാൻ സമന്വയ ക്രമീകരണങ്ങളിൽ വീണ്ടും കണക്റ്റ് ചെയ്യുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud सिंक झोन उरलेला नाही. तो पुन्हा तयार करण्यासाठी सिंक सेटिंग्जमध्ये पुन्हा कनेक्ट करा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De iCloud-synczone bestaat niet meer. Maak opnieuw verbinding in de sync-instellingen om hem opnieuw aan te maken."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ਸਿੰਕ ਜ਼ੋਨ ਹੁਣ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਦੁਬਾਰਾ ਬਣਾਉਣ ਲਈ ਸਿੰਕ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਮੁੜ-ਕਨੈਕਟ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strefa synchronizacji iCloud zniknęła. Połącz ponownie w ustawieniach synchronizacji, aby ją odtworzyć."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A zona de sincronização do iCloud não existe mais. Reconecte nos ajustes de sincronização para recriá-la."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ஒத்திசைவு மண்டலம் இல்லை. அதை மீண்டும் உருவாக்க ஒத்திசைவு அமைப்புகளில் மீண்டும் இணைக்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud సింక్ జోన్ లేదు. దాన్ని మళ్లీ సృష్టించడానికి సింక్ సెట్టింగ్‌లలో మళ్లీ కనెక్ట్ చేయండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โซนซิงค์ iCloud หายไปแล้ว เชื่อมต่อใหม่ในการตั้งค่าการซิงค์เพื่อสร้างขึ้นใหม่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud eşitleme bölgesi kayboldu. Yeniden oluşturmak için eşitleme ayarlarından yeniden bağlanın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зона синхронізації iCloud зникла. Під’єднайтеся знову в налаштуваннях синхронізації, щоб створити її наново."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud سِنک زون موجود نہیں رہا۔ اسے دوبارہ بنانے کے لیے سِنک سیٹنگز میں دوبارہ منسلک ہوں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vùng đồng bộ iCloud không còn nữa. Hãy kết nối lại trong cài đặt đồng bộ để tạo lại."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 同步区域已不存在。请在同步设置中重新连接以重新创建。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 同步區域已不存在。請在同步設定中重新連接以重新建立。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
