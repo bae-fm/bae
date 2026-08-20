@@ -560,3 +560,13 @@ recorded); 3) reclaim-unanimity-membership (eligible-set design first);
 verification flag, trust-own-circle-blobs.
 bae side: all merged through 1e59034b + ktlint 21f73754; pins current at
 962c85b7 era (next bump after trim lands). Run 8 = latest live numbers.
+
+## Run 9 (10:40Z): trim verified; three 15-18s lumps remain
+
+118s. Trim live-confirmed: plan 12 commits (was 199), carried verify 145ms,
+carry 8ms. Remaining (branch 2, briefed with bounds): joiner install
+snapshot 15.9s; joiner install history 17.1s (proven NOT carry/rows/prep);
+owner activate-the-join 18.3s of which plan-building only 2.8s. Also open
+cloud home ~7s recurring. Reclaim design doc d4ae2f36 approved (eligible
+set = active-now ∩ active-at-coverage, each conjunct argued; two new
+flagged shapes queued as separate investigations).
