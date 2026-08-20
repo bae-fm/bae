@@ -371,3 +371,19 @@ import-error-localization c05d84b5 — all audited pre-merge. Engineer queue:
 applehost-localization (CloudKit literals + gate extends to AppleHost,
 fullest-edition policy), ios-catalog-backfill (145→full keys + ios.yml
 gate), keychain-delete-fail-loud.
+
+## Backlog from branch-5/6/7 work (2026-08-20 ~03:00Z)
+
+- CloudKit recovery guidance (not-signed-in / quota / permission / zone-gone)
+  currently localized Swift-side but rides BridgeError detail, whose contract
+  says never-translated. Real shape: BridgeErrorCategory arms in bae-core so
+  the guidance is a keyed headline. Also the copy says "System Settings →
+  Apple ID" — macOS wording rendered verbatim on iOS; fix wording per
+  platform when the category arm lands.
+- iOS catalog divergences: 5 keys where iOS and macOS translations drifted
+  as synonyms — left alone deliberately; unify if a register pass happens.
+- Pitfall (in agent memory too): build-ios.sh needs ~30GB peak; SwiftPM
+  caches the Package.swift binary-target-exists answer in
+  ~/Library/Caches/org.swift.swiftpm/manifests — an xcodebuild run before
+  build-ios.sh poisons later builds with ffi_bae_bridge link errors until
+  that cache is cleared.
