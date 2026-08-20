@@ -722,3 +722,16 @@ baselines). This is what holds 208 retained rows / 87MB / the depth curve.
 Engineer 7 spawned: advance-replay-baseline (atomic advance over an
 acknowledged-stable snapshot + retained-row retirement; red-first on the
 report counters). Request counters also live on both sides now.
+
+## Request counters LIVE (21:5xZ) — first readings
+
+Cycle line now carries total_requests + per-stage /Nreq. First reading,
+IDLE cycle on the 210-commit store: total_requests=107 (pull 56req/6.6s,
+refresh authorization 12req, collect tombstones 1req...). Named finding:
+idle cycles are ~20-50x over a sane request budget (~300k req/day at
+idle); expect partial collapse post-compaction (pull's 56 scale with
+depth), remainder to be cut by stage. Gen-1 selection for reclaim was
+PROVEN earlier via selector="acknowledged" discriminator. Baseline
+advancement (engineer 7) mid-gate; Pixel + emulator now genuinely on
+b4347329 (previous wave's Android bridge failure was pipe-masked — .so
+was 3 revs stale; caught by the user questioning the APK timestamp).
