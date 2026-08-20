@@ -152,6 +152,10 @@ android {
         // (e.g. the dropped-release skip log). Return defaults instead of throwing
         // so the JVM tests don't need Robolectric just to no-op a log line.
         unitTests.isReturnDefaultValues = true
+        // Robolectric needs the merged manifest and real resources. That also
+        // makes it instantiate the manifest's Application, which off-device
+        // cannot boot — src/test/resources/robolectric.properties substitutes a
+        // plain Application and explains why.
         unitTests.isIncludeAndroidResources = true
     }
 
