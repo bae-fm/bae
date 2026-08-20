@@ -612,3 +612,44 @@ implementation; both judgment calls ratified: dominate-current-requirement
 at execute time; empty-set hold documented as examined conservatism).
 Endgame after branch 4: WIPE ~/.bae per mandate, fresh store, final
 scorecard (import → move → join) on the finished stack.
+
+## STANDING GOAL (set 2026-08-20 ~15:00Z)
+
+1. Live store compacts (membership-conjunct fix → gen-1 selected → depth
+   falls). 2. Join fits budget: single-digit seconds, ~20 requests, proven
+   by live request-count lines. 3. Finale: wipe ~/.bae, fresh library,
+   record full journey (import → publish 1.5s ✓ → pair → join → stream).
+4. Nothing unmerged; state doc closes with the scorecard.
+
+## Key finding (15:00Z): member removal ≠ device exclusion
+
+Live store shows ALL 13 devices of 11 removed members still `active` in
+all 208 device states — remove_member ends grants + rotates keys, never
+touches device state; StoreDeviceStatus::Inactive is separate choreography
+(retiring a lost device of a member in good standing). Reclaim's eligible
+set now requires: active at coverage ∩ active now ∩ is_member_now (new
+MembershipChain::is_member_now; can_write_now wrong for read-only members).
+Fourth red test with a genuine second member (admit_and_activate_peer →
+remove). In gate; push pending.
+
+## Finale runbook (execute after goals 1-2)
+
+1. Quit bae; adb uninstall fm.bae.app. rm -rf ~/.bae. Optionally purge old
+   cloud prefixes (keep bae-poppin-nina-db448je as pre-compaction relic? NO
+   — greenfield: delete bae-poppin-nina-db448je + lwerkjvwe + bae-redesign-0819
+   via gcloud AFTER the scorecard, keep during in case of comparison).
+2. Launch bae (full derivedData path only). Welcome → Create new library.
+   NEW prefix: bae-final-<date>. S3 form: bucket bae-import-dima, region
+   us-east1, endpoint https://storage.googleapis.com, creds from
+   scratchpad/s3-creds. Probe error now renders next to Connect (fixed) —
+   verify field-by-field with screenshots before Connect; the form-scroll
+   mangling pitfall from 08-19 applies.
+3. Scripted imports via mcp.py/batch_import.py (SMB share folders; token:
+   Settings → Automation → Copy token if regenerated). 3-5 releases.
+4. move_to_cloud unpinned per release via release_storage_action; record
+   publication stage lines (expect ~1.5s each).
+5. Pair emulator (fresh pm cleared app): full choreography, record both
+   sides' stage+request lines. Target: single-digit seconds.
+6. Stream a track on the emulator (dumpsys media_session PLAYING).
+7. Write scorecard section; update plans/cloud-upload-user-journey.md
+   items; final commit+push.
