@@ -668,3 +668,13 @@ membership rollup, laggard snapshot catch-up (+ veto-lapse policy question
 for the user), snapshot-download serial GETs, install-history remainder,
 handshake RTT audit, seed memo, parked items. Baseline for compaction
 verdict: 208 retained commits, 87MB store.db, 213 cloud candidate objects.
+
+## Compaction verdict metrics (pre-fix baseline, 16:30Z)
+
+1. Retained commits: 208. 2. store.db: 87 MB. 3. Cloud candidate objects:
+213. 4. NEW — idle cycle cost climbed with depth all night: 1.7s (00:00)
+→ 15.9s (11:00) → ~11s now; some per-cycle stage walks full history.
+Post-compaction expectation: cycles return toward ~1.5s. If they stay
+elevated after depth falls, the per-cycle walk is the next named cut
+(candidate-stability evaluation re-verifying unchanged state every 30s is
+the prime suspect).
