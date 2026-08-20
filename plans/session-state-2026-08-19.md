@@ -501,3 +501,19 @@ gen-1 image (captured by pre-fix 8a90bea code) doesn't carry coverage in
 the shape the walk reads (greenfield: fresh snapshot over compat);
 (3) depth/stream-count assumption. Requested: selection-time log line
 naming chosen generation + coverage tips (selection currently invisible).
+
+## Run 6 root cause + design decision (08:0xZ)
+
+Gen-1 snapshot is PERMANENTLY unstable: build_snapshot_stability demands an
+ack from every device active at the snapshot's coverage, acks only ride
+commits, and two joined-and-idle pairing-test devices never authored one —
+so bootstrap (which reused reclaim's stability predicate) always fell back
+to gen-0 (coverage {}). Reproduced in-workspace in 0.16s. Hypothesis 2
+(image compat) affirmatively dead: install repopulates snapshot_coverage
+from signed meta, old images fine, no shim. DESIGN DECISION (mine): split
+the predicate — bootstrap selects maximal snapshot passing
+verify_snapshot_authority (signed meta), reclaim keeps unanimity. Safety
+property named: post-install verification strength unchanged; baseline
+seeds from signed meta only. Follow-up branch: reclaim-unanimity-membership
+(membership change before unanimous ack permanently blocks reclaim;
+excluded devices must not count). Selection-time logging landed (a08dd37e).
