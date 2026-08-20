@@ -107,14 +107,20 @@ jobs:
       - name: Confirm the bridge DLL was produced
         shell: pwsh
         run: |
-          $dlls = @(
-            "target-windows\${{ matrix.target }}\debug\bae_bridge.dll",
-            "target-windows\${{ matrix.target }}\debug\uniffi_bae_bridge.dll"
-          )
+          $dir = "target-windows\${{ matrix.target }}\debug"
+          $dlls = @("$dir\bae_bridge.dll", "$dir\uniffi_bae_bridge.dll")
           foreach ($dll in $dlls) {
             if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
             else { Write-Host "FAIL: $dll not found"; exit 1 }
           }
+          # Put the bridge on PATH for every later step, the same way the FFmpeg
+          # DLLs above are. `dotnet test` probes the test binary's own directory
+          # and PATH; nothing copies the bridge into the former, so the handful
+          # of view tests that construct a bridge type — and so run its P/Invoke
+          # static initializer — died with DllNotFoundException 'bae_bridge'
+          # while the tests that never touch it passed. The FFmpeg DLLs the
+          # bridge itself links are already resolved this way.
+          echo "$PWD\$dir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Check C# formatting
         # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
