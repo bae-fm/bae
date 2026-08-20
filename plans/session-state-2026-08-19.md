@@ -735,3 +735,17 @@ PROVEN earlier via selector="acknowledged" discriminator. Baseline
 advancement (engineer 7) mid-gate; Pixel + emulator now genuinely on
 b4347329 (previous wave's Android bridge failure was pipe-masked — .so
 was 3 revs stale; caught by the user questioning the APK timestamp).
+
+## FIRST COUNTED JOIN — real hardware (Pixel, 22:2xZ)
+
+User re-paired their Pixel (fresh data) live: "Same-provider device join"
+total 12369ms / 78 requests. Breakdown: open Store storage 2456ms/61req
+(membership chain = 78% of requests — rollup fix kills it), download
+snapshot 1902ms/1req, install snapshot 2069ms/0req, install history
+5805ms/16req (owner membership 1880ms/1req — memo working), 31 uncovered
+commits' row data 1493ms/10req. From 28-minute failure this morning to
+12.4s. Budget (single-digit s, ~20 req): time at the doorstep, requests
+4x over with one named cause. Devices list: 693559f7 (emulator),
+owner, + phone identities b6b6fc0c/b9607a28 — ONE is the fresh pair, one
+is pre-reset dead weight; identify before removing (ask user or check
+which acks).
