@@ -220,44 +220,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             #endif
     }
 
-    static func installEnvironment<Content: Scene>(
-        _ content: Content,
-        from service: AppService?
-    ) -> some Scene {
-        BaeKit.AppService.installSharedEnvironment(content, from: service)
-            .environment(service?.importStore)
-            .environment(service?.libraryBrowseSession)
-            .environment(service?.storageManagerStore)
-            .environment(service?.previewAudio)
-            .environment(service?.releaseEditor)
-            .environment(service?.importer)
-            .environment(service?.outputs)
-            .environment(service?.discogs)
-            .environment(service?.automation)
-            .environment(service?.subsonic)
-            .environment(service?.export)
-            .environment(service?.outputStore)
-            .environment(service?.uiStore)
-            .environment(
-                \.playbackPositionPublisher,
-                service?.playbackPositionPublisher
-                    ?? Empty().eraseToAnyPublisher()
-            )
-            .environment(
-                \.previewProgressPublisher,
-                service?.previewProgressPublisher
-                    ?? Empty().eraseToAnyPublisher()
-            )
-            .environment(
-                \.importLoudnessPublisher,
-                service?.importLoudnessPublisher
-                    ?? Empty().eraseToAnyPublisher()
-            )
-            #if BAE_OAUTH_PROVIDERS
-                .environment(service?.cloudSyncSetup)
-            #endif
-    }
-
     private var previewProgressPublisher:
         AnyPublisher<PreviewProgressEvent, Never>
     {

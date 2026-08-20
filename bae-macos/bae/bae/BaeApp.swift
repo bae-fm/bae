@@ -385,29 +385,54 @@ extension BaeApp {
     }
 
     private var settingsWindow: some Scene {
-        AppService.installEnvironment(
-            Settings {
-                if let appService = appDelegate.appService {
+        Settings {
+            SettingsWindowRoot(
+                appDelegate: appDelegate,
+                checkForUpdatesViewModel: checkForUpdatesViewModel
+            )
+        }
+        // Never restored, for the reason the Storage Manager window is not:
+        // a restored auxiliary window marks the session as already presented
+        // and suppresses the primary window. It is worse here — the settings
+        // window is restored before the library opens, so it comes back
+        // holding the no-library placeholder for a session that then has a
+        // library, and Cmd+, just brings that stale window forward.
+        .restorationBehavior(.disabled)
+    }
+
+    /// The settings window's root. A real `View` whose `body` does the
+    /// `appService` read, so Observation tracks it — the same shape
+    /// `StorageManagerWindowRoot` uses, and for the same reason. Read inline in
+    /// the `Settings` scene builder instead, the read is not tracked: a window
+    /// built before the library lands keeps the "No library loaded"
+    /// placeholder for the rest of the run, while the menu bar and the title
+    /// bar's gear open the very same scene and appear to disagree with it.
+    private struct SettingsWindowRoot: View {
+        let appDelegate: AppDelegate
+        let checkForUpdatesViewModel: CheckForUpdatesViewModel
+
+        var body: some View {
+            if let appService = appDelegate.appService {
+                appService.installEnvironment(
                     SettingsView(
                         checkForUpdatesViewModel: checkForUpdatesViewModel,
                         onForgetLibrary: { appDelegate.forgetActiveLibrary() }
                     )
                     .errorAlert(appDelegate.uiStore)
                     .onAppear { appService.reportScreen(.settings) }
-                }
-                else {
-                    ContentUnavailableView(
-                        "No library loaded",
-                        systemImage: "books.vertical",
-                        description: Text(
-                            "Open a library first to access settings"
-                        )
+                )
+            }
+            else {
+                ContentUnavailableView(
+                    "No library loaded",
+                    systemImage: "books.vertical",
+                    description: Text(
+                        "Open a library first to access settings"
                     )
-                    .frame(width: 300, height: 200)
-                }
-            },
-            from: appDelegate.appService
-        )
+                )
+                .frame(width: 300, height: 200)
+            }
+        }
     }
 }
 
