@@ -678,3 +678,16 @@ Post-compaction expectation: cycles return toward ~1.5s. If they stay
 elevated after depth falls, the per-cycle walk is the next named cut
 (candidate-stability evaluation re-verifying unchanged state every 30s is
 the prime suspect).
+
+## Watch item (17:4xZ): checkpoint-state mismatch on version-skewed member
+
+Emulator (coven 5e442ab6-era APK) pull fails loudly: "snapshot Merge
+checkpoint state differs from its signed reference" against the mac on
+ce0d32c6 which has published newer snapshots. Presumed version skew
+(greenfield: mixed versions unsupported; loud refusal correct). MUST
+RE-VERIFY on matched builds after the conjunct merge + rebuild + fresh
+rejoin — if it reproduces same-version, it is a real state-derivation
+defect (top of coven queue with this exact error line). Also: emulator
+networking goes stale after long uptime (os error 103 connect aborts) —
+adb reboot fixes; wifi toggle does not. The joined device's failure
+banner + Retry surfaced everything correctly.
