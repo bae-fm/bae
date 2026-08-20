@@ -354,3 +354,20 @@ Approve: lclick -1164 464 (window at -1453,21,500,688).
 - Post-fix measurements queued: Burning Spear b0bcf324 (95MB, local) is the
   clean publish sample; emulator re-join (Member 14b484e6 exists — trash +
   re-pair if the joiner journal won't resume) then initial-pull timing.
+
+## Routing correction (2026-08-20 ~01:20Z)
+
+coven-2c never received my briefs: cross-session messages from this session
+are HELD at its permission gate ("permission mode class doesn't match",
+needs manual approval in its tmux pane — one held status-ping is sitting
+there now; deny it, the work moved). I did not touch that session's
+permission prompt. All three coven branches now run under my own
+product-engineer agent instead: device-join-bootstrap-packages (critical
+path), trust-own-blob-uploads, keychain-transient-refusal.
+
+bae side landed tonight (main = c05d84b5): probe-error-surfacing 340d9ad1,
+boot-failure-surfacing a135aa98, display-line-optional-rendering da3ffec6,
+import-error-localization c05d84b5 — all audited pre-merge. Engineer queue:
+applehost-localization (CloudKit literals + gate extends to AppleHost,
+fullest-edition policy), ios-catalog-backfill (145→full keys + ios.yml
+gate), keychain-delete-fail-loud.
