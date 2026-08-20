@@ -530,3 +530,16 @@ diagnosing: stale-purge vs unscoped-attempt-read (the latter is a real
 defect — concurrent pairings would collide identically). New selection
 logging proved itself: reclaim's gen-1 rejection (idle devices) now
 visible per cycle.
+
+## Run 8 (09:34Z): coverage crediting verified live; residue is coverage-blind
+
+146s total. WINS: uncovered 10/199 (was 199/199), row-data resolution 51ms
+(was 2400ms), gen-1 selected for join with tips logged while reclaim's
+unanimity rejection logs separately — the split behaves exactly as
+designed. RESIDUE (all coverage-blind, engineer briefed): install history
+18.2s @ only 10 uncovered (per-commit verification walk over all 199
+ignores coverage — is it redundant with the snapshot's signed authority?);
+install snapshot 15.2s (gen-1 real image vs 0.7-0.9s for near-empty gen-0);
+owner activate-the-join 17.2s (grows with depth). Confound: every test
+cycle inflates the stream — reclaim-unanimity-membership promoted (bounded
+depth = the real fix for store lifetime). Journal purge done (14 rows).
