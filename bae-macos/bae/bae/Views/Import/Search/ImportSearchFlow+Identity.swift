@@ -57,10 +57,12 @@ extension ImportSearchFlow {
             switch pick {
             case .release:
                 candidate.error = line.map {
-                    "Failed to load release details: \($0)"
+                    String(localized: "Failed to load release details: \($0)")
                 }
             case .unknown:
-                candidate.error = line.map { "Couldn't read file tags: \($0)" }
+                candidate.error = line.map {
+                    String(localized: "Couldn't read file tags: \($0)")
+                }
                 candidate.identity = .release
             }
             // The decision never resolved on screen, so nothing is claimed and

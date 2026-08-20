@@ -157,7 +157,9 @@ enum ImportSearchFlow {
                     key: key,
                     tab: capturedTab,
                     source: capturedSource,
-                    error: error.displayLine.map { "Search failed: \($0)" }
+                    error: error.displayLine.map {
+                        String(localized: "Search failed: \($0)")
+                    }
                 )
             }
         }
