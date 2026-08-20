@@ -653,3 +653,18 @@ remove). In gate; push pending.
 6. Stream a track on the emulator (dumpsys media_session PLAYING).
 7. Write scorecard section; update plans/cloud-upload-user-journey.md
    items; final commit+push.
+
+## Relay #4→#5 (16:0xZ)
+
+Engineer 4 ran out of context MID-WORK: the member-conjunct fix
+(is_member_now third conjunct) + request-counter start left UNCOMMITTED in
+coven-wt-relay4 (336 insertions/16 files; diff preserved at scratchpad/
+relay4-uncommitted.diff). PR C merged meanwhile (bae fd5fa73a): keychain
+refusal typed on both routes, KeychainLockedView, NSWorkspace wake/unlock
+retries, iOS scenePhase retry, Avalonia gap documented in-code. Engineer 5
+spawned: (1) reclaim-member-conjunct from the inherited diff [gates live
+compaction], (2) stage-request-counts [gates join budget proof], then
+membership rollup, laggard snapshot catch-up (+ veto-lapse policy question
+for the user), snapshot-download serial GETs, install-history remainder,
+handshake RTT audit, seed memo, parked items. Baseline for compaction
+verdict: 208 retained commits, 87MB store.db, 213 cloud candidate objects.
