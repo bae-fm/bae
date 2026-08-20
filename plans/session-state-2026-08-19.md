@@ -447,3 +447,19 @@ answered and fixed. bae pin 764708bb.
   full history verification (exclusion+rotation commits carry circle
   controls, disabling the fast path) under debug-build crypto on emulator.
   Watcher armed; numbers on completion.
+
+## Join runs 2-3 evidence (2026-08-20 ~05:40Z)
+
+Rotation fix live-verified: "Snapshot created and pushed local_seq=101"
+first cycle after relaunch (pin f724e148, coven 8a90bea6). NOTE: stream
+length is ~101 commits — the earlier "12" was retained rows, not history.
+Run 2 (post-exclusion history): joiner CPU-bound 28min, silently abandoned
+(pairing code expired mid-install; cancelled future never reports).
+Run 3 (covering snapshot): owner "activate same-provider device" 61.8s
+(run 2: 68.0s — reproducible, native mac hotspot #1); joiner died silently
+139s post-approval, zero coven log lines even from the new instrumentation.
+Join is likely BROKEN (not just slow) on stores with a rotation in history.
+Engineer briefed: in-workspace repro (rotation fixture + fresh join),
+activation-stage breakdown, report-on-drop hardening, typed abandonment.
+Android app defects queued separately: startup ANR (PlaybackService waited
+23s), silent join failure UX, pairing-code entry flakiness under ANR.
