@@ -691,3 +691,21 @@ defect (top of coven queue with this exact error line). Also: emulator
 networking goes stale after long uptime (os error 103 connect aborts) —
 adb reboot fixes; wifi toggle does not. The joined device's failure
 banner + Retry surfaced everything correctly.
+
+## Correction (19:1xZ): gen-1 "selection" was ambiguous; decline made visible
+
+The "Selected the Store snapshot generation=1" line is shared by BOTH
+selectors (installable=join, acknowledged=reclaim) with no discriminator —
+so goal-1's "gen-1 selected for reclaim" is UNPROVEN; may have been the
+join selector. Engineer 6 falsified both decline suspects against the live
+DB (store_reclaim_operations EMPTY — no stale block; supersedes-seed is
+Circle-only) and found the swallow: mod.rs:290-292 converts NoSnapshot/
+MissingAcknowledgement to Vec::new() with no log so Store trouble can't
+block Circle reclaim. Standing suspicion: gen-1 coverage-era devices
+include 2 never-acked (4401619a, 64a75c2d) — excused only if their
+principals read as non-members via the cloud-walked chain; the new
+per-cycle StorePackageReclaimReport (coverage-or-typed-reason +
+considered/retained/authorized counts + selector discriminator) settles it
+next live cycle. Latent hazard queued: completed reclaim operations are
+never deleted → permanent per-target block. stage-request-counts pushed
+(c4c90108), under audit.
