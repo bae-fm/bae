@@ -749,3 +749,22 @@ commits' row data 1493ms/10req. From 28-minute failure this morning to
 owner, + phone identities b6b6fc0c/b9607a28 — ONE is the fresh pair, one
 is pre-reset dead weight; identify before removing (ask user or check
 which acks).
+
+## BROADENED MANDATE (user, 22:4xZ, stepping away): sync at scale
+
+"make it so syncing larger libraries with many things added doesn't suck."
+Campaign order:
+1. Land advance-replay-baseline (engineer 8, in flight) → live compaction
+   → depth bounded forever (goal 1 closes; cycle costs partially collapse).
+2. Cycle request budget: idle cycle must be O(streams) requests (~2-5),
+   not 107 (mac) / 680+77s (phone measured live). Stage the pull's 56req,
+   cut. This is the phone-battery/latency number.
+3. Bulk-add catch-up: measure a device catching up after many releases
+   land at once (emulator; user took the Pixel). The catch-up path must be
+   O(new items) with fanned-out fetches, not per-commit serial. Includes
+   the laggard-catch-up-via-snapshot design (device far behind re-
+   bootstraps instead of replaying).
+4. Membership rollup (61 of 78 join requests) → join inside budget.
+5. externalize-baseline-payloads (user directive, queued on engineer 8).
+6. Finale on a fresh library incl. a BULK import wave as the scale test.
+Phone gone; emulator is the second device for all measurements.
