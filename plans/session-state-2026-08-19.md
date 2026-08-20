@@ -402,3 +402,18 @@ on both sides, serial per-object GETs in bootstrap resolution).
 Also found: Cmd+, opens a "bae Settings" window wired to a nil session ("No
 library loaded" while library is open) while the menu's Settings… opens the
 real one — macOS settings-scene wiring defect, unbriefed yet.
+
+## Settings fix verified + doppelganger pitfall v2 (2026-08-20 ~03:30Z)
+
+settings-scene-session (0e37efc9) live-verified: Cmd+, opens the populated
+Library settings window backed by the open session; Devices lists Owner
+7d13f65c + Member 9bd967f7 (the joined emulator).
+Pitfall v2: agent worktree builds register their bae.app with LaunchServices;
+`tell application "bae"` / open-by-name can LAUNCH the worktree copy (it did
+— second instance from bae-wt-error-surfacing shared ~/.bae, failed its
+library open with "store is already open" rendered in the NEW welcome error
+UI — fail-loud worked as designed). Remedies applied: killed it,
+`lsregister -u` + deleted the worktree app bundle. Rules: launch only by
+full path; activate via System Events `tell process "bae"`, never
+`tell application`; after any agent runs GUI tests, sweep for stray bae
+processes (engineer left 3 running earlier).
