@@ -426,3 +426,24 @@ Burning Spear b0bcf324 (95MB/19 files) moved to cloud unpinned on coven
 14990ms for 13 blobs; the full-GET re-verify is gone). Remaining >500ms
 stage: authorize outbound 639ms. User's "publishing takes a while" is
 answered and fixed. bae pin 764708bb.
+
+## Key-rotation wedge + instrumented join run (2026-08-20 ~04:00-05:00Z)
+
+- Snapshot wedge root cause (coven engineer, fix written, push pending
+  disk-recovery): snapshot preflight + blob_preparation compare stored blob
+  locators against a locator recomputed under the CURRENT key generation;
+  any member-removal key rotation re-identifies every pre-rotation blob and
+  wedges snapshot publication permanently. Fix: locator_is_this_rows_upload
+  (content+reachability, not key fingerprint). Existing store unwedges on
+  ship, no rebuild. My pin bump was coincident, not causal.
+- Disk hit 100% (Bash could not even start); recovered via Monitor-shell
+  rm of incremental dirs + reclaim.sh --force. Engineer's uncommitted fix
+  survived in /Users/dima/dev/coven-wt-fixes.
+- Instrumented join re-run (fresh pairing, fingerprints 2d7d21e4, approved
+  04:42:01Z): owner-side stages now visible — first conviction:
+  "activate same-provider device 68054ms" (one owner step, 68s). Joiner
+  CPU-bound (115% CPU, ~3KB/s net) 20+ min in "Installing library
+  snapshot…", stages print at phase end so still dark mid-phase. Suspect:
+  full history verification (exclusion+rotation commits carry circle
+  controls, disabling the fast path) under debug-build crypto on emulator.
+  Watcher armed; numbers on completion.
