@@ -77,6 +77,12 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         INFOPLIST_FILE: bae/Info.plist
         SWIFT_VERSION: "6.2"
+        # The compiler writes each file's localizable strings to .stringsdata
+        # during compilation; scripts/check_localizable_strings.py --platform
+        # ios compares that ground truth against Localizable.xcstrings.
+        # (Xcode's parser-based catalog sync misses strings in some closure
+        # shapes — only the compile-emitted data is trustworthy.)
+        SWIFT_EMIT_LOC_STRINGS: YES
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         BAE_DATADOG_SITE: $(BAE_DATADOG_SITE)
         BAE_DATADOG_CLIENT_TOKEN: $(BAE_DATADOG_CLIENT_TOKEN)

@@ -37,10 +37,14 @@ struct OnboardingSecondaryText: View {
 
 #if DEBUG
 #Preview {
+    // Routed through `String` values so the extractor never takes preview-only
+    // prose into the catalog.
+    let title = "Screen title"
+    let secondary = "A secondary explanatory line."
     OnboardingScreen {
-        Text("Screen title")
+        Text(verbatim: title)
             .font(.title)
-        OnboardingSecondaryText("A secondary explanatory line.")
+        OnboardingSecondaryText(LocalizedStringKey(secondary))
     }
 }
 #endif

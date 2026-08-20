@@ -78,7 +78,7 @@ struct ComposerSummaryRow: View {
                 Text(summary.name)
                     .font(.body)
                     .lineLimit(1)
-                Text("\(summary.workCount) \(String(localized: "Works"))")
+                Text("\(summary.workCount) works")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

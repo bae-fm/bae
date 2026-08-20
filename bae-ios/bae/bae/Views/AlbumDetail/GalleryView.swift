@@ -54,9 +54,12 @@ struct GalleryView: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.85))
                     if items.count > 1 {
-                        Text("\(selection + 1) / \(items.count)")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.6))
+                        Text(
+                            verbatim:
+                                "\((selection + 1).formatted()) / \(items.count.formatted())"
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
                     }
                 }
             }

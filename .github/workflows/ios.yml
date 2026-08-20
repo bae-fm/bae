@@ -114,6 +114,14 @@ jobs:
           -derivedDataPath bae-ios/bae/.build/derivedData \
           build
 
+    - name: Check localizable strings against the catalog
+      # Full edition only: the gate holds the catalog against the strings the
+      # compiler extracted, and a baeium build compiles fewer of them — every
+      # OAuth and CloudKit key would read as an orphan. One truth, taken from
+      # the fullest edition; surplus keys in a smaller edition are inert data.
+      if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
+      run: python3 scripts/check_localizable_strings.py --platform ios
+
     - name: Run iOS unit tests (baeTests)
       # Full edition only: the OAuth tests compile under oauth-providers, and
       # one run is enough for the shared logic. Simulator ad-hoc signing must

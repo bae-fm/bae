@@ -54,9 +54,12 @@ struct CodeShareBlock: View {
 
 #if DEBUG
 #Preview {
+    // Routed through a `String` so the extractor never takes preview-only copy
+    // into the catalog.
+    let description = "Preview code"
     CodeShareBlock(
         code: "PREVIEW-CODE",
-        contentDescription: "Preview code",
+        contentDescription: LocalizedStringKey(description),
         qrSize: 180
     )
 }

@@ -78,7 +78,7 @@ struct ArtistSummaryRow: View {
                 Text(summary.name)
                     .font(.body)
                     .lineLimit(1)
-                Text("\(summary.albumCount) \(String(localized: "Albums"))")
+                Text("\(summary.albumCount) albums")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

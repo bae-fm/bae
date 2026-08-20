@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""The macOS chrome-string gate: compiled code ⇄ Localizable.xcstrings.
+"""The Apple chrome-string gate: compiled code ⇄ Localizable.xcstrings.
 
 The Swift compiler writes each file's localizable strings to a .stringsdata
 file during compilation (SWIFT_EMIT_LOC_STRINGS, set in project.yml). This
-script unions that ground truth for the app target and holds it against
-bae-macos/bae/bae/Localizable.xcstrings:
+script unions that ground truth for the app target and holds it against the
+platform's Localizable.xcstrings (`--platform macos` or `--platform ios`):
 
   1. every extracted key has a catalog entry;
   2. every catalog entry is extracted from compiled code (no orphans), unless
@@ -16,6 +16,11 @@ bae-macos/bae/bae/Localizable.xcstrings:
 Exits non-zero listing every offender. Xcode's parser-based catalog sync is
 not trustworthy for this codebase — it misses strings in some closure shapes
 and then prunes their keys — so only the compile-emitted data is used.
+
+Each platform has one catalog and one truth for what belongs in it: the build
+this rides is the fullest edition, so a key behind a feature flag is extracted
+and must be present. An edition that compiles less carries surplus keys, which
+are inert data — there is no per-edition key set.
 """
 
 import argparse
@@ -24,14 +29,25 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-CATALOG = REPO / "bae-macos/bae/bae/Localizable.xcstrings"
-CORE_CATALOG = REPO / "bae-macos/bae/bae/Core.xcstrings"
-DERIVED_DATA = REPO / "bae-macos/bae/.build/derivedData"
 # The app target and the BaeKit package target. BaeKit's Text/String(localized:)
 # calls resolve against the main bundle at runtime, so its strings are app-
-# catalog obligations like the app's own. Other packages (Sparkle, Sentry) keep
-# their own tables and stay out of the union.
+# catalog obligations like the app's own. (The AppleHost sources are listed
+# straight into the app target by project.yml, so they ride in "bae".) Other
+# packages (Sparkle, Sentry) keep their own tables and stay out of the union.
 STRINGSDATA_TARGETS = ("bae", "BaeKit")
+
+PLATFORMS = {
+    "macos": {
+        "catalog": REPO / "bae-macos/bae/bae/Localizable.xcstrings",
+        "core": REPO / "bae-macos/bae/bae/Core.xcstrings",
+        "derived_data": REPO / "bae-macos/bae/.build/derivedData",
+    },
+    "ios": {
+        "catalog": REPO / "bae-ios/bae/bae/Localizable.xcstrings",
+        "core": REPO / "bae-ios/bae/bae/Core.xcstrings",
+        "derived_data": REPO / "bae-ios/bae/.build/derivedData",
+    },
+}
 
 
 def extracted_keys(derived_data: Path) -> set[str]:
@@ -67,13 +83,13 @@ def extracted_keys(derived_data: Path) -> set[str]:
     return keys
 
 
-def locale_set() -> set[str]:
-    core = json.loads(CORE_CATALOG.read_text())
+def locale_set(core_catalog: Path) -> set[str]:
+    core = json.loads(core_catalog.read_text())
     locales: set[str] = set()
     for entry in core["strings"].values():
         locales |= set(entry.get("localizations", {}))
     if not locales:
-        sys.exit(f"{CORE_CATALOG} lists no locales — run loc-gen first")
+        sys.exit(f"{core_catalog} lists no locales — run loc-gen first")
     return locales
 
 
@@ -109,9 +125,15 @@ def untranslated(entry: dict, locales: set[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--platform",
+        choices=sorted(PLATFORMS),
+        default="macos",
+        help="which app's catalog and build to check (default: macos)",
+    )
+    parser.add_argument(
         "--derived-data",
         type=Path,
-        default=DERIVED_DATA,
+        default=None,
         help="derived-data path of a completed bae-scheme build",
     )
     parser.add_argument(
@@ -123,10 +145,11 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+    platform = PLATFORMS[args.platform]
 
-    extracted = extracted_keys(args.derived_data)
-    catalog = json.loads(CATALOG.read_text())["strings"]
-    locales = locale_set()
+    extracted = extracted_keys(args.derived_data or platform["derived_data"])
+    catalog = json.loads(platform["catalog"].read_text())["strings"]
+    locales = locale_set(platform["core"])
 
     missing = sorted(extracted - catalog.keys())
     orphans = (
