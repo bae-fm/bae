@@ -88,7 +88,7 @@ struct SyncSetupWizard: View {
     @State
     private var step: WizardStep = .selectProvider
     @State
-    private var error: String?
+    private var error: DisplayError?
     @State
     private var isWorking = false
     @State
@@ -129,7 +129,7 @@ struct SyncSetupWizard: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 460, height: 400)
+        .frame(width: 460, height: 520)
         .onDisappear { connectTask?.cancel() }
     }
 
@@ -215,41 +215,97 @@ struct SyncSetupWizard: View {
 
     // MARK: - Configure Step
 
+    /// The dialog shape the rest of bae's setup screens use: the scrolling form
+    /// carries only the fields, and the failure plus the button that produced it
+    /// sit beneath it, outside the scroller. A probe that fails is then visible
+    /// next to the control the user just pressed rather than below the fold.
     @ViewBuilder
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
-        Form {
-            storageSection
+        VStack(spacing: 0) {
+            Form {
+                storageSection
 
-            // The switch stays exhaustive over all five providers in every
-            // build; only the arms whose bridge calls are feature-gated are
-            // hollowed out. A gated-out provider never reaches here — it isn't
-            // in `availableCloudProviders()`, so it can't be selected.
-            switch provider {
-            case .s3:
-                s3Fields
-            case .googleDrive, .dropbox, .oneDrive:
-                #if BAE_OAUTH_PROVIDERS
-                    oauthFields(provider: provider)
-                #else
-                    EmptyView()
-                #endif
-            case .cloudKit:
-                #if BAE_CLOUDKIT
-                    cloudKitFields
-                #else
-                    EmptyView()
-                #endif
-            }
-
-            if let error {
-                Section {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.callout)
+                // The switch stays exhaustive over all five providers in every
+                // build; only the arms whose bridge calls are feature-gated are
+                // hollowed out. A gated-out provider never reaches here — it isn't
+                // in `availableCloudProviders()`, so it can't be selected.
+                switch provider {
+                case .s3:
+                    s3Fields
+                case .googleDrive, .dropbox, .oneDrive:
+                    #if BAE_OAUTH_PROVIDERS
+                        oauthExplanation(provider: provider)
+                    #else
+                        EmptyView()
+                    #endif
+                case .cloudKit:
+                    #if BAE_CLOUDKIT
+                        cloudKitExplanation
+                    #else
+                        EmptyView()
+                    #endif
                 }
             }
+            .formStyle(.grouped)
+
+            if let error {
+                ErrorDetailDisclosure(error: error)
+                    .padding(.horizontal)
+                    .padding(.bottom, 10)
+            }
+
+            connectRow(for: provider)
+                .padding(.horizontal)
+                .padding(.bottom, 20)
         }
-        .formStyle(.grouped)
+    }
+
+    // MARK: - Connect Row
+
+    /// The configure step's one action, pinned below the form next to the error
+    /// it can produce.
+    private func connectRow(for provider: BridgeCloudProvider) -> some View {
+        HStack(spacing: 8) {
+            if isWorking {
+                ProgressView()
+                    .controlSize(.small)
+            }
+            Spacer()
+            Button(connectTitle(for: provider)) {
+                connect(provider: provider)
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
+            .disabled(isWorking || !connectReady(for: provider))
+        }
+    }
+
+    private func connectTitle(
+        for provider: BridgeCloudProvider
+    ) -> LocalizedStringKey {
+        if isWorking {
+            return "Connecting..."
+        }
+        switch provider {
+        case .s3:
+            return "Connect"
+        case .googleDrive, .dropbox, .oneDrive:
+            return "Connect \(provider.displayName)"
+        case .cloudKit:
+            return "Use iCloud"
+        }
+    }
+
+    /// Only S3 takes credentials by hand; the browser and iCloud flows collect
+    /// theirs after the button is pressed, so they are always ready.
+    private func connectReady(for provider: BridgeCloudProvider) -> Bool {
+        switch provider {
+        case .s3:
+            !bucket.isEmpty && !region.isEmpty && !accessKey.isEmpty
+                && !secretKey.isEmpty
+        case .googleDrive, .dropbox, .oneDrive, .cloudKit:
+            true
+        }
     }
 
     // MARK: - Storage mode
@@ -296,48 +352,22 @@ struct SyncSetupWizard: View {
                 SecureField("Access Key", text: $accessKey)
                 SecureField("Secret Key", text: $secretKey)
             }
-
-            Section {
-                HStack {
-                    Spacer()
-                    Button("Connect") {
-                        connectS3()
-                    }
-                    .disabled(
-                        bucket.isEmpty || region.isEmpty || accessKey.isEmpty
-                            || secretKey.isEmpty
-                            || isWorking
-                    )
-                }
-            }
         }
     }
 
     // MARK: - OAuth
 
     #if BAE_OAUTH_PROVIDERS
-        private func oauthFields(provider: BridgeCloudProvider) -> some View {
-            let connectTitle: LocalizedStringKey =
-                isWorking
-                ? "Connecting..."
-                : "Connect \(provider.displayName)"
-            return Section {
-                VStack(spacing: 12) {
-                    Text(
-                        "Opens your browser to authorize bae with \(provider.displayName)."
-                    )
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    HStack {
-                        Spacer()
-                        Button(connectTitle) {
-                            connectOAuth(provider: provider)
-                        }
-                        .disabled(isWorking)
-                    }
-                }
+        private func oauthExplanation(
+            provider: BridgeCloudProvider
+        ) -> some View {
+            Section {
+                Text(
+                    "Opens your browser to authorize bae with \(provider.displayName)."
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     #endif
@@ -345,24 +375,14 @@ struct SyncSetupWizard: View {
     // MARK: - iCloud
 
     #if BAE_CLOUDKIT
-        private var cloudKitFields: some View {
+        private var cloudKitExplanation: some View {
             Section {
-                VStack(spacing: 12) {
-                    Text(
-                        "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
-                    )
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    HStack {
-                        Spacer()
-                        Button("Use iCloud") {
-                            connectCloudKit()
-                        }
-                        .disabled(isWorking)
-                    }
-                }
+                Text(
+                    "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     #endif
@@ -372,6 +392,26 @@ struct SyncSetupWizard: View {
 // MARK: - Actions
 
 extension SyncSetupWizard {
+    /// Route the connect row's press to the flow the selected provider uses.
+    fileprivate func connect(provider: BridgeCloudProvider) {
+        switch provider {
+        case .s3:
+            connectS3()
+        case .googleDrive, .dropbox, .oneDrive:
+            #if BAE_OAUTH_PROVIDERS
+                connectOAuth(provider: provider)
+            #else
+                break
+            #endif
+        case .cloudKit:
+            #if BAE_CLOUDKIT
+                connectCloudKit()
+            #else
+                break
+            #endif
+        }
+    }
+
     fileprivate func connectS3() {
         let data = BridgeSaveSyncConfig(
             bucket: bucket,
@@ -419,25 +459,26 @@ extension SyncSetupWizard {
             catch {
                 logger.error("Connect failed: \(error.localizedDescription)")
                 isWorking = false
-                self.error = connectErrorMessage(error)
+                self.error = connectFailure(error)
             }
         }
     }
 
-    /// Map a connect error to user-facing text. `CloudKitError` already carries a
-    /// ready sentence in `msg`, but its `localizedDescription` is the reflected
-    /// enum, so unwrap the case instead. Everything else — a rejected credential,
-    /// an unreachable backend, a keyring failure, a config-write failure — reads
-    /// as its own line through the shared path.
+    /// Map a connect error to the renderable failure. `CloudKitError` already
+    /// carries a ready sentence in `msg`, but its `localizedDescription` is the
+    /// reflected enum, so unwrap the case instead. Everything else — a rejected
+    /// credential, an unreachable backend, a keyring failure, a config-write
+    /// failure — arrives typed from core and keeps its opaque detail for the
+    /// disclosure's copy button.
     /// `nil` when the failure has no line to show — a cancellation — so the
     /// wizard clears its error rather than showing an empty one.
-    fileprivate func connectErrorMessage(_ error: Error) -> String? {
+    fileprivate func connectFailure(_ error: Error) -> DisplayError? {
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {
-                return msg
+                return DisplayError(line: msg)
             }
         #endif
-        return error.displayLine
+        return DisplayError(error)
     }
 }
 

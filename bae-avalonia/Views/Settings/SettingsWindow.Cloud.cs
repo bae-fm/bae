@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 
 namespace Bae.Desktop;
@@ -15,8 +16,7 @@ internal sealed partial class SettingsWindow
     private void BuildCloud(StackPanel content, List<Action<Settings>> renderers)
     {
         var syncStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        syncStatus[!TextBlock.ForegroundProperty] =
-            new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("BaeTextPrimaryBrush");
+        syncStatus[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
 
         // Opaque (encrypted) vs browsable (stored in the clear), applied to whichever
         // provider connects below. Defaults to the secure choice. Not access control
@@ -74,6 +74,7 @@ internal sealed partial class SettingsWindow
 
         // OAuth sign-in runs the browser flow in the core, so it blocks until the
         // user finishes — the service runs it off the UI thread.
+        var oauthStatus = new ConnectStatus();
         Button CloudButton(string label, string provider)
         {
             var button = new Button { Content = label };
@@ -81,10 +82,10 @@ internal sealed partial class SettingsWindow
             {
                 if (!OAuthCreds.Available)
                 {
-                    syncStatus.Text = OAuthCreds.RegistrationError ?? Loc.Chrome("cloud.signin.not_configured");
+                    oauthStatus.Failure(OAuthCreds.RegistrationError ?? Loc.Chrome("cloud.signin.not_configured"));
                     return;
                 }
-                syncStatus.Text = Loc.Chrome("cloud.signin.in_progress", "provider", label);
+                oauthStatus.Progress(Loc.Chrome("cloud.signin.in_progress", "provider", label));
                 var (current, error) = await _app.Sync.SignInCloudProvider(provider, SelectedStorage());
                 if (!current)
                 {
@@ -92,10 +93,11 @@ internal sealed partial class SettingsWindow
                 }
                 if (error is not null)
                 {
-                    syncStatus.Text = error;
+                    oauthStatus.Failure(error);
                 }
                 else
                 {
+                    oauthStatus.Clear();
                     _app.SettingsStore.Reload();
                 }
             };
@@ -122,9 +124,10 @@ internal sealed partial class SettingsWindow
         var accessKey = new TextBox();
         var secretKey = new TextBox { PasswordChar = '•' };
         var connect = new Button { Content = Loc.Chrome("settings.s3.connect") };
+        var s3Status = new ConnectStatus();
         connect.Click += async (_, _) =>
         {
-            syncStatus.Text = Loc.Chrome("settings.s3.connecting");
+            s3Status.Progress(Loc.Chrome("settings.s3.connecting"));
             var (current, error) = await _app.Sync.SaveSyncConfig(
                 bucket.Text ?? string.Empty,
                 region.Text ?? string.Empty,
@@ -139,13 +142,18 @@ internal sealed partial class SettingsWindow
             }
             if (error is not null)
             {
-                syncStatus.Text = error;
+                s3Status.Failure(error);
             }
             else
             {
+                s3Status.Clear();
                 _app.SettingsStore.Reload();
             }
         };
+
+        // The probe's outcome sits under the button that starts it, inside the
+        // settings window's one long scroller. A user who scrolled down to fill
+        // these fields reads the failure without scrolling back up.
         var s3Form = new StackPanel
         {
             Spacing = 6,
@@ -158,6 +166,7 @@ internal sealed partial class SettingsWindow
                 LabeledField(Loc.Chrome("s3.field.access_key"), accessKey),
                 LabeledField(Loc.Chrome("s3.field.secret_key"), secretKey),
                 connect,
+                s3Status.Line,
             },
         };
 
@@ -185,6 +194,7 @@ internal sealed partial class SettingsWindow
         storageColumn.Children.Add(storagePicker);
         content.Children.Add(storageColumn);
         content.Children.Add(oauthButtons);
+        content.Children.Add(oauthStatus.Line);
         content.Children.Add(s3Form);
 
         renderers.Add(fresh =>
@@ -194,5 +204,29 @@ internal sealed partial class SettingsWindow
                 fresh.SyncProvider is null ? null : _app.SyncStatusStore.ErrorText,
                 _app.SyncStatusStore.ErrorDetail);
         });
+    }
+
+    // Feedback for one connect action, rendered directly beneath the control that
+    // starts it: progress in the secondary tone, a failure in the danger one. The
+    // settings window is a single long scroller, so an outcome written anywhere
+    // but next to its own button is read only by a user who thinks to scroll
+    // looking for it.
+    private sealed class ConnectStatus
+    {
+        internal TextBlock Line { get; } =
+            new() { TextWrapping = TextWrapping.Wrap, IsVisible = false };
+
+        internal void Progress(string text) => Show(text, "BaeTextSecondaryBrush");
+
+        internal void Failure(string text) => Show(text, "BaeDangerBrush");
+
+        internal void Clear() => Line.IsVisible = false;
+
+        private void Show(string text, string brush)
+        {
+            Line.Text = text;
+            Line[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(brush);
+            Line.IsVisible = true;
+        }
     }
 }
