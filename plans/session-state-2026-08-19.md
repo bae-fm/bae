@@ -570,3 +570,16 @@ owner activate-the-join 18.3s of which plan-building only 2.8s. Also open
 cloud home ~7s recurring. Reclaim design doc d4ae2f36 approved (eligible
 set = active-now ∩ active-at-coverage, each conjunct argued; two new
 flagged shapes queued as separate investigations).
+
+## Run 10 (11:20Z): full cost map, cuts commissioned
+
+123s, plan 14/14. Joiner: membership chain walked TWICE over network
+(install owner membership 16.4s + open cloud home 7.4s, sequential);
+install-the-snapshot 12.1s = three full-image passes (unindexed
+max-updated-at scan, id-materializing validation, FK check). Owner:
+seed retained history 10.6s (the 4cddd186 fix re-verifies all 200+
+retained rows per activation for a 14-commit plan — trim one level down);
+authorize writer 5.6s unstaged; commit plan 3.4s; activate upload 3.3s.
+Cuts commissioned with acceptance targets: install history <2s, install
+snapshot <3s, owner activation <5s. Trim wins visible (carried history
+materialize 1.0s, row data 42ms).
