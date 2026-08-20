@@ -463,3 +463,16 @@ Engineer briefed: in-workspace repro (rotation fixture + fresh join),
 activation-stage breakdown, report-on-drop hardening, typed abandonment.
 Android app defects queued separately: startup ANR (PlaybackService waited
 23s), silent join failure UX, pairing-code entry flakiness under ANR.
+
+## Run 4: join works, fully instrumented (2026-08-20 06:20Z)
+
+121s approval→library (was 278s / 28min-fail / 139s-fail). Breakdown:
+waited-for-owner 69.4s (activation walk — fix join-activation-retained-reads
+pushed: 532→14 reads, count-probe test committed); install history 18.6s
+(pull O(n²) CPU, next fix); open cloud home 3.7s; download snapshot 2.7s;
+row-data resolution 2.4s for 193 commits (fetch blobs 58ms — PackageBlobPolicy
+fix live-confirmed; run 2's 28min was the join fetching every blob ever
+bound). Anomalies queued: uncovered_commits=193 despite gen-1 snapshot
+covering ~101 (bootstrap snapshot selection?); stream inflated 101→193 in
+an hour of join/remove churn (~45 commits per cycle?).
+Projected post-activation-fix join: ~30s, dominated by the quadratic.
