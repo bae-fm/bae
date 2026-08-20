@@ -417,3 +417,12 @@ UI — fail-loud worked as designed). Remedies applied: killed it,
 full path; activate via System Events `tell process "bae"`, never
 `tell application`; after any agent runs GUI tests, sweep for stray bae
 processes (engineer left 3 running earlier).
+
+## Publication measurement — fixed (2026-08-20 03:51Z)
+
+Burning Spear b0bcf324 (95MB/19 files) moved to cloud unpinned on coven
+8929a41 (trust-own-blob-uploads): blob drain ~18s (raw 95MB), then
+"Store write publication" total 1457ms — publish packages 243ms (was
+14990ms for 13 blobs; the full-GET re-verify is gone). Remaining >500ms
+stage: authorize outbound 639ms. User's "publishing takes a while" is
+answered and fixed. bae pin 764708bb.
