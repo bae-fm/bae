@@ -543,3 +543,20 @@ install snapshot 15.2s (gen-1 real image vs 0.7-0.9s for near-empty gen-0);
 owner activate-the-join 17.2s (grows with depth). Confound: every test
 cycle inflates the stream — reclaim-unanimity-membership promoted (bounded
 depth = the real fix for store lifetime). Journal purge done (14 rows).
+
+## Relay handoff #2 (2026-08-20 ~10:10Z)
+
+Second coven engineer retired clean (all merged: coverage walk, fixture
+helper, selection logging, predicate split, journal fault isolation, walk
+timing; coven main = d142f8cc). Third engineer spawned with queue:
+1) trim-carried-closure (approved: owner carries closure from snapshot
+coverage forward; bootstrap_cut + predecessor check untouched; red-first:
+both-side counts scale with tail, tamper-negative, artifact/journal size
+bounded by tail) — kills joiner's 199-commit verify walk, half the owner
+activation, the 6.7MB journal rows;
+2) stage-and-cut-install (15.2s image install; owner-boundary gate caution
+recorded); 3) reclaim-unanimity-membership (eligible-set design first);
+4+) journal residual, pull quadratic (cross-provider), open_stream
+verification flag, trust-own-circle-blobs.
+bae side: all merged through 1e59034b + ktlint 21f73754; pins current at
+962c85b7 era (next bump after trim lands). Run 8 = latest live numbers.
