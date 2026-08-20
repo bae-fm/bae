@@ -5,12 +5,19 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // The outcome of opening a library handle: ready to use, locked (encrypted with
-// the key absent on this device), or failed to open at all.
-internal enum OpenHandleResult
+// the key absent on this device), or failed — carrying what failed, because a
+// welcome screen saying only "couldn't open the library" names nothing the user
+// can act on or paste into a bug report.
+internal abstract record OpenHandleResult
 {
-    Opened,
-    NeedsUnlock,
-    Failed,
+    internal sealed record Opened : OpenHandleResult;
+
+    internal sealed record NeedsUnlock : OpenHandleResult;
+
+    // `Line` is core's localized category line, `Detail` the untranslated
+    // diagnostic under it — the same two-line shape the sync failure row uses,
+    // for the same reason: the category alone identifies nothing.
+    internal sealed record Failed(string Line, string? Detail) : OpenHandleResult;
 }
 
 // Owns the open library's handle and the event subscription. The handle is held
@@ -47,7 +54,7 @@ internal sealed class SessionStore
     {
         // The restore-on-launch preference gates the startup restore in the core;
         // the resume row itself is written continuously either way.
-        var handle = NativeBae.Init(
+        var (handle, openFailure) = NativeBae.Init(
             libraryId,
             PositionUpdateIntervalMs,
             PersistPlaybackStore.Load(),
@@ -56,10 +63,17 @@ internal sealed class SessionStore
             BaeDiagnostics.Handle);
         if (handle == null)
         {
-            return OpenHandleResult.Failed;
+            return Failed(openFailure);
         }
 
-        if (NativeBae.CloudHomeKeyState(handle) == BridgeCloudHomeKeyState.Locked)
+        var (keyState, keyStateFailure) = NativeBae.CloudHomeKeyState(handle);
+        if (keyState is null)
+        {
+            NativeBae.HandleFree(handle);
+            return Failed(keyStateFailure);
+        }
+
+        if (keyState == BridgeCloudHomeKeyState.Locked)
         {
             lock (_handleGate)
             {
@@ -67,7 +81,7 @@ internal sealed class SessionStore
                 _lockedHandle = new LibraryHandle(handle);
                 _sessionGeneration++;
             }
-            return OpenHandleResult.NeedsUnlock;
+            return new OpenHandleResult.NeedsUnlock();
         }
 
         lock (_handleGate)
@@ -76,8 +90,18 @@ internal sealed class SessionStore
             _sessionGeneration++;
         }
 
-        return OpenHandleResult.Opened;
+        return new OpenHandleResult.Opened();
     }
+
+    // The failure a caller can render: core's localized line when it has one,
+    // and the app's own when it does not — a cancelled open says nothing, and a
+    // blank welcome screen is worse than a generic sentence.
+    private static OpenHandleResult Failed(BridgeException? failure) =>
+        failure is null
+            ? new OpenHandleResult.Failed(Loc.Chrome("library.open_failed"), null)
+            : new OpenHandleResult.Failed(
+                BridgeDisplay.LocalizedLine(failure) ?? Loc.Chrome("library.open_failed"),
+                BridgeDisplay.FaultSummary(failure));
 
     public async System.Threading.Tasks.Task<string?> Unlock(string serializedMasterKey)
     {

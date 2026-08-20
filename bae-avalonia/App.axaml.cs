@@ -239,8 +239,8 @@ public sealed partial class App : Application
     {
         switch (Session.OpenHandle(libraryId))
         {
-            case OpenHandleResult.Failed:
-                GoToWelcome(errorStatus: Loc.Chrome("library.open_failed"));
+            case OpenHandleResult.Failed failed:
+                GoToWelcome(failed.Line, failed.Detail);
                 return;
             case OpenHandleResult.NeedsUnlock:
                 EnsureWelcome();
@@ -315,7 +315,7 @@ public sealed partial class App : Application
     // the way the same intent is when it reaches a window with no open library. The
     // unlock landing does not come through here — it keeps the intent, because its
     // unlock opens the library.
-    private void GoToWelcome(string? errorStatus)
+    private void GoToWelcome(string? errorStatus, string? errorDetail = null)
     {
         if (_pendingLaunchIntent is ActivationIntent.ImportFolder)
         {
@@ -326,7 +326,7 @@ public sealed partial class App : Application
         EnsureWelcome();
         if (errorStatus is not null)
         {
-            _welcome!.SetStatus(errorStatus);
+            _welcome!.SetStatus(errorStatus, errorDetail);
         }
         CloseMain();
     }

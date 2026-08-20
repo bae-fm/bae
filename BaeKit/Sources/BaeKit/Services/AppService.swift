@@ -242,7 +242,7 @@ open class AppService: @unchecked Sendable, Observable {
 
     public func storeRestoreCodeInKeychain(
         libraryId: String,
-        onError: @escaping @Sendable (String) -> Void
+        onError: @escaping @Sendable (DisplayError) -> Void
     ) {
         sync.storeRestoreCodeInKeychain(
             libraryId: libraryId,

@@ -66,7 +66,10 @@ final class LibrarySetup: Sendable, Observable {
         @Sendable (_ code: String, _ oauthTokenJson: String?) async throws ->
             JoinOperation
     /// Restore codes any of the user's devices stored in the iCloud keychain.
-    let fetchRestoreCodes: @Sendable () -> [(libraryId: String, code: String)]
+    /// Throws when the keychain refuses the lookup — locked, or the display
+    /// asleep — which the welcome screen must not read as "no restore codes".
+    let fetchRestoreCodes:
+        @Sendable () throws -> [(libraryId: String, code: String)]
     let deleteRestoreCode: @Sendable (_ libraryId: String) -> Void
     let oauthAuthorize:
         @Sendable (_ provider: BridgeCloudProvider) throws -> String
@@ -111,9 +114,9 @@ final class LibrarySetup: Sendable, Observable {
                 _ in throw StubError.notImplemented
             },
         fetchRestoreCodes:
-            @escaping @Sendable () -> [(libraryId: String, code: String)] = {
-                []
-            },
+            @escaping @Sendable () throws -> [(
+                libraryId: String, code: String
+            )] = { [] },
         deleteRestoreCode: @escaping @Sendable (String) -> Void = { _ in },
         oauthAuthorize:
             @escaping @Sendable (BridgeCloudProvider) throws -> String = {

@@ -187,9 +187,9 @@ public final class LibrarySessionOpener<
         if handle.isSyncReady() {
             service.storeRestoreCodeInKeychain(
                 libraryId: config.libraryId,
-                onError: { [weak service] message in
+                onError: { [weak service] failure in
                     Task { @MainActor in
-                        service?.showError(DisplayError(line: message))
+                        service?.showError(failure)
                     }
                 }
             )

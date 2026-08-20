@@ -267,7 +267,13 @@ internal static partial class NativeBae
         public void OnEvent(BridgeUiEvent @event) => onEvent(@event);
     }
 
-    internal static AppHandle? Init(
+    /// <summary>
+    /// Open the library's handle, or the failure that stopped it. The exception
+    /// travels rather than a flattened message: the welcome window shows core's
+    /// localized category line over the untranslated diagnostic, and neither is
+    /// recoverable from <c>exception.Message</c> alone.
+    /// </summary>
+    internal static (AppHandle? Handle, BridgeException? Failure) Init(
         string libraryId,
         uint positionUpdateIntervalMs,
         bool restorePlayback,
@@ -275,17 +281,36 @@ internal static partial class NativeBae
     {
         try
         {
-            return BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback, diagnostics);
+            return (BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback, diagnostics), null);
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return (null, null);
         }
         catch (BridgeException exception)
         {
             BaeDiagnostics.Logger.Error($"library open failed: {exception.Message}");
-            return null;
+            return (null, exception);
         }
     }
 
-    internal static BridgeCloudHomeKeyState CloudHomeKeyState(AppHandle handle) =>
-        handle.CloudHomeKeyState();
+    /// <summary>
+    /// Whether the opened library's cloud home is locked, or the failure that
+    /// stopped the question being answered. A query that threw says nothing
+    /// about the key, so it is an open that failed rather than a state.
+    /// </summary>
+    internal static (BridgeCloudHomeKeyState? State, BridgeException? Failure) CloudHomeKeyState(AppHandle handle)
+    {
+        try
+        {
+            return (handle.CloudHomeKeyState(), null);
+        }
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Error($"cloud home key state failed: {exception.Message}");
+            return (null, exception);
+        }
+    }
 
     internal static void HandleFree(AppHandle handle) => handle.Dispose();
 

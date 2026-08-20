@@ -165,27 +165,62 @@ public final class Sync: Sendable, Observable {
     /// worker. Errors surface through `onError` on the main actor. Called on
     /// startup (via `BaeApp.openLibrary` when `isSyncReady`) and from
     /// `LibrarySettingsTab` after every successful sync-config change.
+    ///
+    /// The two steps report separately because they fail for unrelated reasons
+    /// and only one of them names the keychain — a user told "couldn't create a
+    /// restore code" when the keychain refused the write has been pointed at the
+    /// wrong thing.
     public func storeRestoreCodeInKeychain(
         libraryId: String,
-        onError: @escaping @Sendable (String) -> Void
+        onError: @escaping @Sendable (DisplayError) -> Void
     ) {
         Task { [generateRestoreCode] in
+            let code: String
             do {
-                let code = try await generateRestoreCode()
+                code = try await generateRestoreCode()
+            }
+            catch {
+                await report(
+                    error,
+                    context: String(
+                        localized: "Couldn't create a restore code"
+                    ),
+                    to: onError
+                )
+                return
+            }
+            do {
                 try await DetachedWork.run {
-                    KeychainService.saveRestoreCode(
+                    try KeychainService.saveRestoreCode(
                         libraryId: libraryId,
                         code: code
                     )
                 }
             }
             catch {
-                await MainActor.run {
-                    onError(
-                        "Failed to generate restore code: \(error.displayLine)"
-                    )
-                }
+                await report(
+                    error,
+                    context: String(
+                        localized:
+                            "Couldn't save the restore code to your keychain"
+                    ),
+                    to: onError
+                )
             }
+        }
+    }
+
+    /// Hand a failure to `onError` on the main actor under the line naming what
+    /// was being attempted. A failure core says has no line to show — a
+    /// cancellation — is not reported at all.
+    private func report(
+        _ error: any Error,
+        context: String,
+        to onError: @escaping @Sendable (DisplayError) -> Void
+    ) async {
+        guard let displayed = DisplayError(error) else { return }
+        await MainActor.run {
+            onError(displayed.addingContext(context))
         }
     }
 }

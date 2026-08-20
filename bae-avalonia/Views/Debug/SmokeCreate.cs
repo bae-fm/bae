@@ -57,7 +57,7 @@ internal static class SmokeCreate
             var session = new SessionStore(Dispatcher.UIThread);
             var opened = session.OpenHandle(libraryId);
             L($"open handle: {opened}");
-            if (opened != OpenHandleResult.Opened)
+            if (opened is not OpenHandleResult.Opened)
             {
                 return 1;
             }

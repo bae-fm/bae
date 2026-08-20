@@ -550,7 +550,14 @@ extension AppDelegate {
         SystemActions.copyToPasteboard(appService.libraryId)
     }
 
-    private func loadInitialState() {
+    /// Discover what is on this Mac and land on a screen.
+    ///
+    /// `canOpenLibraries` is false when launch already failed at something every
+    /// open depends on (the keyring): discovery still runs — it reads config.yaml
+    /// and needs no keychain — so the welcome screen lists the libraries that are
+    /// here, but auto-opening one would only replace the recorded cause with the
+    /// failure it produces.
+    private func loadInitialState(canOpenLibraries: Bool) {
         if skipsApplicationServices {
             screen = .welcome
             return
@@ -564,7 +571,7 @@ extension AppDelegate {
             // (unreadable config.yaml) can't open — auto-trying it would just
             // strand its failure banner under the welcome screen, where the
             // chooser already shows the library with its error.
-            guard
+            guard canOpenLibraries,
                 let openable = libraries.first(where: { $0.error == nil })
             else {
                 screen = .welcome
@@ -573,7 +580,11 @@ extension AppDelegate {
             openLibrary(openable)
         }
         catch {
+            // The welcome screen is where a launch with no library lands, and
+            // it renders `loadError` as a callout. Staying on `.loading` left
+            // the failure recorded and the user watching a spinner forever.
             loadError = DisplayError(error)
+            screen = .welcome
         }
     }
 
@@ -832,6 +843,7 @@ extension AppDelegate {
 
 extension AppDelegate {
     func applicationDidFinishLaunching(_: Notification) {
+        var keyringReady = true
         if !skipsApplicationServices {
             // Telemetry is already up (built at delegate construction, from
             // compiled-in values only), so every step from here on has a sink
@@ -842,9 +854,18 @@ extension AppDelegate {
                 try initializeKeyring()
             }
             catch {
+                // Discovery reads config.yaml and needs no keychain, so a
+                // keyring failure must not cost the user the list of libraries
+                // on this Mac — returning here handed a first-run create/join
+                // wall to someone with libraries sitting right there. It does
+                // cost them the open, since every library's keys live in the
+                // keyring, so discovery runs and the welcome screen lists them
+                // under this error.
+                logger.error(
+                    "Keyring initialization failed: \(error.localizedDescription)"
+                )
                 loadError = DisplayError(error)
-                screen = .welcome
-                return
+                keyringReady = false
             }
             // Hand Rust the CloudKit driver once. It can't build the driver
             // itself (it needs the platform CloudKit APIs); installing it is
@@ -854,7 +875,7 @@ extension AppDelegate {
                 setCloudkitDriver(driver: CloudKitService.bae())
             #endif
         }
-        loadInitialState()
+        loadInitialState(canOpenLibraries: keyringReady)
     }
 
     private func initializeKeyring() throws {
