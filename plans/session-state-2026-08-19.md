@@ -476,3 +476,16 @@ bound). Anomalies queued: uncovered_commits=193 despite gen-1 snapshot
 covering ~101 (bootstrap snapshot selection?); stream inflated 101→193 in
 an hour of join/remove churn (~45 commits per cycle?).
 Projected post-activation-fix join: ~30s, dominated by the quadratic.
+
+## Run 5 (2026-08-20 06:42Z): 74s
+
+Join now 74s approval→library (278→121→74 across fixes). Breakdown:
+owner activation 14637ms (authorize writer 2919, provider access 7,
+activate the join 11703 — next decomposition target); install history
+13662ms @ 195 uncovered (snapshot-selection branch pending); open cloud
+home 5481ms; snapshot download 2308ms; row data 1712ms. Merged tonight to
+bae main additionally: surface-join-abandonment 1e59034b (typed DeviceJoin
+failures, 31 locales, journal-resume bug fixed), fix-android-ktlint
+21f73754 (main's Android gate was red). ANR investigation refuted with
+measurements: host starvation + first-run JIT, not app startup — quiet-host
+protocol now applies to all measurement runs.
