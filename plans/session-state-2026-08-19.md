@@ -600,3 +600,15 @@ trim-baseline-capture, seed-only-the-walk, reclaim implementation
 pull quadratic, open_stream, circle blobs, journal residual.
 Join trajectory: impossible → 278 → 121 → 74 → 146* → 118 → 123* → 93
 (* = store grew / measurement runs). bae pin: cf0f67b1 era.
+
+## Run 12 (13:46Z): 98s; cuts landed, variance-bound
+
+Per-stage: baseline capture 11.9→5.8s (validate-the-image 4.2s now
+dominates, FK scan inside), install snapshot 14.6→8.5s, owner membership
+9.0→6.2s (LIST cut), authorize writer 3.8→0.9s, owner activation →8.1s.
+Wall clock flat vs run 11 (93→98) — remaining spend is variance + raw
+transfer + the ~210-commit churn depth. Engineer #4 mid-branch-4 (reclaim
+implementation; both judgment calls ratified: dominate-current-requirement
+at execute time; empty-set hold documented as examined conservatism).
+Endgame after branch 4: WIPE ~/.bae per mandate, fresh store, final
+scorecard (import → move → join) on the finished stack.
