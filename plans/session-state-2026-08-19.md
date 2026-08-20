@@ -709,3 +709,16 @@ considered/retained/authorized counts + selector discriminator) settles it
 next live cycle. Latent hazard queued: completed reclaim operations are
 never deleted → permanent per-target block. stage-request-counts pushed
 (c4c90108), under audit.
+
+## Goal-1 final gate NAMED (20:5xZ): owner baseline never advances
+
+New instrumentation live (b4347329 both apps). PROVEN: selector=
+"acknowledged" generation=1 — reclaim selects gen-1 (conjunct fix works).
+Decline named by the first-ever per-cycle report: considered=5
+retained_for_replay=5 authorized=0 — all five package targets behind gen-1
+pinned by the OWNER'S OWN replay retention; the owner's baseline is still
+Genesis (standing devices never re-baseline; only joiners get modern
+baselines). This is what holds 208 retained rows / 87MB / the depth curve.
+Engineer 7 spawned: advance-replay-baseline (atomic advance over an
+acknowledged-stable snapshot + retained-row retirement; red-first on the
+report counters). Request counters also live on both sides now.
