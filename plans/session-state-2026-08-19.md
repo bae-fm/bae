@@ -387,3 +387,18 @@ gate), keychain-delete-fail-loud.
   ~/Library/Caches/org.swift.swiftpm/manifests — an xcodebuild run before
   build-ios.sh poisons later builds with ffi_bae_bridge link errors until
   that cache is cleared.
+
+## Join milestone (2026-08-20 ~03:00Z local 22:57)
+
+Emulator joined rollin-kendrick end-to-end on the fixed stack (bae 3bfb8201,
+coven 2b6f055b): fresh pairing (old Member removed, key rotated), fingerprints
+9bd967f7 matched, bootstrap materialized post-snapshot commits, library
+renders all 5 albums. BUT: approval→library = 278s for 12 commits / ~2MB
+real data. Join path has zero stage timings (nothing logs between master-key
+load and "joined Store device"). Briefed coven engineer:
+join-stage-timing-and-latency branch — instrument the whole choreography,
+then fix what the numbers convict (suspects: fixed-interval exchange polls
+on both sides, serial per-object GETs in bootstrap resolution).
+Also found: Cmd+, opens a "bae Settings" window wired to a nil session ("No
+library loaded" while library is open) while the menu's Settings… opens the
+real one — macOS settings-scene wiring defect, unbriefed yet.
