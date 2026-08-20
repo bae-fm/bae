@@ -517,3 +517,16 @@ property named: post-install verification strength unchanged; baseline
 seeds from signed meta only. Follow-up branch: reclaim-unanimity-membership
 (membership change before unanimous ack permanently blocks reclaim;
 excluded devices must not count). Selection-time logging landed (a08dd37e).
+
+## Run 7 attempt (08:56Z): blocked on stale wire-shape
+
+Predicate split merged (coven 3b33e72c, bae pin + both apps rebuilt; audit
+confirmed safety independently — ack chains were never verification
+machinery). Run 7 failed at owner approve: "unknown field `stability`" —
+the approve path deserializes a stale old-shape artifact (cloud exchange
+slot or local pairing journal from runs ≤6). New failure surfacing worked
+on both sides (mac dialog line, joiner returned to form). Engineer
+diagnosing: stale-purge vs unscoped-attempt-read (the latter is a real
+defect — concurrent pairings would collide identically). New selection
+logging proved itself: reclaim's gen-1 rejection (idle devices) now
+visible per cycle.
