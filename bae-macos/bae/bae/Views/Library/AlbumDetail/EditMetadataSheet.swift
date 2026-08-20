@@ -161,9 +161,9 @@ struct EditMetadataSheet: View {
             }
             catch {
                 saving = false
-                errorMessage = String(
-                    localized: "Save failed: \(error.displayLine)"
-                )
+                errorMessage = error.displayLine.map { line in
+                    String(localized: "Save failed: \(line)")
+                }
             }
         }
     }
@@ -186,9 +186,9 @@ struct EditMetadataSheet: View {
             }
             catch {
                 resetting = false
-                errorMessage = String(
-                    localized: "Reset failed: \(error.displayLine)"
-                )
+                errorMessage = error.displayLine.map { line in
+                    String(localized: "Reset failed: \(line)")
+                }
             }
         }
     }

@@ -51,9 +51,14 @@ struct CodeShareSheet: View {
             case .failure(let error):
                 VStack {
                     Spacer()
-                    Text(error.displayLine ?? "")
-                        .foregroundStyle(.red)
-                        .font(.callout)
+                    // The presenter only records a failure core gave a line
+                    // for, so this reads as an unwrap; it is not defaulted to
+                    // "" because a blank red line is not an error message.
+                    if let line = error.displayLine {
+                        Text(line)
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                    }
                     Spacer()
                 }
                 .padding()

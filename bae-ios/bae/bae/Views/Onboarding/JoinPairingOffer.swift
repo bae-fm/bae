@@ -37,8 +37,14 @@ struct JoinPairingOffer: View {
                             .font(.callout)
                     }
                 }
-                else if case .failure(let decodeError) = decodedOffer {
-                    Text(decodeError.displayLine ?? "")
+                // Unwrapped in the pattern rather than defaulted to "": a
+                // decode is a synchronous parse, so core never reports it as a
+                // cancellation and a line is always there — and if that
+                // changed, this shows nothing rather than a blank red line.
+                else if case .failure(let decodeError) = decodedOffer,
+                    let line = decodeError.displayLine
+                {
+                    Text(line)
                         .foregroundStyle(.red)
                         .font(.callout)
                 }

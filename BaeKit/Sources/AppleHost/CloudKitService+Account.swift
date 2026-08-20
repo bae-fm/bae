@@ -17,9 +17,14 @@
                 status = try await accountStatus()
             }
             catch {
+                // `displayLine` is optional because core reports a cancellation
+                // as having no line. `accountStatus()` reports CloudKit's own
+                // error, which always has one, so the fallback is the sentence
+                // without a detail rather than `Optional("…")` inside it.
                 throw CloudKitError.Storage(
-                    msg:
-                        "Couldn't check iCloud account status: \(error.displayLine)"
+                    msg: error.displayLine.map {
+                        "Couldn't check iCloud account status: \($0)"
+                    } ?? "Couldn't check iCloud account status."
                 )
             }
             let unavailableReason: String

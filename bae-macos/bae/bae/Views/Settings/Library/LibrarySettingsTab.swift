@@ -334,6 +334,11 @@ private struct RecoveryCodeSection: View {
             logger.error(
                 "Failed to generate recovery code: \(error.localizedDescription)"
             )
+            // A failure core says has no line is a cancellation reported from
+            // its side rather than Swift's, and the arm above already decided
+            // that a cancelled generation leaves the sheet on its spinner
+            // instead of flipping it to an error with nothing in it.
+            guard DisplayError(error) != nil else { return }
             result = .failure(error)
         }
     }

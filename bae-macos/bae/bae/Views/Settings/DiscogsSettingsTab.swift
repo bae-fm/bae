@@ -66,10 +66,13 @@ struct DiscogsSettingsTab: View {
             }
         }
         catch {
-            readError = String(
-                localized:
-                    "Couldn't read the stored Discogs key: \(error.displayLine)"
-            )
+            // Nil line means core reported a cancellation, which has nothing to
+            // say; the field stays clear rather than showing `Optional("…")`.
+            readError = error.displayLine.map { line in
+                String(
+                    localized: "Couldn't read the stored Discogs key: \(line)"
+                )
+            }
         }
     }
 
@@ -96,10 +99,9 @@ struct DiscogsSettingsTab: View {
                 logger.debug("saveToken cancelled")
             }
             catch {
-                saveError = String(
-                    localized:
-                        "Couldn't save the Discogs key: \(error.displayLine)"
-                )
+                saveError = error.displayLine.map { line in
+                    String(localized: "Couldn't save the Discogs key: \(line)")
+                }
             }
         }
     }
@@ -116,10 +118,11 @@ struct DiscogsSettingsTab: View {
                 logger.debug("revalidate cancelled")
             }
             catch {
-                saveError = String(
-                    localized:
-                        "Couldn't re-check the Discogs key: \(error.displayLine)"
-                )
+                saveError = error.displayLine.map { line in
+                    String(
+                        localized: "Couldn't re-check the Discogs key: \(line)"
+                    )
+                }
             }
         }
     }
@@ -132,10 +135,9 @@ struct DiscogsSettingsTab: View {
             draft = ""
         }
         catch {
-            saveError = String(
-                localized:
-                    "Couldn't remove the Discogs key: \(error.displayLine)"
-            )
+            saveError = error.displayLine.map { line in
+                String(localized: "Couldn't remove the Discogs key: \(line)")
+            }
         }
     }
 }

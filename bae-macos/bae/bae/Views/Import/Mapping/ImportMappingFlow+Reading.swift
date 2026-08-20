@@ -62,12 +62,16 @@ extension ImportMappingFlow {
             logger.error(
                 "Reading the folder's mapping failed: \(error.localizedDescription)"
             )
-            services.onError(
-                String(
-                    localized:
-                        "Couldn't read what this folder holds: \(error.displayLine)"
+            // No line means a cancellation: the log above already recorded it
+            // and there is nothing to put in front of the user.
+            if let line = error.displayLine {
+                services.onError(
+                    String(
+                        localized:
+                            "Couldn't read what this folder holds: \(line)"
+                    )
                 )
-            )
+            }
         }
     }
 }

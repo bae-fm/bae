@@ -60,12 +60,12 @@ extension ImportView {
             documentContent = (name: name, text: text)
         }
         catch {
-            uiStore.showError(
-                String(
-                    localized:
-                        "Could not read \(name): \(error.displayLine)"
+            // No line means a cancellation, which raises no alert.
+            if let line = error.displayLine {
+                uiStore.showError(
+                    String(localized: "Could not read \(name): \(line)")
                 )
-            )
+            }
         }
     }
 

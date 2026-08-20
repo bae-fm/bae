@@ -220,9 +220,15 @@ struct MainAppView: View {
         case .success(let url):
             addWatchedFolder(url)
         case .failure(let error):
+            // `DisplayError` is nil when core says the failure has no line —
+            // a cancellation — and there is then no alert to raise. Passing the
+            // typed failure rather than a formatted `String` is what keeps the
+            // fault line and Copy Details in the alert; `addingContext` puts the
+            // operation in front of core's line without discarding either.
+            guard let displayed = DisplayError(error) else { return }
             uiStore.showError(
-                String(
-                    localized: "Couldn't add folder: \(error.displayLine)"
+                displayed.addingContext(
+                    String(localized: "Couldn't add folder")
                 )
             )
         }
@@ -235,9 +241,10 @@ struct MainAppView: View {
                 uiStore.navigateToImport()
             }
             catch {
+                guard let displayed = DisplayError(error) else { return }
                 uiStore.showError(
-                    String(
-                        localized: "Couldn't add folder: \(error.displayLine)"
+                    displayed.addingContext(
+                        String(localized: "Couldn't add folder")
                     )
                 )
             }

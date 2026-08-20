@@ -556,10 +556,13 @@ extension AlbumDetailView {
                 try await releaseEditor.setPrimaryRelease(albumId, releaseId)
             }
             catch {
+                // No line means a cancellation, which raises no alert. The
+                // typed failure carries through so the alert can still show the
+                // fault and offer Copy Details.
+                guard let displayed = DisplayError(error) else { return }
                 uiStore.showError(
-                    String(
-                        localized:
-                            "Failed to set primary release: \(error.displayLine)"
+                    displayed.addingContext(
+                        String(localized: "Failed to set primary release")
                     )
                 )
             }

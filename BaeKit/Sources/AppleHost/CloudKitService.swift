@@ -328,7 +328,11 @@
         private func cloudKitErrorMessage(_ error: Error, op: String) -> String
         {
             guard let ckError = error as? CKError else {
-                return "\(op) failed: \(error.displayLine)"
+                // Optional because core reports a cancellation as "no line to
+                // show" — then the operation label is the whole message, and
+                // interpolating the optional would render `Optional("…")`.
+                return error.displayLine.map { "\(op) failed: \($0)" }
+                    ?? "\(op) failed."
             }
             switch ckError.code {
             case .notAuthenticated:
@@ -344,7 +348,13 @@
                 return
                     "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
             default:
-                return "\(op) failed: \(ckError.displayLine)"
+                // Concrete `CKError`, not a `LocalizedFailure`, so `DisplayError`
+                // always resolves it to `localizedDescription` — CloudKit's own
+                // localized message. Reading it directly keeps the sentence
+                // non-optional instead of rendering `Optional("…")`; the
+                // `displayLine` detour exists for `any Error`, where a bridge
+                // failure would otherwise print its reflected enum.
+                return "\(op) failed: \(ckError.localizedDescription)"
             }
         }
 

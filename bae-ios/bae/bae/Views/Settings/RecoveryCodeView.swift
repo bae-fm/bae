@@ -68,10 +68,15 @@ struct RecoveryCodeView: View {
         case .failure(let error):
             VStack {
                 Spacer()
-                Text(error.displayLine ?? "")
-                    .foregroundStyle(.red)
-                    .font(.callout)
-                    .multilineTextAlignment(.center)
+                // `runGenerate` only records a failure core gave a line for, so
+                // this reads as an unwrap; it is not defaulted to "" because a
+                // blank red line is not an error message.
+                if let line = error.displayLine {
+                    Text(line)
+                        .foregroundStyle(.red)
+                        .font(.callout)
+                        .multilineTextAlignment(.center)
+                }
                 Spacer()
             }
         }
@@ -93,6 +98,11 @@ struct RecoveryCodeView: View {
             logger.error(
                 "Failed to generate recovery code: \(error.localizedDescription)"
             )
+            // A failure core says has no line is a cancellation reported from
+            // its side rather than Swift's, and the arm above already decided
+            // that a cancelled generation leaves the view on its spinner
+            // instead of flipping it to an error with nothing in it.
+            guard DisplayError(error) != nil else { return }
             result = .failure(error)
         }
     }

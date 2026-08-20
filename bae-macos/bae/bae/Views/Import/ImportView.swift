@@ -109,12 +109,15 @@ struct ImportView: View {
                 return
             }
             catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't read what \(sheet.file.name) can describe: \(error.displayLine)"
+                // No line means a cancellation, which raises no alert.
+                if let line = error.displayLine {
+                    uiStore.showError(
+                        String(
+                            localized:
+                                "Couldn't read what \(sheet.file.name) can describe: \(line)"
+                        )
                     )
-                )
+                }
             }
         }
         sheetBindingOptions = options
@@ -129,12 +132,11 @@ struct ImportView: View {
                 try await importer.setCandidateSkipped(key, skipped)
             }
             catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't update skip state: \(error.displayLine)"
+                if let line = error.displayLine {
+                    uiStore.showError(
+                        String(localized: "Couldn't update skip state: \(line)")
                     )
-                )
+                }
             }
         }
     }
@@ -155,12 +157,11 @@ struct ImportView: View {
                 uiStore.removeFolderCandidateSelection(removed)
             }
             catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't remove folder: \(error.displayLine)"
+                if let line = error.displayLine {
+                    uiStore.showError(
+                        String(localized: "Couldn't remove folder: \(line)")
                     )
-                )
+                }
             }
         }
     }

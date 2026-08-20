@@ -244,12 +244,16 @@ enum ImportMappingFlow {
             return
         }
         catch {
-            services.onError(
-                String(
-                    localized:
-                        "Couldn't change what \(sheetFileId) describes: \(error.displayLine)"
+            // No line means a cancellation, which has nothing to report; the
+            // write still did not land, so the read below is still skipped.
+            if let line = error.displayLine {
+                services.onError(
+                    String(
+                        localized:
+                            "Couldn't change what \(sheetFileId) describes: \(line)"
+                    )
                 )
-            )
+            }
             return
         }
         await readMapping(key: key, services: services)
@@ -272,12 +276,14 @@ enum ImportMappingFlow {
             return
         }
         catch {
-            services.onError(
-                String(
-                    localized:
-                        "Couldn't change which disc \(sheetFileId) is: \(error.displayLine)"
+            if let line = error.displayLine {
+                services.onError(
+                    String(
+                        localized:
+                            "Couldn't change which disc \(sheetFileId) is: \(line)"
+                    )
                 )
-            )
+            }
             return
         }
         await readMapping(key: key, services: services)
@@ -299,12 +305,14 @@ enum ImportMappingFlow {
             return false
         }
         catch {
-            services.onError(
-                String(
-                    localized:
-                        "Couldn't change what \(fileId) is: \(error.displayLine)"
+            if let line = error.displayLine {
+                services.onError(
+                    String(
+                        localized:
+                            "Couldn't change what \(fileId) is: \(line)"
+                    )
                 )
-            )
+            }
             return false
         }
     }

@@ -40,6 +40,40 @@ extension ImportSearchFlow {
         }
     }
 
+    /// Record a failed identity read on the row: the line core gave, when it
+    /// gave one, plus the reset that follows from the decision never resolving.
+    @MainActor
+    private static func recordIdentityFailure(
+        _ error: any Error,
+        importStore: ImportStore,
+        key: String,
+        pick: BridgeIdentityPick
+    ) {
+        importStore.mutateCandidate(forKey: key) { candidate in
+            // A nil line is core reporting a cancellation: the row carries no
+            // error text, while the reset below still applies because the
+            // decision never resolved either way.
+            let line = error.displayLine
+            switch pick {
+            case .release:
+                candidate.error = line.map {
+                    "Failed to load release details: \($0)"
+                }
+            case .unknown:
+                candidate.error = line.map { "Couldn't read file tags: \($0)" }
+                candidate.identity = .release
+            }
+            // The decision never resolved on screen, so nothing is claimed and
+            // no row renders selected. All three drop together: leaving the
+            // previous pick's claim behind would state a claim for a release
+            // the pane is no longer showing.
+            candidate.pick = nil
+            candidate.claim = nil
+            candidate.identityChoice = nil
+            candidate.prefetchTask = nil
+        }
+    }
+
     /// The shared shape of the command and the query: show the decision
     /// immediately — the clicked row's spinner, or the Unknown side of the
     /// control — run the operation, and seed the pane from its answer.
@@ -98,26 +132,12 @@ extension ImportSearchFlow {
                 logger.error(
                     "Identity read failed: \(error.localizedDescription)"
                 )
-                importStore.mutateCandidate(forKey: key) { candidate in
-                    switch pick {
-                    case .release:
-                        candidate.error =
-                            "Failed to load release details: \(error.displayLine)"
-                    case .unknown:
-                        candidate.error =
-                            "Couldn't read file tags: \(error.displayLine)"
-                        candidate.identity = .release
-                    }
-                    // The decision never resolved on screen, so nothing is
-                    // claimed and no row renders selected. All three drop
-                    // together: leaving the previous pick's claim behind
-                    // would state a claim for a release the pane is no
-                    // longer showing.
-                    candidate.pick = nil
-                    candidate.claim = nil
-                    candidate.identityChoice = nil
-                    candidate.prefetchTask = nil
-                }
+                recordIdentityFailure(
+                    error,
+                    importStore: importStore,
+                    key: key,
+                    pick: pick
+                )
             }
         }
 
