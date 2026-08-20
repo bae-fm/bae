@@ -778,3 +778,20 @@ top of the 13.7s join phase). Devices list now: owner + phone (fresh) +
 emulator (fresh) + one stale phone identity (b6b6fc0c or b9607a28 —
 identify before removing). Join profile is characterized and stable;
 membership rollup is the single named cut to budget.
+
+## Design decision (22:5xZ): covered positions resolve to coverage
+
+Engineer 8 (retired at 16 failures, from 49; four acceptance tests green;
+two pre-existing holes fixed: images shipped without circle_control
+activation refs; replay double-applied covered rows) surfaced the deep
+question: what is a checkpoint for a covered-but-not-tip position after
+retirement? DECISION: the snapshot's signature is the authority for its
+entire covered prefix — covered-position queries resolve to coverage
+state; cut checks treat covered as satisfied-by-coverage; summaries over
+covered prefixes compose from coverage. Per-position states below
+coverage cease to exist (that is what compaction means). Old per-position
+published artifacts unsupported (greenfield; endgame wipes). Engineer 9
+implementing + updating the 13 pre-fix-behavior tests with rewritten docs.
+Underlying shape named for the record: retained_merge_materializations
+conflated replay-input with retained-authority; the baseline work is
+un-conflating them.
