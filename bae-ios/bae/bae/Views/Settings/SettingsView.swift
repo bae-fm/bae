@@ -299,7 +299,7 @@ private struct SyncConnectedControls: View {
                 },
                 disconnect: sync.disconnectCloudProvider,
                 deleteRestoreCode: {
-                    KeychainService.deleteRestoreCode(libraryId: libraryId)
+                    try KeychainService.deleteRestoreCode(libraryId: libraryId)
                 },
                 baseMessage: {
                     String(
@@ -320,6 +320,12 @@ private struct SyncConnectedControls: View {
                 },
                 disconnectFailedMessage: {
                     String(localized: "Failed to disconnect: \($0)")
+                },
+                restoreCodeDeleteFailedMessage: {
+                    String(
+                        localized:
+                            "Disconnected, but couldn't remove the restore code: \($0)"
+                    )
                 }
             )
         )

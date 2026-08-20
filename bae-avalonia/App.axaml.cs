@@ -202,10 +202,15 @@ public sealed partial class App : Application
         _updateService = new UpdateService();
         _ = _updateService.CheckInBackgroundAsync();
 
-        var keyringError = NativeBae.Startup(BaeDiagnostics.Handle);
-        if (keyringError is not null)
+        if (NativeBae.Startup(BaeDiagnostics.Handle) is { } keyringFailure)
         {
-            GoToWelcome(keyringError);
+            // Core's category line over its own diagnostic, the way a failed
+            // open reports — the keyring is what every library's keys live in,
+            // so this is as far as the launch goes.
+            GoToWelcome(
+                BridgeDisplay.LocalizedLine(keyringFailure)
+                    ?? Loc.Chrome("library.open_failed"),
+                BridgeDisplay.FaultSummary(keyringFailure));
             return;
         }
         OAuthCreds.Register();

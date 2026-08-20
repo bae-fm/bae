@@ -70,7 +70,10 @@ final class LibrarySetup: Sendable, Observable {
     /// asleep — which the welcome screen must not read as "no restore codes".
     let fetchRestoreCodes:
         @Sendable () throws -> [(libraryId: String, code: String)]
-    let deleteRestoreCode: @Sendable (_ libraryId: String) -> Void
+    /// Drops a library's restore code from the iCloud keychain. Throws when the
+    /// keychain refuses, so a row is never removed on the strength of a delete
+    /// that did not happen.
+    let deleteRestoreCode: @Sendable (_ libraryId: String) throws -> Void
     let oauthAuthorize:
         @Sendable (_ provider: BridgeCloudProvider) throws -> String
     let oauthCancel: @Sendable () -> Void
@@ -117,7 +120,9 @@ final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable () throws -> [(
                 libraryId: String, code: String
             )] = { [] },
-        deleteRestoreCode: @escaping @Sendable (String) -> Void = { _ in },
+        deleteRestoreCode: @escaping @Sendable (String) throws -> Void = {
+            _ in
+        },
         oauthAuthorize:
             @escaping @Sendable (BridgeCloudProvider) throws -> String = {
                 _ in throw StubError.notImplemented

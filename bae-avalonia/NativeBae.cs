@@ -13,9 +13,29 @@ internal static partial class NativeBae
 {
     /// <summary>One-time startup: register the OS credential store. Takes the
     /// telemetry sink so a store-creation failure ships
-    /// <c>keyring_init_failed</c>.</summary>
-    internal static string? Startup(BridgeDiagnostics diagnostics) =>
-        CaptureError(() => BaeBridgeMethods.InitKeyring(diagnostics));
+    /// <c>keyring_init_failed</c>. Returns the failure that stopped it, or null
+    /// when the store is up.
+    ///
+    /// The exception travels rather than its message: <c>exception.Message</c>
+    /// is the reflected category name glued to the diagnostic, so it reads as
+    /// neither of the two lines the welcome window wants — core's localized
+    /// category line, and the untranslated fault under it.</summary>
+    internal static BridgeException? Startup(BridgeDiagnostics diagnostics)
+    {
+        try
+        {
+            BaeBridgeMethods.InitKeyring(diagnostics);
+            return null;
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return null;
+        }
+        catch (BridgeException exception)
+        {
+            return exception;
+        }
+    }
 
     /// <summary>
     /// Construct the telemetry sink and install the core's tracing subscriber.

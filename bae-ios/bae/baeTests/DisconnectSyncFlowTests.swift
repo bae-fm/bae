@@ -40,13 +40,16 @@ struct DisconnectSyncFlowTests {
         },
         atRiskMessage: @escaping (UInt64) -> String = { "\($0) at risk." },
         disconnect: @escaping @Sendable () async throws -> Void = {},
-        deleteRestoreCode: @escaping () -> Void = {},
+        deleteRestoreCode: @escaping () throws -> Void = {},
         baseMessage: @escaping () -> String = { "Disconnect." },
         warningCheckFailedMessage: @escaping (String) -> String = {
             "check failed: \($0)"
         },
         disconnectFailedMessage: @escaping (String) -> String = {
             "disconnect failed: \($0)"
+        },
+        restoreCodeDeleteFailedMessage: @escaping (String) -> String = {
+            "restore code delete failed: \($0)"
         }
     ) -> DisconnectSyncFlow {
         DisconnectSyncFlow(
@@ -56,7 +59,8 @@ struct DisconnectSyncFlowTests {
             deleteRestoreCode: deleteRestoreCode,
             baseMessage: baseMessage,
             warningCheckFailedMessage: warningCheckFailedMessage,
-            disconnectFailedMessage: disconnectFailedMessage
+            disconnectFailedMessage: disconnectFailedMessage,
+            restoreCodeDeleteFailedMessage: restoreCodeDeleteFailedMessage
         )
     }
 
@@ -119,6 +123,24 @@ struct DisconnectSyncFlowTests {
         #expect(recorder.disconnectCalls == 1)
         #expect(recorder.deleteCalls == 1)
         #expect(flow.error == nil)
+    }
+
+    @Test("a keychain that refuses the delete says so, not \"disconnect failed\"")
+    func confirmSurfacesRestoreCodeDeleteFailure() async {
+        let recorder = Recorder()
+        let flow = makeFlow(
+            disconnect: { recorder.recordDisconnect() },
+            deleteRestoreCode: {
+                recorder.recordDelete()
+                throw StubError.notImplemented
+            }
+        )
+
+        await flow.confirm()
+
+        #expect(recorder.disconnectCalls == 1)
+        #expect(recorder.deleteCalls == 1)
+        #expect(flow.error?.hasPrefix("restore code delete failed: ") == true)
     }
 
     @Test("a failed disconnect leaves the restore code in place")

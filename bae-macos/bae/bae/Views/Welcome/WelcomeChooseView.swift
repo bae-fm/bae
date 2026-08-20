@@ -260,7 +260,19 @@ extension WelcomeChooseView {
         else {
             return
         }
-        setup.deleteRestoreCode(entry.info.libraryId)
+        do {
+            try setup.deleteRestoreCode(entry.info.libraryId)
+        }
+        catch {
+            // The row goes only when the keychain says the code is gone.
+            // Dropping it on a refused delete tells the user it was removed and
+            // then hands the entry back on the next load.
+            logger.error(
+                "Failed to delete keychain restore code: \(error.localizedDescription)"
+            )
+            self.error = DisplayError(error)
+            return
+        }
         keychainEntries = .loaded(entries.filter { $0.code != code })
     }
 

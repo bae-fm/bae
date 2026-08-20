@@ -36058,6 +36058,197 @@
           }
         }
       }
+    },
+    "Disconnected, but couldn't remove the restore code: %@": {
+      "comment": "Sync settings: the provider was disconnected but the keychain refused to delete the restore code; %@ is the reason",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected, but couldn't remove the restore code: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se desconectó, pero no se pudo quitar el código de restauración: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecté, mais impossible de supprimer le code de restauration : %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung getrennt, aber der Wiederherstellungscode konnte nicht entfernt werden: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconectado, mas não foi possível remover o código de restauração: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接続を解除しましたが、復元コードを削除できませんでした: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已断开连接，但无法移除恢复码：%@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم قطع الاتصال، لكن تعذّرت إزالة رمز الاستعادة: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "החיבור נותק, אך לא ניתן היה להסיר את קוד השחזור‏: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Від’єднано, але не вдалося вилучити код відновлення: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Връзката е прекъсната, но кодът за възстановяване не можа да бъде премахнат: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozłączono, ale nie udało się usunąć kodu przywracania: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojeno, ale obnovovací kód se nepodařilo odstranit: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veza je prekinuta, ali kod za obnovu nije moguće ukloniti: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결을 해제했지만 복원 코드를 제거할 수 없음: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已中斷連接，但無法移除還原碼：%@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnesso, ma impossibile rimuovere il codice di ripristino: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı kesildi ancak geri yükleme kodu kaldırılamadı: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã ngắt kết nối, nhưng không thể xóa mã khôi phục: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinding verbroken, maar kan de herstelcode niet verwijderen: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्कनेक्ट हो गया, लेकिन पुनर्स्थापना कोड हटाया नहीं जा सका: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযোগ বিচ্ছিন্ন হয়েছে, তবে পুনরুদ্ধার কোড সরানো যায়নি: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "துண்டிக்கப்பட்டது, ஆனால் மீட்டமைப்புக் குறியீட்டை அகற்ற முடியவில்லை: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "డిస్‌కనెక్ట్ అయింది, కానీ పునరుద్ధరణ కోడ్‌ను తీసివేయడం సాధ్యం కాలేదు: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्कनेक्ट झाले, पण पुनर्संचयन कोड काढता आला नाही: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منقطع ہو گیا، لیکن بحالی کوڈ ہٹایا نہیں جا سکا: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ડિસ્કનેક્ટ થયું, પણ રિસ્ટોર કોડ દૂર કરી શકાયો નહીં: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ, ಆದರೆ ಮರುಸ್ಥಾಪನೆ ಕೋಡ್ ತೆಗೆದುಹಾಕಲಾಗಲಿಲ್ಲ: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "വിച്ഛേദിച്ചു, പക്ഷേ പുനഃസ്ഥാപന കോഡ് നീക്കംചെയ്യാനായില്ല: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਡਿਸਕਨੈਕਟ ਹੋ ਗਿਆ, ਪਰ ਰੀਸਟੋਰ ਕੋਡ ਹਟਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตัดการเชื่อมต่อแล้ว แต่นำรหัสกู้คืนออกไม่ได้: %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

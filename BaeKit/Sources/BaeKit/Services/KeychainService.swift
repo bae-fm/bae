@@ -1,8 +1,6 @@
 import Foundation
 import Security
-import os.log
 
-private let logger = Logger.bae("KeychainService")
 // kCFBooleanTrue is typed as CFBoolean? in Swift but is an ObjC singleton constant,
 // never nil. nonisolated(unsafe) because CFBoolean is non-Sendable, but the value
 // is immutable — accessing it from any concurrency domain is safe.
@@ -131,7 +129,12 @@ public enum KeychainService {
     }
 
     /// Delete the restore code for a specific library.
-    public static func deleteRestoreCode(libraryId: String) {
+    ///
+    /// `errSecItemNotFound` is success: there was nothing to remove. Every other
+    /// status throws, on the same grounds as the fetch and the save — a code the
+    /// keychain refused to drop is still out there naming a cloud home that no
+    /// longer answers, and the user is the only one who can act on that.
+    public static func deleteRestoreCode(libraryId: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -140,10 +143,8 @@ public enum KeychainService {
         ]
 
         let status = SecItemDelete(query as CFDictionary)
-        if status != errSecSuccess, status != errSecItemNotFound {
-            logger.error(
-                "KeychainService: failed to delete restore code: \(status)"
-            )
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw KeychainFailure(status: status)
         }
     }
 }

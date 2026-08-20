@@ -31,8 +31,10 @@ public final class DisconnectSyncFlow {
     private let atRiskMessage: (UInt64) -> String
     /// Disconnects the provider through bae-core's owned runtime.
     private let disconnect: @Sendable () async throws -> Void
-    /// Removes this library's restore code from the iCloud keychain.
-    private let deleteRestoreCode: () -> Void
+    /// Removes this library's restore code from the iCloud keychain. Throws
+    /// when the keychain refuses; the disconnect itself has already landed by
+    /// then, so that is its own message rather than a failed disconnect.
+    private let deleteRestoreCode: () throws -> Void
     /// The platform's base confirmation sentence, resolved against the app's
     /// localized catalog.
     private let baseMessage: () -> String
@@ -42,6 +44,9 @@ public final class DisconnectSyncFlow {
     /// Builds the inline error shown when the disconnect fails, from the error's
     /// description.
     private let disconnectFailedMessage: (String) -> String
+    /// Builds the inline error shown when the disconnect succeeded but the
+    /// keychain would not drop the restore code.
+    private let restoreCodeDeleteFailedMessage: (String) -> String
 
     /// Whether the confirmation dialog is shown.
     public var showConfirm = false
@@ -58,10 +63,11 @@ public final class DisconnectSyncFlow {
         cloudOnlyReleaseCount: @escaping @Sendable () async throws -> UInt64,
         atRiskMessage: @escaping (UInt64) -> String,
         disconnect: @escaping @Sendable () async throws -> Void,
-        deleteRestoreCode: @escaping () -> Void,
+        deleteRestoreCode: @escaping () throws -> Void,
         baseMessage: @escaping () -> String,
         warningCheckFailedMessage: @escaping (String) -> String,
-        disconnectFailedMessage: @escaping (String) -> String
+        disconnectFailedMessage: @escaping (String) -> String,
+        restoreCodeDeleteFailedMessage: @escaping (String) -> String
     ) {
         self.cloudOnlyReleaseCount = cloudOnlyReleaseCount
         self.atRiskMessage = atRiskMessage
@@ -70,6 +76,7 @@ public final class DisconnectSyncFlow {
         self.baseMessage = baseMessage
         self.warningCheckFailedMessage = warningCheckFailedMessage
         self.disconnectFailedMessage = disconnectFailedMessage
+        self.restoreCodeDeleteFailedMessage = restoreCodeDeleteFailedMessage
     }
 
     /// Confirmation body: the platform's base sentence and — when releases live
@@ -111,17 +118,32 @@ public final class DisconnectSyncFlow {
         warningTask?.cancel()
     }
 
-    /// Disconnect, then — only on success — delete the restore code. On failure
-    /// the code is left untouched and the error is shown inline.
+    /// Disconnect, then — only on success — delete the restore code. A failed
+    /// disconnect leaves the code untouched and shows its error inline.
+    ///
+    /// A keychain that refuses the delete is reported separately, because it is
+    /// not a failed disconnect: the provider is gone, and what is left is a
+    /// restore code still naming the cloud home the disconnect invalidated.
+    /// Saying "failed to disconnect" there would point the user at the wrong
+    /// thing, and saying nothing leaves a code they think was removed.
     public func confirm() async {
         do {
             try await disconnect()
-            error = nil
-            deleteRestoreCode()
         }
         catch {
             logger.error("Failed to disconnect: \(error.localizedDescription)")
             self.error = error.displayLine.map(disconnectFailedMessage)
+            return
+        }
+        error = nil
+        do {
+            try deleteRestoreCode()
+        }
+        catch {
+            logger.error(
+                "Disconnected, but failed to delete the restore code: \(error.localizedDescription)"
+            )
+            self.error = error.displayLine.map(restoreCodeDeleteFailedMessage)
         }
     }
 }
