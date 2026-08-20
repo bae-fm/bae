@@ -142,9 +142,10 @@ fun AlbumDetailScreen(
                 // otherwise. Derived rather than seeded into state, so a
                 // release list arriving after composition needs no correcting
                 // write-back.
-                val release = loaded.releases.firstOrNull { it.id == selectedReleaseId }
-                    ?: loaded.releases.firstOrNull { it.id == loaded.album.primaryReleaseId }
-                    ?: loaded.releases.firstOrNull()
+                val release =
+                    loaded.releases.firstOrNull { it.id == selectedReleaseId }
+                        ?: loaded.releases.firstOrNull { it.id == loaded.album.primaryReleaseId }
+                        ?: loaded.releases.firstOrNull()
                 AlbumDetailContent(
                     detail = loaded,
                     selectedRelease = release,
