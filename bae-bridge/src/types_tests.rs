@@ -481,6 +481,15 @@ mod loc_key_coverage {
             BridgeErrorCategory::Network,
             BridgeErrorCategory::Keyring,
             BridgeErrorCategory::Membership,
+            BridgeErrorCategory::DeviceJoin {
+                failure: BridgeDeviceJoinFailure::Expired,
+            },
+            BridgeErrorCategory::DeviceJoin {
+                failure: BridgeDeviceJoinFailure::OwnerOffline,
+            },
+            BridgeErrorCategory::DeviceJoin {
+                failure: BridgeDeviceJoinFailure::OwnerEnded,
+            },
             BridgeErrorCategory::AirPlayUnsupported,
         ] {
             let expected = match c {
@@ -524,6 +533,11 @@ mod loc_key_coverage {
                 BridgeErrorCategory::Network => "core.error.category.network",
                 BridgeErrorCategory::Keyring => "core.error.category.keyring",
                 BridgeErrorCategory::Membership => "core.error.category.membership",
+                BridgeErrorCategory::DeviceJoin { failure } => match failure {
+                    BridgeDeviceJoinFailure::Expired => "core.error.join.expired",
+                    BridgeDeviceJoinFailure::OwnerOffline => "core.error.join.owner_offline",
+                    BridgeDeviceJoinFailure::OwnerEnded => "core.error.join.owner_ended",
+                },
                 BridgeErrorCategory::AirPlayUnsupported => {
                     "core.error.category.airplay_unsupported"
                 }

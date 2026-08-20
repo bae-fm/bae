@@ -452,19 +452,25 @@ pub fn abandon_pending_device_pairing_join() -> Result<(), BridgeError> {
 }
 
 fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError {
-    use crate::types::BridgeErrorCategory;
+    use crate::types::{BridgeDeviceJoinFailure, BridgeErrorCategory};
+    // Every end a join can come to that the user can act on carries its own
+    // line, because the advice differs: get a fresh code, open bae over there,
+    // or start again. Only a local cancel is silent — the user did it.
+    let join_failed = |failure, detail: &str| {
+        BridgeError::diagnostic(BridgeErrorCategory::DeviceJoin { failure }, detail)
+    };
     match error {
         JoinDevicePairingError::Cancelled => BridgeError::Cancelled,
-        // Both devices must be running the join at once. These two are the
-        // "nothing is wrong with the code, the other side isn't there" ends, kept
-        // apart from a genuine failure so the UI can tell the user what to do.
-        JoinDevicePairingError::OwnerOffline => BridgeError::diagnostic(
-            BridgeErrorCategory::Membership,
-            "the existing device is not accepting this pairing — open bae on it and show a pairing code",
+        JoinDevicePairingError::Expired => {
+            join_failed(BridgeDeviceJoinFailure::Expired, "pairing session expired")
+        }
+        JoinDevicePairingError::OwnerOffline => join_failed(
+            BridgeDeviceJoinFailure::OwnerOffline,
+            "the inviting device is not running the join",
         ),
-        JoinDevicePairingError::Abandoned => BridgeError::diagnostic(
-            BridgeErrorCategory::Membership,
-            "the existing device ended this pairing",
+        JoinDevicePairingError::Abandoned => join_failed(
+            BridgeDeviceJoinFailure::OwnerEnded,
+            "the inviting device ended the join",
         ),
         JoinDevicePairingError::Join(error) => {
             BridgeError::internal(format!("Failed to join library: {error}"))

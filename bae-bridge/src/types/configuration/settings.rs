@@ -176,6 +176,20 @@ pub enum BridgeCloudHomeSetupFailure {
     Internal,
 }
 
+/// How a device-pairing join ended without joining. Each one is a different
+/// thing for the user to do next, so each carries its own line rather than
+/// sharing the membership category's generic one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDeviceJoinFailure {
+    /// The code's deadline passed. A retry needs a fresh code.
+    Expired,
+    /// The inviting device never took its next step — both sides have to be
+    /// running the join at once.
+    OwnerOffline,
+    /// The inviting device ended the attempt.
+    OwnerEnded,
+}
+
 /// The kind of diagnostic failure. The UI shows one generic localized line per
 /// category; `detail` is the underlying Rust error chain — logged and offered in
 /// a copyable disclosure, never translated.
@@ -201,6 +215,11 @@ pub enum BridgeErrorCategory {
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
+    /// A device-pairing join ended without joining, for a reason the user can
+    /// act on. Carries which end it was so the line can say what to do next.
+    DeviceJoin {
+        failure: BridgeDeviceJoinFailure,
+    },
     /// An AirPlay receiver can't be driven — it demands a PIN, or offers only
     /// audio encryption the sender doesn't implement.
     AirPlayUnsupported,
@@ -330,6 +349,11 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
         BridgeErrorCategory::Membership => "core.error.category.membership",
+        BridgeErrorCategory::DeviceJoin { failure } => match failure {
+            BridgeDeviceJoinFailure::Expired => "core.error.join.expired",
+            BridgeDeviceJoinFailure::OwnerOffline => "core.error.join.owner_offline",
+            BridgeDeviceJoinFailure::OwnerEnded => "core.error.join.owner_ended",
+        },
         BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
     }
     .to_string()

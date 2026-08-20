@@ -149,7 +149,11 @@ internal sealed class JoinLibraryDialog
                     return;
                 }
                 BaeDiagnostics.Logger.Error("Failed to join through device pairing.", exception);
-                ShowStatus(Loc.Chrome("join.failed"));
+                // Core names the ends a join comes to — an expired code, the
+                // other device not running it, the other device ending it — and
+                // each is a different thing to do next. The chrome line is the
+                // fallback for a failure core had no line for.
+                ShowStatus(BridgeDisplay.LocalizedLine(exception) ?? Loc.Chrome("join.failed"));
                 join.IsEnabled = true;
             }
         }

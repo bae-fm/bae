@@ -8,6 +8,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.localizedLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -280,11 +281,21 @@ class JoinLauncher(
                         onJoined,
                     )
                 } catch (e: BridgeException.Cancelled) {
-                    logger.debug("pairing join cancelled by bridge", e)
+                    // Core reports Cancelled only for this device's own cancel;
+                    // a join the other end walked away from arrives as a named
+                    // reason below. Nothing to tell the user about their own tap.
+                    logger.debug("pairing join cancelled locally", e)
                 } catch (e: CancellationException) {
                     logger.debug("pairing join coroutine cancelled", e)
                     throw e
+                } catch (e: BridgeException) {
+                    // Core names the ends a join can come to — an expired code,
+                    // the other device not running it, the other device ending
+                    // it — and each one is its own line for the device locale.
+                    logger.error("pairing join failed", e)
+                    error = context.localizedLine(e) ?: e.toString()
                 } catch (e: Exception) {
+                    logger.error("pairing join failed", e)
                     error = e.toString()
                 } finally {
                     progressDelivery.close()

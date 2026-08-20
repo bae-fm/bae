@@ -45,6 +45,29 @@ fn owner_cancellation_is_not_reported_as_an_internal_join_failure() {
     ));
 }
 
+#[test]
+fn an_expired_pairing_code_is_not_reported_as_an_internal_join_failure() {
+    let error = coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Expired);
+
+    assert!(matches!(
+        classify_join_error(error),
+        JoinDevicePairingError::Expired
+    ));
+}
+
+#[test]
+fn a_cancellation_this_device_did_not_ask_for_is_an_abandonment() {
+    // The caller checks its own cancel token before consulting this, so a
+    // cancellation arriving here came from the other end — the user is owed a
+    // reason for it rather than the silence their own cancel earns.
+    let error = coven::BootstrapError::Cancelled;
+
+    assert!(matches!(
+        classify_join_error(error),
+        JoinDevicePairingError::Abandoned
+    ));
+}
+
 #[tokio::test]
 async fn joining_device_can_display_the_exact_identity_it_submits() {
     crate::config::install_test_keyring();

@@ -311,6 +311,11 @@ pub enum JoinDevicePairingError {
     /// The owner withdrew the attempt before it completed.
     #[error("the inviting device ended the join")]
     Abandoned,
+    /// The pairing session ran past the deadline stamped into the code. The
+    /// code itself is spent — a retry needs a fresh one from the other device,
+    /// which is different advice from "open bae over there".
+    #[error("the pairing code expired")]
+    Expired,
     #[error("{0}")]
     Join(String),
 }
@@ -533,9 +538,15 @@ pub async fn join_prepared_device_pairing_cancellable(
             } else {
                 classify_join_error(error)
             };
+            // Every end that will not be resumed drops the durable pairing
+            // journal. An expired session especially: leaving it on disk makes
+            // `pending_device_pairing_join` offer to resume a code that can
+            // never complete, and the next launch walks back into the failure.
             if matches!(
                 error,
-                JoinDevicePairingError::Cancelled | JoinDevicePairingError::Abandoned
+                JoinDevicePairingError::Cancelled
+                    | JoinDevicePairingError::Abandoned
+                    | JoinDevicePairingError::Expired
             ) {
                 pairing
                     .abandon(&layout)
@@ -546,9 +557,10 @@ pub async fn join_prepared_device_pairing_cancellable(
     }
 }
 
-/// Map coven's bootstrap failure onto bae's join outcome. A transport wait that
-/// ran out its deadline means the owner's device never took its next step, which
-/// the UI reports as "the other device has to be open", not as an internal error.
+/// Map coven's bootstrap failure onto bae's join outcome. Coven types the ends a
+/// join can come to; each one the user can act on gets its own arm, because the
+/// advice differs — reopen bae on the other device, ask for a fresh code, or
+/// nothing at all. Whatever is left is a genuine fault and reads as one.
 fn classify_join_error(error: coven::BootstrapError) -> JoinDevicePairingError {
     match &error {
         coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Unavailable(_)) => {
@@ -557,7 +569,14 @@ fn classify_join_error(error: coven::BootstrapError) -> JoinDevicePairingError {
         coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Cancelled) => {
             JoinDevicePairingError::Abandoned
         }
-        coven::BootstrapError::Cancelled => JoinDevicePairingError::Cancelled,
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Expired) => {
+            JoinDevicePairingError::Expired
+        }
+        // Only reached when this device's own cancel token was NOT tripped —
+        // the caller checks that first. So a cancellation arriving here came
+        // from the other end, which is an abandonment the user is owed a reason
+        // for, not the silent "you pressed cancel" case.
+        coven::BootstrapError::Cancelled => JoinDevicePairingError::Abandoned,
         _ => JoinDevicePairingError::Join(error.to_string()),
     }
 }
