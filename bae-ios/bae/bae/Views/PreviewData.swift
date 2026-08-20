@@ -196,17 +196,6 @@ enum PreviewData {
         state: .queued
     )
 
-    // MARK: - Join flow
-
-    static let pairingOffer = BridgeDevicePairingOffer(
-        libraryName: "Preview Library",
-        cloudProvider: .s3,
-        needsOauth: false,
-        expiresAtUnixSeconds: 1_900_000_000
-    )
-
-    static let cloudProviders: [BridgeCloudProvider] = availableCloudProviders()
-
     // MARK: - Search
 
     static let searchResults = SearchResults(
