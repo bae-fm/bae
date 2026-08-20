@@ -489,3 +489,15 @@ failures, 31 locales, journal-resume bug fixed), fix-android-ktlint
 21f73754 (main's Android gate was red). ANR investigation refuted with
 measurements: host starvation + first-run JIT, not app startup — quiet-host
 protocol now applies to all measurement runs.
+
+## Run 6 (07:43Z): regression signal — coverage fix ineffective live
+
+98s join, uncovered_commits=197 (zero credit) with bbcc6f18 live on both
+sides; install history 24.5s, owner activate-the-join 13.5s. In-workspace
+test passes ⇒ divergence upstream of the crediting walk. Hypotheses ranked
+to engineer: (1) select_maximal_stable_store_snapshot rejects gen-1 on a
+store with 5 exclusions → falls back to gen-0 empty coverage; (2) live
+gen-1 image (captured by pre-fix 8a90bea code) doesn't carry coverage in
+the shape the walk reads (greenfield: fresh snapshot over compat);
+(3) depth/stream-count assumption. Requested: selection-time log line
+naming chosen generation + coverage tips (selection currently invisible).
