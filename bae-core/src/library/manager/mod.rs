@@ -198,6 +198,12 @@ impl LibraryError {
         match self {
             LibraryError::Database(_) => C::Database,
             LibraryError::Config(_) | LibraryError::Validation(_) => C::Config,
+            // A keychain that refused this second is not a broken keyring. It
+            // is the one keyring failure a host should wait out, so it keeps
+            // its own class all the way to the UI.
+            LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable) => {
+                C::KeyringLocked
+            }
             LibraryError::Keyring(_) => C::Keyring,
             LibraryError::CloudHome(e) => cloud_home_category(e),
             LibraryError::CloudSetup(error) => cloud_setup_category(error),

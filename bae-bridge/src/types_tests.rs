@@ -480,6 +480,7 @@ mod loc_key_coverage {
             BridgeErrorCategory::Credentials,
             BridgeErrorCategory::Network,
             BridgeErrorCategory::Keyring,
+            BridgeErrorCategory::KeyringLocked,
             BridgeErrorCategory::Membership,
             BridgeErrorCategory::DeviceJoin {
                 failure: BridgeDeviceJoinFailure::Expired,
@@ -532,6 +533,7 @@ mod loc_key_coverage {
                 BridgeErrorCategory::Credentials => "core.error.category.credentials",
                 BridgeErrorCategory::Network => "core.error.category.network",
                 BridgeErrorCategory::Keyring => "core.error.category.keyring",
+                BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
                 BridgeErrorCategory::Membership => "core.error.category.membership",
                 BridgeErrorCategory::DeviceJoin { failure } => match failure {
                     BridgeDeviceJoinFailure::Expired => "core.error.join.expired",

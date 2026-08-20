@@ -223,6 +223,7 @@ telemetry_value_enum! {
         Config => "config",
         Database => "database",
         Internal => "internal",
+        KeyringUnavailable => "keyring_unavailable",
     }
 }
 

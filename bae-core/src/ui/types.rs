@@ -26,6 +26,11 @@ pub enum UiErrorCategory {
     /// The device's OS keyring (secure credential store) couldn't be read or
     /// written — the local secret store, not the cloud.
     Keyring,
+    /// The OS keyring refused *right now* — locked session, sleeping display, no
+    /// UI session to prompt in. Distinct from `Keyring` because nothing is
+    /// broken and nothing is missing: the same read succeeds after unlock, so
+    /// the host retries instead of reporting the library as unusable.
+    KeyringLocked,
     /// A library-sharing membership operation failed: the membership chain, an
     /// invite, or key rotation across devices.
     Membership,

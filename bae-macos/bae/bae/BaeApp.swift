@@ -69,6 +69,7 @@ enum AppScreen {
     case loading
     case welcome
     case unlock(libraryName: String)
+    case keychainLocked(libraryId: String)
     case library
 }
 
@@ -161,6 +162,8 @@ struct BaeApp: App {
                 // library that's still open.
                 onCancel: { appDelegate.screen = .library }
             )
+        case .keychainLocked:
+            KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
             MainAppView()
         }
@@ -252,6 +255,8 @@ struct BaeApp: App {
                 // chooser): cancelling returns to the welcome.
                 onCancel: { appDelegate.screen = .welcome }
             )
+        case .keychainLocked:
+            KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
             // The service environment arrives with the library branch;
             // bootstrap content must remain independent of it.
@@ -627,6 +632,8 @@ extension AppDelegate {
                 self.landOpenedService(service)
             case .needsUnlock(let config):
                 self.screen = .unlock(libraryName: config.libraryName)
+            case .keychainLocked:
+                self.deferOpenForLockedKeychain(libraryId: libraryId)
             case .superseded:
                 // Superseded by a newer open (or a close); that call owns
                 // screen/appService.
@@ -900,6 +907,7 @@ extension AppDelegate {
                 setCloudkitDriver(driver: CloudKitService.bae())
             #endif
         }
+        startWatchingForKeychainUnlock()
         loadInitialState(canOpenLibraries: keyringReady)
     }
 
@@ -947,13 +955,13 @@ extension AppDelegate {
     }
 
     func applicationDidBecomeActive(_: Notification) {
-        // Refresh the library list when bae returns to the foreground so the
-        // Open Library submenu reflects libraries created, renamed, or removed
-        // elsewhere while we were in the background. Only meaningful once a
-        // library is open — the menu that consumes the list exists only then.
-        guard !skipsApplicationServices, appService != nil else {
-            return
-        }
+        guard !skipsApplicationServices else { return }
+        // Before the `appService` gate: having no service is the whole state.
+        retryOpenIfKeychainWasLocked(trigger: "app activation")
+        // Refresh the library list so the Open Library submenu reflects
+        // libraries created, renamed, or removed elsewhere. Only meaningful
+        // once a library is open — the menu that consumes it exists only then.
+        guard appService != nil else { return }
         reloadLibraries()
     }
 

@@ -80,6 +80,30 @@ struct ContentView: View {
                         .environment(holder)
                     )
 
+                case .keychainLocked:
+                    // Core owns the sentence — the same one every other surface
+                    // shows for this failure. Nothing to type here; the retry
+                    // runs on scene activation, and the button covers the case
+                    // where that was not what changed.
+                    VStack(spacing: 16) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.secondary)
+                        Text("Library Locked")
+                            .font(.title2.bold())
+                        Text(BridgeErrorCategory.keyringLocked.localizedLine)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Try again") {
+                            holder.retryOpenIfKeychainWasLocked(
+                                trigger: "the retry button"
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+
                 case .failed(let message):
                     errorView(message)
                 }
@@ -97,6 +121,23 @@ struct ContentView: View {
             holder.start()
         }
         .onChange(of: scenePhase) { _, phase in
+            // Returning to the foreground means the device was unlocked, which
+            // is exactly the condition a refused keychain read was waiting for.
+            //
+            // Scene activation is the whole trigger set on iOS, deliberately —
+            // there is no `protectedDataDidBecomeAvailable` observer here and
+            // that is not an oversight. That notification is only reliably
+            // useful to a process that is already running while the device is
+            // locked, i.e. a background launch before the first unlock since
+            // boot; bae has no background launch path that opens a library. Any
+            // unlock a user is present for brings the scene back to `.active`
+            // and lands here anyway, so an observer would add a second route to
+            // the same retry without covering a case this one misses.
+            if phase == .active {
+                holder.retryOpenIfKeychainWasLocked(
+                    trigger: "the scene becoming active"
+                )
+            }
             // Persist playback on background so the queue, current track, and
             // position survive process death while suspended. We can't shut core
             // down (that would stop the background audio), so this is the only

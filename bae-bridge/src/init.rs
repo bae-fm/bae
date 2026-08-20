@@ -192,6 +192,7 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
         BootstrapError::Config(_) => AppStartFailureKind::Config,
         BootstrapError::Database(_) => AppStartFailureKind::Database,
         BootstrapError::Internal(_) => AppStartFailureKind::Internal,
+        BootstrapError::KeyringUnavailable => AppStartFailureKind::KeyringUnavailable,
     }
 }
 
@@ -268,6 +269,14 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
         BootstrapError::Config(msg) => BridgeError::config(msg),
         BootstrapError::Database(msg) => BridgeError::database(msg),
         BootstrapError::Internal(msg) => BridgeError::internal(msg),
+        // Its own category, not `Keyring`: that one reads as "the keyring
+        // broke", and this one is "it is locked this second, try again after
+        // you unlock". The host branches on the category to keep the handle
+        // path open and retry, so the distinction has to survive the bridge.
+        BootstrapError::KeyringUnavailable => BridgeError::diagnostic(
+            crate::types::BridgeErrorCategory::KeyringLocked,
+            "the OS keychain refused the read while the session is locked",
+        ),
     }
 }
 
@@ -489,6 +498,10 @@ mod tests {
         assert_eq!(
             app_start_failure_kind(&BootstrapError::Internal("x".to_string())),
             AppStartFailureKind::Internal
+        );
+        assert_eq!(
+            app_start_failure_kind(&BootstrapError::KeyringUnavailable),
+            AppStartFailureKind::KeyringUnavailable
         );
     }
 

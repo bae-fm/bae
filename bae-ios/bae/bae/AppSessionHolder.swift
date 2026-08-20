@@ -17,6 +17,11 @@ enum AppScreen {
     case loading
     case onboarding
     case unlock(LockedLibrary)
+    /// The OS keychain refused the key read. On iOS this needs the device to
+    /// have been unlocked at least once since boot — the app can be launched
+    /// into the background before that — so it is rarer than on macOS, and it
+    /// is not a dead end: the retry runs when the scene becomes active.
+    case keychainLocked(BridgeLibrary)
     case library(AppService)
     case failed(message: String)
 }
@@ -177,6 +182,13 @@ final class AppSessionHolder {
                 self.screen = .unlock(
                     LockedLibrary(library: library)
                 )
+            case .keychainLocked:
+                // Not `.failed`: that is a terminal screen with no way out, and
+                // this library is intact. Retried on scene activation.
+                logger.info(
+                    "Library open deferred: the OS keychain is locked"
+                )
+                self.screen = .keychainLocked(library)
             case .superseded:
                 // A newer open owns `screen`; leave it alone.
                 break
@@ -185,6 +197,17 @@ final class AppSessionHolder {
                 self.screen = .failed(message: message)
             }
         }
+    }
+
+    /// Re-attempt an open the keychain refused. A no-op in every other state,
+    /// so the scene-activation caller does not have to know what is on screen.
+    /// Logged with its trigger: this is event-driven, not a poll.
+    func retryOpenIfKeychainWasLocked(trigger: String) {
+        guard case .keychainLocked(let library) = screen else { return }
+        logger.info(
+            "Retrying the library open after \(trigger); the OS keychain may be reachable now"
+        )
+        openLibrary(library)
     }
 
     func reportScreen(_ screen: BridgeScreen) {

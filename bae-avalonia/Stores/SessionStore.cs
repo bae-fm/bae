@@ -69,6 +69,18 @@ internal sealed class SessionStore
         var (keyState, keyStateFailure) = NativeBae.CloudHomeKeyState(handle);
         if (keyState is null)
         {
+            // Known gap: an OS keyring that refused *right now* rather than
+            // failing (core's `KeyringLocked` category — a locked gnome-keyring
+            // on Linux, a credential store that will not answer yet) lands here
+            // like any other failure and shows the welcome window's error line.
+            // The line itself is already the right one — `Failed` resolves
+            // core's localized category — but the Apple hosts additionally park
+            // this on a waiting screen and retry it when the session unlocks,
+            // and there is no equivalent here: no session-unlock observer, so
+            // the only way out is the user opening the library again by hand.
+            // Wiring that up needs a per-platform unlock signal (Windows
+            // WTSSession / Linux logind), which is why it is flagged rather
+            // than half-built.
             NativeBae.HandleFree(handle);
             return Failed(keyStateFailure);
         }

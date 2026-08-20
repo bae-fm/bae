@@ -47,6 +47,13 @@ public final class LibrarySessionOpener<
     public enum Outcome {
         case opened(Service)
         case needsUnlock(BridgeConfig)
+        /// The OS keychain refused the read while the session was locked or the
+        /// display asleep. The library is fine and its key is present — this
+        /// device just cannot read it this second, and the same open succeeds
+        /// once the machine is unlocked. Distinct from `.needsUnlock`, which
+        /// means the key is genuinely absent and only a typed-in hex key
+        /// recovers it, and from `.failed`, which the user has to act on.
+        case keychainLocked
         case superseded
         case failed(Error)
     }
@@ -155,8 +162,30 @@ public final class LibrarySessionOpener<
             return .superseded
         }
         catch {
+            // Core types a keychain that refused right now apart from every
+            // other failure so a host can wait for the unlock instead of
+            // telling the user their library is broken. Either step can raise
+            // it — `initApp` reads the key state during bootstrap, and the
+            // read below repeats it — so the classification sits here, over
+            // both.
+            if Self.isKeychainLocked(error) {
+                logger.info(
+                    "open: the OS keychain is locked; the library is intact and this open can be retried after unlock"
+                )
+                return .keychainLocked
+            }
             return .failed(error)
         }
+    }
+
+    /// Whether a failure is the OS keychain refusing right now, which core
+    /// reports as its own category rather than a message this would have to
+    /// match on.
+    private static func isKeychainLocked(_ error: Error) -> Bool {
+        guard case BridgeError.Diagnostic(let category, _) = error else {
+            return false
+        }
+        return category == .keyringLocked
     }
 
     private func finish(

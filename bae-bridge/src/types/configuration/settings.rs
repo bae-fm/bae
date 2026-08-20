@@ -212,6 +212,11 @@ pub enum BridgeErrorCategory {
     Network,
     /// The device's OS keyring (secure credential store) couldn't be read/written.
     Keyring,
+    /// The OS keyring refused *right now* — locked session, sleeping display,
+    /// no UI session to prompt in. Nothing is missing or misconfigured and the
+    /// same read succeeds after unlock, so the host retries rather than
+    /// reporting the library as broken.
+    KeyringLocked,
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
@@ -348,6 +353,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
+        BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
         BridgeErrorCategory::Membership => "core.error.category.membership",
         BridgeErrorCategory::DeviceJoin { failure } => match failure {
             BridgeDeviceJoinFailure::Expired => "core.error.join.expired",
@@ -452,6 +458,7 @@ impl BridgeErrorCategory {
             UiErrorCategory::Credentials => BridgeErrorCategory::Credentials,
             UiErrorCategory::Network => BridgeErrorCategory::Network,
             UiErrorCategory::Keyring => BridgeErrorCategory::Keyring,
+            UiErrorCategory::KeyringLocked => BridgeErrorCategory::KeyringLocked,
             UiErrorCategory::Membership => BridgeErrorCategory::Membership,
         }
     }

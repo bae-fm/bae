@@ -13,6 +13,64 @@ import Testing
 struct LibrarySessionOpenerTests {
     private typealias TestOpener = LibrarySessionOpener<FakeHandle, AppService>
 
+    @Test("a keychain that refused is not a failure the user has to act on")
+    func refusedKeychainIsItsOwnOutcome() async {
+        let handle = FakeHandle(
+            config: makeConfig(),
+            keyState: .available,
+            keyStateError: BridgeError.Diagnostic(
+                category: .keyringLocked,
+                detail: "the OS keychain refused the read"
+            )
+        )
+        let opener = TestOpener(
+            makeHandle: { _ in handle },
+            makeService: { _, _, _ in
+                Issue.record("makeService must not run for a refused keychain")
+                fatalError("unreachable")
+            }
+        )
+
+        let waiter = OutcomeWaiter()
+        opener.open(libraryId: "lib-1") { waiter.record($0) }
+        let outcome = await waiter.value()
+
+        guard case .keychainLocked = outcome else {
+            Issue.record(
+                "a refused keychain should yield .keychainLocked, got \(outcome)"
+            )
+            return
+        }
+    }
+
+    @Test("every other key-state failure is still a failure")
+    func otherKeyStateFailuresStillFail() async {
+        let handle = FakeHandle(
+            config: makeConfig(),
+            keyState: .available,
+            keyStateError: BridgeError.Diagnostic(
+                category: .keyring,
+                detail: "the keyring is broken"
+            )
+        )
+        let opener = TestOpener(
+            makeHandle: { _ in handle },
+            makeService: { _, _, _ in
+                Issue.record("makeService must not run for a failed read")
+                fatalError("unreachable")
+            }
+        )
+
+        let waiter = OutcomeWaiter()
+        opener.open(libraryId: "lib-1") { waiter.record($0) }
+        let outcome = await waiter.value()
+
+        guard case .failed = outcome else {
+            Issue.record("a broken keyring should yield .failed, got \(outcome)")
+            return
+        }
+    }
+
     @Test("a locked target stays retained for unlock")
     func lockedTargetNeedsUnlock() async {
         let handle = FakeHandle(
@@ -224,12 +282,17 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     private let shutdownFlag = Flag()
     private let state = NSLock()
     private var keyState: BridgeCloudHomeKeyState
+    /// Set when the read should refuse rather than answer — a locked OS
+    /// keychain throws instead of returning a state, and that difference is the
+    /// whole point of the `.keychainLocked` outcome.
+    private let keyStateError: (any Error)?
     private var unlockResults: [Result<Void, any Error>]
     private var recordedUnlockKeys: [String] = []
 
     init(
         config: BridgeConfig,
         keyState: BridgeCloudHomeKeyState,
+        keyStateError: (any Error)? = nil,
         unlockResults: [Result<Void, any Error>] = [],
         outbox: Result<BridgeOutboxSnapshot, any Error> = .success(
             OutboxStore.emptySnapshot
@@ -238,6 +301,7 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     ) {
         self.config = config
         self.keyState = keyState
+        self.keyStateError = keyStateError
         self.unlockResults = unlockResults
         self.outbox = outbox
         syncReadyValue = syncReady
@@ -250,7 +314,8 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
 
     func getConfig() -> BridgeConfig { config }
     func cloudHomeKeyState() throws -> BridgeCloudHomeKeyState {
-        state.withLock { keyState }
+        if let keyStateError { throw keyStateError }
+        return state.withLock { keyState }
     }
     func unlockCloudHome(serializedCloudKey: String) async throws {
         let result = state.withLock {

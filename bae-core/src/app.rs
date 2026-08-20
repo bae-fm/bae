@@ -29,6 +29,29 @@ pub enum BootstrapError {
     Database(String),
     #[error("{0}")]
     Internal(String),
+    /// The OS keychain refused the read *right now* — the session is locked, the
+    /// display is asleep, or there is no UI session to prompt in. The key is not
+    /// missing and nothing is misconfigured; the same call succeeds once the
+    /// device is unlocked, so this is the one bootstrap failure a host should
+    /// retry rather than report as broken.
+    #[error("the OS keychain is not available right now")]
+    KeyringUnavailable,
+}
+
+/// Why reading the cloud-home key state failed, as a bootstrap outcome.
+///
+/// Coven types a keychain that refused *right now* apart from every other
+/// keyring failure precisely so a host can ask again after unlock. Flattening it
+/// into `Config` aborted the boot as if the library were misconfigured — which
+/// no amount of unlocking fixes, and which sent the user to a restore wall for a
+/// library that was fine.
+pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> BootstrapError {
+    match error {
+        crate::library::LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable) => {
+            BootstrapError::KeyringUnavailable
+        }
+        error => BootstrapError::Config(error.to_string()),
+    }
 }
 
 /// Build and start the application for `library_id`.
@@ -176,7 +199,7 @@ where
     let provider_configured = config_handle.config().cloud_home.provider.is_some();
     let key_state = library_manager
         .cloud_home_key_state()
-        .map_err(|error| BootstrapError::Config(error.to_string()))?;
+        .map_err(classify_key_state_error)?;
     let locked = provider_configured && key_state == coven::CloudHomeKeyState::Locked;
     let advance_active_pointer = !locked;
     if locked {
@@ -272,4 +295,36 @@ where
     }
 
     Ok(owner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{classify_key_state_error, BootstrapError};
+    use crate::library::LibraryError;
+
+    #[test]
+    fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
+        let error = LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable);
+
+        assert!(matches!(
+            classify_key_state_error(error),
+            BootstrapError::KeyringUnavailable
+        ));
+    }
+
+    #[test]
+    fn every_other_keyring_failure_still_reads_as_config() {
+        // A keyring that is genuinely broken is not something unlocking fixes,
+        // so it must not join the retry path.
+        let error = LibraryError::Keyring(coven::KeyError::InvalidLength {
+            subject: "cloud home master key",
+            expected: 32,
+            actual: 3,
+        });
+
+        assert!(matches!(
+            classify_key_state_error(error),
+            BootstrapError::Config(_)
+        ));
+    }
 }
