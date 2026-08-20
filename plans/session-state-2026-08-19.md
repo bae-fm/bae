@@ -583,3 +583,20 @@ authorize writer 5.6s unstaged; commit plan 3.4s; activate upload 3.3s.
 Cuts commissioned with acceptance targets: install history <2s, install
 snapshot <3s, owner activation <5s. Trim wins visible (carried history
 materialize 1.0s, row data 42ms).
+
+## Run 11 (12:20Z): 93s; final lump convicted; engineer relay #3→#4
+
+Walk-once memo delivered both sides: owner activation 26.1→9.7s (seed
+10.6→3.6s, plan walk 1551→46ms), joiner wait 31→16.5s, install history
+18.6→11.4s (owner membership 16.4→9.0s). Convicted the last monster:
+"Retained replay baseline capture" 11916ms inside snapshot install
+(validate the image 4697ms + ~6s unstaged; re-validates and stores a copy
+of the just-verified image; read-back re-proves content-address). Engineer
+#3 retired clean (branches membership-walk-once + stage-snapshot-install
+merged; disproved the three-passes hypothesis with 200k-row measurements).
+Engineer #4 spawned: LIST-then-fetch membership (user-directed design),
+trim-baseline-capture, seed-only-the-walk, reclaim implementation
+(approved doc d4ae2f36 merges only with its code), then HLC-in-txn,
+pull quadratic, open_stream, circle blobs, journal residual.
+Join trajectory: impossible → 278 → 121 → 74 → 146* → 118 → 123* → 93
+(* = store grew / measurement runs). bae pin: cf0f67b1 era.
