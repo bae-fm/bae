@@ -768,3 +768,13 @@ Campaign order:
 5. externalize-baseline-payloads (user directive, queued on engineer 8).
 6. Finale on a fresh library incl. a BULK import wave as the scale test.
 Phone gone; emulator is the second device for all measurements.
+
+## Second counted join (22:0xZ): emulator re-pair confirms the profile
+
+Emulator (fresh, 5d259665): join 13711ms/82req — matches Pixel
+(12369ms/78req). Membership chain = ~65req/~80% both devices; snapshot
+download 1req; wall approval→library 45s (owner work + exchange waits on
+top of the 13.7s join phase). Devices list now: owner + phone (fresh) +
+emulator (fresh) + one stale phone identity (b6b6fc0c or b9607a28 —
+identify before removing). Join profile is characterized and stable;
+membership rollup is the single named cut to budget.
