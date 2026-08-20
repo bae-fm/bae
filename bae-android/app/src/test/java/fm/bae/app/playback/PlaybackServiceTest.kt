@@ -59,6 +59,7 @@ import uniffi.bae_bridge.ComposerDetailCallback
 import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.EagerCacheFillStatusCallback
 import uniffi.bae_bridge.LibrarySearchCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
@@ -231,6 +232,8 @@ internal class FakeAppHandle(
     override fun subscribeConfig(callback: ConfigCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeSyncStatus(callback: SyncStatusCallback): LiveSubscription = liveSubscription()
+
+    override fun subscribeEagerCacheFillStatus(callback: EagerCacheFillStatusCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeDownloads(callback: DownloadCallback): LiveSubscription = liveSubscription()
 
