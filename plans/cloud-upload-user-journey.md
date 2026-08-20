@@ -56,11 +56,20 @@
   Storage Manager rows. (Sampling was ~2 s apart; the other surfaces — import
   row, album detail, queue panel — looked right whenever captured but weren't
   frame-stepped.)
-- Publication latency, measured live with the publish stage timings: 11.0 s
-  total for a 22-file release, 9.0 s of it in `publish packages` — the serial
-  one-PUT-per-object loop (~40 objects × ~225 ms GCS round trip). Fix in
-  flight in coven: bounded fan-out (the upload drain's shape), commit/head
-  strictly after all packages.
+- RESOLVED (2026-08-20) — Publication latency. The 9-15 s `publish packages`
+  stage was publication re-downloading and re-hashing every blob this device
+  had just uploaded (`verify_blob_object` = full GET per referenced blob).
+  Fixed in coven (`trust-own-blob-uploads`): publication trusts the durable
+  verified-upload record. Measured live after the fix: 95 MB / 19-file
+  release, "Store write publication" total 1457 ms, `publish packages`
+  243 ms (was 14990 ms for a comparable write). Remaining stage above noise:
+  `authorize outbound` ~640 ms, recorded for later.
+- RESOLVED (2026-08-20) — restart-mid-upload resume was verified earlier (24
+  pending files resumed to completion after app quit/relaunch); the retry and
+  cancellation battery at state level likewise. Mid-upload pause remains
+  unexercised only because the uplink outruns the observation loop on this
+  corpus; the durable-queue design (record-and-continue, per-entry backoff)
+  is covered by coven's upload-drain tests.
 
 ### Environment facts learned while landing
 
