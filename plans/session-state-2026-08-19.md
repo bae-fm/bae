@@ -910,3 +910,24 @@ objects (device-join-attempts/, -outcomes/, -transport/) linger too.
 QUEUED: terminal join attempts must delete their durable progress row
 and their cloud transport artifacts as part of reaching the terminal
 state (atomic with it, not swept later). Assign when an engineer frees.
+
+## Membership rollup LANDED (coven 101752e0) — join's 80% cut in
+
+Snapshot publishes a signed membership rollup beside its image
+(store-v1/membership-rollups/, content-addressed, spooled not in-db);
+joiners/restorers seed the membership walk from it and read only the
+tail. Join membership cost: 21 req (+2/member) → 6 req FLAT across
+member count (tests assert exact numbers and bite: 16/15 with seeding
+disabled). Design notes that matter: the rollup carries BYTES not
+conclusions (a joiner's only trust root is the signed protocol root);
+every covered head except the newest is held — the tip head is always
+read from its create-once slot so a two-device author can't hand the
+reader the branch the provider doesn't hold; discovery (newest listed
+generation) has no authority and can only cost the rollup, never wrong
+answers. QUEUED from its report: (a) PreparedSnapshotBootstrap::prepare
+still walks the snapshot stream from gen 0 inside a join — engineer 11
+resumed on it; (b) device-join transport polling now the join's biggest
+term (~37-40/~50 fixture reqs) — engineer 11, second item; (c) rollups
+accrete per membership frontier, never reclaimed — queued with reclaim-
+domain work (needs SharedLiveSetObjectDomain::StoreMembershipRollup).
+Also now unblocked: "publish snapshots 186req" (publication.rs free).
