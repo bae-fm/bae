@@ -944,3 +944,20 @@ captures (no partitions, no audience moves) journal nothing. Red-first,
 exact counts; 705 green. Live store: next advance folds all 81,887 rows
 in one transaction — no wipe needed. Third journal role preserved:
 device's record of where its own writes landed (receipts survive folds).
+
+## Old library retired by schema change (08-21 07:5xZ)
+
+The c76160c9 build fails loud on the old store.db ("Store Coven schema
+manifest does not match" — engineer 12's journal columns) and restore
+fails loud on the old cloud prefix ("store-v1/snapshots/.../0.json is
+invalid" — SnapshotMeta predates membership_rollup). Greenfield working
+as designed: no fallback decoders, the old shapes are simply over.
+Before removing the local library I verified all 176 outbound blobs
+exist in the cloud and kept store.db+config backups in scratchpad;
+audio originals live on the network share. rollin-kendrick and its
+prefix bae-poppin-nina-db448je are retired — the FINALE builds the
+fresh library on a new prefix once engineers 11/12 land, followed by
+one build wave (mac + Android APK) and the full recorded journey.
+Also retired with it: the 87k-row journal (fold now demonstrated by
+fixture tests rather than live). Outbound-blob upload copies never
+being cleaned (2.7GB for a 5-release library) is QUEUED as a defect.
