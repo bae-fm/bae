@@ -883,3 +883,21 @@ path convictions (once per generation, not quiet-path): snapshot publish
 image), look like history walks. Ack-path fix dispatched (disjoint from
 rollup work); snapshot-publish fix queued behind engineer 11's rollup
 (both touch snapshots/publication.rs).
+
+## Found: store.db's 125MB is a no-op write journal (08-21 05:4xZ)
+
+dbstat on the live store: store_writes 54.7MB (81,887 rows, status
+"local_only") + payload_owners 9.8MB/82k rows + its 11MB index +
+protocol_state 28.9MB. The 82k rows are EMPTY writes: affected_rows=[],
+changeset_hash = hash-of-nothing, blobs=[], and store_write_partitions
+holds 20 rows total — so none of them carries anything replayable, yet
+retained replay loads all of them as overlays and nothing ever deletes
+them. Writer identified live (sample + rate measurement, ~1-3 rows/s):
+playback position persist at 1Hz (runtime.rs:538) — music has been
+playing on this mac for days; every persist journals a permanent empty
+row + a payload_owners row for the empty hash. Growth ~15-20MB/day idle-
+while-playing; replay cost grows with it. Engineer 12 dispatched:
+no-partition captures leave no rows; LocalOnly journal bounded across
+baseline advances; red-first with exact row-count assertions. bae's 1Hz
+persist itself stays (crash-safe resume is a product choice; the journal
+was the defect). protocol_state 28.9MB not yet explained — next look.
