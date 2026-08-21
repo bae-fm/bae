@@ -901,3 +901,12 @@ no-partition captures leave no rows; LocalOnly journal bounded across
 baseline advances; red-first with exact row-count assertions. bae's 1Hz
 persist itself stays (crash-safe resume is a product choice; the journal
 was the defect). protocol_state 28.9MB not yet explained — next look.
+
+Addendum — protocol_state explained: 30 rows, all device_join/<attempt>/
+progress records, largest 8.7MB, ~28MB total. Every join attempt ever
+made (completed, expired, superseded — 16 visible in cloud listings)
+keeps its full nested progress envelope forever, and the matching cloud
+objects (device-join-attempts/, -outcomes/, -transport/) linger too.
+QUEUED: terminal join attempts must delete their durable progress row
+and their cloud transport artifacts as part of reaching the terminal
+state (atomic with it, not swept later). Assign when an engineer frees.
