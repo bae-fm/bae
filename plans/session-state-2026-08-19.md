@@ -992,3 +992,27 @@ record-and-unlink). Verified not doubling as playback cache (pinned
 cache reads source plaintext; spool holds ciphertext). Red-first, and
 the tests pin the PLACEMENT, not just the outcome. ea33db46: doc-link
 fix for its own prior push that skipped the full gate (self-reported).
+
+## Joiner ladders LANDED (coven 7ad42a9c)
+
+First post-join cycle's store-v1/snapshots/ reads: 3 + 2·generations →
+3 FLAT (test asserts equality and the exact number). Descent factored
+into StoreSnapshotDescent shared by bootstrap + acknowledgement
+selection; rejection reporting fixed to name the maximal candidate's
+verdict. Reclaim conversion deliberately REVERTED: reclaim requires
+every device to acknowledge the exact snapshot, so acknowledgements —
+not the listing — are its index; the listed descent walks one
+generation per unacknowledged generation EVERY cycle (test caught it).
+The right future shape (enumerate from acknowledgements the verifier
+holds, plus the activated_snapshot_acknowledgements completeness gap)
+is in the memory file. Known untested: multi-owner descent rounds
+(single-author fixtures only) — noted, not hidden.
+
+ENVIRONMENT HAZARD (cost engineer 13 most of a session): concurrent
+worktrees share ~/.cargo-target/bae and cargo served relay12's compiled
+artifacts to relay13 — panic backtraces naming the OTHER worktree's
+paths, phantom non-exhaustive-match errors for variants that don't
+exist in the checkout, symptoms rotating between runs like flakiness.
+Workaround: `find crates tools -name '*.rs' -exec touch {} +` before
+building; verify by counting a test only your branch defines. Bites any
+concurrent pair building the same project name.
