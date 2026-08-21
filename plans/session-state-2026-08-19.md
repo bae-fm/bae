@@ -1050,3 +1050,27 @@ arrival). Publish measured 17req flat. QUEUED post-finale: joiner-side
 + provider-admin join rows, dead mid-flight *CreateIntent attempts
 (the likely 8.7MB row), attempt/outcome object reclaim under snapshot
 coverage, teardown's 15-kind slot probe, multi-owner descent test.
+
+## FINALE underway (08-21 10:49Z–)
+
+Wiped ~/.bae. Fresh library "bouncin-questlove" (1f5e1307). S3 connected
+via Settings → Set Up Sync wizard to NEW prefix bae-final-0821: setup
+3.6s end-to-end ("Saved S3 sync configuration" 11:20:13), first sync
+cycle 3473ms/27req (store creation), pull floor 2req. MCP re-enabled
+(fresh token). Watched folder added (SMB Media share), 162 candidates
+indexed. Imports via batch_import.py: Check Your Head 39s, Ill
+Communication 76s, Black Sabbath 30s, Paranoid 63s; Nebraska failed once
+on a transient coverartarchive fetch (loud, named), retried clean.
+Cloud moves queued for all five (unpinned, per directive). Emulator:
+data cleared, finale APK (7b18300 pin, full flavor) installed.
+
+Automation note (cost an hour, worth keeping): setting a SwiftUI
+TextField via AX `set value` paints the text but does NOT update the
+view's @State binding — the wizard's Connect button stayed disabled
+(connectReady saw empty fields) while LOOKING enabled (borderedProminent
+doesn't gray when disabled), and AX button clicks on the disabled button
+no-oped silently. The apparent "hang" never existed; nothing was ever
+invoked. Rule: type into SwiftUI fields with real keystrokes, and treat
+AX enabled=false as truth over the rendered look. Also: gradle needs
+JAVA_HOME=Android Studio JBR (no system Java), and assembleDebug builds
+the stale baeium flavor — use assembleFullDebug.
