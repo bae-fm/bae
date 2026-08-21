@@ -961,3 +961,21 @@ one build wave (mac + Android APK) and the full recorded journey.
 Also retired with it: the 87k-row journal (fold now demonstrated by
 fixture tests rather than live). Outbound-blob upload copies never
 being cleaned (2.7GB for a 5-release library) is QUEUED as a defect.
+
+## Engineer 11's second landing (1efce204 + 992c5ff5)
+
+Snapshot selection: enumeration moved off the generation ladder onto a
+listing of each owner's newest generation (2 ops over 6 generations,
+flat; was 7) — verification delegated to the maximal-candidate selector
+from c76160c9; per-generation descent kept ONLY for the real case (an
+author excluded after publishing keeps older installable snapshots).
+Transport polling: JoinPollBackoff now also governs observe_artifact
+(the owner-cancelled watch) which previously polled flat-out for the
+entire join — 100 looks per 10s → 9 (proven under tokio time-pause).
+No-wait join floor characterized honestly: 21 artifact operations + 6-7
+watch looks; teardown probes all 15 transport slot kinds (~9 never
+written by a same-principal join) because deletion wants byte-identity
+confirmation and there is deliberately no sweep — trade documented, not
+taken. QUEUED→DISPATCHED (engineer 13): the two remaining generation
+ladders, both on a joiner's first cycle (+2 reads/generation):
+select_acknowledgement_snapshot and reclaim/candidates.rs.
