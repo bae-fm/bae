@@ -1016,3 +1016,21 @@ exist in the checkout, symptoms rotating between runs like flakiness.
 Workaround: `find crates tools -name '*.rs' -exec touch {} +` before
 building; verify by counting a test only your branch defines. Bites any
 concurrent pair building the same project name.
+
+## Rollup reclaim LANDED (coven a0b466e5)
+
+Correction from source survey: snapshot IMAGES already had reclaim
+ownership (StoreSnapshotImage domain, activated by Snapshot owner) —
+only the rollup lacked any record. Now owned + reclaimed when a strictly
+later generation with dominating coverage is acknowledgement-stable;
+content-addressing handled via activated.len()==1 (a rollup shared by
+two generations at an unchanged frontier isn't pulled from under the
+newer). Zero provider cost (rides choose_snapshot's already-verified
+selection; caught its own first version adding 6 ops via engineer 10's
+exact-count test). Cross-worktree artifact bleed re-verified: 2 of 3
+failures were bleed, 1 real — rule recorded: re-run after touch, then
+read the actual assertion. Engineer 12 → concern 1 (publish 186req,
+re-measure first — c76160c9/7ad42a9c may have already cut it), then
+concern 2 (join-attempt cleanup; owner terminal state = arrival when
+the joined device activates in store device state — transport.rs:779
+documents the owner currently has NO terminal state).
