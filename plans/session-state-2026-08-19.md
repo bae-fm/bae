@@ -850,3 +850,19 @@ Caveats recorded honestly:
   package-bearing commit), typed "inputs unchanged" decline, 0 requests
   on the quiet path; red-first counting-home test asserting a settled
   store's full cycle issues an exact small request count.
+
+## Stale phone identity removed (08-21 04:46Z)
+
+Identified by cloud timestamps: join attempt 3fc54cd6 (member b6b6fc0c)
+completed 21:10:12Z with its device 13ccedc4's last ack 21:10:27Z — the
+pre-reset pairing, dead from the moment the user wiped app data. Attempt
+faf034aa (member b9607a28) at 21:51:15Z is the live re-pair ("i paired
+already"), device adfa42b1 acking since. Removed b6b6fc0c via Settings →
+Library devices row (AX-verified row position, confirm sheet "Remove this
+device? … key will be rotated"); rotation logged 04:46:15Z; devices list
+now owner + 5d259665 (emulator) + b9607a28 (Pixel). Rationale beyond
+hygiene: a dead member that never acks is a permanent unanimity laggard —
+it would block cloud reclaim past its last acknowledgement forever.
+Watch item: next snapshot/ack round after this membership churn must
+still license advances (the 8db630fd fix reads the newest snapshot-naming
+ack from own retained history, so churn shouldn't stall it — verify live).
