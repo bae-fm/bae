@@ -931,3 +931,16 @@ term (~37-40/~50 fixture reqs) — engineer 11, second item; (c) rollups
 accrete per membership frontier, never reclaimed — queued with reclaim-
 domain work (needs SharedLiveSetObjectDomain::StoreMembershipRollup).
 Also now unblocked: "publish snapshots 186req" (publication.rs free).
+
+## LocalOnly journal fix LANDED (coven 1b66f31e + e5fc1ce5)
+
+The real shape found: LocalOnly rows were the ONLY durable home of local
+rows (baseline capture passed include_local_write_overlays=false), so
+replay genuinely re-applied every local write ever — fix went to the
+baseline: advance folds the settled write prefix's local partitions into
+the image (atomic, fails loud if the prefix moved), releases payload
+claims, deletes local-only rows, keeps published receipts. No-op
+captures (no partitions, no audience moves) journal nothing. Red-first,
+exact counts; 705 green. Live store: next advance folds all 81,887 rows
+in one transaction — no wipe needed. Third journal role preserved:
+device's record of where its own writes landed (receipts survive folds).
