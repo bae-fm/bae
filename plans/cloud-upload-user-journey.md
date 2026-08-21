@@ -28,6 +28,19 @@
   field. Core, bridge, Avalonia model and view, Android unit-test compile, and
   macOS baeTests gates pass against the combined checkout.
 
+### Finale (2026-08-21) — the whole journey, end to end, on a fresh library
+
+Fresh ~/.bae, library "bouncin-questlove", prefix bae-final-0821, coven
+7b18300a: S3 connect 3.6 s; five releases imported from the SMB share
+(25-76 s each, dominated by copy + cover art); five moves to cloud at
+0.7-1.7 s per publication; 1.6 GB uploaded and every staged upload copy
+retired (outbound-blobs 0 bytes after drain); emulator joined with the
+membership rollup — "Same-provider device join" 4610 ms / 27 requests,
+approval to library on screen in 14 s — and streamed "War Pigs" from the
+cloud 4 s after tapping Play. Idle sync cycle on the settled store:
+399 ms / 4 requests. Full number set in
+plans/session-state-2026-08-19.md's scorecard.
+
 ### Remaining evidence and work
 
 - VERIFIED LIVE — Storage Manager entrypoint, twice against GCS: The Original
