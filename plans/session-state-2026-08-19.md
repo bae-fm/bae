@@ -979,3 +979,16 @@ confirmation and there is deliberately no sweep — trade documented, not
 taken. QUEUED→DISPATCHED (engineer 13): the two remaining generation
 ladders, both on a joiner's first cycle (+2 reads/generation):
 select_acknowledgement_snapshot and reclaim/candidates.rs.
+
+## Outbound-blob cleanup LANDED (coven 0980094e + ea33db46)
+
+Root shape: two publication halves — partition blobs already retired
+their staged copies on verified upload; the make-remote half (outbox
+OutboxUploadState) had no equivalent, so storage/outbound-blobs grew by
+everything ever published (the 2.7GB/176-blob finding). Removal now sits
+immediately after the create block, same operation as the Created record,
+fail-loud with the retry reaching the same path (covers crash-between-
+record-and-unlink). Verified not doubling as playback cache (pinned
+cache reads source plaintext; spool holds ciphertext). Red-first, and
+the tests pin the PLACEMENT, not just the outcome. ea33db46: doc-link
+fix for its own prior push that skipped the full gate (self-reported).
