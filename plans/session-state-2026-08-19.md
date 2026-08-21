@@ -795,3 +795,19 @@ implementing + updating the 13 pre-fix-behavior tests with rewritten docs.
 Underlying shape named for the record: retained_merge_materializations
 conflated replay-input with retained-authority; the baseline work is
 un-conflating them.
+
+## Relay pass 9→10 (23:4xZ): four failures left, three rulings issued
+
+Engineer 9 (16→4): implemented covered-resolves-to-coverage cheaply (the
+feared 4 summary tests didn't break); found+fixed two more holes — device
+join closure ran to GENESIS demanding packages reclaim deletes (dormant
+join wedge, preempted; the "no snapshot installed" comment was false),
+and the announcement chain now resumes at the snapshot's signed
+announcement_frontier instead of re-walking from the anchor. Blind alley
+documented (frontier-row retention breaks the acceptance signal).
+RULINGS to engineer 10: (1) own-ack licenses own baseline advance
+(unanimity licenses cloud deletion only; prefer advance-then-ack ordering
+to make the deletion window unrepresentable); (2) snapshot verification
+stops at the installed baseline (kills pull's sum(1..N) covered re-reads);
+(3) restore assertion flips (retention proven load-bearing). Then:
+workspace green, gate, push, live acceptance on the counters.
