@@ -866,3 +866,20 @@ it would block cloud reclaim past its last acknowledgement forever.
 Watch item: next snapshot/ack round after this membership churn must
 still license advances (the 8db630fd fix reads the newest snapshot-naming
 ack from own retained history, so churn shouldn't stall it — verify live).
+
+## Quiet-path fix verified live (08-21 05:2xZ) — GOAL 1 CLOSED AS A LOOP
+
+coven 7c359a48 (bae pin 78090a14): settled cycles collapse 458req/39s →
+48req/5.4s ("inputs unchanged" typed decline visible). Better: the whole
+compaction loop cycled unattended on the new build — gen-2 snapshot
+published (cycle: publish snapshots 186req/23s), acknowledged (next
+cycle: publish acknowledgements 235req/20s), baseline advanced again
+(05:21:48Z), retained rows 208 → 46 → 1. Depth falls generation over
+generation with no operator involvement. Zero warns/errors.
+
+Steady 48 = pull 33 + refresh authorization 14 + tombstones 1. Change-
+path convictions (once per generation, not quiet-path): snapshot publish
+186req and its acknowledgement 235req — both should be O(members +
+image), look like history walks. Ack-path fix dispatched (disjoint from
+rollup work); snapshot-publish fix queued behind engineer 11's rollup
+(both touch snapshots/publication.rs).
