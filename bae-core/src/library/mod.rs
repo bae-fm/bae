@@ -526,12 +526,6 @@ pub async fn join_prepared_device_pairing_cancellable(
                 .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
             Err(JoinDevicePairingError::Abandoned)
         }
-        Ok(coven::DeviceJoinTransportOutcome::Cancelled(_)) => {
-            pairing
-                .finish(&layout)
-                .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
-            Err(JoinDevicePairingError::Abandoned)
-        }
         Err(error) => {
             let error = if local_cancel.is_cancelled() {
                 JoinDevicePairingError::Cancelled
