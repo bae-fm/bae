@@ -1074,3 +1074,35 @@ invoked. Rule: type into SwiftUI fields with real keystrokes, and treat
 AX enabled=false as truth over the rendered look. Also: gradle needs
 JAVA_HOME=Android Studio JBR (no system Java), and assembleDebug builds
 the stale baeium flavor — use assembleFullDebug.
+
+## ═══ FINALE SCORECARD (08-21, coven 7b18300a / bae e292f889) ═══
+
+Fresh ~/.bae → library "bouncin-questlove" → prefix bae-final-0821:
+
+- Create library: instant (local). S3 connect via wizard: **3.6s**
+  (probe + store create + keys), first cycle 3473ms/27req.
+- Imports (SMB share → local): Nebraska 25s, Check Your Head 39s,
+  Black Sabbath 30s, Paranoid 63s, Ill Communication 76s (dominated by
+  file copy + cover art; two transient coverartarchive failures surfaced
+  loud, one retried onto a different pressing).
+- Publish (move to cloud, unpinned): **0.7–1.7s per release** (write
+  publication 747/1063/1202/1683ms at 8-16req). 1.6GB uploaded;
+  storage/outbound-blobs after drain: **0 bytes, 0 files** (0980094e
+  retirement verified live; was a 2.7GB leak on the old library).
+- Pair → join (emulator, fresh data): fingerprints matched (99048c05);
+  **"Same-provider device join" 4610ms / 27 requests** — open Store
+  storage 10req (rollup; was 61-65), snapshot download 1req, install
+  history 16req. Wall clock approve → library on screen: **14s**
+  (was 45s; join phase itself was 12.4s/78req on 08-20).
+- Stream: joined device playing "War Pigs / Luke's Wall" from cloud
+  **4s** after tapping Play.
+- Idle cycle, fresh store, steady state: **399ms / 4 requests**
+  (was 39s/458req at tonight's worst on the churned store; 48req after
+  quiet-path fix; 4req here with nothing pending).
+
+Budget verdict: join time budget (single-digit seconds) MET at 4.6s;
+request budget "~10-20" landed at 27 — over by 7, all named: the
+history-install tail (16req) is the joined store's uncovered-commit tail
++ registration resolution, bounded by tail depth, not history. Remaining
+join-side items stay queued (transport polling floor 21 artifact ops,
+teardown's 15-kind probe).
