@@ -824,3 +824,29 @@ move the advance to cycle level licensed by any standing own-ack naming
 an acknowledged-stable snapshot with baseline below coverage; red-first
 fixture must have a PRE-EXISTING standing ack. Side finding: publish
 acknowledgements = 1.7-2.5s/18req every quiet cycle (idle-budget list).
+
+## GOAL 1 ACCEPTANCE (08-21): live compaction fired
+
+On coven 8db630fd ("advance licensed by newest snapshot-naming ack in own
+retained history"), mac relaunch, first cycle: "Advanced the replay
+baseline over an acknowledged snapshot commits=189 pins=119". Next cycle
+reclaim report: considered=5 retained_for_replay=0 already_authorized=0
+authorized=5 packages=5 copies=5 — five Store packages + copies deleted
+from the cloud. retained_merge_materializations 208 → 46. Depth falls,
+gen-1 selected, pins released: goal 1's mechanism is closed.
+
+Caveats recorded honestly:
+- store.db 129.6 MB (GREW — the new baseline image is stored in-db;
+  externalize-baseline-payloads 11322c80 is on main but this store
+  predates it / vacuum never ran; endgame wipe resolves, or vacuum).
+- Post-compaction cycles DO NOT settle: pinned at ~39s / exactly 457
+  requests per cycle. Stage line convicts: "reclaim packages
+  31862ms/391req" EVERY cycle — with nothing left to reclaim, the reclaim
+  leg re-runs its full provider-side evaluation every 30s. Also: advance
+  stage 3req at steady state (should be 0, local-only decline), refresh
+  authorization 13req, publish acknowledgements 16req, pull 33req (down
+  from 56 — depth drop helped). Engineer 10 dispatched: reclaim
+  re-evaluates only when inputs change (new snapshot/ack/membership/
+  package-bearing commit), typed "inputs unchanged" decline, 0 requests
+  on the quiet path; red-first counting-home test asserting a settled
+  store's full cycle issues an exact small request count.
