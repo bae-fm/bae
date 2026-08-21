@@ -811,3 +811,16 @@ to make the deletion window unrepresentable); (2) snapshot verification
 stops at the installed baseline (kills pull's sum(1..N) covered re-reads);
 (3) restore assertion flips (retention proven load-bearing). Then:
 workspace green, gate, push, live acceptance on the counters.
+
+## Advance falsified live (03:5xZ): tests green, mechanism inert
+
+67ec28af live on all devices. Triggered a real store write (metadata
+edit; publication confirmed) forcing a fresh ack — across 6+ min of
+cycles: no advance log line, counters frozen at retained_for_replay=5.
+Both trigger paths dead live (standing-ack never re-enters staging;
+fresh-ack staged without advancing). Directive to engineer 10: instrument
+the advance decision (advanced/declined-with-reason per staging), then
+move the advance to cycle level licensed by any standing own-ack naming
+an acknowledged-stable snapshot with baseline below coverage; red-first
+fixture must have a PRE-EXISTING standing ack. Side finding: publish
+acknowledgements = 1.7-2.5s/18req every quiet cycle (idle-budget list).
