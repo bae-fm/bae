@@ -1034,3 +1034,19 @@ re-measure first — c76160c9/7ad42a9c may have already cut it), then
 concern 2 (join-attempt cleanup; owner terminal state = arrival when
 the joined device activates in store device state — transport.rs:779
 documents the owner currently has NO terminal state).
+
+## Pre-finale wave COMPLETE — pin frozen at coven 7b18300a
+
+Landed tonight, in order: 7c359a48 (quiet cycles: 458→48req live),
+101752e0 (membership rollup: join membership 21→6req flat), 1b66f31e/
+e5fc1ce5 (no-op journal suppressed; advance folds local writes into
+baseline), c76160c9 (ack history walks cut: post-snapshot cycle flat 33),
+1efce204 (snapshot selection via listing: 2 ops flat), 992c5ff5
+(observe_artifact backoff: 100→9 looks/10s), 0980094e (outbound blob
+copies retired on confirmed upload), 7ad42a9c (joiner first-cycle
+ladders: 3+2·gen→3 flat), a095e8b6 (publish request-count guard),
+a0b466e5 (rollup reclaim), 7b18300a (owner join journal retired on
+arrival). Publish measured 17req flat. QUEUED post-finale: joiner-side
++ provider-admin join rows, dead mid-flight *CreateIntent attempts
+(the likely 8.7MB row), attempt/outcome object reclaim under snapshot
+coverage, teardown's 15-kind slot probe, multi-owner descent test.
