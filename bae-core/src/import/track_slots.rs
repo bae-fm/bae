@@ -236,9 +236,9 @@ pub(crate) fn audio_layout(files: &CategorizedFiles) -> Vec<(&ScannedFile, UnitC
 
     let mut ordered = carving;
     ordered.sort_by(|left, right| {
-        left.disc_number()
-            .cmp(&right.disc_number())
-            .then_with(|| natord::compare(&left.file.relative_path, &right.file.relative_path))
+        left.disc_number().cmp(&right.disc_number()).then_with(|| {
+            natord::compare_ignore_case(&left.file.relative_path, &right.file.relative_path)
+        })
     });
     let mut runs = ordered.into_iter();
 

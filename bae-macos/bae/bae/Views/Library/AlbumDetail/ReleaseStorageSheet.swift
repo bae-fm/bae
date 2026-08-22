@@ -17,7 +17,12 @@ struct ReleaseStorageSheet: View {
     /// content type.
     @State
     private var sortOrder: [KeyPathComparator<BridgeFile>] = [
-        KeyPathComparator(\BridgeFile.originalFilename)
+        // Finder's order: case-insensitive and numeric-aware, the same order
+        // core hands the files over in.
+        KeyPathComparator(
+            \BridgeFile.originalFilename,
+            comparator: .localizedStandard
+        )
     ]
 
     var body: some View {
@@ -56,7 +61,11 @@ struct ReleaseStorageSheet: View {
 
             Table(release.files.sorted(using: sortOrder), sortOrder: $sortOrder)
             {
-                TableColumn("Name", value: \.originalFilename) { file in
+                TableColumn(
+                    "Name",
+                    value: \.originalFilename,
+                    comparator: .localizedStandard
+                ) { file in
                     Text(file.originalFilename).lineLimit(1)
                 }
                 TableColumn("Format") { file in

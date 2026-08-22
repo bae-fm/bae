@@ -369,7 +369,7 @@ fn project_sections(
         root_order
             .get(left.watched_folder_path.as_str())
             .cmp(&root_order.get(right.watched_folder_path.as_str()))
-            .then_with(|| natord::compare(&left.display_path, &right.display_path))
+            .then_with(|| natord::compare_ignore_case(&left.display_path, &right.display_path))
     });
 
     let mut sections = Vec::new();

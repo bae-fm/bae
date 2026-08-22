@@ -152,12 +152,20 @@ pub(super) fn get_files_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbFile>, DbError> {
-    sql.query(
+    let mut files = sql.query(
         "SELECT * FROM release_files WHERE release_id = ?",
         params![release_id],
         row_to_file,
-    )
-    .map_err(DbError::from)
+    )?;
+    // Every file list a user sees (detail, gallery, storage, export) derives
+    // from this read, so it is ordered here once, the same way the import
+    // folder lists its files: natural order, case-insensitive. Id breaks
+    // exact ties so the order is stable.
+    files.sort_by(|a, b| {
+        natord::compare_ignore_case(&a.original_filename, &b.original_filename)
+            .then_with(|| a.id.cmp(&b.id))
+    });
+    Ok(files)
 }
 
 /// Every audio-format row for a release, joined through its tracks — one row per

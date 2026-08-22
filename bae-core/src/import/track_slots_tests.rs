@@ -195,24 +195,25 @@ fn a_disc_image_and_loose_audio_produce_slots_for_both() {
     let slots = slots(&source_tracks(13), &files);
 
     assert_eq!(slots.len(), 13);
-    // Disk order: the bonus files sort before the disc image, so their
-    // slots lead. The image's eleven slices follow in sheet order.
+    // Disk order (case-insensitive): the bonus files sort before the disc
+    // image, so their slots lead. The image's eleven slices follow in sheet
+    // order.
     assert_eq!(
         file_ids(&slots),
         vec![
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
             Some("bonus-1.flac"),
             Some("bonus-2.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
+            Some("CDImage.flac"),
         ],
     );
     let slice_indices: Vec<u32> = slots
@@ -228,7 +229,7 @@ fn a_disc_image_and_loose_audio_produce_slots_for_both() {
         .all(|slot| matches!(slot, TrackSlot::Paired { .. })));
     // The loose files are standalone slots, not slices of the image.
     assert!(matches!(
-        slots[11].file(),
+        slots[0].file(),
         Some(AudioFile::Standalone { .. })
     ));
 }
@@ -379,10 +380,10 @@ fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
         audio_units(&files),
         vec![
             AudioFile::Standalone {
-                file_id: "CDImage.flac".to_string(),
+                file_id: "bonus.flac".to_string(),
             },
             AudioFile::Standalone {
-                file_id: "bonus.flac".to_string(),
+                file_id: "CDImage.flac".to_string(),
             },
         ],
     );
@@ -660,15 +661,15 @@ fn a_container_s_rows_read_as_one_run() {
     assert_eq!(
         table.audio.iter().map(|file| file.span).collect::<Vec<_>>(),
         vec![
+            SlotSpan::Whole,
             SlotSpan::ContainerStart,
             SlotSpan::ContainerMiddle,
             SlotSpan::ContainerEnd,
-            SlotSpan::Whole,
         ],
     );
     // Every slice names the container, which is what a reader is being told
     // by the run: three rows, one file.
-    assert!(table.audio[..3]
+    assert!(table.audio[1..]
         .iter()
         .all(|file| file.name == "CDImage.flac"));
 }

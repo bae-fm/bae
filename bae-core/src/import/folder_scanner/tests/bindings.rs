@@ -430,22 +430,10 @@ fn becomes_names_the_slots_each_file_backs() {
     assert_eq!(
         becomes,
         vec![
-            ("CDImage.cue", FileBecomes::Slots { first: 1, last: 11 }),
+            ("bonus-1.flac", FileBecomes::Slots { first: 1, last: 1 }),
+            ("bonus-2.flac", FileBecomes::Slots { first: 2, last: 2 }),
+            ("CDImage.cue", FileBecomes::Slots { first: 3, last: 13 }),
             ("CDImage.flac", FileBecomes::NoSlots),
-            (
-                "bonus-1.flac",
-                FileBecomes::Slots {
-                    first: 12,
-                    last: 12
-                }
-            ),
-            (
-                "bonus-2.flac",
-                FileBecomes::Slots {
-                    first: 13,
-                    last: 13
-                }
-            ),
             ("cover.jpg", FileBecomes::NoSlots),
         ],
     );
@@ -624,4 +612,52 @@ fn only_audio_carries_a_role_decision() {
 
     assert!(matches!(files.files[1].role, FileRole::Cover));
     assert_eq!(files.track_count(), 1);
+}
+
+/// The folder lists its files the way a person reads them: natural order
+/// (`2` before `10`) and case-insensitive, so `cover.jpg` sits among the
+/// names starting with `c`, not after every capitalized one.
+#[test]
+fn files_list_in_case_insensitive_natural_order() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    for name in [
+        "Track 10.flac",
+        "cover.jpg",
+        "Track 2.flac",
+        "Back.jpg",
+        "booklet.pdf",
+    ] {
+        let bytes = if name.ends_with(".flac") {
+            fake_flac()
+        } else if name.ends_with(".jpg") {
+            fake_jpeg()
+        } else {
+            b"%PDF-1.4".to_vec()
+        };
+        std::fs::write(album.join(name), bytes).unwrap();
+    }
+
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
+    let names: Vec<&str> = files
+        .files
+        .iter()
+        .map(|entry| entry.file.relative_path.as_str())
+        .collect();
+    assert_eq!(
+        names,
+        vec![
+            "Back.jpg",
+            "booklet.pdf",
+            "cover.jpg",
+            "Track 2.flac",
+            "Track 10.flac",
+        ]
+    );
 }

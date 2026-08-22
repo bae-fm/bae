@@ -248,7 +248,7 @@ pub fn map_unknown_candidate_to_db(
     carving.sort_by(|a, b| {
         a.disc_number()
             .cmp(&b.disc_number())
-            .then_with(|| natord::compare(&a.file.relative_path, &b.file.relative_path))
+            .then_with(|| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path))
     });
     let sheets = carving.iter().map(|b| b.sheet).collect::<Vec<_>>();
     let audio = carving

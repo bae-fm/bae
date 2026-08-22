@@ -69,7 +69,7 @@ impl DirectoryReader for OsDirectoryReader {
             }
         }
         let compare = |left: &PathBuf, right: &PathBuf| {
-            natord::compare(
+            natord::compare_ignore_case(
                 &left
                     .file_name()
                     .expect("a directory entry path has a file name")
@@ -393,7 +393,9 @@ pub(super) fn boundary_tree_rows(
         }
     }
     let mut rows: Vec<_> = rows.into_values().collect();
-    rows.sort_by(|left, right| natord::compare(&left.display_path, &right.display_path));
+    rows.sort_by(|left, right| {
+        natord::compare_ignore_case(&left.display_path, &right.display_path)
+    });
     rows
 }
 

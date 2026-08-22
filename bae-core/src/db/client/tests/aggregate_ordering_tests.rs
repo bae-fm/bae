@@ -325,3 +325,52 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
     );
     assert!(detail.tracks[1].artists.is_empty());
 }
+
+#[tokio::test]
+async fn release_files_come_back_in_case_insensitive_natural_order() {
+    let (db, _tmp) = release_detail_db().await;
+    // Inserted out of order, mixed case, with a two-digit number.
+    for (i, name) in [
+        "Track 10.flac",
+        "cover.jpg",
+        "Track 2.flac",
+        "Back.jpg",
+        "album.cue",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mime = if name.ends_with(".flac") {
+            "audio/flac"
+        } else if name.ends_with(".cue") {
+            "application/x-cue"
+        } else {
+            "image/jpeg"
+        };
+        db.insert_file(&DbFile {
+            id: bae_test_support::test_uuid(&format!("ordering-file-{i}")),
+            release_id: RELEASE_A.to_string(),
+            original_filename: name.to_string(),
+            file_size: 1,
+            content_type: crate::util::content_type::ContentType::from_mime(mime),
+            cloud_path: None,
+            content_hash: crate::util::fs::hash_bytes(name.as_bytes()),
+            created_at: chrono::Utc::now(),
+        })
+        .await
+        .unwrap();
+    }
+
+    let files = db.get_files_for_release(RELEASE_A).await.unwrap();
+    let names: Vec<&str> = files.iter().map(|f| f.original_filename.as_str()).collect();
+    assert_eq!(
+        names,
+        vec![
+            "album.cue",
+            "Back.jpg",
+            "cover.jpg",
+            "Track 2.flac",
+            "Track 10.flac",
+        ]
+    );
+}

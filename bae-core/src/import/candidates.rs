@@ -216,13 +216,16 @@ pub(crate) fn build_snapshot(
         order_for(&left.candidate.watched_folder_path)
             .cmp(&order_for(&right.candidate.watched_folder_path))
             .then_with(|| {
-                natord::compare(&left.candidate.display_path, &right.candidate.display_path)
+                natord::compare_ignore_case(
+                    &left.candidate.display_path,
+                    &right.candidate.display_path,
+                )
             })
     });
     invalid_candidates.sort_by(|left, right| {
         order_for(&left.watched_folder_path)
             .cmp(&order_for(&right.watched_folder_path))
-            .then_with(|| natord::compare(&left.display_path, &right.display_path))
+            .then_with(|| natord::compare_ignore_case(&left.display_path, &right.display_path))
     });
     boundaries.sort_by(|left, right| {
         order_for(&left.key.watched_folder_path)

@@ -332,12 +332,15 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
             "Track Title 4",
         ],
     );
-    // The cover is not a track, the sheet's two slices lead the bonus file
-    // exactly as the folder's audio units do, and the fourth track is the
-    // one the folder has nothing for.
+    // The cover is not a track, the bonus file leads the sheet's two slices
+    // exactly as the folder's audio units do (case-insensitive name order),
+    // and the fourth track is the one the folder has nothing for.
     assert_eq!(
         tracks.iter().map(|t| t.file.clone()).collect::<Vec<_>>(),
         vec![
+            Some(AudioFile::Standalone {
+                file_id: "bonus.flac".to_string(),
+            }),
             Some(AudioFile::SheetSlice {
                 file_id: "CDImage.flac".to_string(),
                 sheet_id: "CDImage.cue".to_string(),
@@ -347,9 +350,6 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
                 file_id: "CDImage.flac".to_string(),
                 sheet_id: "CDImage.cue".to_string(),
                 index: 1,
-            }),
-            Some(AudioFile::Standalone {
-                file_id: "bonus.flac".to_string(),
             }),
             None,
         ],
@@ -502,12 +502,11 @@ fn without_file_takes_a_sheet_s_whole_group_with_its_container() {
     assert_eq!(table.rows.len(), 1, "only the bonus file is left");
     assert_eq!(mapping_tracks(&table).len(), 1);
     assert_eq!(table.images[0].file_id, "cover.jpg");
+    // The bonus file sorts first, so it held the first slot all along; with
+    // the sheet's rows gone it is one file on one track.
     assert_eq!(
         table.reconciliation,
-        Some(SlotReconciliation::MoreFiles {
-            files: 1,
-            tracks: 0,
-        }),
+        Some(SlotReconciliation::Agrees { count: 1 }),
         "the three tracks the release names left with the audio backing them",
     );
 }
