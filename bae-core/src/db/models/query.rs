@@ -2,7 +2,7 @@ use super::*;
 
 /// Raw combined search-result aggregate. No formatting — the resolver in
 /// `LibraryManager` produces the display-ready `crate::album_detail::SearchResults`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbLibrarySearchResults {
     pub albums: Vec<DbAlbumSearchResult>,
     pub artists: Vec<DbArtistSummary>,
@@ -12,7 +12,7 @@ pub struct DbLibrarySearchResults {
 }
 
 /// Raw album search-result row with the primary artist name joined in SQL.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSearchResult {
     pub id: String,
     pub title: String,
@@ -27,7 +27,7 @@ pub struct DbAlbumSearchResult {
 
 /// Raw track search-result row with album and artist info joined in SQL.
 /// No formatted duration label — the resolver in `LibraryManager` formats it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackSearchResult {
     pub id: String,
     pub title: String,
@@ -40,7 +40,7 @@ pub struct DbTrackSearchResult {
     pub artist_name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerSummary {
     pub artist: DbArtist,
     pub work_count: i64,
@@ -51,7 +51,7 @@ pub struct DbComposerSummary {
 /// Raw artist-summary aggregate: the artist row plus its distinct album
 /// count over both album-artist links (the primary `albums.artist_id` FK
 /// and `album_artists` junction rows).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbArtistSummary {
     pub artist: DbArtist,
     pub album_count: i64,
@@ -59,13 +59,13 @@ pub struct DbArtistSummary {
 
 /// Raw artist-detail aggregate. The resolver in `LibraryManager` produces
 /// the display-ready `crate::album_detail::ArtistDetail`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbArtistDetail {
     pub artist: DbArtistSummary,
     pub albums: Vec<DbAlbumSummary>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkSummary {
     pub work: DbWork,
     pub parent_work_id: Option<String>,
@@ -74,7 +74,7 @@ pub struct DbWorkSummary {
     pub linked_release_count: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerDetail {
     pub composer: DbComposerSummary,
     pub work_groups: Vec<DbComposerWorkGroup>,
@@ -82,14 +82,14 @@ pub struct DbComposerDetail {
     pub unlinked_track_roles: Vec<DbTrackRoleSummary>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerWorkGroup {
     pub id: String,
     pub parent: Option<DbWorkSummary>,
     pub works: Vec<DbWorkSummary>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkDetail {
     pub work: DbWorkSummary,
     pub child_works: Vec<DbWorkSummary>,
@@ -97,7 +97,7 @@ pub struct DbWorkDetail {
     pub tracks: Vec<DbWorkTrackSummary>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkReleaseSummary {
     pub release_id: String,
     pub album_id: String,
@@ -108,13 +108,13 @@ pub struct DbWorkReleaseSummary {
     pub release_index: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseRoleSummary {
     pub role: DbReleaseArtistRole,
     pub album: DbAlbum,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackRoleSummary {
     pub role: DbTrackArtistRole,
     pub track: DbTrack,
@@ -122,7 +122,7 @@ pub struct DbTrackRoleSummary {
     pub artist: DbArtist,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkTrackSummary {
     pub link: DbTrackWork,
     pub track: DbTrack,
@@ -200,7 +200,7 @@ pub struct ArtistSortCriterion {
 
 /// Raw album-detail aggregate. The resolver in `LibraryManager` produces
 /// the display-ready `crate::album_detail::AlbumDetail`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumDetail {
     pub album: DbAlbum,
     pub artists: Vec<DbArtist>,
@@ -211,7 +211,7 @@ pub struct DbAlbumDetail {
 /// artists (the per-track artist fallback), this release's index among the
 /// album's releases, and whether the album is a compilation (which decides each
 /// track's display artist). Returned by `find_release_detail_context`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
     pub album_artists: Vec<DbArtist>,
@@ -221,7 +221,7 @@ pub struct ReleaseDetailContext {
 
 /// Raw release-detail aggregate. The resolver in `LibraryManager` produces
 /// the display-ready `crate::album_detail::ReleaseDetail`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
     pub tracks: Vec<DbTrackWithArtists>,
@@ -235,7 +235,7 @@ pub struct DbReleaseDetail {
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackWithArtists {
     pub track: DbTrack,
     pub artists: Vec<DbArtist>,
@@ -246,7 +246,7 @@ pub struct DbTrackWithArtists {
 /// in `LibraryManager` produces the display-ready
 /// `crate::album_detail::ReleaseSummary`. Pending-upload counts are not here;
 /// `OutboxSnapshot` is the only source for those.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
@@ -266,7 +266,7 @@ pub struct DbReleaseSummary {
 /// Raw storage-page row: a release summary joined with its parent album summary,
 /// both halves from one SQL query. The resolver in `LibraryManager` turns them
 /// into `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
     pub album: DbAlbumSummary,

@@ -81,7 +81,7 @@ pub(super) fn storage_total_size_on(
     .map_err(DbError::from)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StoragePageProjection {
     pub rows: Vec<DbStorageRow>,
     pub total_count: u64,
@@ -89,7 +89,7 @@ pub struct StoragePageProjection {
     pub cover_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
     pub cover_versions: HashMap<String, String>,

@@ -244,7 +244,7 @@ fn queue_catalog_on(
     })
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct QueueCatalogProjection {
     pub items: Vec<QueueItem>,
     pub source_title: Option<String>,

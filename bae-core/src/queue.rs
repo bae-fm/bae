@@ -11,7 +11,7 @@ pub const QUEUE_UPCOMING_WINDOW: usize = 100;
 
 /// Display-ready queue entry. `entry_id` is per-instance, so the UI keys each row
 /// on a stable identity even when the same track is queued twice.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct QueueItem {
     pub entry_id: String,
     pub track_id: String,

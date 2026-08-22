@@ -12,7 +12,7 @@ pub(crate) struct OutboxDisplayRequest {
 }
 
 /// Display values read reactively for an [`OutboxDisplayRequest`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OutboxDisplayContext {
     file_names: HashMap<String, String>,
     album_titles: HashMap<String, String>,

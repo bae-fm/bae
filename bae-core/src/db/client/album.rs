@@ -652,27 +652,27 @@ fn album_rows_on<P: Params>(
         .map_err(CovenError::from)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlbumPageProjection {
     pub rows: Vec<DbAlbumSummary>,
     pub cover_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlbumBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumSummary>>,
     pub cover_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlbumDetailProjection {
     pub detail: Option<DbAlbumDetail>,
     pub cover_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
     pub cover_versions: HashMap<String, String>,

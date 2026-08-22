@@ -88,7 +88,7 @@ impl CandidateRuntimeSnapshot {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImportedRelease {
     pub release_id: String,
     pub album_id: String,

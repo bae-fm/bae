@@ -4,7 +4,7 @@ use super::import_state::load_import_candidate_states_on;
 use super::payloads::load_all_source_release_payloads_on;
 use super::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ImportTriageDbProjection {
     pub candidate_states: HashMap<String, DbImportCandidateState>,
     pub library_statuses: Vec<LibraryStatus>,

@@ -731,42 +731,42 @@ fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
         .map_err(DbError::from)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ComposerPageProjection {
     pub rows: Vec<DbComposerSummary>,
     pub image_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ComposerBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbComposerSummary>>,
     pub image_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ComposerDetailProjection {
     pub detail: Option<DbComposerDetail>,
     pub image_versions: HashMap<String, String>,
     pub cover_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArtistPageProjection {
     pub rows: Vec<DbArtistSummary>,
     pub image_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArtistDetailProjection {
     pub detail: Option<DbArtistDetail>,
     pub image_versions: HashMap<String, String>,
     pub cover_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WorkDetailProjection {
     pub detail: Option<DbWorkDetail>,
     pub cover_versions: HashMap<String, String>,

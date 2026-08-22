@@ -10,7 +10,7 @@ pub struct LibraryPageWindow {
 
 pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LibraryBrowseWindow<Row> {
     pub window: LibraryPageWindow,
     pub rows: Vec<Row>,
@@ -53,7 +53,7 @@ pub struct LibraryBrowseSubscription<Projection, Row> {
 
 impl<Projection, Row> LibraryBrowseSubscription<Projection, Row>
 where
-    Projection: Send + 'static,
+    Projection: Clone + PartialEq + Send + 'static,
     Row: Send + 'static,
 {
     pub(crate) fn new(

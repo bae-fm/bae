@@ -240,12 +240,14 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     })
     .await
     .unwrap();
-    let hidden_metadata = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("unrequested album metadata wakes album browse")
-        .into_result()
-        .unwrap();
-    assert_eq!(hidden_metadata.windows[0].rows[0].id, ALBUM_ID);
+    // The edited album is outside the requested window, so the rerun
+    // produces the page already delivered and coven withholds it.
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), live.next())
+            .await
+            .is_err(),
+        "unrequested album metadata leaves the delivered page unchanged"
+    );
 
     db.call(|sql| {
         sql.execute(
@@ -429,12 +431,14 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     })
     .await
     .unwrap();
-    let hidden_metadata = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("unrequested composer metadata wakes composer browse")
-        .into_result()
-        .unwrap();
-    assert_eq!(hidden_metadata.windows[0].rows[0].artist.id, COMPOSER_ID);
+    // The edited composer is outside the requested window, so the rerun
+    // produces the page already delivered and coven withholds it.
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), live.next())
+            .await
+            .is_err(),
+        "unrequested composer metadata leaves the delivered page unchanged"
+    );
 
     let image_hash = crate::util::fs::hash_bytes(b"other artist fixture");
     db.call(move |sql| {

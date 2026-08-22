@@ -193,7 +193,7 @@ pub(crate) fn resolve_primary_release_id<'a>(
 /// avoid N+1 lookups. The resolver in `LibraryManager` produces the
 /// display-ready `crate::album_detail::AlbumSummary` (applying the
 /// `primary_release_id` fallback).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSummary {
     pub id: String,
     pub title: String,
@@ -222,7 +222,7 @@ pub struct LibraryCheck {
     pub source_group_id: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LibraryStatus {
     pub release_id: String,
     pub release_in_library: bool,
@@ -401,7 +401,7 @@ pub struct NewImportCandidateVerdict {
 /// absent as a whole: the three columns are written together and cleared
 /// together, so no reader has to reason about a half-filled result.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     /// `identify::TerminalVerdict`, JSON-encoded. This layer stores and
     /// returns opaque bytes; the identify module that owns the type decodes
@@ -415,7 +415,7 @@ pub struct DbCandidateIdentifyResult {
 /// [`crate::db::Database::load_import_candidate_states`] returns it. Mirrors
 /// the table: one key, and the two independent things derived under it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbImportCandidateState {
     pub content_hash: String,
     pub folder_path: String,
@@ -508,7 +508,7 @@ pub struct DbTrack {
 /// release's bytes sit in coven's blob cache (`storage/pinned/` or
 /// `storage/cache/`), read by file id through coven's locality-aware read — never
 /// a bae path.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbFile {
     pub id: String,
     pub release_id: String,
@@ -533,7 +533,7 @@ pub struct DbFile {
 /// Track-level audio format metadata, one row per track: codec/display metadata,
 /// pregap durations, and measured loudness. The file windows that supply the
 /// track's samples live in `DbAudioSegment`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbAudioFormat {
     pub id: String,
     pub track_id: String,
@@ -622,7 +622,7 @@ impl SegmentSpan {
 /// One ordered file-backed window that supplies samples for an audio format.
 /// The window columns stay `i64` (SQLite's integer type); [`Self::span`] is the
 /// single conversion to the unsigned [`SegmentSpan`] everything above reads.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbAudioSegment {
     pub id: String,
     pub audio_format_id: String,
