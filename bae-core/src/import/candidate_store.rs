@@ -3,7 +3,7 @@ use super::folder_scanner::{
     CategorizedFiles, FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision,
     FolderReleaseDecisionKey, InvalidCandidate, ScanItem,
 };
-use super::handle::ImportEvent;
+use super::handle::{ImportEvent, ScanEvent};
 use super::types::{ImportProgress, ImportStep, PrepareStep};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;

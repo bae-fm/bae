@@ -535,14 +535,13 @@ impl ImportServiceHandle {
             .unwrap_or(crate::identify::IdentifyState::Idle))
     }
 
-    /// The identify state a candidate's stored verdict stands back up as,
-    /// with a live library check of every release it names — or `None` when
-    /// nothing is stored (or the key is not a scanned folder candidate) and a
-    /// run is the only way to answer it.
-    pub(crate) async fn resumed_identify_state(
+    /// The stored verdict describing `candidate_key`'s current file shape —
+    /// or `None` when nothing is stored, the stored row describes an earlier
+    /// file-edit revision, or the key is not a scanned folder candidate.
+    pub(crate) async fn stored_verdict(
         &self,
         candidate_key: &str,
-    ) -> Result<Option<crate::identify::IdentifyState>, crate::import::ImportError> {
+    ) -> Result<Option<crate::identify::TerminalVerdict>, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
             self.get_candidate(candidate_key)
         else {
@@ -555,9 +554,22 @@ impl ImportServiceHandle {
         else {
             return Ok(None);
         };
-        let Some(verdict) = crate::identify::verdict::decode_stored(&row)
-            .map_err(|detail| crate::import::ImportError::Internal { detail })?
-        else {
+        if row.file_edits.revision != candidate.file_edit_revision {
+            return Ok(None);
+        }
+        crate::identify::verdict::decode_stored(&row)
+            .map_err(|detail| crate::import::ImportError::Internal { detail })
+    }
+
+    /// The identify state a candidate's stored verdict stands back up as,
+    /// with a live library check of every release it names — or `None` when
+    /// nothing is stored (or the key is not a scanned folder candidate) and a
+    /// run is the only way to answer it.
+    pub(crate) async fn resumed_identify_state(
+        &self,
+        candidate_key: &str,
+    ) -> Result<Option<crate::identify::IdentifyState>, crate::import::ImportError> {
+        let Some(verdict) = self.stored_verdict(candidate_key).await? else {
             return Ok(None);
         };
         let checks: Vec<crate::db::LibraryCheck> = verdict

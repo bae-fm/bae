@@ -332,3 +332,4 @@ fn picked_release(release_id: &str) -> Picked {
 
 include!("tests/rows.rs");
 include!("tests/grouping.rs");
+include!("tests/overlay.rs");

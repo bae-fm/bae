@@ -434,16 +434,76 @@ pub(crate) fn project_live(
     ))
 }
 
+/// Every release the stored verdicts name, deduplicated. `named_releases`
+/// rather than `named_matches`: a Conflict's disc-ID and barcode sections
+/// carry releases too, and [`overlay_stored_verdicts`] resumes them with live
+/// statuses, so the projection's one check covers them as well.
 fn checks_from_verdicts(
     verdicts: &HashMap<(String, u64), StoredCandidateVerdict>,
 ) -> Vec<LibraryCheck> {
     let mut seen = std::collections::HashSet::new();
     verdicts
         .values()
-        .flat_map(|stored| named_matches(&stored.verdict))
+        .flat_map(|stored| stored.verdict.named_releases())
         .filter(|result| seen.insert(result.release_id.clone()))
         .map(LibraryCheck::from)
         .collect()
+}
+
+/// Overlay stored verdicts onto a snapshot's runtime states: every folder
+/// candidate whose runtime holds no identify state reads its stored verdict's
+/// resumed state instead. This is what makes the candidates subscription
+/// serve one identify state per candidate — the live run's while one is in
+/// flight, the stored answer's otherwise — so an answered candidate shows its
+/// answer without anyone clicking it, on every launch and through every
+/// rescan.
+///
+/// The snapshot and projection must be a consistent pair: the projection's
+/// library statuses were checked for the releases these verdicts name (the
+/// subscription reads them in one query), so a missing status is a read that
+/// must fail rather than a release silently resumed as "not in the library".
+pub(crate) fn overlay_stored_verdicts(
+    snapshot: &mut ImportCandidatesSnapshot,
+    projection: &crate::db::ImportTriageDbProjection,
+) -> Result<(), LibraryError> {
+    let verdicts = stored_verdicts(snapshot, &projection.candidate_states)?;
+    if verdicts.is_empty() {
+        return Ok(());
+    }
+    let by_release: HashMap<&str, &LibraryStatus> = projection
+        .library_statuses
+        .iter()
+        .map(|status| (status.release_id.as_str(), status))
+        .collect();
+    for candidate in &mut snapshot.folder_candidates {
+        if !matches!(candidate.runtime.identify_state, IdentifyState::Idle) {
+            continue;
+        }
+        let identity = (
+            candidate.candidate.files.content_hash(),
+            candidate.candidate.file_edit_revision,
+        );
+        let Some(stored) = verdicts.get(&identity) else {
+            continue;
+        };
+        for result in stored.verdict.named_releases() {
+            if !by_release.contains_key(result.release_id.as_str()) {
+                return Err(LibraryError::Internal(format!(
+                    "import candidate {} resumes a verdict naming release {} \
+                     but the projection holds no library status for it",
+                    candidate.candidate.display_path, result.release_id
+                )));
+            }
+        }
+        let status_of = |result: &MetadataResult| {
+            (*by_release
+                .get(result.release_id.as_str())
+                .expect("every named release was just checked against the projection"))
+            .clone()
+        };
+        candidate.runtime.identify_state = stored.verdict.clone().resume_state(&status_of);
+    }
+    Ok(())
 }
 
 fn answers_from_statuses(

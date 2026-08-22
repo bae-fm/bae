@@ -97,10 +97,13 @@ impl QueueSweepHandle {
         }
     }
 
-    /// Answer a folder candidate for a person who is looking at it: resume the
-    /// stored verdict when one exists, run identification when none does. The
-    /// run's verdict settles and persists like the sweep's own, so a candidate
-    /// a person answered opens with no network on every launch after.
+    /// Answer a folder candidate for a person who is looking at it: run
+    /// identification when no stored verdict exists, and do nothing when one
+    /// does — the candidates subscription already serves a stored verdict as
+    /// the candidate's identify state, so an answered candidate has nothing
+    /// left to start. The run's verdict settles and persists like the sweep's
+    /// own, so a candidate a person answered opens with no network on every
+    /// launch after.
     pub fn identify_for_selection(&self, candidate_key: String) {
         let Some(ImportCandidateSnapshot::Folder {
             candidate,
@@ -114,19 +117,14 @@ impl QueueSweepHandle {
         if self.token.is_cancelled() {
             return;
         }
-        // A candidate already answered resumes its stored verdict — the whole
-        // point of persisting one is that opening the candidate again runs
-        // nothing and waits on nothing. Only a candidate with no stored answer
-        // pays for a run.
+        // A candidate already answered needs nothing: its stored verdict is
+        // what the candidates subscription serves as its identify state.
+        // Only a candidate with no stored answer runs.
         let this = self.clone();
         self.tasks.spawn_on(
             async move {
-                match resumed_state(&this.context, &candidate_key).await {
-                    Some(state) => this
-                        .context
-                        .import
-                        .broadcast_resumed_identify_state(candidate_key, state),
-                    None => this.start_selection_run(candidate_key, candidate),
+                if !has_stored_verdict(&this.context, &candidate_key).await {
+                    this.start_selection_run(candidate_key, candidate);
                 }
             },
             &self.runtime_handle,

@@ -1,8 +1,10 @@
 use super::*;
 
 impl Automation {
-    pub fn new(services: AppServices) -> Self {
-        let state = Arc::new(AutomationState::new(services.subscribe_import_candidates()));
+    pub fn new(services: AppServices, runtime_handle: &tokio::runtime::Handle) -> Self {
+        let state = Arc::new(AutomationState::new(
+            services.subscribe_import_candidates(runtime_handle),
+        ));
         Self { services, state }
     }
 

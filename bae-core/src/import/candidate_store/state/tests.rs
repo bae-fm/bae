@@ -460,3 +460,107 @@ fn remove_root_returns_the_removed_candidate_keys() {
     // A second removal of the same root finds nothing left.
     assert!(state.remove_root(Path::new("/watch/a")).is_empty());
 }
+
+/// After a candidate's verdict lands in its stored row, the recorded terminal
+/// state has done its job — the candidates subscription serves the answer
+/// from the row — so it clears, along with its toolbar. Extraction's signals
+/// stay: they are facts about the files, not about the finished run. And a
+/// newer run's in-flight state is never blanked by the previous run's write
+/// landing.
+#[test]
+fn a_stored_verdict_clears_the_recorded_terminal_state() {
+    let mut state = CandidateState::default();
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
+    let key = "/watch/a/rel1".to_string();
+
+    let signals = crate::signals::Signals {
+        disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+        barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
+        text: crate::signals::TextSignal::Settled {
+            catalogs: Vec::new(),
+            free_text: Vec::new(),
+        },
+        probed_total_duration_ms: 1_000,
+    };
+    state.record_event(&ImportEvent::SignalsUpdated {
+        candidate_key: key.clone(),
+        signals,
+        priority: crate::util::rate_limiter::CallPriority::Background,
+    });
+    let terminal = crate::identify::IdentifyState::ManualOnly {
+        track_count: 9,
+        context: crate::identify::state::SignalsContext {
+            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+            barcode_codes: Vec::new(),
+            had_barcode_source: false,
+            catalogs: Vec::new(),
+            excluded: Default::default(),
+            discid_results: Vec::new(),
+            barcode_results: Vec::new(),
+            discid_failure: None,
+            barcode_failure: None,
+            matched_barcode: None,
+            track_count: 9,
+        },
+    };
+    state.record_event(&ImportEvent::IdentifyStateChanged {
+        candidate_key: key.clone(),
+        state: terminal,
+        toolbar: Vec::new(),
+        priority: crate::util::rate_limiter::CallPriority::Background,
+    });
+
+    state.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
+        candidate_key: key.clone(),
+    }));
+
+    let runtime = &state.snapshot(vec![watched("/watch/a")]).folder_candidates[0].runtime;
+    assert!(
+        matches!(runtime.identify_state, crate::identify::IdentifyState::Idle),
+        "the stored verdict owns the answer now, got {:?}",
+        runtime.identify_state
+    );
+    assert!(runtime.toolbar.is_empty());
+    assert!(
+        runtime.signals.is_some(),
+        "extraction's signals outlive the run's write"
+    );
+
+    // A newer run is in flight when the previous run's write lands: its
+    // state is not terminal, so it stays.
+    let triangulating = crate::identify::IdentifyState::Triangulating {
+        discid: crate::identify::DiscidProgress::Computing,
+        barcode: crate::identify::BarcodeProgress::Scanning,
+        context: crate::identify::state::SignalsContext {
+            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+            barcode_codes: Vec::new(),
+            had_barcode_source: false,
+            catalogs: Vec::new(),
+            excluded: Default::default(),
+            discid_results: Vec::new(),
+            barcode_results: Vec::new(),
+            discid_failure: None,
+            barcode_failure: None,
+            matched_barcode: None,
+            track_count: 9,
+        },
+    };
+    state.record_event(&ImportEvent::IdentifyStateChanged {
+        candidate_key: key.clone(),
+        state: triangulating,
+        toolbar: Vec::new(),
+        priority: crate::util::rate_limiter::CallPriority::Interactive,
+    });
+    state.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
+        candidate_key: key,
+    }));
+    let runtime = &state.snapshot(vec![watched("/watch/a")]).folder_candidates[0].runtime;
+    assert!(
+        matches!(
+            runtime.identify_state,
+            crate::identify::IdentifyState::Triangulating { .. }
+        ),
+        "an in-flight run survives a late write, got {:?}",
+        runtime.identify_state
+    );
+}

@@ -166,13 +166,12 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
     }
 }
 
-/// Selecting an answered candidate stands its stored verdict back up as the
-/// identify state — every stored match, at `Interactive`, with the provider
-/// gone. This is what makes clicking a "several matches" row show those
-/// matches instantly instead of re-running the whole pipeline.
+/// Selecting an answered candidate starts nothing: no run, no lookup, no
+/// event. Its stored verdict is what the candidates subscription serves as
+/// its identify state, so there is nothing left for a click to do.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn selecting_an_answered_candidate_resumes_its_verdict_with_the_provider_gone() {
+async fn selecting_an_answered_candidate_starts_nothing() {
     let fixture = Fixture::new("resume-answered").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
@@ -200,30 +199,25 @@ async fn selecting_an_answered_candidate_resumes_its_verdict_with_the_provider_g
 
     fixture.select(&dir);
 
-    let state = tokio::time::timeout(Duration::from_secs(10), async {
+    // The selection's verdict check is a detached task; a run it wrongly
+    // started would broadcast `IdentifyStateChanged` within this window.
+    let started = tokio::time::timeout(Duration::from_secs(2), async {
         loop {
-            match events.recv().await.expect("bus stays open") {
-                ImportEvent::IdentifyStateChanged { state, .. } => return state,
-                _ => continue,
+            if let ImportEvent::IdentifyStateChanged { .. } =
+                events.recv().await.expect("bus stays open")
+            {
+                return;
             }
         }
     })
-    .await
-    .expect("the resumed state is broadcast");
-    let IdentifyState::Found { matches, .. } = &state else {
-        panic!("expected the stored Found back, got {state:?}");
-    };
-    assert_eq!(
-        matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["mb-resume-1", "mb-resume-2"],
-        "every stored match is in the resumed state"
+    .await;
+    assert!(
+        started.is_err(),
+        "selecting an answered candidate started a run"
     );
     assert!(
         fixture.provider.requests().is_empty(),
-        "resuming reached the wire for nothing: {:?}",
+        "selecting an answered candidate reached the wire: {:?}",
         fixture.provider.requests()
     );
 }
@@ -714,5 +708,53 @@ async fn a_lowered_claim_reads_back_lowered() {
                 crate::import::MetadataSource::MusicBrainz
             ),
         })
+    );
+}
+
+/// Once a run's verdict lands in its row, the recorded runtime state clears:
+/// the row owns the answer, and the candidates subscription serves it from
+/// there. Nothing in memory is left to shadow a row that later changes.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
+    let fixture = Fixture::new("verdict-takes-over").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-own-1", "rg-own-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-own-1?",
+        200,
+        release_json("mb-own-1", "rg-own-1", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    let key = dir.to_string_lossy().into_owned();
+
+    fixture.sweep_once().await;
+
+    assert!(
+        fixture.stored_for(&dir).await.is_some(),
+        "the candidate really was identified"
+    );
+    // The write's event reaches the recorder through the bus; poll for it.
+    let cleared = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(ImportCandidateSnapshot::Folder { runtime, .. }) =
+                fixture.import.get_candidate(&key)
+            {
+                if matches!(runtime.identify_state, IdentifyState::Idle) {
+                    return;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await;
+    assert!(
+        cleared.is_ok(),
+        "the recorded terminal state clears once its verdict is stored"
     );
 }

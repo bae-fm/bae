@@ -617,13 +617,6 @@ impl AppServices {
         self.inner.manager.record_telemetry(event);
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn subscribe_import_events(
-        &self,
-    ) -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent> {
-        self.inner.import.subscribe_events()
-    }
-
     delegate_sync!(manager, get_config => get_config() -> crate::config::Config);
     delegate_sync!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
     delegate_sync!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);
@@ -855,34 +848,6 @@ impl AppServices {
         );
         buffer
     }
-
-    /// Identify a folder candidate for a person who is looking at it: the run
-    /// goes out at `Interactive`, and its verdict is persisted like the sweep's
-    /// own.
-    ///
-    /// Re-identifying a library release is deliberately *not* routed through
-    /// here: it has no candidate folder, so there is nothing to key a stored
-    /// verdict by.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn identify_folder_candidate(&self, candidate_key: String) {
-        self.inner.sweep.identify_for_selection(candidate_key);
-    }
-
-    /// Re-run a candidate's identification from the toolbar. Dispatches on
-    /// where the run lives: a live driver re-combines from its retained
-    /// signals; a candidate showing a resumed verdict has no driver, so a
-    /// fresh interactive run replaces the stored answer. Re-identify keys
-    /// always have a live driver while their sheet is open, so they take the
-    /// first arm.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn rerun_identify(&self, candidate_key: String) {
-        if self.inner.identify.is_running(&candidate_key) {
-            self.inner.identify.rerun(&candidate_key);
-        } else {
-            self.inner.sweep.rerun_for_selection(candidate_key);
-        }
-    }
-
     pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {
         self.inner.manager.get_sync_status()
     }
@@ -930,52 +895,6 @@ impl AppServices {
         self.inner.manager.subscribe_output_values()
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn subscribe_import_candidates(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::import::ImportCandidatesSnapshot> {
-        self.inner.import.subscribe_import_candidates()
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn subscribe_import_triage_values(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::import::TriageQueue, crate::library::LibraryError>,
-    > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        let mut candidates = services.subscribe_import_candidates();
-        runtime_handle.spawn(async move {
-            let mut snapshot = candidates.borrow().clone();
-            let mut query = services
-                .inner
-                .manager
-                .subscribe_import_triage(snapshot.clone());
-            loop {
-                tokio::select! {
-                    result = query.next() => {
-                        let value = match result {
-                            Ok(projection) => services.inner.manager.resolve_import_triage(snapshot.clone(), projection),
-                            Err(error) => Err(crate::library::LibraryError::Database(match error {
-                                coven::CovenError::Database(error) => *error,
-                                other => coven::DbError::Message(other.to_string()),
-                            })),
-                        };
-                        if tx.send(value).is_err() { return; }
-                    }
-                    changed = candidates.changed() => {
-                        if changed.is_err() { return; }
-                        snapshot = candidates.borrow_and_update().clone();
-                        query = services.inner.manager.subscribe_import_triage(snapshot.clone());
-                    }
-                }
-            }
-        });
-        rx
-    }
-
     /// Set whether playback pauses between vinyl/cassette sides. Turning it on
     /// must take effect at the boundary already staged for gapless playback,
     /// not just the next one: `preload_next_track` decides staging once, at
@@ -992,6 +911,7 @@ impl AppServices {
     }
 }
 
+mod import;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

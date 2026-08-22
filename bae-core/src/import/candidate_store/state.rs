@@ -740,6 +740,12 @@ impl CandidateState {
                 // because the machinery that produced it exited, so the
                 // terminal state stays. A genuine mid-run cancel goes
                 // `Triangulating` → `Idle` and resets as before.
+                //
+                // What the retained terminal state covers is bounded: the
+                // interval before the verdict's durable write lands (cleared
+                // by `CandidateVerdictStored` below), and terminal states
+                // that never store — a settle shaped by a lookup that never
+                // answered — which are session-only by design.
                 if !(matches!(state, crate::identify::IdentifyState::Idle)
                     && runtime.identify_state.is_terminal())
                 {
@@ -754,6 +760,23 @@ impl CandidateState {
             } => {
                 let runtime = self.runtime_entry(candidate_key);
                 runtime.signals = Some(signals.clone());
+            }
+            // The candidate's answer now lives in its stored verdict row, and
+            // the candidates subscription serves it from there. The recorded
+            // terminal state has done its job — carrying the answer across the
+            // interval between settling and the durable write — so it clears,
+            // leaving the runtime to hold only what has no row: runs in
+            // flight, and extraction's signals, which are facts about the
+            // files rather than about this run. Only a terminal state clears:
+            // a newer run's in-flight state must not be blanked by the
+            // previous run's write landing.
+            ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }) => {
+                if let Some(runtime) = self.runtime.get_mut(candidate_key) {
+                    if runtime.identify_state.is_terminal() {
+                        runtime.identify_state = crate::identify::IdentifyState::Idle;
+                        runtime.toolbar = Vec::new();
+                    }
+                }
             }
             // Queue progress is a queue-wide number with no candidate to record
             // it against; it crosses as an event and is not part of any

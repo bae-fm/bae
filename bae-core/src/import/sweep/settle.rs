@@ -187,22 +187,21 @@ async fn settle_lead(
     }
 }
 
-/// The identify state a candidate's stored verdict stands back up as — see
-/// [`ImportServiceHandle::resumed_identify_state`], which owns the read. A
-/// failure resolves to `None` after a `warn!`: the caller's fallback is a full
-/// identification run, which re-answers the candidate and re-stores the row,
-/// so nothing is served from — or left depending on — the unreadable one.
-pub(super) async fn resumed_state(
-    context: &SweepContext,
-    candidate_key: &str,
-) -> Option<IdentifyState> {
-    match context.import.resumed_identify_state(candidate_key).await {
-        Ok(state) => state,
+/// Whether `candidate_key` holds a stored verdict for its current file shape
+/// — see [`ImportServiceHandle::stored_verdict`], which owns the read. A
+/// failure resolves to `false` after a `warn!`: the caller's fallback is a
+/// full identification run, which re-answers the candidate and re-stores the
+/// row, so nothing is served from — or left depending on — the unreadable
+/// one.
+pub(super) async fn has_stored_verdict(context: &SweepContext, candidate_key: &str) -> bool {
+    match context.import.stored_verdict(candidate_key).await {
+        Ok(verdict) => verdict.is_some(),
         Err(error) => {
             warn!(
-                "reading the stored verdict for {candidate_key} failed ({error});                  re-running identification"
+                "reading the stored verdict for {candidate_key} failed ({error}); \
+                 re-running identification"
             );
-            None
+            false
         }
     }
 }

@@ -364,29 +364,6 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Broadcast a resumed identify state — a stored verdict standing back up
-    /// as the state opening its candidate shows, with no run behind it. Rides
-    /// the same event every live driver's transitions do, so the runtime
-    /// recorder and both UIs consume it identically. The toolbar is empty
-    /// because a resumed state has no live signals to badge (see
-    /// [`crate::identify::TerminalVerdict::resume_state`]); `Interactive`
-    /// because only a selection resumes one.
-    pub(crate) fn broadcast_resumed_identify_state(
-        &self,
-        candidate_key: String,
-        state: crate::identify::IdentifyState,
-    ) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::IdentifyStateChanged {
-                candidate_key,
-                state,
-                toolbar: Vec::new(),
-                priority: crate::util::rate_limiter::CallPriority::Interactive,
-            },
-        );
-    }
-
     pub(crate) fn announce_candidate_verdict_stored(&self, candidate_key: String) {
         send_event(
             &self.event_tx,

@@ -273,8 +273,9 @@ impl AppHandle {
     ) -> std::sync::Arc<crate::LiveSubscription> {
         let services = self.services.clone();
         let runtime = self.runtime.handle().clone();
+        let subscription_runtime = runtime.clone();
         let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_import_candidates();
+            let mut values = services.subscribe_import_candidates(&subscription_runtime);
             callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
                 values.borrow_and_update().clone(),
             ));
