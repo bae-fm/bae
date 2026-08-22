@@ -103,36 +103,7 @@ fun GalleryDialog(
                 decorFitsSystemWindows = false,
             ),
     ) {
-        // The dialog's own window still fits itself inside the system bars
-        // (its frame starts below the status bar) while being laid out at
-        // screen height, so its bottom -- and the caption -- hangs off the
-        // display. Take over the insets on the window itself: it then spans
-        // the whole display, including the cutout, and Compose gets the real
-        // inset values for the caption's safe-area padding.
-        val window = (LocalView.current.parent as DialogWindowProvider).window
-        SideEffect {
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            window.attributes =
-                window.attributes.apply {
-                    width = WindowManager.LayoutParams.MATCH_PARENT
-                    height = WindowManager.LayoutParams.MATCH_PARENT
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        layoutInDisplayCutoutMode =
-                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                    }
-                    // The window manager frames a window inside the system
-                    // bars it is told to fit; fit none so the frame is the
-                    // whole display and the bars arrive as insets instead.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        fitInsetsTypes = 0
-                    } else {
-                        @Suppress("DEPRECATION")
-                        flags = flags or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
-                    }
-                }
-        }
+        FullDisplayDialogWindow()
         val pagerState = rememberPagerState(pageCount = { items.size })
         val scope = rememberCoroutineScope()
         var offsetY by remember { mutableFloatStateOf(0f) }
@@ -179,6 +150,42 @@ fun GalleryDialog(
                 }
             }
         }
+    }
+}
+
+/**
+ * Frame the enclosing dialog's window over the whole display. The dialog's own
+ * window fits itself inside the system bars (its frame starts below the status
+ * bar) while being laid out at screen height, so its bottom -- and the caption
+ * -- hangs off the display. Taking over the insets on the window itself makes
+ * it span the display, including the cutout, and hands Compose the real inset
+ * values for the caption's safe-area padding.
+ */
+@Composable
+private fun FullDisplayDialogWindow() {
+    val window = (LocalView.current.parent as DialogWindowProvider).window
+    SideEffect {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.attributes =
+            window.attributes.apply {
+                width = WindowManager.LayoutParams.MATCH_PARENT
+                height = WindowManager.LayoutParams.MATCH_PARENT
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+                // The window manager frames a window inside the system
+                // bars it is told to fit; fit none so the frame is the
+                // whole display and the bars arrive as insets instead.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    fitInsetsTypes = 0
+                } else {
+                    @Suppress("DEPRECATION")
+                    flags = flags or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
+                }
+            }
     }
 }
 

@@ -99,7 +99,13 @@ object PreviewData {
 
     fun trackGroup(
         tracks: List<BridgeTrack> = listOf(track("trk-1", "Track Title", 1), track("trk-2", "Another Track", 2)),
-    ): BridgeTrackGroup = BridgeTrackGroup(side = BridgeTrackSide.Flat, headerKey = null, tracks = tracks, totalDuration = null)
+    ): BridgeTrackGroup =
+        BridgeTrackGroup(
+            side = BridgeTrackSide.Flat,
+            headerKey = null,
+            tracks = tracks,
+            totalDuration = null,
+        )
 
     fun release(
         id: String = "rel-alb-1",
