@@ -9,6 +9,7 @@
 use super::*;
 use crate::identify::{GroupKey, ResultProvenance};
 use crate::import::cover_art::RemoteCover;
+use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, InvalidReason, ScannedFile,
 };
@@ -180,8 +181,8 @@ fn every_import_status() -> Vec<Option<TriageImportStatus>> {
 fn candidate(folder: &str, skipped: bool, is_added: bool) -> (FolderCandidate, bool, bool) {
     (
         FolderCandidate {
-            path: PathBuf::from(format!("/music/{folder}")),
-            file_root: PathBuf::from(format!("/music/{folder}")),
+            path: PathBuf::from(format!("{}/{folder}", host_root("/music"))),
+            file_root: PathBuf::from(format!("{}/{folder}", host_root("/music"))),
             name: folder.to_string(),
             files: CategorizedFiles {
                 // One file, named after the folder, so every fixture candidate has
@@ -189,7 +190,7 @@ fn candidate(folder: &str, skipped: bool, is_added: bool) -> (FolderCandidate, b
                 files: vec![CandidateFile {
                     proposed_audio: true,
                     file: ScannedFile::new(
-                        PathBuf::from(format!("/music/{folder}/01.flac")),
+                        PathBuf::from(format!("{}/{folder}/01.flac", host_root("/music"))),
                         format!("{folder}-01.flac"),
                         1_000,
                     ),
@@ -197,7 +198,7 @@ fn candidate(folder: &str, skipped: bool, is_added: bool) -> (FolderCandidate, b
                 }],
                 format_label: "FLAC".to_string(),
             },
-            watched_folder_path: "/music".to_string(),
+            watched_folder_path: host_root("/music"),
             scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
             display_path: folder.to_string(),
@@ -212,7 +213,7 @@ fn candidate(folder: &str, skipped: bool, is_added: bool) -> (FolderCandidate, b
 fn snapshot_of(candidates: Vec<(FolderCandidate, bool, bool)>) -> ImportCandidatesSnapshot {
     ImportCandidatesSnapshot {
         watched_folders: vec![WatchedFolder {
-            path: "/music".to_string(),
+            path: host_root("/music"),
             name: "music".to_string(),
         }],
         folder_candidates: candidates

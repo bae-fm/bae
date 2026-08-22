@@ -401,9 +401,9 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         },
     );
     snapshot.invalid_candidates = vec![InvalidCandidate {
-        path: PathBuf::from("/music/broken"),
+        path: PathBuf::from(format!("{}/broken", host_root("/music"))),
         name: "broken".to_string(),
-        watched_folder_path: "/music".to_string(),
+        watched_folder_path: host_root("/music"),
         display_path: "broken".to_string(),
         resolved_boundaries: Vec::new(),
         reason: InvalidReason::NoValidAudio,

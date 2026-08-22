@@ -17,7 +17,7 @@ fn nested_candidates_form_a_collapsible_group_with_a_combine_target() {
     assert_eq!(
         group.key,
         FolderReleaseDecisionKey {
-            watched_folder_path: "/music".to_string(),
+            watched_folder_path: host_root("/music"),
             relative_folder_path: "Group".to_string(),
         }
     );
@@ -51,7 +51,7 @@ fn candidate_and_boundary_entries_share_natural_path_order() {
     let mut snapshot = snapshot_of(vec![candidate("Group/Release 10", false, false)]);
     snapshot.boundaries.push(FolderReleaseBoundary {
         key: FolderReleaseDecisionKey {
-            watched_folder_path: "/music".to_string(),
+            watched_folder_path: host_root("/music"),
             relative_folder_path: "Group/Release 2".to_string(),
         },
         name: "Release 2".to_string(),
@@ -81,7 +81,7 @@ fn projected_entry_keys_are_stable_and_variant_distinct() {
     let mut snapshot = snapshot_of(vec![candidate("Group/Release", false, false)]);
     snapshot.boundaries.push(FolderReleaseBoundary {
         key: FolderReleaseDecisionKey {
-            watched_folder_path: "/music".to_string(),
+            watched_folder_path: host_root("/music"),
             relative_folder_path: "Group/Release".to_string(),
         },
         name: "Release".to_string(),

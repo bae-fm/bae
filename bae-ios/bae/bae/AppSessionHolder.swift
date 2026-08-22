@@ -1,6 +1,9 @@
 import BaeKit
 import Foundation
 import Observation
+import os.log
+
+private let logger = Logger.bae("AppSessionHolder")
 
 /// Position-update tick interval handed to the bridge, in milliseconds.
 /// bae-core drives the playback engine and updates its retained playback value

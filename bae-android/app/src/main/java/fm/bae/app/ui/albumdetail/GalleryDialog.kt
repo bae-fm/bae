@@ -127,10 +127,9 @@ fun GalleryDialog(
                         fitInsetsTypes = 0
                     } else {
                         @Suppress("DEPRECATION")
-                        flags =
-                            flags or
-                                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
+                        flags = flags or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
                     }
                 }
         }

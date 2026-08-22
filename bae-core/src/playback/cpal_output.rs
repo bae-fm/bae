@@ -28,7 +28,7 @@ impl CpalAudioOutput {
     /// construction fails fast when there's no audio hardware. Which device the
     /// samples land on is resolved per stream build, so an output switch takes
     /// effect at the next rebuild — on macOS the service forces one by watching
-    /// the default device (see [`watch_default_output_device`]).
+    /// the default device (see `watch_default_output_device`, macOS-only).
     pub fn new() -> Result<Self, AudioError> {
         let host = cpal::default_host();
         host.default_output_device()

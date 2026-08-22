@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::{
     FolderReleaseTreeRow, FolderReleaseTreeRowKind, InvalidReason, ReleaseFileScope,
     ResolvedFolderReleaseBoundary,
@@ -180,53 +181,56 @@ fn a_scan_root_that_is_not_watched_is_an_invariant_break() {
 #[test]
 fn a_valid_candidate_supersedes_what_its_resolved_boundaries_hid() {
     let existing = entries(&[
-        ("/watch/a/Box", true),
-        ("/watch/a/Box/CD1", false),
-        ("/watch/a/Box/CD2", false),
-        ("/watch/a/Other", false),
+        (&host_root("/watch/a/Box"), true),
+        (&host_root("/watch/a/Box/CD1"), false),
+        (&host_root("/watch/a/Box/CD2"), false),
+        (&host_root("/watch/a/Other"), false),
     ]);
-    let mut combined = folder_candidate("/watch/a/Box", "/watch/a");
+    let mut combined = folder_candidate(&host_root("/watch/a/Box"), &host_root("/watch/a"));
     combined.resolved_boundaries = vec![resolved(
-        "/watch/a",
+        &host_root("/watch/a"),
         "Box",
         FolderReleaseDecision::CombineAsOneRelease,
     )];
     assert_eq!(
         superseded_entry_keys(&existing, &ScanItem::Valid(combined)),
-        vec!["/watch/a/Box/CD1", "/watch/a/Box/CD2"],
+        vec![host_root("/watch/a/Box/CD1"), host_root("/watch/a/Box/CD2")],
         "combining replaces everything below the folder, and never the item's own key"
     );
 
-    let mut separate = folder_candidate("/watch/a/Box/CD1", "/watch/a");
+    let mut separate = folder_candidate(&host_root("/watch/a/Box/CD1"), &host_root("/watch/a"));
     separate.resolved_boundaries = vec![resolved(
-        "/watch/a",
+        &host_root("/watch/a"),
         "Box",
         FolderReleaseDecision::KeepAsSeparateReleases,
     )];
     assert_eq!(
         superseded_entry_keys(&existing, &ScanItem::Valid(separate)),
-        vec!["/watch/a/Box"],
+        vec![host_root("/watch/a/Box")],
         "keeping separate replaces exactly the row at the folder — the boundary entry"
     );
 }
 
 #[test]
 fn an_invalid_candidate_supersedes_only_the_boundaries_it_resolved() {
-    let existing = entries(&[("/watch/a/Box", true), ("/watch/a/Box/CD1", false)]);
-    let mut invalid = invalid_candidate("/watch/a/Box/CD1", "/watch/a");
+    let existing = entries(&[
+        (&host_root("/watch/a/Box"), true),
+        (&host_root("/watch/a/Box/CD1"), false),
+    ]);
+    let mut invalid = invalid_candidate(&host_root("/watch/a/Box/CD1"), &host_root("/watch/a"));
     invalid.resolved_boundaries = vec![resolved(
-        "/watch/a",
+        &host_root("/watch/a"),
         "Box",
         FolderReleaseDecision::KeepAsSeparateReleases,
     )];
     assert_eq!(
         superseded_entry_keys(&existing, &ScanItem::Invalid(invalid)),
-        vec!["/watch/a/Box"]
+        vec![host_root("/watch/a/Box")]
     );
-    let folder_not_boundary = entries(&[("/watch/a/Box", false)]);
-    let mut invalid = invalid_candidate("/watch/a/Box/CD1", "/watch/a");
+    let folder_not_boundary = entries(&[(&host_root("/watch/a/Box"), false)]);
+    let mut invalid = invalid_candidate(&host_root("/watch/a/Box/CD1"), &host_root("/watch/a"));
     invalid.resolved_boundaries = vec![resolved(
-        "/watch/a",
+        &host_root("/watch/a"),
         "Box",
         FolderReleaseDecision::KeepAsSeparateReleases,
     )];

@@ -95,7 +95,9 @@ enum PreviewData {
             storageActions: [],
             transferAction: nil,
             tracks: songs,
-            trackGroups: [BridgeTrackGroup(side: .flat, headerKey: nil, tracks: songs, totalDuration: nil)],
+            trackGroups: [
+                BridgeTrackGroup(side: .flat, headerKey: nil, tracks: songs, totalDuration: nil)
+            ],
             files: [],
             imageFiles: [],
             galleryItems: [],

@@ -688,16 +688,16 @@ async fn import_candidates_subscription_rejoins_an_imported_release_by_content_h
     use crate::import::FolderCandidate;
 
     let (db, _temp) = live_db().await;
-    let root = "/music";
+    let root = &crate::import::folder_registry::host_root("/music");
     let candidate = FolderCandidate {
-        path: "/music/release".into(),
-        file_root: "/music/release".into(),
+        path: format!("{root}/release").into(),
+        file_root: format!("{root}/release").into(),
         name: "Release".to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
                 proposed_audio: true,
                 file: ScannedFile::new(
-                    "/music/release/01.flac".into(),
+                    format!("{root}/release/01.flac").into(),
                     "01.flac".to_string(),
                     1_000,
                 ),
