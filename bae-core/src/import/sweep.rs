@@ -39,7 +39,7 @@ use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::ImportCandidateSnapshot;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::verdict::decode_stored as decode;
-use crate::identify::{IdentifyServiceHandle, IdentifyState, TerminalVerdict};
+use crate::identify::{IdentifyRunId, IdentifyServiceHandle, IdentifyState, TerminalVerdict};
 use crate::import::MetadataRef;
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionServiceHandle, ExtractionSource};
@@ -142,10 +142,11 @@ impl QueueSweepHandle {
     /// signals settles on its first step, and identify takes its bus
     /// subscription synchronously so extraction cannot start ahead of it.
     fn start_selection_run(&self, candidate_key: String, candidate: FolderCandidate) {
-        self.record_selection(candidate_key.clone());
+        let run = self.context.identify.new_run();
+        self.record_selection(run, candidate_key.clone());
         self.context
             .identify
-            .start(candidate_key.clone(), CallPriority::Interactive);
+            .start(run, candidate_key.clone(), CallPriority::Interactive);
         self.context.extraction.start(
             candidate_key,
             ExtractionSource::Folder {
@@ -169,7 +170,7 @@ impl QueueSweepHandle {
     ///
     /// The verdict settles before it stores, here as in the sweep's own pass:
     /// the lead's documents are bought and written first.
-    pub fn record_selection(&self, candidate_key: String) {
+    pub fn record_selection(&self, run: IdentifyRunId, candidate_key: String) {
         let context = self.context.clone();
         let token = self.token.child_token();
         if self.token.is_cancelled() {
@@ -177,7 +178,7 @@ impl QueueSweepHandle {
         }
         self.tasks.spawn_on(
             async move {
-                record_selection_verdict(&context, candidate_key, &token).await;
+                record_selection_verdict(&context, run, candidate_key, &token).await;
             },
             &self.runtime_handle,
         );
@@ -329,6 +330,10 @@ pub fn start(
 /// One candidate the pass is driving: what it will need once a verdict lands.
 struct InFlight {
     job: IdentifyJob,
+    /// The identify run this pass started for the representative. A settled
+    /// earlier run of the same candidate still broadcasts; only this run's
+    /// states are this pass's answer.
+    run: IdentifyRunId,
     /// The probed total from the candidate's latest `SignalsUpdated`. `0` until
     /// the fast pass reports one, and `0` forever for audio that would not
     /// probe — see [`crate::signals::Signals::probed_total_duration_ms`].
@@ -464,9 +469,10 @@ async fn run_pass(
             context.ours.lock().unwrap().insert(key.clone());
             // Identify first: it takes its bus subscription synchronously, so
             // extraction's first snapshot cannot be emitted into a void.
+            let run = context.identify.new_run();
             context
                 .identify
-                .start(key.clone(), CallPriority::Background);
+                .start(run, key.clone(), CallPriority::Background);
             context.extraction.start(
                 key.clone(),
                 ExtractionSource::Folder {
@@ -479,6 +485,7 @@ async fn run_pass(
                 key,
                 InFlight {
                     job,
+                    run,
                     probed_total_duration_ms: 0,
                 },
             );
@@ -541,14 +548,16 @@ async fn run_pass(
                         entry.probed_total_duration_ms = signals.probed_total_duration_ms;
                     }
                 }
-                Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, state, .. })) => {
+                Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. })) => {
                     // Terminal only means the machine stopped moving; whether
                     // what it stopped on is storable is `finish_candidate`'s
                     // question. Either way the candidate's slot is free now.
-                    let settled = state
-                        .is_terminal()
-                        .then(|| in_flight.remove(&candidate_key))
-                        .flatten();
+                    // A state from another run of the same candidate -- an
+                    // earlier one still broadcasting -- is not this pass's.
+                    let settled = (state.is_terminal()
+                        && in_flight.get(&candidate_key).is_some_and(|entry| entry.run == run))
+                    .then(|| in_flight.remove(&candidate_key))
+                    .flatten();
                     if let Some(entry) = settled {
                         let identity = entry.job.identity.clone();
                         finishing_members.insert(identity.clone(), Vec::new());

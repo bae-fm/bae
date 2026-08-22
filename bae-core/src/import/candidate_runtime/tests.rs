@@ -65,6 +65,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
 fn identify(key: &str, state: crate::identify::IdentifyState) -> ImportEvent {
     ImportEvent::IdentifyStateChanged {
         candidate_key: key.to_string(),
+        run: crate::identify::IdentifyRunId::for_test(0),
         state,
         toolbar: Vec::new(),
         priority: CallPriority::Background,

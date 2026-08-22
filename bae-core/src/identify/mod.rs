@@ -36,7 +36,7 @@ pub mod view;
 
 pub use combine::{GroupKey, ResultProvenance};
 pub use ready::{classify, NeedsYou, QueueClassification};
-pub use service::IdentifyServiceHandle;
+pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifyState};
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
 pub use verdict::TerminalVerdict;

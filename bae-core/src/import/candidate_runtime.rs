@@ -228,6 +228,7 @@ impl CandidateRuntime {
             }
             ImportEvent::IdentifyStateChanged {
                 candidate_key,
+                run: _,
                 state,
                 toolbar,
                 priority: _,

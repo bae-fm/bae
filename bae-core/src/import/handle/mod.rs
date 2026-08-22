@@ -69,6 +69,10 @@ pub enum ImportEvent {
     /// transition, so the UI renders both from one event.
     IdentifyStateChanged {
         candidate_key: String,
+        /// The run this state belongs to. A settled run's driver keeps
+        /// broadcasting its state, so a consumer waiting on a later run of the
+        /// same candidate matches on this, not on the key.
+        run: crate::identify::IdentifyRunId,
         state: crate::identify::IdentifyState,
         toolbar: Vec<crate::identify::ToolbarSignal>,
         /// The run's own priority, carried so a consumer can tell a candidate

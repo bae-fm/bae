@@ -54,6 +54,25 @@ struct IdentifyServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
     drivers: Mutex<HashMap<String, CandidateDriver>>,
+    /// Source of [`IdentifyRunId`]s: every run this service starts is told
+    /// apart from every other, including earlier runs of the same candidate.
+    next_run: std::sync::atomic::AtomicU64,
+}
+
+/// One identify run of one candidate. A candidate is identified once at a
+/// time, but a settled run's driver stays alive for the toolbar and still
+/// broadcasts its state, so a consumer waiting on a later run of the same
+/// candidate tells the two apart by this id rather than by the candidate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct IdentifyRunId(u64);
+
+impl IdentifyRunId {
+    /// A run id for an event a test forges onto the bus; nothing a service
+    /// allocates collides with it.
+    #[cfg(test)]
+    pub(crate) fn for_test(run: u64) -> Self {
+        Self(run)
+    }
 }
 
 struct CandidateDriver {
@@ -74,6 +93,7 @@ impl IdentifyServiceHandle {
             runtime_handle,
             event_tx,
             drivers: Mutex::new(HashMap::new()),
+            next_run: std::sync::atomic::AtomicU64::new(1),
         });
         let mut removal_rx = inner.event_tx.subscribe();
         let removal_inner = inner.clone();
@@ -101,8 +121,19 @@ impl IdentifyServiceHandle {
         IdentifyServiceHandle { inner }
     }
 
-    /// Start identifying `key`. Fire-and-forget; states come back as
-    /// `ImportEvent::IdentifyStateChanged`.
+    /// Allocate the id for a run about to be started. Separate from
+    /// [`Self::start`] so a consumer can subscribe to the bus knowing which
+    /// run it is waiting for before that run's first state is broadcast.
+    pub fn new_run(&self) -> IdentifyRunId {
+        IdentifyRunId(
+            self.inner
+                .next_run
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        )
+    }
+
+    /// Start identifying `key` as `run`. Fire-and-forget; states come back as
+    /// `ImportEvent::IdentifyStateChanged` carrying `run`.
     ///
     /// `priority` is the run's, not the call's: every provider lookup this run
     /// dispatches is admitted under it, so a candidate a person opened outranks
@@ -111,7 +142,7 @@ impl IdentifyServiceHandle {
     /// Identify consumes the `Signals` extraction streams, so the caller must
     /// start identify *before* extraction for `key`: the bus subscription is
     /// taken synchronously here, so no early snapshot can be missed.
-    pub fn start(&self, key: String, priority: CallPriority) {
+    pub fn start(&self, run: IdentifyRunId, key: String, priority: CallPriority) {
         // A restart (the user re-selects after a scan refresh) supersedes the
         // prior run — a candidate is identified once at a time.
         self.cancel(&key);
@@ -134,7 +165,7 @@ impl IdentifyServiceHandle {
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_driver(inner, key, priority, token, event_tx, event_rx, bus_rx).await;
+            run_driver(inner, run, key, priority, token, event_tx, event_rx, bus_rx).await;
         });
     }
 
@@ -211,8 +242,10 @@ fn remove_driver_if_current(
 /// The driver loop for one candidate. Each iteration pops an event, feeds it to
 /// the pure reducer, broadcasts the new state, and spawns the effects the reducer
 /// asked for — whose results come back as further events. Ends on cancellation.
+#[allow(clippy::too_many_arguments)]
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
+    run: IdentifyRunId,
     key: String,
     priority: CallPriority,
     token: CancellationToken,
@@ -280,6 +313,7 @@ async fn run_driver(
             &inner.event_tx,
             ImportEvent::IdentifyStateChanged {
                 candidate_key: key.clone(),
+                run,
                 toolbar: state.toolbar(),
                 state: state.clone(),
                 priority,
@@ -420,6 +454,7 @@ mod tests {
             runtime_handle: tokio::runtime::Handle::current(),
             event_tx,
             drivers: Mutex::new(HashMap::new()),
+            next_run: std::sync::atomic::AtomicU64::new(1),
         });
         (inner, temp_dir)
     }
@@ -475,7 +510,7 @@ mod tests {
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
-        handle.start("k".to_string(), CallPriority::Interactive);
+        handle.start(handle.new_run(), "k".to_string(), CallPriority::Interactive);
 
         // Feed the signals over the bus, as the extraction service would.
         inner

@@ -217,6 +217,7 @@ pub(super) async fn has_stored_verdict(context: &SweepContext, candidate_key: &s
 /// making.
 pub(super) async fn record_selection_verdict(
     context: &SweepContext,
+    run: IdentifyRunId,
     candidate_key: String,
     token: &CancellationToken,
 ) {
@@ -249,9 +250,10 @@ pub(super) async fn record_selection_verdict(
             }
             Ok(ImportEvent::IdentifyStateChanged {
                 candidate_key: key,
+                run: event_run,
                 state,
                 ..
-            }) if key == candidate_key => {
+            }) if key == candidate_key && event_run == run => {
                 if matches!(state, IdentifyState::Idle) {
                     // The run was cancelled — the user dismissed the candidate,
                     // or the sweep took it over. Either way this watch is done.

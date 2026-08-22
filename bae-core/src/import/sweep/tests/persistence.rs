@@ -246,6 +246,7 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(&not_in_library);
     let changed = |state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
+        run: crate::identify::IdentifyRunId::for_test(0),
         toolbar: Vec::new(),
         state,
         priority: CallPriority::Background,

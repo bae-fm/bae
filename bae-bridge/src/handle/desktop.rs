@@ -157,8 +157,9 @@ impl AppHandle {
     /// through the same identify channel — the UI consumes them by candidate
     /// key the same way it does for folder imports.
     pub fn auto_identify_release(&self, candidate_key: String, release_id: String) {
+        let run = self.services.identify_new_run();
         self.services
-            .identify_start(candidate_key.clone(), CallPriority::Interactive);
+            .identify_start(run, candidate_key.clone(), CallPriority::Interactive);
         self.services.extraction_start(
             candidate_key,
             ExtractionSource::Release { release_id },

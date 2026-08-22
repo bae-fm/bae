@@ -812,7 +812,9 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_candidate_mapping => candidate_mapping(candidate_key: &str) -> Result<crate::import::MappingTable, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(identify, identify_start => start(key: String, priority: crate::util::rate_limiter::CallPriority) -> ());
+    delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_sync!(identify, identify_start => start(run: crate::identify::IdentifyRunId, key: String, priority: crate::util::rate_limiter::CallPriority) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_cancel => cancel(key: &str) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

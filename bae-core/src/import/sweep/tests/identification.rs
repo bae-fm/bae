@@ -107,6 +107,72 @@ async fn a_stored_verdict_is_not_re_fetched() {
 /// The failing response is a 400 rather than a 5xx so the client's own retry
 /// policy stays out of it; what is under test is what the sweep does with a
 /// failure, not how many times the client repeats one.
+/// A settled identify driver stays alive for the toolbar and re-broadcasts
+/// its terminal state whenever a late signals snapshot reaches it -- the
+/// extraction can still be running when the sweep pass that watched the run
+/// has already returned. The next pass starts a fresh run for the same
+/// candidate; that stale re-broadcast is not the fresh run's answer, and the
+/// retry must keep waiting for its own.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_retry_ignores_the_previous_run_s_terminal_state() {
+    let fixture = Fixture::new("retry-ignores-stale").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .provider
+        .set_routes(vec![("/discid/", 400, "{}".to_string())]);
+    fixture.scan(1).await;
+
+    let mut events = fixture.import.subscribe_events();
+    fixture.sweep_once().await;
+    assert!(fixture.stored_for(&dir).await.is_none());
+    // The failed run's own terminal event, exactly as the lingering driver
+    // would broadcast it again.
+    let stale = drain_events(&mut events)
+        .into_iter()
+        .rev()
+        .find(|event| {
+            matches!(
+                event,
+                ImportEvent::IdentifyStateChanged { candidate_key, state, .. }
+                    if candidate_key == &key && state.is_terminal()
+            )
+        })
+        .expect("the failed run settled on a terminal state");
+
+    fixture.provider.set_routes(vec![
+        (
+            "/discid/",
+            200,
+            discid_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
+        ),
+        (
+            "/release/mb-retry-2?",
+            200,
+            release_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
+        ),
+    ]);
+    fixture.provider.hold("/discid/");
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    // The retry's lookup is in flight: its run owns the candidate now.
+    wait_for_request(&fixture.provider, "/discid/", 2).await;
+    fixture.import.emit_event_for_test(stale);
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(15), pass)
+        .await
+        .expect("pass finishes after the held lookup is released")
+        .unwrap();
+
+    assert!(
+        fixture.stored_for(&dir).await.is_some(),
+        "the retry stores its own answer, not the previous run's"
+    );
+}
+
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_transport_failure_leaves_no_row_and_is_retried() {
