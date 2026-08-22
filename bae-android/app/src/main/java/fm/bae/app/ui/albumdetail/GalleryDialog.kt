@@ -87,7 +87,15 @@ fun GalleryDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        // Edge-to-edge with the insets handed to Compose: with the default
+        // (decor fits the system windows) the dialog's content gets no inset
+        // values, so the caption's safe-area padding is zero and it renders
+        // under the navigation bar.
+        properties =
+            DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
     ) {
         val pagerState = rememberPagerState(pageCount = { items.size })
         val scope = rememberCoroutineScope()
