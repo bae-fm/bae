@@ -103640,6 +103640,386 @@
         }
       }
     },
+    "Transfers" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عمليات النقل"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Трансфери"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "স্থানান্তর"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přenosy"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übertragungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transfers"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transferencias"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transferts"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ટ્રાન્સફર"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העברות"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्थानांतरण"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prijenosi"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trasferimenti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "転送"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ವರ್ಗಾವಣೆಗಳು"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전송"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "കൈമാറ്റങ്ങൾ"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हस्तांतरण"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overdrachten"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਟ੍ਰਾਂਸਫਰ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transfery"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transferências"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "பரிமாற்றங்கள்"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "బదిలీలు"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การถ่ายโอน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktarımlar"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Передавання"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "منتقلیاں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Truyền tải"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "传输"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "傳輸"
+          }
+        }
+      }
+    },
+    "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عدد الملفات التي تُرفع إلى التخزين السحابي في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد عند تثبيت إصدار."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колко файла се качват в облачното хранилище едновременно след импортиране и колко се изтеглят едновременно при закачане на издание."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ইমপোর্টের পরে একসাথে কতগুলি ফাইল ক্লাউড স্টোরেজে আপলোড হবে, এবং কোনো রিলিজ পিন করলে একসাথে কতগুলি ডাউনলোড হবে।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kolik souborů se po importu nahrává do cloudového úložiště najednou a kolik se jich stahuje najednou při připnutí vydání."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie viele Dateien nach einem Import gleichzeitig in den Cloud-Speicher hochgeladen werden und wie viele beim Anheften einer Veröffentlichung gleichzeitig heruntergeladen werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuántos archivos se suben al almacenamiento en la nube a la vez tras una importación, y cuántos se descargan a la vez al fijar un lanzamiento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Combien de fichiers sont envoyés en même temps vers le stockage cloud après un import, et combien sont téléchargés en même temps lorsqu’une sortie est épinglée."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ઇમ્પોર્ટ પછી એકસાથે કેટલી ફાઇલો ક્લાઉડ સ્ટોરેજમાં અપલોડ થાય છે, અને રિલીઝ પિન કરતી વખતે એકસાથે કેટલી ડાઉનલોડ થાય છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כמה קבצים מועלים לאחסון הענן בו‑זמנית לאחר ייבוא, וכמה מורדים בו‑זמנית כאשר מצמידים הוצאה."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इम्पोर्ट के बाद एक साथ कितनी फ़ाइलें क्लाउड स्टोरेज पर अपलोड होती हैं, और किसी रिलीज़ को पिन करने पर एक साथ कितनी डाउनलोड होती हैं।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koliko se datoteka nakon uvoza istodobno prenosi u oblak i koliko se istodobno preuzima kad se izdanje prikvači."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quanti file vengono caricati contemporaneamente nell’archivio cloud dopo un’importazione, e quanti vengono scaricati contemporaneamente quando una pubblicazione viene fissata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インポート後に一度にクラウドストレージへアップロードするファイル数と、リリースをピン留めしたときに一度にダウンロードするファイル数。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಆಮದು ನಂತರ ಒಂದೇ ಬಾರಿ ಎಷ್ಟು ಫೈಲ್‌ಗಳು ಕ್ಲೌಡ್ ಸಂಗ್ರಹಕ್ಕೆ ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತವೆ, ಮತ್ತು ಬಿಡುಗಡೆಯನ್ನು ಪಿನ್ ಮಾಡಿದಾಗ ಒಂದೇ ಬಾರಿ ಎಷ್ಟು ಡೌನ್‌ಲೋಡ್ ಆಗುತ್ತವೆ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "가져오기 후 한 번에 클라우드 저장소로 업로드할 파일 수와, 릴리스를 고정할 때 한 번에 다운로드할 파일 수입니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഇംപോർട്ടിന് ശേഷം ഒരേസമയം എത്ര ഫയലുകൾ ക്ലൗഡ് സ്റ്റോറേജിലേക്ക് അപ്‌ലോഡ് ചെയ്യും, ഒരു റിലീസ് പിൻ ചെയ്യുമ്പോൾ ഒരേസമയം എത്ര ഡൗൺലോഡ് ചെയ്യും."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इम्पोर्टनंतर एकाच वेळी किती फाइल्स क्लाउड स्टोरेजवर अपलोड होतात, आणि रिलीज पिन केल्यावर एकाच वेळी किती डाउनलोड होतात."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoeveel bestanden na een import tegelijk naar de cloudopslag worden geüpload, en hoeveel er tegelijk worden gedownload wanneer een release wordt vastgezet."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਇੰਪੋਰਟ ਤੋਂ ਬਾਅਦ ਇੱਕੋ ਵਾਰ ਕਿੰਨੀਆਂ ਫ਼ਾਈਲਾਂ ਕਲਾਊਡ ਸਟੋਰੇਜ ʼਤੇ ਅੱਪਲੋਡ ਹੁੰਦੀਆਂ ਹਨ, ਅਤੇ ਰਿਲੀਜ਼ ਪਿੰਨ ਕਰਨ ʼਤੇ ਇੱਕੋ ਵਾਰ ਕਿੰਨੀਆਂ ਡਾਊਨਲੋਡ ਹੁੰਦੀਆਂ ਹਨ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ile plików jest przesyłanych jednocześnie do magazynu w chmurze po imporcie i ile jest pobieranych jednocześnie po przypięciu wydania."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantos arquivos são enviados ao armazenamento na nuvem de uma vez após uma importação, e quantos são baixados de uma vez quando um lançamento é fixado."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இறக்குமதிக்குப் பிறகு ஒரே நேரத்தில் எத்தனை கோப்புகள் கிளவுட் சேமிப்பகத்திற்கு பதிவேற்றப்படும், மற்றும் ஒரு வெளியீட்டைப் பின் செய்யும்போது ஒரே நேரத்தில் எத்தனை பதிவிறக்கப்படும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఇంపోర్ట్ తర్వాత ఒకేసారి ఎన్ని ఫైళ్లు క్లౌడ్ స్టోరేజ్‌కు అప్‌లోడ్ అవుతాయి, మరియు ఒక రిలీజ్‌ను పిన్ చేసినప్పుడు ఒకేసారి ఎన్ని డౌన్‌లోడ్ అవుతాయి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จำนวนไฟล์ที่อัปโหลดไปยังที่เก็บข้อมูลบนคลาวด์พร้อมกันหลังการนำเข้า และจำนวนไฟล์ที่ดาวน์โหลดพร้อมกันเมื่อปักหมุดผลงาน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İçe aktarmadan sonra bulut depolamaya aynı anda kaç dosyanın yükleneceği ve bir yayın sabitlendiğinde aynı anda kaç dosyanın indirileceği."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скільки файлів одночасно вивантажується до хмарного сховища після імпорту і скільки одночасно завантажується, коли видання закріплено."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "امپورٹ کے بعد ایک وقت میں کتنی فائلیں کلاؤڈ اسٹوریج پر اپ لوڈ ہوتی ہیں، اور ریلیز پن کرنے پر ایک وقت میں کتنی ڈاؤن لوڈ ہوتی ہیں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Số tệp được tải lên bộ nhớ đám mây cùng lúc sau khi nhập, và số tệp được tải xuống cùng lúc khi ghim một bản phát hành."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入后同时上传到云存储的文件数，以及固定某个发行版时同时下载的文件数。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯入後同時上傳至雲端儲存的檔案數，以及釘選某個發行版時同時下載的檔案數。"
+          }
+        }
+      }
+    },
     "Simultaneous uploads" : {
       "comment" : "Storage settings: label for the parallel-upload count control",
       "localizations" : {

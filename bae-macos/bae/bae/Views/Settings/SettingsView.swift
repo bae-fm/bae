@@ -1,8 +1,8 @@
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case library, playback, casting, formats, automation, subsonic, discogs,
-        about
+    case library, playback, importing, casting, formats, automation, subsonic,
+        discogs, about
 }
 
 struct SettingsView: View {
@@ -23,6 +23,11 @@ struct SettingsView: View {
             PlaybackSettingsTab()
                 .tag(SettingsTab.playback)
                 .tabItem { Label("Playback", systemImage: "play.circle") }
+            ImportSettingsTab()
+                .tag(SettingsTab.importing)
+                .tabItem {
+                    Label("Import", systemImage: "square.and.arrow.down")
+                }
             CastingSettingsTab()
                 .tag(SettingsTab.casting)
                 .tabItem { Label("Casting", systemImage: "hifispeaker") }

@@ -893,3 +893,29 @@ async fn preparation_progress_must_match_source_total() {
         .observe_blob_preparation_progress_for_test(&file_id, 300, 999)
         .await;
 }
+
+/// The concurrency settings reach the open store when they are written, not
+/// at the next open: the limit the next upload drain and pin read is the one
+/// just set.
+#[tokio::test]
+async fn transfer_concurrency_settings_apply_to_the_open_store() {
+    let (manager, _temp) = setup_test_manager().await;
+    let before = manager.transfer_limits();
+
+    manager.set_max_concurrent_uploads(5).unwrap();
+    manager.set_max_concurrent_downloads(2).unwrap();
+
+    let after = manager.transfer_limits();
+    assert_eq!(after.uploads.get(), 5);
+    assert_eq!(after.downloads.get(), 2);
+    assert_ne!((before.uploads, before.downloads), (after.uploads, after.downloads));
+    assert_eq!(manager.get_config().max_concurrent_uploads.get(), 5);
+    assert_eq!(manager.get_config().max_concurrent_downloads.get(), 2);
+
+    assert!(manager.set_max_concurrent_uploads(0).is_err());
+    assert_eq!(
+        manager.transfer_limits().uploads.get(),
+        5,
+        "a rejected value changes nothing"
+    );
+}

@@ -46,6 +46,16 @@ impl Database {
         self.inner.handle.is_syncing()
     }
 
+    /// Replace the concurrent blob-transfer limits for every later upload
+    /// drain and pin.
+    pub(crate) fn set_transfer_limits(&self, limits: coven::TransferLimits) {
+        self.inner.handle.set_transfer_limits(limits)
+    }
+
+    pub(crate) fn transfer_limits(&self) -> coven::TransferLimits {
+        self.inner.handle.transfer_limits()
+    }
+
     pub(crate) fn is_connected(&self) -> bool {
         self.inner.handle.is_connected()
     }

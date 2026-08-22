@@ -81,8 +81,6 @@ struct StorageManagerView: View {
             DownloadsSection()
             OutputSection()
             OutboxSection()
-            Divider()
-            TransferConcurrencyBar()
         }
         .frame(minWidth: 700, minHeight: 400)
         .onAppear {

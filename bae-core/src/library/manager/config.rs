@@ -24,19 +24,40 @@ impl LibraryManager {
 
     /// How many blob uploads coven's upload drain runs at once. Rejected outside
     /// 1..=[`MAX_CONCURRENT_TRANSFERS`](crate::config::MAX_CONCURRENT_TRANSFERS):
-    /// zero would leave the drain admitting nothing. Takes effect the next time
-    /// the coven handle opens (the builder reads it at open).
+    /// zero would leave the drain admitting nothing. Durable in the config and
+    /// applied to the open store at once: the next drain pass runs under it.
     pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
-        self.config_handle.update(|c| c.max_concurrent_uploads = n)
+        self.config_handle
+            .update(|c| c.max_concurrent_uploads = n)?;
+        self.apply_transfer_limits();
+        Ok(())
     }
 
-    /// How many blob downloads a pin fetches at once. Same bounds and open-time
+    /// How many blob downloads a pin fetches at once. Same bounds and
     /// application as [`Self::set_max_concurrent_uploads`].
     pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update(|c| c.max_concurrent_downloads = n)
+            .update(|c| c.max_concurrent_downloads = n)?;
+        self.apply_transfer_limits();
+        Ok(())
+    }
+
+    /// Hand the stored transfer limits to the open store. The builder reads
+    /// them at open; this is what a change after open does.
+    fn apply_transfer_limits(&self) {
+        let config = self.config_handle.config();
+        self.database.set_transfer_limits(coven::TransferLimits {
+            uploads: crate::config::usize_bound(config.max_concurrent_uploads),
+            downloads: crate::config::usize_bound(config.max_concurrent_downloads),
+        });
+    }
+
+    /// The limits the open store runs under — what a change through the
+    /// setters above has taken effect as.
+    pub fn transfer_limits(&self) -> coven::TransferLimits {
+        self.database.transfer_limits()
     }
 
     /// Whether the seek bar's leading label counts down the time remaining
