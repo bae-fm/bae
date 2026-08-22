@@ -30,6 +30,21 @@
                 }
         }
 
+        /// The group's runtime in whole minutes, rounded half up as core does.
+        private static func groupDuration(_ tracks: [BridgeTrack])
+            -> BridgeDurationUnits?
+        {
+            let ms = tracks.reduce(Int64(0)) { $0 + ($1.durationMs ?? 0) }
+            guard ms > 0 else { return nil }
+            let minutes = (ms + 30_000) / 60_000
+            return minutes >= 60
+                ? .hoursAndMinutes(
+                    hours: UInt64(minutes / 60),
+                    minutes: UInt64(minutes % 60)
+                )
+                : .minutesOnly(minutes: UInt64(minutes))
+        }
+
         /// A two-part release's tracks plus the matching per-side groups, so the
         /// preview renders real "Side A" / "Disc 2" headers.
         private static func twoSide(
@@ -57,7 +72,8 @@
                         side: groupSide,
                         headerKey: isVinyl
                             ? "core.track.side" : "core.track.disc",
-                        tracks: tracks
+                        tracks: tracks,
+                        totalDuration: groupDuration(tracks)
                     )
                 )
             }
@@ -120,7 +136,8 @@
                     BridgeTrackGroup(
                         side: .flat,
                         headerKey: nil,
-                        tracks: tracks
+                        tracks: tracks,
+                        totalDuration: groupDuration(tracks)
                     )
                 ]
             case .twoPart(let first, let second):

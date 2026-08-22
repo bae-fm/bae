@@ -417,6 +417,10 @@ pub struct BridgeTrackGroup {
     /// letter / number `side` carries.
     pub header_key: Option<String>,
     pub tracks: Vec<BridgeTrack>,
+    /// Playing time of this group's tracks, in the same words as
+    /// `BridgeRelease::total_duration`, or `None` when no track reports a
+    /// length. Shown under each disc of a multi-disc release.
+    pub total_duration: Option<BridgeDurationUnits>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

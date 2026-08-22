@@ -62,6 +62,14 @@ struct AlbumTrackListView: View {
                         globalOffset: globalOffset
                     )
                 }
+                // One group's runtime is the album's; only a multi-side release
+                // needs each side named.
+                if groups.count > 1, !group.totalDurationText.isEmpty {
+                    Text(group.totalDurationText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 8)
+                }
             }
             if !release.totalDurationText.isEmpty {
                 Text(release.totalDurationText)
