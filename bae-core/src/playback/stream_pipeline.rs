@@ -168,6 +168,7 @@ impl StreamDecodeParams {
             }
         }
 
+        let mut decode_errors = 0u32;
         for segment in &self.segments {
             let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
             let seek_to_sample = if seek_to_byte.is_some() {
@@ -175,7 +176,7 @@ impl StreamDecodeParams {
             } else {
                 Some(segment.target_sample())
             };
-            crate::audio_codec::decode_audio_streaming(
+            decode_errors += crate::audio_codec::decode_audio_streaming(
                 segment.buffer.clone(),
                 sink,
                 seek_to_byte,
@@ -196,6 +197,12 @@ impl StreamDecodeParams {
                 return Err(StreamingDecodeError::InputCancelled);
             }
         }
+
+        // The track is every segment plus its silence; only now has the sink
+        // received all of it. Marking it finished after a single segment would
+        // end the track at the pregap/main boundary.
+        sink.set_decode_error_count(decode_errors);
+        sink.mark_finished();
         Ok(())
     }
 
@@ -660,6 +667,84 @@ mod tests {
         // forever on a ring nobody drains.
         buffer.cancel();
         assert!(buffer.is_cancelled());
+    }
+
+    /// A track made of several segments (a CUE pregap segment followed by its
+    /// main segment) finishes once, after the last segment. Finishing the sink
+    /// after the first segment makes the player treat the pregap as the whole
+    /// track and advance a few seconds in.
+    #[test]
+    fn multi_segment_track_finishes_only_after_last_segment() {
+        use crate::audio_codec::{encode_i32, EncodeFormat};
+        use crate::playback::create_track_stream_pair_with_capacity;
+
+        let sample_rate = 44_100u32;
+        let total_frames = 2 * sample_rate as usize;
+        let original: Vec<i32> = (0..total_frames)
+            .map(|i| {
+                let t = i as f64 / sample_rate as f64;
+                (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+            })
+            .collect();
+        let flac = encode_i32(
+            EncodeFormat::Flac {
+                bits_per_sample: 16,
+            },
+            &original,
+            sample_rate,
+            1,
+        )
+        .unwrap();
+        let buffer = create_sparse_buffer(flac.len() as u64);
+        buffer.append_at(0, &flac);
+
+        let split = sample_rate as u64;
+        let span = |start: u64, end: u64| crate::db::SegmentSpan {
+            start_sample: start,
+            end_sample: Some(end),
+            start_byte: None,
+            end_byte: None,
+        };
+        let decode = StreamDecodeParams::new(
+            vec![
+                SegmentDecodeParams::new(buffer.clone(), span(0, split), 0),
+                SegmentDecodeParams::new(buffer, span(split, total_frames as u64), 0),
+            ],
+            false,
+            0,
+            0,
+        );
+
+        // A ring far smaller than a segment, so the decoder is pushing
+        // samples -- not finished -- for most of the run, and a sink finished
+        // at the segment boundary is observed before the second segment's
+        // samples arrive.
+        let (mut sink, mut stream, _ready) =
+            create_track_stream_pair_with_capacity(sample_rate, 1, 4_096);
+        let decoder = std::thread::spawn(move || {
+            decode.run_decoder(&mut sink, Arc::new(AtomicBool::new(false)))
+        });
+
+        let mut pulled = 0usize;
+        let mut buf = [0.0f32; 1_024];
+        loop {
+            pulled += stream.pull_samples(&mut buf);
+            if stream.producer_finished() {
+                assert_eq!(
+                    stream.samples_decoded() as usize,
+                    total_frames,
+                    "sink reported finished before every segment was decoded"
+                );
+                if stream.is_finished() {
+                    break;
+                }
+            }
+        }
+        decoder
+            .join()
+            .unwrap()
+            .expect("two-segment decode succeeds");
+        assert_eq!(pulled, total_frames);
     }
 
     /// The happy path assembles a live pipeline over a working output and hands

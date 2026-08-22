@@ -737,6 +737,10 @@ unsafe fn seek_to_sample_or_warn(
 /// the track's end. `end_byte` is the track's end byte offset — the read-ahead
 /// ceiling handed to the reader so the fill buffers the rest of this track;
 /// `None` keeps the whole file (a per-track file, or an album's last track).
+///
+/// Decodes one segment of a track. Returns the number of fatal FFmpeg errors
+/// it hit. It does not mark the sink finished: a track is a sequence of
+/// segments (pregap, main) and only the caller knows when the last one ends.
 pub fn decode_audio_streaming(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
@@ -746,7 +750,7 @@ pub fn decode_audio_streaming(
     stop_at_sample: Option<u64>,
     end_byte: Option<u64>,
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), StreamingDecodeError> {
+) -> Result<u32, StreamingDecodeError> {
     install_ffmpeg_log_callback();
     reset_ffmpeg_errors();
 
@@ -773,7 +777,7 @@ unsafe fn decode_audio_streaming_impl(
     stop_at_sample: Option<u64>,
     end_byte: Option<u64>,
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), StreamingDecodeError> {
+) -> Result<u32, StreamingDecodeError> {
     use ffmpeg_sys_next::*;
 
     // Wall-clock origin for the first-sample latency log below: it spans the probe
@@ -949,18 +953,13 @@ unsafe fn decode_audio_streaming_impl(
             error_count
         );
     }
-    sink.set_decode_error_count(error_count);
-
-    if !sink.is_cancelled() {
-        sink.mark_finished();
-    }
 
     info!(
-        "Streaming AVIO decode complete: {}Hz, {}ch, {} samples, {} fatal errors",
+        "Streaming AVIO segment decode complete: {}Hz, {}ch, {} samples, {} fatal errors",
         sample_rate, channels, samples_output, error_count
     );
 
-    Ok(())
+    Ok(error_count)
 }
 
 #[cfg(test)]

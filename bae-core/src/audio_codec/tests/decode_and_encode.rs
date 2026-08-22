@@ -833,7 +833,7 @@ fn test_streaming_decode() {
     let decoder_buffer = buffer.clone();
     let decoder_handle = thread::spawn(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(
+        let result = decode_audio_streaming(
             decoder_buffer,
             &mut sink,
             None,
@@ -842,7 +842,10 @@ fn test_streaming_decode() {
             None,
             None,
             token,
-        )
+        );
+        // One segment is the whole track here: finish the sink as run_decoder would.
+        sink.mark_finished();
+        result
     });
 
     // The decoder is already blocked reading; this is the download landing.

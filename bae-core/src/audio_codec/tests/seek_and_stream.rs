@@ -42,7 +42,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         create_track_stream_pair_with_capacity(sample_rate, channels, 500000);
     let decoder_handle = thread::spawn(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(
+        let result = decode_audio_streaming(
             buffer,
             &mut sink,
             None,
@@ -51,7 +51,10 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
             None,
             None,
             token,
-        )
+        );
+        // One segment is the whole track here: finish the sink as run_decoder would.
+        sink.mark_finished();
+        result
     });
 
     let result = decoder_handle.join().unwrap();
@@ -220,7 +223,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
     let decode_buffer = buffer.clone();
     let handle = thread::spawn(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(
+        let result = decode_audio_streaming(
             decode_buffer,
             &mut sink,
             None,
@@ -229,7 +232,10 @@ fn flac_seek_uses_seektable_not_binary_search() {
             Some(stop_sample),
             None,
             token,
-        )
+        );
+        // One segment is the whole track here: finish the sink as run_decoder would.
+        sink.mark_finished();
+        result
     });
     assert!(handle.join().unwrap().is_ok(), "seek decode failed");
 
@@ -310,7 +316,7 @@ fn byte_seek_to_landing_is_sample_exact() {
         let decode_buffer = buffer.clone();
         let handle = thread::spawn(move || {
             let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-            decode_audio_streaming(
+            let result = decode_audio_streaming(
                 decode_buffer,
                 &mut sink,
                 seek_to_byte,
@@ -319,7 +325,10 @@ fn byte_seek_to_landing_is_sample_exact() {
                 Some(start + sample_rate / 10), // stop ~0.1s later
                 None,
                 token,
-            )
+            );
+            // One segment is the whole track here: finish the sink as run_decoder would.
+            sink.mark_finished();
+            result
         });
         assert!(handle.join().unwrap().is_ok(), "byte-seek decode failed");
         let mut out = Vec::new();
