@@ -28,18 +28,18 @@ use crate::import::folder_scanner::{
 };
 use std::collections::HashSet;
 
+/// The next scan generation. One upsert rather than a read of a seeded row
+/// and a write back: the counter's row is created by the first allocation,
+/// so a store whose device-local tables were rebuilt without the migration's
+/// seed still scans.
 pub(super) fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i64, DbError> {
-    let current: i64 = sql.query_row(
-        "SELECT last_generation FROM folder_scan_generation_sequence WHERE singleton = 1",
+    let generation: i64 = sql.query_row(
+        "INSERT INTO folder_scan_generation_sequence (singleton, last_generation) \
+         VALUES (1, 1) \
+         ON CONFLICT(singleton) DO UPDATE SET last_generation = last_generation + 1 \
+         RETURNING last_generation",
         [],
         |row| row.get(0),
-    )?;
-    let generation = current
-        .checked_add(1)
-        .ok_or_else(|| DbError::Message("folder scan generation exhausted".to_string()))?;
-    sql.execute(
-        "UPDATE folder_scan_generation_sequence SET last_generation = ? WHERE singleton = 1",
-        [generation],
     )?;
     Ok(generation)
 }

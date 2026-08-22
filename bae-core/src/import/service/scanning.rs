@@ -547,6 +547,17 @@ impl ImportService {
                                 completion.path.display()
                             );
                         }
+                        // A scan nobody awaited — the startup scan, an add, a
+                        // watcher-triggered re-scan — reports its failure
+                        // here or nowhere.
+                        if let Err(error) = &completion.result {
+                            if schedule.current_waiters.is_empty() {
+                                error!(
+                                    "folder scan of {} failed: {error}",
+                                    completion.path.display()
+                                );
+                            }
+                        }
                         for waiter in schedule.current_waiters.drain(..) {
                             if waiter.send(completion.result.clone()).is_err() {
                                 debug!("folder refresh caller dropped before completion");

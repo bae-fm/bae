@@ -591,3 +591,24 @@ fn walkthrough_folder() -> tempfile::TempDir {
     std::fs::write(tmp.path().join("cd.cue"), cue).unwrap();
     tmp
 }
+
+/// The generation counter is allocated by the scan write itself, not read
+/// from a row a migration seeded: a store whose device-local tables were
+/// rebuilt without the seed still scans.
+#[tokio::test]
+async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    db.add_watched_import_folder(root).await.unwrap();
+    db.call(|sql| {
+        sql.execute("DELETE FROM folder_scan_generation_sequence", [])?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+
+    let first = db.begin_folder_scan(root).await.unwrap();
+    let second = db.begin_folder_scan(root).await.unwrap();
+    assert_eq!(first, 1);
+    assert_eq!(second, 2);
+}

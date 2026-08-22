@@ -3,7 +3,6 @@
 
 use super::*;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl AppServices {
     pub(crate) fn subscribe_import_events(
         &self,

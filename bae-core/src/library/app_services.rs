@@ -911,6 +911,7 @@ impl AppServices {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
