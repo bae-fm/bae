@@ -4,20 +4,17 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn subscribe_import_triage(
+    pub(crate) fn subscribe_import_candidates(
         &self,
-        snapshot: crate::import::ImportCandidatesSnapshot,
-    ) -> coven::LiveQuery<crate::db::ImportTriageDbProjection> {
-        self.database.subscribe_import_triage(snapshot)
+    ) -> coven::LiveQuery<crate::db::ImportCandidatesProjection> {
+        self.database.subscribe_import_candidates()
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn resolve_import_triage(
+    pub(crate) async fn load_import_candidates(
         &self,
-        snapshot: crate::import::ImportCandidatesSnapshot,
-        projection: crate::db::ImportTriageDbProjection,
-    ) -> Result<crate::import::TriageQueue, LibraryError> {
-        crate::import::triage::project_live(snapshot, projection)
+    ) -> Result<crate::db::ImportCandidatesProjection, LibraryError> {
+        Ok(self.database.load_import_candidates().await?)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -85,7 +82,10 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn remove_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
+    pub async fn remove_watched_import_folder(
+        &self,
+        path: &str,
+    ) -> Result<Option<Vec<String>>, LibraryError> {
         Ok(self.database.remove_watched_import_folder(path).await?)
     }
 
@@ -113,11 +113,10 @@ impl LibraryManager {
         watched_folder_path: &str,
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
-        removed_keys: &[String],
-    ) -> Result<bool, LibraryError> {
+    ) -> Result<Option<Vec<String>>, LibraryError> {
         Ok(self
             .database
-            .save_folder_scan_item(watched_folder_path, generation, item, removed_keys)
+            .save_folder_scan_item(watched_folder_path, generation, item)
             .await?)
     }
 
@@ -127,7 +126,7 @@ impl LibraryManager {
         watched_folder_path: &str,
         generation: u64,
         error: Option<&str>,
-    ) -> Result<bool, LibraryError> {
+    ) -> Result<Option<Vec<String>>, LibraryError> {
         Ok(self
             .database
             .finish_folder_scan(watched_folder_path, generation, error)
@@ -139,6 +138,32 @@ impl LibraryManager {
         &self,
     ) -> Result<Vec<crate::db::DbFolderScanSnapshot>, LibraryError> {
         Ok(self.database.load_folder_scan_snapshots().await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_folder_scan_items(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
+        Ok(self
+            .database
+            .load_folder_scan_items(watched_folder_path)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_all_folder_scan_items(
+        &self,
+    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
+        Ok(self.database.load_all_folder_scan_items().await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_folder_scan_item(
+        &self,
+        entry_key: &str,
+    ) -> Result<Option<crate::import::folder_scanner::ScanItem>, LibraryError> {
+        Ok(self.database.load_folder_scan_item(entry_key).await?)
     }
 
     /// Insert all of an import's data in one transaction, so the release either
@@ -247,7 +272,7 @@ impl LibraryManager {
         expected_revision: u64,
         edits: &crate::import::folder_scanner::CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
         Ok(self
             .database
             .save_import_candidate_file_edits(

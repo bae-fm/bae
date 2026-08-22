@@ -6,6 +6,7 @@
 //! whatever the import service is publishing right now.
 
 use super::*;
+use std::collections::HashMap;
 
 /// Every candidate the import service is publishing, in path order.
 ///
@@ -14,11 +15,12 @@ use super::*;
 /// candidates by.
 pub(crate) fn automation_candidates(
     snapshot: &ImportCandidatesSnapshot,
+    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
 ) -> Vec<AutomationCandidate> {
     let mut candidates: Vec<AutomationCandidate> = snapshot
         .folder_candidates
         .iter()
-        .map(automation_candidate_from_folder)
+        .map(|folder| automation_candidate_from_folder(folder, runtime))
         .chain(
             snapshot
                 .invalid_candidates
@@ -36,13 +38,14 @@ pub(crate) fn automation_candidates(
 /// hides, which is a candidate the import service has deliberately withdrawn.
 pub(crate) fn automation_candidate(
     snapshot: &ImportCandidatesSnapshot,
+    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
     candidate_key: &str,
 ) -> Option<AutomationCandidate> {
     snapshot
         .folder_candidates
         .iter()
         .find(|folder| candidate_path(&folder.candidate.path) == candidate_key)
-        .map(automation_candidate_from_folder)
+        .map(|folder| automation_candidate_from_folder(folder, runtime))
         .or_else(|| {
             snapshot
                 .invalid_candidates
@@ -52,8 +55,24 @@ pub(crate) fn automation_candidate(
         })
 }
 
-fn automation_candidate_from_folder(folder: &FolderImportCandidateSnapshot) -> AutomationCandidate {
+/// A folder candidate with its runtime joined. The identify state is the run
+/// in flight when there is one, else the state its stored verdict stands back
+/// up as — the same answer the import tab shows.
+fn automation_candidate_from_folder(
+    folder: &FolderImportCandidateSnapshot,
+    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
+) -> AutomationCandidate {
     let candidate = &folder.candidate;
+    let mut joined = runtime
+        .get(&candidate_path(&candidate.path))
+        .cloned()
+        .unwrap_or_else(CandidateRuntimeSnapshot::idle);
+    if matches!(
+        joined.identify_state,
+        bae_core::identify::IdentifyState::Idle
+    ) {
+        joined.identify_state = folder.resumed_identify_state.clone();
+    }
     AutomationCandidate::Valid {
         common: automation_candidate_common(
             &candidate.path,
@@ -65,7 +84,7 @@ fn automation_candidate_from_folder(folder: &FolderImportCandidateSnapshot) -> A
         track_count: candidate.files.track_count(),
         format_label: candidate.files.format_label.clone(),
         content_hash: candidate.files.content_hash(),
-        runtime: automation_candidate_runtime(&folder.runtime),
+        runtime: automation_candidate_runtime(&joined),
     }
 }
 

@@ -172,11 +172,11 @@ impl RootRemovalBackend for FakeRemovalBackend {
         }
     }
 
-    async fn remove_durable_root(&self, _path: &Path) -> Result<(), String> {
+    async fn remove_durable_root(&self, _path: &Path) -> Result<Vec<String>, String> {
         self.calls.lock().unwrap().push("remove");
         match self.remove_error.lock().unwrap().clone() {
             Some(error) => Err(error),
-            None => Ok(()),
+            None => Ok(Vec::new()),
         }
     }
 }
@@ -186,7 +186,7 @@ struct CoordinatorHarness {
     fs_events: tokio::sync::mpsc::UnboundedSender<DebounceEventResult>,
     scans: FakeScanStarter,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-    candidate_state: CandidateStore,
+    library_manager: LibraryManager,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     removal_backend: Arc<FakeRemovalBackend>,
     coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
@@ -215,15 +215,19 @@ impl CoordinatorHarness {
         let registry = Arc::new(Mutex::new(
             ImportFolderRegistry::from_stored(roots.clone(), Vec::new()).unwrap(),
         ));
-        let state = CandidateStore::default();
         if let Some(root) = roots.first() {
             let root_path = PathBuf::from(root);
-            state.begin_root_scan(&root_path, 0);
-            state
-                .apply_scan_item_if_current(
-                    &root_path,
-                    0,
-                    ScanItem::Invalid(crate::import::InvalidCandidate {
+            let generation = service
+                .library_manager
+                .begin_folder_scan(root)
+                .await
+                .unwrap();
+            service
+                .library_manager
+                .save_folder_scan_item(
+                    root,
+                    generation,
+                    &ScanItem::Invalid(crate::import::InvalidCandidate {
                         path: root_path.join("Group/Release"),
                         name: "Release".to_string(),
                         watched_folder_path: root.clone(),
@@ -231,10 +235,10 @@ impl CoordinatorHarness {
                         resolved_boundaries: Vec::new(),
                         reason: crate::import::InvalidReason::NoValidAudio,
                     }),
-                    false,
-                    false,
                 )
-                .unwrap();
+                .await
+                .unwrap()
+                .expect("the seeded scan generation is current");
         }
         let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
         let (scans, starter) = FakeScanStarter::new();
@@ -243,9 +247,8 @@ impl CoordinatorHarness {
             command_rx,
             fs_rx,
             service.event_tx,
-            service.library_manager,
+            service.library_manager.clone(),
             registry.clone(),
-            state.clone(),
             folder_state_commit.clone(),
             starter,
             removal_backend.clone(),
@@ -255,7 +258,7 @@ impl CoordinatorHarness {
             fs_events,
             scans,
             folder_registry: registry,
-            candidate_state: state,
+            library_manager: service.library_manager,
             folder_state_commit,
             removal_backend,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),

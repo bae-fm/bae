@@ -14,7 +14,7 @@ use coven::rusqlite::Connection;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::Coven;
 use coven::{ClockRef, CovenError, CovenHandle, DbError, IdRef, SqlContext, SqlReadContext};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 // Only the test-only external-ref helper names a path type here; production
 // paths live on the types that carry them.
 #[cfg(any(test, feature = "test-utils"))]
@@ -42,13 +42,14 @@ mod identity;
 // and every caller is a gated import module — the mobile builds are sync and
 // playback clients with no import pipeline.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod folder_scans;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_content_hash;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_projection;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use import_projection::ImportTriageDbProjection;
+pub use import_projection::{ImportCandidatesProjection, ImportTriageDbProjection};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod payloads;
 mod playback;

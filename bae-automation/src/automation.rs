@@ -2,8 +2,11 @@ use super::*;
 
 impl Automation {
     pub fn new(services: AppServices, runtime_handle: &tokio::runtime::Handle) -> Self {
+        let _ = runtime_handle;
+        let runtimes = services.clone();
         let state = Arc::new(AutomationState::new(
-            services.subscribe_import_candidates(runtime_handle),
+            services.subscribe_import_candidates(),
+            Arc::new(move || runtimes.candidate_runtimes()),
         ));
         Self { services, state }
     }
@@ -18,14 +21,15 @@ impl Automation {
         }
     }
 
-    pub fn watched_folders(&self) -> Vec<AutomationWatchedFolder> {
-        self.current_watched_folders()
+    pub fn watched_folders(&self) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
+        Ok(self
+            .current_watched_folders()?
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
                 path: folder.path,
                 name: folder.name,
             })
-            .collect()
+            .collect())
     }
 
     pub async fn add_watched_folder(
@@ -33,7 +37,7 @@ impl Automation {
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
         self.services.import_add_watched_folder(path).await?;
-        Ok(self.watched_folders())
+        self.watched_folders()
     }
 
     pub async fn remove_watched_folder(
@@ -41,7 +45,7 @@ impl Automation {
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
         self.services.import_remove_watched_folder(path).await?;
-        Ok(self.watched_folders())
+        self.watched_folders()
     }
 
     pub async fn scan_watched_folders(
@@ -55,7 +59,7 @@ impl Automation {
             ScanWait::UntilFinished { timeout_ms } => {
                 let mut rx = self.services.import_subscribe_folder_scan_events();
                 let mut pending: std::collections::HashSet<_> = self
-                    .current_watched_folders()
+                    .current_watched_folders()?
                     .into_iter()
                     .map(|folder| folder.path)
                     .collect();
@@ -94,16 +98,18 @@ impl Automation {
             }
         }
         Ok(AutomationScanResult {
-            watched_folders: self.watched_folders(),
-            candidates: self.list_candidates(),
+            watched_folders: self.watched_folders()?,
+            candidates: self.list_candidates()?,
         })
     }
 
-    fn current_watched_folders(&self) -> Vec<bae_core::import::WatchedFolder> {
+    fn current_watched_folders(
+        &self,
+    ) -> Result<Vec<bae_core::import::WatchedFolder>, AutomationError> {
         self.state.watched_folders()
     }
 
-    pub fn list_candidates(&self) -> Vec<AutomationCandidate> {
+    pub fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
         self.state.list_candidates()
     }
 
@@ -373,7 +379,7 @@ impl Automation {
             }
             AutomationTool::WatchedFoldersList => {
                 expect_no_args(args, tool.name())?;
-                to_list_value("watched_folders", self.watched_folders())
+                to_list_value("watched_folders", self.watched_folders()?)
             }
             AutomationTool::WatchedFolderAdd => {
                 let input: PathInput = from_value(args)?;
@@ -395,7 +401,7 @@ impl Automation {
             }
             AutomationTool::ImportCandidatesList => {
                 expect_no_args(args, tool.name())?;
-                to_list_value("candidates", self.list_candidates())
+                to_list_value("candidates", self.list_candidates()?)
             }
             AutomationTool::ImportCandidateGet => {
                 let input: CandidateKeyInput = from_value(args)?;

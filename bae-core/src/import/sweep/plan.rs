@@ -101,12 +101,13 @@ pub(super) fn usable_stored_row<'a>(
         })
 }
 
-pub(super) fn usable_current_candidate(
+pub(super) async fn usable_current_candidate(
     context: &SweepContext,
     key: &str,
     identity: &CandidateIdentity,
 ) -> bool {
     sweepable_candidate(context, key)
+        .await
         .is_some_and(|candidate| candidate_identity(&candidate) == *identity)
 }
 

@@ -250,16 +250,40 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         state,
         priority: CallPriority::Background,
     };
-    let mut values = fixture.import.subscribe_import_candidates();
-    values.borrow_and_update();
+    let mut changes = fixture.import.subscribe_candidate_runtime().1;
+    // The recorder publishes one change per event it records, and a torn-down
+    // `Idle` after a terminal state records nothing. The bus is ordered, so an
+    // unrelated event that does record marks that the `Idle` before it has
+    // been seen.
+    let marker = || ImportEvent::ImportProgress {
+        candidate_key: "reidentify:marker".to_string(),
+        progress: crate::import::ImportProgress::Preparing {
+            import_id: "marker".to_string(),
+            step: crate::import::PrepareStep::Queued,
+            album_title: String::new(),
+            artist_name: String::new(),
+        },
+    };
+    let recorded = |change: Result<
+        crate::import::CandidateRuntimeChange,
+        tokio::sync::broadcast::error::RecvError,
+    >| {
+        let change = change.expect("runtime changes stay open");
+        assert!(
+            matches!(&change, crate::import::CandidateRuntimeChange::Updated { key, .. } if key == "reidentify:marker"),
+            "expected the marker, got {change:?}"
+        );
+    };
 
     fixture.import.emit_event_for_test(changed(found));
-    values.changed().await.expect("candidate stream stays open");
+    changes.recv().await.expect("runtime changes stay open");
     fixture
         .import
         .emit_event_for_test(changed(IdentifyState::Idle));
-    values.changed().await.expect("candidate stream stays open");
-    let Some(ImportCandidateSnapshot::Folder { runtime, .. }) = fixture.import.get_candidate(&key)
+    fixture.import.emit_event_for_test(marker());
+    recorded(changes.recv().await);
+    let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
+        fixture.import.get_candidate(&key)
     else {
         panic!("the scanned candidate is readable");
     };
@@ -291,12 +315,13 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         },
     };
     fixture.import.emit_event_for_test(changed(triangulating));
-    values.changed().await.expect("candidate stream stays open");
+    changes.recv().await.expect("runtime changes stay open");
     fixture
         .import
         .emit_event_for_test(changed(IdentifyState::Idle));
-    values.changed().await.expect("candidate stream stays open");
-    let Some(ImportCandidateSnapshot::Folder { runtime, .. }) = fixture.import.get_candidate(&key)
+    changes.recv().await.expect("runtime changes stay open");
+    let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
+        fixture.import.get_candidate(&key)
     else {
         panic!("the scanned candidate is readable");
     };
@@ -742,7 +767,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     // The write's event reaches the recorder through the bus; poll for it.
     let cleared = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            if let Some(ImportCandidateSnapshot::Folder { runtime, .. }) =
+            if let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
                 fixture.import.get_candidate(&key)
             {
                 if matches!(runtime.identify_state, IdentifyState::Idle) {

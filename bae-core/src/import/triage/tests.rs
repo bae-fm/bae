@@ -13,6 +13,7 @@ use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, InvalidReason, ScannedFile,
 };
 use crate::import::{CandidateRuntimeSnapshot, WatchedFolder};
+use std::collections::HashMap as RuntimeMap;
 use std::path::PathBuf;
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -153,27 +154,24 @@ fn every_answer() -> Vec<CandidateAnswer> {
 }
 
 /// Every import status a candidate can be in, including none.
-fn every_import_status() -> Vec<Option<CandidateImportStatusSnapshot>> {
+fn every_import_status() -> Vec<Option<TriageImportStatus>> {
     vec![
         None,
-        Some(CandidateImportStatusSnapshot::Importing {
-            progress_percent: 40,
-            step: None,
-        }),
-        Some(CandidateImportStatusSnapshot::Complete {
+        Some(TriageImportStatus::Importing),
+        Some(TriageImportStatus::Complete {
             release: ImportedRelease {
                 release_id: "rel-1".to_string(),
                 album_id: "alb-1".to_string(),
             },
         }),
-        Some(CandidateImportStatusSnapshot::CloudUploadQueued {
+        Some(TriageImportStatus::CloudUploadQueued {
             release: ImportedRelease {
                 release_id: "rel-2".to_string(),
                 album_id: "alb-2".to_string(),
             },
             outbox_revision: 7,
         }),
-        Some(CandidateImportStatusSnapshot::Error {
+        Some(TriageImportStatus::Error {
             error: "boom".to_string(),
         }),
     ]
@@ -225,16 +223,10 @@ fn snapshot_of(candidates: Vec<(FolderCandidate, bool, bool)>) -> ImportCandidat
                     actionable: true,
                     skipped,
                     is_added,
-                    runtime: CandidateRuntimeSnapshot {
-                        identify_state: IdentifyState::Idle,
-                        toolbar: vec![],
-                        signals: None,
-                        import_status: None,
-                    },
+                    resumed_identify_state: IdentifyState::Idle,
                 },
             )
             .collect(),
-        runtime_candidates: vec![],
         invalid_candidates: vec![],
         boundaries: vec![],
         folder_scan_statuses: vec![],
@@ -333,3 +325,31 @@ fn picked_release(release_id: &str) -> Picked {
 include!("tests/rows.rs");
 include!("tests/grouping.rs");
 include!("tests/overlay.rs");
+
+/// Project with no runtime anywhere: every candidate idle.
+fn project_idle(
+    snapshot: ImportCandidatesSnapshot,
+    answers: &HashMap<(String, u64), Answered>,
+    picks: &HashMap<(String, u64), Picked>,
+    imported_releases: &HashMap<String, ImportedRelease>,
+) -> TriageQueue {
+    project(
+        snapshot,
+        &RuntimeMap::new(),
+        answers,
+        picks,
+        imported_releases,
+    )
+}
+
+/// Project with one candidate's runtime set.
+fn project_with_runtime(
+    snapshot: ImportCandidatesSnapshot,
+    runtime: Vec<(String, CandidateRuntimeSnapshot)>,
+    answers: &HashMap<(String, u64), Answered>,
+    picks: &HashMap<(String, u64), Picked>,
+    imported_releases: &HashMap<String, ImportedRelease>,
+) -> TriageQueue {
+    let runtime: RuntimeMap<String, CandidateRuntimeSnapshot> = runtime.into_iter().collect();
+    project(snapshot, &runtime, answers, picks, imported_releases)
+}

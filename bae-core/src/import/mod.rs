@@ -5,7 +5,9 @@ mod artist_names;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod assemble;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod candidate_store;
+pub(crate) mod candidate_runtime;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) mod candidates;
 // Reads the identify state and the picked release's detail, both desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod claim;
@@ -100,10 +102,12 @@ pub struct ParsedAlbum {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use candidate_store::{
+pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use candidates::{
     CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
     FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportedRelease,
-    RuntimeImportCandidateSnapshot, WatchedFolderScanStatus,
+    WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
@@ -116,6 +120,8 @@ pub use folder_scanner::{
     FolderReleaseTreeRow, FolderReleaseTreeRowKind, InvalidCandidate, InvalidReason,
     ReleaseFileScope, ResolvedFolderReleaseBoundary,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use handle::ImportCandidatesValue;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
     parsed_album_to_user_edit, shape_user_edit_for_choice, DiscogsSaveOutcome,

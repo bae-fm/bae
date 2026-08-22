@@ -1,4 +1,4 @@
-// ── Overlaying stored verdicts onto the candidates snapshot ─────────────────
+// ── Resuming stored verdicts onto the candidate list ────────────────────────
 
 fn stored_row(
     candidate: &FolderImportCandidateSnapshot,
@@ -21,19 +21,10 @@ fn stored_row(
     }
 }
 
-fn projection_of(
-    rows: Vec<DbImportCandidateState>,
-    library_statuses: Vec<LibraryStatus>,
-) -> crate::db::ImportTriageDbProjection {
-    crate::db::ImportTriageDbProjection {
-        candidate_states: rows
-            .into_iter()
-            .map(|row| (row.content_hash.clone(), row))
-            .collect(),
-        library_statuses,
-        source_payloads: HashMap::new(),
-        imported_releases: HashMap::new(),
-    }
+fn states_of(rows: Vec<DbImportCandidateState>) -> HashMap<String, DbImportCandidateState> {
+    rows.into_iter()
+        .map(|row| (row.content_hash.clone(), row))
+        .collect()
 }
 
 fn status_for(release_id: &str, in_library: bool) -> LibraryStatus {
@@ -46,29 +37,30 @@ fn status_for(release_id: &str, in_library: bool) -> LibraryStatus {
     }
 }
 
-/// An answered candidate with no run in flight reads its stored verdict's
-/// resumed state — matches, statuses and all — straight from the projection.
+/// An answered candidate carries its stored verdict's resumed state —
+/// matches, statuses and all — on its row.
 #[test]
-fn overlay_resumes_a_stored_verdict_for_an_idle_candidate() {
+fn a_stored_verdict_resumes_onto_its_candidate() {
     let mut snapshot = snapshot_of(vec![candidate("answered", false, false)]);
     let verdict = found(vec![result("rel-a"), result("rel-b")]);
-    let rows = vec![stored_row(&snapshot.folder_candidates[0], &verdict, 0)];
-    let projection = projection_of(
-        rows,
-        vec![status_for("rel-a", false), status_for("rel-b", true)],
-    );
+    let rows = states_of(vec![stored_row(
+        &snapshot.folder_candidates[0],
+        &verdict,
+        0,
+    )]);
+    let statuses = vec![status_for("rel-a", false), status_for("rel-b", true)];
 
-    overlay_stored_verdicts(&mut snapshot, &projection).unwrap();
+    resume_stored_verdicts(&mut snapshot, &rows, &statuses).unwrap();
 
     let IdentifyState::Found {
         matches,
         library_statuses,
         ..
-    } = &snapshot.folder_candidates[0].runtime.identify_state
+    } = &snapshot.folder_candidates[0].resumed_identify_state
     else {
         panic!(
             "expected the stored Found, got {:?}",
-            snapshot.folder_candidates[0].runtime.identify_state
+            snapshot.folder_candidates[0].resumed_identify_state
         );
     };
     assert_eq!(
@@ -88,68 +80,40 @@ fn overlay_resumes_a_stored_verdict_for_an_idle_candidate() {
     );
 }
 
-/// A run in flight owns the candidate's state; the stored verdict it is about
-/// to replace must not paint over it.
-#[test]
-fn overlay_leaves_a_live_run_alone() {
-    let mut snapshot = snapshot_of(vec![candidate("running", false, false)]);
-    snapshot.folder_candidates[0].runtime.identify_state = IdentifyState::NotFoundAnywhere {
-        context: crate::identify::state::SignalsContext {
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 4 },
-            barcode_codes: Vec::new(),
-            had_barcode_source: false,
-            catalogs: Vec::new(),
-            excluded: Default::default(),
-            discid_results: Vec::new(),
-            barcode_results: Vec::new(),
-            discid_failure: None,
-            barcode_failure: None,
-            matched_barcode: None,
-            track_count: 4,
-        },
-    };
-    let verdict = found(vec![result("rel-a")]);
-    let rows = vec![stored_row(&snapshot.folder_candidates[0], &verdict, 0)];
-    let projection = projection_of(rows, vec![status_for("rel-a", false)]);
-
-    overlay_stored_verdicts(&mut snapshot, &projection).unwrap();
-
-    assert!(
-        matches!(
-            snapshot.folder_candidates[0].runtime.identify_state,
-            IdentifyState::NotFoundAnywhere { .. }
-        ),
-        "a non-idle runtime state is the live truth and stays"
-    );
-}
-
 /// A verdict stored for an earlier file-edit revision describes files the
 /// candidate no longer has; it does not resume.
 #[test]
-fn overlay_skips_a_verdict_from_another_revision() {
+fn a_verdict_from_another_revision_does_not_resume() {
     let mut snapshot = snapshot_of(vec![candidate("edited", false, false)]);
     let verdict = found(vec![result("rel-a")]);
-    let rows = vec![stored_row(&snapshot.folder_candidates[0], &verdict, 3)];
-    let projection = projection_of(rows, vec![status_for("rel-a", false)]);
+    let rows = states_of(vec![stored_row(
+        &snapshot.folder_candidates[0],
+        &verdict,
+        3,
+    )]);
 
-    overlay_stored_verdicts(&mut snapshot, &projection).unwrap();
+    resume_stored_verdicts(&mut snapshot, &rows, &[status_for("rel-a", false)]).unwrap();
 
     assert!(matches!(
-        snapshot.folder_candidates[0].runtime.identify_state,
+        snapshot.folder_candidates[0].resumed_identify_state,
         IdentifyState::Idle
     ));
 }
 
-/// A projection missing a status for a release the verdict names is a read
-/// that failed, not a release outside the library: the overlay refuses it.
+/// A status set missing a release the verdict names is a read that failed,
+/// not a release outside the library: resuming refuses it.
 #[test]
-fn overlay_refuses_a_projection_missing_a_status() {
+fn resuming_refuses_a_missing_library_status() {
     let mut snapshot = snapshot_of(vec![candidate("short", false, false)]);
     let verdict = found(vec![result("rel-a"), result("rel-b")]);
-    let rows = vec![stored_row(&snapshot.folder_candidates[0], &verdict, 0)];
-    let projection = projection_of(rows, vec![status_for("rel-a", false)]);
+    let rows = states_of(vec![stored_row(
+        &snapshot.folder_candidates[0],
+        &verdict,
+        0,
+    )]);
 
-    let error = overlay_stored_verdicts(&mut snapshot, &projection).unwrap_err();
+    let error = resume_stored_verdicts(&mut snapshot, &rows, &[status_for("rel-a", false)])
+        .unwrap_err();
 
     assert!(
         error.to_string().contains("rel-b"),
@@ -157,9 +121,9 @@ fn overlay_refuses_a_projection_missing_a_status() {
     );
     assert!(
         matches!(
-            snapshot.folder_candidates[0].runtime.identify_state,
+            snapshot.folder_candidates[0].resumed_identify_state,
             IdentifyState::Idle
         ),
-        "a refused overlay changes nothing"
+        "a refused resume changes nothing"
     );
 }

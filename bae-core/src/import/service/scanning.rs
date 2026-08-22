@@ -7,23 +7,15 @@ impl ImportService {
         message: String,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
-        candidate_state: &CandidateStore,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
     ) -> Result<bool, crate::import::ImportError> {
         let _commit = folder_state_commit.lock().await;
-        if !library_manager
+        if library_manager
             .finish_folder_scan(&root.to_string_lossy(), generation, Some(&message))
             .await?
+            .is_none()
         {
             return Ok(false);
-        }
-        if !candidate_state.fail_root_scan(root, generation, message.clone()) {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!(
-                    "failed scan generation {generation} for {} was not current in memory",
-                    root.display()
-                ),
-            });
         }
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
@@ -46,10 +38,8 @@ impl ImportService {
         item: &ScanItem,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
-        candidate_state: &CandidateStore,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
-    ) -> Result<Option<(tokio::sync::OwnedMutexGuard<()>, ScanItem)>, crate::import::ImportError>
-    {
+    ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
         let commit = folder_state_commit.clone().lock_owned().await;
         let mut item = item.clone();
         if let ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) = &mut item {
@@ -60,13 +50,16 @@ impl ImportService {
             candidate.files.apply_candidate_file_edits(&edits)?;
             candidate.file_edit_revision = edits.revision;
         }
-        let removed_keys = candidate_state.persisted_removals_for_item(root, &item);
         match library_manager
-            .save_folder_scan_item(&root.to_string_lossy(), generation, &item, &removed_keys)
+            .save_folder_scan_item(&root.to_string_lossy(), generation, &item)
             .await
         {
-            Ok(true) => Ok(Some((commit, item))),
-            Ok(false) => Ok(None),
+            Ok(Some(superseded_keys)) => Ok(Some(PersistedScanItem {
+                commit,
+                item,
+                superseded_keys,
+            })),
+            Ok(None) => Ok(None),
             Err(write_error) => {
                 drop(commit);
                 let message = format!("Could not store folder scan result: {write_error}");
@@ -76,7 +69,6 @@ impl ImportService {
                     message,
                     event_tx,
                     library_manager,
-                    candidate_state,
                     folder_state_commit,
                 )
                 .await
@@ -134,14 +126,12 @@ impl ImportService {
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-        candidate_state: CandidateStore,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         folder_watcher: Arc<FolderWatcher>,
     ) -> std::thread::JoinHandle<()> {
         let scan_event_tx = event_tx.clone();
         let scan_library_manager = library_manager.clone();
         let scan_folder_registry = folder_registry.clone();
-        let scan_candidate_state = candidate_state.clone();
         let scan_folder_state_commit = folder_state_commit.clone();
         let scan_folder_watcher = folder_watcher.clone();
         let removal_backend = Arc::new(ServiceRootRemovalBackend {
@@ -155,7 +145,6 @@ impl ImportService {
                 scan_event_tx.clone(),
                 scan_library_manager.clone(),
                 scan_folder_registry.clone(),
-                scan_candidate_state.clone(),
                 scan_folder_state_commit.clone(),
                 scan_folder_watcher.clone(),
                 completion_tx,
@@ -167,7 +156,6 @@ impl ImportService {
             event_tx,
             library_manager,
             folder_registry,
-            candidate_state,
             folder_state_commit,
             starter,
             removal_backend,
@@ -180,7 +168,6 @@ impl ImportService {
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-        candidate_state: CandidateStore,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
@@ -299,7 +286,20 @@ impl ImportService {
                                         .append(&mut schedule.current_waiters);
                                 }
                                 let _commit = folder_state_commit.lock().await;
-                                let Some(ancestor_separate_keys) = candidate_state.release_boundary_ancestor_keys(&target.0)
+                                let stored_items = match library_manager
+                                    .load_folder_scan_items(&target.0.watched_folder_path)
+                                    .await
+                                {
+                                    Ok(items) => items,
+                                    Err(error) => {
+                                        if completion.send(Err(error.to_string())).is_err() {
+                                            debug!("folder decision caller dropped before the stored scan was read");
+                                        }
+                                        continue;
+                                    }
+                                };
+                                let Some(ancestor_separate_keys) =
+                                    crate::import::candidates::release_boundary_ancestor_keys(&stored_items, &target.0)
                                 else {
                                     if completion
                                         .send(Err(format!(
@@ -323,13 +323,7 @@ impl ImportService {
                                     .set_folder_release_decisions(&decisions)
                                     .await
                                 {
-                                    Ok((invalidation_generation, _)) => {
-                                        let superseded = candidate_state
-                                            .begin_root_scan_with_release_decisions(
-                                                &path,
-                                                invalidation_generation,
-                                                &decisions,
-                                            );
+                                    Ok((_, superseded)) => {
                                         for candidate_key in superseded {
                                             send_event(
                                                 &event_tx,
@@ -471,13 +465,15 @@ impl ImportService {
                             );
                         }
                         match completion.result {
-                            RootRemovalResult::Removed(commit) => {
+                            RootRemovalResult::Removed {
+                                commit,
+                                removed_keys,
+                            } => {
                                 let folders = {
                                     let mut registry = folder_registry.lock().unwrap();
                                     registry.apply_removed(&completion.path.to_string_lossy());
                                     registry.watched_folders()
                                 };
-                                let removed_keys = candidate_state.remove_root(&completion.path);
                                 for candidate_key in removed_keys {
                                     send_event(
                                         &event_tx,
@@ -674,7 +670,6 @@ impl ImportService {
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
-        candidate_state: &CandidateStore,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
         folder_watcher: &Arc<FolderWatcher>,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
@@ -683,7 +678,6 @@ impl ImportService {
         let generation = {
             let _commit = folder_state_commit.lock().await;
             let generation = library_manager.begin_folder_scan(&root_key).await?;
-            candidate_state.begin_root_scan(root, generation);
             let watched_folder = crate::import::WatchedFolder::from_path(root_key.clone());
             send_event(
                 event_tx,
@@ -712,7 +706,6 @@ impl ImportService {
                     e.to_string(),
                     event_tx,
                     library_manager,
-                    candidate_state,
                     folder_state_commit,
                 )
                 .await?;
@@ -732,7 +725,6 @@ impl ImportService {
                     message,
                     event_tx,
                     library_manager,
-                    candidate_state,
                     folder_state_commit,
                 )
                 .await?;
@@ -801,20 +793,10 @@ impl ImportService {
             (result, seen_directories)
         });
 
-        // Every candidate key this walk reported, valid or invalid: a folder
-        // that flipped valid → invalid (or back) keeps the same path key, so a
-        // removal is only due when a path drops out of the walk entirely.
-        let mut seen_keys: HashSet<String> = HashSet::new();
-        let mut seen_boundaries = HashSet::new();
+        // A stale generation is found out by the write: `save_folder_scan_item`
+        // writes nothing and returns `None` once a newer scan or decision has
+        // taken the root, and that is where this walk stops.
         while let Some(item) = item_rx.recv().await {
-            if !candidate_state.generation_is_current(root, generation) {
-                debug!(
-                    "discarding scan generation {generation} for removed root {}",
-                    root.display()
-                );
-                Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk).await?;
-                return Ok(());
-            }
             match item {
                 item @ (ScanItem::Discovered(_) | ScanItem::Valid(_)) => {
                     let (candidate, actionable) = match item {
@@ -832,13 +814,16 @@ impl ImportService {
                     } else {
                         ScanItem::Discovered(candidate.clone())
                     };
-                    let Some((commit, persisted_item)) = Self::persist_scan_item(
+                    let Some(PersistedScanItem {
+                        commit: _commit,
+                        item: persisted_item,
+                        superseded_keys,
+                    }) = Self::persist_scan_item(
                         root,
                         generation,
                         &persisted_item,
                         event_tx,
                         library_manager,
-                        candidate_state,
                         folder_state_commit,
                     )
                     .await?
@@ -847,10 +832,8 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
-                    let candidate = match &persisted_item {
-                        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                            candidate.clone()
-                        }
+                    let candidate = match persisted_item {
+                        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate,
                         ScanItem::Invalid(_) | ScanItem::Boundary(_) => {
                             unreachable!("persisted candidate scan item changed variant")
                         }
@@ -862,28 +845,7 @@ impl ImportService {
                     let is_added = library_manager
                         .is_content_hash_imported(&candidate.files.content_hash())
                         .await?;
-                    let Some(superseded) = candidate_state.apply_scan_item_if_current(
-                        root,
-                        generation,
-                        persisted_item,
-                        skipped,
-                        is_added,
-                    ) else {
-                        drop(commit);
-                        Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                            .await?;
-                        return Err(crate::import::ImportError::Internal {
-                            detail: format!(
-                                "stored scan generation {generation} for {} was not current in memory",
-                                root.display()
-                            ),
-                        });
-                    };
-                    // Record before announcing: the candidate value stream reads
-                    // this state, so announcing before the record would publish a
-                    // snapshot where the candidate is still missing.
-                    seen_keys.insert(candidate.path.to_string_lossy().into_owned());
-                    for candidate_key in superseded {
+                    for candidate_key in superseded_keys {
                         send_event(
                             event_tx,
                             crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -911,13 +873,16 @@ impl ImportService {
                 // Invalid candidates have no tab state, so they need no stamping.
                 ScanItem::Invalid(candidate) => {
                     let persisted_item = ScanItem::Invalid(candidate.clone());
-                    let Some((commit, persisted_item)) = Self::persist_scan_item(
+                    let Some(PersistedScanItem {
+                        commit: _commit,
+                        item: _,
+                        superseded_keys,
+                    }) = Self::persist_scan_item(
                         root,
                         generation,
                         &persisted_item,
                         event_tx,
                         library_manager,
-                        candidate_state,
                         folder_state_commit,
                     )
                     .await?
@@ -926,25 +891,7 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
-                    let Some(removed) = candidate_state.apply_scan_item_if_current(
-                        root,
-                        generation,
-                        persisted_item,
-                        false,
-                        false,
-                    ) else {
-                        drop(commit);
-                        Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                            .await?;
-                        return Err(crate::import::ImportError::Internal {
-                            detail: format!(
-                                "stored scan generation {generation} for {} was not current in memory",
-                                root.display()
-                            ),
-                        });
-                    };
-                    seen_keys.insert(candidate.path.to_string_lossy().into_owned());
-                    for candidate_key in removed {
+                    for candidate_key in superseded_keys {
                         send_event(
                             event_tx,
                             crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -961,13 +908,16 @@ impl ImportService {
                 }
                 ScanItem::Boundary(boundary) => {
                     let persisted_item = ScanItem::Boundary(boundary.clone());
-                    let Some((commit, persisted_item)) = Self::persist_scan_item(
+                    let Some(PersistedScanItem {
+                        commit: _commit,
+                        item: _,
+                        superseded_keys,
+                    }) = Self::persist_scan_item(
                         root,
                         generation,
                         &persisted_item,
                         event_tx,
                         library_manager,
-                        candidate_state,
                         folder_state_commit,
                     )
                     .await?
@@ -976,26 +926,7 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
-                    let Some(removed) = candidate_state.apply_scan_item_if_current(
-                        root,
-                        generation,
-                        persisted_item,
-                        false,
-                        false,
-                    ) else {
-                        drop(commit);
-                        Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                            .await?;
-                        return Err(crate::import::ImportError::Internal {
-                            detail: format!(
-                                "stored scan generation {generation} for {} was not current in memory",
-                                root.display()
-                            ),
-                        });
-                    };
-                    seen_boundaries.insert(boundary.key.clone());
-                    for candidate_key in removed {
-                        seen_keys.remove(&candidate_key);
+                    for candidate_key in superseded_keys {
                         send_event(
                             event_tx,
                             crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -1020,9 +951,7 @@ impl ImportService {
         let seen_directories = match walk.await {
             Ok((Ok(()), seen_directories)) => seen_directories,
             Ok((Err(e), _)) => {
-                if cancellation.is_cancelled()
-                    || !candidate_state.generation_is_current(root, generation)
-                {
+                if cancellation.is_cancelled() {
                     return Ok(());
                 }
                 warn!(
@@ -1035,7 +964,6 @@ impl ImportService {
                     e.to_string(),
                     event_tx,
                     library_manager,
-                    candidate_state,
                     folder_state_commit,
                 )
                 .await?;
@@ -1052,7 +980,6 @@ impl ImportService {
                     e.to_string(),
                     event_tx,
                     library_manager,
-                    candidate_state,
                     folder_state_commit,
                 )
                 .await?;
@@ -1062,17 +989,17 @@ impl ImportService {
             }
         };
 
-        if !candidate_state.generation_is_current(root, generation) {
-            return Ok(());
-        }
         drop(seen_directories);
 
+        // The generation check, pruning, and status change share one
+        // transaction: a newer decision or scan cannot be pruned by this
+        // completed write, and `None` says one took the root first.
         let commit = folder_state_commit.clone().lock_owned().await;
-        let finished = match library_manager
+        let pruned = match library_manager
             .finish_folder_scan(&root_key, generation, None)
             .await
         {
-            Ok(finished) => finished,
+            Ok(pruned) => pruned,
             Err(write_error) => {
                 drop(commit);
                 let message = format!("Could not finish folder scan: {write_error}");
@@ -1082,7 +1009,6 @@ impl ImportService {
                     message,
                     event_tx,
                     library_manager,
-                    candidate_state,
                     folder_state_commit,
                 )
                 .await
@@ -1097,23 +1023,10 @@ impl ImportService {
                 return Err(write_error.into());
             }
         };
-        if !finished {
+        let Some(pruned) = pruned else {
             return Ok(());
-        }
-
-        // The generation check, pruning, and status change share one lock: a
-        // newer decision or scan cannot be pruned by this completed DB write.
-        let Some(removed) =
-            candidate_state.finish_root_scan(root, generation, &seen_keys, &seen_boundaries)
-        else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!(
-                    "completed scan generation {generation} for {} was not current in memory",
-                    root.display()
-                ),
-            });
         };
-        for candidate_key in removed {
+        for candidate_key in pruned {
             send_event(
                 event_tx,
                 crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {

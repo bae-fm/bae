@@ -417,7 +417,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         ImportFolderRegistry::from_stored(vec![root.to_string_lossy().into_owned()], Vec::new())
             .unwrap(),
     ));
-    let state = CandidateStore::default();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -429,7 +428,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         service.event_tx.clone(),
         service.library_manager.clone(),
         registry,
-        state.clone(),
         Arc::new(tokio::sync::Mutex::new(())),
         watcher,
         completion_tx,
@@ -441,10 +439,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .expect("scan task completion channel closed");
     scan.task.await.unwrap();
 
-    assert!(state
-        .snapshot(Vec::new())
-        .folder_scan_statuses
-        .is_empty());
     assert!(service
         .library_manager
         .load_folder_scan_snapshots()
@@ -516,7 +510,12 @@ async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_co
         })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
-    harness.candidate_state.remove_root(&root);
+    harness
+        .library_manager
+        .remove_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the root was watched");
     drop(commit);
 
     assert_eq!(
@@ -581,34 +580,3 @@ async fn cancelling_a_panicked_folder_walk_surfaces_the_join_failure() {
     assert!(error.to_string().contains("folder scan task failed"));
 }
 
-#[tokio::test]
-async fn a_db_accepted_failure_that_memory_rejects_is_an_internal_error() {
-    let (service, _temp) = setup_import_service().await;
-    let root = &root_path("/music");
-    service
-        .library_manager
-        .add_watched_import_folder(root.to_str().unwrap())
-        .await
-        .unwrap();
-    let generation = service
-        .library_manager
-        .begin_folder_scan(root.to_str().unwrap())
-        .await
-        .unwrap();
-    let candidate_state = CandidateStore::default();
-    let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
-
-    let error = ImportService::record_scan_failure(
-        root,
-        generation,
-        "share unavailable".to_string(),
-        &service.event_tx,
-        &service.library_manager,
-        &candidate_state,
-        &folder_state_commit,
-    )
-    .await
-    .expect_err("DB and memory generation disagreement must fail");
-
-    assert!(error.to_string().contains("was not current in memory"));
-}

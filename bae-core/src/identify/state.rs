@@ -21,7 +21,7 @@ use std::collections::HashSet;
 
 /// The disc-ID signal's progress. `Done` / `Skipped` / `Failed` are the settled
 /// variants — combine fires once both signals are settled.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DiscidProgress {
     Computing,
     LookingUp,
@@ -60,7 +60,7 @@ impl DiscidProgress {
 
 /// The barcode signal's progress. `LookingUp` carries position + total so the UI
 /// can show "Looking up barcode 2 of 3."
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BarcodeProgress {
     Scanning,
     LookingUp {
@@ -125,7 +125,7 @@ pub enum ExcludedSignal {
 /// the `ReRun` re-dispatch; the settled results (`discid_results`,
 /// `barcode_results`, `matched_barcode`) let a toggle re-combine without
 /// re-fetching. `excluded` survives every new snapshot.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SignalsContext {
     /// The disc-ID signal (value + its inherent `DiscToc` origin).
     pub disc_id: DiscIdSignal,
@@ -255,7 +255,7 @@ impl SignalsContext {
 /// Every state but `Idle` carries a [`SignalsContext`], so the toolbar projection
 /// always has its signal values and the user can toggle or re-run from any settled
 /// state.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyState {
     Idle,
 

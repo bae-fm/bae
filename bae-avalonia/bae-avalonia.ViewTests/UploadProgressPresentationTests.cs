@@ -19,7 +19,7 @@ public sealed class UploadProgressPresentationTests
     [Fact]
     public void CloudImportWaitsForItsPublishedOutboxRevision()
     {
-        var status = new BridgeCandidateImportStatus.CloudUploadQueued(
+        var status = new BridgeTriageImportStatus.CloudUploadQueued(
             "release-a",
             "album-a",
             7);
@@ -38,7 +38,7 @@ public sealed class UploadProgressPresentationTests
 
         var queued = Assert.IsType<ImportUploadObservation.Active>(
             UploadProgressPresentation.ResolveImport(
-                new BridgeCandidateImportStatus.CloudUploadQueued(
+                new BridgeTriageImportStatus.CloudUploadQueued(
                     "release-a",
                     "album-a",
                     7),
@@ -47,7 +47,7 @@ public sealed class UploadProgressPresentationTests
 
         Assert.IsType<ImportUploadObservation.Active>(
             UploadProgressPresentation.ResolveImport(
-                new BridgeCandidateImportStatus.Complete(
+                new BridgeTriageImportStatus.Complete(
                     "release-a",
                     "album-a"),
                 snapshot));

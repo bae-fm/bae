@@ -132,14 +132,24 @@ pub struct BridgeInvalidCandidate {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderImportCandidateSnapshot {
     pub candidate: BridgeFolderCandidate,
-    pub runtime: BridgeCandidateRuntimeSnapshot,
     pub actionable: bool,
+    /// The identify state the candidate's stored verdict stands back up as:
+    /// what the row shows when its runtime holds no run. `Idle` when nothing
+    /// is stored for the candidate's current files.
+    pub resumed_identify_state: BridgeIdentifyState,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeRuntimeImportCandidateSnapshot {
-    pub key: String,
-    pub runtime: BridgeCandidateRuntimeSnapshot,
+/// One key's runtime after a change — the only thing a run advancing sends
+/// across — or its removal.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCandidateRuntimeChange {
+    Updated {
+        key: String,
+        runtime: BridgeCandidateRuntimeSnapshot,
+    },
+    Removed {
+        key: String,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -148,6 +158,23 @@ pub struct BridgeCandidateRuntimeSnapshot {
     pub signals_toolbar: BridgeSignalsToolbar,
     pub signals: Option<BridgeSignals>,
     pub import_status: Option<BridgeCandidateImportStatus>,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTriageImportStatus {
+    Importing,
+    Complete {
+        release_id: String,
+        album_id: String,
+    },
+    CloudUploadQueued {
+        release_id: String,
+        album_id: String,
+        outbox_revision: u64,
+    },
+    Error {
+        error: BridgeError,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -170,11 +197,13 @@ pub enum BridgeCandidateImportStatus {
     },
 }
 
+/// The durable candidate list: one value per read of the folder-scan tables.
+/// Runtime arrives separately, per key, through
+/// `ImportCandidatesCallback::on_runtime`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidatesSnapshot {
     pub watched_folders: Vec<BridgeWatchedFolder>,
     pub folder_candidates: Vec<BridgeFolderImportCandidateSnapshot>,
-    pub runtime_candidates: Vec<BridgeRuntimeImportCandidateSnapshot>,
     pub invalid_candidates: Vec<BridgeInvalidCandidate>,
     pub boundaries: Vec<BridgeFolderReleaseBoundary>,
     pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
@@ -537,7 +566,10 @@ pub struct BridgeTriageRow {
     pub matched: Option<BridgeMatchedRelease>,
     /// Whether this row takes a bulk-import checkbox.
     pub selectable: bool,
-    pub import_status: Option<BridgeCandidateImportStatus>,
+    /// Where the candidate's import stands, without its progress: the row
+    /// says *that* an import is running; how far along rides on the
+    /// candidate's runtime.
+    pub import_status: Option<BridgeTriageImportStatus>,
     /// The identity already decided for this candidate — the settled single
     /// match, the pressing the user picked, or their decision to read the
     /// folder's own tags. Selection re-applies it, so the pane opens answered.

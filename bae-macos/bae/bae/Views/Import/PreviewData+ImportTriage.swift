@@ -44,7 +44,7 @@
             skipAction: BridgeTriageSkipAction?,
             matched: BridgeMatchedRelease?,
             selectable: Bool,
-            importStatus: BridgeCandidateImportStatus? = nil,
+            importStatus: BridgeTriageImportStatus? = nil,
             picked: BridgeIdentityPick? = nil,
             claim: BridgeIdentityChoice? = nil
         ) -> BridgeTriageRow {
@@ -319,6 +319,30 @@
             return candidate
         }
 
+        /// The row's placement-level view of a candidate's import run: the
+        /// same outcome, without the running import's progress.
+        static func triageImportStatus(
+            of status: BridgeCandidateImportStatus?
+        ) -> BridgeTriageImportStatus? {
+            switch status {
+            case nil: return nil
+            case .importing: return .importing
+            case .complete(let releaseId, let albumId):
+                return .complete(releaseId: releaseId, albumId: albumId)
+            case .cloudUploadQueued(
+                let releaseId,
+                let albumId,
+                let outboxRevision
+            ):
+                return .cloudUploadQueued(
+                    releaseId: releaseId,
+                    albumId: albumId,
+                    outboxRevision: outboxRevision
+                )
+            case .error(let error): return .error(error: error)
+            }
+        }
+
         private static let importTabImportingCandidate = candidate(
             folderCandidates[2],
             withImportStatus: .importing(
@@ -355,7 +379,9 @@
                 trackCount: 15
             ),
             selectable: false,
-            importStatus: importTabImportingCandidate.importStatus
+            importStatus: triageImportStatus(
+                of: importTabImportingCandidate.importStatus
+            )
         )
 
         static let triageRowSkipped = triageRow(
@@ -376,7 +402,9 @@
                 trackCount: 5
             ),
             selectable: false,
-            importStatus: importTabDoneCandidate.importStatus
+            importStatus: triageImportStatus(
+                of: importTabDoneCandidate.importStatus
+            )
         )
 
         static let triageRowDoneFailed = triageRow(
@@ -391,7 +419,9 @@
                 signal: .barcode
             ),
             selectable: false,
-            importStatus: importTabFailedCandidate.importStatus
+            importStatus: triageImportStatus(
+                of: importTabFailedCandidate.importStatus
+            )
         )
 
         private static let triageGroupedRows = importTabGroupedCandidates.map {

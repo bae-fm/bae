@@ -53,8 +53,10 @@ internal sealed class ValueSubscriptions : IDisposable
                 dispatcher.Post(() => storage.ApplyOutputs(value)))));
             _subscriptions.Add(handle.SubscribeCastDevices(new CastSink(value =>
                 dispatcher.Post(() => cast.ApplyDevices(value)))));
-            _subscriptions.Add(handle.SubscribeImportCandidates(new ImportSink(value =>
-                dispatcher.Post(() => import.ApplyCandidates(value)))));
+            _subscriptions.Add(handle.SubscribeImportCandidates(new ImportSink(
+                value => dispatcher.Post(() => import.ApplyCandidates(value)),
+                change => dispatcher.Post(() => import.ApplyCandidateRuntime(change)),
+                error => dispatcher.Post(() => Show(error, showError)))));
             _subscriptions.Add(handle.SubscribeImportTriage(new ImportTriageSink(
                 value => dispatcher.Post(() => import.ApplyTriage(value)),
                 error => dispatcher.Post(() => Show(error, showError)))));
@@ -127,9 +129,14 @@ internal sealed class ValueSubscriptions : IDisposable
         public void OnValue(BridgeCastDevice[] devices) => apply(devices);
     }
 
-    private sealed class ImportSink(Action<BridgeImportCandidatesSnapshot> apply) : ImportCandidatesCallback
+    private sealed class ImportSink(
+        Action<BridgeImportCandidatesSnapshot> apply,
+        Action<BridgeCandidateRuntimeChange> applyRuntime,
+        Action<BridgeException> error) : ImportCandidatesCallback
     {
         public void OnValue(BridgeImportCandidatesSnapshot value) => apply(value);
+        public void OnRuntime(BridgeCandidateRuntimeChange change) => applyRuntime(change);
+        public void OnError(BridgeException value) => error(value);
     }
 
     private sealed class ImportTriageSink(

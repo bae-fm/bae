@@ -36,6 +36,12 @@ internal sealed class ImportStore : IDisposable
     // menu.
     public List<BridgeWatchedFolder> WatchedFolders { get; private set; } = new();
 
+    // The list as its query last read it, by key, and every key's runtime as
+    // the runtime stream last reported it. A candidate is the join of the two,
+    // projected when asked for; a runtime change re-projects one key, a list
+    // value re-projects the keys it holds.
+    private Dictionary<string, BridgeFolderImportCandidateSnapshot> _rows = new();
+    private Dictionary<string, BridgeCandidateRuntimeSnapshot> _runtime = new();
     private Dictionary<string, ImportCandidate> _candidates = new();
     private Dictionary<string, (
         ImportCandidateRowStatus RowStatus,
@@ -162,12 +168,42 @@ internal sealed class ImportStore : IDisposable
     public void ApplyCandidates(BridgeImportCandidatesSnapshot snapshot)
     {
         WatchedFolders = snapshot.WatchedFolders.ToList();
-        _candidates = snapshot.FolderCandidates.ToDictionary(
-            entry => entry.Candidate.FolderPath,
-            entry => _import.ProjectFolderCandidate(entry.Candidate, entry.Runtime));
-        _runtimeCandidates = snapshot.RuntimeCandidates.ToDictionary(
+        _rows = snapshot.FolderCandidates.ToDictionary(row => row.Candidate.FolderPath);
+        _candidates = _rows.ToDictionary(
             entry => entry.Key,
-            entry => _import.ProjectRuntimeCandidate(entry.Runtime));
+            entry => _import.ProjectFolderCandidate(entry.Value, _runtime.GetValueOrDefault(entry.Key)));
+        Changed?.Invoke();
+    }
+
+    /// <summary>One key's runtime changed. A folder key re-projects its row
+    /// (or waits for the row, when the run started before the list re-read);
+    /// a re-identify key re-projects its pipeline.</summary>
+    public void ApplyCandidateRuntime(BridgeCandidateRuntimeChange change)
+    {
+        switch (change)
+        {
+            case BridgeCandidateRuntimeChange.Updated updated:
+                _runtime[updated.Key] = updated.Runtime;
+                if (_rows.TryGetValue(updated.Key, out var row))
+                {
+                    _candidates[updated.Key] = _import.ProjectFolderCandidate(row, updated.Runtime);
+                }
+                else if (updated.Key.StartsWith("reidentify:", StringComparison.Ordinal))
+                {
+                    _runtimeCandidates[updated.Key] = _import.ProjectRuntimeCandidate(updated.Runtime);
+                }
+                break;
+            case BridgeCandidateRuntimeChange.Removed removed:
+                _runtime.Remove(removed.Key);
+                _runtimeCandidates.Remove(removed.Key);
+                if (_rows.TryGetValue(removed.Key, out var kept))
+                {
+                    _candidates[removed.Key] = _import.ProjectFolderCandidate(kept, null);
+                }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(change), change, "Unknown runtime change");
+        }
         Changed?.Invoke();
     }
 

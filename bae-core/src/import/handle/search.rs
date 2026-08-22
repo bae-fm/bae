@@ -282,7 +282,7 @@ impl ImportServiceHandle {
             })
             .collect();
 
-        let mapping = match self.get_candidate(candidate_key) {
+        let mapping = match self.get_candidate(candidate_key)? {
             Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
                 // One FFmpeg open per container, so it goes off the async
                 // executor rather than holding it for the length of a folder.
@@ -365,7 +365,7 @@ impl ImportServiceHandle {
         release: &crate::import::MetadataRef,
     ) -> Result<bool, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(candidate_key)
+            self.get_candidate(candidate_key)?
         else {
             return Ok(false);
         };
@@ -438,7 +438,7 @@ impl ImportServiceHandle {
         candidate_key: String,
     ) -> Result<Option<crate::import::DecidedIdentity>, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(&candidate_key)
+            self.get_candidate(&candidate_key)?
         else {
             return Ok(None);
         };
@@ -507,15 +507,7 @@ impl ImportServiceHandle {
     /// error: a folder whose pipeline hasn't run and a re-identify key opened
     /// this instant both read as "nothing matched yet".
     fn identify_state(&self, candidate_key: &str) -> crate::identify::IdentifyState {
-        match self.get_candidate(candidate_key) {
-            Some(
-                super::ImportCandidateSnapshot::Folder { runtime, .. }
-                | super::ImportCandidateSnapshot::Runtime { runtime, .. },
-            ) => runtime.identify_state,
-            Some(super::ImportCandidateSnapshot::Invalid(_)) | None => {
-                crate::identify::IdentifyState::Idle
-            }
-        }
+        self.runtime.runtime_for(candidate_key).identify_state
     }
 
     /// A candidate's identify state with the stored verdict standing in when
@@ -543,7 +535,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
     ) -> Result<Option<crate::identify::TerminalVerdict>, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(candidate_key)
+            self.get_candidate(candidate_key)?
         else {
             return Ok(None);
         };

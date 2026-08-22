@@ -17,14 +17,14 @@ internal abstract record ImportUploadObservation
 internal static class UploadProgressPresentation
 {
     public static ImportUploadObservation? ResolveImport(
-        BridgeCandidateImportStatus? status,
+        BridgeTriageImportStatus? status,
         BridgeOutboxSnapshot? snapshot)
     {
         var releaseId = status switch
         {
-            BridgeCandidateImportStatus.CloudUploadQueued queued =>
+            BridgeTriageImportStatus.CloudUploadQueued queued =>
                 queued.ReleaseId,
-            BridgeCandidateImportStatus.Complete complete =>
+            BridgeTriageImportStatus.Complete complete =>
                 complete.ReleaseId,
             _ => null,
         };
@@ -38,7 +38,7 @@ internal static class UploadProgressPresentation
         }
         return status switch
         {
-            BridgeCandidateImportStatus.CloudUploadQueued queued
+            BridgeTriageImportStatus.CloudUploadQueued queued
                 when snapshot is null || snapshot.Revision < queued.OutboxRevision =>
                 new ImportUploadObservation.Awaiting(),
             _ => new ImportUploadObservation.Finished(),

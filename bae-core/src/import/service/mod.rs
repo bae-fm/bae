@@ -1,5 +1,5 @@
 use crate::diagnostics::TelemetryEvent;
-use crate::import::candidate_store::CandidateStore;
+use crate::import::candidate_runtime::CandidateRuntime;
 use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{ImportCommand, ImportProgress, MetadataRef, StorageMode};
@@ -160,6 +160,15 @@ struct RootScanSchedule {
     followup_waiters: Vec<RefreshCompletion>,
 }
 
+/// One scan item after its durable write, with the commit lock still held so
+/// the events announcing it go out before anything else writes.
+struct PersistedScanItem {
+    commit: tokio::sync::OwnedMutexGuard<()>,
+    item: ScanItem,
+    /// The stored entries the write superseded and deleted.
+    superseded_keys: Vec<String>,
+}
+
 struct RootScanTask {
     cancellation: crate::import::folder_scanner::ScanCancellation,
     task: tokio::task::JoinHandle<()>,
@@ -185,7 +194,12 @@ struct RootRemovalCompletion {
 }
 
 enum RootRemovalResult {
-    Removed(tokio::sync::OwnedMutexGuard<()>),
+    Removed {
+        commit: tokio::sync::OwnedMutexGuard<()>,
+        /// The scan entries the removal cascaded away, announced as
+        /// `CandidateRemoved` so in-flight work on them is cancelled.
+        removed_keys: Vec<String>,
+    },
     Failed(String),
 }
 
@@ -193,7 +207,9 @@ enum RootRemovalResult {
 trait RootRemovalBackend: Send + Sync {
     async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String>;
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String>;
-    async fn remove_durable_root(&self, path: &Path) -> Result<(), String>;
+    /// Delete the root's rows and return the scan entry keys that went with
+    /// them.
+    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String>;
 }
 
 struct ServiceRootRemovalBackend {
@@ -222,12 +238,12 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
             .map_err(|error| error.to_string())
     }
 
-    async fn remove_durable_root(&self, path: &Path) -> Result<(), String> {
+    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String> {
         self.library_manager
             .remove_watched_import_folder(&path.to_string_lossy())
             .await
-            .map(|_| ())
-            .map_err(|error| error.to_string())
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| format!("{} is not a watched folder", path.display()))
     }
 }
 
@@ -255,23 +271,29 @@ async fn run_root_removal(
         }
     };
     let commit = folder_state_commit.lock_owned().await;
-    if let Err(error) = backend.remove_durable_root(path).await {
-        drop(commit);
-        let rollback = backend.reinstall(path, &watch_snapshot).await;
-        let detail = match rollback {
-            Ok(()) => format!(
-                "could not remove watched folder {}: {error}",
-                path.display()
-            ),
-            Err(rollback_error) => format!(
-                "could not remove watched folder {}: {error}; restoring its folder watch also \
+    let removed_keys = match backend.remove_durable_root(path).await {
+        Ok(removed_keys) => removed_keys,
+        Err(error) => {
+            drop(commit);
+            let rollback = backend.reinstall(path, &watch_snapshot).await;
+            let detail = match rollback {
+                Ok(()) => format!(
+                    "could not remove watched folder {}: {error}",
+                    path.display()
+                ),
+                Err(rollback_error) => format!(
+                    "could not remove watched folder {}: {error}; restoring its folder watch also \
                  failed: {rollback_error}",
-                path.display()
-            ),
-        };
-        return RootRemovalResult::Failed(detail);
+                    path.display()
+                ),
+            };
+            return RootRemovalResult::Failed(detail);
+        }
+    };
+    RootRemovalResult::Removed {
+        commit,
+        removed_keys,
     }
-    RootRemovalResult::Removed(commit)
 }
 
 type RootScanStarter = Arc<
@@ -284,7 +306,6 @@ fn spawn_root_scan(
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-    candidate_state: CandidateStore,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     folder_watcher: Arc<FolderWatcher>,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
@@ -301,7 +322,6 @@ fn spawn_root_scan(
                 &event_tx,
                 &library_manager,
                 &folder_registry,
-                &candidate_state,
                 &folder_state_commit,
                 &folder_watcher,
                 &scan_cancellation,

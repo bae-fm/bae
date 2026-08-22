@@ -230,25 +230,54 @@ impl crate::types::BridgeFolderImportCandidateSnapshot {
     pub(super) fn from_core(snapshot: bae_core::import::FolderImportCandidateSnapshot) -> Self {
         let bae_core::import::FolderImportCandidateSnapshot {
             candidate,
-            runtime,
             actionable,
             skipped,
             is_added,
+            resumed_identify_state,
         } = snapshot;
         crate::types::BridgeFolderImportCandidateSnapshot {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
-            runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
             actionable,
+            resumed_identify_state: crate::types::BridgeIdentifyState::from_core(
+                resumed_identify_state,
+            ),
         }
     }
 }
 
 #[cfg(feature = "desktop")]
-impl crate::types::BridgeRuntimeImportCandidateSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::import::RuntimeImportCandidateSnapshot) -> Self {
-        Self {
-            key: snapshot.key,
-            runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(snapshot.runtime),
+impl crate::types::BridgeCandidateRuntimeChange {
+    pub(super) fn from_core(change: bae_core::import::CandidateRuntimeChange) -> Self {
+        match change {
+            bae_core::import::CandidateRuntimeChange::Updated { key, runtime } => Self::Updated {
+                key,
+                runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+            },
+            bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed { key },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriageImportStatus {
+    pub(super) fn from_core(status: bae_core::import::triage::TriageImportStatus) -> Self {
+        match status {
+            bae_core::import::triage::TriageImportStatus::Importing => Self::Importing,
+            bae_core::import::triage::TriageImportStatus::Complete { release } => Self::Complete {
+                release_id: release.release_id,
+                album_id: release.album_id,
+            },
+            bae_core::import::triage::TriageImportStatus::CloudUploadQueued {
+                release,
+                outbox_revision,
+            } => Self::CloudUploadQueued {
+                release_id: release.release_id,
+                album_id: release.album_id,
+                outbox_revision,
+            },
+            bae_core::import::triage::TriageImportStatus::Error { error } => Self::Error {
+                error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
+            },
         }
     }
 }
@@ -259,7 +288,6 @@ impl crate::types::BridgeImportCandidatesSnapshot {
         let bae_core::import::ImportCandidatesSnapshot {
             watched_folders,
             folder_candidates,
-            runtime_candidates,
             invalid_candidates,
             boundaries,
             folder_scan_statuses,
@@ -272,10 +300,6 @@ impl crate::types::BridgeImportCandidatesSnapshot {
             folder_candidates: folder_candidates
                 .into_iter()
                 .map(crate::types::BridgeFolderImportCandidateSnapshot::from_core)
-                .collect(),
-            runtime_candidates: runtime_candidates
-                .into_iter()
-                .map(crate::types::BridgeRuntimeImportCandidateSnapshot::from_core)
                 .collect(),
             invalid_candidates: invalid_candidates
                 .into_iter()
@@ -364,7 +388,7 @@ impl crate::types::BridgeTriageRow {
             skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             selectable,
-            import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+            import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             picked: picked.map(crate::types::BridgeIdentityPick::from_core),
             claim: claim.map(crate::types::BridgeIdentityChoice::from_core),
         }

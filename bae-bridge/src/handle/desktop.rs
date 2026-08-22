@@ -273,16 +273,58 @@ impl AppHandle {
     ) -> std::sync::Arc<crate::LiveSubscription> {
         let services = self.services.clone();
         let runtime = self.runtime.handle().clone();
-        let subscription_runtime = runtime.clone();
         let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_import_candidates(&subscription_runtime);
-            callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
-                values.borrow_and_update().clone(),
-            ));
-            while values.changed().await.is_ok() {
-                callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
-                    values.borrow_and_update().clone(),
-                ));
+            let mut values = services.subscribe_import_candidates();
+            let deliver = |value: &bae_core::import::ImportCandidatesValue| match value.as_ref() {
+                Ok(projection) => {
+                    callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
+                        projection.snapshot.clone(),
+                    ))
+                }
+                Err(error) => callback.on_error(BridgeError::database(error)),
+            };
+            // The runtime stream is taken before the first list goes out, so
+            // every change after the initial map is seen.
+            let (initial_runtime, mut changes) = services.subscribe_candidate_runtime();
+            deliver(&values.borrow_and_update().clone());
+            for (key, runtime) in initial_runtime {
+                callback.on_runtime(crate::types::BridgeCandidateRuntimeChange::Updated {
+                    key,
+                    runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+                });
+            }
+            loop {
+                tokio::select! {
+                    changed = values.changed() => {
+                        if changed.is_err() {
+                            break;
+                        }
+                        deliver(&values.borrow_and_update().clone());
+                    }
+                    change = changes.recv() => match change {
+                        Ok(change) => callback.on_runtime(
+                            crate::types::BridgeCandidateRuntimeChange::from_core(change),
+                        ),
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                            tracing::warn!(
+                                "candidate runtime subscription dropped {count} changes; \
+                                 re-sending every key's runtime"
+                            );
+                            for (key, runtime) in services.subscribe_candidate_runtime().0 {
+                                callback.on_runtime(
+                                    crate::types::BridgeCandidateRuntimeChange::Updated {
+                                        key,
+                                        runtime:
+                                            crate::types::BridgeCandidateRuntimeSnapshot::from_core(
+                                                runtime,
+                                            ),
+                                    },
+                                );
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                    },
+                }
             }
         });
         std::sync::Arc::new(crate::LiveSubscription::new(task))

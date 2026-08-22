@@ -38,17 +38,7 @@ impl Database {
     pub async fn imported_content_hashes(
         &self,
     ) -> Result<std::collections::HashSet<String>, DbError> {
-        self.read(move |sql| {
-            Ok(sql
-                .query(
-                    "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
-                    [],
-                    |row| row.get::<_, String>(0),
-                )?
-                .into_iter()
-                .collect())
-        })
-        .await
+        self.read(move |sql| imported_content_hashes_on(&sql)).await
     }
 
     pub async fn imported_releases_for_content_hashes(
@@ -97,4 +87,17 @@ pub(super) fn imported_releases_for_content_hashes_on(
         }
     }
     Ok(imported)
+}
+
+pub(super) fn imported_content_hashes_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<std::collections::HashSet<String>, DbError> {
+    Ok(sql
+        .query(
+            "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
+            [],
+            |row| row.get::<_, String>(0),
+        )?
+        .into_iter()
+        .collect())
 }

@@ -68,10 +68,11 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
-    assert!(!db
+    assert!(db
         .finish_folder_scan(root, generation - 1, None)
         .await
-        .unwrap());
+        .unwrap()
+        .is_none());
     assert!(!db
         .save_import_candidate_verdict(&bae_core::db::NewImportCandidateVerdict {
             content_hash: "hash-with-no-row".to_string(),
@@ -83,8 +84,9 @@ async fn pure_reads_use_the_read_connection() {
         })
         .await
         .unwrap());
-    assert!(!db
+    assert!(db
         .remove_watched_import_folder("/nothing/watches/this")
         .await
-        .unwrap());
+        .unwrap()
+        .is_none());
 }

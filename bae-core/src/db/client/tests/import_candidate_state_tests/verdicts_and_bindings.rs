@@ -452,7 +452,6 @@ async fn a_cleared_binding_survives_a_relaunch() {
         &root,
         generation,
         &crate::import::folder_scanner::ScanItem::Valid(candidate),
-        &[],
     )
     .await
     .unwrap();

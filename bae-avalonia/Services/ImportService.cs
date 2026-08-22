@@ -18,7 +18,7 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
-    public Func<BridgeFolderCandidate, BridgeCandidateRuntimeSnapshot, ImportCandidate>
+    public Func<BridgeFolderImportCandidateSnapshot, BridgeCandidateRuntimeSnapshot?, ImportCandidate>
         ProjectFolderCandidate
     { get; init; }
         = (_, _) => throw new InvalidOperationException(

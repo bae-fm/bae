@@ -3,7 +3,7 @@ use super::*;
 // ── Public types ────────────────────────────────────────────────────────────
 
 /// A file discovered during folder scanning
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ScannedFile {
     /// Absolute filesystem path. A scanned file is always on disk.
     pub path: PathBuf,
@@ -48,7 +48,7 @@ impl ScannedFile {
 /// The job the scan proposes for a file. Every file the scan finds carries
 /// exactly one: the scan *proposes*, so nothing is discarded and no folder is
 /// refused because a filename disagrees with a sheet.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum FileRole {
     /// Playable audio.
     Audio,
@@ -318,7 +318,7 @@ pub struct SheetBindingOption {
 
 /// A file the scan found, and the role in force for it — the scan's proposal,
 /// or the user's decision over it.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CandidateFile {
     pub file: ScannedFile,
     pub role: FileRole,
@@ -439,7 +439,7 @@ impl BoundTrackSheet<'_> {
 }
 
 /// A release's files, each carrying the role the scan proposed for it.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CategorizedFiles {
     /// Every file under the release root, in `relative_path` order, each with
     /// the role the scan proposed. All of them are the release's — see

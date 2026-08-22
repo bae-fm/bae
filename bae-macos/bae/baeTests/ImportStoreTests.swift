@@ -241,60 +241,79 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
     )
 }
 
+private func bridgeRow(
+    folderPath: String,
+    watchedFolderPath: String,
+    name: String,
+    skipped: Bool = false,
+    resumedIdentifyState: BridgeIdentifyState = .idle
+) -> BridgeFolderImportCandidateSnapshot {
+    BridgeFolderImportCandidateSnapshot(
+        candidate: bridgeFolder(
+            folderPath: folderPath,
+            watchedFolderPath: watchedFolderPath,
+            name: name,
+            skipped: skipped
+        ),
+        actionable: true,
+        resumedIdentifyState: resumedIdentifyState
+    )
+}
+
+private func listSnapshot(
+    watchedFolders: [BridgeWatchedFolder] = [
+        BridgeWatchedFolder(path: "/w1", name: "w1")
+    ],
+    folderCandidates: [BridgeFolderImportCandidateSnapshot],
+    invalidCandidates: [BridgeInvalidCandidate] = []
+) -> BridgeImportCandidatesSnapshot {
+    BridgeImportCandidatesSnapshot(
+        watchedFolders: watchedFolders,
+        folderCandidates: folderCandidates,
+        invalidCandidates: invalidCandidates,
+        boundaries: [],
+        folderScanStatuses: []
+    )
+}
+
 @Suite("ImportStore.applyImportCandidatesSnapshot")
-struct ImportStoreBatchSnapshotTests {
+struct ImportStoreListSnapshotTests {
     @MainActor
     @Test("inserts fresh candidates and watched folders")
     func insertsFresh() throws {
         let store = ImportStore()
 
         store.applyImportCandidatesSnapshot(
-            BridgeImportCandidatesSnapshot(
-                watchedFolders: [BridgeWatchedFolder(path: "/w1", name: "w1")],
+            listSnapshot(
                 folderCandidates: [
-                    BridgeFolderImportCandidateSnapshot(
-                        candidate: bridgeFolder(
-                            folderPath: "/w1/a",
-                            watchedFolderPath: "/w1",
-                            name: "A"
-                        ),
-                        runtime: idleRuntime(
-                            importStatus: .complete(
-                                releaseId: "rel-1",
-                                albumId: "al-1"
-                            )
-                        ),
-                        actionable: true
+                    bridgeRow(
+                        folderPath: "/w1/a",
+                        watchedFolderPath: "/w1",
+                        name: "A",
+                        resumedIdentifyState: .notFoundAnywhere
                     )
                 ],
-                runtimeCandidates: [],
                 invalidCandidates: [
                     bridgeInvalid(
                         folderPath: "/w1/bad",
                         watchedFolderPath: "/w1",
                         name: "Bad"
                     )
-                ],
-                boundaries: [],
-                folderScanStatuses: []
+                ]
             )
         )
 
         #expect(store.watchedFolders.map(\.path) == ["/w1"])
         let fresh = try #require(store.folderCandidates["/w1/a"])
         #expect(fresh.displayName == "A")
-        // A fresh candidate (no prior session state) takes its runtime from the
-        // snapshot.
-        #expect(
-            fresh.importStatus == .complete(releaseId: "rel-1", albumId: "al-1")
-        )
+        // A fresh candidate with no run live shows its resumed state.
+        #expect(fresh.identifyState == .notFoundAnywhere)
+        #expect(fresh.importStatus == nil)
     }
 
     @MainActor
-    @Test(
-        "takes runtime state from each snapshot while preserving editor state"
-    )
-    func refreshesRuntimeAndCarriesEditorState() throws {
+    @Test("a re-read list keeps runtime and editor state on a surviving key")
+    func keepsRuntimeAndEditorState() throws {
         let store = ImportStore()
         var existing = folderCandidate(
             folderPath: "/w1/a",
@@ -303,10 +322,11 @@ struct ImportStoreBatchSnapshotTests {
         )
         existing.identity = .unknown
         existing.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
-        existing.identifyState = .triangulating(
+        existing.runtimeIdentifyState = .triangulating(
             discid: .computing,
             barcode: .scanning
         )
+        existing.reconcileIdentifyState()
         existing.signals = Signals(
             text: .settled(catalogs: ["CAT-1"], freeText: [])
         )
@@ -314,44 +334,42 @@ struct ImportStoreBatchSnapshotTests {
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.folderCandidates["/w1/a"] = existing
 
-        // Same key, renamed + skip flipped, and an idle runtime with no status.
+        // Same key, renamed + skip flipped.
         store.applyImportCandidatesSnapshot(
-            BridgeImportCandidatesSnapshot(
-                watchedFolders: [BridgeWatchedFolder(path: "/w1", name: "w1")],
+            listSnapshot(
                 folderCandidates: [
-                    BridgeFolderImportCandidateSnapshot(
-                        candidate: bridgeFolder(
-                            folderPath: "/w1/a",
-                            watchedFolderPath: "/w1",
-                            name: "A-renamed",
-                            skipped: true
-                        ),
-                        runtime: idleRuntime(),
-                        actionable: true
+                    bridgeRow(
+                        folderPath: "/w1/a",
+                        watchedFolderPath: "/w1",
+                        name: "A-renamed",
+                        skipped: true
                     )
-                ],
-                runtimeCandidates: [],
-                invalidCandidates: [],
-                boundaries: [],
-                folderScanStatuses: []
+                ]
             )
         )
 
         let merged = try #require(store.folderCandidates["/w1/a"])
-        // Editor/session state survives, while core's runtime fields take the
-        // newly delivered values.
+        // Editor/session state and the run in flight survive; the list only
+        // re-read the folder.
         #expect(merged.identity == .unknown)
-        #expect(merged.importStatus == nil)
-        #expect(merged.identifyState == .idle)
-        #expect(merged.signals == nil)
-        #expect(merged.signalsToolbar.signals.isEmpty)
+        #expect(
+            merged.importStatus
+                == .complete(releaseId: "rel-1", albumId: "al-1")
+        )
+        #expect(
+            merged.identifyState
+                == .triangulating(discid: .computing, barcode: .scanning)
+        )
+        #expect(merged.signals != nil)
+        #expect(!merged.signalsToolbar.signals.isEmpty)
         #expect(merged.libraryStatuses["rel-1"] != nil)
-        // Scan fields come from the incoming snapshot.
+        // Scan fields come from the incoming list.
         #expect(merged.displayName == "A-renamed")
+        #expect(merged.files.files.isEmpty)
     }
 
     @MainActor
-    @Test("drops candidates absent from the new snapshot")
+    @Test("drops candidates absent from the new list")
     func dropsAbsent() {
         let store = ImportStore()
         store.folderCandidates["/w1/a"] = folderCandidate(
@@ -366,23 +384,14 @@ struct ImportStoreBatchSnapshotTests {
         )
 
         store.applyImportCandidatesSnapshot(
-            BridgeImportCandidatesSnapshot(
-                watchedFolders: [BridgeWatchedFolder(path: "/w1", name: "w1")],
+            listSnapshot(
                 folderCandidates: [
-                    BridgeFolderImportCandidateSnapshot(
-                        candidate: bridgeFolder(
-                            folderPath: "/w1/a",
-                            watchedFolderPath: "/w1",
-                            name: "A"
-                        ),
-                        runtime: idleRuntime(),
-                        actionable: true
+                    bridgeRow(
+                        folderPath: "/w1/a",
+                        watchedFolderPath: "/w1",
+                        name: "A"
                     )
-                ],
-                runtimeCandidates: [],
-                invalidCandidates: [],
-                boundaries: [],
-                folderScanStatuses: []
+                ]
             )
         )
 
@@ -391,33 +400,111 @@ struct ImportStoreBatchSnapshotTests {
     }
 }
 
-@Suite("ImportStore runtime candidates")
-struct ImportStoreRuntimeCandidateTests {
+@Suite("ImportStore.applyCandidateRuntimeChange")
+struct ImportStoreRuntimeChangeTests {
     @MainActor
-    @Test("a batch snapshot updates a re-identify session")
-    func batchSnapshotUpdatesReIdentifySession() {
+    @Test("a runtime change updates one folder candidate")
+    func updatesOneCandidate() throws {
+        let store = ImportStore()
+        store.applyImportCandidatesSnapshot(
+            listSnapshot(
+                folderCandidates: [
+                    bridgeRow(
+                        folderPath: "/w1/a",
+                        watchedFolderPath: "/w1",
+                        name: "A",
+                        resumedIdentifyState: .notFoundAnywhere
+                    ),
+                    bridgeRow(
+                        folderPath: "/w1/b",
+                        watchedFolderPath: "/w1",
+                        name: "B"
+                    ),
+                ]
+            )
+        )
+
+        store.applyCandidateRuntimeChange(
+            .updated(
+                key: "/w1/a",
+                runtime: BridgeCandidateRuntimeSnapshot(
+                    identifyState: .triangulating(
+                        discid: .computing,
+                        barcode: .scanning
+                    ),
+                    signalsToolbar: BridgeSignalsToolbar(signals: []),
+                    signals: nil,
+                    importStatus: .importing(progressPercent: 40, step: nil)
+                )
+            )
+        )
+
+        let running = try #require(store.folderCandidates["/w1/a"])
+        // A live run outranks the resumed state.
+        #expect(
+            running.identifyState
+                == .triangulating(discid: .computing, barcode: .scanning)
+        )
+        #expect(
+            running.importStatus == .importing(progressPercent: 40, step: nil)
+        )
+        #expect(store.folderCandidates["/w1/b"]?.importStatus == nil)
+
+        store.applyCandidateRuntimeChange(.removed(key: "/w1/a"))
+        let cleared = try #require(store.folderCandidates["/w1/a"])
+        #expect(cleared.importStatus == nil)
+        // With no run live the resumed state shows again.
+        #expect(cleared.identifyState == .notFoundAnywhere)
+    }
+
+    @MainActor
+    @Test("runtime that arrives before its row joins the row when it lands")
+    func runtimeAheadOfList() throws {
+        let store = ImportStore()
+        store.applyCandidateRuntimeChange(
+            .updated(
+                key: "/w1/a",
+                runtime: idleRuntime(
+                    importStatus: .importing(progressPercent: 5, step: nil)
+                )
+            )
+        )
+        #expect(store.folderCandidates["/w1/a"] == nil)
+
+        store.applyImportCandidatesSnapshot(
+            listSnapshot(
+                folderCandidates: [
+                    bridgeRow(
+                        folderPath: "/w1/a",
+                        watchedFolderPath: "/w1",
+                        name: "A"
+                    )
+                ]
+            )
+        )
+
+        let landed = try #require(store.folderCandidates["/w1/a"])
+        #expect(
+            landed.importStatus == .importing(progressPercent: 5, step: nil)
+        )
+    }
+
+    @MainActor
+    @Test("a runtime change updates a re-identify session")
+    func updatesReIdentifySession() {
         let store = ImportStore()
         store.reIdentifyCandidates["reidentify:r1"] =
             makeCandidate("reidentify:r1")
 
-        store.applyImportCandidatesSnapshot(
-            BridgeImportCandidatesSnapshot(
-                watchedFolders: [],
-                folderCandidates: [],
-                runtimeCandidates: [
-                    BridgeRuntimeImportCandidateSnapshot(
-                        key: "reidentify:r1",
-                        runtime: idleRuntime(
-                            importStatus: .complete(
-                                releaseId: "rel-1",
-                                albumId: "al-1"
-                            )
-                        )
+        store.applyCandidateRuntimeChange(
+            .updated(
+                key: "reidentify:r1",
+                runtime: idleRuntime(
+                    importStatus: .complete(
+                        releaseId: "rel-1",
+                        albumId: "al-1"
                     )
-                ],
-                invalidCandidates: [],
-                boundaries: [],
-                folderScanStatuses: []
+                )
             )
         )
 

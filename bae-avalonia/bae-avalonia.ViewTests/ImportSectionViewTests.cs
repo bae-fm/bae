@@ -146,7 +146,7 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void CloudImportReactsToOutboxProgressAndTerminalRevision()
     {
-        var status = new BridgeCandidateImportStatus.CloudUploadQueued(
+        var status = new BridgeTriageImportStatus.CloudUploadQueued(
             "release-a",
             "album-a",
             7);
@@ -284,7 +284,7 @@ public sealed class ImportSectionViewTests
         BridgeTriagePlacement placement,
         BridgeTriageSkipAction? skipAction,
         BridgeTriageTab tab,
-        BridgeCandidateImportStatus? importStatus = null) => new(
+        BridgeTriageImportStatus? importStatus = null) => new(
         Sections: new[]
         {
             new BridgeTriageSection(

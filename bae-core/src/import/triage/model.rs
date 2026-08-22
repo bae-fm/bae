@@ -390,7 +390,10 @@ pub struct TriageRow {
     /// which is the whole point of the Ready rule. Carried rather than left to
     /// each UI so the rule is stated once.
     pub selectable: bool,
-    pub import_status: Option<CandidateImportStatusSnapshot>,
+    /// Where the candidate's import stands, without its progress: the row
+    /// says *that* an import is running; how far along it is rides on the
+    /// candidate's runtime, which ticks far more often than rows re-project.
+    pub import_status: Option<TriageImportStatus>,
     /// The identity the user already chose for this candidate, read back from
     /// the stored row — what lets selection reopen the pane answered instead
     /// of asking again. `None` while they have chosen nothing.
@@ -497,6 +500,45 @@ impl Answered {
         Self {
             verdict,
             classification,
+        }
+    }
+}
+
+/// A candidate's import as the queue places it: claimed and running, or the
+/// outcome it finished with. Derived from [`CandidateImportStatusSnapshot`]
+/// by dropping the running import's progress.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TriageImportStatus {
+    Importing,
+    Complete {
+        release: ImportedRelease,
+    },
+    CloudUploadQueued {
+        release: ImportedRelease,
+        outbox_revision: u64,
+    },
+    Error {
+        error: String,
+    },
+}
+
+impl TriageImportStatus {
+    pub fn of(status: &CandidateImportStatusSnapshot) -> Self {
+        match status {
+            CandidateImportStatusSnapshot::Importing { .. } => Self::Importing,
+            CandidateImportStatusSnapshot::Complete { release } => Self::Complete {
+                release: release.clone(),
+            },
+            CandidateImportStatusSnapshot::CloudUploadQueued {
+                release,
+                outbox_revision,
+            } => Self::CloudUploadQueued {
+                release: release.clone(),
+                outbox_revision: *outbox_revision,
+            },
+            CandidateImportStatusSnapshot::Error { error } => Self::Error {
+                error: error.clone(),
+            },
         }
     }
 }

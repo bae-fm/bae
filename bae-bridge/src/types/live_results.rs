@@ -184,7 +184,14 @@ pub trait OutputCallback: Send + Sync {
 #[cfg(feature = "desktop")]
 #[uniffi::export(callback_interface)]
 pub trait ImportCandidatesCallback: Send + Sync {
+    /// The candidate list: on subscribe, and whenever a commit changed it.
     fn on_value(&self, value: BridgeImportCandidatesSnapshot);
+    /// One candidate's runtime changed. After the first `on_value`, one call
+    /// per key already holding runtime; then one per change.
+    fn on_runtime(&self, change: BridgeCandidateRuntimeChange);
+    /// The list's read failed; the last value delivered no longer describes
+    /// the tables.
+    fn on_error(&self, error: BridgeError);
 }
 
 #[cfg(feature = "desktop")]

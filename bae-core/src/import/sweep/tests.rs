@@ -429,11 +429,13 @@ impl Fixture {
         let root = self.root.to_string_lossy().into_owned();
         self.import.add_watched_folder(root.clone()).await.unwrap();
         self.import.refresh_watched_folder(root).await.unwrap();
-        assert_eq!(
-            self.import.get_import_candidates().folder_candidates.len(),
-            expected,
-            "the completed scan surfaces every fixture candidate"
-        );
+        tokio::time::timeout(
+            Duration::from_secs(10),
+            self.import
+                .wait_for_candidates(|snapshot| snapshot.folder_candidates.len() == expected),
+        )
+        .await
+        .expect("the completed scan surfaces every fixture candidate");
     }
 
     /// What `ImportView.selectCandidate` does, through the one entry point core

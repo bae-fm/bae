@@ -20,7 +20,7 @@ pub enum InvalidReason {
 /// A leaf folder that looks like a release (it has audio) but failed validation.
 /// It can't be imported, so it carries no files and no identify state — only
 /// enough to surface it under the Skipped tab with its reason.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct InvalidCandidate {
     /// Root path of the folder that failed validation.
     pub path: PathBuf,
@@ -134,7 +134,7 @@ impl FolderReleaseDecisions {
 }
 
 /// A folder row in an unresolved boundary's compact tree.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct FolderReleaseTreeRow {
     pub name: String,
     pub display_path: String,
@@ -147,7 +147,7 @@ pub struct FolderReleaseTreeRow {
     pub ancestor_decision_keys: Vec<FolderReleaseDecisionKey>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum FolderReleaseTreeRowKind {
     Folder,
     Candidate {
@@ -158,7 +158,7 @@ pub enum FolderReleaseTreeRowKind {
     },
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct FolderReleaseCandidateSummary {
     pub track_count: u32,
     pub format_label: String,
@@ -166,7 +166,7 @@ pub struct FolderReleaseCandidateSummary {
 
 /// A folder whose structure admits both one recursive release and several
 /// direct release approximations.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct FolderReleaseBoundary {
     pub key: FolderReleaseDecisionKey,
     pub name: String,
@@ -179,7 +179,7 @@ pub struct FolderReleaseBoundary {
 
 /// A resolved boundary retained on a row so its context menu can set the
 /// opposite interpretation without reconstructing a path.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ResolvedFolderReleaseBoundary {
     pub key: FolderReleaseDecisionKey,
     pub decision: FolderReleaseDecision,
@@ -188,7 +188,7 @@ pub struct ResolvedFolderReleaseBoundary {
 }
 
 /// A folder candidate detected during filesystem scanning.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct FolderCandidate {
     /// Root path of this release
     pub path: PathBuf,

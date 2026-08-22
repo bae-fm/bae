@@ -13,7 +13,7 @@ fn a_restored_import_keeps_the_release_identity_for_cloud_progress() {
         },
     )]);
 
-    let queue = project(
+    let queue = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -22,7 +22,7 @@ fn a_restored_import_keeps_the_release_identity_for_cloud_progress() {
 
     assert!(matches!(
         &candidate_rows(&queue)[0].import_status,
-        Some(CandidateImportStatusSnapshot::Complete { release })
+        Some(TriageImportStatus::Complete { release })
             if release.release_id == "release-db-id"
                 && release.album_id == "album-db-id"
     ));
@@ -61,7 +61,7 @@ fn a_settled_pick_is_what_the_row_leads_with() {
         ],
     );
 
-    let queue = project(snapshot, &answers, &picks, &HashMap::new());
+    let queue = project_idle(snapshot, &answers, &picks, &HashMap::new());
     let rows = candidate_rows(&queue);
 
     for (row, release_id) in rows.iter().zip(["rel-picked", "rel-other"]) {
@@ -99,7 +99,7 @@ fn reading_a_folder_as_its_own_tags_leaves_the_row_leading_with_the_folder() {
         })],
     );
 
-    let queue = project(snapshot, &answers, &picks, &HashMap::new());
+    let queue = project_idle(snapshot, &answers, &picks, &HashMap::new());
 
     assert!(candidate_rows(&queue)[0].matched.is_none());
 }
@@ -109,7 +109,7 @@ fn a_tentative_candidate_hidden_by_a_boundary_is_not_a_row_or_count() {
     let mut snapshot = snapshot_of(vec![candidate("Release 01", false, false)]);
     snapshot.folder_candidates[0].actionable = false;
 
-    let queue = project(
+    let queue = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -176,10 +176,7 @@ fn tab_membership_is_total_and_exclusive() {
                     combinations += 1;
                     let placement = place(skipped, is_added, import_status.as_ref(), &answer);
 
-                    let importing = matches!(
-                        import_status,
-                        Some(CandidateImportStatusSnapshot::Importing { .. })
-                    );
+                    let importing = matches!(import_status, Some(TriageImportStatus::Importing));
                     let done = !importing && (is_added || import_status.is_some());
                     let is_skipped = !importing && !done && skipped;
                     let pending = importing || (!done && !skipped);
@@ -281,7 +278,7 @@ fn the_phase_tells_queued_running_and_finished_apart() {
 #[test]
 fn done_and_skipped_outrank_classification() {
     let ready = CandidateAnswer::Classified(QueueClassification::Ready);
-    let complete = CandidateImportStatusSnapshot::Complete {
+    let complete = TriageImportStatus::Complete {
         release: ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
@@ -326,10 +323,7 @@ fn done_and_skipped_outrank_classification() {
 #[test]
 fn an_import_in_flight_is_importing_not_done() {
     let ready = CandidateAnswer::Classified(QueueClassification::Ready);
-    let importing = CandidateImportStatusSnapshot::Importing {
-        progress_percent: 0,
-        step: None,
-    };
+    let importing = TriageImportStatus::Importing;
 
     assert_eq!(
         place(false, false, Some(&importing), &ready),
@@ -356,13 +350,13 @@ fn an_import_in_flight_is_importing_not_done() {
     );
 
     // The finished states still are Done.
-    let complete = CandidateImportStatusSnapshot::Complete {
+    let complete = TriageImportStatus::Complete {
         release: ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
         },
     };
-    let failed = CandidateImportStatusSnapshot::Error {
+    let failed = TriageImportStatus::Error {
         error: "boom".to_string(),
     };
     assert_eq!(
@@ -392,11 +386,20 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         candidate("added", false, true),
         candidate("importing", false, false),
     ]);
-    snapshot.folder_candidates[6].runtime.import_status =
-        Some(CandidateImportStatusSnapshot::Importing {
-            progress_percent: 10,
-            step: None,
-        });
+    let importing_runtime = (
+        snapshot.folder_candidates[6]
+            .candidate
+            .path
+            .to_string_lossy()
+            .into_owned(),
+        CandidateRuntimeSnapshot {
+            import_status: Some(CandidateImportStatusSnapshot::Importing {
+                progress_percent: 10,
+                step: None,
+            }),
+            ..CandidateRuntimeSnapshot::idle()
+        },
+    );
     snapshot.invalid_candidates = vec![InvalidCandidate {
         path: PathBuf::from("/music/broken"),
         name: "broken".to_string(),
@@ -447,7 +450,13 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         },
     )]);
 
-    let queue = project(snapshot, &answers, &HashMap::new(), &imported);
+    let queue = project_with_runtime(
+        snapshot,
+        vec![importing_runtime],
+        &answers,
+        &HashMap::new(),
+        &imported,
+    );
 
     let tally = |tab: TriageTab| {
         candidate_rows(&queue)
@@ -534,7 +543,7 @@ fn a_row_with_no_match_carries_no_release_fields() {
         ],
     );
 
-    let queue = project(
+    let queue = project_idle(
         snapshot.clone(),
         &answers,
         &HashMap::new(),
@@ -553,7 +562,7 @@ fn a_row_with_no_match_carries_no_release_fields() {
     assert!(row_named("signals-disagreed").matched.is_none());
 
     // A candidate with no verdict at all is the third shape of "no match".
-    let unanswered = project(
+    let unanswered = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -608,7 +617,7 @@ fn several_matches_state_the_lead_but_not_the_pressing() {
         ))],
     );
 
-    let queue = project(snapshot, &answers, &HashMap::new(), &HashMap::new());
+    let queue = project_idle(snapshot, &answers, &HashMap::new(), &HashMap::new());
     let matched = candidate_rows(&queue)[0]
         .matched
         .as_ref()
@@ -650,7 +659,7 @@ fn done_and_skipped_rows_still_lead_with_their_release() {
         },
     )]);
 
-    let queue = project(snapshot, &answers, &HashMap::new(), &imported);
+    let queue = project_idle(snapshot, &answers, &HashMap::new(), &imported);
     assert_eq!(candidate_rows(&queue)[0].placement, TriagePlacement::Done);
     assert_eq!(
         candidate_rows(&queue)[1].placement,
@@ -701,7 +710,7 @@ fn group_three_shares_a_header_and_keeps_its_variants() {
         ],
     );
 
-    let queue = project(snapshot, &answers, &HashMap::new(), &HashMap::new());
+    let queue = project_idle(snapshot, &answers, &HashMap::new(), &HashMap::new());
 
     assert_eq!(
         candidate_rows(&queue)[0].placement,

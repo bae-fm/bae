@@ -681,16 +681,14 @@ async fn release_library_status_subscription_delivers_identity_changes() {
 }
 
 #[tokio::test]
-async fn import_triage_subscription_rejoins_an_imported_release_by_content_hash() {
+async fn import_candidates_subscription_rejoins_an_imported_release_by_content_hash() {
     use crate::import::folder_scanner::{
-        CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScannedFile,
+        CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
     };
-    use crate::import::{
-        CandidateRuntimeSnapshot, FolderCandidate, FolderImportCandidateSnapshot,
-        ImportCandidatesSnapshot, WatchedFolder,
-    };
+    use crate::import::FolderCandidate;
 
     let (db, _temp) = live_db().await;
+    let root = "/music";
     let candidate = FolderCandidate {
         path: "/music/release".into(),
         file_root: "/music/release".into(),
@@ -707,7 +705,7 @@ async fn import_triage_subscription_rejoins_an_imported_release_by_content_hash(
             }],
             format_label: "FLAC".to_string(),
         },
-        watched_folder_path: "/music".to_string(),
+        watched_folder_path: root.to_string(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: "release".to_string(),
@@ -715,30 +713,18 @@ async fn import_triage_subscription_rejoins_an_imported_release_by_content_hash(
         combine_ancestor_key: None,
     };
     let content_hash = candidate.files.content_hash();
-    let snapshot = ImportCandidatesSnapshot {
-        watched_folders: vec![WatchedFolder {
-            path: "/music".to_string(),
-            name: "music".to_string(),
-        }],
-        folder_candidates: vec![FolderImportCandidateSnapshot {
-            candidate,
-            runtime: CandidateRuntimeSnapshot {
-                identify_state: crate::identify::IdentifyState::Idle,
-                toolbar: Vec::new(),
-                signals: None,
-                import_status: None,
-            },
-            actionable: true,
-            skipped: false,
-            is_added: true,
-        }],
-        runtime_candidates: Vec::new(),
-        invalid_candidates: Vec::new(),
-        boundaries: Vec::new(),
-        folder_scan_statuses: Vec::new(),
-    };
-    let mut live = db.subscribe_import_triage(snapshot);
-    assert!(live.next().await.unwrap().imported_releases.is_empty());
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate))
+        .await
+        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let mut live = db.subscribe_import_candidates();
+    let initial = live.next().await.unwrap();
+    assert_eq!(initial.snapshot.folder_candidates.len(), 1);
+    assert!(!initial.snapshot.folder_candidates[0].is_added);
+    assert!(initial.triage.imported_releases.is_empty());
 
     let imported_hash = content_hash.clone();
     db.call(move |sql| {
@@ -754,9 +740,11 @@ async fn import_triage_subscription_rejoins_an_imported_release_by_content_hash(
 
     let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("the imported release wakes import triage")
+        .expect("the imported release wakes the candidate list")
         .unwrap();
+    assert!(imported.snapshot.folder_candidates[0].is_added);
     let release = imported
+        .triage
         .imported_releases
         .get(&content_hash)
         .expect("the content hash resolves its imported release");
@@ -775,9 +763,10 @@ async fn import_triage_subscription_rejoins_an_imported_release_by_content_hash(
     .unwrap();
     let removed = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("removing the imported release wakes import triage")
+        .expect("removing the imported release wakes the candidate list")
         .unwrap();
-    assert!(removed.imported_releases.is_empty());
+    assert!(!removed.snapshot.folder_candidates[0].is_added);
+    assert!(removed.triage.imported_releases.is_empty());
 }
 
 #[tokio::test]

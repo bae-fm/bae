@@ -262,14 +262,12 @@ async fn rescan_seeded_root(
     root: &Path,
 ) -> (
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
-    crate::import::candidate_store::CandidateStore,
     Result<(), crate::import::ImportError>,
 ) {
     let (event_tx, events) = tokio::sync::broadcast::channel(16);
     let folder_registry = Arc::new(Mutex::new(
         crate::import::folder_registry::ImportFolderRegistry::default(),
     ));
-    let candidate_state = crate::import::candidate_store::CandidateStore::default();
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
@@ -282,44 +280,60 @@ async fn rescan_seeded_root(
         .lock()
         .unwrap()
         .apply_added(root.to_string_lossy().into_owned());
-    candidate_state.begin_root_scan(root, 0);
-    candidate_state
-        .apply_scan_item_if_current(
-            root,
-            0,
-            ScanItem::Invalid(crate::import::InvalidCandidate {
-            path: root.join("old-key"),
-            name: "Old Candidate".to_string(),
-            watched_folder_path: root.to_string_lossy().into_owned(),
-            display_path: "old-key".to_string(),
-            resolved_boundaries: Vec::new(),
-            reason: crate::import::InvalidReason::NoValidAudio,
-            }),
-            false,
-            false,
-        )
+    let generation = service
+        .library_manager
+        .begin_folder_scan(&root.to_string_lossy())
+        .await
         .unwrap();
+    service
+        .library_manager
+        .save_folder_scan_item(
+            &root.to_string_lossy(),
+            generation,
+            &ScanItem::Invalid(crate::import::InvalidCandidate {
+                path: root.join("old-key"),
+                name: "Old Candidate".to_string(),
+                watched_folder_path: root.to_string_lossy().into_owned(),
+                display_path: "old-key".to_string(),
+                resolved_boundaries: Vec::new(),
+                reason: crate::import::InvalidReason::NoValidAudio,
+            }),
+        )
+        .await
+        .unwrap()
+        .expect("the seeded scan generation is current");
 
     let result = ImportService::rescan_and_reconcile(
         root,
         &event_tx,
         &service.library_manager,
         &folder_registry,
-        &candidate_state,
         &Arc::new(tokio::sync::Mutex::new(())),
         &folder_watcher,
         &cancellation,
     )
     .await;
 
-    (events, candidate_state, result)
+    (events, result)
+}
+
+/// The invalid candidates the stored scan of `root` still holds.
+async fn stored_invalid_candidates(service: &ImportService, root: &Path) -> usize {
+    service
+        .library_manager
+        .load_folder_scan_items(&root.to_string_lossy())
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|item| matches!(item, ScanItem::Invalid(_)))
+        .count()
 }
 
 #[tokio::test]
 async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("missing-root");
-    let (mut events, candidate_state, result) = rescan_seeded_root(&service, &root).await;
+    let (mut events, result) = rescan_seeded_root(&service, &root).await;
     assert!(result.is_err());
 
     let failed = loop {
@@ -345,14 +359,7 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
         failed.contains(&root.to_string_lossy().into_owned()),
         "{failed}"
     );
-    assert_eq!(
-        candidate_state.snapshot(vec![crate::import::WatchedFolder::from_path(
-                root.to_string_lossy().into_owned(),
-            )])
-            .invalid_candidates
-            .len(),
-        1
-    );
+    assert_eq!(stored_invalid_candidates(&service, &root).await, 1);
 }
 
 #[tokio::test]
@@ -360,7 +367,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
-    let (mut events, candidate_state, result) = rescan_seeded_root(&service, &root).await;
+    let (mut events, result) = rescan_seeded_root(&service, &root).await;
     assert!(result.is_err(), "a non-directory root must fail its scan");
 
     loop {
@@ -384,14 +391,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
             event => panic!("expected scan status, got {event:?}"),
         }
     }
-    assert_eq!(
-        candidate_state.snapshot(vec![crate::import::WatchedFolder::from_path(
-                root.to_string_lossy().into_owned(),
-            )])
-            .invalid_candidates
-            .len(),
-        1
-    );
+    assert_eq!(stored_invalid_candidates(&service, &root).await, 1);
 }
 
 #[test]

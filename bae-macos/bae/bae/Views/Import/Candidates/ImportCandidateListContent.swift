@@ -475,26 +475,28 @@ extension ImportCandidateListContent {
         }
     }
 
+    /// The Ready row's bulk-import checkbox, over the selection `UiStore`
+    /// holds.
+    private func readySelection(for row: BridgeTriageRow) -> Binding<Bool> {
+        Binding(
+            get: {
+                uiStore.selectedReadyCandidates.contains(row.candidateKey)
+            },
+            set: {
+                uiStore.setReadySelection(row.candidateKey, selected: $0)
+            }
+        )
+    }
+
     @ViewBuilder
     private func releaseEntry(_ entry: BridgeTriageEntry) -> some View {
         switch entry {
         case .candidate(_, let row):
             TriageRowView(
                 row: row,
+                importProgress: importStore.importProgress(for: row),
                 coverContent: importStore.sidebarCover(for: row),
-                selection: row.selectable
-                    ? Binding(
-                        get: {
-                            uiStore.selectedReadyCandidates
-                                .contains(row.candidateKey)
-                        },
-                        set: {
-                            uiStore.setReadySelection(
-                                row.candidateKey,
-                                selected: $0
-                            )
-                        }
-                    ) : nil,
+                selection: row.selectable ? readySelection(for: row) : nil,
                 onSelect: { selectedKeys = [row.candidateKey] },
                 onSkip: { onSkip(row.candidateKey, $0) },
                 onReleaseDecision: onReleaseDecision

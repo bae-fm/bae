@@ -316,15 +316,5 @@ pub(super) async fn record_selection_verdict(
 /// The scanned folder candidate behind a key, or `None` when the key names
 /// something else (a library release being re-identified) or nothing.
 fn folder_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
-    match context.import.get_candidate(key)? {
-        ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        } => Some(candidate),
-        ImportCandidateSnapshot::Folder {
-            actionable: false, ..
-        } => None,
-        ImportCandidateSnapshot::Invalid(_) | ImportCandidateSnapshot::Runtime { .. } => None,
-    }
+    super::actionable_candidate(context, key)
 }

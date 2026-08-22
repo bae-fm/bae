@@ -89,7 +89,7 @@ impl ImportServiceHandle {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(candidate_key)
+        }) = self.get_candidate(candidate_key)?
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -118,7 +118,7 @@ impl ImportServiceHandle {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(candidate_key)
+        }) = self.get_candidate(candidate_key)?
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -168,7 +168,7 @@ impl ImportServiceHandle {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(candidate_key)
+        }) = self.get_candidate(candidate_key)?
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),

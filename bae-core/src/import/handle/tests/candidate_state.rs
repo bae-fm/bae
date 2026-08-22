@@ -74,10 +74,17 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         }
     };
     let key = candidate_path.to_string_lossy().to_string();
-    let files = match import_handle.get_candidate(&key) {
-        Some(crate::import::ImportCandidateSnapshot::Folder { candidate, .. }) => candidate.files,
-        other => panic!("expected folder candidate, got {other:?}"),
-    };
+    let files = tokio::time::timeout(
+        Duration::from_secs(5),
+        import_handle.wait_for_candidates(|snapshot| snapshot.folder_candidate(&key).is_some()),
+    )
+    .await
+    .expect("the candidate list reflects the scanned folder")
+    .folder_candidate(&key)
+    .expect("the accepted list holds the candidate")
+    .candidate
+    .files
+    .clone();
 
     // Start extraction the way the bridge does, then remove the folder mid-OCR.
     extraction.start(
@@ -136,17 +143,19 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .unwrap()
         .apply_added(root.to_string_lossy().into_owned());
     let boundary = unresolved_boundary(&root, "Collection");
-    handle.candidate_store.begin_root_scan(&root, 0);
-    handle
-        .candidate_store
-        .apply_scan_item_if_current(
-            &root,
-            0,
-            crate::import::folder_scanner::ScanItem::Boundary(boundary.clone()),
-            false,
-            false,
-        )
+    let generation = manager
+        .begin_folder_scan(&root.to_string_lossy())
+        .await
         .unwrap();
+    manager
+        .save_folder_scan_item(
+            &root.to_string_lossy(),
+            generation,
+            &crate::import::folder_scanner::ScanItem::Boundary(boundary.clone()),
+        )
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
 
     let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
     handle

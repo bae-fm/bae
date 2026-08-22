@@ -360,9 +360,9 @@ internal sealed partial class ImportSectionView
             column.Children.Add(sub);
         }
 
-        if (row.ImportStatus is BridgeCandidateImportStatus.Importing importing)
+        if (row.ImportStatus is BridgeTriageImportStatus.Importing)
         {
-            var bar = ThinProgressBar(importing.ProgressPercent / 100.0);
+            var bar = ThinProgressBar(ImportingProgress(row).Percent / 100.0);
             bar.Margin = new Thickness(0, 7, 0, 0);
             column.Children.Add(bar);
         }
@@ -387,7 +387,7 @@ internal sealed partial class ImportSectionView
     // The second line: the matched release's metadata, a disagreement sentence,
     // the still-identifying phase, or an import failure — whichever `row` is
     // actually saying.
-    private static string? RowSubLine(
+    private string? RowSubLine(
         BridgeTriageRow row,
         ImportUploadObservation? upload) => row.Placement switch
         {
@@ -434,19 +434,31 @@ internal sealed partial class ImportSectionView
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    private static string? ImportSubLine(
+    /// <summary>The running import's percent and step, from the candidate's
+    /// runtime: the row says that an import is running, the runtime says how
+    /// far. A row placed as importing whose runtime has not reported yet is at
+    /// the start with no step named.</summary>
+    private (int Percent, ImportStep? Step) ImportingProgress(BridgeTriageRow row)
+    {
+        var status = _import.Candidate(row.CandidateKey)?.RowStatus;
+        return status is { Kind: "importing" }
+            ? (status.ProgressPercent, status.Step)
+            : (0, null);
+    }
+
+    private string? ImportSubLine(
         BridgeTriageRow row,
         ImportUploadObservation? upload) => row.ImportStatus switch
         {
-            BridgeCandidateImportStatus.Importing importing => string.Join(
+            BridgeTriageImportStatus.Importing => string.Join(
                 " · ",
                 new[]
                 {
-                importing.Step is { } step ? BridgeDisplay.LocalizedLine(step) : Loc.Chrome("import.progress.identifying"),
-                (importing.ProgressPercent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
+                ImportingProgress(row).Step is { } step ? step.LocalizedLabel : Loc.Chrome("import.progress.identifying"),
+                (ImportingProgress(row).Percent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
                 }.Where(part => part.Length > 0)),
-            BridgeCandidateImportStatus.Complete
-                or BridgeCandidateImportStatus.CloudUploadQueued =>
+            BridgeTriageImportStatus.Complete
+                or BridgeTriageImportStatus.CloudUploadQueued =>
                 upload switch
                 {
                     ImportUploadObservation.Awaiting =>
@@ -463,7 +475,7 @@ internal sealed partial class ImportSectionView
                         "a completed import has no upload observation"),
                 },
             null => MetadataLine(row),
-            BridgeCandidateImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
+            BridgeTriageImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
             _ => null,
         };
 
@@ -502,7 +514,7 @@ internal sealed partial class ImportSectionView
                 {
                     (Loc.Chrome("import.row.import_anyway"), false, (Action)(() => OnRowActivated(row))),
                 },
-            BridgeTriagePlacement.Done when row.ImportStatus is BridgeCandidateImportStatus.Error =>
+            BridgeTriagePlacement.Done when row.ImportStatus is BridgeTriageImportStatus.Error =>
                 new[]
                 {
                     (Loc.Chrome("import.row.retry"), true, (Action)(() => OnRowActivated(row))),
@@ -637,9 +649,9 @@ internal sealed partial class ImportSectionView
 
     private Control DoneTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
-        BridgeCandidateImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
-        BridgeCandidateImportStatus.Complete
-            or BridgeCandidateImportStatus.CloudUploadQueued =>
+        BridgeTriageImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
+        BridgeTriageImportStatus.Complete
+            or BridgeTriageImportStatus.CloudUploadQueued =>
             UploadProgressPresentation.ResolveImport(
                 row.ImportStatus,
                 _storage.Outbox) switch
@@ -652,7 +664,7 @@ internal sealed partial class ImportSectionView
                 _ => throw new InvalidOperationException(
                     "a completed import has no upload observation"),
             },
-        BridgeCandidateImportStatus.Error => Chip(Loc.Chrome("import.row.failed"), "BaeDangerBrush"),
+        BridgeTriageImportStatus.Error => Chip(Loc.Chrome("import.row.failed"), "BaeDangerBrush"),
         // Already imported from a previous session (content-hash match), so
         // there is no in-session status to read — the fact is the same, so the
         // glyph is.

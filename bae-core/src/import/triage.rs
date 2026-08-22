@@ -25,10 +25,10 @@ use super::handle::ImportServiceHandle;
 use super::search::{ImportSearchReleaseDetail, MetadataResult, SourceTracks};
 use super::types::{IdentityChoice, MetadataSource};
 use super::{
-    CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
-    ImportedRelease, WatchedFolderScanStatus,
+    CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
+    ImportCandidatesSnapshot, ImportedRelease, WatchedFolderScanStatus,
 };
-use crate::db::{DbImportCandidateState, LibraryCheck, LibraryStatus};
+use crate::db::{DbImportCandidateState, ImportCandidatesProjection, LibraryCheck, LibraryStatus};
 use crate::identify::verdict::decode_stored;
 use crate::identify::{
     classify, IdentifyState, NeedsYou, QueueClassification, ResultProvenance, TerminalVerdict,
@@ -71,18 +71,18 @@ pub use model::*;
 pub fn place(
     skipped: bool,
     is_added: bool,
-    import_status: Option<&CandidateImportStatusSnapshot>,
+    import_status: Option<&TriageImportStatus>,
     answer: &CandidateAnswer,
 ) -> TriagePlacement {
     // Spelled out rather than `is_some()`: each variant answers "has this
     // import finished" differently, and a new one should have to be placed
     // here on purpose rather than inherited by an `_`.
     let import_finished = match import_status {
-        Some(CandidateImportStatusSnapshot::Importing { .. }) => return TriagePlacement::Importing,
+        Some(TriageImportStatus::Importing) => return TriagePlacement::Importing,
         Some(
-            CandidateImportStatusSnapshot::Complete { .. }
-            | CandidateImportStatusSnapshot::CloudUploadQueued { .. }
-            | CandidateImportStatusSnapshot::Error { .. },
+            TriageImportStatus::Complete { .. }
+            | TriageImportStatus::CloudUploadQueued { .. }
+            | TriageImportStatus::Error { .. },
         ) => true,
         None => false,
     };
@@ -108,6 +108,7 @@ pub fn place(
 /// Shape one candidate's row.
 fn row(
     snapshot: &FolderImportCandidateSnapshot,
+    runtime: &CandidateRuntimeSnapshot,
     answer: Option<&Answered>,
     picked: Option<&Picked>,
     imported_release: Option<&ImportedRelease>,
@@ -123,15 +124,19 @@ fn row(
         scope: _,
         ..
     } = &snapshot.candidate;
-    let import_status = snapshot.runtime.import_status.clone().or_else(|| {
-        imported_release
-            .cloned()
-            .map(|release| CandidateImportStatusSnapshot::Complete { release })
-    });
+    let import_status = runtime
+        .import_status
+        .as_ref()
+        .map(TriageImportStatus::of)
+        .or_else(|| {
+            imported_release
+                .cloned()
+                .map(|release| TriageImportStatus::Complete { release })
+        });
     let actionable_answer = answer.filter(|_| snapshot.actionable);
     let known = match actionable_answer {
         Some(answer) => CandidateAnswer::Classified(answer.classification.clone()),
-        None => CandidateAnswer::Unanswered(IdentifyPhase::of(&snapshot.runtime.identify_state)),
+        None => CandidateAnswer::Unanswered(IdentifyPhase::of(&runtime.identify_state)),
     };
     let placement = place(
         snapshot.skipped,
@@ -174,18 +179,19 @@ fn row(
 /// by; a candidate with no entry has no verdict yet.
 pub fn project(
     snapshot: ImportCandidatesSnapshot,
+    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
     answers: &HashMap<(String, u64), Answered>,
     picks: &HashMap<(String, u64), Picked>,
     imported_releases: &HashMap<String, ImportedRelease>,
 ) -> TriageQueue {
     let ImportCandidatesSnapshot {
         folder_candidates,
-        runtime_candidates: _,
         invalid_candidates,
         watched_folders,
         boundaries,
         folder_scan_statuses,
     } = snapshot;
+    let idle = CandidateRuntimeSnapshot::idle();
 
     let actionable_candidates: Vec<_> = folder_candidates
         .iter()
@@ -199,8 +205,12 @@ pub fn project(
     for candidate in actionable_candidates {
         let content_hash = candidate.candidate.files.content_hash();
         let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
+        let candidate_runtime = runtime
+            .get(candidate.candidate.path.to_string_lossy().as_ref())
+            .unwrap_or(&idle);
         let row = row(
             candidate,
+            candidate_runtime,
             answers.get(&candidate_identity),
             picks.get(&candidate_identity),
             imported_releases.get(&content_hash),
@@ -375,37 +385,14 @@ fn project_sections(
     sections
 }
 
-/// Read the queue: the scanned candidates, their stored verdicts, and one live
-/// library check across every match those verdicts name.
-///
-/// The library check is live and deliberately not stored with the verdict —
-/// another import landing flips a candidate from Ready to "already in library"
-/// without its own verdict changing.
+/// Read the queue once: the projection the candidate list is served from,
+/// shaped with the runtime every candidate holds right now.
 pub async fn load(
     import: &ImportServiceHandle,
     library_manager: &LibraryManager,
 ) -> Result<TriageQueue, LibraryError> {
-    let snapshot = import.get_import_candidates();
-    let stored = library_manager.load_import_candidate_states().await?;
-    let verdicts = stored_verdicts(&snapshot, &stored)?;
-
-    // One check for the whole queue, deduplicated by release id — the key
-    // `ready::classify` matches statuses against.
-    let checks = checks_from_verdicts(&verdicts);
-    let statuses = library_manager.check_releases_in_library(&checks).await?;
-    let answers = answers_from_statuses(verdicts, &statuses)?;
-    let picks = stored_picks(&snapshot, &stored, library_manager).await?;
-    let mut content_hashes: Vec<_> = snapshot
-        .folder_candidates
-        .iter()
-        .map(|candidate| candidate.candidate.files.content_hash())
-        .collect();
-    content_hashes.sort();
-    content_hashes.dedup();
-    let imported_releases = library_manager
-        .imported_releases_for_content_hashes(&content_hashes)
-        .await?;
-    Ok(project(snapshot, &answers, &picks, &imported_releases))
+    let projection = library_manager.load_import_candidates().await?;
+    project_live(&projection, &import.candidate_runtimes())
 }
 
 pub(crate) fn library_checks(
@@ -416,27 +403,45 @@ pub(crate) fn library_checks(
 }
 
 pub(crate) fn project_live(
-    snapshot: ImportCandidatesSnapshot,
-    projection: crate::db::ImportTriageDbProjection,
+    projection: &ImportCandidatesProjection,
+    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
 ) -> Result<TriageQueue, LibraryError> {
-    let verdicts = stored_verdicts(&snapshot, &projection.candidate_states)?;
-    let answers = answers_from_statuses(verdicts, &projection.library_statuses)?;
-    let picks = stored_picks_from_payloads(
-        &snapshot,
-        &projection.candidate_states,
-        &projection.source_payloads,
-    )?;
+    let snapshot = &projection.snapshot;
+    let triage = &projection.triage;
+    let verdicts = stored_verdicts(snapshot, &triage.candidate_states)?;
+    let answers = answers_from_statuses(verdicts, &triage.library_statuses)?;
+    let picks =
+        stored_picks_from_payloads(snapshot, &triage.candidate_states, &triage.source_payloads)?;
     Ok(project(
-        snapshot,
+        snapshot.clone(),
+        runtime,
         &answers,
         &picks,
-        &projection.imported_releases,
+        &triage.imported_releases,
     ))
+}
+
+/// The runtime facts a row's placement reads: a change to any other part of
+/// a candidate's runtime (a progress tick, a signals update) leaves the queue
+/// as projected.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TriageRuntimeFacts {
+    pub phase: IdentifyPhase,
+    pub import_status: Option<TriageImportStatus>,
+}
+
+impl TriageRuntimeFacts {
+    pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
+        Self {
+            phase: IdentifyPhase::of(&runtime.identify_state),
+            import_status: runtime.import_status.as_ref().map(TriageImportStatus::of),
+        }
+    }
 }
 
 /// Every release the stored verdicts name, deduplicated. `named_releases`
 /// rather than `named_matches`: a Conflict's disc-ID and barcode sections
-/// carry releases too, and [`overlay_stored_verdicts`] resumes them with live
+/// carry releases too, and [`resume_stored_verdicts`] resumes them with live
 /// statuses, so the projection's one check covers them as well.
 fn checks_from_verdicts(
     verdicts: &HashMap<(String, u64), StoredCandidateVerdict>,
@@ -450,35 +455,30 @@ fn checks_from_verdicts(
         .collect()
 }
 
-/// Overlay stored verdicts onto a snapshot's runtime states: every folder
-/// candidate whose runtime holds no identify state reads its stored verdict's
-/// resumed state instead. This is what makes the candidates subscription
-/// serve one identify state per candidate — the live run's while one is in
-/// flight, the stored answer's otherwise — so an answered candidate shows its
-/// answer without anyone clicking it, on every launch and through every
-/// rescan.
+/// Fill in every folder candidate's resumed identify state from its stored
+/// verdict: the answer a row shows when no run is in flight, so an answered
+/// candidate shows its answer without anyone clicking it, on every launch and
+/// through every rescan. A candidate with no stored verdict for its current
+/// file shape stays `Idle`.
 ///
-/// The snapshot and projection must be a consistent pair: the projection's
-/// library statuses were checked for the releases these verdicts name (the
-/// subscription reads them in one query), so a missing status is a read that
-/// must fail rather than a release silently resumed as "not in the library".
-pub(crate) fn overlay_stored_verdicts(
+/// The snapshot and statuses must be a consistent pair: the statuses were
+/// checked for the releases these verdicts name (the projection reads them in
+/// one query), so a missing status is a read that must fail rather than a
+/// release silently resumed as "not in the library".
+pub(crate) fn resume_stored_verdicts(
     snapshot: &mut ImportCandidatesSnapshot,
-    projection: &crate::db::ImportTriageDbProjection,
+    stored: &HashMap<String, DbImportCandidateState>,
+    library_statuses: &[LibraryStatus],
 ) -> Result<(), LibraryError> {
-    let verdicts = stored_verdicts(snapshot, &projection.candidate_states)?;
+    let verdicts = stored_verdicts(snapshot, stored)?;
     if verdicts.is_empty() {
         return Ok(());
     }
-    let by_release: HashMap<&str, &LibraryStatus> = projection
-        .library_statuses
+    let by_release: HashMap<&str, &LibraryStatus> = library_statuses
         .iter()
         .map(|status| (status.release_id.as_str(), status))
         .collect();
     for candidate in &mut snapshot.folder_candidates {
-        if !matches!(candidate.runtime.identify_state, IdentifyState::Idle) {
-            continue;
-        }
         let identity = (
             candidate.candidate.files.content_hash(),
             candidate.candidate.file_edit_revision,
@@ -501,7 +501,7 @@ pub(crate) fn overlay_stored_verdicts(
                 .expect("every named release was just checked against the projection"))
             .clone()
         };
-        candidate.runtime.identify_state = stored.verdict.clone().resume_state(&status_of);
+        candidate.resumed_identify_state = stored.verdict.clone().resume_state(&status_of);
     }
     Ok(())
 }
@@ -617,45 +617,6 @@ fn stored_verdicts(
     Ok(out)
 }
 
-/// The identity pick every scanned candidate's stored row holds, with the
-/// release each one settled on read back out of the documents behind it.
-///
-/// Keyed like the verdicts: by content hash and edit revision, so a read racing
-/// an edit write serves nothing rather than mixed state. A pick this build
-/// cannot decode fails the read; persisted state is never silently omitted.
-async fn stored_picks(
-    snapshot: &ImportCandidatesSnapshot,
-    stored: &HashMap<String, DbImportCandidateState>,
-    library_manager: &LibraryManager,
-) -> Result<HashMap<(String, u64), Picked>, LibraryError> {
-    let mut out: HashMap<(String, u64), Picked> = HashMap::new();
-    for candidate in &snapshot.folder_candidates {
-        let content_hash = candidate.candidate.files.content_hash();
-        let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
-        if out.contains_key(&candidate_identity) {
-            continue;
-        }
-        let Some(row) = stored.get(&content_hash) else {
-            continue;
-        };
-        if row.file_edits.revision != candidate.candidate.file_edit_revision {
-            continue;
-        }
-        let Some(pick_json) = row.identity_pick.as_ref() else {
-            continue;
-        };
-        let pick: crate::import::IdentityPick =
-            serde_json::from_str(pick_json).map_err(|error| {
-                LibraryError::Internal(format!(
-                    "stored identity pick for {content_hash} does not decode: {error}"
-                ))
-            })?;
-        let release = picked_release(library_manager, &pick).await?;
-        out.insert(candidate_identity, Picked { pick, release });
-    }
-    Ok(out)
-}
-
 fn stored_picks_from_payloads(
     snapshot: &ImportCandidatesSnapshot,
     stored: &HashMap<String, DbImportCandidateState>,
@@ -703,41 +664,6 @@ fn picked_release_from_payloads(
     let Some(payloads) = crate::import::payloads::load_from_map(&release, payloads)
         .map_err(|error| LibraryError::Internal(error.to_string()))?
     else {
-        return Ok(None);
-    };
-    let detail = payloads
-        .detail()
-        .map_err(|error| LibraryError::Internal(error.to_string()))?;
-    Ok(Some(MatchedRelease::of_pick(*source, &detail)))
-}
-
-/// The release a pick settled on, as the documents archived for it describe it.
-///
-/// Reading the folder as its own tags settles it on no release, and so leads
-/// with nothing. Neither does a release pick whose documents are not archived:
-/// the pick is persisted before they are fetched, so the window exists, and the
-/// pane's own read is what closes it.
-async fn picked_release(
-    library_manager: &LibraryManager,
-    pick: &crate::import::IdentityPick,
-) -> Result<Option<MatchedRelease>, LibraryError> {
-    let crate::import::IdentityPick::Release {
-        source, release_id, ..
-    } = pick
-    else {
-        return Ok(None);
-    };
-    let release = crate::import::MetadataRef::new(release_id.clone(), *source);
-    let payloads = library_manager
-        .load_release_payloads(&release)
-        .await
-        .map_err(|error| LibraryError::Internal(error.to_string()))?;
-    let Some(payloads) = payloads else {
-        tracing::debug!(
-            "nothing archived the documents behind picked {} release {release_id}; its row leads \
-             with the folder name until they are fetched",
-            source.as_str()
-        );
         return Ok(None);
     };
     let detail = payloads

@@ -27,26 +27,30 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
     let fixture = Fixture::new("import-queued-status").await;
     let candidate = fixture.disc_id_candidate("Album Title");
     fixture.scan(1).await;
-    let mut candidates = fixture.import.subscribe_import_candidates();
+    let mut changes = fixture.import.subscribe_candidate_runtime().1;
 
     fixture
         .import
         .claim_candidate_for_import(&candidate.to_string_lossy())
         .await;
 
-    tokio::time::timeout(Duration::from_secs(1), candidates.changed())
+    let change = tokio::time::timeout(Duration::from_secs(1), changes.recv())
         .await
         .expect("the queued status is published")
-        .expect("candidate stream remains open");
-    let snapshot = candidates.borrow_and_update();
+        .expect("runtime changes remain open");
     assert!(matches!(
-        snapshot.folder_candidates[0].runtime.import_status,
-        Some(crate::import::CandidateImportStatusSnapshot::Importing {
-            progress_percent: 0,
-            step: Some(crate::import::ImportStep::Preparing(
-                crate::import::PrepareStep::Queued
-            )),
-        })
+        change,
+        crate::import::CandidateRuntimeChange::Updated { key, runtime }
+            if key == candidate.to_string_lossy()
+                && matches!(
+                    runtime.import_status,
+                    Some(crate::import::CandidateImportStatusSnapshot::Importing {
+                        progress_percent: 0,
+                        step: Some(crate::import::ImportStep::Preparing(
+                            crate::import::PrepareStep::Queued
+                        )),
+                    })
+                )
     ));
 }
 
@@ -142,7 +146,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     // …and then the scan re-announces it, exactly as a watcher-triggered pass
     // over the same folder does.
     let claimed = match fixture.import.get_candidate(&importing.to_string_lossy()) {
-        Some(ImportCandidateSnapshot::Folder { candidate, .. }) => candidate,
+        Ok(Some(ImportCandidateSnapshot::Folder { candidate, .. })) => candidate,
         other => panic!("the claimed candidate is still a folder candidate: {other:?}"),
     };
     fixture

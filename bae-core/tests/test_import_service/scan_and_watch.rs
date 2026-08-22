@@ -157,6 +157,20 @@ async fn scan_batch_until(
 
 /// Wait for a single scan event matching `pred`, failing loud if none arrives
 /// within a bounded deadline — the event-driven form of a fixed positive window.
+/// The first candidate list `accept` admits, within the test deadline.
+async fn wait_for_candidates(
+    f: &ImportFixture,
+    what: &str,
+    accept: impl FnMut(&bae_core::import::ImportCandidatesSnapshot) -> bool,
+) -> bae_core::import::ImportCandidatesSnapshot {
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        f.handle.wait_for_candidates(accept),
+    )
+    .await
+    .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
+}
+
 async fn wait_for_scan_event(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     what: &str,
@@ -234,31 +248,28 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
             .collect::<Vec<_>>(),
         vec![collection_key.clone()],
     );
-    assert!(
-        !f.handle
-            .get_import_candidates()
-            .folder_candidates
-            .is_empty(),
-        "the reducer holds the scanned candidate"
-    );
+    wait_for_candidates(&f, "the list holds the scanned candidate", |snapshot| {
+        !snapshot.folder_candidates.is_empty()
+    })
+    .await;
 
     f.handle
         .remove_watched_folder(collection_key.clone())
         .await
         .unwrap();
 
-    // The list accessor and the reducer both reflect the removal synchronously.
+    // The list accessor reflects the removal synchronously; the candidate
+    // list follows once its query re-reads.
     assert!(
         f.handle.watched_folders().is_empty(),
         "removed folder is gone from the persisted list"
     );
-    assert!(
-        f.handle
-            .get_import_candidates()
-            .folder_candidates
-            .is_empty(),
-        "the reducer dropped the removed folder's candidates"
-    );
+    wait_for_candidates(
+        &f,
+        "the list dropped the removed folder's candidates",
+        |snapshot| snapshot.folder_candidates.is_empty(),
+    )
+    .await;
 
     // The shortened (now empty) list is broadcast.
     wait_for_scan_event(
@@ -295,24 +306,20 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
         .add_watched_folder(missing_key.clone())
         .await
         .unwrap();
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-    loop {
-        let snapshot = f.handle.get_import_candidates();
-        if snapshot.folder_scan_statuses.iter().any(|status| {
-            status.watched_folder_path == missing_key
-                && matches!(
-                    status.status,
-                    bae_core::import::FolderScanStatus::Failed { .. }
-                )
-        }) {
-            break;
-        }
-        assert!(
-            tokio::time::Instant::now() < deadline,
-            "unavailable watched root did not report a failed scan"
-        );
-        tokio::task::yield_now().await;
-    }
+    wait_for_candidates(
+        &f,
+        "unavailable watched root reports a failed scan",
+        |snapshot| {
+            snapshot.folder_scan_statuses.iter().any(|status| {
+                status.watched_folder_path == missing_key
+                    && matches!(
+                        status.status,
+                        bae_core::import::FolderScanStatus::Failed { .. }
+                    )
+            })
+        },
+    )
+    .await;
     assert_eq!(f.handle.watched_folders().len(), 1);
 }
 
@@ -342,7 +349,15 @@ async fn refresh_missing_watched_folder_fails_and_preserves_candidates() {
         result.is_err(),
         "refreshing a missing watched folder must fail"
     );
-    let snapshot = f.handle.get_import_candidates();
+    let snapshot = wait_for_candidates(&f, "the failed refresh leaves its status", |snapshot| {
+        snapshot.folder_scan_statuses.iter().any(|status| {
+            matches!(
+                status.status,
+                bae_core::import::FolderScanStatus::Failed { .. }
+            )
+        })
+    })
+    .await;
     assert!(snapshot.folder_candidates.iter().any(|candidate| candidate
         .candidate
         .path
@@ -382,22 +397,23 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     .await;
     assert!(batch.added.contains(&album_key));
 
-    let skipped_of = |f: &ImportFixture| {
-        f.handle
-            .get_import_candidates()
-            .folder_candidates
-            .iter()
-            .find(|c| c.candidate.path == album)
-            .expect("candidate present")
-            .skipped
-    };
-    assert!(!skipped_of(&f), "candidate starts unskipped");
+    async fn wait_for_skipped(f: &ImportFixture, album: &std::path::Path, expected: bool) {
+        wait_for_candidates(f, "the candidate's skip flag", |snapshot| {
+            snapshot
+                .folder_candidates
+                .iter()
+                .find(|c| c.candidate.path == album)
+                .is_some_and(|c| c.skipped == expected)
+        })
+        .await;
+    }
+    wait_for_skipped(&f, &album, false).await;
 
     f.handle
         .set_candidate_skipped(album_key.clone(), true)
         .await
         .unwrap();
-    assert!(skipped_of(&f), "skip flag flips in the reducer");
+    wait_for_skipped(&f, &album, true).await;
     wait_for_scan_event(
         &mut scan_rx,
         "the CandidateSkipChanged broadcast",
@@ -416,7 +432,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
         .set_candidate_skipped(album_key.clone(), true)
         .await
         .unwrap();
-    assert!(skipped_of(&f));
+    wait_for_skipped(&f, &album, true).await;
     let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_millis(300)).await;
     assert!(
         !events
@@ -429,5 +445,5 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
         .set_candidate_skipped(album_key.clone(), false)
         .await
         .unwrap();
-    assert!(!skipped_of(&f), "unskip flips the flag back");
+    wait_for_skipped(&f, &album, false).await;
 }

@@ -16,6 +16,11 @@ struct TriageRowView: View {
     static let coverPointSize: CGFloat = 44
 
     let row: BridgeTriageRow
+    /// The candidate's import run as its runtime reports it, for the percent
+    /// and phase an `.importing` row shows. The row itself only says *that*
+    /// an import is running; progress ticks reach this view without the
+    /// queue re-projecting. `nil` when no run is live.
+    let importProgress: BridgeCandidateImportStatus?
     let coverContent: ImageContent?
     /// Non-nil exactly when `row.selectable`. Passed in rather than read off
     /// `row` again so the list content is the one place selection state
@@ -37,6 +42,7 @@ struct TriageRowView: View {
 
     init(
         row: BridgeTriageRow,
+        importProgress: BridgeCandidateImportStatus? = nil,
         coverContent: ImageContent?,
         selection: Binding<Bool>?,
         onSelect: @escaping () -> Void,
@@ -48,6 +54,7 @@ struct TriageRowView: View {
             ) -> Void = { _, _ in }
     ) {
         self.row = row
+        self.importProgress = importProgress
         self.coverContent = coverContent
         self.selection = selection
         self.onSelect = onSelect
@@ -183,9 +190,9 @@ struct TriageRowView: View {
                     .truncationMode(.middle)
                     .padding(.top, 1)
             }
-            if case .importing(let percent, _) = row.importStatus {
+            if case .importing = row.importStatus {
                 ProgressTrackBar(
-                    progress: Double(percent) / 100,
+                    progress: Double(importingProgress.percent) / 100,
                     trackHeight: 3
                 )
                 .padding(.top, 7)
@@ -261,9 +268,20 @@ extension TriageRowView {
         return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
     }
 
+    /// The running import's percent and phase, from the candidate's runtime.
+    /// A row placed as importing whose runtime has not reported yet is at the
+    /// start with no phase named.
+    private var importingProgress: (percent: UInt32, step: BridgeImportStep?) {
+        if case .importing(let percent, let step) = importProgress {
+            return (percent, step)
+        }
+        return (0, nil)
+    }
+
     private var importSubLine: String? {
         switch row.importStatus {
-        case .importing(let percent, let step):
+        case .importing:
+            let (percent, step) = importingProgress
             let phaseText =
                 step?.localizedText ?? String(localized: "Importing\u{2026}")
             // The percent renders through `.formatted(.percent)` before it's

@@ -13,7 +13,7 @@ pub enum CueFlacError {
 ///
 /// Convert to samples with `frames * sample_rate / 75` — exact at every standard
 /// rate. Convert to ms with `frames * 1000 / 75`, which is lossy: UI display only.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CueIndex {
     pub number: u32,
     pub frames: u64,
@@ -32,14 +32,14 @@ impl CueTrackMode {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum CuePregap {
     None,
     Audio(CueIndex),
     Silence { frames: u64 },
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CueTrack {
     pub number: u32,
     pub mode: CueTrackMode,
@@ -128,7 +128,7 @@ impl CueTrack {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CueSheet {
     pub title: Option<String>,
     pub performer: Option<String>,

@@ -105,12 +105,7 @@ impl QueueSweepHandle {
     /// own, so a candidate a person answered opens with no network on every
     /// launch after.
     pub fn identify_for_selection(&self, candidate_key: String) {
-        let Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        }) = self.context.import.get_candidate(&candidate_key)
-        else {
+        let Some(candidate) = actionable_candidate(&self.context, &candidate_key) else {
             warn!("cannot identify selection {candidate_key}: it is not a folder candidate");
             return;
         };
@@ -135,12 +130,7 @@ impl QueueSweepHandle {
     /// Re-run control on a resumed verdict. The stored answer is deliberately
     /// not consulted: a re-run exists to replace it.
     pub fn rerun_for_selection(&self, candidate_key: String) {
-        let Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        }) = self.context.import.get_candidate(&candidate_key)
-        else {
+        let Some(candidate) = actionable_candidate(&self.context, &candidate_key) else {
             warn!("cannot re-run selection {candidate_key}: it is not a folder candidate");
             return;
         };
@@ -390,7 +380,15 @@ async fn run_pass(
     token: &CancellationToken,
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
 ) {
-    let candidates = new_candidates(context);
+    let candidates = match new_candidates(context).await {
+        Ok(candidates) => candidates,
+        Err(error) => {
+            // Without the list the sweep cannot plan. Skip the pass; the next
+            // scan plans another.
+            warn!("sweep: could not read the candidate list ({error}); skipping this pass");
+            return;
+        }
+    };
     let total = candidates.len() as u32;
     let mut known_identities: HashMap<String, CandidateIdentity> = candidates
         .iter()
@@ -565,23 +563,21 @@ async fn run_pass(
                                     &representative_key,
                                     &identity,
                                 )
+                                .await
                             {
                                 Vec::new()
                             } else {
-                                entry
-                                    .job
-                                    .candidates
-                                    .iter()
-                                    .filter(|candidate| {
-                                        candidate.path.to_string_lossy() != representative_key
-                                            && usable_current_candidate(
-                                                &context,
-                                                candidate.path.to_string_lossy().as_ref(),
-                                                &identity,
-                                            )
-                                    })
-                                    .cloned()
-                                    .collect()
+                                let mut rehome = Vec::new();
+                                for candidate in &entry.job.candidates {
+                                    let key = candidate.path.to_string_lossy();
+                                    if key != representative_key
+                                        && usable_current_candidate(&context, &key, &identity)
+                                            .await
+                                    {
+                                        rehome.push(candidate.clone());
+                                    }
+                                }
+                                rehome
                             };
                             Finished {
                                 representative_key,
@@ -654,7 +650,7 @@ async fn run_pass(
                     // candidate back into a total the import had just taken it
                     // out of. Asked against live state rather than the event,
                     // because the claim that supersedes it carries no event.
-                    let Some(candidate) = sweepable_candidate(context, &candidate_key) else {
+                    let Some(candidate) = sweepable_candidate(context, &candidate_key).await else {
                         detach_candidate(
                             context,
                             &candidate_key,
@@ -743,7 +739,7 @@ async fn run_pass(
                         ) {
                             emit_progress(context, identified.min(total), total);
                         }
-                    } else if let Some(candidate) = sweepable_candidate(context, &candidate_key) {
+                    } else if let Some(candidate) = sweepable_candidate(context, &candidate_key).await {
                         let identity = candidate_identity(&candidate);
                         if known_identities
                             .insert(candidate_key.clone(), identity.clone())
@@ -876,32 +872,59 @@ async fn run_pass_for_test(context: &SweepContext, token: &CancellationToken) {
 ///
 /// Added candidates are already in the library and skipped candidates reflect
 /// an explicit user decision, so neither belongs in automatic identification.
-fn new_candidates(context: &SweepContext) -> Vec<FolderCandidate> {
-    context
-        .import
-        .get_import_candidates()
+///
+/// Read from the tables, not from the list's latest value: a pass is planned
+/// right after the event that changed the queue — a skip, a scan item — and
+/// the list's query lands after the commit it reflects, so the latest value
+/// can still describe the queue before that change.
+async fn new_candidates(
+    context: &SweepContext,
+) -> Result<Vec<FolderCandidate>, crate::library::LibraryError> {
+    let projection = context.library_manager.load_import_candidates().await?;
+    let runtime = context.import.candidate_runtimes();
+    Ok(projection
+        .snapshot
         .folder_candidates
         .into_iter()
         .filter(|snapshot| {
             snapshot.actionable
                 && !snapshot.skipped
                 && !snapshot.is_added
-                && snapshot.runtime.import_status.is_none()
+                && runtime
+                    .get(snapshot.candidate.path.to_string_lossy().as_ref())
+                    .is_none_or(|runtime| runtime.import_status.is_none())
         })
         .map(|snapshot| snapshot.candidate)
-        .collect()
+        .collect())
 }
 
-fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
+/// The scanned folder candidate behind `key` when it is actionable, from the
+/// list's latest value. A list that cannot be read answers no key.
+fn actionable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
     match context.import.get_candidate(key) {
-        Some(ImportCandidateSnapshot::Folder {
+        Ok(Some(ImportCandidateSnapshot::Folder {
             candidate,
-            runtime,
             actionable: true,
-            skipped: false,
-            is_added: false,
-        }) if runtime.import_status.is_none() => Some(candidate),
-        _ => None,
+            ..
+        })) => Some(candidate),
+        Ok(_) => None,
+        Err(error) => {
+            warn!("cannot read candidate {key}: {error}");
+            None
+        }
+    }
+}
+
+/// The candidate the sweep is responsible for at `key`, read exactly — see
+/// [`ImportServiceHandle::sweepable_candidate`]. A read that fails answers
+/// no candidate, and says so.
+async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
+    match context.import.sweepable_candidate(key).await {
+        Ok(candidate) => candidate,
+        Err(error) => {
+            warn!("sweep: cannot read candidate {key} ({error}); treating it as not ours");
+            None
+        }
     }
 }
 

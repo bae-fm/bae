@@ -11,18 +11,12 @@ impl ImportServiceHandle {
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
-        let watched_folder_path = match self.candidate_store.get(&path) {
-            Some(ImportCandidateSnapshot::Folder {
-                candidate,
-                actionable: true,
-                ..
-            }) => candidate.watched_folder_path,
-            _ => {
-                return Err(crate::import::ImportError::Internal {
-                    detail: format!("{path} is not an actionable folder candidate"),
-                })
-            }
+        let Some(candidate) = self.stored_actionable_candidate(&path).await? else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{path} is not an actionable folder candidate"),
+            });
         };
+        let watched_folder_path = candidate.watched_folder_path;
         let relative_candidate_path = crate::import::folder_registry::candidate_relative_path(
             &watched_folder_path,
             std::path::Path::new(&path),
@@ -37,7 +31,6 @@ impl ImportServiceHandle {
                 relative_candidate_path,
                 skipped,
             );
-            self.candidate_store.set_skipped(&path, skipped);
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
@@ -221,7 +214,7 @@ impl ImportServiceHandle {
         candidate_key: String,
         pick: crate::import::IdentityPick,
     ) -> Result<(), crate::import::ImportError> {
-        let Some((files, _)) = self.actionable_candidate_files(&candidate_key) else {
+        let Some((files, _)) = self.actionable_candidate_files(&candidate_key)? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
@@ -267,7 +260,7 @@ impl ImportServiceHandle {
         file_id: String,
         choice: crate::import::folder_scanner::FileRoleChoice,
     ) -> Result<(), crate::import::ImportError> {
-        let Some((files, offered_revision)) = self.actionable_candidate_files(&candidate_key)
+        let Some((files, offered_revision)) = self.actionable_candidate_files(&candidate_key)?
         else {
             return Err(crate::import::ImportError::FileRole {
                 detail: format!("{candidate_key} is not a folder candidate"),
@@ -317,7 +310,9 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock().await;
         let content_hash = files.content_hash();
         let (current_files, expected_revision) = self
-            .actionable_candidate_files(candidate_key)
+            .stored_actionable_candidate(candidate_key)
+            .await?
+            .map(|candidate| (candidate.files, candidate.file_edit_revision))
             .ok_or_else(|| crate::import::ImportError::FileRole {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             })?;
@@ -344,9 +339,11 @@ impl ImportServiceHandle {
         }
         decide(&mut edits);
 
-        let matching_files = self
-            .candidate_store
-            .files_for_identity(&content_hash, expected_revision);
+        let matching_files = crate::import::candidates::files_for_identity(
+            &self.library_manager.load_all_folder_scan_items().await?,
+            &content_hash,
+            expected_revision,
+        );
         let (settled, edits) = tokio::task::spawn_blocking(move || {
             let mut settled = Vec::with_capacity(matching_files.len());
             for (key, mut files) in matching_files {
@@ -363,7 +360,7 @@ impl ImportServiceHandle {
         // Durable first, and atomically: the decision and the verdict it
         // invalidates move together, so nothing can observe a folder whose
         // stored answer describes the shape it just stopped having.
-        let next_revision = self
+        let (_next_revision, candidates) = self
             .library_manager
             .save_import_candidate_file_edits(
                 &content_hash,
@@ -373,19 +370,6 @@ impl ImportServiceHandle {
                 &settled,
             )
             .await?;
-
-        let Some(candidates) = self.candidate_store.set_files_for_identity(
-            &content_hash,
-            expected_revision,
-            settled,
-            next_revision,
-        ) else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!(
-                    "{candidate_key} identity changed while its file decision was being written"
-                ),
-            });
-        };
         for candidate in candidates {
             send_event(
                 &self.event_tx,
@@ -395,22 +379,25 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// A scanned folder candidate's files, or `None` for a key that names no
-    /// folder — an invalid candidate has no roles or bindings to edit. Each
-    /// caller names the refusal in its own terms rather than borrowing the
-    /// other's.
+    /// A scanned folder candidate's files as the list currently serves them,
+    /// or `None` for a key that names no folder — an invalid candidate has no
+    /// roles or bindings to edit. Each caller names the refusal in its own
+    /// terms rather than borrowing the other's.
     fn actionable_candidate_files(
         &self,
         candidate_key: &str,
-    ) -> Option<(crate::import::folder_scanner::CategorizedFiles, u64)> {
-        match self.candidate_store.get(candidate_key) {
+    ) -> Result<
+        Option<(crate::import::folder_scanner::CategorizedFiles, u64)>,
+        crate::import::ImportError,
+    > {
+        Ok(match self.get_candidate(candidate_key)? {
             Some(ImportCandidateSnapshot::Folder {
                 candidate,
                 actionable: true,
                 ..
             }) => Some((candidate.files, candidate.file_edit_revision)),
             _ => None,
-        }
+        })
     }
 
     /// A folder candidate's files for a binding operation, or the refusal that
@@ -420,7 +407,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
     ) -> Result<(crate::import::folder_scanner::CategorizedFiles, u64), crate::import::ImportError>
     {
-        self.actionable_candidate_files(candidate_key)
+        self.actionable_candidate_files(candidate_key)?
             .ok_or_else(|| crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} is not a folder candidate"),
             })

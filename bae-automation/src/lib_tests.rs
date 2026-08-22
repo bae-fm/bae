@@ -33,7 +33,7 @@ mod candidate_lookup {
             Vec::new(),
             Vec::new(),
         ))
-        .1
+        .2
     }
 
     #[test]
@@ -431,20 +431,12 @@ mod snapshot_mirror {
         CategorizedFiles, FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey,
         InvalidCandidate, InvalidReason, ReleaseFileScope,
     };
+    use bae_core::import::CandidateRuntime;
     use bae_core::import::{
-        CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
-        ImportCandidatesSnapshot, ImportStep, ImportedRelease, RuntimeImportCandidateSnapshot,
+        CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
+        ImportEvent, ImportProgress, ImportStep,
     };
     use std::path::PathBuf;
-
-    pub(super) fn idle_runtime() -> CandidateRuntimeSnapshot {
-        CandidateRuntimeSnapshot {
-            identify_state: IdentifyState::Idle,
-            toolbar: Vec::new(),
-            signals: None,
-            import_status: None,
-        }
-    }
 
     pub(super) fn folder_candidate(path: &str) -> FolderImportCandidateSnapshot {
         FolderImportCandidateSnapshot {
@@ -463,10 +455,10 @@ mod snapshot_mirror {
                 resolved_boundaries: Vec::new(),
                 combine_ancestor_key: None,
             },
-            runtime: idle_runtime(),
             actionable: true,
             skipped: false,
             is_added: false,
+            resumed_identify_state: IdentifyState::Idle,
         }
     }
 
@@ -506,24 +498,58 @@ mod snapshot_mirror {
         ImportCandidatesSnapshot {
             watched_folders: Vec::new(),
             folder_candidates,
-            runtime_candidates: Vec::new(),
             invalid_candidates,
             boundaries,
             folder_scan_statuses: Vec::new(),
         }
     }
 
-    /// A state reading one watch, returned with the sender so a test can publish
-    /// the next snapshot — which is how every update reaches this surface.
+    fn value(snapshot: ImportCandidatesSnapshot) -> ImportCandidatesValue {
+        Arc::new(Ok(bae_core::db::ImportCandidatesProjection {
+            snapshot,
+            triage: bae_core::db::ImportTriageDbProjection {
+                candidate_states: Default::default(),
+                library_statuses: Vec::new(),
+                source_payloads: Default::default(),
+                imported_releases: Default::default(),
+            },
+        }))
+    }
+
+    /// A state reading one list value and one runtime store, returned with
+    /// both so a test can publish the next list value or record runtime —
+    /// which is how every update reaches this surface.
     pub(super) fn state_over(
         snapshot: ImportCandidatesSnapshot,
-    ) -> (watch::Sender<ImportCandidatesSnapshot>, AutomationState) {
-        let (tx, rx) = watch::channel(snapshot);
-        (tx, AutomationState::new(rx))
+    ) -> (
+        watch::Sender<ImportCandidatesValue>,
+        CandidateRuntime,
+        AutomationState,
+    ) {
+        let (tx, rx) = watch::channel(value(snapshot));
+        let runtime = CandidateRuntime::default();
+        let runtimes = runtime.clone();
+        (
+            tx,
+            runtime,
+            AutomationState::new(rx, Arc::new(move || runtimes.all())),
+        )
     }
 
     fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {
         candidates.iter().map(AutomationCandidate::key).collect()
+    }
+
+    fn importing(key: &str, percent: u8) -> ImportEvent {
+        ImportEvent::ImportProgress {
+            candidate_key: key.to_string(),
+            progress: ImportProgress::Progress {
+                id: "release-1".to_string(),
+                percent,
+                phase: bae_core::import::ImportPhase::MeasuringLoudness,
+                import_id: "import-1".to_string(),
+            },
+        }
     }
 
     /// The listing is the snapshot's folder and invalid candidates, in path
@@ -533,14 +559,14 @@ mod snapshot_mirror {
     #[test]
     fn a_boundary_s_hidden_keys_are_absent_rather_than_a_contradiction() {
         let hidden = "/music/Between The Buttons US [Polydor P25L 25040]";
-        let (_tx, state) = state_over(snapshot(
+        let (_tx, _runtime, state) = state_over(snapshot(
             vec![folder_candidate("/music/B"), folder_candidate("/music/A")],
             vec![invalid_candidate("/music/C")],
             vec![boundary(&[hidden])],
         ));
 
         assert_eq!(
-            keys(&state.list_candidates()),
+            keys(&state.list_candidates().unwrap()),
             vec!["/music/A", "/music/B", "/music/C"]
         );
         let error = state
@@ -548,25 +574,25 @@ mod snapshot_mirror {
             .expect_err("a hidden path names no candidate a caller can act on");
         assert_eq!(error.kind(), "not_found");
         assert_eq!(
-            keys(&state.list_candidates()),
+            keys(&state.list_candidates().unwrap()),
             vec!["/music/A", "/music/B", "/music/C"],
             "the refused request left nothing latched"
         );
     }
 
     /// `reidentify:` runtime entries name releases, not scanned folders. They
-    /// carry runtime but no candidate, so they are not listed — and, unlike the
-    /// event index, their updates are not an unknown key to fail on.
+    /// carry runtime but no candidate, so they are not listed — and their
+    /// updates are not an unknown key to fail on.
     #[test]
     fn runtime_only_entries_are_not_candidates() {
-        let mut snapshot = snapshot(vec![folder_candidate("/music/A")], Vec::new(), Vec::new());
-        snapshot.runtime_candidates = vec![RuntimeImportCandidateSnapshot {
-            key: "reidentify:release-1".to_string(),
-            runtime: idle_runtime(),
-        }];
-        let (_tx, state) = state_over(snapshot);
+        let (_tx, runtime, state) = state_over(snapshot(
+            vec![folder_candidate("/music/A")],
+            Vec::new(),
+            Vec::new(),
+        ));
+        runtime.record_event_for_test(&importing("reidentify:release-1", 1));
 
-        assert_eq!(keys(&state.list_candidates()), vec!["/music/A"]);
+        assert_eq!(keys(&state.list_candidates().unwrap()), vec!["/music/A"]);
         assert_eq!(
             state
                 .get_candidate("reidentify:release-1")
@@ -576,13 +602,13 @@ mod snapshot_mirror {
         );
     }
 
-    /// Updates arrive as a new snapshot value. The surface reads the latest one,
+    /// Updates arrive as a new list value. The surface reads the latest one,
     /// so a candidate that changed reads changed and one that is gone is gone —
     /// with no accumulated state that a missed or unplaceable update could
     /// corrupt.
     #[test]
     fn the_latest_snapshot_is_the_answer() {
-        let (tx, state) = state_over(snapshot(
+        let (tx, runtime, state) = state_over(snapshot(
             vec![folder_candidate("/music/A"), folder_candidate("/music/B")],
             Vec::new(),
             Vec::new(),
@@ -590,16 +616,18 @@ mod snapshot_mirror {
 
         let mut skipped = folder_candidate("/music/A");
         skipped.skipped = true;
-        skipped.runtime.import_status = Some(CandidateImportStatusSnapshot::Complete {
-            release: ImportedRelease {
-                release_id: "release-1".to_string(),
+        runtime.record_event_for_test(&ImportEvent::ImportProgress {
+            candidate_key: "/music/A".to_string(),
+            progress: ImportProgress::Complete {
+                id: "release-1".to_string(),
+                import_id: "import-1".to_string(),
                 album_id: "album-1".to_string(),
             },
         });
-        tx.send(snapshot(vec![skipped], Vec::new(), Vec::new()))
+        tx.send(value(snapshot(vec![skipped], Vec::new(), Vec::new())))
             .expect("the state holds the receiver");
 
-        assert_eq!(keys(&state.list_candidates()), vec!["/music/A"]);
+        assert_eq!(keys(&state.list_candidates().unwrap()), vec!["/music/A"]);
         let candidate = state.get_candidate("/music/A").expect("still published");
         assert!(candidate.common().skipped, "the new value is what is read");
         assert!(matches!(
@@ -620,18 +648,39 @@ mod snapshot_mirror {
         );
     }
 
+    /// A list whose read failed answers every question with that failure
+    /// rather than the last value it held.
+    #[test]
+    fn a_failed_list_read_is_the_answer_until_the_next_read() {
+        let (tx, _runtime, state) = state_over(snapshot(
+            vec![folder_candidate("/music/A")],
+            Vec::new(),
+            Vec::new(),
+        ));
+        tx.send(Arc::new(Err(LibraryError::Internal(
+            "the tables are unreadable".to_string(),
+        ))))
+        .expect("the state holds the receiver");
+
+        let error = state
+            .list_candidates()
+            .expect_err("a failed read is an error");
+        assert_eq!(error.kind(), "database");
+        assert!(error.to_string().contains("the tables are unreadable"));
+    }
+
     /// The runtime a candidate carries is the import service's own, converted
     /// whole: identify state, toolbar, signals, and the candidate's import run.
+    /// With no run in flight the identify state is the stored verdict's
+    /// resumed state, the same answer the import tab shows.
     #[test]
     fn a_candidate_carries_the_import_service_s_runtime() {
-        let mut running = folder_candidate("/music/A");
-        running.runtime.import_status = Some(CandidateImportStatusSnapshot::Importing {
-            progress_percent: 42,
-            step: Some(ImportStep::Running(
-                bae_core::import::ImportPhase::MeasuringLoudness,
-            )),
-        });
-        let (_tx, state) = state_over(snapshot(vec![running], Vec::new(), Vec::new()));
+        let (_tx, runtime, state) = state_over(snapshot(
+            vec![folder_candidate("/music/A")],
+            Vec::new(),
+            Vec::new(),
+        ));
+        runtime.record_event_for_test(&importing("/music/A", 42));
 
         let candidate = state.get_candidate("/music/A").expect("published");
         let json = serde_json::to_value(&candidate).unwrap();
@@ -643,6 +692,39 @@ mod snapshot_mirror {
             "measuring_loudness"
         );
         assert_eq!(json["runtime"]["identify_state"]["kind"], "idle");
+        let _ = (
+            CandidateImportStatusSnapshot::Error {
+                error: String::new(),
+            },
+            ImportStep::Preparing(bae_core::import::PrepareStep::Queued),
+        );
+    }
+
+    #[test]
+    fn an_idle_runtime_shows_the_resumed_identify_state() {
+        let mut answered = folder_candidate("/music/A");
+        answered.resumed_identify_state = IdentifyState::NotFoundAnywhere {
+            context: bae_core::identify::state::SignalsContext {
+                disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 4 },
+                barcode_codes: Vec::new(),
+                had_barcode_source: false,
+                catalogs: Vec::new(),
+                excluded: Default::default(),
+                discid_results: Vec::new(),
+                barcode_results: Vec::new(),
+                discid_failure: None,
+                barcode_failure: None,
+                matched_barcode: None,
+                track_count: 4,
+            },
+        };
+        let (_tx, _runtime, state) = state_over(snapshot(vec![answered], Vec::new(), Vec::new()));
+
+        let json = serde_json::to_value(state.get_candidate("/music/A").unwrap()).unwrap();
+        assert_eq!(
+            json["runtime"]["identify_state"]["kind"],
+            "not_found_anywhere"
+        );
     }
 }
 

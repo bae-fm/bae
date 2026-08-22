@@ -1,6 +1,7 @@
 use super::*;
 
 mod rows;
+use super::folder_scans::validate_scan_item_ownership;
 use rows::*;
 
 /// Who decided a candidate's stored identity pick. The two outlive different
@@ -27,7 +28,7 @@ use crate::import::folder_scanner::{
 };
 use std::collections::HashSet;
 
-fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i64, DbError> {
+pub(super) fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i64, DbError> {
     let current: i64 = sql.query_row(
         "SELECT last_generation FROM folder_scan_generation_sequence WHERE singleton = 1",
         [],
@@ -123,13 +124,31 @@ impl Database {
 
     /// Stop watching the folder `path` names. Keyed the same way as the add,
     /// so whichever spelling reaches here names the row the add created.
-    pub async fn remove_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
+    /// Returns the keys of the scan entries the removal cascaded away, or
+    /// `None` when the folder was not watched.
+    pub async fn remove_watched_import_folder(
+        &self,
+        path: &str,
+    ) -> Result<Option<Vec<String>>, DbError> {
         let path = Self::canonical_watched_root(path)?;
         if !self.watched_import_roots().await?.contains(&path) {
-            return Ok(false);
+            return Ok(None);
         }
         self.call(move |sql| {
-            Ok(sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])? == 1)
+            let entry_keys = sql.query(
+                "SELECT entry_key FROM folder_scan_entries \
+                 WHERE watched_folder_path = ? ORDER BY entry_key",
+                [&path],
+                |row| row.get::<_, String>(0),
+            )?;
+            let removed =
+                sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;
+            if removed != 1 {
+                return Err(DbError::Message(format!(
+                    "removing watched folder {path} changed {removed} rows; expected one"
+                )));
+            }
+            Ok(Some(entry_keys))
         })
         .await
     }
@@ -184,226 +203,9 @@ impl Database {
         })
         .await
     }
+}
 
-    /// Start a durable scan generation for one watched root.
-    pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        self.call(move |sql| {
-            let generation = next_folder_scan_generation(sql)?;
-            sql.execute(
-                "INSERT INTO folder_scan_roots \
-                     (watched_folder_path, generation, status, error) \
-                 VALUES (?, ?, 'scanning', NULL) \
-                 ON CONFLICT(watched_folder_path) DO UPDATE SET \
-                     generation = excluded.generation, status = 'scanning', error = NULL",
-                params![watched_folder_path, generation],
-            )?;
-            u64::try_from(generation)
-                .map_err(|_| DbError::Message("folder scan generation is negative".to_string()))
-        })
-        .await
-    }
-
-    /// Persist one progressive scan result before it is exposed to consumers.
-    ///
-    /// `removed_keys` are entries this item supersedes in the same in-memory
-    /// transition. The generation check and all changes share one transaction,
-    /// so a cancelled scan cannot write over its successor.
-    pub async fn save_folder_scan_item(
-        &self,
-        watched_folder_path: &str,
-        generation: u64,
-        item: &crate::import::folder_scanner::ScanItem,
-        removed_keys: &[String],
-    ) -> Result<bool, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let generation = i64::try_from(generation).map_err(|_| {
-            DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
-        })?;
-        let entry_key = item.persisted_key();
-        validate_scan_item_ownership(&watched_folder_path, &entry_key, item)?;
-        let item = serde_json::to_string(item)
-            .map_err(|error| DbError::Message(format!("encoding folder scan item: {error}")))?;
-        let removed_keys = removed_keys.to_vec();
-        self.call(move |sql| {
-            for removed_key in removed_keys {
-                sql.execute(
-                    "DELETE FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? AND entry_key = ? \
-                       AND EXISTS (\
-                           SELECT 1 FROM folder_scan_roots \
-                           WHERE watched_folder_path = ? AND generation = ?\
-                       )",
-                    params![
-                        watched_folder_path,
-                        removed_key,
-                        watched_folder_path,
-                        generation
-                    ],
-                )?;
-            }
-            let changed = sql.execute(
-                "INSERT INTO folder_scan_entries \
-                     (watched_folder_path, entry_key, generation, item) \
-                 SELECT ?, ?, ?, ? \
-                 WHERE EXISTS (\
-                     SELECT 1 FROM folder_scan_roots \
-                     WHERE watched_folder_path = ? AND generation = ?\
-                 ) \
-                 ON CONFLICT(watched_folder_path, entry_key) DO UPDATE SET \
-                     generation = excluded.generation, item = excluded.item",
-                params![
-                    watched_folder_path,
-                    entry_key,
-                    generation,
-                    item,
-                    watched_folder_path,
-                    generation
-                ],
-            )?;
-            Ok(changed == 1)
-        })
-        .await
-    }
-
-    /// Finish one scan generation. Successful completion removes entries not
-    /// observed in this generation; failure preserves them.
-    pub async fn finish_folder_scan(
-        &self,
-        watched_folder_path: &str,
-        generation: u64,
-        error: Option<&str>,
-    ) -> Result<bool, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let generation = i64::try_from(generation).map_err(|_| {
-            DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
-        })?;
-        let error = error.map(str::to_string);
-        // A generation that is no longer the root's finishes nothing, and
-        // finding that out is a read — the write below opens only once this
-        // generation is the one in force. Its statements still carry the
-        // generation, so a later one taking over between the two writes
-        // nothing rather than finishing the wrong scan.
-        let current: Option<i64> = {
-            let watched_folder_path = watched_folder_path.clone();
-            self.read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                        [&watched_folder_path],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
-            })
-            .await?
-        };
-        if current != Some(generation) {
-            return Ok(false);
-        }
-        self.call(move |sql| {
-            if let Some(error) = error {
-                sql.execute(
-                    "UPDATE folder_scan_roots SET status = 'failed', error = ? \
-                     WHERE watched_folder_path = ? AND generation = ?",
-                    params![error, watched_folder_path, generation],
-                )?;
-            } else {
-                sql.execute(
-                    "DELETE FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? AND generation != ?",
-                    params![watched_folder_path, generation],
-                )?;
-                sql.execute(
-                    "UPDATE folder_scan_roots SET status = 'complete', error = NULL \
-                     WHERE watched_folder_path = ? AND generation = ?",
-                    params![watched_folder_path, generation],
-                )?;
-            }
-            Ok(true)
-        })
-        .await
-    }
-
-    pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
-        self.read(move |sql| {
-            let roots = sql.query(
-                "SELECT watched_folder_path, generation, status, error \
-                     FROM folder_scan_roots ORDER BY watched_folder_path",
-                [],
-                |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, i64>(1)?,
-                        row.get::<_, String>(2)?,
-                        row.get::<_, Option<String>>(3)?,
-                    ))
-                },
-            )?;
-
-            let mut snapshots = Vec::with_capacity(roots.len());
-            for (watched_folder_path, generation, status, error) in roots {
-                let generation = u64::try_from(generation).map_err(|_| {
-                    DbError::Message(format!(
-                        "folder scan root {watched_folder_path} has a negative generation"
-                    ))
-                })?;
-                let status = match (status.as_str(), error) {
-                    ("scanning", None) => crate::import::FolderScanStatus::Scanning,
-                    ("complete", None) => crate::import::FolderScanStatus::Complete,
-                    ("failed", Some(error)) => {
-                        crate::import::FolderScanStatus::Failed { error }
-                    }
-                    (status, error) => {
-                        return Err(DbError::Message(format!(
-                            "folder scan root {watched_folder_path} has invalid status {status:?} and error {error:?}"
-                        )))
-                    }
-                };
-                let entries = sql.query(
-                    "SELECT entry_key, generation, item FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? ORDER BY entry_key",
-                    [&watched_folder_path],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, i64>(1)?,
-                            row.get::<_, String>(2)?,
-                        ))
-                    },
-                )?;
-                let mut items = Vec::with_capacity(entries.len());
-                for (entry_key, entry_generation, stored) in entries {
-                    let entry_generation = u64::try_from(entry_generation).map_err(|_| {
-                        DbError::Message(format!(
-                            "folder scan entry {entry_key} has a negative generation"
-                        ))
-                    })?;
-                    if entry_generation > generation {
-                        return Err(DbError::Message(format!(
-                            "folder scan entry {entry_key} has generation {entry_generation} newer than root generation {generation}"
-                        )));
-                    }
-                    let item: crate::import::folder_scanner::ScanItem =
-                        serde_json::from_str(&stored).map_err(|error| {
-                        DbError::Message(format!(
-                            "folder scan entry {entry_key} under {watched_folder_path} is unreadable: {error}"
-                        ))
-                    })?;
-                    validate_scan_item_ownership(&watched_folder_path, &entry_key, &item)?;
-                    items.push(item);
-                }
-                snapshots.push(DbFolderScanSnapshot {
-                    watched_folder_path,
-                    generation,
-                    status,
-                    items,
-                });
-            }
-            Ok(snapshots)
-        })
-        .await
-    }
-
+impl Database {
     /// Set one watched folder's interpretation atomically and idempotently.
     pub async fn set_folder_release_decision(
         &self,
@@ -675,7 +477,7 @@ impl Database {
         expected_revision: u64,
         edits: &CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
-    ) -> Result<u64, DbError> {
+    ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
         let bindings = serde_json::to_string(&edits.sheet_bindings)
@@ -785,6 +587,7 @@ impl Database {
                 },
             )?;
             let mut updated_keys = HashSet::new();
+            let mut updated_candidates = Vec::with_capacity(settled_by_key.len());
             for (watched_folder_path, entry_key, generation, stored) in stored_items {
                 let mut item: crate::import::folder_scanner::ScanItem =
                     serde_json::from_str(&stored).map_err(|error| {
@@ -812,6 +615,7 @@ impl Database {
                 })?;
                 candidate.files = settled.clone();
                 candidate.file_edit_revision = next_revision;
+                updated_candidates.push(candidate.clone());
                 let encoded = serde_json::to_string(&item).map_err(|error| {
                     DbError::Message(format!("encoding folder scan entry {entry_key}: {error}"))
                 })?;
@@ -839,7 +643,7 @@ impl Database {
                     missing.join(", ")
                 )));
             }
-            Ok(next_revision)
+            Ok((next_revision, updated_candidates))
         })
         .await
     }

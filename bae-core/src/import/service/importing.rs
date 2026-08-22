@@ -21,21 +21,12 @@ impl ImportService {
         let loaded_registry = library_manager_for_handle
             .load_import_folder_registry()
             .await?;
-        let watched_roots: HashSet<String> = loaded_registry
-            .watched_folders()
-            .into_iter()
-            .map(|folder| folder.path)
-            .collect();
-        let persisted_scans = library_manager_for_handle
-            .load_folder_scan_snapshots()
-            .await?;
-        let imported_content_hashes = library_manager_for_handle.imported_content_hashes().await?;
-        let candidate_store = CandidateStore::restore(
-            persisted_scans,
-            &watched_roots,
-            &loaded_registry,
-            &imported_content_hashes,
-        )?;
+        let (candidates, candidates_task) = ImportServiceHandle::start_candidates_query(
+            &library_manager_for_handle,
+            &runtime_handle,
+        )
+        .await?;
+        let runtime = CandidateRuntime::default();
         let folder_registry = Arc::new(Mutex::new(loaded_registry));
         let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
 
@@ -49,7 +40,6 @@ impl ImportService {
             event_tx.clone(),
             library_manager_for_handle.clone(),
             folder_registry.clone(),
-            candidate_store.clone(),
             folder_state_commit.clone(),
             folder_watcher.clone(),
         );
@@ -93,7 +83,9 @@ impl ImportService {
             watcher_tx,
             event_tx,
             folder_registry,
-            candidate_store,
+            candidates,
+            candidates_task,
+            runtime,
             folder_state_commit,
         ))
     }

@@ -131,36 +131,57 @@ class ImportStore {
         watchedFolders = snapshot.watchedFolders
 
         var nextFolderCandidates: OrderedDictionary<String, Candidate> = [:]
-        for bridge in snapshot.folderCandidates {
-            var incoming = Candidate(bridge: bridge.candidate)
-            applyRuntime(bridge.runtime, to: &incoming)
+        for row in snapshot.folderCandidates {
+            var incoming = Candidate(row: row)
             if let existing = folderCandidates[incoming.key] {
-                nextFolderCandidates[incoming.key] = incoming.withSessionState(
-                    from: existing
-                )
+                incoming = incoming.withSessionState(from: existing)
             }
-            else {
-                nextFolderCandidates[incoming.key] = incoming
+            else if let runtime = runtimeAheadOfList.removeValue(
+                forKey: incoming.key
+            ) {
+                incoming.applyRuntime(runtime)
             }
+            nextFolderCandidates[incoming.key] = incoming
         }
         folderCandidates = nextFolderCandidates
-        for snapshot in snapshot.runtimeCandidates {
-            mutateReIdentifyCandidate(key: snapshot.key) { candidate in
-                applyRuntime(snapshot.runtime, to: &candidate)
-            }
-        }
     }
 
-    private func applyRuntime(
-        _ runtime: BridgeCandidateRuntimeSnapshot,
-        to candidate: inout Candidate
-    ) {
-        candidate.identifyState = IdentifyState(
-            bridge: runtime.identifyState
-        )
-        candidate.signalsToolbar = runtime.signalsToolbar
-        candidate.signals = runtime.signals.map(Signals.init(bridge:))
-        candidate.importStatus = runtime.importStatus
+    /// The running import behind a triage row, from the candidate's runtime:
+    /// the row says that an import is running, this says how far.
+    func importProgress(for row: BridgeTriageRow)
+        -> BridgeCandidateImportStatus?
+    {
+        folderCandidates[row.candidateKey]?.importStatus
+    }
+
+    /// Runtime for folder keys the list has not delivered yet. A run can
+    /// start on a folder the moment its scan commits, before the list's
+    /// query re-reads; the change lands here and joins the row when it
+    /// arrives. Re-identify keys never wait: their candidate exists before
+    /// their run starts.
+    @ObservationIgnored
+    private var runtimeAheadOfList: [String: BridgeCandidateRuntimeSnapshot] =
+        [:]
+
+    /// One candidate's runtime changed — a folder candidate's or a
+    /// re-identify candidate's, by key.
+    func applyCandidateRuntimeChange(_ change: BridgeCandidateRuntimeChange) {
+        switch change {
+        case .updated(let key, let runtime):
+            if candidate(forKey: key) != nil {
+                mutateCandidate(forKey: key) { candidate in
+                    candidate.applyRuntime(runtime)
+                }
+            }
+            else if !key.hasPrefix("reidentify:") {
+                runtimeAheadOfList[key] = runtime
+            }
+        case .removed(let key):
+            runtimeAheadOfList.removeValue(forKey: key)
+            mutateCandidate(forKey: key) { candidate in
+                candidate.clearRuntime()
+            }
+        }
     }
 
     private func mutateFolderCandidate(

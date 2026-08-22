@@ -19,17 +19,34 @@ private final class ImportCandidatesValueSink: ImportCandidatesCallback,
 {
     private let apply:
         @MainActor @Sendable (BridgeImportCandidatesSnapshot) -> Void
+    private let applyRuntime:
+        @MainActor @Sendable (BridgeCandidateRuntimeChange) -> Void
+    private let fail: @MainActor @Sendable (BridgeError) -> Void
 
     init(
         apply:
             @escaping @MainActor @Sendable (BridgeImportCandidatesSnapshot)
-            -> Void
+            -> Void,
+        applyRuntime:
+            @escaping @MainActor @Sendable (BridgeCandidateRuntimeChange)
+            -> Void,
+        fail: @escaping @MainActor @Sendable (BridgeError) -> Void
     ) {
         self.apply = apply
+        self.applyRuntime = applyRuntime
+        self.fail = fail
     }
 
     func onValue(value: BridgeImportCandidatesSnapshot) {
         Task { @MainActor in apply(value) }
+    }
+
+    func onRuntime(change: BridgeCandidateRuntimeChange) {
+        Task { @MainActor in applyRuntime(change) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
     }
 }
 
@@ -85,13 +102,20 @@ final class DesktopSubscriptions {
                 }
             ),
             appHandle.subscribeImportCandidates(
-                callback: ImportCandidatesValueSink {
-                    [importStore, uiStore] value in
-                    importStore.applyImportCandidatesSnapshot(value)
-                    uiStore.retainFolderCandidateSelection(
-                        in: Set(importStore.folderCandidates.keys)
-                    )
-                }
+                callback: ImportCandidatesValueSink(
+                    apply: { [importStore, uiStore] value in
+                        importStore.applyImportCandidatesSnapshot(value)
+                        uiStore.retainFolderCandidateSelection(
+                            in: Set(importStore.folderCandidates.keys)
+                        )
+                    },
+                    applyRuntime: { [importStore] change in
+                        importStore.applyCandidateRuntimeChange(change)
+                    },
+                    fail: { [uiStore] error in
+                        uiStore.showError(error)
+                    }
+                )
             ),
             appHandle.subscribeImportTriage(
                 callback: ImportTriageValueSink(

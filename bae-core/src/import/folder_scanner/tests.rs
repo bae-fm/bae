@@ -33,18 +33,38 @@ fn scan_projected_items_with_decisions(
 ) -> Vec<ScanItem> {
     let watched_folder =
         crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-    let state = crate::import::candidate_store::CandidateStore::default();
-    let state_root = root.clone();
-    state.begin_root_scan(&state_root, 0);
+    // Stored the way the scan tables store them: each item written in turn,
+    // deleting what it supersedes, keyed by path.
+    let mut stored: std::collections::BTreeMap<String, ScanItem> = Default::default();
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if !matches!(item, ScanItem::Discovered(_)) {
-            state
-                .apply_scan_item_if_current(&state_root, 0, item, false, false)
-                .unwrap();
+        if matches!(item, ScanItem::Discovered(_)) {
+            return;
         }
+        let existing: Vec<_> = stored
+            .iter()
+            .map(|(key, item)| crate::import::candidates::StoredEntryKey {
+                key: key.clone(),
+                is_boundary: matches!(item, ScanItem::Boundary(_)),
+            })
+            .collect();
+        for key in crate::import::candidates::superseded_entry_keys(&existing, &item) {
+            stored.remove(&key);
+        }
+        stored.insert(item.persisted_key(), item);
     })
     .unwrap();
-    let snapshot = state.snapshot(vec![watched_folder]);
+    let snapshot = crate::import::candidates::build_snapshot(
+        vec![watched_folder.clone()],
+        vec![crate::db::DbFolderScanSnapshot {
+            watched_folder_path: watched_folder.path,
+            generation: 0,
+            status: crate::import::FolderScanStatus::Complete,
+            items: stored.into_values().collect(),
+        }],
+        &Default::default(),
+        &Default::default(),
+    )
+    .unwrap();
     snapshot
         .folder_candidates
         .into_iter()

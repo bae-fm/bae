@@ -4,7 +4,7 @@ fn nested_candidates_form_a_collapsible_group_with_a_combine_target() {
         candidate("Group/Release One", false, false),
         candidate("Group/Wrapper/Release Two", false, false),
     ]);
-    let queue = project(
+    let queue = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -30,7 +30,7 @@ fn direct_release_joins_its_top_level_descendant_group() {
         candidate("Artist", false, false),
         candidate("Artist/Album", false, false),
     ]);
-    let queue = project(
+    let queue = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -61,7 +61,7 @@ fn candidate_and_boundary_entries_share_natural_path_order() {
         candidate_keys: Vec::new(),
     });
 
-    let queue = project(
+    let queue = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -91,13 +91,13 @@ fn projected_entry_keys_are_stable_and_variant_distinct() {
         candidate_keys: Vec::new(),
     });
 
-    let first = project(
+    let first = project_idle(
         snapshot.clone(),
         &HashMap::new(),
         &HashMap::new(),
         &HashMap::new(),
     );
-    let second = project(
+    let second = project_idle(
         snapshot,
         &HashMap::new(),
         &HashMap::new(),
@@ -222,11 +222,18 @@ mod load {
                 if matches!(
                     event,
                     crate::import::ImportEvent::Scan(crate::import::ScanEvent::Finished)
-                ) && self.import.get_import_candidates().folder_candidates.len() == expected
-                {
-                    return;
+                ) {
+                    break;
                 }
             }
+            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+            tokio::time::timeout(
+                remaining,
+                self.import
+                    .wait_for_candidates(|snapshot| snapshot.folder_candidates.len() == expected),
+            )
+            .await
+            .expect("the candidate list reflects the finished scan");
         }
 
         fn content_hash(&self, dir: &Path) -> String {

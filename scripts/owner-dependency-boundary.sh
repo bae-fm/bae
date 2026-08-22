@@ -58,7 +58,7 @@ capability_types=(
   CancellationRegistry
   CancellationToken
   CandidateDriver
-  CandidateStore
+  CandidateRuntime
   CastController
   CloudKitDriver
   ConfigHandle

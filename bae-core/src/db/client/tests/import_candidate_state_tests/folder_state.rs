@@ -25,24 +25,12 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     db.add_watched_import_folder(root).await.unwrap();
 
     let generation = db.begin_folder_scan(root).await.unwrap();
-    assert!(db
-        .save_folder_scan_item(root, generation, &first, &[])
-        .await
-        .unwrap());
-    assert!(db
-        .finish_folder_scan(root, generation, Some("share disconnected"))
-        .await
-        .unwrap());
+    assert!(db.save_folder_scan_item(root, generation, &first).await.unwrap().is_some());
+    assert!(db.finish_folder_scan(root, generation, Some("share disconnected")).await.unwrap().is_some());
 
     let generation = db.begin_folder_scan(root).await.unwrap();
-    assert!(db
-        .save_folder_scan_item(root, generation, &second, &[])
-        .await
-        .unwrap());
-    assert!(db
-        .finish_folder_scan(root, generation, Some("directory unreadable"))
-        .await
-        .unwrap());
+    assert!(db.save_folder_scan_item(root, generation, &second).await.unwrap().is_some());
+    assert!(db.finish_folder_scan(root, generation, Some("directory unreadable")).await.unwrap().is_some());
     let failed = db.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(failed.len(), 1);
     assert_eq!(failed[0].items.len(), 2);
@@ -53,11 +41,8 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     ));
 
     let generation = db.begin_folder_scan(root).await.unwrap();
-    assert!(db
-        .save_folder_scan_item(root, generation, &second, &[])
-        .await
-        .unwrap());
-    assert!(db.finish_folder_scan(root, generation, None).await.unwrap());
+    assert!(db.save_folder_scan_item(root, generation, &second).await.unwrap().is_some());
+    assert!(db.finish_folder_scan(root, generation, None).await.unwrap().is_some());
     let complete = db.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(complete[0].items.len(), 1);
     assert_eq!(complete[0].items[0].persisted_key(), second.persisted_key());
@@ -66,10 +51,7 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
         crate::import::FolderScanStatus::Complete
     );
 
-    assert!(
-        !db.save_folder_scan_item(root, generation - 1, &first, &[])
-            .await
-            .unwrap(),
+    assert!(db.save_folder_scan_item(root, generation - 1, &first).await.unwrap().is_none(),
         "a superseded generation cannot overwrite the stored snapshot"
     );
 }
@@ -81,13 +63,13 @@ async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_th
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     let existing = scanned_candidate(root, "Existing");
-    db.save_folder_scan_item(root, generation, &existing, &[])
+    db.save_folder_scan_item(root, generation, &existing)
         .await
         .unwrap();
 
     let mismatched = scanned_candidate(&host_root("/other/library"), "Injected");
     let error = db
-        .save_folder_scan_item(root, generation, &mismatched, &[])
+        .save_folder_scan_item(root, generation, &mismatched)
         .await
         .unwrap_err();
 
@@ -123,7 +105,7 @@ async fn folder_decisions_remove_contradictory_scan_rows_before_failed_rescan() 
     let generation = db.begin_folder_scan(root).await.unwrap();
     for name in ["Box/CD1", "Box/CD2"] {
         let item = scanned_candidate(root, name);
-        db.save_folder_scan_item(root, generation, &item, &[])
+        db.save_folder_scan_item(root, generation, &item)
             .await
             .unwrap();
     }
@@ -157,7 +139,7 @@ async fn folder_decisions_remove_contradictory_scan_rows_before_failed_rescan() 
     );
 
     let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box"), &[])
+    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box"))
         .await
         .unwrap();
     let (separate_generation, separate_removals) = db
@@ -195,10 +177,7 @@ async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
     let new_generation = db.begin_folder_scan(root).await.unwrap();
     assert!(new_generation > old_generation);
 
-    assert!(!db
-        .save_folder_scan_item(root, old_generation, &scanned_candidate(root, "Old"), &[],)
-        .await
-        .unwrap());
+    assert!(db.save_folder_scan_item(root, old_generation, &scanned_candidate(root, "Old")).await.unwrap().is_none());
     assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
         .items
         .is_empty());
@@ -212,7 +191,7 @@ async fn folder_decision_failure_rolls_back_decision_entries_and_generation() {
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box/CD1"), &[])
+    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box/CD1"))
         .await
         .unwrap();
     db.call(|conn| {
@@ -269,11 +248,11 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
     .await
     .unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release"), &[])
+    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release"))
         .await
         .unwrap();
 
-    assert!(db.remove_watched_import_folder(root).await.unwrap());
+    assert!(db.remove_watched_import_folder(root).await.unwrap().is_some());
     assert!(db
         .load_import_folder_registry()
         .await
@@ -433,7 +412,7 @@ async fn corrupt_scan_entry_identity_and_generation_fail_when_loaded() {
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     let item = scanned_candidate(root, "Release");
-    db.save_folder_scan_item(root, generation, &item, &[])
+    db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap();
     // A key naming a folder the stored item does not: the entry no longer
@@ -502,7 +481,6 @@ async fn a_disc_assignment_survives_a_relaunch() {
         &root,
         generation,
         &crate::import::folder_scanner::ScanItem::Valid(candidate),
-        &[],
     )
     .await
     .unwrap();

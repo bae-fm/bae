@@ -36,77 +36,38 @@ impl AppServices {
         }
     }
 
-    /// The import candidate stream with each candidate's identify state made
-    /// whole: a candidate with a run in flight carries that run's state, and
-    /// a candidate with none carries the state its stored verdict stands back
-    /// up as, read from the same database projection the triage rows use. A
-    /// consumer never has to ask for an answer a second time — an answered
-    /// candidate arrives answered, on every launch and through every rescan.
-    ///
-    /// Emissions pair a snapshot with a projection read subscribed *after*
-    /// that snapshot existed, so a verdict whose write preceded the snapshot
-    /// is always visible to the overlay — there is no interval in which a
-    /// stored answer reads as absent.
+    /// The candidate list: the latest value of its live query, and every
+    /// later one. Each value already carries every candidate's resumed
+    /// identify state; a consumer pairs it with
+    /// [`Self::subscribe_candidate_runtime`] for what is in flight.
     pub fn subscribe_import_candidates(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> tokio::sync::watch::Receiver<crate::import::ImportCandidatesSnapshot> {
-        let services = self.clone();
-        let mut raw = self.inner.import.subscribe_import_candidates();
-        // The initial value is the raw snapshot: the overlay needs a database
-        // read, and the first projection emission below replaces this
-        // immediately.
-        let (tx, rx) = tokio::sync::watch::channel(raw.borrow().clone());
-        runtime_handle.spawn(async move {
-            let mut snapshot = raw.borrow_and_update().clone();
-            let mut query = services
-                .inner
-                .manager
-                .subscribe_import_triage(snapshot.clone());
-            loop {
-                tokio::select! {
-                    result = query.next() => {
-                        match result {
-                            Ok(projection) => {
-                                let mut merged = snapshot.clone();
-                                match crate::import::triage::overlay_stored_verdicts(
-                                    &mut merged,
-                                    &projection,
-                                ) {
-                                    Ok(()) => {
-                                        tx.send_replace(merged);
-                                    }
-                                    Err(error) => tracing::warn!(
-                                        %error,
-                                        "overlaying stored verdicts failed; \
-                                         keeping the previous candidate snapshot"
-                                    ),
-                                }
-                            }
-                            Err(error) => tracing::warn!(
-                                %error,
-                                "import candidate projection read failed; \
-                                 keeping the previous candidate snapshot"
-                            ),
-                        }
-                    }
-                    changed = raw.changed() => {
-                        if changed.is_err() {
-                            return;
-                        }
-                        snapshot = raw.borrow_and_update().clone();
-                        query = services
-                            .inner
-                            .manager
-                            .subscribe_import_triage(snapshot.clone());
-                    }
-                    _ = tx.closed() => return,
-                }
-            }
-        });
-        rx
+    ) -> tokio::sync::watch::Receiver<crate::import::ImportCandidatesValue> {
+        self.inner.import.subscribe_import_candidates()
     }
 
+    /// Every candidate's runtime right now.
+    pub fn candidate_runtimes(
+        &self,
+    ) -> std::collections::HashMap<String, crate::import::CandidateRuntimeSnapshot> {
+        self.inner.import.candidate_runtimes()
+    }
+
+    /// Every candidate's runtime right now, and one change per key as runs
+    /// advance.
+    pub fn subscribe_candidate_runtime(
+        &self,
+    ) -> (
+        std::collections::HashMap<String, crate::import::CandidateRuntimeSnapshot>,
+        tokio::sync::broadcast::Receiver<crate::import::CandidateRuntimeChange>,
+    ) {
+        self.inner.import.subscribe_candidate_runtime()
+    }
+
+    /// The triage queue, re-projected when the candidate list changes and
+    /// when a candidate's runtime changes in a way a row's placement reads —
+    /// a run reaching a phase, an import claimed or finished. A progress tick
+    /// changes nothing a row shows, so it re-projects nothing.
     pub fn subscribe_import_triage_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -114,33 +75,78 @@ impl AppServices {
         Result<crate::import::TriageQueue, crate::library::LibraryError>,
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        // The raw stream, not the overlaid one: `project_live` derives every
-        // answered row from the stored verdicts itself, so feeding it resumed
-        // states would only have it re-read what it already reads.
-        let mut candidates = services.inner.import.subscribe_import_candidates();
+        let mut candidates = self.inner.import.subscribe_import_candidates();
+        let (initial_runtime, mut changes) = self.subscribe_candidate_runtime();
+        let import = self.inner.import.clone();
         runtime_handle.spawn(async move {
-            let mut snapshot = candidates.borrow().clone();
-            let mut query = services
-                .inner
-                .manager
-                .subscribe_import_triage(snapshot.clone());
+            let mut runtime = initial_runtime;
+            let mut facts: std::collections::HashMap<String, crate::import::triage::TriageRuntimeFacts> =
+                runtime
+                    .iter()
+                    .map(|(key, runtime)| {
+                        (
+                            key.clone(),
+                            crate::import::triage::TriageRuntimeFacts::of(runtime),
+                        )
+                    })
+                    .collect();
+            let project = |value: &crate::import::ImportCandidatesValue,
+                           runtime: &std::collections::HashMap<
+                String,
+                crate::import::CandidateRuntimeSnapshot,
+            >| match value.as_ref() {
+                Ok(projection) => crate::import::triage::project_live(projection, runtime),
+                Err(error) => Err(crate::library::LibraryError::Internal(format!(
+                    "the import candidate list is unavailable: {error}"
+                ))),
+            };
+            let first = candidates.borrow_and_update().clone();
+            if tx.send(project(&first, &runtime)).is_err() {
+                return;
+            }
             loop {
                 tokio::select! {
-                    result = query.next() => {
-                        let value = match result {
-                            Ok(projection) => services.inner.manager.resolve_import_triage(snapshot.clone(), projection),
-                            Err(error) => Err(crate::library::LibraryError::Database(match error {
-                                coven::CovenError::Database(error) => *error,
-                                other => coven::DbError::Message(other.to_string()),
-                            })),
-                        };
-                        if tx.send(value).is_err() { return; }
-                    }
                     changed = candidates.changed() => {
-                        if changed.is_err() { return; }
-                        snapshot = candidates.borrow_and_update().clone();
-                        query = services.inner.manager.subscribe_import_triage(snapshot.clone());
+                        if changed.is_err() {
+                            return;
+                        }
+                        let value = candidates.borrow_and_update().clone();
+                        if tx.send(project(&value, &runtime)).is_err() {
+                            return;
+                        }
+                    }
+                    change = changes.recv() => {
+                        let placement_changed = match change {
+                            Ok(crate::import::CandidateRuntimeChange::Updated { key, runtime: updated }) => {
+                                let next = crate::import::triage::TriageRuntimeFacts::of(&updated);
+                                let changed = facts.get(&key) != Some(&next);
+                                facts.insert(key.clone(), next);
+                                runtime.insert(key, updated);
+                                changed
+                            }
+                            Ok(crate::import::CandidateRuntimeChange::Removed { key }) => {
+                                runtime.remove(&key);
+                                facts.remove(&key).is_some()
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                                tracing::warn!("triage projection dropped {count} runtime changes; re-reading every candidate's runtime");
+                                runtime = import.candidate_runtimes();
+                                facts = runtime
+                                    .iter()
+                                    .map(|(key, runtime)| {
+                                        (key.clone(), crate::import::triage::TriageRuntimeFacts::of(runtime))
+                                    })
+                                    .collect();
+                                true
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                        };
+                        if placement_changed {
+                            let value = candidates.borrow().clone();
+                            if tx.send(project(&value, &runtime)).is_err() {
+                                return;
+                            }
+                        }
                     }
                 }
             }

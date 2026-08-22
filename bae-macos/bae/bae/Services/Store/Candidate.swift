@@ -139,7 +139,16 @@ struct Candidate: Equatable, Identifiable {
 
     /// Dynamic — mutated by the import-candidate projection or by views.
     var files: BridgeCandidateFiles
+    /// What the candidate shows: the run in flight when there is one, else
+    /// the state its stored verdict stands back up as. Set by
+    /// `reconcileIdentifyState()` from the two below.
     var identifyState: IdentifyState = .idle
+    /// The identify state of the run in flight, from the candidate's runtime.
+    /// `.idle` when no run is live.
+    var runtimeIdentifyState: IdentifyState = .idle
+    /// The state the candidate's stored verdict stands back up as, from the
+    /// candidate list. `.idle` when nothing is stored for its current files.
+    var resumedIdentifyState: IdentifyState = .idle
     var importStatus: BridgeCandidateImportStatus?
     /// The picked release's display detail. The confirm pane reads its cover
     /// art, track counts, and library status from it. It never seeds the editor:
@@ -223,8 +232,55 @@ struct Candidate: Equatable, Identifiable {
         files = bridge.files
     }
 
+    /// A row from the candidate list: the folder plus its resumed identify
+    /// state. Runtime joins it through `applyRuntime`.
+    init(row: BridgeFolderImportCandidateSnapshot) {
+        self.init(bridge: row.candidate)
+        resumedIdentifyState = IdentifyState(bridge: row.resumedIdentifyState)
+        reconcileIdentifyState()
+    }
+
+    /// Join one runtime value — a run in flight, its toolbar, extracted
+    /// signals, an import's progress.
+    mutating func applyRuntime(_ runtime: BridgeCandidateRuntimeSnapshot) {
+        runtimeIdentifyState = IdentifyState(bridge: runtime.identifyState)
+        signalsToolbar = runtime.signalsToolbar
+        signals = runtime.signals.map(Signals.init(bridge:))
+        importStatus = runtime.importStatus
+        reconcileIdentifyState()
+    }
+
+    /// The candidate has no runtime any more: its folder left the scan or
+    /// changed shape, so what was recorded described other files.
+    mutating func clearRuntime() {
+        runtimeIdentifyState = .idle
+        signalsToolbar = BridgeSignalsToolbar(signals: [])
+        signals = nil
+        importStatus = nil
+        reconcileIdentifyState()
+    }
+
+    /// A live run owns the shown state; the stored verdict's resumed state
+    /// stands in only while no run is live.
+    mutating func reconcileIdentifyState() {
+        if case .idle = runtimeIdentifyState {
+            identifyState = resumedIdentifyState
+        }
+        else {
+            identifyState = runtimeIdentifyState
+        }
+    }
+
+    /// This row over `existing`'s runtime and session state: the list
+    /// re-read the folder, and nothing about its run or the user's work on it
+    /// changed.
     func withSessionState(from existing: Candidate) -> Candidate {
         var copy = self
+        copy.runtimeIdentifyState = existing.runtimeIdentifyState
+        copy.signalsToolbar = existing.signalsToolbar
+        copy.signals = existing.signals
+        copy.importStatus = existing.importStatus
+        copy.reconcileIdentifyState()
         copy.releaseDetailBridge = existing.releaseDetailBridge
         copy.claim = existing.claim
         copy.pick = existing.pick
