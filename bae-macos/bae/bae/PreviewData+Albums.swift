@@ -46,8 +46,7 @@
                 let tracks = makeTracks(names, artist: artist, side: sideNumber)
                 {
                     index in
-                    isVinyl
-                        ? "\(letter)\(index + 1)" : "\(sideNumber)-\(index + 1)"
+                    isVinyl ? "\(letter)\(index + 1)" : "\(index + 1)"
                 }
                 let groupSide: BridgeTrackSide =
                     isVinyl

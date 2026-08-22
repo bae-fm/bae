@@ -88,8 +88,9 @@ pub fn track_position_text(position: &crate::album_detail::TrackPosition) -> Str
             number,
         } => format!("{side_letter}{number}"),
         TrackPosition::SidedUnnumbered { side_letter } => side_letter.clone(),
-        TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
-        TrackPosition::DiscUnnumbered { disc } => format!("{disc}-"),
+        // The disc is the group header; repeating it on every row is noise.
+        TrackPosition::Disc { number, .. } => number.to_string(),
+        TrackPosition::DiscUnnumbered { .. } => "-".to_string(),
         TrackPosition::Flat { number } => number.to_string(),
         TrackPosition::Unnumbered => "-".to_string(),
     }
@@ -235,7 +236,7 @@ mod tests {
         );
         assert_eq!(
             track_position_text(&TrackPosition::Disc { disc: 2, number: 3 }),
-            "2-3"
+            "3"
         );
         assert_eq!(track_position_text(&TrackPosition::Flat { number: 5 }), "5");
         assert_eq!(
@@ -246,7 +247,7 @@ mod tests {
         );
         assert_eq!(
             track_position_text(&TrackPosition::DiscUnnumbered { disc: 2 }),
-            "2-"
+            "-"
         );
         assert_eq!(track_position_text(&TrackPosition::Unnumbered), "-");
     }

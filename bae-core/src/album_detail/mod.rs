@@ -223,7 +223,7 @@ pub enum TrackPosition {
     /// Vinyl/cassette track whose source has no per-track number. The side
     /// still determines grouping and the visible prefix.
     SidedUnnumbered { side_letter: String },
-    /// Multi-disc digital (CD etc.): header "Disc 2", position "2-3".
+    /// Multi-disc digital (CD etc.): header "Disc 2", position "3" (the header carries the disc).
     Disc { disc: i32, number: i32 },
     /// Multi-disc digital track whose source has no per-track number.
     DiscUnnumbered { disc: i32 },
@@ -261,7 +261,7 @@ pub struct TrackDetail {
     /// each row needs its own; on a single-artist album the row would only repeat
     /// the header. Whether a row shows an artist is a domain decision, made here.
     pub display_artist: Option<String>,
-    /// Core-rendered position string: "A1"/"2-3"/"5", or the stable prefix
+    /// Core-rendered position string: "A1"/"3"/"5", or the stable prefix
     /// when the source has no track number.
     pub position_text: String,
     /// Structured position retained for side/disc grouping.

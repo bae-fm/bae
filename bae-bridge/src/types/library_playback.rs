@@ -442,7 +442,7 @@ pub struct BridgeTrack {
     /// on a single-artist album the row would only repeat the header. The UI
     /// renders it when present rather than deciding for itself.
     pub display_artist: Option<String>,
-    /// Core-rendered position string: "A1"/"2-3"/"5", or the stable prefix
+    /// Core-rendered position string: "A1"/"3"/"5", or the stable prefix
     /// when the source has no track number.
     pub position_text: String,
 }
