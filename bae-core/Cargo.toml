@@ -26,6 +26,9 @@ uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 hex = "0.4"
+# Natural, case-insensitive file-name order: the release file list every
+# platform shows (detail, gallery) and the desktop import scan share it.
+natord = "1.0"
 # AirPlay 2 HomeKit pairing (src/airplay/pairing.rs). The password-less
 # "transient" pair-setup is SRP6a with the 3072-bit group + SHA-512. The
 # RustCrypto `srp` crate can't be used: its M1 proof is `H(A|B|K)` (its own
@@ -115,7 +118,6 @@ ndk = { version = "0.9", features = ["audio"] }
 chardetng = "0.1"
 encoding_rs = "0.8"
 lofty = "0.24"
-natord = "1.0"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
 strsim = "0.11"
