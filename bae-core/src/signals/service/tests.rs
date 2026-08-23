@@ -503,6 +503,43 @@ FILE \"audio.flac\" WAVE\n  \
     );
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn an_all_zero_cue_catalog_is_not_a_barcode() {
+    // An unfilled `CATALOG` field holds a run of zeros. It is a placeholder,
+    // not the disc's UPC, so it must not reach the barcode signal — a lookup
+    // for it can only miss.
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path().join("Some Folder");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    let cue = "CATALOG 0000000000000\n\
+PERFORMER \"Artist Alpha\"\n\
+TITLE \"Album Title A\"\n\
+FILE \"audio.flac\" WAVE\n  \
+  TRACK 01 AUDIO\n    \
+    TITLE \"Track One\"\n    \
+    INDEX 01 00:00:00\n";
+    fs::write(folder.join("Album.cue"), cue).unwrap();
+
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+
+    handle.start(
+        "cand-1".to_string(),
+        folder_source(folder),
+        CallPriority::Interactive,
+    );
+
+    let signals = collect_signals(&mut rx, 2).await;
+    let final_signals = &signals[signals.len() - 1];
+    assert!(
+        final_signals.barcode.codes().is_empty(),
+        "an all-zero CATALOG must not become a barcode, got {:?}",
+        final_signals.barcode,
+    );
+}
+
 #[test]
 fn non_utf8_cue_is_decoded_not_dropped() {
     // A Windows-1252 CUE, with a curly apostrophe (byte 0x92) inside a track title.

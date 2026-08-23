@@ -45,14 +45,19 @@ impl FastPass {
 
 /// CUE `CATALOG` payloads (the disc's UPC/EAN) from the folder's parsed sheets,
 /// bound and unbound, deduped. These are barcode-lookup inputs, not
-/// catalog-number filter values.
+/// catalog-number filter values. A sheet whose field was never filled in holds
+/// a run of one digit, which is not a code (see
+/// [`is_placeholder_code`](super::is_placeholder_code)).
 fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     for sheet in categorized.track_sheets() {
         if let Some(value) = &sheet.sheet.catalog {
             let value = value.trim();
-            if !value.is_empty() && seen.insert(value.to_string()) {
+            if !value.is_empty()
+                && !super::is_placeholder_code(value)
+                && seen.insert(value.to_string())
+            {
                 out.push(SourcedValue::new(value.to_string(), SignalOrigin::CueSheet));
             }
         }

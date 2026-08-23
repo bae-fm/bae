@@ -423,6 +423,11 @@ async fn stream_extraction(
             // when this image added nothing new.
             let mut changed = false;
             for value in analysis.barcodes {
+                // A run of one digit is printed on nothing; OCR reads them off
+                // borders and shadows, and looking one up can only miss.
+                if crate::signals::is_placeholder_code(&value) {
+                    continue;
+                }
                 if !barcodes.iter().any(|b| b.value == value) {
                     barcodes.push(SourcedValue::new(value, SignalOrigin::Artwork));
                     changed = true;

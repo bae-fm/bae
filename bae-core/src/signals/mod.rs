@@ -51,7 +51,7 @@ pub mod text;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use barcode::BarcodeSignal;
+pub use barcode::{is_placeholder_code, BarcodeSignal};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use disc_id::DiscIdSignal;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
