@@ -300,7 +300,13 @@ impl ImportCandidateDetailProjection {
             Some(classification) => CandidateAnswer::Classified(classification),
             None => CandidateAnswer::Unanswered(facts.phase),
         };
-        let placement = place(skipped, is_added, import_status.as_ref(), &known);
+        let placement = place(
+            skipped,
+            is_added,
+            import_status.as_ref(),
+            picked.as_ref().filter(|_| actionable),
+            &known,
+        );
         let row = TriageRow {
             candidate_key: candidate.path.to_string_lossy().into_owned(),
             folder_name: candidate.name.clone(),

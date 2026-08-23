@@ -147,6 +147,29 @@ fn several_matches_state() -> CandidateStateListRow {
     }
 }
 
+/// A stored verdict that classifies Needs you: nothing matched anywhere.
+fn not_found_state() -> CandidateStateListRow {
+    CandidateStateListRow {
+        edit_revision: 0,
+        verdict: Some(VerdictSummary {
+            kind: VerdictKind::NotFound,
+            track_count: None,
+            match_count: 0,
+            lead: None,
+        }),
+        probed_total_duration_ms: 2_400_000,
+        pick: None,
+    }
+}
+
+/// The pick a user makes on a release row.
+fn release_pick(release_id: &str) -> IdentityPick {
+    IdentityPick::Release {
+        source: MetadataSource::MusicBrainz,
+        release_id: release_id.to_string(),
+    }
+}
+
 fn view(tab: TriageTab) -> ImportListView {
     ImportListView {
         tab,

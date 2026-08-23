@@ -21,7 +21,7 @@
 
 use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
-use super::types::{IdentityChoice, MetadataSource};
+use super::types::{IdentityChoice, IdentityPick, MetadataSource};
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{IdentifyState, LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
@@ -41,8 +41,9 @@ pub use model::*;
 ///    or a folder a previous session already imported. Not awaiting triage,
 ///    whatever its verdict says and whether or not it was ever skipped.
 /// 3. **Then Skipped**, which is a decision the user already made.
-/// 4. **Then what is known about it**, which is the only thing that can put a
-///    row in Ready.
+/// 4. **Then a stored pick**, which is the user answering whatever the verdict
+///    was going to ask. Nothing is left to ask, so the row is Ready.
+/// 5. **Then what is known about it**, for a candidate nobody has answered.
 ///
 /// **A candidate with no verdict yet is Needs you, not Ready** — the design
 /// mockup stacks the "still identifying" group under Ready, and that is the
@@ -61,6 +62,7 @@ pub fn place(
     skipped: bool,
     is_added: bool,
     import_status: Option<&TriageImportStatus>,
+    picked: Option<&IdentityPick>,
     answer: &CandidateAnswer,
 ) -> TriagePlacement {
     // Spelled out rather than `is_some()`: each variant answers "has this
@@ -76,6 +78,14 @@ pub fn place(
     }
     if skipped {
         return TriagePlacement::Skipped;
+    }
+    // The pick is the answer. Whatever the verdict was going to ask — which of
+    // three pressings, which of two signals, a release already in the library
+    // — the user has said which release this is, or that it reads as its own
+    // tags, and the only thing left is to import it. Without this the row
+    // keeps the question's tag forever after it was answered.
+    if picked.is_some() {
+        return TriagePlacement::Ready;
     }
     let reason = match answer {
         CandidateAnswer::Classified(QueueClassification::Ready) => return TriagePlacement::Ready,

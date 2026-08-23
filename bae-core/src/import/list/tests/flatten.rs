@@ -525,3 +525,154 @@ fn the_summary_carries_the_watched_folders_and_their_scan_statuses() {
     assert_eq!(flat.summary.watched_folders.len(), 1);
     assert_eq!(flat.summary.folder_scan_statuses.len(), 1);
 }
+
+// ── A pick is the answer ────────────────────────────────────────────
+
+/// Whatever question the verdict was going to put, a stored pick has answered
+/// it: the row is Ready and takes a bulk-import checkbox, rather than keeping
+/// the question's tag forever after it was answered.
+#[test]
+fn a_pick_answers_whatever_the_verdict_asked() {
+    let cases = [
+        ("several pressings matched", several_matches_state()),
+        ("nothing matched anywhere", not_found_state()),
+    ];
+    for (name, mut state) in cases {
+        // Without a pick the row states the question.
+        let mut rows = queue();
+        rows.candidates = vec![candidate("Release")];
+        rows.states
+            .insert("hash-Release".to_string(), state.clone());
+        assert!(
+            matches!(
+                row_for(&flattened(&rows, &view(TriageTab::Pending)), "Release").placement,
+                TriagePlacement::NeedsYou { .. }
+            ),
+            "{name}: unanswered, the row asks"
+        );
+
+        // The user picks a release; the row is Ready.
+        state.pick = Some(release_pick("mb-picked"));
+        let mut rows = queue();
+        rows.candidates = vec![candidate("Release")];
+        rows.states.insert("hash-Release".to_string(), state);
+
+        let flat = flattened(&rows, &view(TriageTab::Pending));
+        let row = row_for(&flat, "Release");
+        assert_eq!(row.placement, TriagePlacement::Ready, "{name}: answered");
+        assert!(row.selectable, "{name}: a Ready row takes a checkbox");
+        assert_eq!(
+            row.claim,
+            Some(IdentityChoice::Release {
+                release_ref: crate::import::MetadataRef::new(
+                    "mb-picked",
+                    MetadataSource::MusicBrainz
+                ),
+            }),
+            "{name}: the row carries what a bulk import would commit"
+        );
+    }
+}
+
+/// Reading the folder as its own tags is an answer too — there is no release
+/// to name, and nothing left to ask.
+#[test]
+fn an_unknown_pick_answers_the_row() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states.insert(
+        "hash-Release".to_string(),
+        CandidateStateListRow {
+            pick: Some(IdentityPick::Unknown),
+            ..several_matches_state()
+        },
+    );
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let row = row_for(&flat, "Release");
+    assert_eq!(row.placement, TriagePlacement::Ready);
+    assert_eq!(row.claim, Some(IdentityChoice::Unknown));
+}
+
+/// A pick belongs to the file shape it was made against. Editing the folder
+/// moves the candidate past that shape, so the pick is not its answer any more
+/// and the row goes back to waiting on identification.
+#[test]
+fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
+    let mut rows = queue();
+    rows.candidates = vec![ScanCandidateListRow {
+        file_edit_revision: 2,
+        ..candidate("Release")
+    }];
+    rows.states.insert(
+        "hash-Release".to_string(),
+        CandidateStateListRow {
+            pick: Some(release_pick("mb-picked")),
+            ..several_matches_state()
+        },
+    );
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let row = row_for(&flat, "Release");
+    assert!(matches!(
+        row.placement,
+        TriagePlacement::NeedsYou {
+            reason: crate::import::NeedsYouReason::StillIdentifying { .. },
+            ..
+        }
+    ));
+    assert_eq!(row.claim, None);
+}
+
+/// A pick does not outrank the three facts above it: a skipped candidate stays
+/// skipped, an imported one stays done, and a running import keeps the row.
+#[test]
+fn a_pick_does_not_outrank_skipped_done_or_importing() {
+    let picked = CandidateStateListRow {
+        pick: Some(release_pick("mb-picked")),
+        ..several_matches_state()
+    };
+
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states
+        .insert("hash-Release".to_string(), picked.clone());
+    rows.skipped
+        .insert((rows.watched_folders[0].path.clone(), "Release".to_string()));
+    assert_eq!(
+        row_for(&flattened(&rows, &view(TriageTab::Skipped)), "Release").placement,
+        TriagePlacement::Skipped
+    );
+
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states
+        .insert("hash-Release".to_string(), picked.clone());
+    rows.imported.insert(
+        "hash-Release".to_string(),
+        ImportedRelease {
+            release_id: "rel-1".to_string(),
+            album_id: "alb-1".to_string(),
+        },
+    );
+    assert_eq!(
+        row_for(&flattened(&rows, &view(TriageTab::Done)), "Release").placement,
+        TriagePlacement::Done
+    );
+
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states.insert("hash-Release".to_string(), picked);
+    let running = BTreeMap::from([(
+        key("Release"),
+        TriageRuntimeFacts {
+            phase: IdentifyPhase::Queued,
+            importing: true,
+        },
+    )]);
+    let flat = flatten(&rows, &view(TriageTab::Pending), &running).expect("the queue flattens");
+    assert_eq!(
+        row_for(&flat, "Release").placement,
+        TriagePlacement::Importing
+    );
+}

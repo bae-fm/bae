@@ -217,8 +217,14 @@ fn place_row(
         candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
             .map_err(|error| LibraryError::Internal(error.to_string()))?,
     ));
-    let placement = place(skipped, imported.is_some(), import_status.as_ref(), &known);
     let picked = state.and_then(|state| state.pick.clone());
+    let placement = place(
+        skipped,
+        imported.is_some(),
+        import_status.as_ref(),
+        picked.as_ref(),
+        &known,
+    );
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
