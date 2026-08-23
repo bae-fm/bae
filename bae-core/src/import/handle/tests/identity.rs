@@ -249,7 +249,7 @@ fn mb_identity(group: &str, release: &str) -> ReleaseIdentity {
     ReleaseIdentity {
         source: MetadataSource::MusicBrainz,
         source_group_id: group.to_string(),
-        source_release_id: Some(release.to_string()),
+        source_release_id: release.to_string(),
     }
 }
 
@@ -257,7 +257,7 @@ fn discogs_identity(master: &str, release: &str) -> ReleaseIdentity {
     ReleaseIdentity {
         source: MetadataSource::Discogs,
         source_group_id: master.to_string(),
-        source_release_id: Some(release.to_string()),
+        source_release_id: release.to_string(),
     }
 }
 
@@ -578,10 +578,10 @@ async fn test_check_album_in_library_group_only() {
 }
 
 #[tokio::test]
-async fn test_check_album_in_library_approximate_identity() {
-    // An album-level claim stores an identity row with no
-    // `source_release_id`. A candidate naming that group is in the
-    // library as an album, and never as a pressing.
+async fn test_check_album_in_library_other_pressing_of_the_group() {
+    // The library holds a different pressing of the same release group. A
+    // candidate naming that group is in the library as an album, and not as a
+    // pressing.
     let (manager, _tmp) = setup_test_db_with_artist().await;
     let album = make_album("Album Title");
     let release = make_release(&album.id);
@@ -589,11 +589,7 @@ async fn test_check_album_in_library_approximate_identity() {
         &manager,
         &album,
         &release,
-        &[ReleaseIdentity {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "mb-rg-1".to_string(),
-            source_release_id: None,
-        }],
+        &[mb_identity("mb-rg-1", "mb-rel-other")],
     )
     .await;
 
@@ -610,32 +606,27 @@ async fn test_check_album_in_library_approximate_identity() {
 }
 
 #[tokio::test]
-async fn test_check_pressing_match_wins_over_album_only_row() {
-    // Two releases in the group: one claimed at the album level (no
-    // `source_release_id`), one at the pressing the check names. The
-    // pressing match is the row that answers.
+async fn test_check_pressing_match_wins_over_sibling_pressing_row() {
+    // Two releases in the group: one at a different pressing, one at the
+    // pressing the check names. The pressing match is the row that answers.
     let (manager, _tmp) = setup_test_db_with_artist().await;
     let album = make_album("Album Title");
-    let approximate = make_release(&album.id);
+    let sibling = make_release(&album.id);
     insert_with_identities(
         &manager,
         &album,
-        &approximate,
-        &[ReleaseIdentity {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "mb-rg-1".to_string(),
-            source_release_id: None,
-        }],
+        &sibling,
+        &[mb_identity("mb-rg-1", "mb-rel-other")],
     )
     .await;
-    let exact = make_release(&album.id);
-    let track = make_track(&exact.id, 1);
+    let named = make_release(&album.id);
+    let track = make_track(&named.id, 1);
     manager
-        .insert_release_with_tracks(&exact, &[track], &[])
+        .insert_release_with_tracks(&named, &[track], &[])
         .await
         .unwrap();
     manager
-        .insert_release_identities(&exact.id, &[mb_identity("mb-rg-1", "mb-rel-1")])
+        .insert_release_identities(&named.id, &[mb_identity("mb-rg-1", "mb-rel-1")])
         .await
         .unwrap();
 

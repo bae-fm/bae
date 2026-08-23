@@ -1,24 +1,14 @@
 //! What an import claims to hold, and where its metadata came from.
 //!
-//! Every source-backed import records two separate facts. One is what the user
-//! claims to physically hold — this specific release, or the album with the
-//! pressing left open. The other is which release the metadata was read from,
-//! and that is always one specific release whether or not it is the one being
-//! claimed. They coincide in exactly one case; in every other the second fact
-//! has to be stated, or the release the user just picked disappears from view.
-//!
-//! Picking a release claims that release. The claim starts at the pressing —
-//! [`ClaimLevel::Exact`] — whatever turned the release up, and the user lowers
-//! it to the album when they hold the record but can't vouch for which
-//! pressing. The evidence ([`ClaimEvidence`]) explains the pick; it does not
-//! decide it. The level rides the stored pick, so a resumed pane states the
-//! claim the user set, and this module turns the level and the picked release
-//! into the one [`ClaimLine`] both desktop UIs render.
+//! Picking a release claims that pressing — there is no album-only claim to
+//! record. What is left to state is the evidence ([`ClaimEvidence`]): which
+//! signal turned the release up, so the user can weigh their own claim against
+//! it. This module turns the picked release and that evidence into the one
+//! [`ClaimLine`] re-identify renders.
 
 use crate::identify::IdentifyState;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
-use crate::import::{ClaimLevel, IdentityChoice, MetadataRef, RawPressingEdit};
-use tracing::warn;
+use crate::import::{IdentityChoice, MetadataRef};
 
 /// What identified the release a claim points at.
 ///
@@ -80,22 +70,11 @@ impl ClaimRelease {
     }
 }
 
-/// The release header's claim line: what the import claims you hold, why, and
-/// which release the metadata was read from.
-///
-/// One `release` description serves both renderings, which is the point — a
-/// pressing claim names the release inside its own sentence, an album claim
-/// names it on the "metadata from" line, and neither hides it.
+/// The release header's claim line: what the import claims you hold, and why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClaimLine {
     /// The claim this import will record, and what commit writes.
     pub choice: IdentityChoice,
-    /// How far the claim reaches: which sentence the line reads as, which side
-    /// of the header's control is in force, and whether the second line naming
-    /// the metadata's release is drawn at all. That last one follows from the
-    /// first two — a pressing claim already names that release inside its own
-    /// sentence, and only an album claim leaves it unsaid.
-    pub level: ClaimLevel,
     /// What identified the release, for the sentence's trailing clause.
     pub evidence: ClaimEvidence,
     /// The picked release by its pressing facts — format, year, country and
@@ -110,53 +89,19 @@ pub struct ClaimLine {
     pub track_count: Option<u32>,
 }
 
-/// The claim line for holding `release` at `level`, under a candidate whose
+/// The claim line for holding `release`, under a candidate whose
 /// identification left `state`.
 ///
-/// The level is the user's assertion, carried in from the stored pick. The
-/// identify state supplies only the evidence clause: which signal turned this
+/// The identify state supplies the evidence clause: which signal turned this
 /// release up, and how many releases it turned up with.
-pub fn claim_line(state: &IdentifyState, release: &ClaimRelease, level: ClaimLevel) -> ClaimLine {
+pub fn claim_line(state: &IdentifyState, release: &ClaimRelease) -> ClaimLine {
     ClaimLine {
-        choice: level.choice(release.release_ref.clone()),
-        level,
+        choice: IdentityChoice::Release {
+            release_ref: release.release_ref.clone(),
+        },
         evidence: evidence_for(state, &release.release_ref),
         release: describe_release(release),
         track_count: release.track_count,
-    }
-}
-
-/// The claim an edited release still supports.
-///
-/// Holding exactly this pressing is a claim about *these* values — the year,
-/// the format, the label, the catalog number, the country and the barcode the
-/// source printed. Editing one of them away is no longer that claim, so the
-/// level falls to the album and the line says so.
-///
-/// Nothing here raises a claim. A claim is the user's own assertion about the
-/// record in the room, and typing the source's values back in is not them
-/// making it — the control that says "exactly this one" is, and it restores
-/// those values itself.
-pub fn claim_for_edit(
-    claim: ClaimLine,
-    edited: &RawPressingEdit,
-    exact: &RawPressingEdit,
-) -> ClaimLine {
-    if claim.level == ClaimLevel::Approximate || edited == exact {
-        return claim;
-    }
-    let (IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref }) =
-        &claim.choice
-    else {
-        // `claim_line` builds the choice out of the level and the picked
-        // release, so a claim naming no release is one nobody can construct.
-        warn!("a claim at the pressing level names no release; leaving it as it is");
-        return claim;
-    };
-    ClaimLine {
-        choice: ClaimLevel::Approximate.choice(release_ref.clone()),
-        level: ClaimLevel::Approximate,
-        ..claim
     }
 }
 

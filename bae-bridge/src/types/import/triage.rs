@@ -412,33 +412,6 @@ pub struct BridgeMatchedRelease {
     pub evidence: BridgeMatchEvidence,
 }
 
-/// How far a claim on a picked release reaches. Mirror of
-/// `bae_core::import::ClaimLevel`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeClaimLevel {
-    /// This pressing is the one in the room.
-    Exact,
-    /// The album, with which pressing left open.
-    Approximate,
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeClaimLevel {
-    pub(crate) fn from_core(level: bae_core::import::ClaimLevel) -> Self {
-        match level {
-            bae_core::import::ClaimLevel::Exact => Self::Exact,
-            bae_core::import::ClaimLevel::Approximate => Self::Approximate,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::ClaimLevel {
-        match self {
-            Self::Exact => bae_core::import::ClaimLevel::Exact,
-            Self::Approximate => bae_core::import::ClaimLevel::Approximate,
-        }
-    }
-}
-
 /// The identity decided for a candidate, as the row carries it back and the
 /// pick command sends it down. Mirror of `bae_core::import::IdentityPick`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -446,10 +419,6 @@ pub enum BridgeIdentityPick {
     Release {
         source: BridgeMetadataSource,
         release_id: String,
-        /// How far the claim on this release reaches. Picking a release sends
-        /// `Exact`; the header's claim control sends the same pick back at the
-        /// level the user set.
-        claim: BridgeClaimLevel,
     },
     Unknown,
 }
@@ -458,14 +427,9 @@ pub enum BridgeIdentityPick {
 impl BridgeIdentityPick {
     pub(crate) fn from_core(pick: bae_core::import::IdentityPick) -> Self {
         match pick {
-            bae_core::import::IdentityPick::Release {
-                source,
-                release_id,
-                claim,
-            } => Self::Release {
+            bae_core::import::IdentityPick::Release { source, release_id } => Self::Release {
                 source: BridgeMetadataSource::from_core(source),
                 release_id,
-                claim: BridgeClaimLevel::from_core(claim),
             },
             bae_core::import::IdentityPick::Unknown => Self::Unknown,
         }
@@ -473,14 +437,9 @@ impl BridgeIdentityPick {
 
     pub(crate) fn into_core(self) -> bae_core::import::IdentityPick {
         match self {
-            Self::Release {
-                source,
-                release_id,
-                claim,
-            } => bae_core::import::IdentityPick::Release {
+            Self::Release { source, release_id } => bae_core::import::IdentityPick::Release {
                 source: source.into_core(),
                 release_id,
-                claim: claim.into_core(),
             },
             Self::Unknown => bae_core::import::IdentityPick::Unknown,
         }
@@ -514,8 +473,8 @@ pub struct BridgeTriageRow {
     /// match, the pressing the user picked, or their decision to read the
     /// folder's own tags. Selection re-applies it, so the pane opens answered.
     pub picked: Option<BridgeIdentityPick>,
-    /// The same decision in the shape commit takes, for a bulk import — which
-    /// has no pane to read a claim line off. `None` alongside `picked`.
+    /// The same decision in the shape commit takes, for a bulk import.
+    /// `None` alongside `picked`.
     pub claim: Option<BridgeIdentityChoice>,
 }
 

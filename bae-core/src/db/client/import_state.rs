@@ -424,8 +424,6 @@ impl Database {
                              THEN pick_source ELSE :pick_source END, \
                          pick_release_id = CASE WHEN identity_pick_author = 'user' \
                              THEN pick_release_id ELSE :pick_release_id END, \
-                         pick_claim = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_claim ELSE :pick_claim END, \
                          identity_pick_author = CASE \
                              WHEN identity_pick_author = 'user' THEN 'user' \
                              WHEN :pick_kind IS NULL THEN NULL \
@@ -443,7 +441,6 @@ impl Database {
                         ":pick_kind": pick.as_ref().map(|pick| pick.kind),
                         ":pick_source": pick.as_ref().and_then(|pick| pick.source),
                         ":pick_release_id": pick.as_ref().and_then(|pick| pick.release_id),
-                        ":pick_claim": pick.as_ref().and_then(|pick| pick.claim),
                         ":content_hash": verdict.content_hash,
                         ":expected": expected,
                     },
@@ -454,8 +451,8 @@ impl Database {
                          (content_hash, folder_path, verdict_kind, verdict_track_count, \
                           verdict_group_source, verdict_group_id, verdict_matched_barcode, \
                           probed_total_duration_ms, identified_at, pick_kind, pick_source, \
-                          pick_release_id, pick_claim, identity_pick_author, edit_revision) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                          pick_release_id, identity_pick_author, edit_revision) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                     params![
                         verdict.content_hash,
                         verdict.folder_path,
@@ -469,7 +466,6 @@ impl Database {
                         pick.as_ref().map(|pick| pick.kind),
                         pick.as_ref().and_then(|pick| pick.source),
                         pick.as_ref().and_then(|pick| pick.release_id),
-                        pick.as_ref().and_then(|pick| pick.claim),
                         pick.as_ref().map(|_| PickAuthor::Identification.as_str()),
                     ],
                 )? == 1
@@ -581,8 +577,6 @@ impl Database {
                              THEN pick_source ELSE NULL END, \
                          pick_release_id = CASE WHEN identity_pick_author = 'user' \
                              THEN pick_release_id ELSE NULL END, \
-                         pick_claim = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_claim ELSE NULL END, \
                          identity_pick_author = CASE \
                              WHEN identity_pick_author = 'user' THEN 'user' \
                              ELSE NULL END, \
@@ -676,14 +670,13 @@ impl Database {
             let changed = sql.execute(
                 "INSERT INTO import_candidate_state \
                      (content_hash, folder_path, pick_kind, pick_source, pick_release_id, \
-                      pick_claim, identity_pick_author) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?) \
+                      identity_pick_author) \
+                 VALUES (?, ?, ?, ?, ?, ?) \
                  ON CONFLICT (content_hash) DO UPDATE SET \
                      folder_path = excluded.folder_path, \
                      pick_kind = excluded.pick_kind, \
                      pick_source = excluded.pick_source, \
                      pick_release_id = excluded.pick_release_id, \
-                     pick_claim = excluded.pick_claim, \
                      identity_pick_author = excluded.identity_pick_author",
                 params![
                     content_hash,
@@ -691,7 +684,6 @@ impl Database {
                     columns.kind,
                     columns.source,
                     columns.release_id,
-                    columns.claim,
                     PickAuthor::User.as_str()
                 ],
             )?;

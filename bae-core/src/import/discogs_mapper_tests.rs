@@ -453,7 +453,7 @@ fn test_master_id_yields_one_discogs_identity_row() {
     let identity = &parsed.identities[0];
     assert_eq!(identity.source, MetadataSource::Discogs);
     assert_eq!(identity.source_group_id, "d-master-42");
-    assert_eq!(identity.source_release_id.as_deref(), Some("test-123"));
+    assert_eq!(identity.source_release_id, "test-123");
 }
 
 fn mb_xref_with_group(release_id: &str, group_id: &str) -> MbReleaseResponse {
@@ -495,12 +495,12 @@ fn test_master_id_with_mb_xref_yields_two_identity_rows() {
     let discogs = &parsed.identities[0];
     assert_eq!(discogs.source, MetadataSource::Discogs);
     assert_eq!(discogs.source_group_id, "d-master-99");
-    assert_eq!(discogs.source_release_id.as_deref(), Some("test-123"));
+    assert_eq!(discogs.source_release_id, "test-123");
 
     let mb = &parsed.identities[1];
     assert_eq!(mb.source, MetadataSource::MusicBrainz);
     assert_eq!(mb.source_group_id, "mb-group-7");
-    assert_eq!(mb.source_release_id.as_deref(), Some("mb-rel-7"));
+    assert_eq!(mb.source_release_id, "mb-rel-7");
 }
 
 #[test]
@@ -534,7 +534,7 @@ fn test_no_master_id_with_mb_xref_yields_only_mb_identity_row() {
     let mb = &parsed.identities[0];
     assert_eq!(mb.source, MetadataSource::MusicBrainz);
     assert_eq!(mb.source_group_id, "mb-group-only");
-    assert_eq!(mb.source_release_id.as_deref(), Some("mb-rel-only"));
+    assert_eq!(mb.source_release_id, "mb-rel-only");
 }
 
 #[test]

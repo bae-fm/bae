@@ -13,7 +13,7 @@ use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::InvalidReason;
 use crate::import::search::SourceTracks;
-use crate::import::types::{ClaimLevel, MetadataSource};
+use crate::import::types::MetadataSource;
 use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentifyPhase, TriageImportStatus, TriagePlacement};
 
@@ -128,7 +128,6 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         pick: Some(IdentityPick::Release {
             source: MetadataSource::MusicBrainz,
             release_id: release_id.to_string(),
-            claim: ClaimLevel::Exact,
         }),
     }
 }

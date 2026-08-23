@@ -543,34 +543,6 @@ fn settle_track_rows(
     bindings
 }
 
-/// Project the user's identity choice onto the mapper's identity vec.
-///
-/// The MB / Discogs mappers always emit Exact rows (`source_release_id =
-/// Some`); the file-tag mapper emits an empty vec, since Unknown imports make no
-/// identity claim, so Unknown passes straight through.
-///
-/// Approximate NULLs `source_release_id` on every row — the primary AND any
-/// cross-source row from MB↔Discogs url-rels. The claim is at the group level
-/// for all of them.
-pub(crate) fn apply_identity_choice(
-    mapper_output: &[crate::import::ReleaseIdentity],
-    choice: &crate::import::IdentityChoice,
-) -> Vec<crate::import::ReleaseIdentity> {
-    match choice {
-        crate::import::IdentityChoice::Exact { .. } | crate::import::IdentityChoice::Unknown => {
-            mapper_output.to_vec()
-        }
-        crate::import::IdentityChoice::Approximate { .. } => mapper_output
-            .iter()
-            .map(|id| crate::import::ReleaseIdentity {
-                source: id.source,
-                source_group_id: id.source_group_id.clone(),
-                source_release_id: None,
-            })
-            .collect(),
-    }
-}
-
 /// Apply the editor's overlay onto the seeded album/release/tracks.
 ///
 /// Overwrites the album title, the release's pressing fields, and each track's

@@ -16,8 +16,7 @@ enum MappingFixtures {
     static let source: BridgeMetadataSource = .musicBrainz
     static let pick: BridgeIdentityPick = .release(
         source: source,
-        releaseId: releaseId,
-        claim: .exact
+        releaseId: releaseId
     )
 
     // MARK: - Thirteen files, twelve tracks

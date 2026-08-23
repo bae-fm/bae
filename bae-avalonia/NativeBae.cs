@@ -879,8 +879,8 @@ internal static partial class NativeBae
     /// metadata comes from. The re-identify dialog's path: it commits straight
     /// from the picked row, so it never prefetches.</summary>
     internal static BridgeClaimLine ClaimForPick(
-        AppHandle handle, string candidateKey, BridgeMetadataResult result, BridgeClaimLevel level) =>
-        handle.ClaimForPick(candidateKey, result, level);
+        AppHandle handle, string candidateKey, BridgeMetadataResult result) =>
+        handle.ClaimForPick(candidateKey, result);
 
     internal static LiveSubscription SubscribeReleaseLibraryStatus(
         AppHandle handle,

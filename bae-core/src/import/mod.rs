@@ -117,7 +117,7 @@ pub use candidates::{
     ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
+pub use claim::{claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -174,6 +174,6 @@ pub use types::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::{
-    ClaimLevel, CoverSelection, IdentityChoice, IdentityPick, ImportPhase, ImportProgress,
-    ImportStep, MetadataRef, PayloadSource, PrepareStep, SourcePayload, StorageMode, TrackFile,
+    CoverSelection, IdentityChoice, IdentityPick, ImportPhase, ImportProgress, ImportStep,
+    MetadataRef, PayloadSource, PrepareStep, SourcePayload, StorageMode, TrackFile,
 };

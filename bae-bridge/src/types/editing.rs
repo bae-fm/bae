@@ -82,19 +82,13 @@ pub enum BridgeClaimEvidence {
 
 /// The release header's claim line. Mirrors `bae_core::import::ClaimLine`.
 ///
-/// Two facts: `choice` is what the import claims you physically hold, and
-/// `release` is the release the metadata was read from. They coincide only for
-/// a pressing claim; `level` says which of the two sentences the line reads as,
-/// which side of the header's claim control is in force, and — since only an
-/// album claim leaves the metadata's release unsaid — whether the second line
-/// naming it is drawn.
+/// `choice` is what the import claims you physically hold — the picked
+/// pressing — and `evidence` is what turned it up.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeClaimLine {
     /// The claim this import will record, and what commit writes.
     pub choice: BridgeIdentityChoice,
-    /// How far the claim reaches, as the user set it.
-    pub level: BridgeClaimLevel,
     pub evidence: BridgeClaimEvidence,
     /// The picked release by its pressing facts — format, year, country and
     /// catalog number, `·`-joined. `None` when the source states none of them,

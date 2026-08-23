@@ -61,8 +61,7 @@ extension ImportView {
                     key: candidate.key,
                     pick: .release(
                         source: result.source,
-                        releaseId: result.releaseId,
-                        claim: .exact
+                        releaseId: result.releaseId
                     )
                 )
             },

@@ -137,7 +137,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         &prior_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Exact {
+        IdentityChoice::Release {
             release_ref: MetadataRef::new(prior_mb, MetadataSource::MusicBrainz),
         },
     )
@@ -192,7 +192,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(remote_mb, MetadataSource::MusicBrainz),
             },
             user_edit: None,
@@ -286,7 +286,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &first_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Exact {
+        IdentityChoice::Release {
             release_ref: MetadataRef::new(first_mb, MetadataSource::MusicBrainz),
         },
     )
@@ -311,7 +311,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &second_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Exact {
+        IdentityChoice::Release {
             release_ref: MetadataRef::new(second_mb, MetadataSource::MusicBrainz),
         },
     )
@@ -385,7 +385,7 @@ async fn import_with_cover_art() {
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -439,7 +439,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             selected_cover: Some(CoverSelection::Local(cover_path)),
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -504,7 +504,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,

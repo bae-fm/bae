@@ -164,29 +164,21 @@ impl ImportServiceHandle {
         for identity in &identities {
             match identity.source {
                 MetadataSource::MusicBrainz => {
-                    let release_cover = identity
-                        .source_release_id
-                        .as_deref()
-                        .map(crate::import::cover_art::RemoteCover::musicbrainz_release);
+                    let release_cover = crate::import::cover_art::RemoteCover::musicbrainz_release(
+                        &identity.source_release_id,
+                    );
                     let group_cover =
                         crate::import::cover_art::RemoteCover::musicbrainz_release_group(
                             &identity.source_group_id,
                         );
-                    for cover in release_cover.into_iter().chain([group_cover]) {
+                    for cover in [release_cover, group_cover] {
                         crate::import::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }
                 MetadataSource::Discogs => {
                     // Discogs only exposes per-release covers via the API;
                     // no master-level cover endpoint to mirror MB's CAA.
-                    let Some(rid) = &identity.source_release_id else {
-                        debug!(
-                            release_id,
-                            source_group_id = %identity.source_group_id,
-                            "skipping Discogs cover fetch: Approximate identity (no source_release_id)"
-                        );
-                        continue;
-                    };
+                    let rid = &identity.source_release_id;
                     match self
                         .library_manager
                         .fetch_discogs_release_cover(rid, CallPriority::Interactive)
@@ -290,8 +282,8 @@ impl ImportServiceHandle {
             && only.source_tracks.is_some())
     }
 
-    /// What holding `release` at `level` under `candidate_key` claims, and
-    /// where its metadata comes from.
+    /// What holding `release` under `candidate_key` claims, and where its
+    /// metadata comes from.
     ///
     /// Re-identify's line: it commits straight from the row the user clicked,
     /// so the header states the claim from that row plus the candidate's own
@@ -302,9 +294,8 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
         release: &crate::import::ClaimRelease,
-        level: crate::import::ClaimLevel,
     ) -> crate::import::ClaimLine {
-        crate::import::claim_line(&self.identify_state(candidate_key), release, level)
+        crate::import::claim_line(&self.identify_state(candidate_key), release)
     }
 
     /// Decide a candidate's identity — the pressing the user picked, or the

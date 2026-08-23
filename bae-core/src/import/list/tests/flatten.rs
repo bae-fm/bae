@@ -278,7 +278,7 @@ fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
         flat.summary.ready,
         vec![ReadyRowRef {
             candidate_key: key("Release"),
-            claim: IdentityChoice::Exact {
+            claim: IdentityChoice::Release {
                 release_ref: crate::import::MetadataRef::new("mb-1", MetadataSource::MusicBrainz),
             },
             cover_thumbnail_url: Some("https://example.test/thumb.jpg".to_string()),

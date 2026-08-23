@@ -227,9 +227,8 @@ public sealed class ImportMappingPaneTests
         ImportStatus: null,
         Picked: new BridgeIdentityPick.Release(
             BridgeMetadataSource.MusicBrainz,
-            "rel-1",
-            BridgeClaimLevel.Exact),
-        Claim: new BridgeIdentityChoice.Exact("rel-1", BridgeMetadataSource.MusicBrainz));
+            "rel-1"),
+        Claim: new BridgeIdentityChoice.Release("rel-1", BridgeMetadataSource.MusicBrainz));
 
     private static BridgeMappingRow TrackRow(string fileId, string title) =>
         new BridgeMappingRow.Unit(new BridgeMappingUnit(

@@ -1,12 +1,12 @@
 //! The rule the claim line rests on: picking a release claims that release,
-//! and only the user lowers the claim to the album.
+//! and the evidence only explains what turned it up.
 
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::SignalsContext;
 use crate::identify::{GroupKey, ResultProvenance};
 use crate::import::search::ImportSearchReleaseDetail;
-use crate::import::{ClaimLevel, MetadataSource, RawPressingEdit};
+use crate::import::MetadataSource;
 use crate::signals::DiscIdSignal;
 use std::collections::HashSet;
 
@@ -91,7 +91,7 @@ fn empty_context() -> SignalsContext {
     }
 }
 
-/// The picked release as the confirm pane's prefetched detail describes it.
+/// The picked release as a fetched detail describes it.
 fn picked(release_id: &str) -> ClaimRelease {
     ClaimRelease::from_detail(&ImportSearchReleaseDetail {
         release_id: release_id.to_string(),
@@ -112,11 +112,11 @@ fn picked(release_id: &str) -> ClaimRelease {
 }
 
 /// Re-identify picks straight off a result row and commits from it, so its
-/// claim release is built from that row rather than a prefetched detail — and
-/// a row carries no tracklist, so the metadata-from line names the release
-/// without a track count.
+/// claim release is built from that row rather than a fetched detail — and a
+/// row carries no tracklist, so the line names the release without a track
+/// count.
 #[test]
-fn a_picked_row_describes_itself_without_a_prefetch() {
+fn a_picked_row_describes_itself_without_a_fetch() {
     let row = ClaimRelease {
         release_ref: mb_ref(REL_A),
         year: Some(2004),
@@ -125,11 +125,7 @@ fn a_picked_row_describes_itself_without_a_prefetch() {
         catalog_number: Some("CAT-1234".to_string()),
         track_count: None,
     };
-    let line = claim_line(
-        &found(&[(REL_A, provenance(false, true))]),
-        &row,
-        ClaimLevel::Approximate,
-    );
+    let line = claim_line(&found(&[(REL_A, provenance(false, true))]), &row);
     assert_eq!(line.release.as_deref(), Some("CD · 2004 · UK · CAT-1234"));
     assert_eq!(line.track_count, None);
 }
@@ -169,92 +165,16 @@ fn a_pick_claims_the_pressing_whatever_found_it() {
         ),
     ];
     for (name, state, evidence) in cases {
-        let line = claim_line(&state, &picked(REL_A), ClaimLevel::Exact);
+        let line = claim_line(&state, &picked(REL_A));
         assert_eq!(
             line.choice,
-            IdentityChoice::Exact {
+            IdentityChoice::Release {
                 release_ref: mb_ref(REL_A)
             },
             "{name}: a pick claims the pressing"
         );
         assert_eq!(line.evidence, evidence, "{name}: explains the pick");
     }
-}
-
-/// The user is the only thing that lowers it, and lowering it leaves the same
-/// release picked — an album claim still says which release the metadata came
-/// from, so the pick is not undone by weakening the claim.
-#[test]
-fn lowering_the_claim_keeps_the_release() {
-    let state = found(&[(REL_A, provenance(true, false))]);
-    let lowered = claim_line(&state, &picked(REL_A), ClaimLevel::Approximate);
-    assert_eq!(
-        lowered.choice,
-        IdentityChoice::Approximate {
-            release_ref: mb_ref(REL_A)
-        }
-    );
-    // The evidence is untouched: it says what identified the release, not what
-    // the user claims about it.
-    assert_eq!(lowered.evidence, ClaimEvidence::DiscIdAlone);
-}
-
-/// The pressing values the picked release states, as the editor holds them.
-fn exact_pressing() -> RawPressingEdit {
-    RawPressingEdit {
-        year: "2004".to_string(),
-        format: "CD".to_string(),
-        label: "Label Name".to_string(),
-        catalog_number: "CAT-1234".to_string(),
-        country: "UK".to_string(),
-        barcode: String::new(),
-    }
-}
-
-/// "I hold exactly this pressing" is a claim about the values on the screen.
-/// Editing one of them away is a different claim, so the level falls to the
-/// album by itself and the line reads as the album's.
-#[test]
-fn editing_a_pressing_field_lowers_the_claim() {
-    let state = found(&[(REL_A, provenance(true, false))]);
-    let claim = claim_line(&state, &picked(REL_A), ClaimLevel::Exact);
-
-    let edited = RawPressingEdit {
-        year: "2011".to_string(),
-        ..exact_pressing()
-    };
-    let lowered = claim_for_edit(claim.clone(), &edited, &exact_pressing());
-
-    assert_eq!(lowered.level, ClaimLevel::Approximate);
-    assert_eq!(
-        lowered.choice,
-        IdentityChoice::Approximate {
-            release_ref: mb_ref(REL_A)
-        }
-    );
-    // The release and the evidence are untouched: which pressing the metadata
-    // came from and what turned it up are not what the edit changed.
-    assert_eq!(lowered.release, claim.release);
-    assert_eq!(lowered.evidence, claim.evidence);
-
-    // Left as the source states them, the claim stands.
-    assert_eq!(
-        claim_for_edit(claim.clone(), &exact_pressing(), &exact_pressing()).level,
-        ClaimLevel::Exact
-    );
-}
-
-/// Nothing here raises a claim. Typing the source's values back into a lowered
-/// claim is not the user asserting they hold that pressing — the control that
-/// says so is, and it puts those values back itself.
-#[test]
-fn an_edit_never_raises_a_lowered_claim() {
-    let state = found(&[(REL_A, provenance(true, false))]);
-    let lowered = claim_line(&state, &picked(REL_A), ClaimLevel::Approximate);
-
-    let stays = claim_for_edit(lowered, &exact_pressing(), &exact_pressing());
-
-    assert_eq!(stays.level, ClaimLevel::Approximate);
 }
 
 /// The evidence itself is read off the candidate's identify state — which
@@ -331,38 +251,13 @@ fn evidence_does_not_cross_sources() {
     assert_eq!(evidence_for(&state, &discogs), ClaimEvidence::Search);
 }
 
-// ── 2. Lowering the claim changes the claim and nothing else ────────
-
-/// The two levels differ in exactly one thing: what the import records. The
-/// picked release is described the same either way, which is what lets the
-/// header name where the metadata came from when the claim no longer does —
-/// lowering the claim must not hide what was picked.
-#[test]
-fn lowering_the_claim_leaves_the_release_described() {
-    let state = found(&[(REL_A, provenance(true, false))]);
-    let pressing = claim_line(&state, &picked(REL_A), ClaimLevel::Exact);
-    let album = claim_line(&state, &picked(REL_A), ClaimLevel::Approximate);
-
-    assert!(matches!(pressing.choice, IdentityChoice::Exact { .. }));
-    assert!(matches!(album.choice, IdentityChoice::Approximate { .. }));
-
-    assert_eq!(album.release.as_deref(), Some("CD · 2004 · UK · CAT-1234"));
-    assert_eq!(album.release, pressing.release);
-    assert_eq!(album.track_count, pressing.track_count);
-    assert_eq!(album.track_count, Some(14));
-    assert_eq!(album.evidence, pressing.evidence);
-}
-
 /// A release stating no pressing facts describes itself as nothing rather than
 /// leaving an empty slot in the sentence or padding it with the album title,
 /// which is not a pressing fact.
 ///
 /// The track count is deliberately still known here, because that is the shape
-/// a source stub actually arrives in: the prefetch fetched the tracklist, so
-/// the count is always there, and it is the *description* that can be missing.
-/// The two travel independently, and a surface must key its "no description"
-/// rendering on `release` alone — a line built from the count by itself
-/// ("Metadata from 14 tracks") names no release at all.
+/// a source stub actually arrives in: the fetch read the tracklist, so the
+/// count is always there, and it is the *description* that can be missing.
 #[test]
 fn a_release_with_no_pressing_facts_describes_itself_as_nothing() {
     let mut bare = picked(REL_A);
@@ -370,11 +265,7 @@ fn a_release_with_no_pressing_facts_describes_itself_as_nothing() {
     bare.format = None;
     bare.country = None;
     bare.catalog_number = Some("   ".to_string());
-    let line = claim_line(
-        &found(&[(REL_A, provenance(false, true))]),
-        &bare,
-        ClaimLevel::Approximate,
-    );
+    let line = claim_line(&found(&[(REL_A, provenance(false, true))]), &bare);
     assert_eq!(line.release, None);
     assert_eq!(
         line.track_count,
@@ -383,11 +274,10 @@ fn a_release_with_no_pressing_facts_describes_itself_as_nothing() {
     );
 }
 
-// ── 3. Re-picking the release moves the claim back to the pressing ───
+// ── 2. Re-picking the release claims the new one ────────────────────
 
-/// Picking a different release claims that one, at the pressing, however the
-/// last claim stood: the level is an assertion about a release, so it does not
-/// outlive the release it was made about.
+/// Picking a different release claims that one: the claim is an assertion
+/// about a release, so it does not outlive the release it was made about.
 #[test]
 fn re_picking_the_release_claims_the_new_one() {
     let state = found(&[
@@ -395,78 +285,34 @@ fn re_picking_the_release_claims_the_new_one() {
         (REL_B, provenance(false, true)),
     ]);
 
-    let lowered = claim_line(&state, &picked(REL_A), ClaimLevel::Approximate);
     assert_eq!(
-        lowered.choice,
-        IdentityChoice::Approximate {
+        claim_line(&state, &picked(REL_A)).choice,
+        IdentityChoice::Release {
             release_ref: mb_ref(REL_A)
         }
     );
-
-    let re_picked = claim_line(&state, &picked(REL_B), ClaimLevel::Exact);
     assert_eq!(
-        re_picked.choice,
-        IdentityChoice::Exact {
+        claim_line(&state, &picked(REL_B)).choice,
+        IdentityChoice::Release {
             release_ref: mb_ref(REL_B)
         }
     );
 }
 
-// ── 4. A user override survives the commit ─────────────────────────
-
-/// The claim that lands in the library is the one the import command carries,
-/// and commit never recomputes it: a command carrying an album-level claim
-/// writes one even for a candidate whose disc ID matched a single release. If
-/// that were not so, the claim the user lowered would be undone at the last
-/// moment.
-#[test]
-fn the_claim_the_command_carries_is_what_commits() {
-    use crate::import::service::apply_identity_choice;
-    use crate::import::ReleaseIdentity;
-
-    let state = found(&[(REL_A, provenance(true, false))]);
-    let default = claim_line(&state, &picked(REL_A), ClaimLevel::Exact).choice;
-    assert!(
-        matches!(default, IdentityChoice::Exact { .. }),
-        "a pick claims the pressing"
-    );
-
-    let mapper_output = vec![ReleaseIdentity {
-        source: MetadataSource::MusicBrainz,
-        source_group_id: "group-1".to_string(),
-        source_release_id: Some(REL_A.to_string()),
-    }];
-
-    // The user lowered the claim, so the command carries the album-level one.
-    // That is what gets written, default notwithstanding.
-    let overridden = IdentityChoice::Approximate {
-        release_ref: mb_ref(REL_A),
-    };
-    let rows = apply_identity_choice(&mapper_output, &overridden);
-    assert!(
-        rows.iter().all(|row| row.source_release_id.is_none()),
-        "the command's claim must reach the identity rows, not the default: {rows:?}"
-    );
-    assert_eq!(rows[0].source_group_id, "group-1");
-}
-
 /// Editing the pressing fields the confirm form shows, or deriving the line
-/// again, leaves the claim where the user put it — the claim is about which
-/// release is held, not about what was typed.
+/// again, leaves the claim where it was — the claim is about which release is
+/// held, not about what was typed.
 #[test]
 fn editing_the_pressing_fields_does_not_move_the_claim() {
     let state = found(&[(REL_A, provenance(false, true))]);
-    let original = claim_line(&state, &picked(REL_A), ClaimLevel::Approximate);
+    let original = claim_line(&state, &picked(REL_A));
 
-    assert_eq!(
-        claim_line(&state, &picked(REL_A), ClaimLevel::Approximate),
-        original
-    );
+    assert_eq!(claim_line(&state, &picked(REL_A)), original);
 
     let mut edited = picked(REL_A);
     edited.year = Some(2015);
     edited.catalog_number = Some("OTHER-9".to_string());
-    let after_edit = claim_line(&state, &edited, ClaimLevel::Approximate);
+    let after_edit = claim_line(&state, &edited);
     assert_eq!(
         after_edit.choice, original.choice,
         "editing pressing fields must not move the claim"
@@ -474,72 +320,28 @@ fn editing_the_pressing_fields_does_not_move_the_claim() {
     assert_eq!(after_edit.evidence, original.evidence);
 }
 
-// ── 5. The level a pick carries is what commit writes ───────────────
+// ── 3. A stored pick is the identity it commits ─────────────────────
 
-/// The stored pick is the claim: a pick lowered to the album turns into an
-/// album-level identity, and one left where it landed turns into the pressing.
-/// This is the projection the bulk-import path and the triage row both read,
-/// so it is stated once here.
+/// The stored pick is the claim: a release pick turns into that pressing's
+/// identity, the folder's own tags into Unknown. This is the projection the
+/// bulk-import path and the triage row both read, so it is stated once here.
 #[test]
-fn a_picks_level_is_the_identity_it_commits() {
+fn a_stored_pick_is_the_identity_it_commits() {
     use crate::import::{IdentityPick, MetadataSource};
 
-    let exact = IdentityPick::Release {
+    let pick = IdentityPick::Release {
         source: MetadataSource::MusicBrainz,
         release_id: REL_A.to_string(),
-        claim: ClaimLevel::Exact,
     };
     assert_eq!(
-        exact.choice(),
-        IdentityChoice::Exact {
+        pick.choice(),
+        IdentityChoice::Release {
             release_ref: mb_ref(REL_A)
         }
     );
-
-    let lowered = IdentityPick::Release {
-        source: MetadataSource::MusicBrainz,
-        release_id: REL_A.to_string(),
-        claim: ClaimLevel::Approximate,
-    };
-    assert_eq!(
-        lowered.choice(),
-        IdentityChoice::Approximate {
-            release_ref: mb_ref(REL_A)
-        }
-    );
-
     assert_eq!(IdentityPick::Unknown.choice(), IdentityChoice::Unknown);
-}
 
-/// The level rides the stored JSON, so a pane reopened after a restart states
-/// the claim the user set rather than the one a pick defaults to.
-#[test]
-fn a_lowered_claim_survives_being_stored() {
-    use crate::import::{IdentityPick, MetadataSource};
-
-    let lowered = IdentityPick::Release {
-        source: MetadataSource::MusicBrainz,
-        release_id: REL_A.to_string(),
-        claim: ClaimLevel::Approximate,
-    };
-    let stored = serde_json::to_string(&lowered).expect("a pick encodes");
+    let stored = serde_json::to_string(&pick).expect("a pick encodes");
     let read_back: IdentityPick = serde_json::from_str(&stored).expect("a stored pick decodes");
-    assert_eq!(read_back, lowered);
-    // And the line a resumed pane renders from it claims the album, over a
-    // candidate whose disc ID matched this release alone.
-    let IdentityPick::Release { claim, .. } = read_back else {
-        panic!("a release pick decoded as Unknown");
-    };
-    let resumed = claim_line(
-        &found(&[(REL_A, provenance(true, false))]),
-        &picked(REL_A),
-        claim,
-    );
-    assert_eq!(
-        resumed.choice,
-        IdentityChoice::Approximate {
-            release_ref: mb_ref(REL_A)
-        }
-    );
-    assert_eq!(resumed.evidence, ClaimEvidence::DiscIdAlone);
+    assert_eq!(read_back, pick);
 }

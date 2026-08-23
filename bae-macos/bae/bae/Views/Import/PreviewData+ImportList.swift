@@ -80,7 +80,7 @@
                     BridgeReadyRowRef(
                         candidateKey: row.candidateKey,
                         claim: row.claim
-                            ?? .exact(
+                            ?? .release(
                                 releaseId: row.matched?.releaseId
                                     ?? row.candidateKey,
                                 source: .musicBrainz

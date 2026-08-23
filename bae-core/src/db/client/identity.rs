@@ -35,12 +35,10 @@ impl Database {
             .await
     }
 
-    /// Look up an album by Exact `release_identities` rows. Returns the
+    /// Look up an album by `release_identities` rows. Returns the
     /// first album that has a release with an identity row matching any
     /// of `identities` on `(source, source_release_id)`, ignoring rows
-    /// that belong to `exclude_release_ids`. Approximate identities
-    /// (`source_release_id = None`) are ignored — they're group-only
-    /// claims, not pressing-level claims.
+    /// that belong to `exclude_release_ids`.
     ///
     /// Used for the per-pressing rejection step of import dedup: a
     /// duplicate is a release whose identity points at a specific
@@ -50,21 +48,17 @@ impl Database {
         identities: &[crate::import::ReleaseIdentity],
         exclude_release_ids: &[String],
     ) -> Result<Option<DbAlbum>, DbError> {
-        let exact_pairs: Vec<(String, String)> = identities
+        let pressing_pairs: Vec<(String, String)> = identities
             .iter()
-            .filter_map(|id| {
-                id.source_release_id
-                    .as_deref()
-                    .map(|rid| (id.source.as_str().to_string(), rid.to_string()))
-            })
+            .map(|id| (id.source.as_str().to_string(), id.source_release_id.clone()))
             .collect();
-        if exact_pairs.is_empty() {
+        if pressing_pairs.is_empty() {
             return Ok(None);
         }
         let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
-            let placeholders = exact_pairs
+            let placeholders = pressing_pairs
                 .iter()
                 .map(|_| "(?, ?)")
                 .collect::<Vec<_>>()
@@ -95,8 +89,8 @@ impl Database {
                     "#,
             );
             let mut binds: Vec<&str> =
-                Vec::with_capacity(exact_pairs.len() * 2 + exclude_release_ids.len());
-            for (source, release_id) in &exact_pairs {
+                Vec::with_capacity(pressing_pairs.len() * 2 + exclude_release_ids.len());
+            for (source, release_id) in &pressing_pairs {
                 binds.push(source);
                 binds.push(release_id);
             }
@@ -325,11 +319,9 @@ impl Database {
     /// Per check:
     ///
     /// - `release_in_library` is true when a `release_identities` row
-    ///   matches `(check.source, check.release_id)` — i.e. an Exact
-    ///   identity at this specific pressing. An album-level claim
-    ///   leaves `source_release_id` NULL, so the comparison is the
-    ///   null-safe `IS`: those rows answer 0, not SQL NULL, and the
-    ///   `ORDER BY` still puts a real pressing match first.
+    ///   matches `(check.source, check.release_id)` — an identity at
+    ///   this specific pressing. The `ORDER BY` puts a pressing match
+    ///   ahead of a group-only one.
     /// - `album_in_library` is true when a `release_identities` row
     ///   matches `(check.source, check.source_group_id)` — i.e. some
     ///   release in the library shares the candidate's group identity.
@@ -377,7 +369,7 @@ pub(super) fn check_releases_in_library_on(
                             SELECT
                                 a.id AS album_id,
                                 a.title AS album_title,
-                                ri.source_release_id IS ? AS release_match
+                                ri.source_release_id = ? AS release_match
                             FROM albums a
                             JOIN releases r ON r.album_id = a.id
                             JOIN release_identities ri ON ri.release_id = r.id

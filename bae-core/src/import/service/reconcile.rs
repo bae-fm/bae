@@ -1,11 +1,11 @@
 //! Reconcile a parsed release against existing library state: apply the user's
-//! identity choice and edit overlay, match the release to an existing album,
-//! record the import row, and remap parsed artist IDs to their real DB IDs —
-//! yielding the [`super::PreparedMetadata`] the worker runs the import from.
+//! edit overlay, match the release to an existing album, record the import
+//! row, and remap parsed artist IDs to their real DB IDs — yielding the
+//! [`super::PreparedMetadata`] the worker runs the import from.
 
 use std::collections::HashMap;
 
-use super::{apply_identity_choice, apply_user_edit_to_seed, ImportService, PreparedMetadata};
+use super::{apply_user_edit_to_seed, ImportService, PreparedMetadata};
 use crate::import::handle::remap_links;
 use crate::import::ParsedWorkGraph;
 
@@ -16,30 +16,20 @@ impl ImportService {
     /// identity choice calls for, so the input is a mapped `ParsedAlbum` plus its
     /// raw metadata pairs (empty for Unknown).
     ///
-    /// The `identity_choice` post-process runs on top of the mapper's output:
+    /// The mapper's output carries the identity rows as they stand: a
+    /// **Release** choice keeps the picked pressing's `source_release_id`, and
+    /// **Unknown** arrives with an empty identity vec, so the album lookup is
+    /// skipped and the release lands on a fresh album.
     ///
-    /// - **Exact** — passes through. Identity rows keep their
-    ///   `source_release_id`, and pressing-level metadata seeds from the picked
-    ///   release.
-    /// - **Approximate** — identity rows get `source_release_id = None`, and
-    ///   pressing-level metadata is cleared, so the release row reflects "the
-    ///   user didn't claim a specific pressing". Album-group-stable fields
-    ///   (title, artist, tracks) still come from the picked release.
-    /// - **Unknown** — passes through, empty identity vec and all. The album
-    ///   lookup is skipped (no identities to match), so the release lands on a
-    ///   fresh album.
-    ///
-    /// For Exact / Approximate, `metadata_source` and
-    /// `metadata_source_release_id` keep pointing at the picked release — the
-    /// release records which source release seeded it regardless of the claim.
-    /// Unknown arrives with those columns already set by its mapper.
+    /// For a Release choice, `metadata_source` and
+    /// `metadata_source_release_id` point at the picked release. Unknown
+    /// arrives with those columns already set by its mapper.
     ///
     /// The confirmation-page `user_edit` overlay applies last, so the user's
     /// edits win over every seeded value.
     pub(super) async fn reconcile_prepared_release(
         &self,
         parsed: crate::import::ParsedAlbum,
-        identity_choice: &crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
@@ -55,24 +45,11 @@ impl ImportService {
             work_graph,
             release_artist_roles,
             track_artist_roles,
-            identities: parsed_identities,
+            identities,
         } = parsed;
 
-        let identities = apply_identity_choice(&parsed_identities, identity_choice);
-        if matches!(
-            identity_choice,
-            crate::import::IdentityChoice::Approximate { .. }
-        ) {
-            // `disc_id` isn't part of the pressing cluster — it's a signal, which
-            // the pipeline supplies separately from the user's own LOG/CUE
-            // artifacts. Wiping the source's value here keeps the seeded record's
-            // signals reflecting only the user's physical media.
-            db_release.pressing = crate::db::Pressing::blank();
-            db_release.disc_id = None;
-        }
-
-        // The overlay applies after the choice, so a field Approximate just
-        // cleared can still be filled in by the user before commit.
+        // The overlay applies after the seed, so the user's edits win over
+        // every seeded value.
         if let Some(edit) = user_edit {
             apply_user_edit_to_seed(
                 &edit,

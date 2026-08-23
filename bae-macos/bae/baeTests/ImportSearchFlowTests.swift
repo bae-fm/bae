@@ -20,8 +20,7 @@ struct ImportSearchFlowIdentityTests {
         )
         let pick = BridgeIdentityPick.release(
             source: .musicBrainz,
-            releaseId: "rel-picked",
-            claim: .exact
+            releaseId: "rel-picked"
         )
 
         ImportSearchFlow.decideIdentity(

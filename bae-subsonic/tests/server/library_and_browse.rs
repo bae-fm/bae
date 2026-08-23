@@ -239,7 +239,7 @@ async fn seed_library() -> Library {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(discogs_key, MetadataSource::Discogs),
             },
             user_edit: None,

@@ -208,7 +208,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     )
     .await;
 
-    let choice = IdentityChoice::Exact {
+    let choice = IdentityChoice::Release {
         release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
     };
 
@@ -220,7 +220,6 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
             bae_core::import::IdentityPick::Release {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
-                claim: bae_core::import::ClaimLevel::Exact,
             },
         )
         .await
@@ -355,7 +354,6 @@ async fn pick_release_for_folder(
             bae_core::import::IdentityPick::Release {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.to_string(),
-                claim: bae_core::import::ClaimLevel::Exact,
             },
         )
         .await
@@ -442,7 +440,7 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
             },
             user_edit: Some(edit_from_pane(&pane)),
@@ -503,7 +501,7 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
             },
             user_edit: Some(edit_from_pane(&pane)),
@@ -558,7 +556,7 @@ async fn a_corrected_pairing_survives_the_commit() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
             },
             user_edit: Some(edit),
@@ -651,7 +649,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Exact {
+        IdentityChoice::Release {
             release_ref: MetadataRef::new(release_id_key, MetadataSource::MusicBrainz),
         },
     )
@@ -699,7 +697,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Exact {
+        IdentityChoice::Release {
             release_ref: MetadataRef::new(release_id_key, MetadataSource::MusicBrainz),
         },
     )

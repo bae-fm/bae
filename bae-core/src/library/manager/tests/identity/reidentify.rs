@@ -80,7 +80,7 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", Some("mb-rel-1"))])
+        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
@@ -245,7 +245,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g-old", Some("mb-rel-old"))])
+        .insert_release_identities(&release.id, &[mb_identity("g-old", "mb-rel-old")])
         .await
         .unwrap();
     insert_n_tracks(&manager.database, &release.id, 3).await;
@@ -267,7 +267,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     manager
         .re_identify_release(
             &release.id,
-            IdentityChoice::Exact {
+            IdentityChoice::Release {
                 release_ref: MetadataRef {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
@@ -277,7 +277,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .await
         .unwrap();
 
-    // Identity row updated to Exact at the new pressing.
+    // Identity row updated to the new pressing.
     let identities = manager
         .database
         .get_release_identities(&release.id)
@@ -286,10 +286,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].source, MetadataSource::MusicBrainz);
     assert_eq!(identities[0].source_group_id, new_group_id);
-    assert_eq!(
-        identities[0].source_release_id.as_deref(),
-        Some(new_release_id)
-    );
+    assert_eq!(identities[0].source_release_id, new_release_id);
 
     // Pointer columns flipped to the new source release.
     let updated = manager
@@ -332,94 +329,6 @@ async fn re_identify_release_exact_archives_the_picked_release() {
 }
 
 #[tokio::test]
-async fn re_identify_release_approximate_archives_the_picked_release() {
-    use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
-    use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
-
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.metadata_source = crate::db::ReleaseMetadataSource::FileTags;
-    release.metadata_source_release_id = None;
-
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    insert_n_tracks(&manager.database, &release.id, 4).await;
-
-    let new_release_id = "approx-re-identify-mb-rel-new";
-    let new_group_id = "approx-re-identify-mb-group-new";
-    let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 4);
-    let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    seed_release_cache(new_release_id, (new_response, None, new_raw_json.clone()));
-    seed_release_group_json_cache(
-        new_group_id,
-        r#"{"id":"approx-re-identify-mb-group-new"}"#.to_string(),
-    );
-
-    manager
-        .re_identify_release(
-            &release.id,
-            IdentityChoice::Approximate {
-                release_ref: MetadataRef {
-                    source: MetadataSource::MusicBrainz,
-                    id: new_release_id.to_string(),
-                },
-            },
-        )
-        .await
-        .unwrap();
-
-    // Approximate clears `source_release_id` on the identity row
-    // (group-only claim) but the metadata pointer still names the
-    // picked pressing — reset-to-source reads cached payload through it.
-    let identities = manager
-        .database
-        .get_release_identities(&release.id)
-        .await
-        .unwrap();
-    assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].source, MetadataSource::MusicBrainz);
-    assert_eq!(identities[0].source_group_id, new_group_id);
-    assert_eq!(identities[0].source_release_id, None);
-
-    let updated = manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        updated.metadata_source,
-        crate::db::ReleaseMetadataSource::MusicBrainz
-    );
-    assert_eq!(
-        updated.metadata_source_release_id.as_deref(),
-        Some(new_release_id)
-    );
-
-    // An Approximate claim leaves the pointer on the picked pressing, so the
-    // documents archived under that pressing are what a reset reads back.
-    assert_eq!(
-        archived_for(
-            &manager,
-            crate::import::PayloadSource::MusicBrainz,
-            new_release_id
-        )
-        .await
-        .as_deref(),
-        Some(new_raw_json.as_str())
-    );
-    assert!(archived_for(
-        &manager,
-        crate::import::PayloadSource::MusicBrainzReleaseGroup,
-        new_group_id
-    )
-    .await
-    .is_some());
-}
-
-#[tokio::test]
 async fn re_identify_release_rejects_track_count_mismatch() {
     // Re-identify re-points the identity without re-binding any audio, so a
     // source naming a different number of tracks leaves rows with nothing to
@@ -452,7 +361,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     let err = manager
         .re_identify_release(
             &release.id,
-            IdentityChoice::Exact {
+            IdentityChoice::Release {
                 release_ref: MetadataRef {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
@@ -512,7 +421,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     manager
         .re_identify_release(
             &release.id,
-            IdentityChoice::Exact {
+            IdentityChoice::Release {
                 release_ref: MetadataRef {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
@@ -583,7 +492,7 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", Some("mb-rel-1"))])
+        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 

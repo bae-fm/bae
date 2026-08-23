@@ -166,7 +166,7 @@ pub fn map_discogs_to_db(
         .map(|master_id| ReleaseIdentity {
             source: MetadataSource::Discogs,
             source_group_id: master_id.clone(),
-            source_release_id: Some(release.id.clone()),
+            source_release_id: release.id.clone(),
         })
         .into_iter()
         .collect();
@@ -181,7 +181,7 @@ pub fn map_discogs_to_db(
         identities.push(ReleaseIdentity {
             source: MetadataSource::MusicBrainz,
             source_group_id: rg.id.clone(),
-            source_release_id: Some(mb.id.clone()),
+            source_release_id: mb.id.clone(),
         });
     }
 

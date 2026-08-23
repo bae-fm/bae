@@ -320,19 +320,12 @@ pub struct BridgeRelease {
 }
 
 /// User's identity claim from the import flow. Mirrors
-/// `bae_core::import::IdentityChoice` — Exact / Approximate carry the
-/// picked release reference; Unknown carries none (the worker seeds
-/// from embedded file tags). Carried on the import command; the
-/// commit pipeline post-processes the mapper's identity vec to NULL
-/// out `source_release_id` when Approximate.
+/// `bae_core::import::IdentityChoice` — Release carries the picked release
+/// reference; Unknown carries none (the worker seeds from embedded file tags).
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentityChoice {
-    Exact {
-        release_id: String,
-        source: BridgeMetadataSource,
-    },
-    Approximate {
+    Release {
         release_id: String,
         source: BridgeMetadataSource,
     },
@@ -343,14 +336,9 @@ pub enum BridgeIdentityChoice {
 impl BridgeIdentityChoice {
     pub fn into_core(self) -> bae_core::import::IdentityChoice {
         match self {
-            Self::Exact { release_id, source } => bae_core::import::IdentityChoice::Exact {
+            Self::Release { release_id, source } => bae_core::import::IdentityChoice::Release {
                 release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
             },
-            Self::Approximate { release_id, source } => {
-                bae_core::import::IdentityChoice::Approximate {
-                    release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
-                }
-            }
             Self::Unknown => bae_core::import::IdentityChoice::Unknown,
         }
     }
@@ -360,11 +348,7 @@ impl BridgeIdentityChoice {
     /// outward.
     pub fn from_core(choice: bae_core::import::IdentityChoice) -> Self {
         match choice {
-            bae_core::import::IdentityChoice::Exact { release_ref } => Self::Exact {
-                release_id: release_ref.id,
-                source: BridgeMetadataSource::from_core(release_ref.source),
-            },
-            bae_core::import::IdentityChoice::Approximate { release_ref } => Self::Approximate {
+            bae_core::import::IdentityChoice::Release { release_ref } => Self::Release {
                 release_id: release_ref.id,
                 source: BridgeMetadataSource::from_core(release_ref.source),
             },

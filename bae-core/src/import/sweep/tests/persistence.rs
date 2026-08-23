@@ -545,7 +545,6 @@ async fn a_pick_reads_back_as_the_same_answer() {
         crate::import::IdentityPick::Release {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-answer-1".to_string(),
-            claim: crate::import::ClaimLevel::Exact,
         }
     );
 
@@ -618,7 +617,6 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                     crate::import::IdentityPick::Release {
                         source: crate::import::MetadataSource::MusicBrainz,
                         release_id: "mb-picked-1".to_string(),
-                        claim: crate::import::ClaimLevel::Exact,
                     },
                 )
                 .await
@@ -658,15 +656,14 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     );
 }
 
-/// Lowering the claim is a decision like any other: it is written with the
-/// pick, so the answer, the row's resume record and the identity a bulk import
-/// would commit all come back at the album level after a restart. The evidence
-/// here is a disc ID that matched one release — the sharpest there is — and it
-/// still does not move the claim back.
+/// A pick is written with the candidate, so the answer, the row's resume
+/// record and the identity a bulk import would commit all come back naming the
+/// same pressing after a restart — while the evidence keeps saying what
+/// identified it, here a disc ID that matched that one release.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_lowered_claim_reads_back_lowered() {
-    let fixture = Fixture::new("pick-lowered").await;
+async fn a_pick_reads_back_as_the_identity_it_commits() {
+    let fixture = Fixture::new("pick-reads-back").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
@@ -679,19 +676,18 @@ async fn a_lowered_claim_reads_back_lowered() {
         .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
         .await;
 
-    let lowered = crate::import::IdentityPick::Release {
+    let pick = crate::import::IdentityPick::Release {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-answer-1".to_string(),
-        claim: crate::import::ClaimLevel::Approximate,
     };
     fixture
         .import
-        .pick_candidate_identity(key.clone(), lowered.clone())
+        .pick_candidate_identity(key.clone(), pick.clone())
         .await
-        .expect("lowering the claim succeeds");
+        .expect("picking the release succeeds");
 
-    // The evidence is untouched: it says what identified the release, not what
-    // the user claims about it.
+    // The evidence says what identified the release, which the pick does not
+    // change.
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
         pane.evidence,
@@ -701,10 +697,10 @@ async fn a_lowered_claim_reads_back_lowered() {
     // And the row carries it both ways: the pick the pane reopens on, and the
     // identity a bulk import of this row would commit.
     let row = queue_row(&fixture, &key).await;
-    assert_eq!(row.picked, Some(lowered));
+    assert_eq!(row.picked, Some(pick));
     assert_eq!(
         row.claim,
-        Some(crate::import::IdentityChoice::Approximate {
+        Some(crate::import::IdentityChoice::Release {
             release_ref: crate::import::MetadataRef::new(
                 "mb-answer-1",
                 crate::import::MetadataSource::MusicBrainz

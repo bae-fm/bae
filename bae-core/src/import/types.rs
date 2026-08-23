@@ -193,21 +193,16 @@ pub struct MetadataRef {
 }
 
 /// The identity the user chose for a folder candidate — the pressing they
-/// picked and how far they claim it reaches, or the decision to read the
-/// folder's own tags. Persisted in `import_candidate_state`'s pick columns so
-/// an answered pane reopens answered after a restart; the
-/// claim line, the seed, and the mapping are all re-derived from it against the
-/// archived documents, never stored.
+/// picked, or the decision to read the folder's own tags. Persisted in
+/// `import_candidate_state`'s pick columns so an answered pane reopens
+/// answered after a restart; the seed and the mapping are re-derived from it
+/// against the archived documents, never stored.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IdentityPick {
     Release {
         source: MetadataSource,
         release_id: String,
-        /// The pressing claim, at [`ClaimLevel::Exact`] unless the user lowered
-        /// it. Stored here because it is an assertion about the record they
-        /// hold, which no later derivation could recover.
-        claim: ClaimLevel,
     },
     Unknown,
 }
@@ -217,11 +212,9 @@ impl IdentityPick {
     /// What committing this pick records as the release's identity.
     pub fn choice(&self) -> IdentityChoice {
         match self {
-            Self::Release {
-                source,
-                release_id,
-                claim,
-            } => claim.choice(MetadataRef::new(release_id.clone(), *source)),
+            Self::Release { source, release_id } => IdentityChoice::Release {
+                release_ref: MetadataRef::new(release_id.clone(), *source),
+            },
             Self::Unknown => IdentityChoice::Unknown,
         }
     }
@@ -241,15 +234,15 @@ impl MetadataRef {
 /// memory carries a `Vec<ReleaseIdentity>` — zero rows means Unknown
 /// (no identity claim), one row per source for identified releases.
 ///
-/// `source_release_id = None` is Approximate (the claim is at the group
-/// level only); `Some` is Exact (a specific pressing within the group).
+/// Every row names a specific pressing within its group: picking a release is
+/// a claim about that pressing, and there is no album-only claim to record.
 ///
 /// At commit, each element becomes one row in `release_identities`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReleaseIdentity {
     pub source: MetadataSource,
     pub source_group_id: String,
-    pub source_release_id: Option<String>,
+    pub source_release_id: String,
 }
 
 /// Where a release's metadata was seeded from, for the `releases` columns
@@ -258,8 +251,7 @@ pub struct ReleaseIdentity {
 /// rather than a runtime check.
 ///
 /// Input to `set_identity`. `IdentityChoice` plays the same role at import
-/// time, but also discriminates Exact from Approximate — which `set_identity`
-/// doesn't need, since it takes identity rows directly.
+/// time.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MetadataPointer {
     External {
@@ -271,56 +263,18 @@ pub enum MetadataPointer {
 
 /// The user's identity claim from the import flow.
 ///
-/// - **Exact** — "this IS my pressing." The identity row carries
-///   `source_release_id = Some(release_ref.id)`, and pressing-level metadata
-///   (year, format, label, catalog number, country) seeds from the picked
-///   release.
-/// - **Approximate** — "this is my album, but I don't claim a specific
-///   pressing." The identity row carries `source_release_id = None` and
-///   pressing-level metadata stays NULL. Album-group-stable fields (title,
-///   artist, track listing) still seed from `release_ref`.
+/// - **Release** — "this IS my pressing." The identity row carries
+///   `source_release_id = release_ref.id`, and pressing-level metadata (year,
+///   format, label, catalog number, country) seeds from the picked release,
+///   as does `metadata_source_release_id` on the release row.
 /// - **Unknown** — no claim. Zero `release_identities` rows, `metadata_source`
 ///   is `'file_tags'`, `metadata_source_release_id` is NULL, and the release
 ///   always gets a fresh album. Metadata seeds from embedded file tags.
-///
-/// For Exact and Approximate, `metadata_source_release_id` on the release row
-/// carries `release_ref.id` either way — the release records which source
-/// release seeded it regardless of the claim.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IdentityChoice {
-    Exact { release_ref: MetadataRef },
-    Approximate { release_ref: MetadataRef },
+    Release { release_ref: MetadataRef },
     Unknown,
-}
-
-/// How far a claim on a picked release reaches — the two of [`IdentityChoice`]
-/// that name a release, with the release left out.
-///
-/// A pick arrives at [`Self::Exact`]: clicking a release says "this is the one
-/// I have", whatever turned it up. Only the user moves it, when they hold the
-/// album but can't vouch for the pressing. It is stored with the pick rather
-/// than derived from the evidence, because it is an assertion about the record
-/// in the room that no metadata can settle.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ClaimLevel {
-    /// This pressing is the one in the room.
-    Exact,
-    /// The album, with which pressing left open.
-    Approximate,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl ClaimLevel {
-    /// What claiming `release_ref` at this level records — what commit writes
-    /// identity rows from.
-    pub fn choice(self, release_ref: MetadataRef) -> IdentityChoice {
-        match self {
-            Self::Exact => IdentityChoice::Exact { release_ref },
-            Self::Approximate => IdentityChoice::Approximate { release_ref },
-        }
-    }
 }
 
 /// Every field the edit-metadata sheet may change. Plain values, not row IDs —
@@ -350,11 +304,11 @@ pub struct ReleaseUserEdit {
 }
 
 /// Per-pressing fields a release carries. Grouped because they share one
-/// identity-claim rule: either all six come from a picked release (Exact), or
-/// the user starts with all six blank and fills in what they know (Approximate
-/// / Unknown). A per-field `None` means "not known yet" within whichever case
-/// the editor is in; the whole-block "no pressing claim" is
-/// [`PressingEdit::blank()`], so no caller has to spell out six `None`s.
+/// identity-claim rule: either all six come from a picked release, or the user
+/// starts with all six blank and fills in what they know (an Unknown import).
+/// A per-field `None` means "not known yet" within whichever case the editor
+/// is in; the whole-block "no pressing claim" is [`PressingEdit::blank()`], so
+/// no caller has to spell out six `None`s.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PressingEdit {
     pub year: Option<i32>,
@@ -367,7 +321,7 @@ pub struct PressingEdit {
 
 impl PressingEdit {
     /// All fields `None`. Pre-fill for editors where the user hasn't
-    /// claimed a specific pressing yet (Approximate / Unknown imports).
+    /// claimed a specific pressing yet (Unknown imports).
     pub fn blank() -> Self {
         Self {
             year: None,
@@ -843,8 +797,8 @@ pub struct CueAnalyzedAudioFile {
 
 /// Import command sent to the service worker.
 ///
-/// Carries only identifiers, never payloads. For `IdentityChoice::Exact` and
-/// `Approximate`, the worker calls `prepare_release` at commit time, reading
+/// Carries only identifiers, never payloads. For `IdentityChoice::Release`,
+/// the worker calls `prepare_release` at commit time, reading
 /// through the session-wide MB/Discogs LRU caches — normally a hit, since the
 /// UI's prefetch warmed them; a miss costs one round-trip. Cover bytes come
 /// through the same caching in the remote-image cache. For Unknown, the

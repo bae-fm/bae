@@ -92,7 +92,7 @@ async fn test_local_import() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -242,7 +242,7 @@ async fn test_local_delete_preserves_files() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -342,7 +342,7 @@ async fn run_import_with_cover_test() {
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,

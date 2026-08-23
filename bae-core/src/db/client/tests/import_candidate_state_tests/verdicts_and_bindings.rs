@@ -176,7 +176,6 @@ fn release_pick(release_id: &str) -> crate::import::IdentityPick {
     crate::import::IdentityPick::Release {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
-        claim: crate::import::ClaimLevel::Exact,
     }
 }
 

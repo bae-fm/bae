@@ -6,16 +6,15 @@ use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{read_match_row, unreadable, verdict_of, MatchLists};
 use super::*;
-use crate::import::{ClaimLevel, IdentityPick, MetadataSource};
+use crate::import::{IdentityPick, MetadataSource};
 use std::str::FromStr;
 
-/// The identity pick as its four columns. `kind` alone is set for the folder's
-/// own tags; a pressing sets all four.
+/// The identity pick as its three columns. `kind` alone is set for the
+/// folder's own tags; a pressing sets all three.
 pub(super) struct PickColumns<'a> {
     pub(super) kind: &'static str,
     pub(super) source: Option<&'static str>,
     pub(super) release_id: Option<&'a str>,
-    pub(super) claim: Option<&'static str>,
 }
 
 pub(super) fn pick_columns(pick: &IdentityPick) -> PickColumns<'_> {
@@ -24,20 +23,11 @@ pub(super) fn pick_columns(pick: &IdentityPick) -> PickColumns<'_> {
             kind: "unknown",
             source: None,
             release_id: None,
-            claim: None,
         },
-        IdentityPick::Release {
-            source,
-            release_id,
-            claim,
-        } => PickColumns {
+        IdentityPick::Release { source, release_id } => PickColumns {
             kind: "release",
             source: Some(source.as_str()),
             release_id: Some(release_id.as_str()),
-            claim: Some(match claim {
-                ClaimLevel::Exact => "exact",
-                ClaimLevel::Approximate => "approximate",
-            }),
         },
     }
 }
@@ -46,7 +36,6 @@ pub(crate) fn pick_of(
     kind: Option<String>,
     source: Option<String>,
     release_id: Option<String>,
-    claim: Option<String>,
 ) -> Result<Option<IdentityPick>, DbError> {
     let Some(kind) = kind else {
         return Ok(None);
@@ -55,16 +44,10 @@ pub(crate) fn pick_of(
         "unknown" => Ok(Some(IdentityPick::Unknown)),
         "release" => {
             let missing = |what: &str| DbError::Message(format!("a stored pick names no {what}"));
-            let claim = match claim.ok_or_else(|| missing("claim"))?.as_str() {
-                "exact" => ClaimLevel::Exact,
-                "approximate" => ClaimLevel::Approximate,
-                other => return Err(unreadable("pick_claim", other)),
-            };
             Ok(Some(IdentityPick::Release {
                 source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
                     .map_err(DbError::Message)?,
                 release_id: release_id.ok_or_else(|| missing("release"))?,
-                claim,
             }))
         }
         other => Err(unreadable("pick_kind", other)),
@@ -103,7 +86,6 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
             row.get("pick_kind")?,
             row.get("pick_source")?,
             row.get("pick_release_id")?,
-            row.get("pick_claim")?,
         )?,
         edit_revision: row.get("edit_revision")?,
     })
@@ -112,7 +94,7 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_track_count, \
      verdict_group_source, verdict_group_id, verdict_matched_barcode, \
      probed_total_duration_ms, identified_at, pick_kind, pick_source, pick_release_id, \
-     pick_claim, edit_revision";
+     edit_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, list, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \

@@ -389,7 +389,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut states = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, edit_revision, verdict_kind, verdict_track_count, \
-                probed_total_duration_ms, pick_kind, pick_source, pick_release_id, pick_claim \
+                probed_total_duration_ms, pick_kind, pick_source, pick_release_id \
          FROM import_candidate_state",
         [],
         |row| {
@@ -399,12 +399,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
                 row.get::<_, Option<i64>>(4)?,
-                pick_of(
-                    row.get(5)?,
-                    row.get(6)?,
-                    row.get(7)?,
-                    row.get::<_, Option<String>>(8)?,
-                ),
+                pick_of(row.get(5)?, row.get(6)?, row.get(7)?),
             ))
         },
     )? {

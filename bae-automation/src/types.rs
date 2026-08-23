@@ -375,11 +375,7 @@ impl From<MetadataSource> for AutomationMetadataSource {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationIdentityChoice {
-    Exact {
-        source: AutomationMetadataSource,
-        release_id: String,
-    },
-    Approximate {
+    Release {
         source: AutomationMetadataSource,
         release_id: String,
     },
@@ -449,9 +445,8 @@ pub enum AutomationClaimEvidence {
 }
 
 /// What a pick claims, and the release the metadata came from. `choice` is the
-/// pressing claim a pick records and what `import_start` carries to commit it;
-/// a caller claiming only the album passes an `approximate` `identity_choice`
-/// instead.
+/// pressing claim a pick records, and what `import_start` carries to commit
+/// it.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationClaimLine {
     pub choice: AutomationIdentityChoice,

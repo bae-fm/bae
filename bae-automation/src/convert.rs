@@ -165,14 +165,9 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> SearchQuery {
 
 pub(super) fn identity_choice(choice: AutomationIdentityChoice) -> IdentityChoice {
     match choice {
-        AutomationIdentityChoice::Exact { source, release_id } => IdentityChoice::Exact {
+        AutomationIdentityChoice::Release { source, release_id } => IdentityChoice::Release {
             release_ref: MetadataRef::new(release_id, source.into()),
         },
-        AutomationIdentityChoice::Approximate { source, release_id } => {
-            IdentityChoice::Approximate {
-                release_ref: MetadataRef::new(release_id, source.into()),
-            }
-        }
         AutomationIdentityChoice::Unknown => IdentityChoice::Unknown,
     }
 }
@@ -184,7 +179,6 @@ pub(super) fn identity_pick(pick: AutomationIdentityPick) -> IdentityPick {
         AutomationIdentityPick::Release { source, release_id } => IdentityPick::Release {
             source: source.into(),
             release_id,
-            claim: bae_core::import::ClaimLevel::Exact,
         },
         AutomationIdentityPick::Unknown => IdentityPick::Unknown,
     }

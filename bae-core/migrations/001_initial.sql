@@ -95,16 +95,15 @@ CREATE TABLE IF NOT EXISTS releases (
 -- coven's `register_external_blob` / `clear_external_blob`; coven flips them as
 -- part of the make-Remote / make-Local transitions. There is no bae table here.
 
--- Per-source identity rows. A release has 0+ rows: 0 = Unknown, 1+ = identified
--- (each row is independently Exact when source_release_id is set, Approximate
--- when NULL). Cross-source equivalences are encoded by a release having rows
--- in multiple sources.
+-- Per-source identity rows. A release has 0+ rows: 0 = Unknown, 1+ = identified,
+-- each naming the pressing it claims. Cross-source equivalences are encoded by
+-- a release having rows in multiple sources.
 CREATE TABLE IF NOT EXISTS release_identities (
     id                TEXT PRIMARY KEY,
     release_id        TEXT NOT NULL,
     source            TEXT NOT NULL,
     source_group_id   TEXT NOT NULL,
-    source_release_id TEXT,
+    source_release_id TEXT NOT NULL,
     _updated_at       TEXT NOT NULL,
     created_at        TEXT NOT NULL,
     UNIQUE (release_id, source),
@@ -401,8 +400,7 @@ CREATE INDEX IF NOT EXISTS idx_releases_content_hash
 CREATE INDEX IF NOT EXISTS idx_release_identities_group
     ON release_identities (source, source_group_id);
 CREATE INDEX IF NOT EXISTS idx_release_identities_release
-    ON release_identities (source, source_release_id)
-    WHERE source_release_id IS NOT NULL;
+    ON release_identities (source, source_release_id);
 CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
 CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
@@ -468,12 +466,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     verdict_matched_barcode  TEXT,
     probed_total_duration_ms INTEGER,
     identified_at            TEXT,
-    -- The identity decided for this candidate: a pressing at a claim level,
-    -- or the folder's own tags. `identity_pick_author` says who decided it.
+    -- The identity decided for this candidate: a pressing, or the folder's own
+    -- tags. `identity_pick_author` says who decided it.
     pick_kind                TEXT CHECK (pick_kind IS NULL OR pick_kind IN ('release', 'unknown')),
     pick_source              TEXT CHECK (pick_source IS NULL OR pick_source IN ('musicbrainz', 'discogs')),
     pick_release_id          TEXT,
-    pick_claim               TEXT CHECK (pick_claim IS NULL OR pick_claim IN ('exact', 'approximate')),
     identity_pick_author     TEXT CHECK (identity_pick_author IS NULL OR identity_pick_author IN ('user', 'identification')),
     -- Advances with every file decision, so a verdict derived from an older
     -- shape is refused.
@@ -490,7 +487,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     CHECK (verdict_kind IN ('found', 'conflict', 'manual_only') = (verdict_track_count IS NOT NULL)),
     CHECK (verdict_matched_barcode IS NULL OR verdict_kind = 'conflict'),
     CHECK ((pick_kind IS NULL) = (identity_pick_author IS NULL)),
-    CHECK ((pick_kind = 'release') = (pick_source IS NOT NULL AND pick_release_id IS NOT NULL AND pick_claim IS NOT NULL))
+    CHECK ((pick_kind = 'release') = (pick_source IS NOT NULL AND pick_release_id IS NOT NULL))
 ) STRICT;
 
 -- One matched release of a verdict. `list` is which result set it belongs

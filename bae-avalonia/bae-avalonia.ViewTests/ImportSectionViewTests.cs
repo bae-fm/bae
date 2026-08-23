@@ -371,13 +371,12 @@ public sealed class ImportSectionViewTests
                         or BridgeTriagePlacement.Done
                     ? new BridgeIdentityPick.Release(
                         BridgeMetadataSource.MusicBrainz,
-                        "rel-matched",
-                        BridgeClaimLevel.Exact)
+                        "rel-matched")
                     : null,
                 Claim: placement
                     is BridgeTriagePlacement.Ready
                         or BridgeTriagePlacement.Done
-                    ? new BridgeIdentityChoice.Exact(
+                    ? new BridgeIdentityChoice.Release(
                         "rel-matched",
                         BridgeMetadataSource.MusicBrainz)
                     : null)),
@@ -398,7 +397,7 @@ public sealed class ImportSectionViewTests
             {
                 new BridgeReadyRowRef(
                     CandidateKey,
-                    new BridgeIdentityChoice.Exact("rel-matched", BridgeMetadataSource.MusicBrainz),
+                    new BridgeIdentityChoice.Release("rel-matched", BridgeMetadataSource.MusicBrainz),
                     null),
             }
             : Array.Empty<BridgeReadyRowRef>(),

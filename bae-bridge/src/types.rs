@@ -11,8 +11,6 @@ mod live_results;
 mod playback_values;
 
 pub use configuration::*;
-#[cfg(feature = "desktop")]
-pub use conversion::*;
 pub use device_pairing::*;
 pub use editing::*;
 pub use events_and_transfers::*;

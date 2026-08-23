@@ -1,5 +1,5 @@
-/// A Discogs release with rich pressing fields, used to assert that Exact
-/// preserves them and Approximate clears them.
+/// A Discogs release with rich pressing fields, used to assert that a picked
+/// release seeds them.
 fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> DiscogsRelease {
     DiscogsRelease {
         id: synthetic_release_id(title),
@@ -32,11 +32,11 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
     }
 }
 
-/// Exact import: identity row carries `source_release_id`; pressing fields
-/// (year, format, label, catalog number, country) seed from the picked
-/// release.
+/// A source-backed import: the identity row carries `source_release_id`, and
+/// the pressing fields (year, format, label, catalog number, country) seed
+/// from the picked release.
 #[tokio::test]
-async fn exact_import_writes_release_id_and_pressing_fields() {
+async fn a_picked_release_writes_its_id_and_pressing_fields() {
     support::tracing_init();
 
     let release = discogs_release_rich("Album Title", "master-exact", &["Track One"]);
@@ -57,7 +57,7 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
             },
             user_edit: None,
@@ -89,16 +89,14 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
         support::discogs_fixture_id("master-exact")
     );
     assert_eq!(
-        identities[0].source_release_id.as_deref(),
-        Some(release_id_key.as_str())
+        identities[0].source_release_id, release_id_key
     );
 }
 
-/// User-edit overlay applies on top of the Approximate seed: the user
-/// can fill country (cleared by Approximate) and the committed value
-/// reflects the edit.
+/// The confirm form's overlay is the whole pressing block, applied on top of
+/// the seed: what the user typed lands, and what they left empty stays empty.
 #[tokio::test]
-async fn approximate_import_with_user_edit_overlay() {
+async fn a_user_edit_overlays_the_picked_release() {
     support::tracing_init();
 
     let release = discogs_release_rich("Album Title", "master-edit", &["Track One"]);
@@ -136,7 +134,7 @@ async fn approximate_import_with_user_edit_overlay() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Approximate {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
             },
             user_edit: Some(edit),
@@ -149,8 +147,8 @@ async fn approximate_import_with_user_edit_overlay() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.country.as_deref(), Some("JP"));
-    // Other pressing fields stay NULL — user didn't fill them and
-    // Approximate cleared the seed.
+    // The overlay is the whole pressing block, so the fields it leaves empty
+    // are written empty over the seed's.
     assert!(release.pressing.year.is_none());
     assert!(release.pressing.format.is_none());
 
@@ -165,18 +163,18 @@ async fn approximate_import_with_user_edit_overlay() {
     assert_eq!(tracks.len(), 1);
     assert_eq!(tracks[0].title, "Edited Track");
 
-    // Identity row still NULL release_id — user_edit doesn't affect identity.
+    // The identity still names the picked pressing — a user edit is not an
+    // identity change.
     let identities = f.db.get_release_identities(&release.id).await.unwrap();
     assert_eq!(identities.len(), 1);
-    assert!(identities[0].source_release_id.is_none());
+    assert_eq!(identities[0].source_release_id, release_id_key);
 }
 
 // ── cross-source identity rows ──────────────────────────────────────────────
 //
 // When MB url-rels link to a Discogs release with a master id (or vice
-// versa), the mapper emits two `release_identities` rows. The user's
-// identity choice applies to BOTH rows: Exact keeps the per-source
-// release IDs on each, Approximate clears both.
+// versa), the mapper emits two `release_identities` rows, each carrying its
+// own source's release id.
 
 /// Seed a Discogs release the MB-rooted import path will resolve via MB
 /// url-rels. Returns the Discogs release id.
@@ -280,10 +278,10 @@ fn seed_mb_with_discogs_xref(
     mb_release_id.to_string()
 }
 
-/// MB-rooted Exact import with a Discogs cross-link writes two identity
-/// rows, both carrying their per-source `source_release_id`.
+/// An MB-rooted import with a Discogs cross-link writes two identity rows,
+/// both carrying their per-source `source_release_id`.
 #[tokio::test]
-async fn cross_source_exact_writes_both_release_ids() {
+async fn cross_source_writes_both_release_ids() {
     support::tracing_init();
 
     let discogs_id = seed_discogs_for_xref("90000001", "xref-d-master-exact", "Album Title");
@@ -314,7 +312,7 @@ async fn cross_source_exact_writes_both_release_ids() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
             },
             user_edit: None,
@@ -333,7 +331,7 @@ async fn cross_source_exact_writes_both_release_ids() {
         .find(|i| i.source == MetadataSource::MusicBrainz)
         .expect("MB identity row missing");
     assert_eq!(mb.source_group_id, "xref-mb-group-exact");
-    assert_eq!(mb.source_release_id.as_deref(), Some(mb_id.as_str()));
+    assert_eq!(mb.source_release_id, mb_id);
 
     let discogs = identities
         .iter()
@@ -343,203 +341,5 @@ async fn cross_source_exact_writes_both_release_ids() {
         discogs.source_group_id,
         support::discogs_fixture_id("xref-d-master-exact")
     );
-    assert_eq!(
-        discogs.source_release_id.as_deref(),
-        Some(discogs_id.as_str())
-    );
-}
-
-/// MB-rooted Approximate import with a Discogs cross-link still writes
-/// two identity rows, but both have `source_release_id = NULL` — the
-/// user's "I don't claim a specific pressing" applies across sources.
-#[tokio::test]
-async fn cross_source_approximate_nulls_both_release_ids() {
-    support::tracing_init();
-
-    let discogs_id = seed_discogs_for_xref("90000002", "xref-d-master-approx", "Album Title");
-    bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, None);
-    let mb_id = seed_mb_with_discogs_xref(
-        "xref-mb-rel-approx",
-        "xref-mb-group-approx",
-        &discogs_id,
-        "Album Title",
-    );
-
-    let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
-
-    let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            identity_choice: IdentityChoice::Approximate {
-                release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
-            },
-            user_edit: None,
-        })
-        .await
-        .unwrap();
-
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
-
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
-    assert_eq!(identities.len(), 2, "expected MB + Discogs identity rows");
-
-    // Group ids survive — the claim is at the group level for each source.
-    let mb = identities
-        .iter()
-        .find(|i| i.source == MetadataSource::MusicBrainz)
-        .expect("MB identity row missing");
-    assert_eq!(mb.source_group_id, "xref-mb-group-approx");
-    assert!(
-        mb.source_release_id.is_none(),
-        "MB row release_id should be NULL for Approximate, got {:?}",
-        mb.source_release_id,
-    );
-
-    let discogs = identities
-        .iter()
-        .find(|i| i.source == MetadataSource::Discogs)
-        .expect("Discogs identity row missing");
-    assert_eq!(
-        discogs.source_group_id,
-        support::discogs_fixture_id("xref-d-master-approx")
-    );
-    assert!(
-        discogs.source_release_id.is_none(),
-        "Discogs row release_id should be NULL for Approximate, got {:?}",
-        discogs.source_release_id,
-    );
-}
-
-/// Discogs-rooted Approximate import. MB has a back-link to this Discogs
-/// release; the Discogs mapper emits both rows. Approximate clears
-/// `source_release_id` on both identity rows and clears the pressing fields the
-/// Discogs seed supplied on the release row, but keeps
-/// `metadata_source_release_id` so a later re-projection can replay the seed.
-#[tokio::test]
-async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
-    support::tracing_init();
-
-    let discogs_id = seed_discogs_for_xref("90000003", "xref-drooted-d-master", "Album Title");
-    // The Discogs commit path reaches MB via the URL-lookup cache.
-    let mb_release_id = "xref-drooted-mb-rel".to_string();
-    let mb_group_id = "xref-drooted-mb-group".to_string();
-    bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, Some(mb_release_id.clone()));
-    let mb_response = MbReleaseResponse {
-        id: mb_release_id.clone(),
-        title: "Album Title".to_string(),
-        date: None,
-        country: None,
-        barcode: None,
-        artist_credit: vec![],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.clone(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![],
-        relations: vec![],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
-    };
-    let mb_raw_json = serde_json::to_string(&mb_response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(&mb_release_id, (mb_response, None, mb_raw_json));
-    bae_core::musicbrainz::seed_release_group_json_cache(
-        &mb_group_id,
-        serde_json::json!({ "id": mb_group_id }).to_string(),
-    );
-
-    let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
-
-    let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            identity_choice: IdentityChoice::Approximate {
-                release_ref: MetadataRef::new(discogs_id.clone(), MetadataSource::Discogs),
-            },
-            user_edit: None,
-        })
-        .await
-        .unwrap();
-
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
-
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
-    assert_eq!(identities.len(), 2, "expected Discogs + MB identity rows");
-
-    let discogs = identities
-        .iter()
-        .find(|i| i.source == MetadataSource::Discogs)
-        .expect("Discogs identity row missing");
-    assert_eq!(
-        discogs.source_group_id,
-        support::discogs_fixture_id("xref-drooted-d-master")
-    );
-    assert!(discogs.source_release_id.is_none());
-
-    let mb = identities
-        .iter()
-        .find(|i| i.source == MetadataSource::MusicBrainz)
-        .expect("MB identity row missing");
-    assert_eq!(mb.source_group_id, mb_group_id);
-    assert!(mb.source_release_id.is_none());
-
-    // The release row: Approximate clears the pressing fields the Discogs seed
-    // supplied, but keeps metadata_source_release_id so a later re-projection can
-    // replay the seed.
-    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(
-        release.pressing.year.is_none(),
-        "year should be NULL, got {:?}",
-        release.pressing.year
-    );
-    assert!(
-        release.pressing.format.is_none(),
-        "format should be NULL, got {:?}",
-        release.pressing.format
-    );
-    assert!(
-        release.pressing.label.is_none(),
-        "label should be NULL, got {:?}",
-        release.pressing.label
-    );
-    assert!(
-        release.pressing.catalog_number.is_none(),
-        "catalog_number should be NULL, got {:?}",
-        release.pressing.catalog_number
-    );
-    assert!(
-        release.pressing.country.is_none(),
-        "country should be NULL, got {:?}",
-        release.pressing.country
-    );
-    assert_eq!(
-        release.metadata_source_release_id.as_deref(),
-        Some(discogs_id.as_str()),
-        "Approximate keeps metadata_source_release_id for re-projection"
-    );
+    assert_eq!(discogs.source_release_id, discogs_id);
 }

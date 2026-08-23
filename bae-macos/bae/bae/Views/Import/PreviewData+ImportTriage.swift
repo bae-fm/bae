@@ -202,8 +202,7 @@
             selectable: true,
             picked: .release(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
-                claim: .exact
+                releaseId: releaseDetailBridge.releaseId
             ),
             claim: claimBridge.choice
         )
@@ -754,11 +753,10 @@
         /// What picking `releaseDetailBridge` claims: the pressing itself, so
         /// the header states no separate metadata source.
         static let claimBridge = BridgeClaimLine(
-            choice: .exact(
+            choice: .release(
                 releaseId: releaseDetailBridge.releaseId,
                 source: releaseDetailBridge.source
             ),
-            level: .exact,
             evidence: .discIdAlone,
             release: "CD \u{00b7} 1996 \u{00b7} US \u{00b7} 6006-2",
             trackCount: releaseDetailBridge.trackCount

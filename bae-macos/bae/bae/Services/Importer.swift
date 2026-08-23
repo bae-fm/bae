@@ -75,8 +75,7 @@ private struct ImportOperations: Sendable {
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
     let dropCandidateTrack: @Sendable (String, String) async throws -> Void
     let claimForPick:
-        @Sendable (String, BridgeMetadataResult, BridgeClaimLevel)
-            -> BridgeClaimLine?
+        @Sendable (String, BridgeMetadataResult) -> BridgeClaimLine?
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
@@ -185,7 +184,7 @@ private struct ImportOperations: Sendable {
                 )
             },
             claimForPick: {
-                handle.claimForPick(candidateKey: $0, result: $1, level: $2)
+                handle.claimForPick(candidateKey: $0, result: $1)
             },
             candidateRuntime: {
                 handle.candidateRuntime(candidateKey: $0)
@@ -284,8 +283,8 @@ final class Importer: Sendable, Observable {
             },
         claimForPick:
             @escaping @Sendable (
-                String, BridgeMetadataResult, BridgeClaimLevel
-            ) -> BridgeClaimLine? = { _, _, _ in nil },
+                String, BridgeMetadataResult
+            ) -> BridgeClaimLine? = { _, _ in nil },
         candidateRuntime:
             @escaping @Sendable (String) -> BridgeCandidateRuntimeSnapshot? = {
                 _ in nil
@@ -489,10 +488,9 @@ final class Importer: Sendable, Observable {
 extension Importer {
     func claimForPick(
         _ candidateKey: String,
-        _ result: BridgeMetadataResult,
-        _ level: BridgeClaimLevel
+        _ result: BridgeMetadataResult
     ) -> BridgeClaimLine? {
-        operations.claimForPick(candidateKey, result, level)
+        operations.claimForPick(candidateKey, result)
     }
 
     /// What is in flight for one key right now — the read a view does once

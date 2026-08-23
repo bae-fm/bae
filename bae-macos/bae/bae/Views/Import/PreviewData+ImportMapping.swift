@@ -427,8 +427,7 @@
             ),
             picked: .release(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
-                claim: .exact
+                releaseId: releaseDetailBridge.releaseId
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -473,8 +472,7 @@
             ),
             picked: .release(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
-                claim: .exact
+                releaseId: releaseDetailBridge.releaseId
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -498,8 +496,7 @@
             ),
             picked: .release(
                 source: moreTracksReleaseDetail.source,
-                releaseId: moreTracksReleaseDetail.releaseId,
-                claim: .exact
+                releaseId: moreTracksReleaseDetail.releaseId
             ),
             release: moreTracksReleaseDetail,
             edit: moreTracksEditValues,
@@ -520,8 +517,7 @@
             ),
             picked: .release(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
-                claim: .exact
+                releaseId: releaseDetailBridge.releaseId
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,

@@ -50,8 +50,8 @@ struct ReIdentifySheet: View {
     /// footer. `nil` until a row is picked.
     @State
     private var selectedResult: BridgeMetadataResult?
-    /// What that pick claims: the pressing, unless the footer's control lowers
-    /// it to the album. `nil` until a row is picked.
+    /// What that pick claims — the pressing, and what identified it. `nil`
+    /// until a row is picked.
     @State
     private var claim: BridgeClaimLine?
 
@@ -179,11 +179,10 @@ struct ReIdentifySheet: View {
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers
                 // post-commit edits). Picking a pressing claims it; the
-                // footer states that, offers the album-level claim
-                // instead, and commits via `re_identify_release`.
+                // footer states that and commits via `re_identify_release`.
                 onSelect: { result in
                     selectedResult = result
-                    claim = importer.claimForPick(key, result, .exact)
+                    claim = importer.claimForPick(key, result)
                 },
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -197,15 +196,10 @@ struct ReIdentifySheet: View {
 
     /// Footer shown once a pressing is picked: what that pick claims, and the
     /// commit. Re-identify takes the same `IdentityChoice` an import does, so
-    /// it states the claim the same way and offers the same control over it.
+    /// it states the claim the same way.
     private func selectionFooter(for claim: BridgeClaimLine) -> some View {
         HStack(alignment: .center, spacing: 12) {
             ImportClaimLine(claim: claim)
-            ImportClaimExactToggle(
-                level: claim.level,
-                isReading: false,
-                onSetLevel: setClaimLevel,
-            )
             Button("Set identity") { commit(claim.choice) }
                 .buttonStyle(.borderedProminent)
         }
@@ -219,9 +213,9 @@ struct ReIdentifySheet: View {
 
     // MARK: - Refresh prompt
 
-    // Only reachable after an Exact/Approximate commit. An Unknown commit
-    // reseeds its rows from the rip's file tags inside `re_identify_release`,
-    // so it has nothing to confirm and never lands here.
+    // Only reachable after a source-backed commit. An Unknown commit reseeds
+    // its rows from the rip's file tags inside `re_identify_release`, so it has
+    // nothing to confirm and never lands here.
     private var refreshPrompt: some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
@@ -311,17 +305,6 @@ extension ReIdentifySheet {
         importer.autoIdentifyRelease(key, releaseId)
     }
 
-    /// Claim the picked row at `level`. The whole line is re-derived rather
-    /// than edited, so re-identify and the import pane read the same claim out
-    /// of the same core call.
-    fileprivate func setClaimLevel(_ level: BridgeClaimLevel) {
-        guard let result = selectedResult else {
-            logger.debug("no row picked for \(key); nothing to claim")
-            return
-        }
-        claim = importer.claimForPick(key, result, level)
-    }
-
     fileprivate func commit(_ choice: BridgeIdentityChoice) {
         commitTask?.cancel()
         phase = .committing
@@ -340,7 +323,7 @@ extension ReIdentifySheet {
                     // file tags as part of an Unknown commit, so there's
                     // nothing to confirm — go straight to the new album.
                     closeAndNavigate()
-                case .exact, .approximate:
+                case .release:
                     phase = .askRefresh
                 }
             }

@@ -394,7 +394,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -472,7 +472,7 @@ impl CueFlacCaptureFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                identity_choice: IdentityChoice::Exact {
+                identity_choice: IdentityChoice::Release {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
                 user_edit: None,

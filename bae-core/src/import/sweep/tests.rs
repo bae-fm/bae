@@ -649,7 +649,6 @@ impl Fixture {
                     identity_pick: Some(crate::import::IdentityPick::Release {
                         source: crate::import::MetadataSource::MusicBrainz,
                         release_id: release_id.to_string(),
-                        claim: crate::import::ClaimLevel::Exact,
                     }),
                 },
             )

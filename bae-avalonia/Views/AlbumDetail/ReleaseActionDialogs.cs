@@ -120,9 +120,9 @@ internal sealed class ReleaseActionDialogs
     }
 
     // Re-identify the release: an auto-identify pipeline (its live status, signal
-    // badges, and match list) with a manual search fallback and an exact / metadata
-    // identity claim. Committing a source-backed choice offers to reseed the
-    // metadata from the newly-pointed source.
+    // badges, and match list) with a manual search fallback. Committing a
+    // source-backed choice offers to reseed the metadata from the newly-pointed
+    // source.
     public async Task ShowReidentify(string releaseId, string seedArtist, string seedAlbum)
     {
         var key = "reidentify:" + releaseId;
@@ -148,8 +148,7 @@ internal sealed class ReleaseActionDialogs
 
             // What the picked pressing claims, stated the way the import
             // confirm pane states it — re-identify writes the same
-            // IdentityChoice, and offers the same control over how far the
-            // claim reaches. Hidden until a result is picked.
+            // IdentityChoice. Hidden until a result is picked.
             BridgeClaimLine? claim = null;
             var claimRow = new StackPanel { IsVisible = false };
             var pickedIndex = -1;
@@ -160,39 +159,19 @@ internal sealed class ReleaseActionDialogs
             var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
             confirm.IsEnabled = false;
 
-            // The claim sits beside the action that commits it, the way the
-            // import pane states it. Putting the box back in step with a
-            // rebuilt claim raises its own event, which the guard tells apart
-            // from a click.
-            var syncingClaim = false;
-            var exact = ClaimLineView.ExactCheckbox(BridgeClaimLevel.Exact, isReading: false);
-            exact.IsVisible = false;
-
-            void ShowClaim(BridgeClaimLevel level)
+            void ShowClaim()
             {
                 claim = pickedIndex >= 0 && pickedIndex < candidates.Count
-                    ? _app.Import.ClaimForPick(key, candidates[pickedIndex].Pressing, level).Claim
+                    ? _app.Import.ClaimForPick(key, candidates[pickedIndex].Pressing).Claim
                     : null;
                 confirm.IsEnabled = claim is not null;
                 claimRow.Children.Clear();
                 if (claim is { } picked)
                 {
                     claimRow.Children.Add(ClaimLineView.Build(picked));
-                    syncingClaim = true;
-                    exact.IsChecked = picked.Level is BridgeClaimLevel.Exact;
-                    syncingClaim = false;
                 }
-                exact.IsVisible = claim is not null;
                 claimRow.IsVisible = claim is not null;
             }
-
-            exact.IsCheckedChanged += (_, _) =>
-            {
-                if (!syncingClaim)
-                {
-                    ShowClaim(ClaimLineView.LevelOf(exact));
-                }
-            };
 
             void ToggleSignal(string kind, string value)
             {
@@ -269,12 +248,11 @@ internal sealed class ReleaseActionDialogs
                 confirm.IsEnabled = false;
             };
 
-            // Picking a row claims that pressing; the control inside the claim
-            // line is what lowers it to the album.
+            // Picking a row claims that pressing.
             resultsList.SelectionChanged += (_, _) =>
             {
                 pickedIndex = resultsList.SelectedIndex;
-                ShowClaim(BridgeClaimLevel.Exact);
+                ShowClaim();
             };
 
             confirm.Click += async (_, _) =>
@@ -329,7 +307,7 @@ internal sealed class ReleaseActionDialogs
             column.Children.Add(sourceField);
             column.Children.Add(searchButton);
             column.Children.Add(status);
-            column.Children.Add(DialogUi.Actions(cancel, skip, exact, confirm));
+            column.Children.Add(DialogUi.Actions(cancel, skip, confirm));
 
             // Start the pipeline against the release's own files; candidate values
             // update the import store while it runs.

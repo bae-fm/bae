@@ -192,56 +192,17 @@ impl BridgeClaimLine {
     pub(crate) fn from_core(claim: bae_core::import::ClaimLine) -> Self {
         let bae_core::import::ClaimLine {
             choice,
-            level,
             evidence,
             release,
             track_count,
         } = claim;
         BridgeClaimLine {
             choice: BridgeIdentityChoice::from_core(choice),
-            level: BridgeClaimLevel::from_core(level),
             evidence: BridgeClaimEvidence::from_core(evidence),
             release,
             track_count,
         }
     }
-
-    fn into_core(self) -> bae_core::import::ClaimLine {
-        let BridgeClaimLine {
-            choice,
-            level,
-            evidence,
-            release,
-            track_count,
-        } = self;
-        bae_core::import::ClaimLine {
-            choice: choice.into_core(),
-            level: level.into_core(),
-            evidence: evidence.into_core(),
-            release,
-            track_count,
-        }
-    }
-}
-
-/// The claim an edited release still supports.
-///
-/// Holding exactly this pressing is a claim about the values on the screen, so
-/// editing one of them away lowers the claim to the album. Nothing here raises
-/// one: a claim is the user's own assertion, and the control that makes it
-/// restores the release's values itself.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_claim_for_edit(
-    claim: BridgeClaimLine,
-    edited: BridgeRawPressingEdit,
-    exact: BridgeRawPressingEdit,
-) -> BridgeClaimLine {
-    BridgeClaimLine::from_core(bae_core::import::claim_for_edit(
-        claim.into_core(),
-        &edited.into_core(),
-        &exact.into_core(),
-    ))
 }
 
 #[cfg(feature = "desktop")]
@@ -255,16 +216,6 @@ impl BridgeClaimEvidence {
             }
             ClaimEvidence::Barcode => BridgeClaimEvidence::Barcode,
             ClaimEvidence::Search => BridgeClaimEvidence::Search,
-        }
-    }
-
-    fn into_core(self) -> bae_core::import::ClaimEvidence {
-        use bae_core::import::ClaimEvidence;
-        match self {
-            Self::DiscIdAlone => ClaimEvidence::DiscIdAlone,
-            Self::DiscIdShared { match_count } => ClaimEvidence::DiscIdShared { match_count },
-            Self::Barcode => ClaimEvidence::Barcode,
-            Self::Search => ClaimEvidence::Search,
         }
     }
 }

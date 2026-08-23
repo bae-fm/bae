@@ -444,7 +444,7 @@ fn test_map_mb_no_cross_ref_yields_only_mb_identity() {
     let mb = &parsed.identities[0];
     assert_eq!(mb.source, MetadataSource::MusicBrainz);
     assert_eq!(mb.source_group_id, "rg-test");
-    assert_eq!(mb.source_release_id.as_deref(), Some("test-release"));
+    assert_eq!(mb.source_release_id, "test-release");
 }
 
 #[test]
@@ -514,12 +514,12 @@ fn test_map_mb_cross_ref_with_master_id_yields_two_identity_rows() {
     let mb = &parsed.identities[0];
     assert_eq!(mb.source, MetadataSource::MusicBrainz);
     assert_eq!(mb.source_group_id, "rg-test");
-    assert_eq!(mb.source_release_id.as_deref(), Some("test-release"));
+    assert_eq!(mb.source_release_id, "test-release");
 
     let discogs = &parsed.identities[1];
     assert_eq!(discogs.source, MetadataSource::Discogs);
     assert_eq!(discogs.source_group_id, "d-master-123");
-    assert_eq!(discogs.source_release_id.as_deref(), Some("d-rel-99"));
+    assert_eq!(discogs.source_release_id, "d-rel-99");
 }
 
 fn credit(id: &str, name: &str) -> MbArtistCredit {

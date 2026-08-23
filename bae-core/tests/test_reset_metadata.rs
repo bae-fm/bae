@@ -185,7 +185,7 @@ fn mb_release_json(
 }
 
 #[tokio::test]
-async fn reset_mb_exact_returns_full_pressing_data_from_cache() {
+async fn reset_mb_returns_full_pressing_data_from_cache() {
     let (lm, db, _tmp) = setup().await;
 
     let artist = make_artist("Original Artist");
@@ -207,7 +207,7 @@ async fn reset_mb_exact_returns_full_pressing_data_from_cache() {
         &[ReleaseIdentity {
             source: MetadataSource::MusicBrainz,
             source_group_id: "mb-rg-1".to_string(),
-            source_release_id: Some("mb-release-1".to_string()),
+            source_release_id: "mb-release-1".to_string(),
         }],
     )
     .await
@@ -246,10 +246,7 @@ async fn reset_mb_exact_returns_full_pressing_data_from_cache() {
     let identities = db.get_release_identities(&release.id).await.unwrap();
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].source, MetadataSource::MusicBrainz);
-    assert_eq!(
-        identities[0].source_release_id.as_deref(),
-        Some("mb-release-1")
-    );
+    assert_eq!(identities[0].source_release_id, "mb-release-1");
     let saved_release = db.find_release_by_id(&release.id).await.unwrap().unwrap();
     assert_eq!(
         saved_release.metadata_source,
@@ -266,65 +263,6 @@ async fn reset_mb_exact_returns_full_pressing_data_from_cache() {
     assert_eq!(saved_album.title, "Original Album");
     let saved_tracks = db.get_tracks_for_release(&release.id).await.unwrap();
     assert_eq!(saved_tracks[0].title, "Original Track 1");
-}
-
-#[tokio::test]
-async fn reset_mb_approximate_clears_pressing_fields() {
-    let (lm, db, _tmp) = setup().await;
-
-    let artist = make_artist("Original Artist");
-    let album = make_album(&artist.id, "Original Album");
-    let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::MusicBrainz;
-    release.metadata_source_release_id = Some("mb-release-2".to_string());
-    let t1 = make_track(&release.id, 1, "Original Track");
-
-    db.insert_artist(&artist).await.unwrap();
-    db.insert_album(&album).await.unwrap();
-    db.insert_release(&release).await.unwrap();
-    db.insert_track(&t1).await.unwrap();
-
-    // Approximate: identity row carries the group but NULL release_id.
-    db.insert_release_identities(
-        &release.id,
-        &[ReleaseIdentity {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "mb-rg-2".to_string(),
-            source_release_id: None,
-        }],
-    )
-    .await
-    .unwrap();
-
-    seed_payload(
-        &db,
-        PayloadSource::MusicBrainz,
-        "mb-release-2",
-        mb_release_json(
-            "mb-release-2",
-            "mb-rg-2",
-            "Cached Album",
-            "Cached Artist",
-            &["Cached Track"],
-        ),
-    )
-    .await;
-
-    let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
-
-    // Album-group-stable fields project from cache.
-    assert_eq!(edit.album_title, "Cached Album");
-    assert_eq!(edit.album_artist_names, vec!["Cached Artist".to_string()]);
-    assert_eq!(edit.tracks.len(), 1);
-    assert_eq!(edit.tracks[0].title, "Cached Track");
-    // Pressing-level fields are cleared because the identity row's
-    // `source_release_id` is NULL — Approximate doesn't claim a pressing.
-    assert_eq!(edit.pressing.year, None);
-    assert_eq!(edit.pressing.format, None);
-    assert_eq!(edit.pressing.label, None);
-    assert_eq!(edit.pressing.catalog_number, None);
-    assert_eq!(edit.pressing.country, None);
-    assert_eq!(edit.pressing.barcode, None);
 }
 
 // ── Discogs ─────────────────────────────────────────────────────────────
@@ -373,7 +311,7 @@ fn discogs_release_json(
 }
 
 #[tokio::test]
-async fn reset_discogs_exact_returns_full_pressing_data_from_cache() {
+async fn reset_discogs_returns_full_pressing_data_from_cache() {
     let (lm, db, _tmp) = setup().await;
 
     let artist = make_artist("Original Artist");
@@ -393,7 +331,7 @@ async fn reset_discogs_exact_returns_full_pressing_data_from_cache() {
         &[ReleaseIdentity {
             source: MetadataSource::Discogs,
             source_group_id: "67890".to_string(),
-            source_release_id: Some("12345".to_string()),
+            source_release_id: "12345".to_string(),
         }],
     )
     .await
@@ -431,70 +369,6 @@ async fn reset_discogs_exact_returns_full_pressing_data_from_cache() {
     assert_eq!(edit.pressing.country.as_deref(), Some("JP"));
     assert_eq!(edit.tracks.len(), 1);
     assert_eq!(edit.tracks[0].title, "Cached Discogs Track");
-}
-
-#[tokio::test]
-async fn reset_discogs_approximate_clears_pressing_fields() {
-    let (lm, db, _tmp) = setup().await;
-
-    let artist = make_artist("Original Artist");
-    let album = make_album(&artist.id, "Original Album");
-    let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::Discogs;
-    release.metadata_source_release_id = Some("22345".to_string());
-    let t1 = make_track(&release.id, 1, "Original Track");
-
-    db.insert_artist(&artist).await.unwrap();
-    db.insert_album(&album).await.unwrap();
-    db.insert_release(&release).await.unwrap();
-    db.insert_track(&t1).await.unwrap();
-
-    db.insert_release_identities(
-        &release.id,
-        &[ReleaseIdentity {
-            source: MetadataSource::Discogs,
-            source_group_id: "67891".to_string(),
-            source_release_id: None,
-        }],
-    )
-    .await
-    .unwrap();
-
-    seed_payload(
-        &db,
-        PayloadSource::Discogs,
-        "22345",
-        discogs_release_json(
-            22345,
-            "Cached Discogs Album",
-            998,
-            "Cached Discogs Artist",
-            1985,
-            "Cached Label",
-            "CACHE-2",
-            "JP",
-            &["Cached Discogs Track"],
-        ),
-    )
-    .await;
-
-    let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
-
-    // Album-group-stable fields seed.
-    assert_eq!(edit.album_title, "Cached Discogs Album");
-    assert_eq!(
-        edit.album_artist_names,
-        vec!["Cached Discogs Artist".to_string()]
-    );
-    assert_eq!(edit.tracks.len(), 1);
-    assert_eq!(edit.tracks[0].title, "Cached Discogs Track");
-    // Pressing fields cleared.
-    assert_eq!(edit.pressing.year, None);
-    assert_eq!(edit.pressing.format, None);
-    assert_eq!(edit.pressing.label, None);
-    assert_eq!(edit.pressing.catalog_number, None);
-    assert_eq!(edit.pressing.country, None);
-    assert_eq!(edit.pressing.barcode, None);
 }
 
 // ── File tags (Unknown) ─────────────────────────────────────────────────
@@ -654,7 +528,7 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
         &[ReleaseIdentity {
             source: MetadataSource::MusicBrainz,
             source_group_id: "mb-rg-1".to_string(),
-            source_release_id: Some("mb-release-Y".to_string()),
+            source_release_id: "mb-release-Y".to_string(),
         }],
     )
     .await

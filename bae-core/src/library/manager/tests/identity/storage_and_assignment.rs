@@ -43,19 +43,19 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 
 // ── set_identity ───────────────────────────────────────────────────
 
-fn mb_identity(group: &str, release: Option<&str>) -> crate::import::ReleaseIdentity {
+fn mb_identity(group: &str, release: &str) -> crate::import::ReleaseIdentity {
     crate::import::ReleaseIdentity {
         source: crate::import::MetadataSource::MusicBrainz,
         source_group_id: group.to_string(),
-        source_release_id: release.map(|s| s.to_string()),
+        source_release_id: release.to_string(),
     }
 }
 
-fn discogs_identity(group: &str, release: Option<&str>) -> crate::import::ReleaseIdentity {
+fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseIdentity {
     crate::import::ReleaseIdentity {
         source: crate::import::MetadataSource::Discogs,
         source_group_id: group.to_string(),
-        source_release_id: release.map(|s| s.to_string()),
+        source_release_id: release.to_string(),
     }
 }
 
@@ -72,7 +72,7 @@ async fn set_identity_to_unknown_moves_release_to_fresh_album() {
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", Some("mb-rel-1"))])
+        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
@@ -133,7 +133,7 @@ async fn set_identity_to_unknown_moves_release_to_fresh_album() {
 async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    // Album has two releases, both Approximate-MB on group g1.
+    // Album has two releases, both MB identities on group g1.
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -142,21 +142,21 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
     manager.database.insert_release(&release2).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release1.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release1.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release2.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release2.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
 
-    // Promote release1 from Approximate to Exact within g1. New row
-    // still agrees with release2's group, so release1 stays put.
+    // Re-point release1 at another pressing within g1. The new row still
+    // agrees with release2's group, so release1 stays put.
     manager
         .set_identity(
             &release1.id,
-            vec![mb_identity("g1", Some("mb-rel-99"))],
+            vec![mb_identity("g1", "mb-rel-99")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-99".to_string(),
@@ -180,10 +180,7 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
         .unwrap();
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].source_group_id, "g1");
-    assert_eq!(
-        identities[0].source_release_id.as_deref(),
-        Some("mb-rel-99")
-    );
+    assert_eq!(identities[0].source_release_id, "mb-rel-99");
 
     let updated = manager
         .database
@@ -240,17 +237,17 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_other.id, &[mb_identity("g3", None)])
+        .insert_release_identities(&release_other.id, &[mb_identity("g3", "g3-rel")])
         .await
         .unwrap();
 
@@ -260,7 +257,7 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
     manager
         .set_identity(
             &release_alpha.id,
-            vec![mb_identity("g2", None)],
+            vec![mb_identity("g2", "g2-rel")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
@@ -315,19 +312,19 @@ async fn set_identity_moves_release_to_matching_album() {
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_other.id, &[mb_identity("g2", None)])
+        .insert_release_identities(&release_other.id, &[mb_identity("g2", "g2-rel")])
         .await
         .unwrap();
 
     manager
         .set_identity(
             &release_alpha.id,
-            vec![mb_identity("g2", Some("mb-rel-pressing"))],
+            vec![mb_identity("g2", "mb-rel-pressing")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-pressing".to_string(),
@@ -382,19 +379,19 @@ async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
 
     manager
         .set_identity(
             &release_alpha.id,
-            vec![mb_identity("g2", None)],
+            vec![mb_identity("g2", "g2-rel")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
@@ -438,7 +435,7 @@ async fn set_identity_does_not_touch_metadata_columns() {
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", Some("mb-rel-1"))])
+        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
@@ -458,7 +455,7 @@ async fn set_identity_does_not_touch_metadata_columns() {
     manager
         .set_identity(
             &release.id,
-            vec![discogs_identity("dg1", Some("dg-rel-1"))],
+            vec![discogs_identity("dg1", "dg-rel-1")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::Discogs,
                 release_id: "dg-rel-1".to_string(),
@@ -571,12 +568,12 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
 
@@ -585,7 +582,7 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
     manager
         .set_identity(
             &release_alpha.id,
-            vec![mb_identity("g2", None)],
+            vec![mb_identity("g2", "g2-rel")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
@@ -664,19 +661,19 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
 
     manager
         .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
 
     manager
         .set_identity(
             &release_alpha.id,
-            vec![mb_identity("g2", None)],
+            vec![mb_identity("g2", "g2-rel")],
             crate::import::MetadataPointer::External {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
@@ -732,7 +729,7 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
         .unwrap();
     manager
         .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", None)])
+        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
 
@@ -763,7 +760,7 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
         .database
         .set_identity_atomic(
             &release_alpha.id,
-            &[mb_identity("g2", None)],
+            &[mb_identity("g2", "g2-rel")],
             crate::db::ReleaseMetadataSource::MusicBrainz,
             Some("mb-rel-g2"),
             &album_a.id,

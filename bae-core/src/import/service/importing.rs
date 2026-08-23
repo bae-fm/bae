@@ -230,8 +230,7 @@ impl ImportService {
         );
 
         let (parsed, release_cover) = match &identity_choice {
-            crate::import::IdentityChoice::Exact { release_ref }
-            | crate::import::IdentityChoice::Approximate { release_ref } => {
+            crate::import::IdentityChoice::Release { release_ref } => {
                 // The documents are archived by `prepare_release`, keyed by the
                 // picked source release — so nothing about this release's rows
                 // needs to carry them, and the pointer written below is what
@@ -283,12 +282,7 @@ impl ImportService {
         );
 
         let mut prepared = self
-            .reconcile_prepared_release(
-                parsed,
-                &identity_choice,
-                user_edit,
-                &replacement_release_ids,
-            )
+            .reconcile_prepared_release(parsed, user_edit, &replacement_release_ids)
             .await?;
 
         let emit_preparing = {
@@ -387,8 +381,8 @@ impl ImportService {
 
         // Embedded cover art is the lowest-priority source: `run_import` uses it
         // only when neither an explicit pick nor a folder image supplies one.
-        // Only tagged rips carry a picture, which is the Unknown path, so
-        // Exact/Approximate imports skip the read entirely.
+        // Only tagged rips carry a picture, which is the Unknown path, so a
+        // source-backed import skips the read entirely.
         let embedded_cover = if selected_cover.is_none()
             && matches!(identity_choice, crate::import::IdentityChoice::Unknown)
         {

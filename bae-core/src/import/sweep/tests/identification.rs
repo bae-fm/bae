@@ -627,7 +627,6 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
             crate::import::IdentityPick::Release {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-offline-1".to_string(),
-                claim: crate::import::ClaimLevel::Exact,
             },
         )
         .await
@@ -684,7 +683,6 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
             crate::import::IdentityPick::Release {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-missing-1".to_string(),
-                claim: crate::import::ClaimLevel::Exact,
             },
         )
         .await
@@ -721,7 +719,6 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let pick = || crate::import::IdentityPick::Release {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-manual-1".to_string(),
-        claim: crate::import::ClaimLevel::Exact,
     };
     fixture
         .import

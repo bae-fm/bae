@@ -41,7 +41,7 @@ fn identity(source: MetadataSource, release_id: &str) -> ReleaseIdentity {
     ReleaseIdentity {
         source,
         source_group_id: format!("group-{release_id}"),
-        source_release_id: Some(release_id.to_string()),
+        source_release_id: release_id.to_string(),
     }
 }
 

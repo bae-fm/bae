@@ -325,7 +325,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(discogs_key, MetadataSource::Discogs),
             },
             user_edit: None,

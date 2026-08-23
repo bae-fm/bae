@@ -342,14 +342,14 @@ pub fn map_mb_response_to_db(
     let mut identities = vec![ReleaseIdentity {
         source: MetadataSource::MusicBrainz,
         source_group_id: mb_release_group.id.clone(),
-        source_release_id: Some(response.id.clone()),
+        source_release_id: response.id.clone(),
     }];
     if let Some(dr) = discogs_release.as_ref() {
         if let Some(master_id) = dr.master_id.clone() {
             identities.push(ReleaseIdentity {
                 source: MetadataSource::Discogs,
                 source_group_id: master_id,
-                source_release_id: Some(dr.id.clone()),
+                source_release_id: dr.id.clone(),
             });
         }
     }

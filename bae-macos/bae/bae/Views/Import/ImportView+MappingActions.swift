@@ -45,8 +45,7 @@ extension ImportView {
                 key: candidate.key,
                 pick: .release(
                     source: picked.source,
-                    releaseId: picked.releaseId,
-                    claim: .exact
+                    releaseId: picked.releaseId
                 )
             )
         case (.release, .none):

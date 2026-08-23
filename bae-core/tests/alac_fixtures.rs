@@ -112,7 +112,7 @@ async fn import_single_m4a_fixture(
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -348,7 +348,7 @@ async fn import_cue_alac_pair() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,

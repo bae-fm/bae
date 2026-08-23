@@ -242,7 +242,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
             selected_cover: None,
             storage_mode,
             pin,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,

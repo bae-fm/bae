@@ -14,7 +14,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::list::{ImportListItem, ImportListRequest, ImportListView};
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::{ClaimLevel, IdentityPick, PayloadSource, TriageTab};
+use crate::import::{IdentityPick, PayloadSource, TriageTab};
 use coven::FixedClock;
 use std::path::PathBuf;
 
@@ -194,7 +194,6 @@ async fn a_picked_row_leads_with_the_archived_document() {
         &IdentityPick::Release {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-picked".to_string(),
-            claim: ClaimLevel::Exact,
         },
     )
     .await
@@ -228,7 +227,6 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
         &IdentityPick::Release {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-never-fetched".to_string(),
-            claim: ClaimLevel::Exact,
         },
     )
     .await

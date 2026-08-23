@@ -518,7 +518,7 @@ impl AppHandle {
         .await
     }
 
-    /// The claim line for holding `result` at `level` under `candidate_key`.
+    /// The claim line for holding `result` under `candidate_key`.
     /// Re-identify's path, and the only one left: it commits straight from the
     /// picked row, so the header states the claim from that row plus the
     /// candidate's own identify evidence. The import pane draws its header from
@@ -527,7 +527,6 @@ impl AppHandle {
         &self,
         candidate_key: String,
         result: crate::types::BridgeMetadataResult,
-        level: crate::types::BridgeClaimLevel,
     ) -> crate::types::BridgeClaimLine {
         let release = bae_core::import::ClaimRelease {
             release_ref: bae_core::import::MetadataRef::new(
@@ -544,11 +543,10 @@ impl AppHandle {
             // metadata-from line could tell the user by repeating it.
             track_count: None,
         };
-        crate::types::BridgeClaimLine::from_core(self.services.import_claim_for_pick(
-            &candidate_key,
-            &release,
-            level.into_core(),
-        ))
+        crate::types::BridgeClaimLine::from_core(
+            self.services
+                .import_claim_for_pick(&candidate_key, &release),
+        )
     }
 
     /// Commit a candidate. Nothing about the release rides in: the pick, the

@@ -217,7 +217,7 @@ pub(super) fn get_release_identities_on(
             Ok((
                 row.get::<_, String>("source")?,
                 row.get::<_, String>("source_group_id")?,
-                row.get::<_, Option<String>>("source_release_id")?,
+                row.get::<_, String>("source_release_id")?,
             ))
         },
     )?;

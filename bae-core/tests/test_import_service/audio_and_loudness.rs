@@ -28,7 +28,7 @@ async fn local_folder_import() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -183,7 +183,7 @@ async fn import_produces_audio_format_records() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -240,7 +240,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                identity_choice: IdentityChoice::Exact {
+                identity_choice: IdentityChoice::Release {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
                 user_edit: None,
@@ -312,7 +312,7 @@ async fn loudness_pass_emits_within_track_progress() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -470,7 +470,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -626,7 +626,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,

@@ -420,8 +420,7 @@ struct ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             pick: .release(
                 source: MappingFixtures.source,
-                releaseId: "another-pressing",
-                claim: .exact
+                releaseId: "another-pressing"
             )
         )
         try await Task.sleep(for: .milliseconds(50))

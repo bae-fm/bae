@@ -273,7 +273,7 @@ struct Candidate: Equatable, Identifiable {
 
     /// The release this candidate is picked as, where it names one.
     var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
-        guard case .release(let source, let releaseId, _) = detail?.row.picked
+        guard case .release(let source, let releaseId) = detail?.row.picked
         else { return nil }
         return (source: source, releaseId: releaseId)
     }

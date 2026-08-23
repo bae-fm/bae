@@ -74,7 +74,6 @@ pub(super) async fn save(
             Some(crate::import::IdentityPick::Release {
                 source: only.source,
                 release_id: only.release_id.clone(),
-                claim: crate::import::ClaimLevel::Exact,
             })
         }
         _ => None,

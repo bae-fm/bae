@@ -144,7 +144,7 @@ async fn test_cue_ape_records_correct_durations() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -333,7 +333,7 @@ async fn test_cue_ape_records_track_timing() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -466,7 +466,7 @@ impl CueApeTestFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                identity_choice: IdentityChoice::Exact {
+                identity_choice: IdentityChoice::Release {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
                 user_edit: None,

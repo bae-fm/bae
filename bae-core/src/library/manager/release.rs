@@ -63,9 +63,8 @@ impl LibraryManager {
     ///
     /// 1. **Per-pressing rejection.** A release in the library carrying an identity
     ///    row that matches one of the new release's `(source, source_release_id)`
-    ///    pairs (Exact identities only; Approximate skips this) means this is a
-    ///    duplicate import. Surface that album's title so the user sees what they
-    ///    already have.
+    ///    pairs means this is a duplicate import. Surface that album's title so
+    ///    the user sees what they already have.
     /// 2. **Cross-source merge.** A release carrying an identity row matching one of
     ///    the new release's `(source, source_group_id)` pairs gives up its
     ///    `album_id`, so the new release attaches to the same album. Identities pair
@@ -122,10 +121,8 @@ impl LibraryManager {
     /// re-edits or saves through `apply_release_metadata_user_edit`.
     ///
     /// - `MusicBrainz` / `Discogs` — re-project the archived provider documents
-    ///   under the same rules import uses. Exact vs Approximate comes from the
-    ///   matching `release_identities` row's `source_release_id`: present = Exact
-    ///   (full pressing data), NULL = Approximate (album-group fields only, pressing
-    ///   fields cleared).
+    ///   under the same rules import uses, from the pressing the release's
+    ///   identity row names.
     /// - `FileTags` — re-read the embedded tags from the release's local audio
     ///   files. Errors if they aren't reachable on disk (cloud-only, no local copy).
     ///
@@ -145,8 +142,6 @@ impl LibraryManager {
             .find_release_by_id(release_id)
             .await?
             .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
-
-        let identities = self.database.get_release_identities(release_id).await?;
 
         // Which external source seeded this release, or `None` for the one
         // pointer that names no source at all.
@@ -195,25 +190,7 @@ impl LibraryManager {
             }
         };
 
-        // The matching identity row decides Exact vs Approximate, per source.
-        // file_tags has no identity row to inspect — its pressing fields come
-        // straight from the tags and stay as projected.
-        let approximate = match release.metadata_source {
-            ReleaseMetadataSource::MusicBrainz => identities
-                .iter()
-                .find(|id| id.source == MetadataSource::MusicBrainz)
-                .is_some_and(|id| id.source_release_id.is_none()),
-            ReleaseMetadataSource::Discogs => identities
-                .iter()
-                .find(|id| id.source == MetadataSource::Discogs)
-                .is_some_and(|id| id.source_release_id.is_none()),
-            ReleaseMetadataSource::FileTags => false,
-        };
-        let mut user_edit = parsed_album_to_user_edit(&parsed);
-        if approximate {
-            user_edit.pressing = crate::import::PressingEdit::blank();
-        }
-        Ok(user_edit)
+        Ok(parsed_album_to_user_edit(&parsed))
     }
 
     /// Re-identify commit: translate the user's `IdentityChoice` into a fully
@@ -221,10 +198,10 @@ impl LibraryManager {
     /// the import commit pipeline, so a re-identified release lands with the same
     /// identity-row shape an initial import would produce.
     ///
-    /// - **Exact / Approximate** — resolve the picked release's documents through
+    /// - **Release** — resolve the picked release's documents through
     ///   `prepare_release` (which composes the MB↔Discogs cross-linking, fetching
     ///   and storing when nothing has yet) and project the mapper's identity vec
-    ///   through `apply_identity_choice`. Those documents are keyed by the picked
+    ///   as it stands. Those documents are keyed by the picked
     ///   release, which is what the new pointer names, so reset-to-source replays
     ///   the same seed. The picked release's track count is checked against the existing
     ///   track rows, and a mismatch errors before the identity write — a 12-track
@@ -247,7 +224,7 @@ impl LibraryManager {
         use crate::import::{IdentityChoice, MetadataPointer};
 
         let (new_identities, metadata_pointer) = match &identity_choice {
-            IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref } => {
+            IdentityChoice::Release { release_ref } => {
                 let payloads = crate::import::service::prepare_release(
                     self,
                     release_ref,
@@ -276,15 +253,11 @@ impl LibraryManager {
                     )));
                 }
 
-                let identities = crate::import::service::apply_identity_choice(
-                    &parsed.identities,
-                    &identity_choice,
-                );
                 let pointer = MetadataPointer::External {
                     source: release_ref.source,
                     release_id: release_ref.id.clone(),
                 };
-                (identities, pointer)
+                (parsed.identities, pointer)
             }
             IdentityChoice::Unknown => (Vec::new(), MetadataPointer::FileTags),
         };

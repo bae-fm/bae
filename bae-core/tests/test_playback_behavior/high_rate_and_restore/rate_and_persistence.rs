@@ -92,7 +92,7 @@ impl HighSampleRateTestFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                identity_choice: IdentityChoice::Exact {
+                identity_choice: IdentityChoice::Release {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
                 user_edit: None,
@@ -503,7 +503,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,
@@ -597,7 +597,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Exact {
+            identity_choice: IdentityChoice::Release {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
             user_edit: None,

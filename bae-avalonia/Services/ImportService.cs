@@ -131,8 +131,8 @@ internal sealed class ImportService
     /// metadata comes from. The re-identify dialog's path: it commits straight
     /// from the picked row, so it never prefetches. Synchronous — a read of the
     /// candidate's already-settled identify state.</summary>
-    public Func<string, BridgeMetadataResult, BridgeClaimLevel, (bool Current, BridgeClaimLine? Claim)> ClaimForPick { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("ImportService stub: ClaimForPick not wired");
+    public Func<string, BridgeMetadataResult, (bool Current, BridgeClaimLine? Claim)> ClaimForPick { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: ClaimForPick not wired");
 
     /// <summary>Manual metadata search (the re-identify dialog's fallback and the
     /// import confirm's search). Async — it blocks on network / DB.</summary>
@@ -240,8 +240,8 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
         SearchReleases = (source, artist, album) =>
             session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
-        ClaimForPick = (candidateKey, result, level) =>
-            session.WithCurrentHandle(handle => NativeBae.ClaimForPick(handle, candidateKey, result, level)),
+        ClaimForPick = (candidateKey, result) =>
+            session.WithCurrentHandle(handle => NativeBae.ClaimForPick(handle, candidateKey, result)),
         PickCandidateIdentity = (candidateKey, pick) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.PickCandidateIdentity(handle, candidateKey, pick)),

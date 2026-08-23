@@ -310,7 +310,7 @@ internal sealed class ImportMappingPane : UserControl
         if (_candidate?.PickedRelease is { } picked)
         {
             await DecideIdentity(
-                new BridgeIdentityPick.Release(picked.Source, picked.ReleaseId, BridgeClaimLevel.Exact));
+                new BridgeIdentityPick.Release(picked.Source, picked.ReleaseId));
             return;
         }
         _searchOpen = true;
@@ -507,7 +507,7 @@ internal sealed class ImportMappingPane : UserControl
             }
             var chosen = choices[results.SelectedIndex];
             await DecideIdentity(
-                new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId, BridgeClaimLevel.Exact));
+                new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId));
         };
         column.Children.Add(results);
 
