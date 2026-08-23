@@ -373,6 +373,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Няма съвпадение</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Все още се идентифицира</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Идентифициране</value></data>
+  <data name="import.progress.left" xml:space="preserve"><value>остават: {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Към кандидат, който още се разпознава</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} избрани</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Избиране на всички</value></data>

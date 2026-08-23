@@ -373,6 +373,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Kein Treffer</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Wird noch identifiziert</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifizierung</value></data>
+  <data name="import.progress.left" xml:space="preserve"><value>{count} übrig</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Zu einem noch zu identifizierenden Kandidaten</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} ausgewählt</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Alle auswählen</value></data>

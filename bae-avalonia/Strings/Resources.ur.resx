@@ -373,6 +373,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>کوئی میل نہیں ملا</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ابھی بھی شناخت ہو رہی ہے</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>شناخت ہو رہی ہے</value></data>
+  <data name="import.progress.left" xml:space="preserve"><value>باقی: {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ابھی شناخت ہونے والے امیدوار پر جائیں</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} منتخب</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>سب منتخب کریں</value></data>

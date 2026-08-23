@@ -1,9 +1,12 @@
+import BaeKit
 import SwiftUI
 
-/// The header's "Identifying N / total" line and thin bar, fed by the queue
-/// sweep's progress event. The caller hides this entirely once there is
-/// nothing left to say — see `ImportCandidateListContent` — rather than this
-/// view deciding that for itself.
+/// The "Identifying N / total" line and thin bar, fed by the queue sweep's
+/// progress event. Reached through `QueueProgressIndicator`'s popover: a
+/// sweep that finishes on its own does not earn a permanent row above every
+/// tab. The caller shows this only while there is something left to say —
+/// see `ImportCandidateListContent` — rather than this view deciding that
+/// for itself.
 ///
 /// The line is a control, not a label. The candidates the count is waiting on
 /// are rows somewhere in the queue, and a number that sits still while giving
@@ -48,8 +51,79 @@ struct QueueProgressView: View {
     }
 }
 
+/// The filter row's compact stand-in for the line above: a ring at the sweep's
+/// fraction and how many candidates it still has to reach, opening the line
+/// itself on click. The ring is a glance — the numbers are in the popover.
+struct QueueProgressIndicator: View {
+    let identified: UInt32
+    let total: UInt32
+    let onGoToUnidentified: (() -> Void)?
+
+    @State
+    private var lineShown = false
+
+    private var remaining: Int {
+        max(Int(total) - Int(identified), 0)
+    }
+
+    private var fraction: Double {
+        total == 0 ? 0 : Double(identified) / Double(total)
+    }
+
+    var body: some View {
+        Button {
+            lineShown = true
+        } label: {
+            HStack(spacing: 4) {
+                ring
+                Text("\(remaining) left")
+                    .font(.system(size: 11.5))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Identifying")
+        .popover(isPresented: $lineShown, arrowEdge: .bottom) {
+            QueueProgressView(
+                identified: identified,
+                total: total,
+                onGoToUnidentified: onGoToUnidentified
+            )
+            .frame(width: 220)
+            .padding(12)
+        }
+    }
+
+    private var ring: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(
+                    Theme.accent,
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 11, height: 11)
+    }
+}
+
 #if DEBUG
     // MARK: - Previews
+
+    #Preview("Queue progress indicator") {
+        QueueProgressIndicator(
+            identified: 112,
+            total: 130,
+            onGoToUnidentified: {}
+        )
+        .padding()
+        .windowBackground()
+    }
 
     #Preview("Queue progress") {
         QueueProgressView(

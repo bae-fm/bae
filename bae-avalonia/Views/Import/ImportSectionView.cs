@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -67,6 +68,25 @@ internal sealed partial class ImportSectionView : UserControl
     private readonly Button _listMenuButton;
     private readonly Panel _progressHost = new();
 
+    // The sweep's progress, in the filter row: a ring and how many candidates
+    // it still has to reach, opening the line itself. Built once and updated
+    // in place — a control rebuilt under an open flyout takes the flyout down
+    // with it.
+    private readonly Button _progressButton;
+    private readonly Arc _progressRing = new()
+    {
+        Width = 12,
+        Height = 12,
+        StartAngle = -90,
+        StrokeThickness = 2,
+        StrokeLineCap = PenLineCap.Round,
+    };
+    private readonly TextBlock _progressRemaining = new() { FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _progressCount = new() { FontSize = 12 };
+    private readonly Panel _progressBarHost = new();
+    private readonly Button _progressLine;
+    private string? _progressGoToKey;
+
     public ImportSectionView(AppService app, ImportDialogs dialogs)
     {
         _app = app;
@@ -100,6 +120,9 @@ internal sealed partial class ImportSectionView : UserControl
             "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
             11, "BaeTextSecondaryBrush", 22);
         _clearFilterButton.Click += (_, _) => { _filterBox.Text = string.Empty; _import.SetFilterText(string.Empty); };
+
+        _progressLine = BuildProgressLine();
+        _progressButton = BuildProgressButton();
 
         _listMenuButton = ChromeButton("⋯", 15);
         _listMenuButton.Click += (_, _) => { _listMenuButton.Flyout = BuildListMenuFlyout(); _listMenuButton.Flyout.ShowAt(_listMenuButton); };
@@ -182,7 +205,7 @@ internal sealed partial class ImportSectionView : UserControl
 
     private Control BuildFilterRow()
     {
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), ColumnSpacing = 6 };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"), ColumnSpacing = 6 };
         var searchGlyph = Icons.Glyph(Icons.Search, 13, "BaeTextSecondaryBrush");
         Grid.SetColumn(searchGlyph, 0);
 
@@ -190,14 +213,97 @@ internal sealed partial class ImportSectionView : UserControl
 
         Grid.SetColumn(_clearFilterButton, 2);
 
-        Grid.SetColumn(_listMenuButton, 3);
+        Grid.SetColumn(_progressButton, 3);
+
+        Grid.SetColumn(_listMenuButton, 4);
 
         row.Children.Add(searchGlyph);
         row.Children.Add(_filterBox);
         row.Children.Add(_clearFilterButton);
+        row.Children.Add(_progressButton);
         row.Children.Add(_listMenuButton);
 
         return new Border { Padding = new Thickness(14, 0, 10, 10), Child = row };
+    }
+
+    // The compact indicator: a ring at the sweep's fraction and how many
+    // candidates it still has to reach. The ring is a glance — the numbers
+    // are in the flyout it opens.
+    private Button BuildProgressButton()
+    {
+        var track = new Ellipse
+        {
+            Width = 12,
+            Height = 12,
+            StrokeThickness = 2,
+            Opacity = 0.25,
+        };
+        track[!Shape.StrokeProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        _progressRing[!Shape.StrokeProperty] = new DynamicResourceExtension("BaeAccentBrush");
+        var ring = new Panel { Width = 12, Height = 12, VerticalAlignment = VerticalAlignment.Center };
+        ring.Children.Add(track);
+        ring.Children.Add(_progressRing);
+
+        _progressRemaining[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Children = { ring, _progressRemaining },
+        };
+        var button = new Button
+        {
+            Content = content,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(4),
+            Flyout = new Flyout { Content = _progressLine },
+        };
+        ToolTip.SetTip(button, Loc.Chrome("import.progress.identifying"));
+        return button;
+    }
+
+    // The line the indicator opens: "Identifying N / total" over a thin bar.
+    // It is a control, not a label. The candidates the count is waiting on are
+    // rows somewhere in the queue, and a number that sits still while giving
+    // no way to reach what it is waiting on is the frustrating half of this
+    // pane. Clicking it goes to the first.
+    private Button BuildProgressLine()
+    {
+        var label = new TextBlock { Text = Loc.Chrome("import.progress.identifying"), FontSize = 12 };
+        label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        _progressCount[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var labelRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        Grid.SetColumn(label, 0);
+        Grid.SetColumn(_progressCount, 1);
+        labelRow.Children.Add(label);
+        labelRow.Children.Add(_progressCount);
+
+        var line = new Button
+        {
+            Content = new StackPanel
+            {
+                Spacing = 7,
+                Width = 200,
+                Children = { labelRow, _progressBarHost },
+            },
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        };
+        ToolTip.SetTip(line, Loc.Chrome("import.progress.go_to_unidentified"));
+        line.Click += (_, _) =>
+        {
+            if (_progressGoToKey is not { } key)
+            {
+                return;
+            }
+            _progressButton.Flyout?.Hide();
+            _import.SetActiveTab(BridgeTriageTab.Pending);
+            SelectCandidate(key);
+        };
+        return line;
     }
 
     // A borderless text button for the filter row's sort/add-folder controls —
@@ -298,7 +404,8 @@ internal sealed partial class ImportSectionView : UserControl
     {
         RenderTabBar();
         _clearFilterButton.IsVisible = _import.FilterText.Length > 0;
-        RenderProgress();
+        RenderProgressIndicator();
+        RenderFolderScanStatuses();
         RenderFootBar();
         ShowPendingSelection();
         _listView.Refresh();
@@ -387,7 +494,7 @@ internal sealed partial class ImportSectionView : UserControl
         row.Children.Add(button);
     }
 
-    private void RenderProgress()
+    private void RenderFolderScanStatuses()
     {
         _progressHost.Children.Clear();
         var column = new StackPanel
@@ -444,61 +551,36 @@ internal sealed partial class ImportSectionView : UserControl
             statusRow.Children.Add(refresh);
             column.Children.Add(statusRow);
         }
-        if (_import.QueueIdentifyProgress is { } progress && progress.Total > 0)
-        {
-            var label = new TextBlock { Text = Loc.Chrome("import.progress.identifying"), FontSize = 12 };
-            label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            var count = new TextBlock
-            {
-                Text = $"{progress.Identified.ToString(CultureInfo.CurrentCulture)} / {progress.Total.ToString(CultureInfo.CurrentCulture)}",
-                FontSize = 12,
-            };
-            count[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            var labelRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-            Grid.SetColumn(label, 0);
-            Grid.SetColumn(count, 1);
-            labelRow.Children.Add(label);
-            labelRow.Children.Add(count);
-
-            // The line is a control, not a label. The candidates the count is
-            // waiting on are rows somewhere in the queue, and a number that
-            // sits still while giving no way to reach what it is waiting on is
-            // the frustrating half of this pane. Clicking it goes to the first.
-            var unidentified = _import.Summary.FirstUnidentifiedKey;
-            var lineContent = new StackPanel
-            {
-                Spacing = 7,
-                Children =
-                {
-                    labelRow,
-                    ThinProgressBar((double)progress.Identified / progress.Total),
-                },
-            };
-            var line = new Button
-            {
-                Content = lineContent,
-                Background = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                Padding = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                IsEnabled = unidentified is not null,
-            };
-            ToolTip.SetTip(line, Loc.Chrome("import.progress.go_to_unidentified"));
-            if (unidentified is { } key)
-            {
-                line.Click += (_, _) =>
-                {
-                    _import.SetActiveTab(BridgeTriageTab.Pending);
-                    SelectCandidate(key);
-                };
-            }
-            column.Children.Add(line);
-        }
         if (column.Children.Count > 0)
         {
             _progressHost.Children.Add(column);
         }
+    }
+
+    // The sweep's progress, updated in place: the indicator leaves the filter
+    // row when there is nothing left to identify, and the line inside its
+    // flyout is kept current so an open flyout does not freeze mid-sweep.
+    private void RenderProgressIndicator()
+    {
+        if (_import.QueueIdentifyProgress is not { } progress
+            || progress.Total == 0
+            || progress.Identified >= progress.Total)
+        {
+            _progressButton.IsVisible = false;
+            _progressGoToKey = null;
+            return;
+        }
+        _progressButton.IsVisible = true;
+        var remaining = (long)(progress.Total - progress.Identified);
+        _progressRemaining.Text = Loc.Chrome("import.progress.left", "count", remaining);
+        var fraction = (double)progress.Identified / progress.Total;
+        _progressRing.SweepAngle = 360 * fraction;
+        _progressCount.Text =
+            $"{progress.Identified.ToString(CultureInfo.CurrentCulture)} / {progress.Total.ToString(CultureInfo.CurrentCulture)}";
+        _progressBarHost.Children.Clear();
+        _progressBarHost.Children.Add(ThinProgressBar(fraction));
+        _progressGoToKey = _import.Summary.FirstUnidentifiedKey;
+        _progressLine.IsEnabled = _progressGoToKey is not null;
     }
 
     private static Control ThinProgressBar(double fraction)

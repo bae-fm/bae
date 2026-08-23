@@ -373,6 +373,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Brak dopasowania</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Wciąż identyfikowane</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identyfikowanie</value></data>
+  <data name="import.progress.left" xml:space="preserve"><value>pozostało: {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Przejdź do kandydata wciąż identyfikowanego</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Wybrano: {count}</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Zaznacz wszystko</value></data>

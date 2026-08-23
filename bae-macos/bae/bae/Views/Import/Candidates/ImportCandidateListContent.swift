@@ -72,6 +72,17 @@ struct ImportCandidateListContent: View {
         (listSlot.list?.totalCount ?? 0) == 0
     }
 
+    /// Go to the first row the identify count is still waiting on. `nil` when
+    /// there is none to go to.
+    private var goToFirstUnidentified: (() -> Void)? {
+        summary.firstUnidentifiedKey.map { key in
+            {
+                listSlot.setTab(.pending)
+                selectedKeys = [key]
+            }
+        }
+    }
+
     var body: some View {
         ImportSidebarList {
             VStack(spacing: 0) {
@@ -99,6 +110,16 @@ struct ImportCandidateListContent: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    if let progress = importStore.queueIdentifyProgress,
+                        progress.total > 0,
+                        progress.identified < progress.total
+                    {
+                        QueueProgressIndicator(
+                            identified: progress.identified,
+                            total: progress.total,
+                            onGoToUnidentified: goToFirstUnidentified
+                        )
+                    }
                     CandidateListMenu(
                         watchedFolders: importStore.watchedFolders,
                         refreshingFolders: uiStore.refreshingWatchedFolders,
@@ -110,24 +131,6 @@ struct ImportCandidateListContent: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 10)
-
-                if let progress = importStore.queueIdentifyProgress,
-                    progress.total > 0
-                {
-                    QueueProgressView(
-                        identified: progress.identified,
-                        total: progress.total,
-                        onGoToUnidentified: summary.firstUnidentifiedKey
-                            .map { key in
-                                {
-                                    listSlot.setTab(.pending)
-                                    selectedKeys = [key]
-                                }
-                            }
-                    )
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 12)
-                }
 
                 folderScanStatuses
             }

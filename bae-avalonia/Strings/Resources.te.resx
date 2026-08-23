@@ -373,6 +373,7 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>సరిపోలిక దొరకలేదు</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ఇంకా గుర్తిస్తోంది</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>గుర్తిస్తోంది</value></data>
+  <data name="import.progress.left" xml:space="preserve"><value>మిగిలినవి: {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ఇంకా గుర్తించబడుతున్న అభ్యర్థికి వెళ్లండి</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} ఎంపికయ్యాయి</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>అన్నీ ఎంచుకో</value></data>
