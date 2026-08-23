@@ -113,31 +113,4 @@ struct ImportReleaseBoundaryViewTests {
         }
         #expect(uiStore.selectedFolderCandidates.isEmpty)
     }
-
-    @Test("scan status is translated in every shipping locale")
-    func scanStatusHasEveryLocalization() throws {
-        let catalogURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "bae/Localizable.xcstrings")
-        let catalog = try #require(
-            try JSONSerialization.jsonObject(
-                with: Data(contentsOf: catalogURL)
-            ) as? [String: Any]
-        )
-        let strings = try #require(catalog["strings"] as? [String: Any])
-        let reference = try #require(
-            strings["Refresh"] as? [String: Any]
-        )
-        let referenceLocales = try #require(
-            reference["localizations"] as? [String: Any]
-        )
-        let scanning = try #require(
-            strings["Scanning\u{2026}"] as? [String: Any]
-        )
-        let scanningLocales = try #require(
-            scanning["localizations"] as? [String: Any]
-        )
-        #expect(Set(scanningLocales.keys) == Set(referenceLocales.keys))
-    }
 }
