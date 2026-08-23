@@ -49,6 +49,17 @@ public sealed class ImportMappingPaneTests
             image => image.Width == 80);
     }
 
+    // The pane leads with the folder it is about — the one fact nothing below
+    // it can change — with the audio it holds beside the name.
+    [AvaloniaFact]
+    public void ThePaneLeadsWithTheFolderItIsAbout()
+    {
+        var (pane, _) = Show(Detail());
+
+        Assert.Contains("Album", Texts(pane));
+        Assert.Contains("FLAC", Texts(pane));
+    }
+
     // A failure that outlived the process is on the pane with the one action
     // that answers it. Both halves matter: the error says what happened, and
     // Retry is how the person acts on it without hunting for the commit bar.

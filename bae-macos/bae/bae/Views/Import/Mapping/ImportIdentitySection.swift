@@ -16,20 +16,14 @@ struct ImportMatchOptions {
     let onSelect: (BridgeMetadataResult) -> Void
 }
 
-/// Section 1 of the mapping pane: what the folder is being read as.
+/// Section 1 of the mapping pane: where the folder's metadata comes from.
 ///
-/// The release ⇄ Unknown control sits here, always visible, because it is the
+/// The lookup ⇄ file-tags control sits here, always visible, because it is the
 /// question this section answers — not a link inside the search. Both sides
-/// leave a mapping table to work in: a release names the tracklist, and
-/// Unknown reads it off the folder's own files.
+/// leave a mapping table to work in: a looked-up release names the tracklist,
+/// and file tags read it off the folder's own files.
 struct ImportIdentitySection: View {
     let identity: ImportIdentity
-    /// The folder on disk — its own line, not the release title: what the
-    /// folder is called and what the release is are different facts, and the
-    /// card leads with the release.
-    let folderName: String
-    /// The folder's audio shape ("FLAC", "CUE+FLAC"), shown beside its name.
-    let formatLabel: String
     let title: String
     let artist: String
     /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
@@ -67,9 +61,8 @@ struct ImportIdentitySection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: coreString("ui.import.identity.title"))
+            FormSectionHeader(title: coreString("ui.import.metadata.title"))
             VStack(alignment: .leading, spacing: 10) {
-                folderLine
                 identityPicker
                 if let matchOptions {
                     // The matched release groups with their pressing rows —
@@ -110,9 +103,9 @@ struct ImportIdentitySection: View {
                     )
                 }
                 else {
-                    // Nothing settled and nothing matched: the folder line
-                    // above already says what this is, so no card — just the
-                    // one thing left to do.
+                    // Nothing settled and nothing matched: the folder line at
+                    // the top of the pane already says what this is, so no
+                    // card — just the one thing left to do.
                     HStack(spacing: 8) {
                         ProgressView()
                             .controlSize(.small)
@@ -128,40 +121,20 @@ struct ImportIdentitySection: View {
         }
     }
 
-    /// The folder itself: name in mono, its audio shape beside it. Always
-    /// present, whatever the release side is showing.
-    private var folderLine: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "folder")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            Text(folderName)
-                .font(.system(size: 11.5, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            if !formatLabel.isEmpty {
-                Text(formatLabel)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    /// The one control that switches sides. Picking Unknown reads the folder's
-    /// own tags; picking Release re-picks the release the candidate already
+    /// The one control that switches sides. Picking file tags reads the
+    /// folder's own; picking lookup re-picks the release the candidate already
     /// holds, or opens the search when it holds none.
     private var identityPicker: some View {
         Picker(
-            coreString("ui.import.identity.title"),
+            coreString("ui.import.metadata.title"),
             selection: Binding(
                 get: { identity },
                 set: { onSetIdentity($0) },
             )
         ) {
-            Text(coreString("ui.import.identity.release"))
+            Text(coreString("ui.import.metadata.lookup"))
                 .tag(ImportIdentity.release)
-            Text(coreString("ui.import.identity.unknown"))
+            Text(coreString("ui.import.metadata.file_tags"))
                 .tag(ImportIdentity.unknown)
         }
         .pickerStyle(.segmented)

@@ -1,9 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// The one surface a folder becomes a release on: two sections and a commit
-/// bar. Section one is what the folder is being read as; section two is every
-/// source unit it offers alongside the track committing makes of it.
+/// The one surface a folder becomes a release on: the folder it is about, two
+/// sections and a commit bar. Section one is where the folder's metadata comes
+/// from; section two is every source unit it offers alongside the track
+/// committing makes of it.
 ///
 /// There is no identify⇄confirm layout flip. The table is the same table before
 /// and after a release is picked — picking one fills its BECOMES column in
@@ -58,6 +59,11 @@ struct ImportMappingPane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                CandidateFolderLine(
+                    folderName: candidate.displayName,
+                    folderPath: candidate.key,
+                    formatLabel: candidate.files.formatLabel
+                )
                 identitySection
                 banners
                 if !mapping.images.isEmpty {
@@ -100,8 +106,6 @@ struct ImportMappingPane: View {
     private var identitySection: some View {
         ImportIdentitySection(
             identity: candidate.identity,
-            folderName: candidate.displayName,
-            formatLabel: candidate.files.formatLabel,
             title: headerTitle,
             artist: candidate.edit?.albumArtistText ?? "",
             metaLine: headerMetaLine,
@@ -163,7 +167,7 @@ struct ImportMappingPane: View {
         let trackText = String(localized: "\(count) tracks")
         let lead =
             candidate.identity == .unknown
-            ? [coreString("ui.import.identity.from_file_tags")]
+            ? [coreString("ui.import.metadata.from_file_tags")]
             : [
                 values.pressing.format,
                 values.pressing.year,

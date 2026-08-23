@@ -330,7 +330,8 @@ internal sealed class ImportMappingPane : UserControl
         }
 
         var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };
-        sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.identity.title")));
+        sections.Children.Add(FolderLine());
+        sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.metadata.title")));
         sections.Children.Add(BuildIdentity().Build());
         if (_searchOpen)
         {
@@ -387,13 +388,57 @@ internal sealed class ImportMappingPane : UserControl
         return text;
     }
 
-    // ── Section 1: identity ──────────────────────────────────────────────────
+    // The folder the pane is about, at the top of it: what it is called on disk
+    // and what audio it holds. It leads the pane because it is the one fact
+    // nothing below can change — the release, the metadata and the mapping are
+    // all readings of this folder. The name is selectable (a path is something
+    // people copy) and the glyph beside it shows the folder in the file
+    // manager.
+    private Control FolderLine()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var reveal = Icons.IconButton(Icons.Folder, 14, "BaeTextSecondaryBrush", 22);
+        var path = _key;
+        ToolTip.SetTip(reveal, Loc.Chrome("libraries.reveal"));
+        reveal.Click += (_, _) =>
+        {
+            if (path is not null)
+            {
+                RevealInFileManager.Reveal(path);
+            }
+        };
+        row.Children.Add(reveal);
+
+        var name = new SelectableTextBlock
+        {
+            Text = _candidate?.Name ?? string.Empty,
+            FontSize = 15,
+            FontFamily = new FontFamily("monospace"),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        name[!SelectableTextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
+        row.Children.Add(name);
+
+        if (_candidate?.Files?.FormatLabel is { Length: > 0 } formatLabel)
+        {
+            var format = new TextBlock
+            {
+                Text = formatLabel,
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            format[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            row.Children.Add(format);
+        }
+        return row;
+    }
+
+    // ── Section 1: metadata ──────────────────────────────────────────────────
 
     private ImportIdentitySection BuildIdentity() => new()
     {
         Identity = _candidate?.Identity ?? ImportIdentity.Release,
-        FolderName = _candidate?.Name ?? string.Empty,
-        FormatLabel = _candidate?.Files?.FormatLabel ?? string.Empty,
         HasSettled = _candidate?.HasSettled ?? false,
         CommitRow = _candidate is { HasSettled: true } ? BuildCommitRow() : null,
         Title = _candidate?.Edit?.AlbumTitle is { Length: > 0 } title
@@ -435,7 +480,7 @@ internal sealed class ImportMappingPane : UserControl
         }
         var mapping = _candidate.Mapping;
         var lead = _candidate.Identity == ImportIdentity.Unknown
-            ? new[] { Loc.Core("ui.import.identity.from_file_tags") }
+            ? new[] { Loc.Core("ui.import.metadata.from_file_tags") }
             : new[]
             {
                 edit.Pressing.Format,

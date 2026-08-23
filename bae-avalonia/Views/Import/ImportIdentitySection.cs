@@ -21,31 +21,22 @@ internal enum ImportIdentity
 }
 
 /// <summary>
-/// Section 1 of the mapping pane: what the folder is being read as.
+/// Section 1 of the mapping pane: where the folder's metadata comes from.
 ///
-/// The release ⇄ Unknown control sits here, always visible, because it is the
+/// The lookup ⇄ file-tags control sits here, always visible, because it is the
 /// question this section answers — not a link inside the search. Both sides
-/// leave a mapping table to work in: a release names the tracklist, and Unknown
-/// reads it off the folder's own files.
+/// leave a mapping table to work in: a looked-up release names the tracklist,
+/// and file tags read it off the folder's own files.
 /// </summary>
 internal sealed class ImportIdentitySection
 {
     /// <summary>Which side of the control is in force.</summary>
     internal required ImportIdentity Identity { get; init; }
 
-    /// <summary>The folder on disk — its own line, not the release title: what
-    /// the folder is called and what the release is are different facts, and
-    /// the card leads with the release.</summary>
-    internal required string FolderName { get; init; }
-
-    /// <summary>The folder's audio shape ("FLAC", "CUE+FLAC"), shown beside its
-    /// name.</summary>
-    internal required string FormatLabel { get; init; }
-
     /// <summary>Whether anything has been settled for this folder — a release
     /// picked or its own tags read. Until then there is no release card to
     /// show: the search editor below offers the matches, and the folder line
-    /// already says what this is.</summary>
+    /// at the top of the pane already says what this is.</summary>
     internal required bool HasSettled { get; init; }
 
     /// <summary>The album line the card leads with: what is being edited once
@@ -96,7 +87,6 @@ internal sealed class ImportIdentitySection
     internal Control Build()
     {
         var column = new StackPanel { Spacing = 10 };
-        column.Children.Add(FolderLine());
         column.Children.Add(IdentityPicker());
         if (HasSettled)
         {
@@ -105,43 +95,14 @@ internal sealed class ImportIdentitySection
         return column;
     }
 
-    /// <summary>The folder itself: name in mono, its audio shape beside it.
-    /// Always present, whatever the release side is showing.</summary>
-    private Control FolderLine()
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        var name = new TextBlock
-        {
-            Text = FolderName,
-            FontSize = 11.5,
-            FontFamily = new FontFamily("monospace"),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        row.Children.Add(name);
-        if (FormatLabel.Length > 0)
-        {
-            var format = new TextBlock
-            {
-                Text = FormatLabel,
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            format[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            row.Children.Add(format);
-        }
-        return row;
-    }
-
-    /// <summary>The one control that switches sides. Picking Unknown reads the
-    /// folder's own tags; picking Release re-picks the release the candidate
+    /// <summary>The one control that switches sides. Picking file tags reads
+    /// the folder's own; picking lookup re-picks the release the candidate
     /// already holds, or opens the search when it holds none.</summary>
     private Control IdentityPicker()
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        row.Children.Add(Segment(Loc.Core("ui.import.identity.release"), ImportIdentity.Release));
-        row.Children.Add(Segment(Loc.Core("ui.import.identity.unknown"), ImportIdentity.Unknown));
+        row.Children.Add(Segment(Loc.Core("ui.import.metadata.lookup"), ImportIdentity.Release));
+        row.Children.Add(Segment(Loc.Core("ui.import.metadata.file_tags"), ImportIdentity.Unknown));
         return row;
     }
 

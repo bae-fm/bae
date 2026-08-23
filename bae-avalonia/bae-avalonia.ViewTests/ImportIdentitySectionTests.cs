@@ -13,9 +13,10 @@ using Xunit;
 namespace Bae.Desktop.ViewTests;
 
 /// <summary>
-/// The identity section: what the folder is being read as. The release ⇄
-/// Unknown control is the question this section answers, so it is on the pane
-/// whether or not anything has been picked — not a link inside the search.
+/// The metadata section: where the folder's metadata comes from. The lookup ⇄
+/// file-tags control is the question this section answers, so it is on the
+/// pane whether or not anything has been picked — not a link inside the
+/// search.
 /// </summary>
 public sealed class ImportIdentitySectionTests
 {
@@ -25,17 +26,14 @@ public sealed class ImportIdentitySectionTests
         var section = Build(ImportIdentity.Release);
 
         Assert.Equal(
-            new[] { Loc.Core("ui.import.identity.release"), Loc.Core("ui.import.identity.unknown") },
+            new[] { Loc.Core("ui.import.metadata.lookup"), Loc.Core("ui.import.metadata.file_tags") },
             Buttons(section).Take(2).Select(button => button.Content as string).ToArray());
-        // Nothing settled means no release card — the folder line above
-        // already says what this is, and the search editor below the section
-        // is where a release gets found. The folder stays named throughout.
+        // Nothing settled means no release card — the folder line at the top
+        // of the pane already says what this is, and the search editor below
+        // the section is where a release gets found.
         Assert.DoesNotContain(
             Buttons(section),
             button => Equals(button.Content, Loc.Core("ui.import.header.change_release")));
-        Assert.Contains(
-            section.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == "Folder Name");
     }
 
     [AvaloniaFact]
@@ -152,8 +150,6 @@ public sealed class ImportIdentitySectionTests
         new ImportIdentitySection
         {
             Identity = identity,
-            FolderName = "Folder Name",
-            FormatLabel = "FLAC",
             HasSettled = edit is not null,
             CommitRow = null,
             Title = "Album Title",
