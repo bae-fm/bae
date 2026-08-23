@@ -82,11 +82,6 @@ public struct RowLoadID: Hashable {
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable>
 where Row.ID: Sendable {
-    private struct Segment {
-        let range: Range<Int>
-        let ids: [Row.ID]
-    }
-
     /// Total row count from the most recent subscription value.
     public private(set) var totalCount: Int = 0
 
@@ -103,9 +98,9 @@ where Row.ID: Sendable {
         LoadEpoch(instance: ObjectIdentifier(self))
     }
 
-    /// Sorted, non-overlapping segments of loaded IDs. Only loaded positions
-    /// are stored — no sparse pre-allocation.
-    private var segments: [Segment] = []
+    /// The ids this list holds, by position. Read during render, so it stays
+    /// observed.
+    private var segments = LoadedSegments<Row.ID>()
 
     @ObservationIgnored
     private let pageSource: any PageSource<Row>
@@ -126,6 +121,10 @@ where Row.ID: Sendable {
     private var subscriptionIdentities: [String: UUID] = [:]
     private static var maximumVisiblePageSubscriptions: Int { 3 }
 
+    /// How many rows one page holds. Every page starts at a multiple of this,
+    /// so the same page answers a whole screenful of consecutive rows.
+    private static var pageSize: Int { 50 }
+
     public init(
         pageSource: any PageSource<Row>,
         ingest: @escaping ([Row]) -> Void,
@@ -142,25 +141,17 @@ where Row.ID: Sendable {
 
     /// Returns the ID at `position`.
     public func idAt(_ position: Int) -> Row.ID? {
-        for seg in segments where seg.range.contains(position) {
-            return seg.ids[position - seg.range.lowerBound]
-        }
-        return nil
+        segments.id(at: position)
     }
 
     /// Returns the position of `id` in the loaded segments, or nil if not loaded.
     public func position(of id: Row.ID) -> Int? {
-        for seg in segments {
-            if let local = seg.ids.firstIndex(of: id) {
-                return seg.range.lowerBound + local
-            }
-        }
-        return nil
+        segments.position(of: id)
     }
 
     /// All IDs currently held in loaded segments, in order.
     public var allLoadedIds: [Row.ID] {
-        segments.flatMap(\.ids)
+        segments.allIds
     }
 
     // MARK: - Load API (called from `.task`)
@@ -168,7 +159,25 @@ where Row.ID: Sendable {
     /// Fetch the total count. Called once when the list is first mounted.
     public func loadInitial() async {
         initialLoadError = nil
-        await subscribeRange(offset: 0, limit: 50, initial: true)
+        await subscribeRange(offset: 0, limit: Self.pageSize, initial: true)
+    }
+
+    /// Load the page holding `position`, so the row there resolves to an id.
+    ///
+    /// The page is the aligned one, never a window centred on the row that
+    /// asked. A centred window is a different `(offset, limit)` for every row
+    /// index, so scrolling by a single row misses `loadRange`'s fast path,
+    /// opens another page subscription, and pushes an older one past
+    /// `maximumVisiblePageSubscriptions` — and the page that gets evicted is
+    /// the one a row away, whose ids the viewport is drawing from. Every row on
+    /// screen then resolves to nothing until the replacement value arrives.
+    /// Aligned pages make consecutive rows ask for the same page, so the set
+    /// changes only when the viewport crosses a boundary, and the page evicted
+    /// then is two pages from anything visible.
+    public func loadPage(containing position: Int) async {
+        guard position >= 0 else { return }
+        let start = (position / Self.pageSize) * Self.pageSize
+        await loadRange(offset: start, limit: Self.pageSize)
     }
 
     /// Load a contiguous range of rows and intern them into the store.
@@ -185,10 +194,7 @@ where Row.ID: Sendable {
             return
         }
         // Fast-path: an active subscription already covers this range.
-        if segments.contains(where: {
-            $0.range.lowerBound <= offset
-                && $0.range.upperBound >= end
-        }) {
+        if segments.cover(offset..<end) {
             return
         }
         await subscribeRange(offset: offset, limit: limit, initial: false)
@@ -220,24 +226,12 @@ where Row.ID: Sendable {
                         waiter.resume()
                         return
                     }
-                    self.totalCount = totalCount
-                    self.clipSegments(to: totalCount)
-                    self.initialLoadError = nil
-                    self.ingest(rows)
-                    let upper = min(offset + rows.count, totalCount)
-                    guard offset < upper else {
-                        self.segments.removeAll { $0.range.contains(offset) }
-                        self.onSnapshot?(self.allLoadedIds, totalCount)
-                        waiter.resume()
-                        return
-                    }
-                    self.insertSegment(
-                        Segment(
-                            range: offset..<upper,
-                            ids: rows.prefix(upper - offset).map(\.id)
-                        )
+                    self.apply(
+                        rows,
+                        forOffset: offset,
+                        limit: limit,
+                        totalCount: totalCount
                     )
-                    self.onSnapshot?(self.allLoadedIds, totalCount)
                     waiter.resume()
                 },
                 onError: { [weak self] error in
@@ -266,6 +260,37 @@ where Row.ID: Sendable {
         }
     }
 
+    /// Take one page's delivered value: the rows go to the store, their ids
+    /// take the positions the page was asked for, and the new total clips
+    /// anything now past the end.
+    private func apply(
+        _ rows: [Row],
+        forOffset offset: Int,
+        limit: Int,
+        totalCount: Int
+    ) {
+        self.totalCount = totalCount
+        segments.clip(to: totalCount)
+        initialLoadError = nil
+        ingest(rows)
+        let upper = min(offset + rows.count, totalCount)
+        if offset < upper {
+            segments.put(
+                rows.prefix(upper - offset).map(\.id),
+                at: offset,
+                totalCount: totalCount
+            )
+        }
+        else {
+            // The page answered with nothing, so the positions it was asked
+            // for hold nothing, and only those leave.
+            segments.remove(
+                offset..<max(offset, min(offset + limit, totalCount))
+            )
+        }
+        onSnapshot?(allLoadedIds, totalCount)
+    }
+
     private func isCurrentSubscription(_ key: String, _ identity: UUID) -> Bool
     {
         subscriptionIdentities[key] == identity
@@ -281,65 +306,6 @@ where Row.ID: Sendable {
         return (totalCount + columnCount - 1) / columnCount
     }
 
-    // MARK: - Segment management
-
-    private func insertSegment(_ new: Segment) {
-        var lower = new.range.lowerBound
-        var upper = new.range.upperBound
-        var leftIds: [Row.ID] = []
-        var rightIds: [Row.ID] = []
-        var remaining: [Segment] = []
-
-        for seg in segments {
-            if seg.range.upperBound >= lower, seg.range.lowerBound <= upper {
-                // Touches or overlaps: absorb the parts that extend beyond [lower, upper].
-                if seg.range.lowerBound < lower {
-                    leftIds =
-                        Array(seg.ids.prefix(lower - seg.range.lowerBound))
-                        + leftIds
-                    lower = seg.range.lowerBound
-                }
-                if seg.range.upperBound > upper {
-                    rightIds += Array(
-                        seg.ids.suffix(seg.range.upperBound - upper)
-                    )
-                    upper = seg.range.upperBound
-                }
-                // The portion within [lower, upper] is superseded by new.ids.
-            }
-            else if seg.range.upperBound > new.range.lowerBound,
-                seg.range.lowerBound < new.range.upperBound
-            {
-                // Stale segment overlaps the freshly-fetched range — discard.
-            }
-            else {
-                remaining.append(seg)
-            }
-        }
-
-        remaining.append(
-            Segment(
-                range: lower..<upper,
-                ids: leftIds + new.ids + rightIds,
-            )
-        )
-        segments = remaining.sorted {
-            $0.range.lowerBound < $1.range.lowerBound
-        }
-        clipSegments(to: totalCount)
-    }
-
-    private func clipSegments(to totalCount: Int) {
-        segments = segments.compactMap { segment in
-            let upper = min(segment.range.upperBound, totalCount)
-            guard segment.range.lowerBound < upper else { return nil }
-            return Segment(
-                range: segment.range.lowerBound..<upper,
-                ids: Array(segment.ids.prefix(upper - segment.range.lowerBound))
-            )
-        }
-    }
-
     private func evictPages(outsideWindowAround visible: Range<Int>) {
         while subscriptionRanges.count > Self.maximumVisiblePageSubscriptions {
             let center = visible.lowerBound + visible.count / 2
@@ -352,7 +318,7 @@ where Row.ID: Sendable {
             else { return }
             subscriptions.removeValue(forKey: key)?.cancel()
             subscriptionIdentities.removeValue(forKey: key)
-            removeLoadedRange(range)
+            segments.remove(range)
         }
     }
 
@@ -360,39 +326,148 @@ where Row.ID: Sendable {
         abs(range.lowerBound + range.count / 2 - position)
     }
 
-    private func removeLoadedRange(_ removed: Range<Int>) {
-        segments = segments.flatMap { segment -> [Segment] in
-            guard segment.range.overlaps(removed) else { return [segment] }
-            var pieces: [Segment] = []
-            if segment.range.lowerBound < removed.lowerBound {
-                let count = removed.lowerBound - segment.range.lowerBound
+    // MARK: - Test/Preview support
+
+    /// Seed segments synchronously for SwiftUI previews and tests.
+    public func preloadForPreview(ids: [Row.ID]) {
+        segments = LoadedSegments(ids)
+        totalCount = ids.count
+    }
+}
+
+// MARK: - LoadedSegments
+
+/// Which id sits at which position, for the positions a list has loaded.
+///
+/// Held as sorted, non-overlapping runs rather than one sparse array: only
+/// loaded positions cost anything, and pages that end up adjacent merge into
+/// one run. Nothing here knows about subscriptions — a page being dropped and
+/// its ids being forgotten are separate decisions, and the list makes the
+/// second one deliberately.
+private struct LoadedSegments<ID: Hashable> {
+    private struct Run {
+        let range: Range<Int>
+        let ids: [ID]
+    }
+
+    private var runs: [Run] = []
+
+    init() {}
+
+    /// One run covering `ids` from position zero.
+    init(_ ids: [ID]) {
+        runs = ids.isEmpty ? [] : [Run(range: 0..<ids.count, ids: ids)]
+    }
+
+    var isEmpty: Bool { runs.isEmpty }
+
+    /// Every id held, in position order.
+    var allIds: [ID] { runs.flatMap(\.ids) }
+
+    func id(at position: Int) -> ID? {
+        for run in runs where run.range.contains(position) {
+            return run.ids[position - run.range.lowerBound]
+        }
+        return nil
+    }
+
+    func position(of id: ID) -> Int? {
+        for run in runs {
+            if let local = run.ids.firstIndex(of: id) {
+                return run.range.lowerBound + local
+            }
+        }
+        return nil
+    }
+
+    /// Whether one run already covers all of `positions`.
+    func cover(_ positions: Range<Int>) -> Bool {
+        runs.contains {
+            $0.range.lowerBound <= positions.lowerBound
+                && $0.range.upperBound >= positions.upperBound
+        }
+    }
+
+    /// Put `ids` at `offset` onwards, superseding whatever was there and
+    /// absorbing the runs they touch.
+    mutating func put(_ ids: [ID], at offset: Int, totalCount: Int) {
+        let new = Run(range: offset..<(offset + ids.count), ids: ids)
+        var lower = new.range.lowerBound
+        var upper = new.range.upperBound
+        var leftIds: [ID] = []
+        var rightIds: [ID] = []
+        var remaining: [Run] = []
+
+        for run in runs {
+            if run.range.upperBound >= lower, run.range.lowerBound <= upper {
+                // Touches or overlaps: absorb the parts outside [lower, upper].
+                if run.range.lowerBound < lower {
+                    leftIds =
+                        Array(run.ids.prefix(lower - run.range.lowerBound))
+                        + leftIds
+                    lower = run.range.lowerBound
+                }
+                if run.range.upperBound > upper {
+                    rightIds += Array(
+                        run.ids.suffix(run.range.upperBound - upper)
+                    )
+                    upper = run.range.upperBound
+                }
+                // The portion within [lower, upper] is superseded by `ids`.
+            }
+            else if run.range.upperBound > new.range.lowerBound,
+                run.range.lowerBound < new.range.upperBound
+            {
+                // Stale run overlapping the freshly-fetched range — discard.
+            }
+            else {
+                remaining.append(run)
+            }
+        }
+
+        remaining.append(
+            Run(range: lower..<upper, ids: leftIds + new.ids + rightIds)
+        )
+        runs = remaining.sorted { $0.range.lowerBound < $1.range.lowerBound }
+        clip(to: totalCount)
+    }
+
+    /// Drop everything at or past `totalCount`.
+    mutating func clip(to totalCount: Int) {
+        runs = runs.compactMap { run in
+            let upper = min(run.range.upperBound, totalCount)
+            guard run.range.lowerBound < upper else { return nil }
+            return Run(
+                range: run.range.lowerBound..<upper,
+                ids: Array(run.ids.prefix(upper - run.range.lowerBound))
+            )
+        }
+    }
+
+    /// Forget the ids at `removed`, splitting the run that holds them.
+    mutating func remove(_ removed: Range<Int>) {
+        runs = runs.flatMap { run -> [Run] in
+            guard run.range.overlaps(removed) else { return [run] }
+            var pieces: [Run] = []
+            if run.range.lowerBound < removed.lowerBound {
+                let count = removed.lowerBound - run.range.lowerBound
                 pieces.append(
-                    Segment(
-                        range: segment.range.lowerBound..<removed.lowerBound,
-                        ids: Array(segment.ids.prefix(count))
+                    Run(
+                        range: run.range.lowerBound..<removed.lowerBound,
+                        ids: Array(run.ids.prefix(count))
                     )
                 )
             }
-            if segment.range.upperBound > removed.upperBound {
-                let start = removed.upperBound - segment.range.lowerBound
+            if run.range.upperBound > removed.upperBound {
+                let start = removed.upperBound - run.range.lowerBound
                 pieces.append(
-                    Segment(
-                        range: removed.upperBound..<segment.range.upperBound,
-                        ids: Array(segment.ids.dropFirst(start))
+                    Run(
+                        range: removed.upperBound..<run.range.upperBound,
+                        ids: Array(run.ids.dropFirst(start))
                     )
                 )
             }
             return pieces
         }
-    }
-
-    // MARK: - Test/Preview support
-
-    /// Seed segments synchronously for SwiftUI previews and tests.
-    public func preloadForPreview(ids: [Row.ID]) {
-        segments = [
-            Segment(range: 0..<ids.count, ids: ids)
-        ]
-        totalCount = ids.count
     }
 }

@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-private let listLoadBatchSize = 50
-
 /// The composer/artist browser's master list: virtualized rows over a
-/// `PaginatedList`, each visible row batch-loading the window around it.
+/// `PaginatedList`, each visible row loading the page it sits in.
 struct BrowseList<Row: Identifiable & Sendable, RowView: View>: View
 where Row.ID: Sendable {
     let list: PaginatedList<Row>
@@ -20,15 +18,7 @@ where Row.ID: Sendable {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .task(id: RowLoadID(epoch: list.loadEpoch, index: index)) {
-                        let first = max(0, index - listLoadBatchSize / 2)
-                        let end = min(
-                            first + listLoadBatchSize,
-                            list.totalCount
-                        )
-                        await list.loadRange(
-                            offset: first,
-                            limit: end - first
-                        )
+                        await list.loadPage(containing: index)
                     }
             }
         }

@@ -370,6 +370,60 @@ struct PaginatedListSegmentTests {
         #expect(errors.isEmpty)
     }
 
+    @MainActor
+    @Test("a screenful of rows stays loaded while scrolling row by row")
+    func scrollingNeverBlanksRowsOnScreen() async {
+        let total = 180
+        let source = MutableAlbumPageSource(count: total)
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { _ in }
+        )
+        await list.loadInitial()
+
+        let viewport = Viewport(list: list)
+        // Sampled on the main actor after the list has registered the page it
+        // was just asked for — and evicted for it — but before that page's
+        // first value lands. That gap is a frame the list renders, so a row on
+        // screen has to resolve there too.
+        source.onBeforeDelivery { viewport.sample() }
+
+        // A screenful walking down the list one row at a time, the way a
+        // `List` mounts rows: each row that appears asks for the page holding
+        // it. The row that just appeared may be a placeholder until its page
+        // answers; the rows already above it may not.
+        for index in 0..<total {
+            viewport.positions = max(0, index - 18)..<index
+            await list.loadPage(containing: index)
+            viewport.sample()
+        }
+
+        #expect(viewport.blanked.isEmpty)
+        // Four aligned pages answer all 180 rows. A window centred on the row
+        // that asked would be a fresh page per row instead, and evicting those
+        // is what empties the screen.
+        #expect(source.subscribedOffsets == [0, 50, 100, 150])
+    }
+
+}
+
+/// The rows on screen, and every position that resolved to no id while it was
+/// one of them.
+@MainActor
+private final class Viewport {
+    var positions: Range<Int> = 0..<0
+    private(set) var blanked: [Int] = []
+
+    private let list: AlbumList
+
+    init(list: AlbumList) {
+        self.list = list
+    }
+
+    func sample() {
+        blanked.append(contentsOf: positions.filter { list.idAt($0) == nil })
+    }
 }
 
 private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
@@ -384,6 +438,8 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
     private var count: Int
     private var active: [UUID: Active] = [:]
     private var cancelled: [Active] = []
+    private var subscribed: [Int] = []
+    private var beforeDelivery: @MainActor @Sendable () -> Void = {}
 
     init(count: Int) {
         self.count = count
@@ -392,6 +448,16 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
     var activeCount: Int { lock.withLock { active.count } }
     var activeOffsets: Set<Int> {
         lock.withLock { Set(active.values.map(\.offset)) }
+    }
+
+    /// Every offset this source was asked for, in order, without repeats — how
+    /// many distinct pages a scroll opened.
+    var subscribedOffsets: [Int] { lock.withLock { subscribed } }
+
+    /// Run `hook` on the main actor once per subscription, after the list has
+    /// finished registering it and before its first value is delivered.
+    func onBeforeDelivery(_ hook: @escaping @MainActor @Sendable () -> Void) {
+        lock.withLock { beforeDelivery = hook }
     }
 
     func subscribe(
@@ -407,7 +473,14 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
             onValue: onValue,
             onError: onError
         )
-        lock.withLock { self.active[id] = active }
+        let hook = lock.withLock { () -> @MainActor @Sendable () -> Void in
+            self.active[id] = active
+            if !self.subscribed.contains(offset) {
+                self.subscribed.append(offset)
+            }
+            return self.beforeDelivery
+        }
+        Task { @MainActor in hook() }
         Task { await deliver(active) }
         return MutablePageSubscription { [weak self] in
             guard let self else { return }

@@ -5,7 +5,6 @@ import os.log
 private let albumGridLogger = Logger.bae("AlbumGridView")
 private let albumCardSize: CGFloat = 200
 private let gridSpacing: CGFloat = 30
-private let loadBatchSize = 50
 
 struct AlbumGridView<ExpansionContent: View>: View {
     @Environment(UiStore.self)
@@ -132,8 +131,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                     index: rowIndex
                                 )
                             ) {
-                                await loadBatch(
-                                    around: rowIndex * columnCount
+                                await list.loadPage(
+                                    containing: rowIndex * columnCount
                                 )
                             }
                             AlbumExpansionSlot(
@@ -227,7 +226,7 @@ extension AlbumGridView {
             }
 
             // Load the page that holds the target so its row exists to scroll to.
-            await loadBatch(around: index)
+            await list.loadPage(containing: index)
             if Task.isCancelled {
                 return
             }
@@ -240,16 +239,6 @@ extension AlbumGridView {
         catch {
             uiStore.showError(error)
         }
-    }
-
-    /// Load the batch of albums centered on `albumIndex` so its row is
-    /// materialized. Shared by lazy row loading and by `revealAlbum`, which
-    /// scrolls to a possibly-unfetched album — one definition of the batch
-    /// bounds keeps the two from drifting.
-    private func loadBatch(around albumIndex: Int) async {
-        let first = max(0, albumIndex - loadBatchSize / 2)
-        let end = min(first + loadBatchSize, list.totalCount)
-        await list.loadRange(offset: first, limit: end - first)
     }
 
     /// Dispatch a click by its modifiers (read at tap time): cmd toggles the

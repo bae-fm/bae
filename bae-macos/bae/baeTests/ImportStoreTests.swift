@@ -628,6 +628,82 @@ struct ImportListPageSourceTests {
         #expect(subscription.requestedWindows.last?.map(\.offset) == [0])
     }
 
+    @MainActor
+    @Test("a redelivered window and a new one both keep every loaded item")
+    func deliveriesNeverDropALoadedItem() async throws {
+        let total = 60
+        let keys = (0..<total).map { String(format: "/w/%03d", $0) }
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        let importStore = ImportStore()
+        let list = PaginatedList<BridgeImportListItem>(
+            pageSource: source,
+            ingest: { importStore.ingest($0) },
+            onError: { _ in },
+            onSnapshot: { ids, _ in importStore.retainItems(ids) }
+        )
+        let firstPage = Array(keys[0..<50])
+        let secondPage = Array(keys[50..<60])
+
+        async let initial: Void = list.loadInitial()
+        try await settle()
+        subscription.deliver(
+            snapshot([(0, 50, firstPage)], totalCount: UInt64(total))
+        )
+        await initial
+        try await settle()
+        #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
+
+        // A commit that leaves this window's rows exactly where they were —
+        // an identification tick on a row further down the queue. The value
+        // repeats, and nothing it repeats may go missing.
+        subscription.deliver(
+            snapshot([(0, 50, firstPage)], totalCount: UInt64(total))
+        )
+        try await settle()
+        #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
+
+        // Scrolling past the page boundary registers a second window. The
+        // first window's rows are still on screen, so they stay resolvable
+        // while the value that answers the new window is still in flight.
+        async let next: Void = list.loadPage(containing: 55)
+        try await settle()
+        #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
+
+        subscription.deliver(
+            snapshot(
+                [(0, 50, firstPage), (50, 50, secondPage)],
+                totalCount: UInt64(total)
+            )
+        )
+        await next
+        try await settle()
+        #expect(loadedKeys(list, importStore, 0..<60) == keys)
+    }
+
+    /// The keys the list holds at `positions`, resolved the way a row does:
+    /// the position's id, then that id's item in the store. A position either
+    /// side of that misses and renders as an empty row.
+    @MainActor
+    private func loadedKeys(
+        _ list: PaginatedList<BridgeImportListItem>,
+        _ importStore: ImportStore,
+        _ positions: Range<Int>
+    ) -> [String] {
+        positions.compactMap { position in
+            guard let id = list.idAt(position),
+                let item = importStore.items[id]
+            else { return nil }
+            switch item {
+            case .candidate(_, let row): return row.candidateKey
+            case .groupHeader, .boundary, .invalid: return nil
+            }
+        }
+    }
+
     /// Let the source's delivery task reach the main actor.
     private func settle() async throws {
         for _ in 0..<10 {

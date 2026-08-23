@@ -5,11 +5,6 @@ import SwiftUI
 
 private let logger = Logger.bae("StorageTable")
 
-/// How many rows the table fetches per `loadRange` call. A row whose id isn't
-/// loaded yet kicks off the batch covering its position; `loadRange` coalesces
-/// concurrent asks for the same batch into one fetch.
-private let storageLoadBatchSize = 100
-
 // MARK: - Items
 
 /// A root row: one release at a fixed list position. Reference identity is
@@ -340,23 +335,18 @@ extension StorageTableView {
 
         // MARK: Lazy loading
 
-        /// Kick off the batch covering `position` if its id isn't loaded yet.
-        /// `loadRange` coalesces concurrent asks for the same batch, so calling
-        /// this from every visible row issues at most one fetch per batch.
+        /// Kick off the page holding `position` if its id isn't loaded yet.
+        /// `loadPage` coalesces concurrent asks for the same page, so calling
+        /// this from every visible row issues at most one fetch per page.
         /// Reloading after the fetch preserves expansion/selection because the
         /// root items are stable.
         private func ensureLoaded(positionOf position: Int) {
             guard list.idAt(position) == nil else {
                 return
             }
-            let batchStart =
-                (position / storageLoadBatchSize) * storageLoadBatchSize
             let currentList = list
             Task { @MainActor in
-                await currentList.loadRange(
-                    offset: batchStart,
-                    limit: storageLoadBatchSize
-                )
+                await currentList.loadPage(containing: position)
                 // Only the still-mounted list should drive a reload; a tab
                 // switch swaps the list before this resolves.
                 guard currentList === self.list else {

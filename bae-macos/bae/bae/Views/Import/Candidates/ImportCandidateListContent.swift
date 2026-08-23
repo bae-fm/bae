@@ -1,8 +1,6 @@
 import BaeKit
 import SwiftUI
 
-private let listLoadBatchSize = 50
-
 func releaseGroupDisclosureID(
     _ key: BridgeFolderReleaseDecisionKey
 ) -> ReleaseGroupDisclosureID {
@@ -13,7 +11,7 @@ func releaseGroupDisclosureID(
 
 /// The import sidebar: one paged list over the tab the slot is showing. Which
 /// items exist, in what order, under which header and in which tab is core's
-/// answer — the list asks for a window of offsets and renders what comes back.
+/// answer — the list asks for a page of offsets and renders what comes back.
 /// Everything around it comes from the same value's summary.
 struct ImportCandidateListContent: View {
     /// Read at the leaf: the loaded entries and the chrome around them come
@@ -374,7 +372,7 @@ extension ImportCandidateListContent {
     }
 
     /// Virtualized rows over the paged list: each visible position loads the
-    /// window around it and renders whatever core put at that offset.
+    /// page it sits in and renders whatever core put at that offset.
     private func entryList(
         _ list: PaginatedList<BridgeImportListItem>
     ) -> some View {
@@ -384,15 +382,7 @@ extension ImportCandidateListContent {
                     .task(
                         id: RowLoadID(epoch: list.loadEpoch, index: index)
                     ) {
-                        let first = max(0, index - listLoadBatchSize / 2)
-                        let end = min(
-                            first + listLoadBatchSize,
-                            list.totalCount
-                        )
-                        await list.loadRange(
-                            offset: first,
-                            limit: end - first
-                        )
+                        await list.loadPage(containing: index)
                     }
             }
         }
