@@ -423,10 +423,10 @@ internal sealed class ImportMappingPane : UserControl
         }
     }
 
-    /// <summary>"CD · 1996 · 9 tracks", from the live edit and the live table so
-    /// it tracks what is being committed. Empty pressing fields drop out rather
-    /// than leaving stray separators, and reading the folder as Unknown says so
-    /// where a pressing would be.</summary>
+    /// <summary>"CD · 1996 · XE · 463360 2 · 10 tracks", from the live edit and
+    /// the live table so it tracks what is being committed. Empty pressing
+    /// fields drop out rather than leaving stray separators, and reading the
+    /// folder as Unknown says so where a pressing would be.</summary>
     private string MetaLine()
     {
         if (_candidate?.Edit is not { } edit)
@@ -436,7 +436,13 @@ internal sealed class ImportMappingPane : UserControl
         var mapping = _candidate.Mapping;
         var lead = _candidate.Identity == ImportIdentity.Unknown
             ? new[] { Loc.Core("ui.import.identity.from_file_tags") }
-            : new[] { edit.Pressing.Format, edit.Pressing.Year };
+            : new[]
+            {
+                edit.Pressing.Format,
+                edit.Pressing.Year,
+                edit.Pressing.Country,
+                edit.Pressing.CatalogNumber,
+            };
         return string.Join(
             "  ·  ",
             lead

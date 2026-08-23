@@ -74,8 +74,6 @@ private struct ImportOperations: Sendable {
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
     let dropCandidateTrack: @Sendable (String, String) async throws -> Void
-    let claimForPick:
-        @Sendable (String, BridgeMetadataResult) -> BridgeClaimLine?
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
@@ -183,9 +181,6 @@ private struct ImportOperations: Sendable {
                     trackId: $1
                 )
             },
-            claimForPick: {
-                handle.claimForPick(candidateKey: $0, result: $1)
-            },
             candidateRuntime: {
                 handle.candidateRuntime(candidateKey: $0)
             },
@@ -281,10 +276,6 @@ final class Importer: Sendable, Observable {
                 _,
                 _ in
             },
-        claimForPick:
-            @escaping @Sendable (
-                String, BridgeMetadataResult
-            ) -> BridgeClaimLine? = { _, _ in nil },
         candidateRuntime:
             @escaping @Sendable (String) -> BridgeCandidateRuntimeSnapshot? = {
                 _ in nil
@@ -318,7 +309,6 @@ final class Importer: Sendable, Observable {
             setCandidateEditField: setCandidateEditField,
             setCandidateTrackEdit: setCandidateTrackEdit,
             dropCandidateTrack: dropCandidateTrack,
-            claimForPick: claimForPick,
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
             startImport: startImport
@@ -486,13 +476,6 @@ final class Importer: Sendable, Observable {
 /// subscribed to the stream that keeps it current. Every one of these is a
 /// read: they start nothing and change nothing.
 extension Importer {
-    func claimForPick(
-        _ candidateKey: String,
-        _ result: BridgeMetadataResult
-    ) -> BridgeClaimLine? {
-        operations.claimForPick(candidateKey, result)
-    }
-
     /// What is in flight for one key right now — the read a view does once
     /// when it appears, after it has subscribed to the changes.
     func candidateRuntime(_ candidateKey: String)

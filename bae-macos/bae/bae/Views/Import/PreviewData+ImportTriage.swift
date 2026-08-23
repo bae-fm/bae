@@ -204,7 +204,10 @@
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
-            claim: claimBridge.choice
+            claim: .release(
+                releaseId: releaseDetailBridge.releaseId,
+                source: releaseDetailBridge.source
+            )
         )
 
         static let triageRowPickAPressing = triageRow(
@@ -749,18 +752,6 @@
                 edit: releaseSeedBridge,
                 trackIdPrefix: "import-track"
             )
-
-        /// What picking `releaseDetailBridge` claims: the pressing itself, so
-        /// the header states no separate metadata source.
-        static let claimBridge = BridgeClaimLine(
-            choice: .release(
-                releaseId: releaseDetailBridge.releaseId,
-                source: releaseDetailBridge.source
-            ),
-            evidence: .discIdAlone,
-            release: "CD \u{00b7} 1996 \u{00b7} US \u{00b7} 6006-2",
-            trackCount: releaseDetailBridge.trackCount
-        )
 
         /// Per-track audio candidate (nine FLAC files) plus one cover image, two
         /// documents, and a sheet describing nothing yet — the file-per-track

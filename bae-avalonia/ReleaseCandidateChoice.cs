@@ -18,9 +18,6 @@ public sealed class ReleaseCandidateChoice
     internal BridgeMetadataSource Source => _pressing.Source;
     public string ReleaseId => _pressing.ReleaseId;
 
-    /// <summary>The picked row itself, for the claim bae-core derives from it.</summary>
-    internal BridgeMetadataResult Pressing => _pressing;
-
     /// <summary>The one-line label the picker shows, omitting absent fields.</summary>
     public string Summary
     {

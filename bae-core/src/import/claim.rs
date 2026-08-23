@@ -1,21 +1,20 @@
-//! What an import claims to hold, and where its metadata came from.
+//! What identified the release an import claims.
 //!
 //! Picking a release claims that pressing — there is no album-only claim to
-//! record. What is left to state is the evidence ([`ClaimEvidence`]): which
-//! signal turned the release up, so the user can weigh their own claim against
-//! it. This module turns the picked release and that evidence into the one
-//! [`ClaimLine`] re-identify renders.
+//! record. What is left to state is the evidence: which signal turned the
+//! release up, so the user can weigh their own claim against it. The header
+//! draws it as a badge; this module is what decides it.
 
 use crate::identify::IdentifyState;
-use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
-use crate::import::{IdentityChoice, MetadataRef};
+use crate::import::search::MetadataResult;
+use crate::import::MetadataRef;
 
 /// What identified the release a claim points at.
 ///
 /// A disc ID is a fingerprint of the physical disc's table of contents, so a
 /// lookup that returns one release has named the disc in the room. A barcode is
 /// printed on the product and reissues reuse it; a catalog number or a typed
-/// search names an edition at best. The claim line states which of these turned
+/// search names an edition at best. The header states which of these turned
 /// the release up so the user can weigh their own claim against it — that is
 /// the whole of what this decides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,80 +28,6 @@ pub enum ClaimEvidence {
     Barcode,
     /// A catalog number, or a search the user typed, found it.
     Search,
-}
-
-/// A picked release reduced to the facts a claim line names.
-///
-/// Both paths that pick a release build one: the import confirm pane, from the
-/// detail it prefetched ([`ClaimRelease::from_detail`]), and re-identify, from
-/// the row the user clicked — it commits straight from the pick and never
-/// prefetches, so the transport that carries that row builds this field by
-/// field. A row states a track count only when the response it came from
-/// carried a tracklist, which is why `track_count` is optional.
-///
-/// Neither the album title nor the artist is here — the header already states
-/// those above the claim line, and repeating them would say nothing about
-/// which pressing this is.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClaimRelease {
-    pub release_ref: MetadataRef,
-    pub year: Option<i32>,
-    pub format: Option<String>,
-    pub country: Option<String>,
-    pub catalog_number: Option<String>,
-    /// The source's own track count, where it has stated one. `None` on the
-    /// search path, whose responses carry no tracklist at all.
-    pub track_count: Option<u32>,
-}
-
-impl ClaimRelease {
-    /// From the detail the import confirm pane prefetched, which always knows
-    /// the source's track count because it fetched the tracklist.
-    pub fn from_detail(detail: &ImportSearchReleaseDetail) -> Self {
-        Self {
-            release_ref: MetadataRef::new(detail.release_id.clone(), detail.source),
-            year: detail.year,
-            format: detail.format.clone(),
-            country: detail.country.clone(),
-            catalog_number: detail.catalog_number.clone(),
-            track_count: Some(detail.track_count),
-        }
-    }
-}
-
-/// The release header's claim line: what the import claims you hold, and why.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClaimLine {
-    /// The claim this import will record, and what commit writes.
-    pub choice: IdentityChoice,
-    /// What identified the release, for the sentence's trailing clause.
-    pub evidence: ClaimEvidence,
-    /// The picked release by its pressing facts — format, year, country and
-    /// catalog number, `·`-joined in that order. `None` when the source states
-    /// none of them, which is a real thing a release stub does; the sentence
-    /// then reads without a description rather than with an empty slot or an
-    /// album title standing in for a pressing fact.
-    pub release: Option<String>,
-    /// The picked release's track count, where the source stated one. It rides
-    /// the metadata-from line, because a differing track count is what tells a
-    /// remaster from the edition it reissues when nothing else does.
-    pub track_count: Option<u32>,
-}
-
-/// The claim line for holding `release`, under a candidate whose
-/// identification left `state`.
-///
-/// The identify state supplies the evidence clause: which signal turned this
-/// release up, and how many releases it turned up with.
-pub fn claim_line(state: &IdentifyState, release: &ClaimRelease) -> ClaimLine {
-    ClaimLine {
-        choice: IdentityChoice::Release {
-            release_ref: release.release_ref.clone(),
-        },
-        evidence: evidence_for(state, &release.release_ref),
-        release: describe_release(release),
-        track_count: release.track_count,
-    }
 }
 
 /// What a candidate's identify state says about one release.
@@ -180,27 +105,6 @@ fn disc_id_evidence(match_count: usize) -> ClaimEvidence {
 /// sources can hand out the same id string.
 fn names(result: &MetadataResult, release_ref: &MetadataRef) -> bool {
     result.source == release_ref.source && result.release_id == release_ref.id
-}
-
-/// The picked release's pressing facts as one `·`-joined line, or `None` when
-/// it states none of them.
-fn describe_release(release: &ClaimRelease) -> Option<String> {
-    let parts: Vec<String> = [
-        release.format.clone(),
-        release.year.map(|year| year.to_string()),
-        release.country.clone(),
-        release.catalog_number.clone(),
-    ]
-    .into_iter()
-    .flatten()
-    .map(|part| part.trim().to_string())
-    .filter(|part| !part.is_empty())
-    .collect();
-    if parts.is_empty() {
-        None
-    } else {
-        Some(parts.join(" · "))
-    }
 }
 
 #[cfg(test)]

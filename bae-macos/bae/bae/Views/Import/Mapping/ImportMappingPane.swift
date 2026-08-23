@@ -167,10 +167,10 @@ struct ImportMappingPane: View {
         return title.isEmpty ? candidate.displayName : title
     }
 
-    /// "CD · 1996 · 9 tracks" from the live editor and the live table, so it
-    /// tracks what is being edited. Empty pressing fields drop out rather than
-    /// leaving stray separators, and reading the folder as Unknown says so
-    /// where a pressing would be.
+    /// "CD · 1996 · XE · 463360 2 · 10 tracks" from the live editor and the
+    /// live table, so it tracks what is being edited. Empty pressing fields
+    /// drop out rather than leaving stray separators, and reading the folder as
+    /// Unknown says so where a pressing would be.
     private var headerMetaLine: String {
         guard let values = candidate.edit else {
             return candidate.files.formatLabel
@@ -180,7 +180,12 @@ struct ImportMappingPane: View {
         let lead =
             candidate.identity == .unknown
             ? [coreString("ui.import.identity.from_file_tags")]
-            : [values.pressing.format, values.pressing.year]
+            : [
+                values.pressing.format,
+                values.pressing.year,
+                values.pressing.country,
+                values.pressing.catalogNumber,
+            ]
         return (lead + [trackText])
             .filter { !$0.isEmpty }
             .joined(separator: " \u{00b7} ")

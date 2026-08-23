@@ -444,19 +444,6 @@ pub enum AutomationClaimEvidence {
     Search,
 }
 
-/// What a pick claims, and the release the metadata came from. `choice` is the
-/// pressing claim a pick records, and what `import_start` carries to commit
-/// it.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationClaimLine {
-    pub choice: AutomationIdentityChoice,
-    pub evidence: AutomationClaimEvidence,
-    /// The picked release's pressing facts, `·`-joined, or absent when it
-    /// states none.
-    pub release: Option<String>,
-    pub track_count: Option<u32>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationReleaseDetail {
     pub release_id: String,

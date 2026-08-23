@@ -875,13 +875,6 @@ internal static partial class NativeBae
         AppHandle handle, string candidateKey, string trackId) =>
         CaptureError(() => Await(() => handle.DropCandidateTrack(candidateKey, trackId)));
 
-    /// <summary>What picking a release under a candidate claims, and where its
-    /// metadata comes from. The re-identify dialog's path: it commits straight
-    /// from the picked row, so it never prefetches.</summary>
-    internal static BridgeClaimLine ClaimForPick(
-        AppHandle handle, string candidateKey, BridgeMetadataResult result) =>
-        handle.ClaimForPick(candidateKey, result);
-
     internal static LiveSubscription SubscribeReleaseLibraryStatus(
         AppHandle handle,
         BridgeMetadataSource source,

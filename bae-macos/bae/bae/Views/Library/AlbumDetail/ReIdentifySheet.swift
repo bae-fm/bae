@@ -50,10 +50,6 @@ struct ReIdentifySheet: View {
     /// footer. `nil` until a row is picked.
     @State
     private var selectedResult: BridgeMetadataResult?
-    /// What that pick claims — the pressing, and what identified it. `nil`
-    /// until a row is picked.
-    @State
-    private var claim: BridgeClaimLine?
 
     private enum Phase: Equatable {
         case identifying
@@ -178,30 +174,37 @@ struct ReIdentifySheet: View {
                 onAddAsUnknown: { commit(.unknown) },
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers
-                // post-commit edits). Picking a pressing claims it; the
-                // footer states that and commits via `re_identify_release`.
+                // post-commit edits). Picking a pressing claims it, and the
+                // footer commits it via `re_identify_release`.
                 onSelect: { result in
                     selectedResult = result
-                    claim = importer.claimForPick(key, result)
                 },
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if let claim {
-                selectionFooter(for: claim)
+            if let selectedResult {
+                selectionFooter(for: selectedResult)
             }
         }
     }
 
     // MARK: - Selection footer
 
-    /// Footer shown once a pressing is picked: what that pick claims, and the
-    /// commit. Re-identify takes the same `IdentityChoice` an import does, so
-    /// it states the claim the same way.
-    private func selectionFooter(for claim: BridgeClaimLine) -> some View {
+    /// Footer shown once a pressing is picked: the commit for it. Re-identify
+    /// records the same `IdentityChoice` an import does — the picked pressing.
+    private func selectionFooter(
+        for result: BridgeMetadataResult
+    ) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            ImportClaimLine(claim: claim)
-            Button("Set identity") { commit(claim.choice) }
-                .buttonStyle(.borderedProminent)
+            Spacer(minLength: 0)
+            Button("Set identity") {
+                commit(
+                    .release(
+                        releaseId: result.releaseId,
+                        source: result.source
+                    )
+                )
+            }
+            .buttonStyle(.borderedProminent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

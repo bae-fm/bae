@@ -813,7 +813,6 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(url: String) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(import, import_claim_for_pick => claim_for_pick(candidate_key: &str, release: &crate::import::ClaimRelease) -> crate::import::ClaimLine);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -188,24 +188,6 @@ fn cover_image_source(source: bae_core::import::CoverImageSource) -> BridgeCover
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeClaimLine {
-    pub(crate) fn from_core(claim: bae_core::import::ClaimLine) -> Self {
-        let bae_core::import::ClaimLine {
-            choice,
-            evidence,
-            release,
-            track_count,
-        } = claim;
-        BridgeClaimLine {
-            choice: BridgeIdentityChoice::from_core(choice),
-            evidence: BridgeClaimEvidence::from_core(evidence),
-            release,
-            track_count,
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
 impl BridgeClaimEvidence {
     pub(crate) fn from_core(evidence: bae_core::import::ClaimEvidence) -> Self {
         use bae_core::import::ClaimEvidence;

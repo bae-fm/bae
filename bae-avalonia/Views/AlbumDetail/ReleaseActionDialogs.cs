@@ -146,11 +146,8 @@ internal sealed class ReleaseActionDialogs
             var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceBox } };
             var searchButton = new Button { Content = Loc.Chrome("action.search") };
 
-            // What the picked pressing claims, stated the way the import
-            // confirm pane states it — re-identify writes the same
-            // IdentityChoice. Hidden until a result is picked.
-            BridgeClaimLine? claim = null;
-            var claimRow = new StackPanel { IsVisible = false };
+            // The pressing the user picked, pending the confirm that commits
+            // it — re-identify writes the same IdentityChoice an import does.
             var pickedIndex = -1;
 
             var candidates = new List<ReleaseCandidateChoice>();
@@ -158,20 +155,6 @@ internal sealed class ReleaseActionDialogs
 
             var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
             confirm.IsEnabled = false;
-
-            void ShowClaim()
-            {
-                claim = pickedIndex >= 0 && pickedIndex < candidates.Count
-                    ? _app.Import.ClaimForPick(key, candidates[pickedIndex].Pressing).Claim
-                    : null;
-                confirm.IsEnabled = claim is not null;
-                claimRow.Children.Clear();
-                if (claim is { } picked)
-                {
-                    claimRow.Children.Add(ClaimLineView.Build(picked));
-                }
-                claimRow.IsVisible = claim is not null;
-            }
 
             void ToggleSignal(string kind, string value)
             {
@@ -241,6 +224,7 @@ internal sealed class ReleaseActionDialogs
                     return;
                 }
                 results.ApplyManualResults();
+                pickedIndex = -1;
                 candidates = search.Candidates ?? new List<ReleaseCandidateChoice>();
                 resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
                 status.Text = Loc.Chrome("search.no_matches");
@@ -252,16 +236,18 @@ internal sealed class ReleaseActionDialogs
             resultsList.SelectionChanged += (_, _) =>
             {
                 pickedIndex = resultsList.SelectedIndex;
-                ShowClaim();
+                confirm.IsEnabled = pickedIndex >= 0 && pickedIndex < candidates.Count;
             };
 
             confirm.Click += async (_, _) =>
             {
-                if (claim is not { } picked)
+                if (pickedIndex < 0 || pickedIndex >= candidates.Count)
                 {
                     return;
                 }
-                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, picked.Choice);
+                var picked = candidates[pickedIndex];
+                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(
+                    releaseId, new BridgeIdentityChoice.Release(picked.ReleaseId, picked.Source));
                 if (!current)
                 {
                     return;
@@ -301,7 +287,6 @@ internal sealed class ReleaseActionDialogs
             column.Children.Add(pipelineStatus);
             column.Children.Add(badgeHost);
             column.Children.Add(resultsList);
-            column.Children.Add(claimRow);
             column.Children.Add(artistField);
             column.Children.Add(albumField);
             column.Children.Add(sourceField);

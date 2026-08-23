@@ -282,22 +282,6 @@ impl ImportServiceHandle {
             && only.source_tracks.is_some())
     }
 
-    /// What holding `release` under `candidate_key` claims, and where its
-    /// metadata comes from.
-    ///
-    /// Re-identify's line: it commits straight from the row the user clicked,
-    /// so the header states the claim from that row plus the candidate's own
-    /// identify evidence. The import pane reads the evidence off the
-    /// candidate's own value instead, and draws a badge rather than a
-    /// sentence.
-    pub fn claim_for_pick(
-        &self,
-        candidate_key: &str,
-        release: &crate::import::ClaimRelease,
-    ) -> crate::import::ClaimLine {
-        crate::import::claim_line(&self.identify_state(candidate_key), release)
-    }
-
     /// Decide a candidate's identity — the pressing the user picked, or the
     /// decision to read the folder's own tags.
     ///
@@ -329,17 +313,6 @@ impl ImportServiceHandle {
             .await?;
         self.announce_identity_pick(candidate_key);
         Ok(())
-    }
-
-    /// A candidate's identify state, or `Idle` for a key the service has
-    /// recorded nothing against. Absence is the designed initial state, not an
-    /// error: a folder whose pipeline hasn't run and a re-identify key opened
-    /// this instant both read as "nothing matched yet".
-    fn identify_state(&self, candidate_key: &str) -> crate::identify::IdentifyState {
-        self.runtime
-            .get(candidate_key)
-            .and_then(|runtime| runtime.identify)
-            .unwrap_or(crate::identify::IdentifyState::Idle)
     }
 
     /// The stored verdict describing `candidate_key`'s current file shape —
