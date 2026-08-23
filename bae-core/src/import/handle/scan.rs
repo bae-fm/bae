@@ -380,7 +380,7 @@ impl ImportServiceHandle {
     /// that names no folder — an invalid candidate has no roles or bindings to
     /// edit. Each caller names the refusal in its own terms rather than
     /// borrowing the other's.
-    async fn actionable_candidate_files(
+    pub(super) async fn actionable_candidate_files(
         &self,
         candidate_key: &str,
     ) -> Result<

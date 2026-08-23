@@ -356,7 +356,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
-                probed_total_duration_ms: 0,
+                durations: crate::import::probe::ProbedDurations::default(),
             },
             CallPriority::Interactive,
         );

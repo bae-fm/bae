@@ -642,6 +642,69 @@ impl AppHandle {
         .await
     }
 
+    /// Record the cover the user chose for a candidate. Nothing comes back:
+    /// the per-candidate subscription delivers the pane's next value.
+    pub async fn set_candidate_cover(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        cover: BridgeCoverSelection,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_cover(&candidate_key, cover.into_core())
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
+    /// Record one album-level field of the candidate's metadata form as the
+    /// user left it.
+    pub async fn set_candidate_edit_field(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        field: crate::types::BridgeCandidateEditField,
+        value: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_edit_field(&candidate_key, field.into_core(), value)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
+    /// Record one mapping-table row as the user left it.
+    pub async fn set_candidate_track_edit(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        track: crate::types::BridgeRawTrackEdit,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_track_edit(&candidate_key, track.into_core())
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
+    /// Take one mapping-table row out of the import.
+    pub async fn drop_candidate_track(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        track_id: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_drop_candidate_track(&candidate_key, track_id)
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
     /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a
     /// release. Writes the user's edited values directly without touching
     /// identity, `metadata_source`, or cached source payloads.

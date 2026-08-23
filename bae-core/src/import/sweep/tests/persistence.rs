@@ -33,7 +33,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
             content_hash: fixture.content_hash(&late),
             folder_path: late.to_string_lossy().into_owned(),
             verdict: TerminalVerdict::NotFoundAnywhere,
-            probed_total_duration_ms: 0,
+            signals: settled_signals(Default::default()),
             expected_edit_revision: 0,
             identity_pick: None,
         })
@@ -124,6 +124,8 @@ fn row_with_verdict(
             probed_total_duration_ms: 0,
             identified_at: fixed_now(),
         }),
+        durations: Default::default(),
+        signals: None,
         file_edits: Default::default(),
         identity_pick: None,
     }
@@ -189,7 +191,7 @@ async fn selecting_an_answered_candidate_starts_nothing() {
                 content_hash: fixture.content_hash(&dir),
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
-                probed_total_duration_ms: fixture.probed_total_ms(&dir),
+                signals: settled_signals(fixture.probed_durations(&dir)),
                 expected_edit_revision: 0,
                 identity_pick: None,
             },
@@ -785,4 +787,80 @@ async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
         }
     }
     panic!("the row is in the queue");
+}
+
+/// A verdict lands with everything identification learned: what each of the
+/// folder's audio units plays for, and the signals it settled on. The pane
+/// reads those back instead of opening the folder or extracting again.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_stored_verdict_carries_its_durations_and_signals() {
+    let fixture = Fixture::new("verdict-carries-signals").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json(
+            "mb-signals-1",
+            "rg-signals-1",
+            &[probed / 2, probed - probed / 2],
+        ),
+    );
+    fixture.provider.route(
+        "/release/mb-signals-1?",
+        200,
+        release_json(
+            "mb-signals-1",
+            "rg-signals-1",
+            &[probed / 2, probed - probed / 2],
+        ),
+    );
+    fixture.scan(1).await;
+
+    fixture.sweep_once().await;
+
+    let row = fixture.stored_for(&dir).await.expect("a verdict is stored");
+    assert_eq!(
+        row.durations,
+        fixture.probed_durations(&dir),
+        "every audio unit's measurement rides the verdict"
+    );
+    assert_eq!(row.durations.total_ms(), probed);
+    let signals = row.signals.expect("the settled signals are stored");
+    assert!(
+        matches!(
+            signals.disc_id,
+            crate::signals::DiscIdSignal::Computed { .. }
+        ),
+        "the disc ID the lookup used reads back: {:?}",
+        signals.disc_id
+    );
+    assert_eq!(signals.durations, row.durations);
+}
+
+/// A verdict with no signals behind it is not a verdict: the state machine
+/// only reaches a terminal state from a settled snapshot, so a row with
+/// nothing recorded is refused and the next pass asks again.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_verdict_with_no_signals_writes_nothing() {
+    let fixture = Fixture::new("verdict-without-signals").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.scan(1).await;
+
+    let wrote = crate::import::sweep::settle::save(
+        &fixture.context(),
+        &CancellationToken::new(),
+        &dir.to_string_lossy(),
+        &fixture.content_hash(&dir),
+        &dir.to_string_lossy(),
+        &TerminalVerdict::NotFoundAnywhere,
+        None,
+        0,
+    )
+    .await;
+
+    assert!(!wrote);
+    assert!(fixture.stored_for(&dir).await.is_none());
 }

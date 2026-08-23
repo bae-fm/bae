@@ -74,6 +74,20 @@ fn sample_verdict() -> TerminalVerdict {
     }
 }
 
+/// Settled signals with nothing found and a stated total — what a verdict
+/// carries when a test cares only about the numbers stored beside it.
+fn sample_signals(probed_total_duration_ms: u64) -> crate::signals::Signals {
+    crate::signals::Signals {
+        disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
+        barcode: crate::signals::BarcodeSignal::Absent,
+        text: crate::signals::TextSignal::Settled {
+            catalogs: Vec::new(),
+            free_text: Vec::new(),
+        },
+        durations: crate::import::probe::ProbedDurations::totalling(probed_total_duration_ms),
+    }
+}
+
 fn new_candidate_row(
     content_hash: &str,
     folder_path: &str,
@@ -84,7 +98,7 @@ fn new_candidate_row(
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
-        probed_total_duration_ms,
+        signals: sample_signals(probed_total_duration_ms),
         expected_edit_revision: 0,
         identity_pick: None,
     }
@@ -378,7 +392,7 @@ async fn no_row_is_written_for_a_transport_failure() {
                     catalogs: vec![],
                     free_text: vec![],
                 },
-                probed_total_duration_ms: 0,
+                durations: crate::import::probe::ProbedDurations::default(),
             },
         },
     );

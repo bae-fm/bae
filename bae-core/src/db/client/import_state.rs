@@ -1,12 +1,17 @@
 use super::*;
 
+mod duration_rows;
 mod edit_rows;
+mod pane_rows;
 mod rows;
+mod signal_rows;
 mod verdict_rows;
 
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
+use duration_rows::{delete_durations, delete_slice_durations, insert_durations};
 use edit_rows::{delete_file_edits, insert_file_edits};
 pub(super) use rows::{load_states_on, pick_of};
+use signal_rows::{delete_signals, insert_signals};
 
 use rows::{load_candidate_file_edits_on, pick_columns};
 use verdict_rows::{delete_matches, insert_matches, verdict_columns};
@@ -357,7 +362,9 @@ impl Database {
                 verdict.expected_edit_revision
             ))
         })?;
-        let probed = i64::try_from(verdict.probed_total_duration_ms).map_err(|_| {
+        // The column is the sum of the duration rows this same write lays
+        // down, derived here so the two can never disagree.
+        let probed = i64::try_from(verdict.signals.probed_total_duration_ms()).map_err(|_| {
             DbError::Message("a probed total exceeds SQLite's integer range".to_string())
         })?;
         let now = self.inner.clock.now().to_rfc3339();
@@ -392,6 +399,11 @@ impl Database {
         self.call(move |sql| {
             let columns = verdict_columns(&verdict.verdict);
             let pick = verdict.identity_pick.as_ref().map(pick_columns);
+            // A verdict never replaces a person's pick, so only an
+            // identification pick can be superseded here — and only then does
+            // the metadata typed over the release it named go with it.
+            let superseded = stored_pick(sql, &verdict.content_hash)?
+                .filter(|stored| stored.author == PickAuthor::Identification);
             // A pick identification made belongs to the verdict that made it,
             // so this write replaces it — with the new verdict's own
             // conclusion, or with nothing when it concluded none. A pick a
@@ -466,6 +478,15 @@ impl Database {
                 // superseded ones go in the same transaction that replaces it.
                 delete_matches(sql, &verdict.content_hash)?;
                 insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
+                if let Some(superseded) = superseded {
+                    if superseded.identity != pick_identity(verdict.identity_pick.as_ref()) {
+                        clear_pick_dependent_rows(sql, &verdict.content_hash)?;
+                    }
+                }
+                delete_durations(sql, &verdict.content_hash)?;
+                insert_durations(sql, &verdict.content_hash, &verdict.signals.durations)?;
+                delete_signals(sql, &verdict.content_hash)?;
+                insert_signals(sql, &verdict.content_hash, &verdict.signals)?;
             }
             Ok(wrote)
         })
@@ -586,6 +607,16 @@ impl Database {
                 )));
             }
             delete_matches(sql, &content_hash)?;
+            // A binding change carves a different container, so every slice
+            // measurement describes a shape that is gone; a whole file's own
+            // length is a fact about its bytes and the hash covers those, so
+            // it stays. The disc ID is recomputed for the same reason the
+            // verdict is cleared, which takes the signals with it. And the
+            // table's rows are a different set now, so the row edits addressed
+            // them by identities that no longer mean the same thing.
+            delete_slice_durations(sql, &content_hash)?;
+            delete_signals(sql, &content_hash)?;
+            pane_rows::delete_track_edits(sql, &content_hash)?;
             delete_file_edits(sql, &content_hash)?;
             insert_file_edits(sql, &content_hash, &edits)?;
             let updated_candidates = settle_scanned_candidates(
@@ -636,6 +667,11 @@ impl Database {
         let pick = pick.clone();
         self.call(move |sql| {
             let columns = pick_columns(&pick);
+            // An edit to release A's year is not an edit to release B's, and
+            // the table's row identities mean different tracks under a
+            // different release. Re-picking the same release keeps them.
+            let replaced = stored_pick(sql, &content_hash)?
+                .is_some_and(|stored| stored.identity != pick_identity(Some(&pick)));
             let changed = sql.execute(
                 "INSERT INTO import_candidate_state \
                      (content_hash, folder_path, pick_kind, pick_source, pick_release_id, \
@@ -662,6 +698,9 @@ impl Database {
                 return Err(DbError::Message(format!(
                     "identity pick write changed {changed} rows; expected exactly one"
                 )));
+            }
+            if replaced {
+                clear_pick_dependent_rows(sql, &content_hash)?;
             }
             Ok(())
         })
@@ -702,6 +741,87 @@ impl Database {
         self.read(move |sql| Ok(load_states_on(&sql, Some(&content_hash))?.remove(&content_hash)))
             .await
     }
+}
+
+/// What a candidate's pick names, as the three columns that say which release
+/// it is. The claim is deliberately left out: lowering a claim on the same
+/// release is not picking a different release.
+type PickIdentity = (String, Option<String>, Option<String>);
+
+/// The pick a candidate row holds, with who made it.
+struct StoredPick {
+    author: PickAuthor,
+    identity: Option<PickIdentity>,
+}
+
+fn pick_identity(pick: Option<&crate::import::IdentityPick>) -> Option<PickIdentity> {
+    pick.map(|pick| {
+        let columns = pick_columns(pick);
+        (
+            columns.kind.to_string(),
+            columns.source.map(str::to_string),
+            columns.release_id.map(str::to_string),
+        )
+    })
+}
+
+fn stored_pick(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+) -> Result<Option<StoredPick>, DbError> {
+    struct PickRow {
+        kind: Option<String>,
+        source: Option<String>,
+        release_id: Option<String>,
+        author: Option<String>,
+    }
+    let row = sql
+        .query_row(
+            "SELECT pick_kind, pick_source, pick_release_id, identity_pick_author \
+             FROM import_candidate_state WHERE content_hash = ?",
+            [content_hash],
+            |row| {
+                Ok(PickRow {
+                    kind: row.get(0)?,
+                    source: row.get(1)?,
+                    release_id: row.get(2)?,
+                    author: row.get(3)?,
+                })
+            },
+        )
+        .optional()?;
+    let Some(PickRow {
+        kind,
+        source,
+        release_id,
+        author: Some(author),
+    }) = row
+    else {
+        return Ok(None);
+    };
+    let author = match author.as_str() {
+        "user" => PickAuthor::User,
+        "identification" => PickAuthor::Identification,
+        other => {
+            return Err(DbError::Message(format!(
+                "import candidate column identity_pick_author holds {other:?}"
+            )))
+        }
+    };
+    Ok(Some(StoredPick {
+        author,
+        identity: kind.map(|kind| (kind, source, release_id)),
+    }))
+}
+
+/// What belongs to a pick and not to the folder: the metadata typed over the
+/// picked release, the row edits addressed by its track identities, and the
+/// cover chosen from its art.
+fn clear_pick_dependent_rows(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+    pane_rows::delete_edit(sql, content_hash)?;
+    pane_rows::delete_track_edits(sql, content_hash)?;
+    pane_rows::delete_cover(sql, content_hash)?;
+    Ok(())
 }
 
 /// Rewrite the file rows of every scanned candidate at `content_hash` and

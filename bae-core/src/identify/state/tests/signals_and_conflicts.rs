@@ -77,7 +77,7 @@ fn signals_with_catalogs(
             catalogs,
             free_text: vec![],
         },
-        probed_total_duration_ms: 0,
+        durations: crate::import::probe::ProbedDurations::default(),
     }
 }
 

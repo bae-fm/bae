@@ -245,7 +245,7 @@ async fn run_extraction(
                     barcodes: fast.cue_barcodes,
                     pool,
                     artwork,
-                    probed_total_duration_ms: fast.probed_total_duration_ms,
+                    durations: fast.durations,
                 },
                 priority,
             )
@@ -301,7 +301,7 @@ async fn run_extraction(
                     artwork,
                     // A library release has no candidate folder to walk, so
                     // nothing is probed on this path.
-                    probed_total_duration_ms: 0,
+                    durations: crate::import::probe::ProbedDurations::default(),
                 },
                 priority,
             )
@@ -339,7 +339,7 @@ struct ExtractionInputs {
     barcodes: Vec<SourcedValue>,
     pool: Pool,
     artwork: Option<ArtworkPass>,
-    probed_total_duration_ms: u64,
+    durations: crate::import::probe::ProbedDurations,
 }
 
 /// The artwork OCR pass: the images to decode, and the analyzer that decodes
@@ -373,7 +373,7 @@ async fn stream_extraction(
         mut barcodes,
         mut pool,
         artwork,
-        probed_total_duration_ms,
+        durations,
     } = inputs;
     let has_artwork = artwork.is_some();
 
@@ -393,7 +393,7 @@ async fn stream_extraction(
             has_artwork,
             classification.catalogs,
             classification.free_text,
-            probed_total_duration_ms,
+            durations.clone(),
         ),
         priority,
     );
@@ -409,14 +409,7 @@ async fn stream_extraction(
                 Ok(analysis) => analysis,
                 Err(failure) => {
                     emit_failed_ocr_signals(
-                        &inner,
-                        &key,
-                        disc_id,
-                        &barcodes,
-                        &mut pool,
-                        failure,
-                        probed_total_duration_ms,
-                        priority,
+                        &inner, &key, disc_id, &barcodes, &mut pool, failure, durations, priority,
                     );
                     return;
                 }
@@ -465,7 +458,7 @@ async fn stream_extraction(
                     has_artwork,
                     classification.catalogs,
                     classification.free_text,
-                    probed_total_duration_ms,
+                    durations.clone(),
                 ),
                 priority,
             );
@@ -492,7 +485,7 @@ async fn stream_extraction(
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
-            probed_total_duration_ms,
+            durations,
         },
         priority,
     );
@@ -506,7 +499,7 @@ fn emit_failed_ocr_signals(
     barcodes: &[SourcedValue],
     pool: &mut Pool,
     failure: LookupFailure,
-    probed_total_duration_ms: u64,
+    durations: crate::import::probe::ProbedDurations,
     priority: CallPriority,
 ) {
     let classification = pool.classify();
@@ -525,7 +518,7 @@ fn emit_failed_ocr_signals(
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
-            probed_total_duration_ms,
+            durations,
         },
         priority,
     );
@@ -540,7 +533,7 @@ fn scanning_signals(
     has_artwork: bool,
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
-    probed_total_duration_ms: u64,
+    durations: crate::import::probe::ProbedDurations,
 ) -> Signals {
     let barcode = if has_artwork {
         BarcodeSignal::Scanning {
@@ -560,7 +553,7 @@ fn scanning_signals(
             catalogs,
             free_text,
         },
-        probed_total_duration_ms,
+        durations,
     }
 }
 

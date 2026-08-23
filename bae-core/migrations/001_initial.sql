@@ -550,6 +550,157 @@ CREATE TABLE IF NOT EXISTS import_candidate_file_edit (
 ) STRICT;
 
 
+-- What one of the candidate's audio units plays for, as reading it off the
+-- disk found. Written by identification and by the pane when it opens a
+-- candidate identification never measured; read by the mapping table, so
+-- opening a candidate never opens its files again.
+--
+-- `duration_ms` NULL means the unit was read and states no length — a file
+-- that would not probe, or a sheet entry the sheet gives no timing. The
+-- absence of a row is the different fact that nothing has read it yet.
+CREATE TABLE IF NOT EXISTS import_candidate_file_duration (
+    content_hash        TEXT NOT NULL,
+    -- 'file': relative_path is the audio file. 'slice': relative_path is
+    -- the container; sheet_relative_path and slice_index name the entry.
+    kind                TEXT NOT NULL CHECK (kind IN ('file', 'slice')),
+    relative_path       TEXT NOT NULL,
+    sheet_relative_path TEXT NOT NULL DEFAULT '',
+    -- The sheet's playable tracks counted from zero — the number the binding
+    -- carries, not the number the sheet prints.
+    slice_index         INTEGER NOT NULL DEFAULT -1 CHECK (slice_index >= -1),
+    duration_ms         INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
+    PRIMARY KEY (content_hash, kind, relative_path, sheet_relative_path, slice_index),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    -- A STRICT primary key column cannot be NULL, so the two sentinels stand
+    -- in for "this kind names no sheet entry"; these keep them and the kind
+    -- agreeing.
+    CHECK ((kind = 'file') = (sheet_relative_path = '' AND slice_index = -1)),
+    CHECK ((kind = 'slice') = (sheet_relative_path <> '' AND slice_index >= 0))
+) STRICT;
+
+-- The signals identification settled on for one candidate: the disc ID, the
+-- barcode verdict, and the classified text, with their list values in
+-- `import_candidate_signal_value`. Stored so the pane and the search sheet
+-- read them back after a restart instead of re-extracting them.
+--
+-- Only a settled value is storable: a `Scanning` barcode or text signal is
+-- artwork OCR still running, and a verdict is written only after it finishes.
+CREATE TABLE IF NOT EXISTS import_candidate_signals (
+    content_hash        TEXT PRIMARY KEY,
+    disc_id_state       TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'failed')),
+    disc_id             TEXT,
+    track_count         INTEGER NOT NULL CHECK (track_count >= 0),
+    disc_id_failure     TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    disc_id_failure_status INTEGER,
+    disc_id_failure_detail TEXT,
+    barcode_state       TEXT NOT NULL CHECK (barcode_state IN ('settled', 'failed', 'absent')),
+    barcode_failure     TEXT CHECK (barcode_failure IS NULL OR barcode_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    barcode_failure_status INTEGER,
+    barcode_failure_detail TEXT,
+    text_state          TEXT NOT NULL CHECK (text_state IN ('settled', 'failed')),
+    text_failure        TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    text_failure_status INTEGER,
+    text_failure_detail TEXT,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
+    CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),
+    CHECK ((barcode_state = 'failed') = (barcode_failure IS NOT NULL)),
+    CHECK ((text_state = 'failed') = (text_failure IS NOT NULL)),
+    CHECK (disc_id_failure_status IS NULL OR disc_id_failure = 'provider'),
+    CHECK ((disc_id_failure = 'diagnostic') = (disc_id_failure_detail IS NOT NULL)),
+    CHECK (barcode_failure_status IS NULL OR barcode_failure = 'provider'),
+    CHECK ((barcode_failure = 'diagnostic') = (barcode_failure_detail IS NOT NULL)),
+    CHECK (text_failure_status IS NULL OR text_failure = 'provider'),
+    CHECK ((text_failure = 'diagnostic') = (text_failure_detail IS NOT NULL))
+) STRICT;
+
+-- One value of one of the three lists a settled signal carries, in the order
+-- extraction found it. Free text carries no origin; barcodes and catalog
+-- numbers do, because their badges say where each came from.
+CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
+    content_hash TEXT NOT NULL,
+    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text')),
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    value        TEXT NOT NULL,
+    origin       TEXT CHECK (origin IS NULL OR origin IN ('disc_toc', 'cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
+    PRIMARY KEY (content_hash, list, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
+    CHECK ((list = 'free_text') = (origin IS NULL))
+) STRICT;
+
+-- The last import of this candidate that failed, so the pane still offers
+-- Retry after a relaunch. Cleared when an import is queued for the hash;
+-- written by the worker when one fails.
+CREATE TABLE IF NOT EXISTS import_candidate_failure (
+    content_hash TEXT PRIMARY KEY,
+    error        TEXT NOT NULL,
+    failed_at    TEXT NOT NULL,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The cover the user chose for this candidate: one of the folder's own images,
+-- or one of the picked release's remote covers. No row means the picked
+-- release's default cover stands; a row is written only on an explicit choice.
+CREATE TABLE IF NOT EXISTS import_candidate_cover (
+    content_hash TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote')),
+    file_id      TEXT,
+    url          TEXT,
+    source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((kind = 'local') = (file_id IS NOT NULL)),
+    CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
+) STRICT;
+
+-- The album-level metadata fields the user typed over the picked release's
+-- own. Every column is nullable and NULL means the seed's value stands, so a
+-- field nobody touched still commits as untouched; a stored string, including
+-- the empty one, is the user's value. `year` is text because the form is text
+-- — the commit parses it.
+CREATE TABLE IF NOT EXISTS import_candidate_edit (
+    content_hash      TEXT PRIMARY KEY,
+    album_title       TEXT,
+    album_artist_text TEXT,
+    year              TEXT,
+    format            TEXT,
+    label             TEXT,
+    catalog_number    TEXT,
+    country           TEXT,
+    barcode           TEXT,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK (album_title IS NOT NULL OR album_artist_text IS NOT NULL OR year IS NOT NULL
+        OR format IS NOT NULL OR label IS NOT NULL OR catalog_number IS NOT NULL
+        OR country IS NOT NULL OR barcode IS NOT NULL)
+) STRICT;
+
+-- One mapping-table track row the user changed, whole: a track row is edited
+-- as a unit, and `track_number` has no NULL left over to mean "untouched".
+-- `dropped = 1` is a row taken out of the import, which then holds nothing
+-- else.
+CREATE TABLE IF NOT EXISTS import_candidate_track_edit (
+    content_hash TEXT NOT NULL,
+    -- The row identity the mapping table addresses this track by.
+    track_id     TEXT NOT NULL,
+    dropped      INTEGER NOT NULL DEFAULT 0 CHECK (dropped IN (0, 1)),
+    title        TEXT,
+    artist_text  TEXT,
+    side         INTEGER,
+    track_number INTEGER,
+    -- NULL kind: the row has no audio behind it — a track the folder has
+    -- nothing for.
+    file_kind    TEXT CHECK (file_kind IS NULL OR file_kind IN ('standalone', 'sheet_slice')),
+    file_id      TEXT,
+    sheet_id     TEXT,
+    slice_index  INTEGER CHECK (slice_index IS NULL OR slice_index >= 0),
+    PRIMARY KEY (content_hash, track_id),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((dropped = 1) = (title IS NULL AND artist_text IS NULL AND side IS NULL
+        AND track_number IS NULL AND file_kind IS NULL)),
+    CHECK ((file_kind IS NOT NULL) = (file_id IS NOT NULL)),
+    CHECK ((file_kind = 'sheet_slice') = (sheet_id IS NOT NULL AND slice_index IS NOT NULL))
+) STRICT;
+
+
 -- Device-local watched-root intent. These tables deliberately have no
 -- `_updated_at` and are absent from `synced_tables()`.
 CREATE TABLE IF NOT EXISTS watched_import_folders (

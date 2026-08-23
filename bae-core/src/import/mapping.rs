@@ -11,8 +11,9 @@ use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, CollapsedDirectory, FileRole, FileRoleChoice,
     ScannedFile, SheetBinding, SheetDisc,
 };
+use crate::import::probe::ProbedDurations;
 use crate::import::track_slots::{
-    audio_layout, units_of, SlotFile, SlotReconciliation, SlotTable, TrackSlot, UnitContribution,
+    audio_layout, units_of, SlotReconciliation, SlotTable, TrackSlot, UnitContribution,
 };
 use crate::import::types::{AudioFile, RawTrackEdit};
 use std::collections::{BTreeSet, HashMap};
@@ -134,9 +135,9 @@ pub struct MappingFile {
     pub name: String,
     pub size: u64,
     pub path: PathBuf,
-    /// Probed playing time, where the folder's audio has been read. `None` for
-    /// anything that is not audio, for audio nothing could be read from, and
-    /// while no release is picked — nothing has opened the folder yet.
+    /// Playing time as [`crate::import::probe`] read it off the disk. `None`
+    /// for anything that is not audio, for audio nothing could be read from,
+    /// and for a unit nothing has measured yet.
     pub probed_duration_ms: Option<u64>,
     pub role: MappingRole,
     /// The roles this file can be put in, the one in force first. Empty when
@@ -274,6 +275,7 @@ pub struct PickedTracklist<'a> {
 pub fn mapping_table(
     files: &CategorizedFiles,
     picked: Option<PickedTracklist<'_>>,
+    durations: &ProbedDurations,
 ) -> MappingTable {
     let layout = audio_layout(files);
     let units = units_of(&layout);
@@ -303,6 +305,7 @@ pub fn mapping_table(
 
     let mut builder = RowBuilder {
         picked,
+        durations,
         slot_of,
         next_track: 0,
     };
@@ -415,6 +418,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 /// and how many track rows it has emitted.
 struct RowBuilder<'a> {
     picked: Option<PickedTracklist<'a>>,
+    durations: &'a ProbedDurations,
     slot_of: HashMap<AudioFile, usize>,
     next_track: usize,
 }
@@ -461,16 +465,10 @@ impl RowBuilder<'_> {
             .collect()
     }
 
-    /// This unit's playing time as the pairing pass probed it, where a release
-    /// has been picked and the folder therefore opened.
+    /// This unit's playing time as the stored measurements record it. A unit
+    /// nothing has read yet shows none, whether or not a release is picked.
     fn probed_duration_ms(&self, unit: &AudioFile) -> Option<u64> {
-        let picked = self.picked?;
-        let index = *self.slot_of.get(unit)?;
-        picked
-            .slots
-            .audio
-            .get(index)
-            .and_then(|file: &SlotFile| file.probed_duration_ms)
+        self.durations.duration_of(unit).flatten()
     }
 
     /// What the unit becomes: the track the picked tracklist puts on it, or the

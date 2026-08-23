@@ -406,6 +406,13 @@ mod tests {
             "import_candidate_state",
             "import_candidate_match",
             "import_candidate_file_edit",
+            "import_candidate_file_duration",
+            "import_candidate_signals",
+            "import_candidate_signal_value",
+            "import_candidate_failure",
+            "import_candidate_cover",
+            "import_candidate_edit",
+            "import_candidate_track_edit",
         ] {
             assert!(
                 !registered.contains(table),

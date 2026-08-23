@@ -399,7 +399,7 @@ mod identify_mirrors {
             },
             // A plausible total for the ten tracks above. Not zero, which
             // would claim the audio could not be probed.
-            probed_total_duration_ms: 2_400_000,
+            durations: bae_core::import::probe::ProbedDurations::totalling(2_400_000),
         };
 
         let json = serde_json::to_value(automation_signals(signals)).unwrap();

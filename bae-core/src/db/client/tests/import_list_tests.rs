@@ -113,7 +113,15 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
             content_hash: candidate.files.content_hash(),
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id),
-            probed_total_duration_ms: 1_000,
+            signals: crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                durations: crate::import::probe::ProbedDurations::totalling(1_000),
+            },
             expected_edit_revision: 0,
             identity_pick: None,
         })
@@ -376,4 +384,72 @@ async fn a_verdict_from_another_revision_does_not_resume() {
     ));
     assert!(detail.answer.is_none());
     assert!(detail.matched.is_none());
+}
+
+/// The list reads placement columns and nothing else. Everything stored for
+/// the pane — what the audio plays for, the extracted signals, the metadata
+/// and rows the user typed, the cover, the last failure — is read only when a
+/// candidate is opened, so the queue cannot pay for it.
+#[tokio::test]
+async fn the_list_reads_none_of_what_the_pane_stores() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let candidate = scanned(&db, root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+    let hash = candidate.files.content_hash();
+
+    db.save_import_candidate_durations(
+        &hash,
+        &crate::import::probe::ProbedDurations::totalling(180_000),
+    )
+    .await
+    .unwrap();
+    db.save_import_candidate_cover(
+        &hash,
+        &crate::import::CoverSelection::Local("cover.jpg".to_string()),
+    )
+    .await
+    .unwrap();
+    db.save_import_candidate_edit_field(&hash, crate::import::CandidateEditField::Year, "1991")
+        .await
+        .unwrap();
+    db.save_import_candidate_track_edit(
+        &hash,
+        &crate::import::CandidateTrackEdit::dropped("import-track-0"),
+    )
+    .await
+    .unwrap();
+    db.save_import_candidate_failure(&hash, &candidate.path.to_string_lossy(), 0, "it failed")
+        .await
+        .unwrap();
+
+    let before = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    db.call(|sql| {
+        for table in [
+            "import_candidate_file_duration",
+            "import_candidate_signal_value",
+            "import_candidate_signals",
+            "import_candidate_failure",
+            "import_candidate_cover",
+            "import_candidate_edit",
+            "import_candidate_track_edit",
+        ] {
+            sql.execute(&format!("DELETE FROM {table}"), [])?;
+        }
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let after = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+
+    assert_eq!(rows(&before), rows(&after));
+    assert_eq!(before.summary, after.summary);
 }

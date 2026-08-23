@@ -284,11 +284,19 @@ impl ImportServiceHandle {
 
         let mapping = match self.get_candidate(candidate_key).await? {
             Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
-                // One FFmpeg open per container, so it goes off the async
-                // executor rather than holding it for the length of a folder.
+                let durations = self
+                    .stored_durations(&candidate.files.content_hash())
+                    .await?;
+                // Reading the folder's audio goes off the async executor rather
+                // than holding it for the length of a folder — and it happens at
+                // all only where identification has not measured this candidate.
                 tokio::task::spawn_blocking(move || {
-                    let slots =
-                        crate::import::track_slots::slot_table(&source_tracks, &candidate.files);
+                    let durations = super::import::measured(&candidate.files, durations);
+                    let slots = crate::import::track_slots::slot_table(
+                        &source_tracks,
+                        &candidate.files,
+                        &durations,
+                    );
                     crate::import::mapping::mapping_table(
                         &candidate.files,
                         Some(crate::import::mapping::PickedTracklist {
@@ -296,6 +304,7 @@ impl ImportServiceHandle {
                             track_id_prefix: IMPORT_TRACK_ID_PREFIX,
                             source: crate::import::mapping::TracklistSource::Release,
                         }),
+                        &durations,
                     )
                 })
                 .await

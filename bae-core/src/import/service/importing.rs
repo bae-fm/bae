@@ -86,6 +86,9 @@ impl ImportService {
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
+        let content_hash = expectation.content_hash.clone();
+        let folder_path = command.folder.to_string_lossy().into_owned();
+        let edit_revision = expectation.edit_revision;
         let result = self
             .prepare_and_run_folder_import(
                 import_id.clone(),
@@ -110,6 +113,19 @@ impl ImportService {
             // pipeline's terminal consumer. The variant Displays embed their
             // `#[from]` source messages, so `to_string()` carries the chain.
             let error = e.to_string();
+
+            // The row goes first and the event second: the event is what the
+            // pane showing this import redraws from, and the row is what a
+            // relaunched pane reads instead. A row that will not write is
+            // logged rather than swallowing the failure the user is waiting
+            // to see.
+            if let Err(write) = self
+                .library_manager
+                .save_import_candidate_failure(&content_hash, &folder_path, edit_revision, &error)
+                .await
+            {
+                error!("could not record the failed import of {folder_path}: {write}");
+            }
 
             send_event(
                 &self.event_tx,

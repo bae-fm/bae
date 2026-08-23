@@ -348,11 +348,11 @@ impl BridgeSignals {
             disc_id,
             barcode,
             text,
-            // The probed total is a Ready-rule input, not a badge: the sidebar
-            // reads a candidate's classification, and the mapping pane will
-            // read per-file durations it probes for the one open candidate.
-            // Neither wants this number, so it does not cross.
-            probed_total_duration_ms: _,
+            // The measured durations are a Ready-rule input and the mapping
+            // table's lengths, not a badge: the sidebar reads a candidate's
+            // classification, and the pane reads the durations through its own
+            // record. Neither wants them here, so they do not cross.
+            durations: _,
         } = s;
 
         let disc_id = match disc_id {

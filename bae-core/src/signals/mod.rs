@@ -70,15 +70,27 @@ pub struct Signals {
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,
-    /// Total playing time of the candidate's audio, in milliseconds, as probed
-    /// locally. Not a lookup input like the three above — it narrows, which is
-    /// the other half of what a signal is for: the Ready rule admits a single
-    /// match only when this total agrees with the source's own.
+    /// What every one of the candidate's audio units plays for, read off the
+    /// disk in the same pass the disc ID came from. Not a lookup input like
+    /// the three above — it narrows, which is the other half of what a signal
+    /// is for: the Ready rule admits a single match only when the total agrees
+    /// with the source's own. The verdict write stores these rows, and the
+    /// mapping table reads them back instead of opening the folder again.
+    ///
+    /// Empty for a re-identified library release: there is no folder to walk.
+    pub durations: crate::import::probe::ProbedDurations,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl Signals {
+    /// Total playing time of the candidate's audio, in milliseconds.
     ///
     /// `0` means "not probed" — a folder whose scan failed, a re-identified
     /// library release (no folder to walk), or audio that would not probe. A
     /// release of zero length does not exist, so the two are one fact to every
     /// consumer: there is no total to compare, and the candidate is not Ready.
     /// The stored column is `NOT NULL`, and carries the same `0`.
-    pub probed_total_duration_ms: u64,
+    pub fn probed_total_duration_ms(&self) -> u64 {
+        self.durations.total_ms()
+    }
 }

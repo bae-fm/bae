@@ -32,6 +32,8 @@ mod image_response;
 // desktop-only; mobile is a sync/playback client. Only the shared domain types
 // below (re-exported from `types`) compile on mobile.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod edits;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod handle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod list;
@@ -47,6 +49,8 @@ pub mod musicbrainz_mapper;
 // `ParsedAlbum` from archived documents — both desktop-only import shapes.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod payloads;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod probe;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod release_group;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -112,6 +116,11 @@ pub use candidates::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use edits::{
+    apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
+    TrackEditState,
+};
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};

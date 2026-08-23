@@ -3,6 +3,7 @@ use crate::import::folder_scanner::{
     collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDisc, SheetDiscEdits,
     StoredCandidateEdits,
 };
+use crate::import::probe::probe_durations;
 use std::fs;
 use std::path::Path;
 
@@ -89,9 +90,10 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
         .collect()
 }
 
-/// The table's rows for `source` against the folder at `root`.
+/// The table's rows for `source` against the folder at `root`, with the
+/// folder's audio measured — the table itself opens nothing.
 fn slots(source: &[SourceTrack], files: &CategorizedFiles) -> Vec<TrackSlot> {
-    slot_table(source, files).rows
+    slot_table(source, files, &probe_durations(files)).rows
 }
 
 fn scan(root: &Path) -> CategorizedFiles {
@@ -630,7 +632,8 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
     )
     .expect("write cue");
 
-    let table = slot_table(&source_tracks(2), &scan(tmp.path()));
+    let files = scan(tmp.path());
+    let table = slot_table(&source_tracks(2), &files, &probe_durations(&files));
 
     let lengths: Vec<Option<u64>> = table
         .audio
@@ -656,7 +659,8 @@ fn a_container_s_rows_read_as_one_run() {
     .expect("write cue");
     write_flac(&tmp.path().join("bonus.flac"));
 
-    let table = slot_table(&source_tracks(4), &scan(tmp.path()));
+    let files = scan(tmp.path());
+    let table = slot_table(&source_tracks(4), &files, &probe_durations(&files));
 
     assert_eq!(
         table.audio.iter().map(|file| file.span).collect::<Vec<_>>(),
@@ -683,20 +687,21 @@ fn the_tally_names_the_disagreement() {
         write_flac(&tmp.path().join(format!("{index:02}.flac")));
     }
     let files = scan(tmp.path());
+    let durations = probe_durations(&files);
 
     assert_eq!(
-        slot_table(&source_tracks(13), &files).reconciliation,
+        slot_table(&source_tracks(13), &files, &durations).reconciliation,
         SlotReconciliation::Agrees { count: 13 },
     );
     assert_eq!(
-        slot_table(&source_tracks(12), &files).reconciliation,
+        slot_table(&source_tracks(12), &files, &durations).reconciliation,
         SlotReconciliation::MoreFiles {
             files: 13,
             tracks: 12,
         },
     );
     assert_eq!(
-        slot_table(&source_tracks(14), &files).reconciliation,
+        slot_table(&source_tracks(14), &files, &durations).reconciliation,
         SlotReconciliation::MoreTracks {
             files: 13,
             tracks: 14,

@@ -16,10 +16,10 @@
 //! for; [`TrackSlot::TrackOnly`] is a track no audio backs. The only refusal
 //! left here is audio that will not decode.
 
-use crate::audio_codec::ProbeResult;
 use crate::db::DbTrack;
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
-use crate::import::types::{AudioFile, CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
+use crate::import::probe::{probe_duration_ms, sheet_analysis, ProbedDurations};
+use crate::import::types::{AudioFile, CueFlacAnalysis, TrackFile};
 use crate::import::{ImportError, TrackUserEdit};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -60,7 +60,8 @@ pub struct SlotFile {
     pub size: u64,
     /// Absolute path — what auditioning this row plays.
     pub path: std::path::PathBuf,
-    /// This row's own playing time, probed from disk. `None` when the file
+    /// This row's own playing time, as [`crate::import::probe`] read it off
+    /// the disk. `None` when nothing has read this unit yet, when the file
     /// could not be probed at all, or when a sheet gives the row no timing —
     /// a missing number is what it is, and inventing one here is what would
     /// make a wrong pairing look right.
@@ -381,12 +382,15 @@ pub(crate) fn map_source_rows(
 /// pairs, the tally above them, and the audio a row with no file can be
 /// pointed at.
 ///
-/// This is where the folder's audio is opened. One probe per container, shared
-/// by every row carved out of it, so a twelve-track disc image costs one open
-/// and not twelve. That is why this runs when a release is picked, on a
-/// blocking thread, rather than riding every candidate.
-pub(crate) fn slot_table(source_tracks: &[SourceTrack], files: &CategorizedFiles) -> SlotTable {
-    let audio = slot_files(files);
+/// Opens nothing. The playing times come from `durations`, which
+/// identification measured and stored; a unit with no row there shows no
+/// length until something reads it.
+pub(crate) fn slot_table(
+    source_tracks: &[SourceTrack],
+    files: &CategorizedFiles,
+    durations: &ProbedDurations,
+) -> SlotTable {
+    let audio = slot_files(files, durations);
     let units: Vec<AudioFile> = audio.iter().map(|file| file.audio.clone()).collect();
     let source_edits: Vec<TrackUserEdit> = source_tracks
         .iter()
@@ -443,20 +447,16 @@ pub(crate) fn slot_table(source_tracks: &[SourceTrack], files: &CategorizedFiles
 
 /// Every audio unit the folder offers, with the facts a slot row shows about
 /// it: name, size, where to play it from, its span in a container's run, and
-/// its own probed playing time.
+/// its own playing time as `durations` records it.
 ///
 /// Same order and same entries as [`audio_units`] — this is that list with the
-/// disk reads done.
-pub(crate) fn slot_files(files: &CategorizedFiles) -> Vec<SlotFile> {
+/// stored measurements hung on it.
+pub(crate) fn slot_files(files: &CategorizedFiles, durations: &ProbedDurations) -> Vec<SlotFile> {
     let units = audio_units(files);
     let by_path: HashMap<&str, &ScannedFile> = files
         .audio()
         .map(|file| (file.relative_path.as_str(), file))
         .collect();
-
-    // One analysis per bound sheet, shared by every slice carved out of it.
-    let mut sheets: HashMap<&str, Option<CueFlacAnalysis>> = HashMap::new();
-    let mut standalone: HashMap<&str, Option<u64>> = HashMap::new();
 
     let mut out = Vec::with_capacity(units.len());
     for (index, unit) in units.iter().enumerate() {
@@ -467,27 +467,12 @@ pub(crate) fn slot_files(files: &CategorizedFiles) -> Vec<SlotFile> {
             warn!("{} is not this folder's audio", unit.file_id());
             continue;
         };
-        let probed_duration_ms = match unit {
-            AudioFile::Standalone { file_id } => *standalone
-                .entry(file_id.as_str())
-                .or_insert_with(|| probe_duration_ms(&file.path).map(|ms| ms.max(0) as u64)),
-            AudioFile::SheetSlice {
-                sheet_id, index, ..
-            } => {
-                let analysis = sheets
-                    .entry(sheet_id.as_str())
-                    .or_insert_with(|| sheet_analysis(files, sheet_id).ok());
-                analysis
-                    .as_ref()
-                    .and_then(|analysis| slice_duration_ms(analysis, *index as usize))
-            }
-        };
         out.push(SlotFile {
             audio: unit.clone(),
             name: file.file_name.clone(),
             size: file.size,
             path: file.path.clone(),
-            probed_duration_ms,
+            probed_duration_ms: durations.duration_of(unit).flatten(),
             span: span_at(&units, index),
         });
     }
@@ -511,27 +496,6 @@ fn span_at(units: &[AudioFile], index: usize) -> SlotSpan {
         (false, false) => SlotSpan::ContainerMiddle,
         (false, true) => SlotSpan::ContainerEnd,
     }
-}
-
-/// One slice's own playing time: the sheet's exact timing, or — for the last
-/// track, which has no next-track boundary in the sheet — the container's total
-/// minus the slice's start. The same reading the commit writes, so what the
-/// pane showed is what lands on the track.
-fn slice_duration_ms(analysis: &CueFlacAnalysis, index: usize) -> Option<u64> {
-    let cue_track = analysis.cue_sheet.playable_tracks().nth(index)?;
-    let duration = cue_track
-        .track_duration_ms()
-        .map(|d| d as i64)
-        .or_else(|| {
-            analysis
-                .audio_files
-                .iter()
-                .find(|file| file.file_reference == cue_track.file_reference)
-                .map(|file| {
-                    file.probe.duration.as_millis() as i64 - cue_track.start_time_ms() as i64
-                })
-        })?;
-    (duration >= 0).then_some(duration as u64)
 }
 
 /// Bind each track to the audio holding its samples and yield the
@@ -637,86 +601,6 @@ fn file_title(file: &ScannedFile) -> String {
         .and_then(|stem| stem.to_str())
         .unwrap_or(&file.file_name)
         .to_string()
-}
-
-/// Parse-and-probe one bound track sheet, once, for every slice carved out of
-/// it. The audio a sheet naming a single file is analyzed against is the audio
-/// it is *bound* to, not what its `FILE` directive spells: a sheet written for
-/// a WAV that was later encoded to FLAC still says `WAV`, and re-resolving the
-/// directive here would refuse the very pairing the user corrected. A sheet
-/// naming one file per track has no single binding to stand in, so its
-/// references resolve as written.
-fn sheet_analysis(
-    files: &CategorizedFiles,
-    sheet_id: &str,
-) -> Result<CueFlacAnalysis, ImportError> {
-    let bound = files.bound_sheets();
-    let sheet = bound
-        .iter()
-        .find(|bound| bound.file.relative_path == sheet_id)
-        .ok_or_else(|| ImportError::UnusableFile {
-            detail: format!("{sheet_id} no longer describes any of the folder's audio"),
-        })?;
-
-    let cue_dir = sheet
-        .file
-        .path
-        .parent()
-        .ok_or_else(|| ImportError::UnusableFile {
-            detail: format!("{sheet_id} has no parent directory"),
-        })?;
-    let single_file = sheet.sheet.single_file().is_some();
-
-    let mut audio_files = Vec::new();
-    for file_reference in sheet.sheet.audio_file_references() {
-        let path = if single_file {
-            sheet.audio.path.clone()
-        } else {
-            cue_dir.join(file_reference)
-        };
-        let probe = analyze_cue_audio(&path)?;
-        audio_files.push(CueAnalyzedAudioFile {
-            file_reference: file_reference.to_string(),
-            path,
-            probe,
-        });
-    }
-
-    Ok(CueFlacAnalysis {
-        cue_sheet: sheet.sheet.clone(),
-        audio_files,
-    })
-}
-
-/// A standalone audio file's duration. `None` just means the track lands
-/// without one — `probe_audio_from_path` logs its own failure reason.
-fn probe_duration_ms(file_path: &std::path::Path) -> Option<i64> {
-    let Some(path_str) = file_path.to_str() else {
-        warn!(
-            "Cannot probe duration for non-UTF-8 path: {}",
-            file_path.display()
-        );
-        return None;
-    };
-    let probe = crate::audio_codec::probe_audio_from_path(path_str)?;
-    Some(probe.duration.as_millis() as i64)
-}
-
-/// Probe a container a track sheet carves tracks out of.
-///
-/// The codec is not re-judged here: the scan probes the audio a sheet names and
-/// refuses the binding outright when bae cannot carve that container, so a
-/// sheet that is still bound after the commit's own walk names a container that
-/// already passed. What is left is the file being readable at all.
-pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<ProbeResult, ImportError> {
-    let path_str = audio_path
-        .to_str()
-        .ok_or_else(|| ImportError::UnusableFile {
-            detail: format!("non-UTF-8 audio path: {:?}", audio_path),
-        })?;
-    crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| ImportError::UnusableFile {
-        detail: format!("audio file could not be read: {:?}", audio_path),
-    })
 }
 
 #[cfg(test)]

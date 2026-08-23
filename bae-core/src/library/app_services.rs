@@ -821,6 +821,14 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_candidate_mapping => candidate_mapping(candidate_key: &str) -> Result<crate::import::MappingTable, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &str, field: crate::import::CandidateEditField, value: String) -> Result<(), crate::import::ImportError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_start => start(run: crate::identify::IdentifyRunId, key: String, priority: crate::util::rate_limiter::CallPriority) -> ());

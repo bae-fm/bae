@@ -722,7 +722,7 @@ pub enum StorageMode {
 
 /// User's cover art selection for an import.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CoverSelection {
     /// Remote cover to download (URL + source for attribution)
     Remote(String, MetadataSource),

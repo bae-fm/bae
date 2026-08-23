@@ -249,7 +249,7 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
-            probed_total_duration_ms: 1_000,
+            durations: crate::import::probe::ProbedDurations::totalling(1_000),
         },
         priority: CallPriority::Background,
     });

@@ -78,7 +78,15 @@ async fn pure_reads_use_the_read_connection() {
             content_hash: "hash-with-no-row".to_string(),
             folder_path: format!("{root}/Album"),
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere,
-            probed_total_duration_ms: 0,
+            signals: bae_core::signals::Signals {
+                disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 0 },
+                barcode: bae_core::signals::BarcodeSignal::Absent,
+                text: bae_core::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                durations: bae_core::import::probe::ProbedDurations::default(),
+            },
             expected_edit_revision: 7,
             identity_pick: None,
         })

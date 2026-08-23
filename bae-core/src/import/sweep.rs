@@ -347,15 +347,15 @@ struct InFlight {
     /// earlier run of the same candidate still broadcasts; only this run's
     /// states are this pass's answer.
     run: IdentifyRunId,
-    /// The probed total from the candidate's latest `SignalsUpdated`. `0` until
-    /// the fast pass reports one, and `0` forever for audio that would not
-    /// probe — see [`crate::signals::Signals::probed_total_duration_ms`].
-    probed_total_duration_ms: u64,
+    /// The candidate's latest `SignalsUpdated` value. `None` until extraction
+    /// reports one; by the time a verdict is terminal the identify machine has
+    /// consumed a settled snapshot, so this holds it.
+    signals: Option<crate::signals::Signals>,
 }
 
 struct SelectionInFlight {
     candidate: FolderCandidate,
-    probed_total_duration_ms: u64,
+    signals: Option<crate::signals::Signals>,
 }
 
 /// What a finished candidate reports back to the pass loop.
@@ -492,7 +492,7 @@ async fn run_pass(
                 InFlight {
                     job,
                     run,
-                    probed_total_duration_ms: 0,
+                    signals: None,
                 },
             );
         }
@@ -551,7 +551,7 @@ async fn run_pass(
             event = bus.recv() => match event {
                 Some(Ok(ImportEvent::SignalsUpdated { candidate_key, signals, .. })) => {
                     if let Some(entry) = in_flight.get_mut(&candidate_key) {
-                        entry.probed_total_duration_ms = signals.probed_total_duration_ms;
+                        entry.signals = Some(signals);
                     }
                 }
                 Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. })) => {

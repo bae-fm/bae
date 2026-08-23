@@ -603,8 +603,7 @@ FILE "Test Album.ape" WAVE
         .expect("write cue");
 
         let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-        let probe =
-            crate::import::track_slots::analyze_cue_audio(&audio_path).expect("analyze ape");
+        let probe = crate::import::probe::analyze_cue_audio(&audio_path).expect("analyze ape");
         let cue_pair = Arc::new(CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {

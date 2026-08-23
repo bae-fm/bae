@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, warn};
 
+mod edits;
 mod import;
 mod scan;
 mod search;

@@ -585,7 +585,15 @@ async fn a_cancelled_candidate_writes_no_row() {
             "hash-x",
             "/x",
             &verdict,
-            0,
+            Some(crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                durations: crate::import::probe::ProbedDurations::default(),
+            }),
             0,
         )
         .await,

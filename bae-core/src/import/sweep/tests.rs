@@ -17,12 +17,27 @@ use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::library::LibraryManager;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use serial_test::serial;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tempfile::TempDir;
+
+/// Settled signals carrying `durations` and nothing found — what a verdict a
+/// test seeds stores beside itself.
+fn settled_signals(durations: crate::import::probe::ProbedDurations) -> Signals {
+    Signals {
+        disc_id: DiscIdSignal::Absent { track_count: 0 },
+        barcode: BarcodeSignal::Absent,
+        text: TextSignal::Settled {
+            catalogs: Vec::new(),
+            free_text: Vec::new(),
+        },
+        durations,
+    }
+}
 
 // ── The fake provider ───────────────────────────────────────────────────────
 
@@ -411,6 +426,27 @@ impl Fixture {
 
     /// Sum of the fixture audio's real probed durations — what the sweep stores
     /// and the Ready rule compares against.
+    /// What every fixture FLAC in `dir` plays for, as the fast pass measures
+    /// it — the durations a stored verdict carries.
+    fn probed_durations(&self, dir: &Path) -> crate::import::probe::ProbedDurations {
+        crate::import::probe::ProbedDurations::new(
+            FLAC_FIXTURES
+                .iter()
+                .map(|name| crate::import::probe::ProbedUnit {
+                    audio: crate::import::AudioFile::Standalone {
+                        file_id: (*name).to_string(),
+                    },
+                    duration_ms: Some(
+                        crate::audio_codec::probe_audio_from_path(dir.join(name).to_str().unwrap())
+                            .expect("fixture FLAC probes")
+                            .duration
+                            .as_millis() as u64,
+                    ),
+                })
+                .collect(),
+        )
+    }
+
     fn probed_total_ms(&self, dir: &Path) -> u64 {
         FLAC_FIXTURES
             .iter()
@@ -577,7 +613,9 @@ impl Fixture {
                     content_hash: self.content_hash(dir),
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict,
-                    probed_total_duration_ms: probed_total_ms,
+                    signals: settled_signals(crate::import::probe::ProbedDurations::totalling(
+                        probed_total_ms,
+                    )),
                     expected_edit_revision: 0,
                     identity_pick: Some(crate::import::IdentityPick::Release {
                         source: crate::import::MetadataSource::MusicBrainz,

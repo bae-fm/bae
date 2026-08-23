@@ -29,7 +29,7 @@ pub(super) async fn finish_candidate(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
         &verdict,
-        entry.probed_total_duration_ms,
+        entry.signals.clone(),
         candidate.file_edit_revision,
     )
     .await
@@ -47,12 +47,21 @@ pub(super) async fn save(
     content_hash: &str,
     folder_path: &str,
     verdict: &TerminalVerdict,
-    probed_total_duration_ms: u64,
+    signals: Option<crate::signals::Signals>,
     expected_edit_revision: u64,
 ) -> bool {
     if token.is_cancelled() {
         return false;
     }
+    // A verdict with no signals behind it is not a verdict: the state machine
+    // reaches a terminal state only from a settled snapshot, so this cannot
+    // happen once it has passed `Triangulating` — and if it somehow does, the
+    // row is refused and the next pass asks again rather than storing a
+    // candidate whose signals nothing recorded.
+    let Some(signals) = signals else {
+        warn!("sweep: {folder_path} reached a verdict with no signals; writing no row");
+        return false;
+    };
     // A single settled match IS the identity pick: identification made the
     // decision a click makes on a several-match row, so it lands the same way,
     // at the same claim a click lands, and the pane reopens on it after a
@@ -74,7 +83,7 @@ pub(super) async fn save(
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
-        probed_total_duration_ms,
+        signals,
         expected_edit_revision,
         identity_pick,
     };
@@ -218,7 +227,7 @@ pub(super) async fn record_selection_verdict(
     };
     let mut entry = SelectionInFlight {
         candidate,
-        probed_total_duration_ms: 0,
+        signals: None,
     };
 
     loop {
@@ -233,7 +242,7 @@ pub(super) async fn record_selection_verdict(
                 signals,
                 ..
             }) if key == candidate_key => {
-                entry.probed_total_duration_ms = signals.probed_total_duration_ms;
+                entry.signals = Some(signals);
             }
             Ok(ImportEvent::IdentifyStateChanged {
                 candidate_key: key,
@@ -267,7 +276,7 @@ pub(super) async fn record_selection_verdict(
                     &entry.candidate.files.content_hash(),
                     &entry.candidate.path.to_string_lossy(),
                     &verdict,
-                    entry.probed_total_duration_ms,
+                    entry.signals.clone(),
                     entry.candidate.file_edit_revision,
                 )
                 .await

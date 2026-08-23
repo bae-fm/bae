@@ -1,7 +1,9 @@
 //! Reading `import_candidate_state` back: the identify columns with their
 //! match rows, the identity pick, and the per-file decisions.
 
+use super::duration_rows::load_durations_on;
 use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
+use super::signal_rows::load_signals_on;
 use super::verdict_rows::{read_match_row, unreadable, verdict_of, MatchLists};
 use super::*;
 use crate::import::{ClaimLevel, IdentityPick, MetadataSource};
@@ -152,6 +154,8 @@ pub(crate) fn load_states_on(
             .push(row)?;
     }
     let mut edits = load_edits_on(sql, only)?;
+    let mut durations = load_durations_on(sql, only)?;
+    let mut signals = load_signals_on(sql, only, &durations)?;
 
     let mut out = HashMap::with_capacity(states.len());
     for state in states {
@@ -192,6 +196,8 @@ pub(crate) fn load_states_on(
         out.insert(
             state.content_hash.clone(),
             DbImportCandidateState {
+                durations: durations.remove(&state.content_hash).unwrap_or_default(),
+                signals: signals.remove(&state.content_hash),
                 content_hash: state.content_hash,
                 folder_path: state.folder_path,
                 identify,

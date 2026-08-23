@@ -524,6 +524,40 @@ pub fn bridge_mapping_without_file(
     ))
 }
 
+/// One album-level field of the import pane's metadata form.
+///
+/// Each is written on its own as the user leaves it, so the pane holds no copy
+/// of the form: the field commits, the per-candidate query redraws.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCandidateEditField {
+    AlbumTitle,
+    AlbumArtistText,
+    Year,
+    Format,
+    Label,
+    CatalogNumber,
+    Country,
+    Barcode,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeCandidateEditField {
+    pub(crate) fn into_core(self) -> bae_core::import::CandidateEditField {
+        use bae_core::import::CandidateEditField as Field;
+        match self {
+            Self::AlbumTitle => Field::AlbumTitle,
+            Self::AlbumArtistText => Field::AlbumArtistText,
+            Self::Year => Field::Year,
+            Self::Format => Field::Format,
+            Self::Label => Field::Label,
+            Self::CatalogNumber => Field::CatalogNumber,
+            Self::Country => Field::Country,
+            Self::Barcode => Field::Barcode,
+        }
+    }
+}
+
 /// Raw edit-metadata form values, exactly as the editor holds them — text
 /// as typed, not yet normalized. Mirrors `bae_core::import::RawReleaseEdit`.
 /// The editor binds directly to this shape and calls `shape_release_edit` to

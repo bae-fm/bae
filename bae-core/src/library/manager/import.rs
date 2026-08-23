@@ -348,6 +348,95 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Everything a person settled about one candidate through its pane.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_import_candidate_pane_rows(
+        &self,
+        content_hash: &str,
+    ) -> Result<crate::db::DbCandidatePaneRows, LibraryError> {
+        Ok(self
+            .database
+            .load_import_candidate_pane_rows(content_hash)
+            .await?)
+    }
+
+    /// Record what some of a candidate's audio units play for.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_durations(
+        &self,
+        content_hash: &str,
+        durations: &crate::import::probe::ProbedDurations,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_durations(content_hash, durations)
+            .await?)
+    }
+
+    /// Record that an import of this candidate failed, so the pane still
+    /// offers Retry after a relaunch.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_failure(
+        &self,
+        content_hash: &str,
+        folder_path: &str,
+        edit_revision: u64,
+        error: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_failure(content_hash, folder_path, edit_revision, error)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn clear_import_candidate_failure(
+        &self,
+        content_hash: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .clear_import_candidate_failure(content_hash)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_cover(
+        &self,
+        content_hash: &str,
+        cover: &crate::import::CoverSelection,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_cover(content_hash, cover)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_edit_field(
+        &self,
+        content_hash: &str,
+        field: crate::import::CandidateEditField,
+        value: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_edit_field(content_hash, field, value)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_track_edit(
+        &self,
+        content_hash: &str,
+        edit: &crate::import::CandidateTrackEdit,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_track_edit(content_hash, edit)
+            .await?)
+    }
+
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.

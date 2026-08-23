@@ -470,7 +470,7 @@ mod tests {
                 catalogs: vec![],
                 free_text: vec![],
             },
-            probed_total_duration_ms: 0,
+            durations: crate::import::probe::ProbedDurations::default(),
         }
     }
 

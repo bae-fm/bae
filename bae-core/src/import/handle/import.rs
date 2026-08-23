@@ -6,6 +6,19 @@ use crate::util::rate_limiter::CallPriority;
 /// files name them.
 const UNKNOWN_TRACK_ID_PREFIX: &str = "unknown-track";
 
+/// `stored` where identification measured this folder, and a read of the disk
+/// where it has not. Blocking — every caller runs it off the async executor.
+pub(super) fn measured(
+    files: &crate::import::folder_scanner::CategorizedFiles,
+    stored: crate::import::probe::ProbedDurations,
+) -> crate::import::probe::ProbedDurations {
+    if stored.is_empty() {
+        crate::import::probe::probe_durations(files)
+    } else {
+        stored
+    }
+}
+
 impl ImportServiceHandle {
     /// Project an Unknown import candidate into a `ReleaseUserEdit` so the
     /// edit-metadata form can seed itself from what's on disk: the parsed CUE
@@ -41,6 +54,7 @@ impl ImportServiceHandle {
         crate::import::ImportError,
     > {
         let (seed, categorized) = self.unknown_seed(&candidate_key).await?;
+        let durations = self.stored_durations(&categorized.content_hash()).await?;
 
         // The folder's own tracklist knows no position string beyond the track
         // number it printed, and states no length: a length here would be the
@@ -55,10 +69,13 @@ impl ImportServiceHandle {
             })
             .collect();
 
-        // One FFmpeg open per container, so it goes off the async executor
-        // rather than holding it for the length of a folder.
+        // Reading the folder's audio goes off the async executor rather than
+        // holding it for the length of a folder — and it happens at all only
+        // where identification has not measured this candidate yet.
         let mapping = tokio::task::spawn_blocking(move || {
-            let slots = crate::import::track_slots::slot_table(&source_tracks, &categorized);
+            let durations = measured(&categorized, durations);
+            let slots =
+                crate::import::track_slots::slot_table(&source_tracks, &categorized, &durations);
             crate::import::mapping::mapping_table(
                 &categorized,
                 Some(crate::import::mapping::PickedTracklist {
@@ -66,6 +83,7 @@ impl ImportServiceHandle {
                     track_id_prefix: UNKNOWN_TRACK_ID_PREFIX,
                     source: crate::import::mapping::TracklistSource::FileTags,
                 }),
+                &durations,
             )
         })
         .await
@@ -95,10 +113,28 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
+        let durations = self
+            .stored_durations(&candidate.files.content_hash())
+            .await?;
         Ok(crate::import::mapping::mapping_table(
             &candidate.files,
             None,
+            &durations,
         ))
+    }
+
+    /// What identification measured this candidate's audio at, or nothing when
+    /// it has not reached it.
+    pub(super) async fn stored_durations(
+        &self,
+        content_hash: &str,
+    ) -> Result<crate::import::probe::ProbedDurations, crate::import::ImportError> {
+        Ok(self
+            .library_manager
+            .load_import_candidate_state(content_hash)
+            .await?
+            .map(|state| state.durations)
+            .unwrap_or_default())
     }
 
     /// The release the folder's own files describe: the parsed CUE track layout
@@ -304,6 +340,11 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::import::ImportError> {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
+        // Whatever the last attempt left is about to be answered by this one,
+        // so the pane stops offering Retry the moment the work is queued.
+        self.library_manager
+            .clear_import_candidate_failure(&expectation.content_hash)
+            .await?;
         self.claim_candidate_for_import(&candidate_key).await;
         if self
             .requests_tx

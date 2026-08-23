@@ -491,7 +491,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
     let audio_path = PathBuf::from(format!("{dir}/Test Album.ape"));
     let cue_path = PathBuf::from(format!("{dir}/Test Album.cue"));
     let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe = crate::import::track_slots::analyze_cue_audio(&audio_path).expect("analyze ape");
+    let probe = crate::import::probe::analyze_cue_audio(&audio_path).expect("analyze ape");
     let cue_pair = Arc::new(crate::import::types::CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![crate::import::types::CueAnalyzedAudioFile {
