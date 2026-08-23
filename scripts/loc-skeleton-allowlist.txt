@@ -19,7 +19,6 @@ it	Audio
 it	Bucket
 it	Cloud
 it	Disc ID
-it	DiscID
 it	Endpoint
 it	File
 it	Follower
@@ -41,7 +40,6 @@ nl	Credits
 nl	Details
 nl	Disc
 nl	Disc ID
-nl	DiscID
 nl	Downloads
 nl	Endpoint
 nl	Filter
@@ -60,14 +58,12 @@ nl	Status
 nl	Volume
 tr	Bucket
 tr	Disc ID
-tr	DiscID
 tr	OK
 tr	S3-compatible
 vi	Album
 vi	Bucket
 vi	Disc ID
 vi	Disc TOC
-vi	DiscID
 vi	Endpoint
 vi	OK
 vi	S3-compatible
