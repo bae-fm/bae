@@ -42,12 +42,14 @@ struct TrackList: View {
                         onAddToQueue: { onAddToQueue(track.id) }
                     )
                 }
-            }
-            if !detail.totalDurationText.isEmpty {
-                Text(detail.totalDurationText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 12)
+                // The album's play time sits in the header; only a multi-side
+                // release needs each side's named here.
+                if groups.count > 1, !group.totalDurationText.isEmpty {
+                    Text(group.totalDurationText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 8)
+                }
             }
         }
     }

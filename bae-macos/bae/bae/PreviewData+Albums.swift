@@ -170,7 +170,7 @@
                 files: [],
                 imageFiles: [],
                 galleryItems: [],
-                totalDuration: .minutesOnly(minutes: 39),
+                totalDuration: groupDuration(tracks),
                 fileCount: 0,
                 totalSize: 0,
                 cover: nil,

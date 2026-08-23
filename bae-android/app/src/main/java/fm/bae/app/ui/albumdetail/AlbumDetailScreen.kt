@@ -362,6 +362,7 @@ private fun AlbumDetailHeader(
             release.catalogNumber,
             release.country,
             audioFormat,
+            context.durationUnitsText(release.totalDuration).ifEmpty { null },
         ).joinToString(" · ")
     }
     Row(verticalAlignment = Alignment.Top) {
@@ -482,16 +483,18 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
             )
         }
         runningIndex += group.tracks.size
-    }
-    val totalDurationLabel = context.durationUnitsText(release.totalDuration)
-    if (totalDurationLabel.isNotEmpty()) {
-        item {
-            Text(
-                text = totalDurationLabel,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+        // The album's play time sits in the header; only a multi-side release
+        // needs each side's named here.
+        val groupDurationLabel = context.durationUnitsText(group.totalDuration)
+        if (release.trackGroups.size > 1 && groupDurationLabel.isNotEmpty()) {
+            item {
+                Text(
+                    text = groupDurationLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
     }
 }

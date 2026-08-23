@@ -33,21 +33,18 @@ public struct ReleaseDetail: Identifiable {
         summary.storageActions
     }
 
-    /// Total play time across all tracks, in the words core chose for it (e.g.
-    /// "39 min" / "3 hr, 42 min"). Empty when no track reports a length.
-    public var totalDurationText: String {
-        totalDuration?.text ?? ""
-    }
-
     public init(summary: ReleaseSummary, bridge: BridgeRelease) {
         self.summary = summary
         displayName = bridge.displayName
+        // The play time ends the line, in the words core chose for it
+        // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
         compactMetadata = [
             bridge.year.map { String($0) },
             bridge.format,
             bridge.label,
             bridge.catalogNumber,
             bridge.country,
+            bridge.totalDuration?.text,
         ]
         .compactMap { $0 }.joined(separator: " \u{00B7} ")
         totalDuration = bridge.totalDuration

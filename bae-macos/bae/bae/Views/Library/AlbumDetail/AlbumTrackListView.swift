@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The track list under an album's detail card. Lays each side/disc group out
-/// as one or two columns (splitting long sides in half), with side headers and
-/// a total-duration footer. Delegates each row to `TrackRowView`.
+/// as one or two columns (splitting long sides in half), with side headers and,
+/// on a multi-side release, each side's play time. Delegates each row to
+/// `TrackRowView`.
 struct AlbumTrackListView: View {
     let release: ReleaseDetail
     let isCompilation: Bool
@@ -62,20 +63,14 @@ struct AlbumTrackListView: View {
                         globalOffset: globalOffset
                     )
                 }
-                // One group's runtime is the album's; only a multi-side release
-                // needs each side named.
+                // The album's play time sits in the header; only a multi-side
+                // release needs each side's named here.
                 if groups.count > 1, !group.totalDurationText.isEmpty {
                     Text(group.totalDurationText)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.tertiary)
                         .padding(.top, 8)
                 }
-            }
-            if !release.totalDurationText.isEmpty {
-                Text(release.totalDurationText)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 14)
             }
         }
     }
