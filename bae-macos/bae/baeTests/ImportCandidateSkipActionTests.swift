@@ -37,12 +37,15 @@ struct ImportCandidateSkipActionTests {
             uiStore: uiStore
         ).perform()
 
+        // The eligible pair, and only it: a row already skipped offers Unskip
+        // rather than Skip, and a key the list no longer holds offers nothing.
+        // The action works through them in key order.
         #expect(
             await recorder.keys
                 == [
                     PreviewData.importTabCandidate.key,
                     PreviewData.importTabConflictCandidate.key,
-                ]
+                ].sorted()
         )
         #expect(uiStore.selectedFolderCandidates.isEmpty)
     }

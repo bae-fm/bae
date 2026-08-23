@@ -518,10 +518,27 @@
         /// resolves to the candidate the detail pane opens, while boundary and
         /// invalid entries exercise the two non-candidate shapes.
         @MainActor
+        /// Every row the tab holds, whichever tab it is on, by candidate key.
+        /// A selected candidate carries the same row the list does — which is
+        /// what the row-driven actions (skip, import) read their eligibility
+        /// from, so a fixture without it makes every candidate ineligible.
+        private static func importTabRowsByKey() -> [String: BridgeTriageRow] {
+            let rows =
+                importTabPendingRows + triageGroupedRows + importTabDoneRows
+                + [triageRowSkipped]
+            return Dictionary(
+                rows.map { ($0.candidateKey, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+        }
+
+        @MainActor
         static func importTabScene() -> ImportPreviewFixture {
             let store = ImportStore()
             store.summary = importTabSummary
-            for candidate in importTabCandidates {
+            let rows = importTabRowsByKey()
+            for var candidate in importTabCandidates {
+                candidate.row = rows[candidate.key]
                 store.selectedCandidates[candidate.key] = candidate
             }
             store.queueIdentifyProgress = (identified: 112, total: 130)
