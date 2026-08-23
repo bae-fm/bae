@@ -34,11 +34,6 @@ public sealed class ImportCandidate
     /// <summary>Candidate identities from a "found" result; empty otherwise.</summary>
     public List<ReleaseCandidateChoice> Matches { get; set; } = new();
 
-    /// <summary>The signals-toolbar badges (disc ID, barcode, catalog), each with
-    /// its live lookup state. Core pre-shapes the list; the row iterates and
-    /// renders it.</summary>
-    public List<SignalBadge> Signals { get; set; } = new();
-
     /// <summary>Every file in the folder exactly once, with the role in force
     /// for it, what that role makes of it, the roles it can be put in, and —
     /// for a track sheet — what it describes. The mapping table itself is core's

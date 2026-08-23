@@ -58,6 +58,15 @@ pub enum BridgeUiEvent {
         tracks_total: u32,
         fraction: Option<f32>,
     },
+    /// A candidate's extracted signals, as extraction settles each one. The UI
+    /// routes it to the one form that reads them — the search pane's
+    /// autocomplete pools and its scanning indicator — rather than to the
+    /// candidate's runtime, which every row and both panes hold.
+    #[cfg(feature = "desktop")]
+    CandidateSignalsUpdated {
+        key: String,
+        signals: BridgeSignals,
+    },
     /// How much of the import queue the background sweep has answered — the
     /// sidebar header's line and bar. Both numbers are the queue's; a view
     /// must not derive `total` from the rows it holds, which are filtered.

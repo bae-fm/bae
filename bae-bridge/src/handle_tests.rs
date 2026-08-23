@@ -144,7 +144,9 @@ fn queue_entry_precomputes_duration_clock() {
     assert!(absent.duration_clock.is_none());
 }
 
-#[cfg(not(feature = "desktop"))]
+/// A handle over a fresh, empty library, built the way the app builds one so
+/// whatever this bridge build carries — the desktop services, the cast
+/// controller — is behind it.
 fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
@@ -187,11 +189,10 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
         let playback = manager.start_playback_service(runtime.handle().clone(), 50, true);
         bae_core::library::AppServices::new(manager, playback)
     };
-    let handle = Arc::new(super::AppHandle {
-        runtime: super::AppRuntime::new(runtime),
-        services,
-        ui_event_bus: bae_core::ui::UiEventBus::new(),
-    });
+    let handle = Arc::new(
+        super::AppHandle::start(services, bae_core::ui::UiEventBus::new(), runtime)
+            .expect("the bridge handle starts"),
+    );
 
     (handle, root)
 }
@@ -364,6 +365,56 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
         events.as_slice(),
         [crate::types::BridgeUiEvent::QueueItemsAdded { count: 2 }]
     ));
+}
+
+/// Extraction's snapshots cross whole, keyed the way a loudness tick is: the
+/// form on the other side reads the text pools off the same value the run
+/// produced.
+#[cfg(feature = "desktop")]
+#[test]
+fn extracted_signals_cross_the_bus_with_their_key() {
+    let signals = bae_core::signals::Signals {
+        disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
+        barcode: bae_core::signals::BarcodeSignal::Settled { codes: Vec::new() },
+        text: bae_core::signals::TextSignal::Settled {
+            catalogs: vec![bae_core::signals::SourcedValue {
+                value: "CAT-1".to_string(),
+                origin: bae_core::signals::SignalOrigin::Artwork,
+            }],
+            free_text: vec!["Album Title".to_string()],
+        },
+        durations: bae_core::import::probe::ProbedDurations::totalling(1_000),
+    };
+
+    let crossed =
+        super::ui_events::convert_ui_event(bae_core::ui::UiBusEvent::CandidateSignalsUpdated {
+            key: "reidentify:release-1".to_string(),
+            signals,
+        })
+        .expect("a desktop bridge carries the import stream");
+
+    let crate::types::BridgeUiEvent::CandidateSignalsUpdated { key, signals } = crossed else {
+        panic!("expected the signals event, got {crossed:?}");
+    };
+    assert_eq!(key, "reidentify:release-1");
+    let crate::types::BridgeTextSignal::Settled {
+        catalogs,
+        free_text,
+    } = signals.text
+    else {
+        panic!(
+            "a settled text signal crosses as settled, got {:?}",
+            signals.text
+        );
+    };
+    assert_eq!(free_text, vec!["Album Title".to_string()]);
+    assert_eq!(
+        catalogs
+            .iter()
+            .map(|catalog| catalog.value.clone())
+            .collect::<Vec<_>>(),
+        vec!["CAT-1".to_string()]
+    );
 }
 
 /// The per-file converter keeps source size separate from the active phase's
@@ -674,4 +725,131 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 
     assert!(bridge.error.is_none());
     assert!(bridge.sync_ready);
+}
+
+/// The runtime stream, end to end through the bridge: a claim crosses as one
+/// key with an import in flight, the import ending takes the key out of the
+/// stream, and a subscriber that joins mid-import is told about it rather than
+/// left waiting for the next tick.
+#[cfg(feature = "desktop")]
+mod candidate_runtime {
+    use super::*;
+    use crate::types::{BridgeCandidateRuntimeChange, CandidateRuntimeCallback};
+    use std::time::Duration;
+
+    struct ForwardingCallback {
+        changes: tokio::sync::mpsc::UnboundedSender<BridgeCandidateRuntimeChange>,
+    }
+
+    impl CandidateRuntimeCallback for ForwardingCallback {
+        fn on_change(&self, change: BridgeCandidateRuntimeChange) {
+            let _ = self.changes.send(change);
+        }
+    }
+
+    fn subscribe(
+        handle: &Arc<super::super::AppHandle>,
+    ) -> (
+        Arc<crate::LiveSubscription>,
+        tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
+    ) {
+        let (changes, receiver) = tokio::sync::mpsc::unbounded_channel();
+        let subscription =
+            handle.subscribe_candidate_runtime(Box::new(ForwardingCallback { changes }));
+        (subscription, receiver)
+    }
+
+    /// The next change the subscription delivers for `key`. Changes for other
+    /// keys are skipped: an empty library has none, but a shared test root
+    /// should not be able to make this flaky.
+    fn next_for(
+        handle: &Arc<super::super::AppHandle>,
+        receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
+        key: &str,
+    ) -> BridgeCandidateRuntimeChange {
+        handle
+            .runtime
+            .block_on(async {
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    loop {
+                        let change = receiver.recv().await.expect("the subscription stays open");
+                        let delivered = match &change {
+                            BridgeCandidateRuntimeChange::Updated { key, .. }
+                            | BridgeCandidateRuntimeChange::Removed { key } => key.as_str(),
+                            BridgeCandidateRuntimeChange::Reset { .. } => continue,
+                        };
+                        if delivered == key {
+                            return change;
+                        }
+                    }
+                })
+                .await
+            })
+            .expect("a change for the key is delivered")
+    }
+
+    #[test]
+    fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
+        let (handle, _root) = fresh_bridge_handle("candidate-runtime-claim");
+        let key = "/watch/Album Title".to_string();
+        let (_watching, mut watching_changes) = subscribe(&handle);
+
+        handle
+            .runtime
+            .block_on(handle.services.claim_candidate_for_import_for_test(&key));
+
+        let claimed = next_for(&handle, &mut watching_changes, &key);
+        let import = match &claimed {
+            BridgeCandidateRuntimeChange::Updated { runtime, .. } => runtime
+                .import
+                .clone()
+                .expect("a claimed candidate has an import in flight"),
+            other => panic!("expected the claim, got {other:?}"),
+        };
+        assert_eq!(import.progress_percent, 0);
+        assert!(
+            matches!(
+                import.step,
+                Some(crate::types::BridgeImportStep::Preparing { .. })
+            ),
+            "a claim is the queued step, got {:?}",
+            import.step
+        );
+
+        // A subscriber that opens while the import is running is told what is
+        // running rather than left waiting for the next tick.
+        let (_joining, mut joining_changes) = subscribe(&handle);
+        assert!(
+            matches!(
+                next_for(&handle, &mut joining_changes, &key),
+                BridgeCandidateRuntimeChange::Updated { runtime, .. }
+                    if runtime.import.is_some()
+            ),
+            "a late subscriber is replayed the running import"
+        );
+
+        handle
+            .services
+            .import_emit_event_for_test(bae_core::import::ImportEvent::ImportProgress {
+                candidate_key: key.clone(),
+                progress: bae_core::import::ImportProgress::Failed {
+                    error: "no space left".to_string(),
+                    import_id: "import-1".to_string(),
+                },
+            });
+
+        // The failure is a row by the time it is announced, so the key stops
+        // being in flight rather than crossing as a status of its own.
+        assert!(
+            matches!(
+                next_for(&handle, &mut watching_changes, &key),
+                BridgeCandidateRuntimeChange::Removed { .. }
+            ),
+            "a failed import leaves the stream"
+        );
+        assert!(
+            handle.candidate_runtime(key).is_none(),
+            "and nothing is left to read for the key"
+        );
+    }
 }

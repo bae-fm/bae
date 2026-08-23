@@ -23,6 +23,11 @@ extension ImportSearchFlow {
         /// What is in flight for this key: the run whose state and badge row
         /// the pane shows. `nil` when nothing is running for it.
         let runtime: BridgeCandidateRuntimeSnapshot?
+        /// What extraction has found for this key so far, feeding the manual
+        /// form's suggestion pools and its scanning indicator. `nil` before
+        /// extraction has reported any, and for a candidate whose run settled
+        /// in an earlier session — the stored row answers for that one.
+        let liveSignals: Signals?
     }
 
     /// `onSelect` defaults to the import flow's prefetch + docked-pane path
@@ -168,7 +173,10 @@ extension ImportSearchFlow {
             isImporting: isImporting(candidate),
             libraryStatuses: candidate.libraryStatuses,
             discogsEnabled: services.configStore.config.discogsUsable,
-            signals: candidate.settledSignals,
+            // The run in flight knows more than the last stored answer does,
+            // and for a re-identify key — which has no row at all — it is the
+            // only answer.
+            signals: input.liveSignals ?? candidate.settledSignals,
             signalsToolbar: input.runtime?.signalsToolbar
                 ?? BridgeSignalsToolbar(signals: []),
         )

@@ -78,6 +78,7 @@ private struct ImportOperations: Sendable {
         @Sendable (String, BridgeMetadataResult, BridgeClaimLevel)
             -> BridgeClaimLine?
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
+    let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
 
     // Flat forwarding from AppHandleProtocol into immutable operation values.
@@ -189,6 +190,10 @@ private struct ImportOperations: Sendable {
             candidateRuntime: {
                 handle.candidateRuntime(candidateKey: $0)
             },
+            candidateSignals: {
+                handle.candidateSignals(candidateKey: $0)
+                    .map(Signals.init(bridge:))
+            },
             startImport: { request in
                 try await handle.startImport(
                     candidateKey: request.candidateKey,
@@ -285,6 +290,8 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) -> BridgeCandidateRuntimeSnapshot? = {
                 _ in nil
             },
+        candidateSignals: @escaping @Sendable (String) -> Signals? = { _ in nil
+        },
         startImport:
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
@@ -314,6 +321,7 @@ final class Importer: Sendable, Observable {
             dropCandidateTrack: dropCandidateTrack,
             claimForPick: claimForPick,
             candidateRuntime: candidateRuntime,
+            candidateSignals: candidateSignals,
             startImport: startImport
         )
     }
@@ -465,6 +473,20 @@ final class Importer: Sendable, Observable {
         try await operations.dropCandidateTrack(candidateKey, trackId)
     }
 
+    func startImport(_ request: ImportCommitRequest) async throws {
+        try await operations.startImport(request)
+    }
+
+    convenience init(handle: any AppHandleProtocol) {
+        self.init(operations: .live(handle: handle))
+    }
+
+}
+
+/// What a view asks about one candidate the moment it appears, having already
+/// subscribed to the stream that keeps it current. Every one of these is a
+/// read: they start nothing and change nothing.
+extension Importer {
     func claimForPick(
         _ candidateKey: String,
         _ result: BridgeMetadataResult,
@@ -481,12 +503,9 @@ final class Importer: Sendable, Observable {
         operations.candidateRuntime(candidateKey)
     }
 
-    func startImport(_ request: ImportCommitRequest) async throws {
-        try await operations.startImport(request)
+    /// The signals extraction has found for one key so far — the read a form
+    /// does once when it opens, after it has subscribed to the changes.
+    func candidateSignals(_ candidateKey: String) -> Signals? {
+        operations.candidateSignals(candidateKey)
     }
-
-    convenience init(handle: any AppHandleProtocol) {
-        self.init(operations: .live(handle: handle))
-    }
-
 }

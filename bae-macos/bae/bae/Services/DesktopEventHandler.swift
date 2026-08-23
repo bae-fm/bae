@@ -30,6 +30,14 @@ final class DesktopEventHandler {
                 )
             )
 
+        case .candidateSignalsUpdated(let key, let signals):
+            importStore.candidateSignalsSubject.send(
+                CandidateSignalsEvent(
+                    key: key,
+                    signals: Signals(bridge: signals)
+                )
+            )
+
         case .importQueueIdentifyProgress(let identified, let total):
             importStore.queueIdentifyProgress = (
                 identified: identified, total: total

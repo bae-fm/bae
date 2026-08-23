@@ -385,6 +385,14 @@ impl ImportServiceHandle {
         send_event(&self.event_tx, event);
     }
 
+    /// Claim a candidate the way committing an import does, for a test with no
+    /// worker behind it. The claim is the only runtime a durable write gates
+    /// on, so a test about what a claim does has to make a real one.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str) {
+        self.claim_candidate_for_import(candidate_key).await;
+    }
+
     /// Every key with something in flight right now.
     pub fn candidate_runtimes(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
         self.runtime.all()
@@ -394,6 +402,17 @@ impl ImportServiceHandle {
     /// appears, after it has subscribed to the changes.
     pub fn candidate_runtime(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
         self.runtime.get(key)
+    }
+
+    /// The signals extraction has found for one key so far. `None` before the
+    /// first snapshot, and for a key whose run settled in an earlier session —
+    /// what that run stored is on the candidate's row instead.
+    ///
+    /// The read a form does once when it opens, after it has subscribed to
+    /// the UI bus, so a form opened partway through a run has the pool the
+    /// run has built rather than an empty one.
+    pub fn candidate_signals(&self, key: &str) -> Option<crate::signals::Signals> {
+        self.runtime.signals(key)
     }
 
     /// Every key with something in flight right now, and one change per key

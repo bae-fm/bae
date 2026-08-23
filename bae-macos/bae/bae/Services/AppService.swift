@@ -221,6 +221,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
                 \.candidateRuntimePublisher,
                 candidateRuntimePublisher
             )
+            .environment(
+                \.candidateSignalsPublisher,
+                candidateSignalsPublisher
+            )
             #if BAE_OAUTH_PROVIDERS
                 .environment(cloudSyncSetup)
             #endif
@@ -242,6 +246,12 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         AnyPublisher<BridgeCandidateRuntimeChange, Never>
     {
         importStore.candidateRuntimeSubject.eraseToAnyPublisher()
+    }
+
+    private var candidateSignalsPublisher:
+        AnyPublisher<CandidateSignalsEvent, Never>
+    {
+        importStore.candidateSignalsSubject.eraseToAnyPublisher()
     }
 
     func addWatchedFolder(path: String) async throws {

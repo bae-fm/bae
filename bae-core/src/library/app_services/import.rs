@@ -52,6 +52,22 @@ impl AppServices {
         self.inner.import.candidate_runtime(key)
     }
 
+    /// Claim a candidate the way committing an import does, for a test with
+    /// no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str) {
+        self.inner
+            .import
+            .claim_candidate_for_import_for_test(candidate_key)
+            .await;
+    }
+
+    /// The signals extraction has found for one key so far — the read a form
+    /// does once when it opens, after it has subscribed to the UI bus.
+    pub fn candidate_signals(&self, key: &str) -> Option<crate::signals::Signals> {
+        self.inner.import.candidate_signals(key)
+    }
+
     /// Every key with something in flight right now, and one change per key as
     /// runs advance.
     pub fn subscribe_candidate_runtime(

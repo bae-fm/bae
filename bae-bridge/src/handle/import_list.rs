@@ -61,6 +61,16 @@ impl AppHandle {
             .map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
     }
 
+    /// The signals extraction has found for one key so far — the read a form
+    /// does once when it opens, after it has subscribed to the UI bus. `None`
+    /// before the first snapshot, and for a run that settled in an earlier
+    /// session: what that run stored is on the candidate's row instead.
+    pub fn candidate_signals(&self, candidate_key: String) -> Option<crate::types::BridgeSignals> {
+        self.services
+            .candidate_signals(&candidate_key)
+            .map(crate::types::BridgeSignals::from_core)
+    }
+
     /// What every candidate has in flight: a run's identify state and a
     /// running import's progress, keyed by candidate.
     pub fn subscribe_candidate_runtime(

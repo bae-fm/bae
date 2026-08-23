@@ -28,7 +28,13 @@ struct ImportSearchSheet: View {
             VStack(spacing: 0) {
                 header
                 CandidateRuntimeReader(key: candidateKey) { runtime in
-                    searchPane(for: candidate, runtime: runtime)
+                    CandidateSignalsReader(key: candidateKey) { signals in
+                        searchPane(
+                            for: candidate,
+                            runtime: runtime,
+                            signals: signals
+                        )
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -64,7 +70,8 @@ struct ImportSearchSheet: View {
 
     private func searchPane(
         for candidate: Candidate,
-        runtime: BridgeCandidateRuntimeSnapshot?
+        runtime: BridgeCandidateRuntimeSnapshot?,
+        signals: Signals?
     ) -> some View {
         ImportSearchFlow.buildSearchPane(
             services: ImportSearchFlow.ImportServices(
@@ -76,7 +83,8 @@ struct ImportSearchSheet: View {
                 candidate: candidate,
                 key: candidateKey,
                 selectedReleaseId: candidate.pickedRelease?.releaseId,
-                runtime: runtime
+                runtime: runtime,
+                liveSignals: signals
             ),
             openSettings: { openSettings() },
             // Reading the folder as Unknown is the mapping pane's own identity

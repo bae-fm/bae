@@ -4,7 +4,7 @@
 //! One entry per key that has either, and no entry at all otherwise — a
 //! finished import leaves, and so does a settled run once its verdict is
 //! stored. Everything an entry used to outlive itself carrying has a table
-//! now: the verdict the run settled on, the signals extraction found, the
+//! now: the verdict the run settled on, the signals a settled run stored, the
 //! release an import wrote, the error one failed with. Whoever wants those
 //! reads the rows.
 //!
@@ -18,11 +18,20 @@
 //! Changes are published per key — one [`CandidateRuntimeChange`] for the one
 //! candidate an event concerned — so a consumer holding the list never
 //! receives the list again because one row's run advanced.
+//!
+//! Extraction's [`Signals`](crate::signals::Signals) are held here too, and
+//! deliberately *not* in the published snapshot: they change at extraction's
+//! own cadence, one form reads them, and that form is fed by its own UI-bus
+//! event. What they share with the rest of this map is a lifetime — they
+//! describe the same key's current files and are dropped by the same events —
+//! which is why they live here rather than in a second map somebody would
+//! have to remember to clear.
 
 use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::types::{ImportProgress, ImportStep, PrepareStep};
+use crate::signals::Signals;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -74,6 +83,10 @@ struct Inner {
     /// The shape last reported for each scanned key, whether or not the key
     /// has runtime, so a reshape can be told from a repeat.
     shapes: HashMap<String, CandidateShape>,
+    /// The latest signals extraction reported for each key. Read by a form
+    /// that opens partway through a run; every later value reaches it on the
+    /// UI bus.
+    signals: HashMap<String, Signals>,
 }
 
 #[derive(Clone)]
@@ -102,6 +115,12 @@ impl CandidateRuntime {
     /// What is in flight for a key, or `None` when nothing is.
     pub fn get(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
         self.inner.lock().unwrap().runtime.get(key).cloned()
+    }
+
+    /// The signals extraction has found for a key so far, or `None` before it
+    /// has reported any.
+    pub fn signals(&self, key: &str) -> Option<Signals> {
+        self.inner.lock().unwrap().signals.get(key).cloned()
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<CandidateRuntimeChange> {
@@ -149,8 +168,14 @@ impl CandidateRuntime {
         }
     }
 
+    /// Drop everything held for a key: what is in flight and the signals that
+    /// described its files. Both are answers about a candidate that is gone.
     fn remove(&self, key: &str) {
-        let removed = self.inner.lock().unwrap().runtime.remove(key).is_some();
+        let removed = {
+            let mut inner = self.inner.lock().unwrap();
+            inner.signals.remove(key);
+            inner.runtime.remove(key).is_some()
+        };
         if removed {
             self.publish(CandidateRuntimeChange::Removed {
                 key: key.to_string(),
@@ -295,12 +320,24 @@ impl CandidateRuntime {
                 self.inner.lock().unwrap().shapes.remove(candidate_key);
                 self.remove(candidate_key);
             }
-            // Extracted signals are a fact about the files and are stored as
-            // one; queue progress is a queue-wide number with no candidate to
-            // record it against; loudness ticks go straight to their leaf
-            // view; and the remaining scan events change rows, not runtime.
-            ImportEvent::SignalsUpdated { .. }
-            | ImportEvent::Scan(
+            // Retained but not published: the form that reads these is fed by
+            // the UI bus, and republishing the key here would wake every
+            // runtime consumer for something none of them draws.
+            ImportEvent::SignalsUpdated {
+                candidate_key,
+                signals,
+                priority: _,
+            } => {
+                self.inner
+                    .lock()
+                    .unwrap()
+                    .signals
+                    .insert(candidate_key.clone(), signals.clone());
+            }
+            // Queue progress is a queue-wide number with no candidate to
+            // record it against, loudness ticks go straight to their leaf
+            // view, and the remaining scan events change rows, not runtime.
+            ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::FolderReleaseBoundary(_)
                 | ScanEvent::CandidateSkipChanged { .. }

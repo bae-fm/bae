@@ -26,6 +26,13 @@ pub(super) fn convert_ui_event(
             fraction,
         }),
         #[cfg(feature = "desktop")]
+        UiBusEvent::CandidateSignalsUpdated { key, signals } => {
+            Some(BridgeUiEvent::CandidateSignalsUpdated {
+                key,
+                signals: crate::types::BridgeSignals::from_core(signals),
+            })
+        }
+        #[cfg(feature = "desktop")]
         UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
             Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
         }
@@ -34,6 +41,7 @@ pub(super) fn convert_ui_event(
             not(any(target_os = "ios", target_os = "android"))
         ))]
         UiBusEvent::CandidateImportLoudnessProgress { .. }
+        | UiBusEvent::CandidateSignalsUpdated { .. }
         | UiBusEvent::ImportQueueIdentifyProgress { .. } => None,
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
             error: crate::types::BridgeError::from_core(error),

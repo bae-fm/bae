@@ -170,6 +170,48 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
     }
 }
 
+/// A verdict is refused for a candidate an import has claimed. The claim and
+/// the check share the folder-state commit lock, so by the time a claim
+/// returns there is no interval left in which a verdict can be stored for a
+/// candidate the user has already committed to importing — and a verdict that
+/// did land would describe files the import is in the middle of consuming.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_verdict_is_refused_for_a_claimed_candidate() {
+    let fixture = Fixture::new("verdict-refused-when-claimed").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.scan(1).await;
+    let key = dir.to_string_lossy().into_owned();
+    let row = || NewImportCandidateVerdict {
+        content_hash: fixture.content_hash(&dir),
+        folder_path: key.clone(),
+        verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
+        signals: settled_signals(fixture.probed_durations(&dir)),
+        expected_edit_revision: 0,
+        identity_pick: None,
+    };
+
+    assert!(
+        fixture
+            .import
+            .save_candidate_verdict_if_current(&key, &row())
+            .await
+            .unwrap(),
+        "an unclaimed candidate still takes its verdict"
+    );
+
+    fixture.import.claim_candidate_for_import(&key).await;
+
+    assert!(
+        !fixture
+            .import
+            .save_candidate_verdict_if_current(&key, &row())
+            .await
+            .unwrap(),
+        "a claimed candidate refuses a verdict"
+    );
+}
+
 /// Selecting an answered candidate starts nothing: no run, no lookup, no
 /// event. Its stored verdict is what the selection's own query serves as
 /// its identify state, so there is nothing left for a click to do.

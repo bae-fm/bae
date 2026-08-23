@@ -14,6 +14,20 @@ extension EnvironmentValues {
         AnyPublisher<BridgeCandidateRuntimeChange, Never> =
             Empty()
             .eraseToAnyPublisher()
+
+    /// Each candidate's extracted signals as extraction settles them, on the
+    /// same terms: one signal, filtered to the key that reads it.
+    @Entry
+    var candidateSignalsPublisher: AnyPublisher<CandidateSignalsEvent, Never> =
+        Empty()
+        .eraseToAnyPublisher()
+}
+
+/// One candidate's extracted signals, as extraction settles each of them.
+/// `key` routes it to the form reading that candidate.
+struct CandidateSignalsEvent {
+    let key: String
+    let signals: Signals
 }
 
 // MARK: - Reader
@@ -63,6 +77,42 @@ struct CandidateRuntimeReader<Content: View>: View {
             // a key it does not name has nothing running for it.
             runtime = runtimes.first { $0.key == key }?.runtime
         }
+    }
+}
+
+/// Draws `content` with the signals extraction has found for one key, kept
+/// current from the shared signal.
+///
+/// Subscribes first and reads second, like `CandidateRuntimeReader`, so a form
+/// opened partway through a run starts with the pool the run has built rather
+/// than filling in from empty.
+struct CandidateSignalsReader<Content: View>: View {
+    let key: String
+    @ViewBuilder
+    let content: (Signals?) -> Content
+
+    @Environment(\.candidateSignalsPublisher)
+    private var publisher
+    @Environment(Importer.self)
+    private var importer: Importer?
+
+    @State
+    private var signals: Signals?
+
+    var body: some View {
+        content(signals)
+            .onReceive(publisher) { event in
+                guard event.key == key else { return }
+                signals = event.signals
+            }
+            .task(id: key) {
+                // No importer is a preview or a test with no bridge behind it:
+                // there is nothing to read, so whatever the signal said stands.
+                guard let importer else { return }
+                if let read = importer.candidateSignals(key) {
+                    signals = read
+                }
+            }
     }
 }
 

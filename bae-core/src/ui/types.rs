@@ -140,6 +140,17 @@ pub enum UiBusEvent {
         tracks_total: u32,
         fraction: Option<f32>,
     },
+    /// A candidate's extracted signals, as extraction settles each one. Goes
+    /// to the one form that reads them — the search pane's autocomplete pools
+    /// and its scanning indicator — rather than to the candidate's runtime,
+    /// which every row and both panes hold: OCR reports several times per
+    /// candidate and nothing else on screen changes with it. `key` routes it,
+    /// the way a loudness tick is routed.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    CandidateSignalsUpdated {
+        key: String,
+        signals: crate::signals::Signals,
+    },
     /// How much of the import queue the background sweep has answered. The
     /// sidebar header renders it as a line and a bar. Both numbers are the
     /// queue's, not the list's — the sidebar is filtered, so a view counting

@@ -80,6 +80,16 @@ class ImportStore {
         BridgeCandidateRuntimeChange, Never
     >()
 
+    /// Each candidate's extracted signals as extraction settles them. A
+    /// signal rather than a stored value for the same reason the runtime is
+    /// one: OCR reports several times per candidate, one form reads the
+    /// result, and that form filters this to its own key. The latest value per
+    /// key lives in core, and the form reads its own when it opens.
+    @ObservationIgnored
+    let candidateSignalsSubject = PassthroughSubject<
+        CandidateSignalsEvent, Never
+    >()
+
     /// Per-track loudness measurement progress during an import. High-frequency
     /// while each track decodes, published as a Combine signal so only the leaf
     /// bar in the confirm pane re-renders — never the candidate row. Carries the

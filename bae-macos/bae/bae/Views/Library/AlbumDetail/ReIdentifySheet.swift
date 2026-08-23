@@ -116,7 +116,13 @@ struct ReIdentifySheet: View {
         case .identifying:
             if let candidate = importStore.reIdentifyCandidates[key] {
                 CandidateRuntimeReader(key: key) { runtime in
-                    identifyPane(candidate: candidate, runtime: runtime)
+                    CandidateSignalsReader(key: key) { signals in
+                        identifyPane(
+                            candidate: candidate,
+                            runtime: runtime,
+                            signals: signals
+                        )
+                    }
                 }
             }
             else {
@@ -138,11 +144,13 @@ struct ReIdentifySheet: View {
 
     /// The identify pane while the sheet is running its own re-identification.
     /// Its run has no candidate row anywhere — the release is already in the
-    /// library — so its state comes from the candidate-runtime signal under
-    /// this sheet's key, the same signal the import pane reads.
+    /// library — so both its identify state and the signals its manual form
+    /// suggests from come from this sheet's key on the two shared signals,
+    /// the same ones the import pane reads.
     private func identifyPane(
         candidate: Candidate,
-        runtime: BridgeCandidateRuntimeSnapshot?
+        runtime: BridgeCandidateRuntimeSnapshot?,
+        signals: Signals?
     ) -> some View {
         VStack(spacing: 0) {
             ImportSearchFlow.buildSearchPane(
@@ -155,7 +163,8 @@ struct ReIdentifySheet: View {
                     candidate: candidate,
                     key: key,
                     selectedReleaseId: selectedResult?.releaseId,
-                    runtime: runtime
+                    runtime: runtime,
+                    liveSignals: signals
                 ),
                 openSettings: { openSettings() },
                 // Re-identify "Skip identifying" diverges from the

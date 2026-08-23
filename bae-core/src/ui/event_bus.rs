@@ -105,6 +105,17 @@ impl UiEventBus {
                                     fraction,
                                 });
                             }
+                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                            ImportEvent::SignalsUpdated {
+                                candidate_key,
+                                signals,
+                                priority: _,
+                            } => {
+                                bus.emit(UiBusEvent::CandidateSignalsUpdated {
+                                    key: candidate_key,
+                                    signals,
+                                });
+                            }
                             // The sidebar header's line and bar. It crosses as
                             // its own event rather than as a catalog value:
                             // it is two numbers, it changes once per candidate

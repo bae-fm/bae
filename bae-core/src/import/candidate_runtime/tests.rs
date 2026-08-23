@@ -338,17 +338,45 @@ fn removal_and_invalidation_drop_the_runtime() {
     assert!(drain(&mut changes).is_empty());
 }
 
-/// Signals, loudness ticks and the queue's own count each have somewhere else
-/// to be — a table, a leaf view, a header — so none of them reaches here.
+/// Extraction's snapshots are kept for the one form that reads them, but they
+/// are not what is in flight: no entry appears for them and nobody watching a
+/// row is woken. The form is fed by the UI bus instead.
 #[test]
-fn signals_loudness_and_queue_progress_never_touch_the_runtime() {
+fn extracted_signals_are_retained_without_publishing_a_runtime() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
+    let key = "/watch/a/rel1";
+
     runtime.record_event(&ImportEvent::SignalsUpdated {
-        candidate_key: "/watch/a/rel1".to_string(),
+        candidate_key: key.to_string(),
         signals: extracted_signals(),
         priority: CallPriority::Background,
     });
+
+    assert!(
+        runtime.signals(key).is_some(),
+        "the form can read them back"
+    );
+    assert!(
+        runtime.get(key).is_none(),
+        "nothing is in flight for the key"
+    );
+    assert!(drain(&mut changes).is_empty());
+
+    // They describe this key's current files, so the scan dropping the key
+    // drops them with it.
+    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        candidate_key: key.to_string(),
+    }));
+    assert!(runtime.signals(key).is_none());
+}
+
+/// Loudness ticks and the queue's own count each have somewhere else to be —
+/// a leaf view, a header — so neither reaches here.
+#[test]
+fn loudness_and_queue_progress_never_touch_the_runtime() {
+    let runtime = CandidateRuntime::default();
+    let mut changes = runtime.subscribe();
     runtime.record_event(&ImportEvent::ImportLoudnessProgress {
         candidate_key: "/watch/a/rel1".to_string(),
         tracks_done: 1,
