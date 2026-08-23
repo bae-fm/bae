@@ -467,8 +467,7 @@ async fn a_candidate_the_sweep_failed_then_the_user_opened_is_left_alone() {
     );
 
     // The user opens it.
-    fixture.select(&dir);
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    fixture.select_and_await_run(&dir).await;
     assert!(fixture.identify.is_running(&key), "their run is in flight");
 
     let lookups_before = fixture.provider.count_containing("/discid/");
@@ -503,9 +502,8 @@ async fn the_sweep_leaves_a_candidate_the_user_has_open_alone() {
     let dir = fixture.barcode_candidate("Opened");
     fixture.scan(1).await;
 
-    fixture.select(&dir);
-    // Let identify register the user's driver before the sweep plans.
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Identify registers the user's driver before the sweep plans.
+    fixture.select_and_await_run(&dir).await;
     assert!(
         fixture.identify.is_running(&dir.to_string_lossy()),
         "the user's run is in flight"

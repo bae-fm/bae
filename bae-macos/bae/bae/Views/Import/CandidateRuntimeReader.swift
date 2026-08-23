@@ -131,3 +131,26 @@ func shownIdentifyState(
     }
     return live
 }
+
+#if DEBUG
+    extension View {
+        /// Everything the two readers above take their values from: the shared
+        /// runtime and signals streams, and the importer they read the current
+        /// value off when they appear. A preview that draws a candidate — a
+        /// row with a running import, a pane, the re-identify sheet — mounts
+        /// them, so it provides them and renders the same chain the app does.
+        func candidateReaderPreviewEnvironment() -> some View {
+            self
+                .environment(Importer.stub())
+                .environment(
+                    \.candidateRuntimePublisher,
+                    Empty<BridgeCandidateRuntimeChange, Never>()
+                        .eraseToAnyPublisher()
+                )
+                .environment(
+                    \.candidateSignalsPublisher,
+                    Empty<CandidateSignalsEvent, Never>().eraseToAnyPublisher()
+                )
+        }
+    }
+#endif

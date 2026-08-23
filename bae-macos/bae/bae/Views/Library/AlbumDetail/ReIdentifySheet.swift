@@ -414,6 +414,7 @@ extension ReIdentifySheet {
             onClose: {},
         )
         .albumDetailPreviewEnvironment(store: PreviewData.seededLibraryStore())
+        .candidateReaderPreviewEnvironment()
         .preferredColorScheme(.dark)
     }
 #endif

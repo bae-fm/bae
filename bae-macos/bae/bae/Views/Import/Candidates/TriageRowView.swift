@@ -613,6 +613,7 @@ extension BridgeMatchedSignal {
         .frame(width: 340)
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(PreviewData.artImageStore())
+        .candidateReaderPreviewEnvironment()
         .windowBackground()
     }
 #endif

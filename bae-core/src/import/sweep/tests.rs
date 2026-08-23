@@ -486,6 +486,21 @@ impl Fixture {
             .identify_for_selection(dir.to_string_lossy().into_owned());
     }
 
+    /// Open `dir` and wait until identify has registered the driver for it.
+    /// Registration happens on a spawned task, so a caller that needs the run
+    /// to exist before it acts waits for it rather than guessing a delay.
+    async fn select_and_await_run(&self, dir: &Path) {
+        let key = dir.to_string_lossy().into_owned();
+        self.select(dir);
+        tokio::time::timeout(Duration::from_secs(10), async {
+            while !self.identify.is_running(&key) {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("identify registers the driver for the opened candidate");
+    }
+
     /// Wait for a row to exist for `dir`, polling because the writer is a
     /// detached task rather than something the caller awaits.
     async fn await_row(&self, dir: &Path) -> DbImportCandidateState {
