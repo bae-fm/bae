@@ -510,7 +510,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     source_tracks_total_ms INTEGER CHECK (source_tracks_total_ms IS NULL OR source_tracks_total_ms >= 0),
     by_disc_id             INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
     by_barcode             INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
-    matches_catalog        INTEGER NOT NULL CHECK (matches_catalog IN (0, 1)),
+    by_catalog        INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),

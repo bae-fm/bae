@@ -29,10 +29,11 @@ struct ImportSearchPane: View {
     /// Set when the candidate can seed from local files (folder imports always
     /// can). `nil` suppresses the "Add as Unknown" link.
     let onAddAsUnknown: (() -> Void)?
-    /// Toggle a signal in the toolbar — include / exclude it from
-    /// triangulation. Drops the signal from the in-memory combine step (no
-    /// re-fetch) and re-derives the state delivered by the import projection.
-    let onToggleSignal: (BridgeExcludedSignal) -> Void
+    /// Act on a signal in the toolbar — take the disc ID or barcode in or out
+    /// of the run, or pick which extracted catalog number the run looks up.
+    /// The state the import projection delivers is re-derived from what is
+    /// left checked.
+    let onToggleSignal: (BridgeSignalToggle) -> Void
     /// Run the signal lookups again — the toolbar's `Auto` action, and what
     /// `Auto` in the manual header row does on the way back.
     let onRerun: () -> Void

@@ -1,29 +1,29 @@
 import BaeKit
 import SwiftUI
 
-/// The interactive signals toolbar shown above the identify results. Each
-/// identifying signal is a badge: the disc ID and barcode sit in the identity
-/// zone on the left, then a `Refine` divider, then the catalog filter badges.
-/// A badge shows its value, spins while its lookup runs, shows a result count
-/// when settled, and toggles in/out of triangulation on click. The header
-/// carries the `Auto` action (or an `Identifying…` spinner) and the
-/// `Search manually` / `Skip identifying` escapes.
+/// The interactive signals toolbar shown above the identify results: the disc
+/// ID, the barcode, and the catalog, side by side. A badge shows its value,
+/// spins while its lookup runs, shows a result count when settled, and takes
+/// itself in or out of the run on click — the catalog by picking one of the
+/// numbers extracted from the candidate. The header carries the `Auto` action
+/// (or an `Identifying…` spinner) and the `Search manually` /
+/// `Skip identifying` escapes.
 ///
 /// Core pre-shapes the whole badge list (`BridgeSignalsToolbar`); this view iterates
 /// and renders — no domain logic here.
 struct SignalsToolbarView: View {
     let toolbar: BridgeSignalsToolbar
-    let onToggle: (BridgeExcludedSignal) -> Void
+    let onToggle: (BridgeSignalToggle) -> Void
     let onRerun: () -> Void
     let onSearchManually: () -> Void
     /// `nil` suppresses the "Skip identifying" pill — a CD carries no local
     /// data to seed an Unknown import until it's ripped.
     let onAddAsUnknown: (() -> Void)?
 
-    /// The pipeline is still identifying while any identity badge is looking
-    /// up. Drives the header spinner vs. the `Auto` link.
+    /// The pipeline is still identifying while any badge is looking up. Drives
+    /// the header spinner vs. the `Auto` link.
     private var isIdentifying: Bool {
-        toolbar.identity.contains { $0.state == .lookingUp }
+        toolbar.signals.contains { $0.state == .lookingUp }
     }
 
     var body: some View {
@@ -92,41 +92,30 @@ struct SignalsToolbarView: View {
 
     // MARK: - Badge row
 
+    @ViewBuilder
     private var badgeRow: some View {
-        // A wrapping row: identity badges, the Refine divider, then catalog
-        // badges. Badges stay whole units; the value middle-truncates.
+        // A wrapping row of the three badges. Badges stay whole units; the
+        // value middle-truncates.
         WrappingHStack(spacing: 7, lineSpacing: 7) {
-            ForEach(toolbar.identity) { signal in
-                SignalBadge(signal: signal, onToggle: { toggle(signal) })
-            }
-            if !toolbar.filters.isEmpty {
-                refineDivider
-                ForEach(toolbar.filters) { signal in
+            ForEach(toolbar.signals) { signal in
+                if signal.kind == .catalog {
+                    CatalogSignalBadge(
+                        signal: signal,
+                        onChoose: { onToggle(.catalog(value: $0)) },
+                    )
+                }
+                else {
                     SignalBadge(signal: signal, onToggle: { toggle(signal) })
                 }
             }
         }
     }
 
-    private var refineDivider: some View {
-        HStack(spacing: 6) {
-            Rectangle()
-                .fill(.white.opacity(0.14))
-                .frame(width: 1, height: 22)
-            Text("Refine")
-                .font(.system(size: 9.5, weight: .bold))
-                .tracking(1)
-                .textCase(.uppercase)
-                .foregroundStyle(.quaternary)
-        }
-        .padding(.horizontal, 3)
-    }
-
     private func toggle(_ signal: BridgeToolbarSignal) {
-        guard let excluded = BridgeExcludedSignal(signal: signal) else {
+        guard let toggle = BridgeSignalToggle(signal: signal) else {
             return
         }
-        onToggle(excluded)
+        onToggle(toggle)
     }
 }
 

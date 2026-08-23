@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>inclure le signal</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>Code-barres</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Catalogue</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Choisissez un numéro de catalogue à rechercher</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID de disque</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artiste</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>ajouter un tri</value></data>

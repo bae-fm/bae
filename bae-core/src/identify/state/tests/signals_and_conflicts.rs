@@ -87,6 +87,7 @@ fn started_enters_triangulating_awaiting_signals() {
         IdentifyState::Triangulating {
             discid,
             barcode,
+            catalog: _,
             context,
         } => {
             assert!(matches!(discid, DiscidProgress::Computing));
@@ -484,8 +485,10 @@ fn failed_discid_lookup_preserves_track_count() {
     }
 }
 
+/// An extracted catalog number nobody checked narrows nothing: it is an option
+/// on the catalog badge, not a filter the run applies on its own.
 #[test]
-fn catalog_filter_narrows_and_flags_provenance() {
+fn an_unchosen_catalog_number_narrows_nothing() {
     let (state, _) = update(
         started(),
         signals(
@@ -514,49 +517,8 @@ fn catalog_filter_narrows_and_flags_provenance() {
             provenance,
             ..
         } => {
-            assert_eq!(matches.len(), 1);
-            assert_eq!(matches[0].release_id, "rel-a");
-            assert!(provenance[0].matches_catalog);
-        }
-        other => panic!("expected Found, got {other:?}"),
-    }
-}
-
-#[test]
-fn artwork_catalog_does_not_narrow_or_flag_provenance() {
-    let (state, _) = update(
-        started(),
-        signals_with_catalogs(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-            },
-            BarcodeSignal::Absent,
-            vec![SourcedValue::new(
-                "LBL 002".to_string(),
-                SignalOrigin::Artwork,
-            )],
-        ),
-    );
-    let mut r_a = mk_result("rel-a", Some("g-x"));
-    r_a.catalog_number = Some("LBL-001".to_string());
-    let mut r_b = mk_result("rel-b", Some("g-x"));
-    r_b.catalog_number = Some("LBL-002".to_string());
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![(r_a, mk_status("rel-a")), (r_b, mk_status("rel-b"))],
-            track_count: 5,
-        },
-    );
-    match state {
-        IdentifyState::Found {
-            matches,
-            provenance,
-            ..
-        } => {
             assert_eq!(matches.len(), 2);
-            assert!(provenance.iter().all(|p| !p.matches_catalog));
+            assert!(provenance.iter().all(|p| !p.by_catalog));
         }
         other => panic!("expected Found, got {other:?}"),
     }

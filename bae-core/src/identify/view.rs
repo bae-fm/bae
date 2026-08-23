@@ -102,6 +102,7 @@ impl From<IdentifyState> for IdentifyStateView {
             IdentifyState::Triangulating {
                 discid,
                 barcode,
+                catalog: _,
                 context: _,
             } => IdentifyStateView::Triangulating {
                 discid: discid.into(),

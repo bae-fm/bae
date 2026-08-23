@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>включване на сигнала</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>Баркод</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Каталог</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Изберете каталожен номер за търсене</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID на диска</value></data>
   <data name="sort.artist" xml:space="preserve"><value>изпълнител</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>добавяне на сортиране</value></data>

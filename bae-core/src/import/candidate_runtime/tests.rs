@@ -52,11 +52,15 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         barcode_codes: Vec::new(),
         had_barcode_source: false,
         catalogs: Vec::new(),
-        excluded: Default::default(),
+        chosen_catalog: None,
+        disc_excluded: false,
+        barcode_excluded: false,
         discid_results: Vec::new(),
         barcode_results: Vec::new(),
+        catalog_results: Vec::new(),
         discid_failure: None,
         barcode_failure: None,
+        catalog_failure: None,
         matched_barcode: None,
         track_count,
     }
@@ -434,6 +438,7 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
         crate::identify::IdentifyState::Triangulating {
             discid: crate::identify::DiscidProgress::Computing,
             barcode: crate::identify::BarcodeProgress::Scanning,
+            catalog: crate::identify::CatalogProgress::Skipped,
             context: signals_context(9),
         },
     ));

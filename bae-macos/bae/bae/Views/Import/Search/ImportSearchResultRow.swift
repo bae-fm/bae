@@ -148,7 +148,7 @@ struct ImportSearchResultRow: View {
                 signalBadge(
                     "Catalog",
                     icon: "tag",
-                    on: provenance.matchesCatalog
+                    on: provenance.byCatalog
                 )
             }
             .padding(.top, 1)
@@ -231,7 +231,7 @@ struct ImportSearchResultRow: View {
                 provenance: BridgeResultProvenance(
                     byDiscId: true,
                     byBarcode: false,
-                    matchesCatalog: true
+                    byCatalog: true
                 ),
                 isSelected: true,
                 onSelect: {},

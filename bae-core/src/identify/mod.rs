@@ -1,9 +1,10 @@
 //! The identify pipeline. Consumes the [`crate::signals::Signals`] the extraction
 //! service produces for a candidate and drives a state machine that matches it
 //! against external metadata. The disc-ID and barcode signals are looked up in
-//! parallel — triangulation — and once both settle, `combine` reconciles their
-//! results into a terminal `Found` or `NotFoundAnywhere` carrying
-//! per-result provenance.
+//! parallel — triangulation — and once they settle, `combine` intersects their
+//! results into a terminal `Found` or `NotFoundAnywhere` carrying per-result
+//! provenance. A catalog number the user picks out of the ones extracted is a
+//! third lookup, and joins the same intersection.
 //!
 //! The state machine is a pure reducer (`state::step`). The service
 //! (`service::IdentifyServiceHandle`) relays `SignalsUpdated` into it, runs the
@@ -25,6 +26,7 @@
 //! the user for that candidate — derived on every read, never stored.
 
 pub mod barcode;
+pub mod catalog;
 pub mod combine;
 pub mod discid;
 pub mod ready;
@@ -40,8 +42,10 @@ pub use ready::{
     VerdictSummary,
 };
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
-pub use state::{BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifyState};
-pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
+pub use state::{
+    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyEvent, IdentifyState, SignalToggle,
+};
+pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::TerminalVerdict;
 pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView};
 

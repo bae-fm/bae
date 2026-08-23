@@ -160,7 +160,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
             .map(|_| crate::identify::ResultProvenance {
                 by_disc_id: true,
                 by_barcode: false,
-                matches_catalog: false,
+                by_catalog: false,
             })
             .collect(),
     }
@@ -339,16 +339,21 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     let triangulating = IdentifyState::Triangulating {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,
+        catalog: crate::identify::CatalogProgress::Skipped,
         context: crate::identify::state::SignalsContext {
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
-            excluded: Default::default(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: Vec::new(),
             barcode_results: Vec::new(),
+            catalog_results: Vec::new(),
             discid_failure: None,
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: None,
             track_count: 0,
         },

@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>bao gồm tín hiệu</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>Mã vạch</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Danh mục</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Chọn một số hiệu catalog để tra cứu</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>nghệ sĩ</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>thêm sắp xếp</value></data>

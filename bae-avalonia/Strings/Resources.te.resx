@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>సంకేతాన్ని చేర్చు</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>బార్‌కోడ్</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>కాటలాగ్</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>వెతకడానికి ఒక కేటలాగ్ నంబర్‌ను ఎంచుకోండి</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>డిస్క్ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>కళాకారుడు</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>క్రమబద్ధీకరణ జోడించు</value></data>

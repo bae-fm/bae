@@ -37,9 +37,6 @@ struct ImportMappingPane: View {
     /// Pick one of identification's matched pressings from the inline options
     /// — the same pick a search-sheet row click runs.
     let onPickRelease: (BridgeMetadataResult) -> Void
-    /// Exclude one of the signals whose release choices disagree, then let
-    /// identification derive the candidate again from the remaining signals.
-    let onToggleSignal: (BridgeExcludedSignal) -> Void
     let onEditCover: () -> Void
 
     /// The folder's mapping, as core reads it back for this candidate.

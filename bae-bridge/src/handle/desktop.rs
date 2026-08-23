@@ -185,7 +185,7 @@ impl AppHandle {
     pub fn toggle_signal_for_candidate(
         &self,
         candidate_key: String,
-        signal: crate::types::BridgeExcludedSignal,
+        signal: crate::types::BridgeSignalToggle,
     ) {
         self.services
             .identify_toggle_signal(&candidate_key, signal.into_core());

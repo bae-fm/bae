@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>ਸੰਕੇਤ ਸ਼ਾਮਲ ਕਰੋ</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>ਬਾਰਕੋਡ</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>ਕੈਟਾਲਾਗ</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>ਖੋਜਣ ਲਈ ਇੱਕ ਕੈਟਾਲਾਗ ਨੰਬਰ ਚੁਣੋ</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ਡਿਸਕ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>ਲੜੀਬੱਧ ਜੋੜੋ</value></data>

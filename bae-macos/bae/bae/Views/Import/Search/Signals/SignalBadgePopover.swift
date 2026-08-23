@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The hover popover for a badge: where the signal came from, its role, the
-/// full untruncated value, its current state, and the click-to-toggle hint.
+/// The hover popover for a badge: where the signal came from, the full
+/// untruncated value, its current state, and the click-to-toggle hint.
 struct SignalBadgePopover: View {
     let signal: BridgeToolbarSignal
 
@@ -20,10 +20,6 @@ struct SignalBadgePopover: View {
                 .textCase(.uppercase)
                 .foregroundStyle(.tertiary)
             }
-
-            Text(SignalBadgeStyle.roleLabel(for: signal.role))
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
 
             if let value = signal.value {
                 Text(value)
@@ -59,11 +55,11 @@ struct SignalBadgePopover: View {
         SignalBadgePopover(
             signal: BridgeToolbarSignal(
                 kind: .catalog,
-                role: .filter,
                 value: "WPCR-80001",
                 origin: .folderName,
-                state: .confirms(count: 1),
-                excluded: false
+                state: .found(count: 1),
+                excluded: false,
+                options: []
             )
         )
         .padding()

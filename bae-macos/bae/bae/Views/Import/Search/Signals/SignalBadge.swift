@@ -1,79 +1,50 @@
 import BaeKit
 import SwiftUI
 
-/// One signal badge: a type icon, a label, the value (mono, middle-truncated),
-/// and a trailing status. An active badge carries an accent ring; an excluded
-/// badge dims and strikes through but stays in place. Hovering shows a popover
-/// explaining the signal's origin, role, full value, state, and the
-/// click-to-toggle hint.
-struct SignalBadge: View {
+/// The chip every signal badge is drawn as: a type icon, a label, the value
+/// (mono, middle-truncated), and a trailing status. An active badge carries an
+/// accent ring; an unchecked one dims and strikes through but stays in place,
+/// so the row's layout holds steady.
+struct SignalBadgeChip: View {
     let signal: BridgeToolbarSignal
-    let onToggle: () -> Void
-
-    @State
-    private var hovering = false
-
-    /// A confirming catalog (a filter that matched a pressing) pins the badge
-    /// with an accent ring + check.
-    private var isPinned: Bool {
-        if case .confirms(let count) = signal.state {
-            return count > 0 && !signal.excluded
-        }
-        return false
-    }
-
-    /// The accent ring shows on an active (not excluded) badge. A pinned
-    /// catalog gets a stronger ring (handled in the overlay).
-    private var isActive: Bool {
-        !signal.excluded
-    }
 
     var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 7) {
-                Image(systemName: SignalBadgeStyle.icon(for: signal.kind))
-                    .font(.system(size: 12))
-                    .foregroundStyle(iconColor)
-                Text(SignalBadgeStyle.label(for: signal.kind))
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(.primary)
+        HStack(spacing: 7) {
+            Image(systemName: SignalBadgeStyle.icon(for: signal.kind))
+                .font(.system(size: 12))
+                .foregroundStyle(iconColor)
+            Text(SignalBadgeStyle.label(for: signal.kind))
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(.primary)
+                .strikethrough(signal.excluded, color: .secondary)
+            if let value = signal.value {
+                Text(value)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                     .strikethrough(signal.excluded, color: .secondary)
-                if let value = signal.value {
-                    Text(value)
-                        .font(.system(size: 11.5, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .strikethrough(signal.excluded, color: .secondary)
-                        .frame(maxWidth: 160, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                status
+                    .frame(maxWidth: 160, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.leading, 9)
-            .padding(.trailing, 8)
-            .frame(height: 30)
-            .background(badgeBackground)
-            .overlay(badgeRing)
-            .opacity(signal.excluded ? 0.45 : 1)
+            status
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .popover(isPresented: $hovering, arrowEdge: .bottom) {
-            SignalBadgePopover(signal: signal)
-                // Chips sit above the popover, which grows downward — its
-                // visual anchor is its top edge. Exit stays instant, like a
-                // tooltip's.
-                .popoverEntrance(anchor: .top)
-                .background { PopoverBehavior() }
-        }
+        .padding(.leading, 9)
+        .padding(.trailing, 8)
+        .frame(height: 30)
+        .background(badgeBackground)
+        .overlay(badgeRing)
+        .opacity(signal.excluded ? 0.45 : 1)
+    }
+
+    /// A signal with nothing chosen for it — the catalog before the user picks
+    /// a number — is not in the run, so it reads like an unchecked one.
+    private var isActive: Bool {
+        !signal.excluded && !SignalBadgeStyle.awaitingChoice(signal)
     }
 
     private var iconColor: Color {
-        if signal.excluded {
-            return .secondary
-        }
-        return isPinned || isActive ? Theme.accent : .secondary
+        isActive ? Theme.accent : .secondary
     }
 
     private var badgeBackground: some View {
@@ -84,23 +55,24 @@ struct SignalBadge: View {
     private var badgeRing: some View {
         RoundedRectangle(cornerRadius: 8)
             .stroke(
-                isPinned
-                    ? Theme.accent
-                    : (isActive
-                        ? Theme.accent.opacity(0.35) : .white.opacity(0.08)),
-                lineWidth: isPinned ? 1.2 : 1
+                isActive ? Theme.accent.opacity(0.35) : .white.opacity(0.08),
+                lineWidth: 1
             )
     }
 
     @ViewBuilder
     private var status: some View {
         if signal.excluded {
-            // Excluded: a hollow off-dot with an X.
+            // Unchecked: a hollow off-dot with an X.
             Image(systemName: "xmark")
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.tertiary)
                 .frame(width: 14, height: 14)
                 .overlay(Circle().stroke(.tertiary, lineWidth: 1.5))
+        }
+        else if SignalBadgeStyle.awaitingChoice(signal) {
+            // Nothing chosen: the count is how many there are to choose from.
+            countCapsule(signal.options.count.formatted(), tone: .muted)
         }
         else {
             switch signal.state {
@@ -111,20 +83,6 @@ struct SignalBadge: View {
                     .frame(width: 16, height: 16)
             case .found(let count):
                 countCapsule(count.formatted(), tone: .green)
-            case .confirms(let count):
-                if count > 0 {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(minWidth: 19, minHeight: 19)
-                        .background(
-                            Theme.accent.opacity(0.18),
-                            in: RoundedRectangle(cornerRadius: 6)
-                        )
-                }
-                else {
-                    countCapsule(0.formatted(), tone: .muted)
-                }
             case .noMatch:
                 countCapsule(0.formatted(), tone: .muted)
             case .skipped:
@@ -161,6 +119,64 @@ struct SignalBadge: View {
     }
 }
 
+/// A signal with one value: clicking takes it in or out of the run. Hovering
+/// shows a popover explaining where the value came from, the full untruncated
+/// value, its state, and the click-to-toggle hint.
+struct SignalBadge: View {
+    let signal: BridgeToolbarSignal
+    let onToggle: () -> Void
+
+    @State
+    private var hovering = false
+
+    var body: some View {
+        Button(action: onToggle) {
+            SignalBadgeChip(signal: signal)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .popover(isPresented: $hovering, arrowEdge: .bottom) {
+            SignalBadgePopover(signal: signal)
+                // Chips sit above the popover, which grows downward — its
+                // visual anchor is its top edge. Exit stays instant, like a
+                // tooltip's.
+                .popoverEntrance(anchor: .top)
+                .background { PopoverBehavior() }
+        }
+    }
+}
+
+/// The catalog: one badge over every number extracted from the candidate, each
+/// with a checkbox. A folder can carry thirty of them, which as thirty chips
+/// filled the sheet; as one control they are a list. At most one is checked —
+/// checking another replaces it — because the run looks up the one it is told
+/// to.
+struct CatalogSignalBadge: View {
+    let signal: BridgeToolbarSignal
+    let onChoose: (_ value: String) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(signal.options, id: \.value) { option in
+                Toggle(
+                    option.value,
+                    isOn: Binding(
+                        get: { option.chosen },
+                        set: { _ in onChoose(option.value) }
+                    )
+                )
+            }
+        } label: {
+            SignalBadgeChip(signal: signal)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(signal.options.isEmpty)
+        .help(SignalBadgeStyle.stateLabel(for: signal))
+    }
+}
+
 #if DEBUG
     // MARK: - Previews
 
@@ -169,46 +185,74 @@ struct SignalBadge: View {
             SignalBadge(
                 signal: BridgeToolbarSignal(
                     kind: .discId,
-                    role: .identity,
                     value: "Xx0Yy1Zz2Aa3Bb4Cc5",
                     origin: .discToc,
                     state: .found(count: 3),
-                    excluded: false
-                ),
-                onToggle: {},
-            )
-            SignalBadge(
-                signal: BridgeToolbarSignal(
-                    kind: .catalog,
-                    role: .filter,
-                    value: "WPCR-80001",
-                    origin: .folderName,
-                    state: .confirms(count: 1),
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 onToggle: {},
             )
             SignalBadge(
                 signal: BridgeToolbarSignal(
                     kind: .barcode,
-                    role: .identity,
                     value: "0123456789012",
                     origin: .artwork,
                     state: .lookingUp,
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 onToggle: {},
             )
             SignalBadge(
                 signal: BridgeToolbarSignal(
                     kind: .barcode,
-                    role: .identity,
                     value: "0123456789012",
                     origin: .artwork,
                     state: .found(count: 4),
-                    excluded: true
+                    excluded: true,
+                    options: []
                 ),
                 onToggle: {},
+            )
+            CatalogSignalBadge(
+                signal: BridgeToolbarSignal(
+                    kind: .catalog,
+                    value: nil,
+                    origin: .folderName,
+                    state: .skipped,
+                    excluded: false,
+                    options: [
+                        BridgeSignalOption(
+                            value: "WPCR-80001",
+                            origin: .folderName,
+                            chosen: false
+                        ),
+                        BridgeSignalOption(
+                            value: "LBL 999",
+                            origin: .artwork,
+                            chosen: false
+                        ),
+                    ]
+                ),
+                onChoose: { _ in },
+            )
+            CatalogSignalBadge(
+                signal: BridgeToolbarSignal(
+                    kind: .catalog,
+                    value: "WPCR-80001",
+                    origin: .folderName,
+                    state: .found(count: 1),
+                    excluded: false,
+                    options: [
+                        BridgeSignalOption(
+                            value: "WPCR-80001",
+                            origin: .folderName,
+                            chosen: true
+                        )
+                    ]
+                ),
+                onChoose: { _ in },
             )
         }
         .padding()

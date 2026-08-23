@@ -225,14 +225,6 @@ pub enum AutomationSignalKind {
     Catalog,
 }
 
-/// Mirrors bae-core's `identify::SignalRole`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationSignalRole {
-    Identity,
-    Filter,
-}
-
 /// Mirrors bae-core's `identify::SignalState`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
@@ -242,18 +234,26 @@ pub enum AutomationSignalState {
     NoMatch,
     Skipped,
     Failed { failure: AutomationLookupFailure },
-    Confirms { count: u32 },
+}
+
+/// Mirrors bae-core's `identify::SignalOption` — one of the values a signal
+/// could take, for the signals that offer a choice.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationSignalOption {
+    pub value: String,
+    pub origin: AutomationSignalOrigin,
+    pub chosen: bool,
 }
 
 /// Mirrors bae-core's `identify::ToolbarSignal`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationToolbarSignal {
     pub kind: AutomationSignalKind,
-    pub role: AutomationSignalRole,
     pub value: Option<String>,
     pub origin: AutomationSignalOrigin,
     pub state: AutomationSignalState,
     pub excluded: bool,
+    pub options: Vec<AutomationSignalOption>,
 }
 
 /// Projects bae-core's `identify::DiscidProgress` — mid-flight result payloads
@@ -295,7 +295,7 @@ pub struct AutomationResultProvenance {
     pub release_id: String,
     pub by_disc_id: bool,
     pub by_barcode: bool,
-    pub matches_catalog: bool,
+    pub by_catalog: bool,
 }
 
 /// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`

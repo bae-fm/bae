@@ -65,9 +65,6 @@ extension ImportView {
                     )
                 )
             },
-            onToggleSignal: { signal in
-                importer.toggleSignalForCandidate(candidate.key, signal)
-            },
             onEditCover: { presentCoverPicker(for: candidate) },
         )
         .animation(nil, value: uiStore.selectedFolderCandidates)

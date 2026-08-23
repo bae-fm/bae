@@ -118,7 +118,7 @@ fn insert_match(
              (content_hash, position, source, release_id, title, artist, year, format, \
               label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
               cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
-              source_tracks_total_ms, by_disc_id, by_barcode, matches_catalog) \
+              source_tracks_total_ms, by_disc_id, by_barcode, by_catalog) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
@@ -142,7 +142,7 @@ fn insert_match(
             tracks_total_ms,
             provenance.by_disc_id,
             provenance.by_barcode,
-            provenance.matches_catalog,
+            provenance.by_catalog,
         ],
     )?;
     Ok(())
@@ -225,7 +225,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
         provenance: ResultProvenance {
             by_disc_id: row.get("by_disc_id")?,
             by_barcode: row.get("by_barcode")?,
-            matches_catalog: row.get("matches_catalog")?,
+            by_catalog: row.get("by_catalog")?,
         },
     })
 }

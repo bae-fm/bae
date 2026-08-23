@@ -833,7 +833,7 @@ internal static partial class NativeBae
             releaseId, await handle.ResetMetadataToSource(releaseId))));
 
     internal static void ToggleSignalForCandidate(AppHandle handle, string candidateKey, string kind, string value) =>
-        handle.ToggleSignalForCandidate(candidateKey, ExcludedSignal(kind, value));
+        handle.ToggleSignalForCandidate(candidateKey, SignalToggle(kind, value));
 
     internal static void RerunIdentifyForCandidate(AppHandle handle, string candidateKey) =>
         handle.RerunIdentifyForCandidate(candidateKey);

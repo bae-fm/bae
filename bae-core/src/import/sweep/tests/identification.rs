@@ -326,7 +326,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
         provenance: vec![crate::identify::ResultProvenance {
             by_disc_id: true,
             by_barcode: false,
-            matches_catalog: false,
+            by_catalog: false,
         }],
     }
 }

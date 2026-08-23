@@ -98,7 +98,7 @@ fn verdict(release_id: &str) -> TerminalVerdict {
         provenance: vec![ResultProvenance {
             by_disc_id: true,
             by_barcode: false,
-            matches_catalog: false,
+            by_catalog: false,
         }],
     }
 }

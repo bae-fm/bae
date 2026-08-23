@@ -321,6 +321,13 @@ internal static partial class NativeBae
             Value = signal.Value,
             State = SignalState(signal.State),
             Excluded = signal.Excluded,
+            Options = signal.Options
+                .Select(option => new SignalBadgeOption
+                {
+                    Value = option.Value,
+                    Chosen = option.Chosen,
+                })
+                .ToList(),
         };
 
     private static SignalBadgeState SignalState(BridgeSignalState state) =>
@@ -331,7 +338,6 @@ internal static partial class NativeBae
             BridgeSignalState.NoMatch => new() { Kind = "no_match" },
             BridgeSignalState.Skipped => new() { Kind = "skipped" },
             BridgeSignalState.Failed failed => new() { Kind = "failed", Failure = failed.Failure },
-            BridgeSignalState.Confirms confirms => new() { Kind = "confirms", Count = confirms.Count },
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown signal state"),
         };
 
@@ -447,12 +453,12 @@ internal static partial class NativeBae
     private static BridgeStorageMode StorageMode(string storageMode) =>
         storageMode == "cloud" ? BridgeStorageMode.Remote : BridgeStorageMode.Local;
 
-    private static BridgeExcludedSignal ExcludedSignal(string kind, string value) =>
+    private static BridgeSignalToggle SignalToggle(string kind, string value) =>
         kind switch
         {
-            "disc_id" => new BridgeExcludedSignal.Disc(),
-            "barcode" => new BridgeExcludedSignal.Barcode(),
-            _ => new BridgeExcludedSignal.Catalog(value),
+            "disc_id" => new BridgeSignalToggle.Disc(),
+            "barcode" => new BridgeSignalToggle.Barcode(),
+            _ => new BridgeSignalToggle.Catalog(value),
         };
 
     private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>

@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>כלול אות</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>ברקוד</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>קטלוג</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>בחר מספר קטלוגי לחיפוש</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>מזהה תקליטור</value></data>
   <data name="sort.artist" xml:space="preserve"><value>אמן</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>הוספת מיון</value></data>

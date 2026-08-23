@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>تضمين الإشارة</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>الرمز الشريطي</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>الكتالوج</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>اختر رقم كتالوج للبحث عنه</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>معرّف القرص</value></data>
   <data name="sort.artist" xml:space="preserve"><value>الفنان</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>إضافة ترتيب</value></data>

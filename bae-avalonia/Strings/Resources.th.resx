@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>รวมสัญญาณ</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>บาร์โค้ด</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>แค็ตตาล็อก</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>เลือกหมายเลขแคตตาล็อกที่จะค้นหา</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>รหัสดิสก์</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ศิลปิน</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>เพิ่มการเรียงลำดับ</value></data>

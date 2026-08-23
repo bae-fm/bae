@@ -52,7 +52,7 @@
                         BridgeResultProvenance(
                             byDiscId: true,
                             byBarcode: false,
-                            matchesCatalog: true
+                            byCatalog: true
                         )
                     )
                 }
@@ -177,12 +177,12 @@
             "rel-disc-1": BridgeResultProvenance(
                 byDiscId: true,
                 byBarcode: false,
-                matchesCatalog: false
+                byCatalog: false
             ),
             "rel-bar-1": BridgeResultProvenance(
                 byDiscId: false,
                 byBarcode: true,
-                matchesCatalog: false
+                byCatalog: false
             ),
         ]
 
@@ -206,27 +206,27 @@
         static let toolbarBothRunning = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
-                role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
                 origin: .discToc,
                 state: .lookingUp,
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .barcode,
-                role: .identity,
                 value: "0123456789012",
                 origin: .artwork,
                 state: .lookingUp,
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .catalog,
-                role: .filter,
                 value: "WPCR-80001",
                 origin: .folderName,
-                state: .confirms(count: 0),
-                excluded: false
+                state: .noMatch,
+                excluded: false,
+                options: []
             ),
         ])
 
@@ -235,35 +235,35 @@
         static let toolbarOneSettled = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
-                role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
                 origin: .discToc,
                 state: .found(count: 3),
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .barcode,
-                role: .identity,
                 value: "0123456789012",
                 origin: .artwork,
                 state: .lookingUp,
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .catalog,
-                role: .filter,
                 value: "WPCR-80001",
                 origin: .folderName,
-                state: .confirms(count: 1),
-                excluded: false
+                state: .found(count: 1),
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .catalog,
-                role: .filter,
                 value: "A2 16018",
                 origin: .textFile,
-                state: .confirms(count: 0),
-                excluded: false
+                state: .noMatch,
+                excluded: false,
+                options: []
             ),
         ])
 
@@ -271,27 +271,27 @@
         static let toolbarBarcodeExcluded = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
-                role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
                 origin: .discToc,
                 state: .found(count: 2),
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .barcode,
-                role: .identity,
                 value: "0123456789012",
                 origin: .artwork,
                 state: .found(count: 4),
-                excluded: true
+                excluded: true,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .catalog,
-                role: .filter,
                 value: "WPCR-80001",
                 origin: .folderName,
-                state: .confirms(count: 0),
-                excluded: false
+                state: .noMatch,
+                excluded: false,
+                options: []
             ),
         ])
 
@@ -299,19 +299,19 @@
         static let toolbarBothMatched = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
-                role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
                 origin: .discToc,
                 state: .found(count: 2),
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .barcode,
-                role: .identity,
                 value: "5051961234567",
                 origin: .artwork,
                 state: .found(count: 3),
-                excluded: false
+                excluded: false,
+                options: []
             ),
         ])
 
@@ -319,23 +319,24 @@
         static let toolbarSkippedNoSignals = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
-                role: .identity,
                 value: nil,
                 origin: .discToc,
                 state: .skipped,
-                excluded: false
+                excluded: false,
+                options: []
             ),
             BridgeToolbarSignal(
                 kind: .barcode,
-                role: .identity,
                 value: nil,
                 origin: .artwork,
                 state: .skipped,
-                excluded: false
+                excluded: false,
+                options: []
             ),
         ])
 
-        /// Exact-match display state: disc-id found one group, catalog confirms it.
+        /// Exact-match display state: the disc ID and the chosen catalog number both
+        /// name the same group.
         static let searchStateFoundExact = ImportSearchState(
             identifyState: .found(
                 groups: [searchGroupExact],
@@ -355,19 +356,19 @@
             signalsToolbar: BridgeSignalsToolbar(signals: [
                 BridgeToolbarSignal(
                     kind: .discId,
-                    role: .identity,
                     value: "disc-hash",
                     origin: .discToc,
                     state: .found(count: 3),
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 BridgeToolbarSignal(
                     kind: .catalog,
-                    role: .filter,
                     value: "WPCR-80001",
                     origin: .folderName,
-                    state: .confirms(count: 1),
-                    excluded: false
+                    state: .found(count: 1),
+                    excluded: false,
+                    options: []
                 ),
             ])
         )
@@ -392,19 +393,19 @@
             signalsToolbar: BridgeSignalsToolbar(signals: [
                 BridgeToolbarSignal(
                     kind: .discId,
-                    role: .identity,
                     value: "disc-hash",
                     origin: .discToc,
                     state: .found(count: 2),
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 BridgeToolbarSignal(
                     kind: .catalog,
-                    role: .filter,
                     value: "WPCR-80001",
                     origin: .folderName,
-                    state: .confirms(count: 0),
-                    excluded: false
+                    state: .noMatch,
+                    excluded: false,
+                    options: []
                 ),
             ])
         )
@@ -436,19 +437,19 @@
             signalsToolbar: BridgeSignalsToolbar(signals: [
                 BridgeToolbarSignal(
                     kind: .discId,
-                    role: .identity,
                     value: "disc-hash",
                     origin: .discToc,
                     state: .found(count: 2),
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 BridgeToolbarSignal(
                     kind: .barcode,
-                    role: .identity,
                     value: "5051961234567",
                     origin: .artwork,
                     state: .found(count: 3),
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
             ])
         )
@@ -471,19 +472,19 @@
             signalsToolbar: BridgeSignalsToolbar(signals: [
                 BridgeToolbarSignal(
                     kind: .discId,
-                    role: .identity,
                     value: "disc-hash",
                     origin: .discToc,
                     state: .lookingUp,
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 BridgeToolbarSignal(
                     kind: .barcode,
-                    role: .identity,
                     value: nil,
                     origin: .artwork,
                     state: .skipped,
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
             ])
         )
@@ -503,19 +504,19 @@
             signalsToolbar: BridgeSignalsToolbar(signals: [
                 BridgeToolbarSignal(
                     kind: .discId,
-                    role: .identity,
                     value: "disc-hash",
                     origin: .discToc,
                     state: .noMatch,
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
                 BridgeToolbarSignal(
                     kind: .barcode,
-                    role: .identity,
                     value: "5051961234567",
                     origin: .artwork,
                     state: .noMatch,
-                    excluded: false
+                    excluded: false,
+                    options: []
                 ),
             ])
         )

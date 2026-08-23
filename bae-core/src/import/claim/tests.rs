@@ -7,7 +7,6 @@ use crate::identify::state::SignalsContext;
 use crate::identify::ResultProvenance;
 use crate::import::MetadataSource;
 use crate::signals::DiscIdSignal;
-use std::collections::HashSet;
 
 const REL_A: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
 const REL_B: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
@@ -47,7 +46,7 @@ fn provenance(by_disc_id: bool, by_barcode: bool) -> ResultProvenance {
     ResultProvenance {
         by_disc_id,
         by_barcode,
-        matches_catalog: false,
+        by_catalog: false,
     }
 }
 
@@ -77,11 +76,15 @@ fn empty_context() -> SignalsContext {
         barcode_codes: Vec::new(),
         had_barcode_source: false,
         catalogs: Vec::new(),
-        excluded: HashSet::new(),
+        chosen_catalog: None,
+        disc_excluded: false,
+        barcode_excluded: false,
         discid_results: Vec::new(),
         barcode_results: Vec::new(),
+        catalog_results: Vec::new(),
         discid_failure: None,
         barcode_failure: None,
+        catalog_failure: None,
         matched_barcode: None,
         track_count: 14,
     }

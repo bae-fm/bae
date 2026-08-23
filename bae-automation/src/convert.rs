@@ -529,15 +529,6 @@ pub(super) fn automation_signal_kind(kind: bae_core::identify::SignalKind) -> Au
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_signal_role(role: bae_core::identify::SignalRole) -> AutomationSignalRole {
-    use bae_core::identify::SignalRole;
-    match role {
-        SignalRole::Identity => AutomationSignalRole::Identity,
-        SignalRole::Filter => AutomationSignalRole::Filter,
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn automation_signal_state(
     state: bae_core::identify::SignalState,
 ) -> AutomationSignalState {
@@ -550,7 +541,17 @@ pub(super) fn automation_signal_state(
         SignalState::Failed { failure } => AutomationSignalState::Failed {
             failure: automation_lookup_failure(failure),
         },
-        SignalState::Confirms { count } => AutomationSignalState::Confirms { count },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn automation_signal_option(
+    option: bae_core::identify::SignalOption,
+) -> AutomationSignalOption {
+    AutomationSignalOption {
+        value: option.value,
+        origin: automation_signal_origin(option.origin),
+        chosen: option.chosen,
     }
 }
 
@@ -560,11 +561,15 @@ pub(super) fn automation_toolbar_signal(
 ) -> AutomationToolbarSignal {
     AutomationToolbarSignal {
         kind: automation_signal_kind(signal.kind),
-        role: automation_signal_role(signal.role),
         value: signal.value,
         origin: automation_signal_origin(signal.origin),
         state: automation_signal_state(signal.state),
         excluded: signal.excluded,
+        options: signal
+            .options
+            .into_iter()
+            .map(automation_signal_option)
+            .collect(),
     }
 }
 
@@ -616,13 +621,13 @@ pub(super) fn automation_result_provenance(
     let bae_core::identify::ResultProvenance {
         by_disc_id,
         by_barcode,
-        matches_catalog,
+        by_catalog,
     } = provenance;
     AutomationResultProvenance {
         release_id,
         by_disc_id,
         by_barcode,
-        matches_catalog,
+        by_catalog,
     }
 }
 

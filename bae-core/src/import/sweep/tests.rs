@@ -627,7 +627,7 @@ impl Fixture {
             provenance: vec![crate::identify::combine::ResultProvenance {
                 by_disc_id: true,
                 by_barcode: false,
-                matches_catalog: false,
+                by_catalog: false,
             }],
         };
         let wrote = self

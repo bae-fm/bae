@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>संकेत समाविष्ट करा</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>बारकोड</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>कॅटलॉग</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>शोधण्यासाठी एक कॅटलॉग क्रमांक निवडा</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>डिस्क ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>क्रमवारी जोडा</value></data>

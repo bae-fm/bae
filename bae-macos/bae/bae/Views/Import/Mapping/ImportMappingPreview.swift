@@ -48,7 +48,6 @@
                 onSetIdentity: { _ in },
                 onFindRelease: {},
                 onPickRelease: { _ in },
-                onToggleSignal: { _ in },
                 onEditCover: {},
             )
         }

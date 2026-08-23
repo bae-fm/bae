@@ -422,24 +422,25 @@ impl BridgeLibraryStatus {
     }
 }
 
-/// A signal the user has toggled off in the toolbar — excluded from
-/// triangulation. The disc ID and barcode are singletons; a catalog candidate
-/// is named by its value. Mirrors `bae_core::identify::ExcludedSignal`.
+/// A signal the user acted on in the toolbar. The disc ID and the barcode are
+/// checked until toggled off; the catalog is off until one of the extracted
+/// numbers is chosen, and choosing another replaces it — so its variant names
+/// the value. Mirrors `bae_core::identify::SignalToggle`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExcludedSignal {
+pub enum BridgeSignalToggle {
     Disc,
     Barcode,
     Catalog { value: String },
 }
 
-impl BridgeExcludedSignal {
+impl BridgeSignalToggle {
     #[cfg(feature = "desktop")]
-    pub fn into_core(self) -> bae_core::identify::ExcludedSignal {
-        use bae_core::identify::ExcludedSignal;
+    pub fn into_core(self) -> bae_core::identify::SignalToggle {
+        use bae_core::identify::SignalToggle;
         match self {
-            Self::Disc => ExcludedSignal::Disc,
-            Self::Barcode => ExcludedSignal::Barcode,
-            Self::Catalog { value } => ExcludedSignal::Catalog(value),
+            Self::Disc => SignalToggle::Disc,
+            Self::Barcode => SignalToggle::Barcode,
+            Self::Catalog { value } => SignalToggle::Catalog(value),
         }
     }
 }
@@ -498,14 +499,6 @@ pub enum BridgeSignalKind {
     DiscId,
     Barcode,
     Catalog,
-}
-
-/// A toolbar signal's role in triangulation — identity signals find releases,
-/// filter signals narrow them. Mirrors `bae_core::identify::SignalRole`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSignalRole {
-    Identity,
-    Filter,
 }
 
 /// Why a metadata lookup failed. Mirrors `bae_core::signals::LookupFailure`.
@@ -567,7 +560,7 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String>
     }
 }
 
-/// The live lookup/match state of one toolbar badge. Mirrors
+/// The live lookup state of one toolbar badge. Mirrors
 /// `bae_core::identify::SignalState`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSignalState {
@@ -576,7 +569,17 @@ pub enum BridgeSignalState {
     NoMatch,
     Skipped,
     Failed { failure: BridgeLookupFailure },
-    Confirms { count: u32 },
+}
+
+/// One of the values a signal could take, for the signals that offer a choice.
+/// Mirrors `bae_core::identify::SignalOption`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSignalOption {
+    pub value: String,
+    pub origin: BridgeSignalOrigin,
+    /// Whether this is the one the identify run is using. At most one option of
+    /// a signal is chosen.
+    pub chosen: bool,
 }
 
 /// One badge in the signals toolbar — a pre-shaped row the UI renders without
@@ -584,11 +587,14 @@ pub enum BridgeSignalState {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeToolbarSignal {
     pub kind: BridgeSignalKind,
-    pub role: BridgeSignalRole,
     pub value: Option<String>,
     pub origin: BridgeSignalOrigin,
     pub state: BridgeSignalState,
     pub excluded: bool,
+    /// The values this signal could take. Empty for the disc ID and the
+    /// barcode, which have one value each; the catalog's are every number
+    /// extracted from the candidate.
+    pub options: Vec<BridgeSignalOption>,
 }
 
 /// The candidate's full signals toolbar — the ordered badge list. Mirrors a
@@ -610,7 +616,22 @@ impl BridgeSignalState {
             SignalState::Failed { failure } => BridgeSignalState::Failed {
                 failure: BridgeLookupFailure::from_core(failure),
             },
-            SignalState::Confirms { count } => BridgeSignalState::Confirms { count },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSignalOption {
+    fn from_core(o: bae_core::identify::SignalOption) -> Self {
+        let bae_core::identify::SignalOption {
+            value,
+            origin,
+            chosen,
+        } = o;
+        BridgeSignalOption {
+            value,
+            origin: BridgeSignalOrigin::from_core(origin),
+            chosen,
         }
     }
 }
@@ -618,14 +639,14 @@ impl BridgeSignalState {
 #[cfg(feature = "desktop")]
 impl BridgeToolbarSignal {
     fn from_core(s: bae_core::identify::ToolbarSignal) -> Self {
-        use bae_core::identify::{SignalKind, SignalRole, ToolbarSignal};
+        use bae_core::identify::{SignalKind, ToolbarSignal};
         let ToolbarSignal {
             kind,
-            role,
             value,
             origin,
             state,
             excluded,
+            options,
         } = s;
         BridgeToolbarSignal {
             kind: match kind {
@@ -633,14 +654,14 @@ impl BridgeToolbarSignal {
                 SignalKind::Barcode => BridgeSignalKind::Barcode,
                 SignalKind::Catalog => BridgeSignalKind::Catalog,
             },
-            role: match role {
-                SignalRole::Identity => BridgeSignalRole::Identity,
-                SignalRole::Filter => BridgeSignalRole::Filter,
-            },
             value,
             origin: BridgeSignalOrigin::from_core(origin),
             state: BridgeSignalState::from_core(state),
             excluded,
+            options: options
+                .into_iter()
+                .map(BridgeSignalOption::from_core)
+                .collect(),
         }
     }
 }
@@ -787,7 +808,7 @@ pub struct BridgeSignals {
 pub struct BridgeResultProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
-    pub matches_catalog: bool,
+    pub by_catalog: bool,
 }
 
 /// Current identify-pipeline state for one candidate. One variant per state;

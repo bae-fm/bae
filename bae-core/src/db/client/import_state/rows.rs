@@ -92,7 +92,7 @@ const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_tr
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
      cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
-     source_tracks_total_ms, by_disc_id, by_barcode, matches_catalog";
+     source_tracks_total_ms, by_disc_id, by_barcode, by_catalog";
 
 const FILE_EDIT_COLUMNS: &str = "content_hash, relative_path, role_choice, sheet_binding, \
      sheet_binding_file_id, sheet_disc, sheet_disc_number";

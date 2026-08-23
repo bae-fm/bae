@@ -156,11 +156,15 @@ impl TerminalVerdict {
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
-            excluded: std::collections::HashSet::new(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: Vec::new(),
             barcode_results: Vec::new(),
+            catalog_results: Vec::new(),
             discid_failure: None,
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: None,
             track_count,
         };
@@ -247,11 +251,15 @@ mod tests {
             barcode_codes: vec![],
             had_barcode_source: false,
             catalogs: vec![],
-            excluded: Default::default(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: vec![],
             barcode_results: vec![],
+            catalog_results: vec![],
             discid_failure: None,
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: None,
             track_count,
         }
@@ -265,6 +273,7 @@ mod tests {
         assert!(TerminalVerdict::try_from(IdentifyState::Triangulating {
             discid: DiscidProgress::Computing,
             barcode: BarcodeProgress::Scanning,
+            catalog: crate::identify::CatalogProgress::Skipped,
             context: mk_context(0),
         })
         .is_err());
@@ -278,7 +287,7 @@ mod tests {
             provenance: vec![ResultProvenance {
                 by_disc_id: true,
                 by_barcode: false,
-                matches_catalog: false,
+                by_catalog: false,
             }],
             context: mk_context(11),
         }
@@ -302,7 +311,7 @@ mod tests {
                 provenance: vec![ResultProvenance {
                     by_disc_id: true,
                     by_barcode: false,
-                    matches_catalog: false,
+                    by_catalog: false,
                 }],
             }
         );
@@ -342,11 +351,15 @@ mod tests {
             barcode_codes: vec![],
             had_barcode_source: true,
             catalogs: vec![],
-            excluded: Default::default(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: vec![(mk_result("rel-a"), mk_status("rel-a"))],
             barcode_results: vec![(mk_result("rel-b"), mk_status("rel-b"))],
+            catalog_results: vec![],
             discid_failure: None,
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: Some("012345".to_string()),
             track_count: 9,
         };
@@ -361,12 +374,12 @@ mod tests {
                     ResultProvenance {
                         by_disc_id: true,
                         by_barcode: false,
-                        matches_catalog: false,
+                        by_catalog: false,
                     },
                     ResultProvenance {
                         by_disc_id: false,
                         by_barcode: true,
-                        matches_catalog: false,
+                        by_catalog: false,
                     },
                 ],
             }
@@ -385,14 +398,18 @@ mod tests {
             barcode_codes: vec![],
             had_barcode_source: true,
             catalogs: vec![],
-            excluded: Default::default(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: vec![],
             barcode_results: vec![
                 (mk_result("rel-1"), mk_status("rel-1")),
                 (mk_result("rel-2"), mk_status("rel-2")),
             ],
+            catalog_results: vec![],
             discid_failure: Some(crate::signals::LookupFailure::Network),
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: None,
             track_count: 9,
         };

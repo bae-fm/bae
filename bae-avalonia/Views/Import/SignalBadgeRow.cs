@@ -10,9 +10,11 @@ namespace Bae.Desktop;
 
 // The signals-toolbar badge row used by the release re-identify dialog: one
 // badge per signal (kind label, truncated value, lookup-state visual) and a
-// trailing re-run control. Clicking a badge toggles its signal in or out of
-// triangulation; the re-derived state arrives through the candidate stream.
-// Every color reads a theme brush.
+// trailing re-run control. Clicking a badge takes its signal in or out of the
+// run; a signal that offers a choice — the catalog, over every number
+// extracted from the candidate — opens its list instead, one number checked at
+// a time. The re-derived state arrives through the candidate stream. Every
+// color reads a theme brush.
 internal static class SignalBadgeRow
 {
     public static Control Build(
@@ -23,7 +25,9 @@ internal static class SignalBadgeRow
         var badges = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         foreach (var signal in signals)
         {
-            badges.Children.Add(BuildBadge(signal, onToggleSignal));
+            badges.Children.Add(signal.Options.Count > 0
+                ? BuildChoiceBadge(signal, onToggleSignal)
+                : BuildBadge(signal, onToggleSignal));
         }
         badges.Children.Add(RerunButton(onRerun));
         return badges;
@@ -63,6 +67,28 @@ internal static class SignalBadgeRow
         ToolTip.SetTip(button, Loc.Chrome("import.rerun_identify"));
         button.Click += (_, _) => onRerun();
         return button;
+    }
+
+    // A signal that offers a choice: the chip opens the list of values, each
+    // with a check. Checking one replaces whatever was checked before, so at
+    // most one number is ever looked up.
+    private static Control BuildChoiceBadge(SignalBadge signal, Action<string, string> onToggleSignal)
+    {
+        var badge = BuildBadge(signal, (_, _) => { });
+        var items = new List<Control>();
+        foreach (var option in signal.Options)
+        {
+            var value = option.Value;
+            var item = new MenuItem
+            {
+                Header = (option.Chosen ? "✓ " : string.Empty) + value,
+            };
+            item.Click += (_, _) => onToggleSignal(signal.Kind, value);
+            items.Add(item);
+        }
+        badge.Flyout = new MenuFlyout { ItemsSource = items };
+        ToolTip.SetTip(badge, Loc.Chrome("signal.pick_catalog"));
+        return badge;
     }
 
     private static Button BuildBadge(SignalBadge signal, Action<string, string> onToggleSignal)
@@ -128,10 +154,6 @@ internal static class SignalBadgeRow
                 return new Spinner { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center };
             case "found":
                 return CountPill((signal.State.Count ?? 0).ToString(), "BaeSuccessBrush");
-            case "confirms":
-                return signal.State.Count is > 0
-                    ? StateGlyph("✓", "BaeAccentBrush", bold: true)
-                    : CountPill("0", "BaeTextSecondaryBrush");
             case "no_match":
                 return CountPill("0", "BaeTextSecondaryBrush");
             case "skipped":

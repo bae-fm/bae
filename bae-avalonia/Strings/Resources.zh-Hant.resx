@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>包含訊號</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>條碼</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>目錄</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>選擇要查詢的目錄編號</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>光碟 ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>演出者</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>加入排序</value></data>

@@ -50,7 +50,7 @@ fn toggle_excludes_discid_then_re_includes() {
     let (state, effects) = step(
         disagreeing,
         IdentifyEvent::SignalToggled {
-            signal: ExcludedSignal::Disc,
+            signal: SignalToggle::Disc,
         },
     );
     assert!(
@@ -80,7 +80,7 @@ fn toggle_excludes_discid_then_re_includes() {
     let (restored, _) = step(
         state,
         IdentifyEvent::SignalToggled {
-            signal: ExcludedSignal::Disc,
+            signal: SignalToggle::Disc,
         },
     );
     let IdentifyState::Found { matches, .. } = &restored else {
@@ -116,7 +116,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
     let (state, effects) = step(
         state,
         IdentifyEvent::SignalToggled {
-            signal: ExcludedSignal::Disc,
+            signal: SignalToggle::Disc,
         },
     );
     assert!(
@@ -289,7 +289,7 @@ fn rerun_preserves_exclusions() {
     let (excluded, _) = step(
         disagreeing,
         IdentifyEvent::SignalToggled {
-            signal: ExcludedSignal::Disc,
+            signal: SignalToggle::Disc,
         },
     );
     assert!(matches!(excluded, IdentifyState::Found { .. }));
@@ -340,12 +340,11 @@ fn toolbar_while_triangulating_shows_spinners() {
         ),
     );
     let toolbar = state.toolbar();
-    // disc, barcode, one catalog.
+    // Three badges, whatever the candidate turned up: disc, barcode, catalog.
     assert_eq!(toolbar.len(), 3);
 
     let disc = &toolbar[0];
     assert_eq!(disc.kind, SignalKind::DiscId);
-    assert_eq!(disc.role, SignalRole::Identity);
     assert_eq!(disc.value.as_deref(), Some("disc-hash"));
     assert_eq!(disc.origin, SignalOrigin::DiscToc);
     assert_eq!(disc.state, SignalState::LookingUp);
@@ -355,73 +354,27 @@ fn toolbar_while_triangulating_shows_spinners() {
     assert_eq!(barcode.value.as_deref(), Some("012345678905"));
     assert_eq!(barcode.state, SignalState::LookingUp);
 
+    // Nothing is chosen for the catalog until the user chooses, so it names no
+    // value and nothing ran for it — the extracted numbers are its list.
     let catalog = &toolbar[2];
     assert_eq!(catalog.kind, SignalKind::Catalog);
-    assert_eq!(catalog.role, SignalRole::Filter);
-    assert_eq!(catalog.value.as_deref(), Some("LBL-001"));
+    assert_eq!(catalog.value, None);
+    assert_eq!(catalog.state, SignalState::Skipped);
+    assert_eq!(
+        catalog
+            .options
+            .iter()
+            .map(|o| o.value.as_str())
+            .collect::<Vec<_>>(),
+        vec!["LBL-001"]
+    );
+    assert!(catalog.options.iter().all(|o| !o.chosen));
 }
 
+/// Thirty extracted catalog numbers are one badge with thirty options behind
+/// it, not thirty badges.
 #[test]
-fn toolbar_found_reports_counts_and_catalog_confirms() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-            },
-            BarcodeSignal::Absent,
-            &["LBL 001", "LBL 999"],
-        ),
-    );
-    let mut r_a = mk_result("rel-a", Some("g-x"));
-    r_a.catalog_number = Some("LBL-001".to_string());
-    let mut r_b = mk_result("rel-b", Some("g-x"));
-    r_b.catalog_number = Some("LBL-002".to_string());
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![(r_a, mk_status("rel-a")), (r_b, mk_status("rel-b"))],
-            track_count: 5,
-        },
-    );
-    assert!(matches!(state, IdentifyState::Found { .. }));
-
-    let toolbar = state.toolbar();
-    let disc = toolbar
-        .iter()
-        .find(|s| s.kind == SignalKind::DiscId)
-        .expect("disc badge");
-    assert_eq!(disc.state, SignalState::Found { count: 2 });
-
-    let barcode = toolbar
-        .iter()
-        .find(|s| s.kind == SignalKind::Barcode)
-        .expect("barcode badge");
-    assert_eq!(barcode.state, SignalState::Skipped);
-    assert_eq!(barcode.value, None);
-
-    let catalogs: Vec<&ToolbarSignal> = toolbar
-        .iter()
-        .filter(|s| s.kind == SignalKind::Catalog)
-        .collect();
-    assert_eq!(catalogs.len(), 2);
-    // `LBL 001` confirms rel-a (catno LBL-001 normalizes equal).
-    let confirming = catalogs
-        .iter()
-        .find(|c| c.value.as_deref() == Some("LBL 001"))
-        .expect("confirming catalog");
-    assert_eq!(confirming.state, SignalState::Confirms { count: 1 });
-    // `LBL 999` confirms nothing.
-    let noise = catalogs
-        .iter()
-        .find(|c| c.value.as_deref() == Some("LBL 999"))
-        .expect("noise catalog");
-    assert_eq!(noise.state, SignalState::Confirms { count: 0 });
-}
-
-#[test]
-fn toolbar_artwork_catalog_does_not_confirm() {
+fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
     let (state, _) = update(
         started(),
         signals_with_catalogs(
@@ -430,32 +383,159 @@ fn toolbar_artwork_catalog_does_not_confirm() {
                 track_count: 5,
             },
             BarcodeSignal::Absent,
-            vec![SourcedValue::new(
-                "LBL 001".to_string(),
-                SignalOrigin::Artwork,
-            )],
+            vec![
+                SourcedValue::new("LBL 001".to_string(), SignalOrigin::FolderName),
+                SourcedValue::new("LBL 999".to_string(), SignalOrigin::Artwork),
+            ],
         ),
     );
-    let mut r_a = mk_result("rel-a", Some("g-x"));
-    r_a.catalog_number = Some("LBL-001".to_string());
-    let mut r_b = mk_result("rel-b", Some("g-x"));
-    r_b.catalog_number = Some("LBL-002".to_string());
+    let toolbar = state.toolbar();
+    let catalogs: Vec<&ToolbarSignal> = toolbar
+        .iter()
+        .filter(|s| s.kind == SignalKind::Catalog)
+        .collect();
+    assert_eq!(catalogs.len(), 1);
+    assert_eq!(
+        catalogs[0]
+            .options
+            .iter()
+            .map(|o| (o.value.as_str(), o.origin))
+            .collect::<Vec<_>>(),
+        vec![
+            ("LBL 001", SignalOrigin::FolderName),
+            ("LBL 999", SignalOrigin::Artwork),
+        ]
+    );
+}
+
+/// Checking a catalog number runs its own lookup, and its results join the
+/// intersection the other signals are already in.
+#[test]
+fn choosing_a_catalog_number_looks_it_up_and_intersects() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-hash".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            &["LBL 001"],
+        ),
+    );
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![(r_a, mk_status("rel-a")), (r_b, mk_status("rel-b"))],
+            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
             track_count: 5,
         },
     );
     assert!(matches!(state, IdentifyState::Found { .. }));
 
-    let toolbar = state.toolbar();
-    let catalog = toolbar
-        .iter()
+    let (state, effects) = step(
+        state,
+        IdentifyEvent::SignalToggled {
+            signal: SignalToggle::Catalog("LBL 001".to_string()),
+        },
+    );
+    assert!(matches!(
+        effects.as_slice(),
+        [Effect::LookupCatalog { catalog }] if catalog == "LBL 001"
+    ));
+    let catalog_badge = state
+        .toolbar()
+        .into_iter()
         .find(|s| s.kind == SignalKind::Catalog)
         .expect("catalog badge");
-    assert_eq!(catalog.origin, SignalOrigin::Artwork);
-    assert_eq!(catalog.state, SignalState::Confirms { count: 0 });
+    assert_eq!(catalog_badge.value.as_deref(), Some("LBL 001"));
+    assert_eq!(catalog_badge.state, SignalState::LookingUp);
+
+    let (state, _) = step(
+        state,
+        IdentifyEvent::CatalogLookupCompleted {
+            for_catalog: "LBL 001".to_string(),
+            results: vec![pair("rel-b", Some("g-x"))],
+        },
+    );
+    match state {
+        IdentifyState::Found {
+            ref matches,
+            ref provenance,
+            ..
+        } => {
+            assert_eq!(
+                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
+                vec!["rel-b"]
+            );
+            assert!(provenance[0].by_disc_id && provenance[0].by_catalog);
+        }
+        other => panic!("expected Found, got {other:?}"),
+    }
+    let catalog_badge = state
+        .toolbar()
+        .into_iter()
+        .find(|s| s.kind == SignalKind::Catalog)
+        .expect("catalog badge");
+    assert_eq!(catalog_badge.state, SignalState::Found { count: 1 });
+    assert!(catalog_badge
+        .options
+        .iter()
+        .any(|o| o.value == "LBL 001" && o.chosen));
+}
+
+/// Checking the number already checked clears the choice, and the catalog
+/// leaves the combine again.
+#[test]
+fn checking_the_chosen_catalog_number_again_clears_it() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-hash".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            &["LBL 001"],
+        ),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
+            track_count: 5,
+        },
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::SignalToggled {
+            signal: SignalToggle::Catalog("LBL 001".to_string()),
+        },
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::CatalogLookupCompleted {
+            for_catalog: "LBL 001".to_string(),
+            results: vec![pair("rel-b", Some("g-x"))],
+        },
+    );
+    let (state, effects) = step(
+        state,
+        IdentifyEvent::SignalToggled {
+            signal: SignalToggle::Catalog("LBL 001".to_string()),
+        },
+    );
+    assert!(effects.is_empty(), "clearing the choice looks nothing up");
+    match state {
+        IdentifyState::Found { ref matches, .. } => assert_eq!(matches.len(), 2),
+        ref other => panic!("expected Found, got {other:?}"),
+    }
+    let catalog_badge = state
+        .toolbar()
+        .into_iter()
+        .find(|s| s.kind == SignalKind::Catalog)
+        .expect("catalog badge");
+    assert_eq!(catalog_badge.value, None);
+    assert_eq!(catalog_badge.state, SignalState::Skipped);
 }
 
 #[test]
@@ -708,7 +788,7 @@ fn toggle_from_found_re_derives_terminal_state() {
     let (excluded, effects) = step(
         found,
         IdentifyEvent::SignalToggled {
-            signal: ExcludedSignal::Disc,
+            signal: SignalToggle::Disc,
         },
     );
     assert!(effects.is_empty(), "toggle re-combines in place");
@@ -720,7 +800,7 @@ fn toggle_from_found_re_derives_terminal_state() {
     let (restored, _) = step(
         excluded,
         IdentifyEvent::SignalToggled {
-            signal: ExcludedSignal::Disc,
+            signal: SignalToggle::Disc,
         },
     );
     assert!(

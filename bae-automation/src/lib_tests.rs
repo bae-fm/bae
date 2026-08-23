@@ -209,7 +209,7 @@ mod identify_mirrors {
     use bae_core::identify::combine::ResultProvenance;
     use bae_core::identify::state::SignalsContext;
     use bae_core::identify::{
-        BarcodeProgress, DiscidProgress, IdentifyState, SignalKind, SignalRole, SignalState,
+        BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, SignalKind, SignalState,
         ToolbarSignal,
     };
     use bae_core::import::search::MetadataResult;
@@ -217,8 +217,6 @@ mod identify_mirrors {
     use bae_core::signals::{
         BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
     };
-    use std::collections::HashSet;
-
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
             source: MetadataSource::MusicBrainz,
@@ -254,11 +252,15 @@ mod identify_mirrors {
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
-            excluded: HashSet::new(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: Vec::new(),
             barcode_results: Vec::new(),
+            catalog_results: Vec::new(),
             discid_failure: None,
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: None,
             track_count: 0,
         }
@@ -278,12 +280,12 @@ mod identify_mirrors {
                 ResultProvenance {
                     by_disc_id: true,
                     by_barcode: false,
-                    matches_catalog: false,
+                    by_catalog: false,
                 },
                 ResultProvenance {
                     by_disc_id: false,
                     by_barcode: true,
-                    matches_catalog: true,
+                    by_catalog: true,
                 },
             ],
             context: empty_context(),
@@ -301,7 +303,7 @@ mod identify_mirrors {
         assert_eq!(provenance[0]["by_disc_id"], true);
         assert_eq!(provenance[1]["release_id"], "rel-2");
         assert_eq!(provenance[1]["by_barcode"], true);
-        assert_eq!(provenance[1]["matches_catalog"], true);
+        assert_eq!(provenance[1]["by_catalog"], true);
         let statuses = json["library_statuses"].as_array().unwrap();
         assert_eq!(statuses[0]["release_id"], "rel-1");
         assert_eq!(statuses[1]["release_id"], "rel-2");
@@ -323,12 +325,12 @@ mod identify_mirrors {
                 ResultProvenance {
                     by_disc_id: true,
                     by_barcode: false,
-                    matches_catalog: false,
+                    by_catalog: false,
                 },
                 ResultProvenance {
                     by_disc_id: false,
                     by_barcode: true,
-                    matches_catalog: false,
+                    by_catalog: false,
                 },
             ],
             context: empty_context(),
@@ -356,6 +358,7 @@ mod identify_mirrors {
                 total: 3,
                 remaining: vec!["9999999999999".to_string()],
             },
+            catalog: CatalogProgress::Skipped,
             context: empty_context(),
         };
 
@@ -373,18 +376,17 @@ mod identify_mirrors {
     fn toolbar_signal_maps_snake_case_and_structured_failure() {
         let signal = ToolbarSignal {
             kind: SignalKind::DiscId,
-            role: SignalRole::Identity,
             value: Some("disc-hash".to_string()),
             origin: SignalOrigin::DiscToc,
             state: SignalState::Failed {
                 failure: LookupFailure::Provider { status: Some(503) },
             },
             excluded: false,
+            options: Vec::new(),
         };
 
         let json = serde_json::to_value(automation_toolbar_signal(signal)).unwrap();
         assert_eq!(json["kind"], "disc_id");
-        assert_eq!(json["role"], "identity");
         assert_eq!(json["origin"], "disc_toc");
         assert_eq!(json["state"]["kind"], "failed");
         assert_eq!(json["state"]["failure"]["kind"], "provider");

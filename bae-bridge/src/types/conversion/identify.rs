@@ -370,12 +370,12 @@ impl BridgeResultProvenance {
         let bae_core::identify::ResultProvenance {
             by_disc_id,
             by_barcode,
-            matches_catalog,
+            by_catalog,
         } = p;
         BridgeResultProvenance {
             by_disc_id,
             by_barcode,
-            matches_catalog,
+            by_catalog,
         }
     }
 }

@@ -4,8 +4,9 @@
 
 use super::annotate_with_library_status;
 use super::barcode::lookup_barcode;
+use super::catalog::lookup_catalog;
 use super::discid::lookup_and_resolve;
-use super::state::{step, Effect, ExcludedSignal, IdentifyEvent, IdentifyState};
+use super::state::{step, Effect, IdentifyEvent, IdentifyState, SignalToggle};
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;
 use crate::signals::LookupFailure;
@@ -39,6 +40,14 @@ fn barcode_lookup_failed(barcode: String, message: String) -> IdentifyEvent {
     debug!("Barcode lookup failed for {barcode}: {message}");
     IdentifyEvent::BarcodeLookupFailed {
         for_barcode: barcode,
+        failure: LookupFailure::Diagnostic { detail: message },
+    }
+}
+
+fn catalog_lookup_failed(catalog: String, message: String) -> IdentifyEvent {
+    debug!("Catalog lookup failed for {catalog}: {message}");
+    IdentifyEvent::CatalogLookupFailed {
+        for_catalog: catalog,
         failure: LookupFailure::Diagnostic { detail: message },
     }
 }
@@ -192,7 +201,7 @@ impl IdentifyServiceHandle {
     /// Include or exclude one of a candidate's signals from triangulation. The
     /// driver re-combines over the surviving signals and emits the result. A no-op
     /// when the candidate isn't running.
-    pub fn toggle_signal(&self, key: &str, signal: ExcludedSignal) {
+    pub fn toggle_signal(&self, key: &str, signal: SignalToggle) {
         self.push_event(
             key,
             IdentifyEvent::SignalToggled { signal },
@@ -399,6 +408,29 @@ fn dispatch_effect(
                             Err(message) => barcode_lookup_failed(barcode, message),
                             Ok(results) => IdentifyEvent::BarcodeLookupMatched {
                                 for_barcode: barcode,
+                                results,
+                            },
+                        }
+                    }
+                };
+                emit_step(&event_tx, event);
+            });
+        }
+
+        Effect::LookupCatalog { catalog } => {
+            let library_manager = inner.library_manager.clone();
+            runtime.spawn(async move {
+                let lookup = lookup_catalog(&catalog, &library_manager, priority).await;
+                if token.is_cancelled() {
+                    return;
+                }
+                let event = match lookup {
+                    Err(message) => catalog_lookup_failed(catalog, message),
+                    Ok(results) => {
+                        match annotate_with_library_status(results, &library_manager).await {
+                            Err(message) => catalog_lookup_failed(catalog, message),
+                            Ok(results) => IdentifyEvent::CatalogLookupCompleted {
+                                for_catalog: catalog,
                                 results,
                             },
                         }

@@ -1,4 +1,5 @@
-﻿using uniffi.bae_bridge;
+﻿using System.Collections.Generic;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -22,17 +23,30 @@ public sealed class SignalBadge
     /// <summary>Whether the user excluded this signal from triangulation. Excluded
     /// badges still render (dimmed, struck through) so the row stays stable.</summary>
     public bool Excluded { get; set; }
+
+    /// <summary>The values this signal could take, for the signals that offer a
+    /// choice. Empty for the disc ID and the barcode, which have one value
+    /// each; the catalog's are every number extracted from the candidate.</summary>
+    public IReadOnlyList<SignalBadgeOption> Options { get; set; } = [];
+}
+
+/// <summary>One of the values a signal could take. At most one option of a
+/// signal is chosen — the one the identify run looks up.</summary>
+public sealed class SignalBadgeOption
+{
+    public string Value { get; set; } = string.Empty;
+    public bool Chosen { get; set; }
 }
 
 /// <summary>
-/// A badge's live lookup/match state. <see cref="Count"/> is set for
-/// "found"/"confirms", <see cref="Failure"/> for "failed", both null otherwise.
-/// The locale never crosses the bridge, so the failed state carries the
-/// generated bridge failure, not a prose message.
+/// A badge's live lookup state. <see cref="Count"/> is set for "found",
+/// <see cref="Failure"/> for "failed", both null otherwise. The locale never
+/// crosses the bridge, so the failed state carries the generated bridge
+/// failure, not a prose message.
 /// </summary>
 public sealed class SignalBadgeState
 {
-    /// <summary>"looking_up" / "found" / "no_match" / "skipped" / "failed" / "confirms".</summary>
+    /// <summary>"looking_up" / "found" / "no_match" / "skipped" / "failed".</summary>
     public string Kind { get; set; } = string.Empty;
     public uint? Count { get; set; }
 

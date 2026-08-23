@@ -65,7 +65,7 @@ fn sample_verdict() -> TerminalVerdict {
         provenance: vec![ResultProvenance {
             by_disc_id: true,
             by_barcode: false,
-            matches_catalog: true,
+            by_catalog: true,
         }],
     }
 }

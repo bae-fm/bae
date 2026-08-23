@@ -32,46 +32,44 @@ enum SignalBadgeStyle {
         }
     }
 
-    static func roleLabel(for role: BridgeSignalRole) -> String {
-        switch role {
-        case .identity: String(localized: "Identifies · finds releases")
-        case .filter: String(localized: "Refines · narrows the match")
-        }
+    /// Whether the signal is waiting to be told which of its values to use —
+    /// the catalog, before one of the extracted numbers is checked. It is not
+    /// in the run, and its count is how many there are to choose from.
+    static func awaitingChoice(_ signal: BridgeToolbarSignal) -> Bool {
+        !signal.options.isEmpty && signal.value == nil
     }
 
     static func stateLabel(for signal: BridgeToolbarSignal) -> String {
         if signal.excluded {
             return String(localized: "Excluded from search")
         }
+        if awaitingChoice(signal) {
+            return String(localized: "Pick a catalog number to look up")
+        }
         switch signal.state {
         case .lookingUp:
-            return signal.role == .filter
-                ? String(localized: "Matching\u{2026}")
-                : String(localized: "Looking up\u{2026}")
+            return String(localized: "Looking up\u{2026}")
         case .found(let count):
             return String(localized: "\(Int(count)) releases")
         case .noMatch:
             return String(localized: "No releases matched")
         case .skipped:
-            return signal.kind == .discId
-                ? String(localized: "No disc layout")
-                : String(localized: "No source to scan")
+            switch signal.kind {
+            case .discId: return String(localized: "No disc layout")
+            case .catalog: return String(localized: "No catalog number found")
+            case .barcode: return String(localized: "No source to scan")
+            }
         case .failed(let failure):
             return failure.badgeLine
-        case .confirms(let count):
-            return count > 0
-                ? String(localized: "Matches this pressing")
-                : String(localized: "No matched pressing carries this catno")
         }
     }
 
     static func stateDotColor(for signal: BridgeToolbarSignal) -> Color {
-        if signal.excluded {
+        if signal.excluded || awaitingChoice(signal) {
             return .secondary
         }
         switch signal.state {
         case .found(let count): return count > 0 ? .green : .orange
-        case .confirms(let count): return count > 0 ? Theme.accent : .orange
         case .noMatch: return .orange
         case .failed: return .orange
         case .skipped: return .secondary

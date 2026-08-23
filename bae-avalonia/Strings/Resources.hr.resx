@@ -207,6 +207,7 @@
   <data name="signal.include" xml:space="preserve"><value>uključi signal</value></data>
   <data name="signal.kind.barcode" xml:space="preserve"><value>Crtični kod</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Katalog</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Odaberite kataloški broj za pretragu</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID diska</value></data>
   <data name="sort.artist" xml:space="preserve"><value>izvođač</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>dodaj razvrstavanje</value></data>

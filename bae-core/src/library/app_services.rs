@@ -830,7 +830,7 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_cancel => cancel(key: &str) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(identify, identify_toggle_signal => toggle_signal(key: &str, signal: crate::identify::ExcludedSignal) -> ());
+    delegate_sync!(identify, identify_toggle_signal => toggle_signal(key: &str, signal: crate::identify::SignalToggle) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_rerun => rerun(key: &str) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

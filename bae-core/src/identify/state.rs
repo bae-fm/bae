@@ -8,111 +8,18 @@
 //! `step` takes a state and an event and returns the next state plus the side
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
-use super::combine::{
-    catalog_matches_candidate, combine_results, CombineOutcome, ResultProvenance,
-};
-use super::toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
+use super::combine::{combine_results, CombineOutcome, ResultProvenance};
+use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
 use crate::import::search::MetadataResult;
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
 };
-use std::collections::HashSet;
-
-/// The disc-ID signal's progress. `Done` / `Skipped` / `Failed` are the settled
-/// variants — combine fires once both signals are settled.
-#[derive(Clone, Debug, PartialEq)]
-pub enum DiscidProgress {
-    Computing,
-    LookingUp,
-    Done {
-        results: Vec<(MetadataResult, LibraryStatus)>,
-        track_count: u32,
-    },
-    /// No LOG/CUE to derive a disc ID from. Still carries the local track count,
-    /// so a barcode match can report "N tracks here vs. M on the matched release."
-    Skipped {
-        track_count: u32,
-    },
-    Failed {
-        failure: LookupFailure,
-        track_count: u32,
-    },
-}
-
-impl DiscidProgress {
-    pub fn is_settled(&self) -> bool {
-        matches!(
-            self,
-            DiscidProgress::Done { .. }
-                | DiscidProgress::Skipped { .. }
-                | DiscidProgress::Failed { .. }
-        )
-    }
-
-    pub fn results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        match self {
-            DiscidProgress::Done { results, .. } => results.clone(),
-            _ => Vec::new(),
-        }
-    }
-}
-
-/// The barcode signal's progress. `LookingUp` carries position + total so the UI
-/// can show "Looking up barcode 2 of 3."
-#[derive(Clone, Debug, PartialEq)]
-pub enum BarcodeProgress {
-    Scanning,
-    LookingUp {
-        current: String,
-        position: u32,
-        total: u32,
-        remaining: Vec<String>,
-    },
-    Done {
-        /// Which barcode produced the results; `None` when the queue drained
-        /// without a match, or held no codes at all. Carried so the UI can name
-        /// the value: "Barcode 5051961234567 matched 1 release."
-        matched: Option<String>,
-        results: Vec<(MetadataResult, LibraryStatus)>,
-    },
-    Failed {
-        failure: LookupFailure,
-    },
-    /// No barcode source at all. Combine treats it like `Done { results: [] }`.
-    Skipped,
-}
-
-impl BarcodeProgress {
-    pub fn is_settled(&self) -> bool {
-        matches!(
-            self,
-            BarcodeProgress::Done { .. }
-                | BarcodeProgress::Failed { .. }
-                | BarcodeProgress::Skipped
-        )
-    }
-
-    pub fn results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        match self {
-            BarcodeProgress::Done { results, .. } => results.clone(),
-            _ => Vec::new(),
-        }
-    }
-
-    /// Which barcode produced the matched results, if any.
-    pub fn matched_barcode(&self) -> Option<&str> {
-        match self {
-            BarcodeProgress::Done { matched, .. } => matched.as_deref(),
-            _ => None,
-        }
-    }
-}
-
-/// A signal the user has toggled off. The disc ID and barcode are singletons; a
-/// catalog candidate is named by its value, since there can be several.
+/// A signal the user acted on in the toolbar. The disc ID and barcode are
+/// checked by default and toggle off; the catalog is off until one of the
+/// extracted numbers is chosen, and choosing another replaces it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExcludedSignal {
+pub enum SignalToggle {
     Disc,
     Barcode,
     Catalog(String),
@@ -137,15 +44,23 @@ pub struct SignalsContext {
     /// `BarcodeSignal` draws between `Settled { codes: [] }` and `Absent` has to be
     /// carried, not re-derived.
     pub had_barcode_source: bool,
-    /// The catalog-number candidates with their origins.
+    /// Every catalog number extracted from the candidate, with its origin —
+    /// what the catalog badge's list offers.
     pub catalogs: Vec<SourcedValue>,
-    /// Signals the user has toggled off.
-    pub excluded: HashSet<ExcludedSignal>,
+    /// Which of `catalogs` the run is using. `None` — the resting state — keeps
+    /// the catalog out of the combine entirely.
+    pub chosen_catalog: Option<String>,
+    /// Whether the user unchecked the disc ID.
+    pub disc_excluded: bool,
+    /// Whether the user unchecked the barcode.
+    pub barcode_excluded: bool,
     /// The disc-ID lookup's results, once settled. Empty while looking up or
     /// when the disc-ID pipe was skipped / found nothing.
     pub discid_results: Vec<(MetadataResult, LibraryStatus)>,
     /// The barcode lookup's results, once settled.
     pub barcode_results: Vec<(MetadataResult, LibraryStatus)>,
+    /// The chosen catalog number's lookup results, once settled.
+    pub catalog_results: Vec<(MetadataResult, LibraryStatus)>,
     /// Whatever failure settled the disc-ID pipe into `DiscidProgress::Failed`
     /// (see `record_results`), if any. Two things can put it there:
     /// `start_discid_progress` copies it straight from
@@ -161,6 +76,8 @@ pub struct SignalsContext {
     pub discid_failure: Option<LookupFailure>,
     /// The barcode lookup failure, once settled by an error.
     pub barcode_failure: Option<LookupFailure>,
+    /// The catalog lookup failure, once settled by an error.
+    pub catalog_failure: Option<LookupFailure>,
     /// Which barcode produced `barcode_results`. `None` until matched.
     pub matched_barcode: Option<String>,
     /// The candidate's local track count.
@@ -176,77 +93,95 @@ impl SignalsContext {
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
-            excluded: HashSet::new(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
             discid_results: Vec::new(),
             barcode_results: Vec::new(),
+            catalog_results: Vec::new(),
             discid_failure: None,
             barcode_failure: None,
+            catalog_failure: None,
             matched_barcode: None,
             track_count: 0,
         }
     }
 
-    /// Take the inputs from a new snapshot, keeping the user's exclusions. Results
-    /// aren't touched — they're recorded as the lookups settle.
+    /// Take the inputs from a new snapshot, keeping what the user checked.
+    /// Results aren't touched — they're recorded as the lookups settle. A
+    /// chosen catalog number that the new snapshot no longer offers is dropped;
+    /// the choice has to be one of the values on the list.
     fn refresh_inputs(&mut self, signals: &Signals) {
         self.disc_id = signals.disc_id.clone();
         self.barcode_codes = signals.barcode.codes().to_vec();
         self.had_barcode_source = !matches!(signals.barcode, BarcodeSignal::Absent);
         self.catalogs = signals.text.catalogs().to_vec();
+        if let Some(chosen) = &self.chosen_catalog {
+            if !self.catalogs.iter().any(|c| &c.value == chosen) {
+                self.chosen_catalog = None;
+                self.catalog_results.clear();
+                self.catalog_failure = None;
+            }
+        }
         self.track_count = signals.disc_id.track_count();
     }
 
     fn record_results(
         &mut self,
-        discid_results: Vec<(MetadataResult, LibraryStatus)>,
-        barcode_results: Vec<(MetadataResult, LibraryStatus)>,
-        discid_failure: Option<LookupFailure>,
-        barcode_failure: Option<LookupFailure>,
-        matched_barcode: Option<String>,
+        discid: &DiscidProgress,
+        barcode: &BarcodeProgress,
+        catalog: &CatalogProgress,
     ) {
-        self.discid_results = discid_results;
-        self.barcode_results = barcode_results;
-        self.discid_failure = discid_failure;
-        self.barcode_failure = barcode_failure;
-        self.matched_barcode = matched_barcode;
+        self.discid_results = discid.results();
+        self.barcode_results = barcode.results();
+        self.catalog_results = catalog.results();
+        self.discid_failure = match discid {
+            DiscidProgress::Failed { failure, .. } => Some(failure.clone()),
+            _ => None,
+        };
+        self.barcode_failure = match barcode {
+            BarcodeProgress::Failed { failure } => Some(failure.clone()),
+            _ => None,
+        };
+        self.catalog_failure = match catalog {
+            CatalogProgress::Failed { failure } => Some(failure.clone()),
+            _ => None,
+        };
+        self.matched_barcode = barcode.matched_barcode().map(str::to_string);
     }
 
-    /// The catalog candidates the user hasn't excluded — what `combine_results`
-    /// filters by.
-    fn active_catalogs(&self) -> Vec<SourcedValue> {
-        self.catalogs
-            .iter()
-            .filter(|c| {
-                !self
-                    .excluded
-                    .contains(&ExcludedSignal::Catalog(c.value.clone()))
-            })
-            .cloned()
-            .collect()
-    }
-
-    /// The disc-ID results combine sees — empty when the signal is excluded.
+    /// The disc-ID results combine sees — empty when the signal is unchecked.
     fn active_discid_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        if self.excluded.contains(&ExcludedSignal::Disc) {
+        if self.disc_excluded {
             Vec::new()
         } else {
             self.discid_results.clone()
         }
     }
 
-    /// The barcode results combine sees — empty when the signal is excluded.
+    /// The barcode results combine sees — empty when the signal is unchecked.
     fn active_barcode_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        if self.excluded.contains(&ExcludedSignal::Barcode) {
+        if self.barcode_excluded {
             Vec::new()
         } else {
             self.barcode_results.clone()
         }
     }
 
-    fn toggle(&mut self, signal: ExcludedSignal) {
-        if !self.excluded.remove(&signal) {
-            self.excluded.insert(signal);
+    /// The catalog results combine sees. Nothing chosen means nothing ran, so
+    /// they are empty and the catalog takes no part.
+    fn active_catalog_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+        if self.chosen_catalog.is_none() {
+            Vec::new()
+        } else {
+            self.catalog_results.clone()
         }
+    }
+
+    /// Clear what the last catalog lookup left, for a choice that replaces it.
+    fn clear_catalog_lookup(&mut self) {
+        self.catalog_results.clear();
+        self.catalog_failure = None;
     }
 }
 
@@ -259,11 +194,15 @@ impl SignalsContext {
 pub enum IdentifyState {
     Idle,
 
-    /// Both signals in flight. Each progresses independently; `settle_if_ready`
-    /// combines them into a terminal state once both are settled.
+    /// Lookups in flight. Each signal progresses independently; `settle_if_ready`
+    /// combines them into a terminal state once all three are settled. The
+    /// catalog pipe rests at `Skipped` until a number is chosen — which is also
+    /// what puts a settled state back here, with the other two standing back up
+    /// from their stored results rather than running again.
     Triangulating {
         discid: DiscidProgress,
         barcode: BarcodeProgress,
+        catalog: CatalogProgress,
         context: SignalsContext,
     },
 
@@ -321,46 +260,18 @@ impl IdentifyState {
         }
     }
 
-    /// Apply a signal toggle. Mid-`Triangulating` it is only recorded — the
-    /// in-flight lookups keep running, and `re_derive` applies the exclusion when
-    /// they settle. From a settled state, re-combine in place.
-    fn with_toggled(self, signal: ExcludedSignal) -> IdentifyState {
-        match self {
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                mut context,
-            } => {
-                context.toggle(signal);
-                IdentifyState::Triangulating {
-                    discid,
-                    barcode,
-                    context,
-                }
-            }
-            IdentifyState::Found { mut context, .. }
-            | IdentifyState::NotFoundAnywhere { mut context }
-            | IdentifyState::ManualOnly { mut context, .. } => {
-                context.toggle(signal);
-                re_derive(context)
-            }
-            IdentifyState::Idle => IdentifyState::Idle,
-        }
-    }
-
-    /// The flat badge list the UI renders: disc ID, barcode, then one per catalog
-    /// candidate. `Idle` has no toolbar.
+    /// The badge list the UI renders: the disc ID, the barcode, and the
+    /// catalog — three, whatever the candidate turned up. `Idle` has no
+    /// toolbar.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
         let Some(context) = self.context() else {
             return Vec::new();
         };
-        let mut signals = Vec::new();
-        signals.push(self.disc_badge(context));
-        signals.push(self.barcode_badge(context));
-        for catalog in &context.catalogs {
-            signals.push(self.catalog_badge(catalog, context));
-        }
-        signals
+        vec![
+            self.disc_badge(context),
+            self.barcode_badge(context),
+            self.catalog_badge(context),
+        ]
     }
 
     /// State comes from the live `DiscidProgress` while triangulating, else from
@@ -372,11 +283,11 @@ impl IdentifyState {
         };
         ToolbarSignal {
             kind: SignalKind::DiscId,
-            role: SignalRole::Identity,
             value: context.disc_id.discid_value(),
             origin: SignalOrigin::DiscToc,
             state,
-            excluded: context.excluded.contains(&ExcludedSignal::Disc),
+            excluded: context.disc_excluded,
+            options: Vec::new(),
         }
     }
 
@@ -394,102 +305,42 @@ impl IdentifyState {
         };
         ToolbarSignal {
             kind: SignalKind::Barcode,
-            role: SignalRole::Identity,
             value: code.map(|c| c.value.clone()),
             origin: code.map_or(SignalOrigin::Artwork, |c| c.origin),
             state,
-            excluded: context.excluded.contains(&ExcludedSignal::Barcode),
+            excluded: context.barcode_excluded,
+            options: Vec::new(),
         }
     }
 
-    /// How many of the matched releases carry this catno. Only `Found` has a
-    /// settled match set, so every other state counts zero.
-    fn catalog_badge(&self, catalog: &SourcedValue, context: &SignalsContext) -> ToolbarSignal {
-        let count = match self {
-            IdentifyState::Found { matches, .. } => matches
-                .iter()
-                .filter(|m| catalog_matches_candidate(m.catalog_number.as_deref(), catalog))
-                .count() as u32,
-            _ => 0,
+    /// One badge for the catalog, whatever the candidate turned up: the chosen
+    /// number and how its lookup went, with every extracted number behind it as
+    /// the list to choose from. Nothing chosen means nothing ran.
+    fn catalog_badge(&self, context: &SignalsContext) -> ToolbarSignal {
+        let chosen = context
+            .chosen_catalog
+            .as_ref()
+            .and_then(|v| context.catalogs.iter().find(|c| &c.value == v));
+        let state = match self {
+            IdentifyState::Triangulating { catalog, .. } => catalog_progress_state(catalog),
+            _ => catalog_settled_state(context),
         };
         ToolbarSignal {
             kind: SignalKind::Catalog,
-            role: SignalRole::Filter,
-            value: Some(catalog.value.clone()),
-            origin: catalog.origin,
-            state: SignalState::Confirms { count },
-            excluded: context
-                .excluded
-                .contains(&ExcludedSignal::Catalog(catalog.value.clone())),
+            value: chosen.map(|c| c.value.clone()),
+            origin: chosen.map_or(SignalOrigin::CueSheet, |c| c.origin),
+            state,
+            excluded: false,
+            options: context
+                .catalogs
+                .iter()
+                .map(|c| SignalOption {
+                    value: c.value.clone(),
+                    origin: c.origin,
+                    chosen: context.chosen_catalog.as_deref() == Some(c.value.as_str()),
+                })
+                .collect(),
         }
-    }
-}
-
-fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
-    match progress {
-        DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
-        DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
-        DiscidProgress::Skipped { .. } => SignalState::Skipped,
-        DiscidProgress::Failed { failure, .. } => SignalState::Failed {
-            failure: failure.clone(),
-        },
-    }
-}
-
-fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
-    match progress {
-        BarcodeProgress::Scanning | BarcodeProgress::LookingUp { .. } => SignalState::LookingUp,
-        BarcodeProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
-        BarcodeProgress::Failed { failure } => SignalState::Failed {
-            failure: failure.clone(),
-        },
-        BarcodeProgress::Skipped => SignalState::Skipped,
-    }
-}
-
-/// The disc-ID badge once the pipeline has left `Triangulating`. The lookup
-/// failure is checked first: `disc_id` only ever reports whether a disc ID
-/// could be *computed* (a readable TOC), so a lookup that ran against a
-/// perfectly good disc ID and then hit a network/provider error would
-/// otherwise read as `Computed` with zero results — indistinguishable from a
-/// clean no-match. `context.discid_failure` is what tells the two apart.
-fn settled_identity_state(context: &SignalsContext) -> SignalState {
-    if let Some(failure) = &context.discid_failure {
-        return SignalState::Failed {
-            failure: failure.clone(),
-        };
-    }
-    match &context.disc_id {
-        DiscIdSignal::Absent { .. } => SignalState::Skipped,
-        DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
-            failure: failure.clone(),
-        },
-        DiscIdSignal::Computed { .. } => found_or_no_match(context.discid_results.len() as u32),
-    }
-}
-
-fn barcode_settled_state(context: &SignalsContext) -> SignalState {
-    if let Some(failure) = &context.barcode_failure {
-        SignalState::Failed {
-            failure: failure.clone(),
-        }
-    } else if context.barcode_codes.is_empty() {
-        // Scanned and found nothing is a no-match, not a skip.
-        if context.had_barcode_source {
-            SignalState::NoMatch
-        } else {
-            SignalState::Skipped
-        }
-    } else {
-        found_or_no_match(context.barcode_results.len() as u32)
-    }
-}
-
-fn found_or_no_match(count: u32) -> SignalState {
-    if count == 0 {
-        SignalState::NoMatch
-    } else {
-        SignalState::Found { count }
     }
 }
 
@@ -534,24 +385,37 @@ pub enum IdentifyEvent {
         failure: LookupFailure,
     },
 
-    /// The user included or excluded a signal. The reducer flips it in
-    /// `context.excluded` and re-combines over the rest.
+    // ── Catalog lookup completion ───────────────────────────────────
+    CatalogLookupCompleted {
+        for_catalog: String,
+        results: Vec<(MetadataResult, LibraryStatus)>,
+    },
+    CatalogLookupFailed {
+        for_catalog: String,
+        failure: LookupFailure,
+    },
+
+    /// The user checked or unchecked a signal. Unchecking the disc ID or the
+    /// barcode re-combines over the rest; choosing a catalog number runs its
+    /// lookup, and choosing the one already chosen clears it.
     SignalToggled {
-        signal: ExcludedSignal,
+        signal: SignalToggle,
     },
 
     /// The user asked to replay the lookups. The reducer resets to `Triangulating`
-    /// and re-dispatches from the retained signals, keeping the exclusions.
+    /// and re-dispatches from the retained signals, keeping what the user
+    /// checked.
     ReRun,
 }
 
-/// The side effects the service performs — the two network lookups. Each one
+/// The side effects the service performs — the provider lookups. Each one
 /// finishing feeds an `IdentifyEvent` back into `step`. Scanning, OCR, and
 /// disc-ID derivation belong to the extraction service, not here.
 #[derive(Debug, Clone)]
 pub enum Effect {
     LookupDiscid { disc_id: String, track_count: u32 },
     LookupBarcode { barcode: String },
+    LookupCatalog { catalog: String },
 }
 
 /// Drive the state machine one step. `Cancelled` always resets to `Idle`.
@@ -565,7 +429,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     // triangulation — those lookups are already in flight.
     match &event {
         IdentifyEvent::SignalToggled { signal } if state.context().is_some() => {
-            return (state.with_toggled(signal.clone()), vec![]);
+            return apply_toggle(state, signal.clone());
         }
         IdentifyEvent::ReRun if !matches!(state, IdentifyState::Triangulating { .. }) => {
             if let Some(context) = state.context() {
@@ -580,6 +444,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyState::Triangulating {
                 discid: DiscidProgress::Computing,
                 barcode: BarcodeProgress::Scanning,
+                catalog: CatalogProgress::Skipped,
                 context: SignalsContext::empty(),
             },
             vec![],
@@ -589,16 +454,18 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyState::Triangulating {
                 discid,
                 barcode,
+                catalog,
                 context,
             },
             IdentifyEvent::SignalsUpdated { signals },
-        ) => apply_signals(discid, barcode, context, signals),
+        ) => apply_signals(discid, barcode, catalog, context, signals),
 
         // ── DiscID lookup completion ───────────────────────────────────
         (
             IdentifyState::Triangulating {
                 discid: DiscidProgress::Computing | DiscidProgress::LookingUp,
                 barcode,
+                catalog,
                 context,
             },
             IdentifyEvent::DiscidLookupFailed {
@@ -611,6 +478,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 track_count,
             },
             barcode,
+            catalog,
             context,
         }),
 
@@ -618,6 +486,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyState::Triangulating {
                 discid: DiscidProgress::LookingUp,
                 barcode,
+                catalog,
                 context,
             },
             IdentifyEvent::DiscidLookupCompleted {
@@ -630,6 +499,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 track_count,
             },
             barcode,
+            catalog,
             context,
         }),
 
@@ -646,6 +516,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                         total: _,
                         remaining: _,
                     },
+                catalog,
                 context,
             },
             IdentifyEvent::BarcodeLookupMatched {
@@ -658,6 +529,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 matched: Some(for_barcode),
                 results,
             },
+            catalog,
             context,
         }),
 
@@ -673,6 +545,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                         total,
                         mut remaining,
                     },
+                catalog,
                 context,
             },
             IdentifyEvent::BarcodeLookupMissed { for_barcode },
@@ -684,6 +557,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                         matched: None,
                         results: vec![],
                     },
+                    catalog,
                     context,
                 })
             } else {
@@ -697,6 +571,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                             total,
                             remaining,
                         },
+                        catalog,
                         context,
                     },
                     vec![Effect::LookupBarcode { barcode: next }],
@@ -714,6 +589,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                         total: _,
                         remaining: _,
                     },
+                catalog,
                 context,
             },
             IdentifyEvent::BarcodeLookupFailed {
@@ -723,8 +599,52 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         ) if for_barcode == current => settle_if_ready(IdentifyState::Triangulating {
             discid,
             barcode: BarcodeProgress::Failed { failure },
+            catalog,
             context,
         }),
+
+        // ── Catalog lookup completion ──────────────────────────────────
+        // The `for_catalog` guard drops a response for a number the user has
+        // already moved off.
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog: CatalogProgress::LookingUp,
+                context,
+            },
+            IdentifyEvent::CatalogLookupCompleted {
+                for_catalog,
+                results,
+            },
+        ) if context.chosen_catalog.as_deref() == Some(for_catalog.as_str()) => {
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog: CatalogProgress::Done { results },
+                context,
+            })
+        }
+
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog: CatalogProgress::LookingUp,
+                context,
+            },
+            IdentifyEvent::CatalogLookupFailed {
+                for_catalog,
+                failure,
+            },
+        ) if context.chosen_catalog.as_deref() == Some(for_catalog.as_str()) => {
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog: CatalogProgress::Failed { failure },
+                context,
+            })
+        }
 
         // An event Triangulating doesn't act on — a stale barcode response, say.
         (state @ IdentifyState::Triangulating { .. }, _) => (state, vec![]),
@@ -744,6 +664,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
 fn apply_signals(
     discid: DiscidProgress,
     barcode: BarcodeProgress,
+    catalog: CatalogProgress,
     mut context: SignalsContext,
     signals: Signals,
 ) -> (IdentifyState, Vec<Effect>) {
@@ -770,9 +691,18 @@ fn apply_signals(
         (barcode, _) => barcode,
     };
 
+    // A snapshot that no longer offers the chosen number clears the choice, so
+    // the pipe waiting on it has nothing left to wait for.
+    let catalog = if context.chosen_catalog.is_none() {
+        CatalogProgress::Skipped
+    } else {
+        catalog
+    };
+
     let next = IdentifyState::Triangulating {
         discid,
         barcode,
+        catalog,
         context,
     };
 
@@ -784,80 +714,24 @@ fn apply_signals(
     }
 }
 
-fn start_discid_progress(signal: &DiscIdSignal, effects: &mut Vec<Effect>) -> DiscidProgress {
-    match signal {
-        DiscIdSignal::Computed {
-            disc_id,
-            track_count,
-        } => {
-            effects.push(Effect::LookupDiscid {
-                disc_id: disc_id.clone(),
-                track_count: *track_count,
-            });
-            DiscidProgress::LookingUp
-        }
-        DiscIdSignal::Absent { track_count } => DiscidProgress::Skipped {
-            track_count: *track_count,
-        },
-        DiscIdSignal::Failed {
-            failure,
-            track_count,
-        } => DiscidProgress::Failed {
-            failure: failure.clone(),
-            track_count: *track_count,
-        },
-    }
-}
-
-fn start_barcode_progress(
-    codes: &[SourcedValue],
-    had_source: bool,
-    effects: &mut Vec<Effect>,
-) -> BarcodeProgress {
-    if codes.is_empty() {
-        // Nothing to look up. Whether that settles as "looked, found no match" or
-        // "never looked" turns on whether a barcode source existed — the empty vec
-        // alone cannot say.
-        return if had_source {
-            BarcodeProgress::Done {
-                matched: None,
-                results: Vec::new(),
-            }
-        } else {
-            BarcodeProgress::Skipped
-        };
-    }
-
-    let mut values: Vec<String> = codes.iter().map(|c| c.value.clone()).collect();
-    let total = values.len() as u32;
-    let current = values.remove(0);
-    effects.push(Effect::LookupBarcode {
-        barcode: current.clone(),
-    });
-    BarcodeProgress::LookingUp {
-        current,
-        position: 1,
-        total,
-        remaining: values,
-    }
-}
-
-/// Once both signals have settled, record their results into the context and
+/// Once every signal has settled, record their results into the context and
 /// combine into a terminal state. Until then, stay in `Triangulating`.
 fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     let IdentifyState::Triangulating {
         discid,
         barcode,
+        catalog,
         mut context,
     } = state
     else {
         return (state, vec![]);
     };
-    if !discid.is_settled() || !barcode.is_settled() {
+    if !discid.is_settled() || !barcode.is_settled() || !catalog.is_settled() {
         return (
             IdentifyState::Triangulating {
                 discid,
                 barcode,
+                catalog,
                 context,
             },
             vec![],
@@ -866,26 +740,13 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 
     let track_count = settled_track_count(&discid);
     context.track_count = track_count;
-    let discid_failure = match &discid {
-        DiscidProgress::Failed { failure, .. } => Some(failure.clone()),
-        _ => None,
-    };
-    let barcode_failure = match &barcode {
-        BarcodeProgress::Failed { failure } => Some(failure.clone()),
-        _ => None,
-    };
-    context.record_results(
-        discid.results(),
-        barcode.results(),
-        discid_failure,
-        barcode_failure,
-        barcode.matched_barcode().map(str::to_string),
-    );
+    context.record_results(&discid, &barcode, &catalog);
 
-    // Neither signal had anything to run. Offer manual search rather than claim
-    // we looked and found nothing.
+    // Nothing had anything to run. Offer manual search rather than claim we
+    // looked and found nothing.
     if matches!(discid, DiscidProgress::Skipped { .. })
         && matches!(barcode, BarcodeProgress::Skipped)
+        && matches!(catalog, CatalogProgress::Skipped)
     {
         return (
             IdentifyState::ManualOnly {
@@ -899,6 +760,99 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context), vec![])
 }
 
+/// Apply a toolbar toggle.
+///
+/// Unchecking the disc ID or the barcode changes nothing that has to be
+/// fetched, so it re-combines in place. Choosing a catalog number does: its
+/// lookup has to run, which puts the state back in `Triangulating` with the
+/// other two signals standing back up from what they already found.
+///
+/// Mid-`Triangulating` an exclusion is only recorded — the in-flight lookups
+/// keep running, and the settle applies it.
+fn apply_toggle(state: IdentifyState, signal: SignalToggle) -> (IdentifyState, Vec<Effect>) {
+    let SignalToggle::Catalog(value) = signal else {
+        let exclude_disc = matches!(signal, SignalToggle::Disc);
+        return match state {
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                mut context,
+            } => {
+                toggle_exclusion(&mut context, exclude_disc);
+                (
+                    IdentifyState::Triangulating {
+                        discid,
+                        barcode,
+                        catalog,
+                        context,
+                    },
+                    vec![],
+                )
+            }
+            IdentifyState::Found { mut context, .. }
+            | IdentifyState::NotFoundAnywhere { mut context }
+            | IdentifyState::ManualOnly { mut context, .. } => {
+                toggle_exclusion(&mut context, exclude_disc);
+                (re_derive(context), vec![])
+            }
+            IdentifyState::Idle => (IdentifyState::Idle, vec![]),
+        };
+    };
+    choose_catalog(state, value)
+}
+
+fn toggle_exclusion(context: &mut SignalsContext, disc: bool) {
+    if disc {
+        context.disc_excluded = !context.disc_excluded;
+    } else {
+        context.barcode_excluded = !context.barcode_excluded;
+    }
+}
+
+/// Check one extracted catalog number, or uncheck the one already checked.
+/// At most one is ever chosen: choosing another replaces it.
+fn choose_catalog(state: IdentifyState, value: String) -> (IdentifyState, Vec<Effect>) {
+    let (discid, barcode, mut context) = match state {
+        IdentifyState::Triangulating {
+            discid,
+            barcode,
+            context,
+            ..
+        } => (discid, barcode, context),
+        IdentifyState::Found { context, .. }
+        | IdentifyState::NotFoundAnywhere { context }
+        | IdentifyState::ManualOnly { context, .. } => (
+            settled_discid_progress(&context),
+            settled_barcode_progress(&context),
+            context,
+        ),
+        IdentifyState::Idle => return (IdentifyState::Idle, vec![]),
+    };
+
+    context.clear_catalog_lookup();
+    if context.chosen_catalog.as_deref() == Some(value.as_str()) {
+        context.chosen_catalog = None;
+        return settle_if_ready(IdentifyState::Triangulating {
+            discid,
+            barcode,
+            catalog: CatalogProgress::Skipped,
+            context,
+        });
+    }
+
+    context.chosen_catalog = Some(value.clone());
+    (
+        IdentifyState::Triangulating {
+            discid,
+            barcode,
+            catalog: CatalogProgress::LookingUp,
+            context,
+        },
+        vec![Effect::LookupCatalog { catalog: value }],
+    )
+}
+
 /// Re-combine over the non-excluded signals and lift the outcome into a state. The
 /// one combine path: triangulation settle, signal toggle, and re-run completion all
 /// arrive here once the results are in the context.
@@ -906,10 +860,11 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 /// Both sides empty — because the lookups found nothing, or because the user
 /// excluded the signals that did — lands on `NotFoundAnywhere`.
 fn re_derive(context: SignalsContext) -> IdentifyState {
-    let discid_results = context.active_discid_results();
-    let barcode_results = context.active_barcode_results();
-
-    let outcome = combine_results(discid_results, barcode_results, &context.active_catalogs());
+    let outcome = combine_results(
+        context.active_discid_results(),
+        context.active_barcode_results(),
+        context.active_catalog_results(),
+    );
     let track_count = context.track_count;
     match outcome {
         CombineOutcome::Found {
@@ -927,8 +882,8 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
     }
 }
 
-/// Reset to `Triangulating` and re-dispatch the lookups from the retained signals,
-/// keeping the user's exclusions.
+/// Reset to `Triangulating` and re-dispatch the lookups from the retained
+/// signals, keeping what the user checked.
 fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     // The prior results go; the new lookups replace them as they land.
     context.discid_results = Vec::new();
@@ -936,6 +891,7 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     context.discid_failure = None;
     context.barcode_failure = None;
     context.matched_barcode = None;
+    context.clear_catalog_lookup();
 
     let mut effects = Vec::new();
 
@@ -945,10 +901,20 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
         context.had_barcode_source,
         &mut effects,
     );
+    let catalog = match &context.chosen_catalog {
+        Some(value) => {
+            effects.push(Effect::LookupCatalog {
+                catalog: value.clone(),
+            });
+            CatalogProgress::LookingUp
+        }
+        None => CatalogProgress::Skipped,
+    };
 
     let next = IdentifyState::Triangulating {
         discid,
         barcode,
+        catalog,
         context,
     };
     if effects.is_empty() {
@@ -958,16 +924,14 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     }
 }
 
-/// The track count is whatever the disc-ID signal reported — every one of its
-/// settled variants carries the local count, whether or not a disc ID was derived.
-fn settled_track_count(discid: &DiscidProgress) -> u32 {
-    match discid {
-        DiscidProgress::Done { track_count, .. } => *track_count,
-        DiscidProgress::Skipped { track_count } => *track_count,
-        DiscidProgress::Failed { track_count, .. } => *track_count,
-        DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
-    }
-}
+mod progress;
+
+use progress::{
+    barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
+    discid_progress_state, settled_barcode_progress, settled_discid_progress,
+    settled_identity_state, settled_track_count, start_barcode_progress, start_discid_progress,
+};
+pub use progress::{BarcodeProgress, CatalogProgress, DiscidProgress};
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 

@@ -64,7 +64,8 @@ private struct ImportOperations: Sendable {
             BridgeMetadataSource, String, String?, ReleaseLibraryStatusCallback
         ) -> any LiveSubscriptionProtocol
     let toggleSignalForCandidate:
-        @Sendable (String, BridgeExcludedSignal) -> Void
+        @Sendable (String, BridgeSignalToggle) ->
+            Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     let setCandidateCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
@@ -256,7 +257,7 @@ final class Importer: Sendable, Observable {
                 )
             },
         toggleSignalForCandidate:
-            @escaping @Sendable (String, BridgeExcludedSignal) -> Void = {
+            @escaping @Sendable (String, BridgeSignalToggle) -> Void = {
                 _,
                 _ in
             },
@@ -420,7 +421,7 @@ final class Importer: Sendable, Observable {
 
     func toggleSignalForCandidate(
         _ candidateKey: String,
-        _ signal: BridgeExcludedSignal
+        _ signal: BridgeSignalToggle
     ) {
         operations.toggleSignalForCandidate(candidateKey, signal)
     }
