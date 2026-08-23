@@ -278,49 +278,47 @@ struct AlbumExpansionContent: View {
     private struct MultiReleasePreview: View {
         @State
         private var selectedReleaseId: String = "rel-a-04-0"
+        // Seeded at construction: the body has nothing to show until the
+        // store holds the album, and an empty body never appears, so seeding
+        // from `onAppear` never ran.
         @State
-        private var store = LibraryStore()
+        private var store = PreviewData.seededLibraryStore()
 
         var body: some View {
-            Group {
-                if let summary = store.albumSummaries["a-04"],
-                    let selected = store.releaseDetails[selectedReleaseId]
-                {
-                    PreviewData.albumExpansionContent(
-                        summary: summary,
-                        selectedRelease: selected,
-                        // Live cursor so selecting a release in the picker cycles
-                        // the preview to that release's detail.
-                        releaseCursor: Binding(
-                            get: {
-                                PreviewData.releaseCursor(
-                                    releaseIds: summary.releaseIds,
-                                    preferring: selectedReleaseId
-                                )
-                            },
-                            set: { selectedReleaseId = $0.current.id },
-                        ),
-                        currentTrackId: "t-d2-3",
-                        isPlaying: true,
-                    )
-                    .padding()
-                    .frame(width: 1100, height: 700, alignment: .top)
-                    .background(Theme.background)
-                    .environment(UiStore())
-                    .environment(store)
-                    .environment(ImageStore.stub())
-                }
+            let summary = store.albumSummaries["a-04"]
+            let selected = store.releaseDetails[selectedReleaseId]
+            if let summary, let selected {
+                PreviewData.albumExpansionContent(
+                    summary: summary,
+                    selectedRelease: selected,
+                    // Live cursor so selecting a release in the picker cycles
+                    // the preview to that release's detail.
+                    releaseCursor: Binding(
+                        get: {
+                            PreviewData.releaseCursor(
+                                releaseIds: summary.releaseIds,
+                                preferring: selectedReleaseId
+                            )
+                        },
+                        set: { selectedReleaseId = $0.current.id },
+                    ),
+                    currentTrackId: "t-d2-3",
+                    isPlaying: true,
+                )
+                .padding()
+                .frame(width: 1100)
+                .background(Theme.background)
+                .environment(UiStore())
+                .environment(store)
+                .environment(ImageStore.stub())
             }
-            .onAppear { seedIfNeeded() }
-        }
-
-        @MainActor
-        private func seedIfNeeded() {
-            if store.albumSummaries["a-04"] == nil {
-                guard let album = PreviewData.albumDetails["a-04"] else {
-                    fatalError("a-04 not in PreviewData.albumDetails")
-                }
-                store.internAlbumDetail(album)
+            else {
+                // A preview with nothing to render is a broken fixture, not an
+                // empty state.
+                Text(
+                    verbatim:
+                        "release \(selectedReleaseId) of a-04 is not in PreviewData"
+                )
             }
         }
     }
