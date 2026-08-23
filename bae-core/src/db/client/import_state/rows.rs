@@ -40,7 +40,7 @@ pub(super) fn pick_columns(pick: &IdentityPick) -> PickColumns<'_> {
     }
 }
 
-fn pick_of(
+pub(crate) fn pick_of(
     kind: Option<String>,
     source: Option<String>,
     release_id: Option<String>,
@@ -122,7 +122,7 @@ const FILE_EDIT_COLUMNS: &str = "content_hash, relative_path, role_choice, sheet
 
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// match and file-decision rows that hang off it.
-pub(super) fn load_states_on(
+pub(crate) fn load_states_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {

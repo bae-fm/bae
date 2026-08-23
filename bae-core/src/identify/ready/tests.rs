@@ -188,3 +188,74 @@ fn the_tolerance_is_per_track_rounding_with_a_floor() {
     );
     assert_eq!(duration_tolerance_ms(20), 10_000);
 }
+
+/// [`VerdictSummary`] is what the list classifies from, read off stored
+/// columns rather than a rebuilt verdict — so every fact the rule consults has
+/// to survive the reduction: which shape the verdict is, how many releases it
+/// named, and the lead's own columns.
+#[test]
+fn a_summary_keeps_every_fact_the_rule_consults() {
+    let verdicts = [
+        found(vec![result("rel-a", agreeing(11, 2_400_000))], 11),
+        found(
+            vec![
+                result("rel-a", agreeing(11, 2_400_000)),
+                result("rel-b", agreeing(11, 2_400_000)),
+            ],
+            11,
+        ),
+        TerminalVerdict::Conflict {
+            discid_results: vec![result("rel-a", None)],
+            barcode_results: vec![result("rel-b", None)],
+            matched_barcode: Some("1234567890123".to_string()),
+            track_count: 11,
+        },
+        TerminalVerdict::NotFoundAnywhere,
+        TerminalVerdict::ManualOnly { track_count: 11 },
+    ];
+
+    for verdict in verdicts {
+        let summary = VerdictSummary::of(&verdict);
+        match &verdict {
+            TerminalVerdict::Found {
+                matches,
+                track_count,
+                ..
+            } => {
+                assert_eq!(summary.kind, VerdictKind::Found);
+                assert_eq!(summary.track_count, Some(*track_count));
+                assert_eq!(summary.match_count, matches.len() as u32);
+                let lead = summary.lead.as_ref().expect("a found verdict has a lead");
+                assert_eq!(lead.release_id, matches[0].release_id);
+                assert_eq!(lead.source_tracks, matches[0].source_tracks);
+                assert!(lead.by_disc_id, "the lead carries its own provenance");
+            }
+            TerminalVerdict::Conflict { track_count, .. } => {
+                assert_eq!(summary.kind, VerdictKind::Conflict);
+                assert_eq!(summary.track_count, Some(*track_count));
+                assert_eq!(summary.match_count, 0);
+                assert!(summary.lead.is_none(), "a conflict leads with nothing");
+            }
+            TerminalVerdict::NotFoundAnywhere => {
+                assert_eq!(summary.kind, VerdictKind::NotFound);
+                assert_eq!(summary.track_count, None);
+            }
+            TerminalVerdict::ManualOnly { track_count } => {
+                assert_eq!(summary.kind, VerdictKind::ManualOnly);
+                assert_eq!(summary.track_count, Some(*track_count));
+            }
+        }
+
+        // The rule reads the same answer either way — which is what lets the
+        // list classify without rebuilding the verdict.
+        let statuses = [status("rel-a", false, false), status("rel-b", false, false)];
+        let lead_status = summary
+            .lead
+            .as_ref()
+            .and_then(|lead| statuses.iter().find(|s| s.release_id == lead.release_id));
+        assert_eq!(
+            classify_summary(&summary, 2_400_000, lead_status),
+            classify(&verdict, 2_400_000, &statuses)
+        );
+    }
+}

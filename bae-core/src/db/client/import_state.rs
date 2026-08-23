@@ -6,7 +6,9 @@ mod verdict_rows;
 
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use edit_rows::{delete_file_edits, insert_file_edits};
-use rows::{load_candidate_file_edits_on, load_states_on, pick_columns};
+pub(super) use rows::{load_states_on, pick_of};
+
+use rows::{load_candidate_file_edits_on, pick_columns};
 use verdict_rows::{delete_matches, insert_matches, verdict_columns};
 
 /// Who decided a candidate's stored identity pick. The two outlive different

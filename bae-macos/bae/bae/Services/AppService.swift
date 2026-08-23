@@ -125,7 +125,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             appHandle: appHandle,
             importStore: importStore,
             outputStore: outputStore,
-            uiStore: uiStore
+            uiStore: uiStore,
+            importer: importer
         )
         desktopEvents = DesktopEventHandler(
             importStore: importStore,
@@ -197,6 +198,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     func installEnvironment<Content: View>(_ content: Content) -> some View {
         installSharedEnvironment(content)
             .environment(importStore)
+            .environment(desktopSubscriptions.importList)
             .environment(libraryBrowseSession)
             .environment(storageManagerStore)
             .environment(previewAudio)

@@ -1,103 +1,28 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// The sidebar row list's sort order — the only thing left for the UI to decide
-// once core has placed every row into its tab and, within Pending, its group.
-// Only name order survives the triage redesign: a BridgeTriageRow carries no
-// discovery timestamp, so a "date added" option
-// would silently degrade into an alias for name order. Better to drop it than
-// keep a control that lies about what it does.
+// The sidebar row list's sort order. Over the folder's path below its watched
+// root, not over the row's title: for a candidate the user picked a release
+// for, the title lives in an archived document, and ordering by it would mean
+// decoding every pick on every read. Only name order survives the triage
+// redesign — a row carries no discovery timestamp, so a "date added" option
+// would silently degrade into an alias for this one.
 internal enum CandidateSortOrder
 {
     NameAZ,
     NameZA,
 }
 
-internal sealed record ReleaseQueueEntry(
-    string StableKey,
-    BridgeTriageEntry Bridge);
-
-internal sealed record ReleaseQueueSection(
-    BridgeTriageTab Tab,
-    string WatchedFolderPath,
-    BridgeTriageGroup? Group,
-    List<ReleaseQueueEntry> Entries);
-
-// The sidebar's row list, grouping, filtering, and sort order, read off
-// BridgeTriageQueue — core's projection. This computes nothing about which tab
-// or Needs-you group a row belongs to (BridgeTriageRow.Placement already says
-// that); it only filters, groups, and orders what core already placed.
+// What is left for the UI to say about a row once core has placed it: the title
+// it leads with, and the persisted sort token. Which tab a row belongs to, which
+// group it joins, whether the filter keeps it and where it sits are all core's,
+// and arrive already decided on the list's items.
 internal static class TriageListModel
 {
-    internal static List<ReleaseQueueSection> Sections(
-        BridgeTriageQueue queue,
-        BridgeTriageTab tab,
-        string filterText,
-        CandidateSortOrder sortOrder)
-    {
-        var query = filterText.Trim().ToLowerInvariant();
-        return queue.Sections
-            .Where(section => section.Tab == tab)
-            .Select(section => new ReleaseQueueSection(
-                section.Tab,
-                section.WatchedFolderPath,
-                section.Group,
-                ReleaseQueueSortModel.Sort(
-                    section.Entries
-                        .Where(entry => EntryMatches(entry, query))
-                        .Select(entry => new ReleaseQueueEntry(
-                            StableKey(entry),
-                            entry)),
-                    entry => EntryTitle(entry.Bridge),
-                    sortOrder == CandidateSortOrder.NameZA)))
-            .Where(section => section.Entries.Count > 0)
-            .ToList();
-    }
-
-    private static string StableKey(BridgeTriageEntry entry) => entry switch
-    {
-        BridgeTriageEntry.Candidate candidate => candidate.StableKey,
-        BridgeTriageEntry.Boundary boundary => boundary.StableKey,
-        BridgeTriageEntry.Invalid invalid => invalid.StableKey,
-        _ => throw new ArgumentOutOfRangeException(nameof(entry), entry, "Unknown triage entry"),
-    };
-
-    private static bool EntryMatches(BridgeTriageEntry entry, string query)
-    {
-        if (query.Length == 0)
-        {
-            return true;
-        }
-        return EntryTitle(entry).Contains(query, StringComparison.CurrentCultureIgnoreCase)
-            || entry switch
-            {
-                BridgeTriageEntry.Candidate candidate =>
-                    candidate.Row.DisplayPath.Contains(query, StringComparison.CurrentCultureIgnoreCase),
-                BridgeTriageEntry.Boundary boundary =>
-                    boundary.BoundaryValue.DisplayPath.Contains(query, StringComparison.CurrentCultureIgnoreCase)
-                    || boundary.BoundaryValue.TreeRows.Any(row =>
-                        row.DisplayPath.Contains(query, StringComparison.CurrentCultureIgnoreCase)),
-                BridgeTriageEntry.Invalid invalid =>
-                    invalid.InvalidCandidate.DisplayPath.Contains(query, StringComparison.CurrentCultureIgnoreCase),
-                _ => false,
-            };
-    }
-
-    private static string EntryTitle(BridgeTriageEntry entry) => entry switch
-    {
-        BridgeTriageEntry.Candidate candidate => DisplayTitle(candidate.Row),
-        BridgeTriageEntry.Boundary boundary => boundary.BoundaryValue.Name,
-        BridgeTriageEntry.Invalid invalid => invalid.InvalidCandidate.SourceFolderName,
-        _ => string.Empty,
-    };
-
     // The title a row leads with — the matched release's, or the folder name
-    // when nothing matched. What sort and filter match against, because it's
-    // what the row actually shows.
+    // when nothing matched. The row's own text, formatted by the UI.
     internal static string DisplayTitle(BridgeTriageRow row) => row.Matched?.Title ?? row.FolderName;
 
     // Whether DisplayTitle fell through to the folder name — the rows that take
@@ -105,60 +30,13 @@ internal static class TriageListModel
     // release nobody has matched.
     internal static bool TitleIsFolderName(BridgeTriageRow row) => row.Matched is null;
 
-    // The cover art of every bulk-importable Pending row, in queue order.
-    // Identification already fetched these, so Pending has no reason to open
-    // on a grid of blanks. Unfiltered and unsorted: what the tab is about to
-    // draw does not depend on what the filter box currently says.
-    internal static List<string> ReadyCoverThumbnailUrls(BridgeTriageQueue queue) =>
-        queue.Sections
-            .Where(section => section.Tab == BridgeTriageTab.Pending)
-            .SelectMany(section => section.Entries)
-            .OfType<BridgeTriageEntry.Candidate>()
-            .Where(candidate => candidate.Row.Selectable)
-            .Select(candidate => candidate.Row.Matched?.CoverThumbnailUrl)
-            .Where(url => !string.IsNullOrEmpty(url))
-            .Select(url => url!)
-            .ToList();
-
-    // The first row the identify count is still waiting on — a candidate with
-    // no verdict yet, whichever phase it is in. Null when the count has nothing
-    // left to wait on. This is what the header's line points at: the number
-    // moves on its own, but while it is short of its total there is a row
-    // somewhere behind it, and the line is the only place that knows there is.
-    internal static BridgeTriageRow? FirstUnidentified(BridgeTriageQueue queue) =>
-        queue.Sections
-            .SelectMany(section => section.Entries)
-            .OfType<BridgeTriageEntry.Candidate>()
-            .Select(candidate => candidate.Row)
-            .FirstOrDefault(row => row.Placement
-                is BridgeTriagePlacement.NeedsYou
-            {
-                Reason: BridgeNeedsYouReason.StillIdentifying,
-            });
-
-    internal static BridgeTriageRow? Row(BridgeTriageQueue queue, string key) =>
-        queue.Sections
-            .SelectMany(section => section.Entries)
-            .OfType<BridgeTriageEntry.Candidate>()
-            .Select(candidate => candidate.Row)
-            .FirstOrDefault(row => row.CandidateKey == key);
-
-    internal static HashSet<string> CandidateKeys(BridgeTriageQueue queue) =>
-        queue.Sections
-            .SelectMany(section => section.Entries)
-            .OfType<BridgeTriageEntry.Candidate>()
-            .Select(candidate => candidate.Row.CandidateKey)
-            .ToHashSet();
-
-    internal static List<BridgeTriageRow> SelectableReadyRows(
-        BridgeTriageQueue queue, string filterText, CandidateSortOrder sortOrder) =>
-        Sections(queue, BridgeTriageTab.Pending, filterText, sortOrder)
-            .SelectMany(section => section.Entries)
-            .Select(entry => entry.Bridge)
-            .OfType<BridgeTriageEntry.Candidate>()
-            .Select(candidate => candidate.Row)
-            .Where(row => row.Selectable)
-            .ToList();
+    // The order core reads the persisted preference as.
+    internal static BridgeImportListOrder ListOrder(CandidateSortOrder order) => order switch
+    {
+        CandidateSortOrder.NameAZ => BridgeImportListOrder.PathAscending,
+        CandidateSortOrder.NameZA => BridgeImportListOrder.PathDescending,
+        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "Unknown sort order"),
+    };
 
     // Round-trip tokens for the persisted sort preference.
     internal static string Serialize(CandidateSortOrder order) => order switch

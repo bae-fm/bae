@@ -110,35 +110,6 @@
             )
         }
 
-        static func candidateEntry(
-            _ row: BridgeTriageRow
-        ) -> BridgeTriageEntry {
-            .candidate(
-                stableKey: "candidate:\(row.candidateKey)",
-                row: row
-            )
-        }
-
-        static func boundaryEntry(
-            _ boundary: BridgeFolderReleaseBoundary
-        ) -> BridgeTriageEntry {
-            .boundary(
-                stableKey:
-                    "boundary:\(boundary.key.watchedFolderPath):"
-                    + boundary.key.relativeFolderPath,
-                boundary: boundary
-            )
-        }
-
-        static func invalidEntry(
-            _ candidate: BridgeInvalidCandidate
-        ) -> BridgeTriageEntry {
-            .invalid(
-                stableKey: "invalid:\(candidate.folderPath)",
-                invalidCandidate: candidate
-            )
-        }
-
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/Album Title One",
@@ -625,156 +596,144 @@
             return candidate
         }
 
-        private static let releaseQueue = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: releaseQueueRoot,
-                    group: BridgeTriageGroup(
-                        key: releaseQueueGroupKey,
-                        name: "Collection"
-                    ),
-                    entries: releaseQueueRows[0...1].map(candidateEntry)
-                ),
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: releaseQueueRoot,
-                    group: nil,
-                    entries: [
-                        candidateEntry(releaseQueueRows[2]),
-                        boundaryEntry(releaseQueueBoundary),
-                    ]
-                ),
-            ],
-            counts: BridgeTriageTabCounts(
-                pending: 4,
-                done: 0,
-                skipped: 0
-            ),
-            folderScanStatuses: []
+        private static let releaseQueueGroupHeader = groupHeaderItem(
+            key: releaseQueueGroupKey,
+            name: "Collection",
+            entryCount: 2
         )
 
-        private static let releaseQueueScanning = BridgeTriageQueue(
-            sections: releaseQueue.sections,
-            counts: releaseQueue.counts,
-            folderScanStatuses: [
-                BridgeWatchedFolderScanStatus(
-                    watchedFolderPath: releaseQueueRoot,
-                    watchedFolderName: releaseQueueWatchedFolder.name,
-                    status: .scanning
+        private static let releaseQueueItems =
+            [releaseQueueGroupHeader]
+            + releaseQueueRows[0...1].map(candidateItem)
+            + [
+                candidateItem(releaseQueueRows[2]),
+                boundaryItem(releaseQueueBoundary),
+            ]
+
+        private static let releaseQueueSummary = importQueueSummary(
+            pending: 4,
+            done: 0,
+            skipped: 0,
+            watchedFolders: [releaseQueueWatchedFolder],
+            groupKeys: [releaseQueueGroupKey],
+            ready: readyRows(releaseQueueRows)
+        )
+
+        private static let releaseQueueResolvedRow = releaseQueueRow(
+            name: "Release 01",
+            displayPath: "Collection/Release 01",
+            resolvedBoundaries: [
+                BridgeResolvedFolderReleaseBoundary(
+                    key: releaseQueueGroupKey,
+                    decision: .keepAsSeparateReleases,
+                    name: "Collection",
+                    displayPath: "Collection"
                 )
             ]
         )
 
-        private static let releaseQueueResolved = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: releaseQueueRoot,
-                    group: nil,
-                    entries: [
-                        candidateEntry(
-                            releaseQueueRow(
-                                name: "Release 01",
-                                displayPath: "Collection/Release 01",
-                                resolvedBoundaries: [
-                                    BridgeResolvedFolderReleaseBoundary(
-                                        key: releaseQueueGroupKey,
-                                        decision: .keepAsSeparateReleases,
-                                        name: "Collection",
-                                        displayPath: "Collection"
-                                    )
-                                ]
-                            )
-                        )
-                    ]
-                )
-            ],
-            counts: BridgeTriageTabCounts(
-                pending: 1,
-                done: 0,
-                skipped: 0
-            ),
-            folderScanStatuses: []
-        )
-
         @MainActor
-        private static func releaseQueueStore(
-            _ queue: BridgeTriageQueue
-        ) -> ImportStore {
+        private static func releaseQueueScene(
+            items: [BridgeImportListItem],
+            summary: BridgeImportQueueSummary
+        ) -> ImportPreviewFixture {
             let store = ImportStore()
-            store.watchedFolders = [releaseQueueWatchedFolder]
+            store.summary = summary
             for candidate in releaseQueueCandidates {
-                store.folderCandidates[candidate.key] = candidate
+                store.selectedCandidates[candidate.key] = candidate
             }
-            store.triageQueue = queue
-            return store
+            return ImportPreviewFixture(
+                store: store,
+                itemsByTab: [.pending: items, .done: [], .skipped: []]
+            )
         }
 
         @MainActor
-        static let releaseQueueImportStore = releaseQueueStore(releaseQueue)
+        static func releaseQueueScene() -> ImportPreviewFixture {
+            releaseQueueScene(
+                items: releaseQueueItems,
+                summary: releaseQueueSummary
+            )
+        }
 
         @MainActor
-        static let releaseBoundaryPreviewImportStore = releaseQueueStore(
-            BridgeTriageQueue(
-                sections: [
-                    BridgeTriageSection(
-                        tab: .pending,
-                        watchedFolderPath: releaseQueueRoot,
-                        group: nil,
-                        entries: releaseBoundaryPreviewBoundaries.map(
-                            boundaryEntry
+        static func releaseQueueScanningScene() -> ImportPreviewFixture {
+            let scene = releaseQueueScene(
+                items: releaseQueueItems,
+                summary: importQueueSummary(
+                    pending: 4,
+                    done: 0,
+                    skipped: 0,
+                    watchedFolders: [releaseQueueWatchedFolder],
+                    folderScanStatuses: [
+                        BridgeWatchedFolderScanStatus(
+                            watchedFolderPath: releaseQueueRoot,
+                            watchedFolderName: releaseQueueWatchedFolder.name,
+                            status: .scanning
                         )
-                    )
-                ],
-                counts: BridgeTriageTabCounts(
+                    ],
+                    groupKeys: [releaseQueueGroupKey],
+                    ready: readyRows(releaseQueueRows)
+                )
+            )
+            scene.store.queueIdentifyProgress = (identified: 27, total: 40)
+            return scene
+        }
+
+        @MainActor
+        static func releaseQueueResolvedScene() -> ImportPreviewFixture {
+            releaseQueueScene(
+                items: [candidateItem(releaseQueueResolvedRow)],
+                summary: importQueueSummary(
+                    pending: 1,
+                    done: 0,
+                    skipped: 0,
+                    watchedFolders: [releaseQueueWatchedFolder],
+                    ready: readyRows([releaseQueueResolvedRow])
+                )
+            )
+        }
+
+        @MainActor
+        static func releaseBoundaryScene() -> ImportPreviewFixture {
+            releaseQueueScene(
+                items: releaseBoundaryPreviewBoundaries.map(boundaryItem),
+                summary: importQueueSummary(
                     pending: UInt32(releaseBoundaryPreviewBoundaries.count),
                     done: 0,
-                    skipped: 0
-                ),
-                folderScanStatuses: []
+                    skipped: 0,
+                    watchedFolders: [releaseQueueWatchedFolder]
+                )
             )
-        )
+        }
 
         /// Every Import-tab state in one production-backed fixture: the
         /// candidate questions and terminal tabs, plus the mixed folder trees.
         @MainActor
-        static func importSmokeTestStore() -> ImportStore {
-            let store = importTabStore()
-            let boundarySection = BridgeTriageSection(
-                tab: .pending,
-                watchedFolderPath: releaseQueueRoot,
-                group: nil,
-                entries: releaseBoundaryPreviewBoundaries.map(boundaryEntry)
+        static func importSmokeTestScene() -> ImportPreviewFixture {
+            let scene = importTabScene()
+            let boundaries = releaseBoundaryPreviewBoundaries.map(boundaryItem)
+            let base = scene.store.summary
+            scene.store.summary = importQueueSummary(
+                pending: base.counts.pending
+                    + UInt32(releaseBoundaryPreviewBoundaries.count),
+                done: base.counts.done,
+                skipped: base.counts.skipped,
+                watchedFolders: base.watchedFolders
+                    + [releaseQueueWatchedFolder],
+                folderScanStatuses: base.folderScanStatuses,
+                groupKeys: base.groupKeys,
+                ready: base.ready,
+                firstUnidentifiedKey: base.firstUnidentifiedKey
             )
-            let queue = store.triageQueue
-
-            store.watchedFolders.append(releaseQueueWatchedFolder)
-            store.triageQueue = BridgeTriageQueue(
-                sections: queue.sections + [boundarySection],
-                counts: BridgeTriageTabCounts(
-                    pending: queue.counts.pending
-                        + UInt32(releaseBoundaryPreviewBoundaries.count),
-                    done: queue.counts.done,
-                    skipped: queue.counts.skipped
-                ),
-                folderScanStatuses: queue.folderScanStatuses
+            scene.store.queueIdentifyProgress = (identified: 20, total: 21)
+            var itemsByTab = scene.itemsByTab
+            itemsByTab[.pending] = (itemsByTab[.pending] ?? []) + boundaries
+            return ImportPreviewFixture(
+                store: scene.store,
+                itemsByTab: itemsByTab
             )
-            store.queueIdentifyProgress = (identified: 20, total: 21)
-            return store
         }
-
-        @MainActor
-        static func releaseQueueScanningImportStore() -> ImportStore {
-            let store = releaseQueueStore(releaseQueueScanning)
-            store.queueIdentifyProgress = (identified: 27, total: 40)
-            return store
-        }
-
-        @MainActor
-        static let releaseQueueResolvedImportStore = releaseQueueStore(
-            releaseQueueResolved
-        )
 
     }
 #endif

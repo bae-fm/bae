@@ -1,43 +1,22 @@
-//! The import tab's candidate list, read from the durable folder-scan rows.
+//! What one import candidate is beyond the rows the scan wrote, and which
+//! stored entries a new one replaces.
 //!
 //! Everything a row shows that outlives the process — the scanned folder and
 //! its files, whether it was skipped, whether its content is already in the
 //! library, which boundary decisions exposed it, the scan status of its root,
 //! the identify state its stored verdict stands back up as — is a fact in a
-//! table, and [`ImportCandidatesSnapshot`] is one read of those tables. What a
-//! row shows that does not outlive the process (a run in flight, extracted
-//! signals, an import's progress) is [`CandidateRuntimeSnapshot`], held by
+//! table, read by [`crate::import::list`]. What a row shows that does not
+//! outlive the process (a run in flight, extracted signals, an import's
+//! progress) is [`CandidateRuntimeSnapshot`], held by
 //! [`super::candidate_runtime::CandidateRuntime`] and delivered per key.
 
-use super::folder_registry::WatchedFolder;
 use super::folder_scanner::{
-    CategorizedFiles, FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision,
-    FolderReleaseDecisionKey, InvalidCandidate, ScanItem,
+    CategorizedFiles, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
+    InvalidCandidate, ScanItem,
 };
 use super::types::ImportStep;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
-
-#[cfg(test)]
-mod tests;
-
-/// The durable candidate list: one value per read of the folder-scan tables.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportCandidatesSnapshot {
-    pub watched_folders: Vec<WatchedFolder>,
-    pub folder_candidates: Vec<FolderImportCandidateSnapshot>,
-    pub invalid_candidates: Vec<InvalidCandidate>,
-    pub boundaries: Vec<FolderReleaseBoundary>,
-    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
-}
-
-impl ImportCandidatesSnapshot {
-    pub fn folder_candidate(&self, key: &str) -> Option<&FolderImportCandidateSnapshot> {
-        self.folder_candidates
-            .iter()
-            .find(|candidate| candidate.candidate.path.to_string_lossy() == key)
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WatchedFolderScanStatus {
@@ -51,22 +30,6 @@ pub enum FolderScanStatus {
     Scanning,
     Complete,
     Failed { error: String },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct FolderImportCandidateSnapshot {
-    pub candidate: FolderCandidate,
-    /// `false` for a release approximation found before its enclosing folder
-    /// boundary was known: visible scan progress that cannot be identified or
-    /// imported until a later scan item settles it.
-    pub actionable: bool,
-    pub skipped: bool,
-    pub is_added: bool,
-    /// The identify state the candidate's stored verdict stands back up as,
-    /// with the live library statuses of the releases it names — the answer a
-    /// row shows when no run is in flight. `Idle` when nothing is stored for
-    /// the candidate's current file shape.
-    pub resumed_identify_state: crate::identify::IdentifyState,
 }
 
 /// One candidate by key, with its runtime joined: the read behind every
@@ -137,134 +100,6 @@ pub enum CandidateImportStatusSnapshot {
     Error {
         error: String,
     },
-}
-
-/// Whether a candidate at `candidate_path` under `watched_folder_path` is in
-/// the stored skip set, which keys by root-relative path.
-pub(crate) fn is_skipped(
-    skipped: &HashSet<(String, String)>,
-    watched_folder_path: &str,
-    candidate_path: &Path,
-) -> Result<bool, super::ImportError> {
-    let relative =
-        super::folder_registry::candidate_relative_path(watched_folder_path, candidate_path)?;
-    Ok(skipped.contains(&(watched_folder_path.to_string(), relative)))
-}
-
-/// Assemble the list from one read of the scan tables, in the order the tab
-/// shows it: watched folders in their stored order, candidates in natural
-/// path order within each.
-///
-/// `resumed_identify_state` is `Idle` on every row here; the database
-/// projection fills it in from the stored verdicts it reads in the same
-/// snapshot.
-pub(crate) fn build_snapshot(
-    watched_folders: Vec<WatchedFolder>,
-    scans: Vec<crate::db::DbFolderScanSnapshot>,
-    skipped: &HashSet<(String, String)>,
-    imported_content_hashes: &HashSet<String>,
-) -> Result<ImportCandidatesSnapshot, super::ImportError> {
-    let watched_order: HashMap<&str, usize> = watched_folders
-        .iter()
-        .enumerate()
-        .map(|(index, folder)| (folder.path.as_str(), index))
-        .collect();
-    let order_for = |path: &str| match watched_order.get(path) {
-        Some(index) => *index,
-        None => usize::MAX,
-    };
-
-    let mut folder_candidates = Vec::new();
-    let mut invalid_candidates = Vec::new();
-    let mut boundaries = Vec::new();
-    let mut folder_scan_statuses = Vec::with_capacity(scans.len());
-    for scan in scans {
-        let watched_folder = watched_folders
-            .iter()
-            .find(|folder| folder.path == scan.watched_folder_path)
-            .ok_or_else(|| super::ImportError::Internal {
-                detail: format!(
-                    "folder scan root {} is not a watched folder",
-                    scan.watched_folder_path
-                ),
-            })?;
-        folder_scan_statuses.push(WatchedFolderScanStatus {
-            watched_folder_path: scan.watched_folder_path.clone(),
-            watched_folder_name: watched_folder.name.clone(),
-            status: scan.status,
-        });
-        for item in scan.items {
-            match item {
-                ScanItem::Discovered(candidate) => folder_candidates.push(folder_row(
-                    candidate,
-                    false,
-                    skipped,
-                    imported_content_hashes,
-                )?),
-                ScanItem::Valid(candidate) => folder_candidates.push(folder_row(
-                    candidate,
-                    true,
-                    skipped,
-                    imported_content_hashes,
-                )?),
-                ScanItem::Invalid(candidate) => invalid_candidates.push(candidate),
-                ScanItem::Boundary(boundary) => boundaries.push(boundary),
-            }
-        }
-    }
-    folder_candidates.sort_by(|left, right| {
-        order_for(&left.candidate.watched_folder_path)
-            .cmp(&order_for(&right.candidate.watched_folder_path))
-            .then_with(|| {
-                natord::compare_ignore_case(
-                    &left.candidate.display_path,
-                    &right.candidate.display_path,
-                )
-            })
-    });
-    invalid_candidates.sort_by(|left, right| {
-        order_for(&left.watched_folder_path)
-            .cmp(&order_for(&right.watched_folder_path))
-            .then_with(|| natord::compare_ignore_case(&left.display_path, &right.display_path))
-    });
-    boundaries.sort_by(|left, right| {
-        order_for(&left.key.watched_folder_path)
-            .cmp(&order_for(&right.key.watched_folder_path))
-            .then_with(|| {
-                left.key
-                    .relative_folder_path
-                    .cmp(&right.key.relative_folder_path)
-            })
-    });
-    folder_scan_statuses.sort_by(|left, right| {
-        order_for(&left.watched_folder_path)
-            .cmp(&order_for(&right.watched_folder_path))
-            .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path))
-    });
-    Ok(ImportCandidatesSnapshot {
-        watched_folders,
-        folder_candidates,
-        invalid_candidates,
-        boundaries,
-        folder_scan_statuses,
-    })
-}
-
-fn folder_row(
-    candidate: FolderCandidate,
-    actionable: bool,
-    skipped: &HashSet<(String, String)>,
-    imported_content_hashes: &HashSet<String>,
-) -> Result<FolderImportCandidateSnapshot, super::ImportError> {
-    let is_skipped = is_skipped(skipped, &candidate.watched_folder_path, &candidate.path)?;
-    let is_added = imported_content_hashes.contains(&candidate.files.content_hash());
-    Ok(FolderImportCandidateSnapshot {
-        candidate,
-        actionable,
-        skipped: is_skipped,
-        is_added,
-        resumed_identify_state: crate::identify::IdentifyState::Idle,
-    })
 }
 
 /// One stored entry under a root, as much of it as supersession needs: its

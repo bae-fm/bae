@@ -18,11 +18,29 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
-    public Func<BridgeFolderImportCandidateSnapshot, BridgeCandidateRuntimeSnapshot?, ImportCandidate>
+    public Func<BridgeImportCandidateDetail, BridgeCandidateRuntimeSnapshot?, ImportCandidate>
         ProjectFolderCandidate
     { get; init; }
         = (_, _) => throw new InvalidOperationException(
             "ImportService stub: ProjectFolderCandidate not wired");
+
+    /// <summary>The import tab's list, as one reconfigurable subscription: the
+    /// view travels in the request, the windows are set as the list realizes
+    /// rows, and each Next carries the windows plus the chrome around them.
+    /// Null when the session moved on.</summary>
+    public Func<BridgeImportListView, IImportListSubscription?> SubscribeImportList { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: SubscribeImportList not wired");
+
+    /// <summary>One candidate as the pane reads it, and every later read of
+    /// it. A null value means the key names no scanned folder any more, which
+    /// is what clears a selection.</summary>
+    public Func<string, Action<BridgeImportCandidateDetail?>, Action<Exception>, IDisposable?> SubscribeImportCandidate { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SubscribeImportCandidate not wired");
+
+    /// <summary>Every candidate's runtime, keyed by candidate: what a run in
+    /// flight and an import in progress are doing.</summary>
+    public Func<Action<BridgeCandidateRuntimeChange>, IDisposable?> SubscribeCandidateRuntime { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: SubscribeCandidateRuntime not wired");
 
     public Func<BridgeCandidateRuntimeSnapshot, (
         ImportCandidateRowStatus RowStatus,
@@ -74,9 +92,9 @@ internal sealed class ImportService
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetDisc not wired");
 
     /// <summary>The mapping table for a candidate nobody has picked a release
-    /// for: every source unit the folder offers, with what it becomes left open.
-    /// Synchronous — a read of the folder the scan already categorized.</summary>
-    public Func<string, (bool Current, (BridgeMappingTable? Mapping, string? Error) Result)> CandidateMapping { get; init; }
+    /// for: every source unit the folder offers, with what it becomes left
+    /// open. Async — it reads the folder by key.</summary>
+    public Func<string, Task<(bool Current, (BridgeMappingTable? Mapping, string? Error) Result)>> CandidateMapping { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: CandidateMapping not wired");
 
     /// <summary>Put one of a candidate's files in a role, or put it back in the
@@ -162,6 +180,24 @@ internal sealed class ImportService
     {
         ProjectFolderCandidate = NativeBae.ImportCandidateRow,
         ProjectRuntimeCandidate = NativeBae.ImportPipeline,
+        SubscribeImportList = view =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeImportList(handle, view));
+            return current ? subscription : null;
+        },
+        SubscribeImportCandidate = (candidateKey, onValue, onError) =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeImportCandidate(handle, candidateKey, onValue, onError));
+            return current ? subscription : null;
+        },
+        SubscribeCandidateRuntime = onChange =>
+        {
+            var (current, subscription) = session.WithCurrentHandle(handle =>
+                NativeBae.SubscribeCandidateRuntime(handle, onChange));
+            return current ? subscription : null;
+        },
         ScanFolder = path => session.RunForCurrentHandle(handle => NativeBae.ScanFolder(handle, path, true)),
         RemoveWatchedFolder = path =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveWatchedFolder(handle, path)),
@@ -179,7 +215,7 @@ internal sealed class ImportService
         SetSheetDisc = (candidateKey, sheetFileId, disc) =>
             session.RunForCurrentHandle(handle => NativeBae.SetSheetDisc(handle, candidateKey, sheetFileId, disc)),
         CandidateMapping = candidateKey =>
-            session.WithCurrentHandle(handle => NativeBae.CandidateMapping(handle, candidateKey)),
+            session.RunForCurrentHandle(handle => NativeBae.CandidateMapping(handle, candidateKey)),
         SetFileRole = (candidateKey, fileId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
         AutoIdentifyFolder = candidateKey =>

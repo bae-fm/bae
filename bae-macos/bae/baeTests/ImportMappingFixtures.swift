@@ -393,14 +393,14 @@ enum MappingFixtures {
             )
             .claim
         candidate.mapping = mapping
-        store.folderCandidates[candidate.key] = candidate
+        store.selectedCandidates[candidate.key] = candidate
         return store
     }
 
     /// The mapping table the store's one candidate holds.
     @MainActor
     static func mapping(of store: ImportStore) -> BridgeMappingTable {
-        store.folderCandidates[candidateKey]?.mapping
+        store.selectedCandidates[candidateKey]?.mapping
             ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
     }
 
@@ -409,7 +409,7 @@ enum MappingFixtures {
     /// import.
     @MainActor
     static func isCommittable(_ store: ImportStore) -> Bool {
-        guard let edit = store.folderCandidates[candidateKey]?.commitEdit
+        guard let edit = store.selectedCandidates[candidateKey]?.commitEdit
         else { return false }
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false

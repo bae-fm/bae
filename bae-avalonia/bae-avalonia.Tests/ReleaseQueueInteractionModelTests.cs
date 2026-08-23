@@ -7,6 +7,9 @@ namespace Bae.Desktop.Tests;
 
 public sealed class ReleaseQueueInteractionModelTests
 {
+    // A group nobody has folded is not in the collapsed set core is given, and
+    // setting the state is absolute: the caller passes what the control
+    // represents, not a toggle.
     [Fact]
     public void NewDisclosureStartsExpandedAndSetIsAbsolute()
     {
@@ -15,12 +18,12 @@ public sealed class ReleaseQueueInteractionModelTests
             "/music",
             "first");
 
-        Assert.True(model.IsGroupExpanded(key));
+        Assert.Empty(model.CollapsedKeys());
         model.SetGroupExpanded(key, false);
         model.SetGroupExpanded(key, false);
-        Assert.False(model.IsGroupExpanded(key));
+        Assert.Equal(new[] { key }, model.CollapsedKeys());
         model.SetGroupExpanded(key, true);
-        Assert.True(model.IsGroupExpanded(key));
+        Assert.Empty(model.CollapsedKeys());
     }
 
     [Fact]
@@ -48,7 +51,7 @@ public sealed class ReleaseQueueInteractionModelTests
                 "current"),
         });
 
-        Assert.True(model.IsGroupExpanded(stale));
+        Assert.Empty(model.CollapsedKeys());
     }
 
     [Fact]
@@ -62,28 +65,6 @@ public sealed class ReleaseQueueInteractionModelTests
             "nested\nrelease");
 
         Assert.NotEqual(first, second);
-    }
-
-    [Fact]
-    public void EveryGroupedSectionSortsByRenderedTitleInBothDirections()
-    {
-        var groups = new[]
-        {
-            new[] { "Zulu", "Alpha", "Middle" },
-            new[] { "Charlie", "Bravo" },
-        };
-
-        var ascending = groups
-            .Select(group => ReleaseQueueSortModel.Sort(group, title => title, false))
-            .ToList();
-        var descending = groups
-            .Select(group => ReleaseQueueSortModel.Sort(group, title => title, true))
-            .ToList();
-
-        Assert.Equal(new[] { "Alpha", "Middle", "Zulu" }, ascending[0]);
-        Assert.Equal(new[] { "Bravo", "Charlie" }, ascending[1]);
-        Assert.Equal(new[] { "Zulu", "Middle", "Alpha" }, descending[0]);
-        Assert.Equal(new[] { "Charlie", "Bravo" }, descending[1]);
     }
 
     [Fact]
@@ -122,25 +103,4 @@ public sealed class ReleaseQueueInteractionModelTests
 
         Assert.True(selection.SetEquals(new[] { "visible-one", "visible-two" }));
     }
-
-    [Fact]
-    public void CandidateSelectionSurvivesWhenDecisionKeepsItsRow()
-    {
-        var retained = CandidateSelectionModel.Retain(
-            "/music/group/release",
-            new HashSet<string> { "/music/group/release", "/music/other" });
-
-        Assert.Equal("/music/group/release", retained);
-    }
-
-    [Fact]
-    public void CandidateSelectionClearsWhenDecisionReplacesItsRow()
-    {
-        var retained = CandidateSelectionModel.Retain(
-            "/music/group/disc-1",
-            new HashSet<string> { "/music/group" });
-
-        Assert.Null(retained);
-    }
-
 }

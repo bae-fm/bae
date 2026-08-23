@@ -1,7 +1,11 @@
-//! The import surface of [`AppServices`]: identification triggers, the
-//! import event bus, and the candidate/triage subscriptions.
+//! The import surface of [`AppServices`]: identification triggers, the import
+//! event bus, and the list and per-candidate subscriptions.
 
 use super::*;
+use crate::import::{
+    ImportCandidateDetail, ImportCandidateDetailProjection, ImportListProjection,
+    ImportListRequest, ImportListSubscription, ImportListView, TriageRuntimeFacts,
+};
 
 impl AppServices {
     pub(crate) fn subscribe_import_events(
@@ -35,16 +39,6 @@ impl AppServices {
         }
     }
 
-    /// The candidate list: the latest value of its live query, and every
-    /// later one. Each value already carries every candidate's resumed
-    /// identify state; a consumer pairs it with
-    /// [`Self::subscribe_candidate_runtime`] for what is in flight.
-    pub fn subscribe_import_candidates(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::import::ImportCandidatesValue> {
-        self.inner.import.subscribe_import_candidates()
-    }
-
     /// Every candidate's runtime right now.
     pub fn candidate_runtimes(
         &self,
@@ -63,88 +57,152 @@ impl AppServices {
         self.inner.import.subscribe_candidate_runtime()
     }
 
-    /// The triage queue, re-projected when the candidate list changes and
-    /// when a candidate's runtime changes in a way a row's placement reads —
-    /// a run reaching a phase, an import claimed or finished. A progress tick
-    /// changes nothing a row shows, so it re-projects nothing.
-    pub fn subscribe_import_triage_values(
+    /// The import list, reconfigurable by view and by window.
+    ///
+    /// The runtime stream is taken before the first read, so no change lands
+    /// between the two; the subscription then keeps the request's runtime
+    /// facts current on its own.
+    pub fn subscribe_import_list(
+        &self,
+        view: ImportListView,
+        runtime_handle: &tokio::runtime::Handle,
+    ) -> ImportListSubscription {
+        let (initial_runtime, changes) = self.subscribe_candidate_runtime();
+        let request = ImportListRequest {
+            view,
+            windows: crate::library::LibraryPageWindows::new(),
+            runtime_facts: crate::import::list::facts_of(&initial_runtime),
+        };
+        let query = self.inner.manager.subscribe_import_list(request.clone());
+        let import = self.inner.import.clone();
+        ImportListSubscription::start(
+            query,
+            request,
+            changes,
+            move || import.candidate_runtimes(),
+            runtime_handle,
+        )
+    }
+
+    /// One read of the list, for a caller with no subscription.
+    pub async fn load_import_list(
+        &self,
+        view: ImportListView,
+        windows: crate::library::LibraryPageWindows,
+    ) -> Result<ImportListProjection, crate::library::LibraryError> {
+        self.inner
+            .manager
+            .load_import_list(ImportListRequest {
+                view,
+                windows,
+                runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
+            })
+            .await
+    }
+
+    /// One candidate as the pane reads it, once, with its runtime folded in.
+    pub async fn load_import_candidate(
+        &self,
+        key: &str,
+    ) -> Result<Option<ImportCandidateDetail>, crate::library::LibraryError> {
+        let facts = self
+            .candidate_runtimes()
+            .get(key)
+            .map(TriageRuntimeFacts::of)
+            .unwrap_or_default();
+        Ok(self
+            .inner
+            .manager
+            .load_import_candidate(key)
+            .await?
+            .map(|projection| projection.resolve(&facts)))
+    }
+
+    /// One candidate as the pane reads it, and every later read of it. `None`
+    /// once the key names no scanned folder, which is what clears a selection.
+    pub fn subscribe_import_candidate_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
+        key: String,
     ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::import::TriageQueue, crate::library::LibraryError>,
+        Result<Option<ImportCandidateDetail>, crate::library::LibraryError>,
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut candidates = self.inner.import.subscribe_import_candidates();
         let (initial_runtime, mut changes) = self.subscribe_candidate_runtime();
+        let mut query = self.inner.manager.subscribe_import_candidate(&key);
         let import = self.inner.import.clone();
         runtime_handle.spawn(async move {
-            let mut runtime = initial_runtime;
-            let mut facts: std::collections::HashMap<String, crate::import::triage::TriageRuntimeFacts> =
-                runtime
-                    .iter()
-                    .map(|(key, runtime)| {
-                        (
-                            key.clone(),
-                            crate::import::triage::TriageRuntimeFacts::of(runtime),
-                        )
-                    })
-                    .collect();
-            let project = |value: &crate::import::ImportCandidatesValue,
-                           runtime: &std::collections::HashMap<
-                String,
-                crate::import::CandidateRuntimeSnapshot,
-            >| match value.as_ref() {
-                Ok(projection) => crate::import::triage::project_live(projection, runtime),
-                Err(error) => Err(crate::library::LibraryError::Internal(format!(
-                    "the import candidate list is unavailable: {error}"
-                ))),
+            let mut facts = initial_runtime
+                .get(&key)
+                .map(TriageRuntimeFacts::of)
+                .unwrap_or_default();
+            let mut projection: Option<ImportCandidateDetailProjection> = None;
+            let deliver = |projection: &Option<ImportCandidateDetailProjection>,
+                           facts: &TriageRuntimeFacts| {
+                projection
+                    .clone()
+                    .map(|projection| projection.resolve(facts))
             };
-            let first = candidates.borrow_and_update().clone();
-            if tx.send(project(&first, &runtime)).is_err() {
-                return;
-            }
             loop {
                 tokio::select! {
-                    changed = candidates.changed() => {
-                        if changed.is_err() {
-                            return;
-                        }
-                        let value = candidates.borrow_and_update().clone();
-                        if tx.send(project(&value, &runtime)).is_err() {
-                            return;
-                        }
-                    }
-                    change = changes.recv() => {
-                        let placement_changed = match change {
-                            Ok(crate::import::CandidateRuntimeChange::Updated { key, runtime: updated }) => {
-                                let next = crate::import::triage::TriageRuntimeFacts::of(&updated);
-                                let changed = facts.get(&key) != Some(&next);
-                                facts.insert(key.clone(), next);
-                                runtime.insert(key, updated);
-                                changed
+                    value = query.next() => match value {
+                        Ok(value) => {
+                            projection = value;
+                            if tx.send(Ok(deliver(&projection, &facts))).is_err() {
+                                return;
                             }
-                            Ok(crate::import::CandidateRuntimeChange::Removed { key }) => {
-                                runtime.remove(&key);
-                                facts.remove(&key).is_some()
+                        }
+                        Err(error) => {
+                            let error = match error {
+                                coven::CovenError::Database(error) => *error,
+                                other => coven::DbError::Message(other.to_string()),
+                            };
+                            if tx
+                                .send(Err(crate::library::LibraryError::Database(error)))
+                                .is_err()
+                            {
+                                return;
+                            }
+                        }
+                    },
+                    change = changes.recv() => {
+                        let next = match change {
+                            Ok(crate::import::CandidateRuntimeChange::Updated {
+                                key: changed,
+                                runtime,
+                            }) => {
+                                if changed != key {
+                                    continue;
+                                }
+                                TriageRuntimeFacts::of(&runtime)
+                            }
+                            Ok(crate::import::CandidateRuntimeChange::Removed { key: changed }) => {
+                                if changed != key {
+                                    continue;
+                                }
+                                TriageRuntimeFacts::default()
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                                tracing::warn!("triage projection dropped {count} runtime changes; re-reading every candidate's runtime");
-                                runtime = import.candidate_runtimes();
-                                facts = runtime
-                                    .iter()
-                                    .map(|(key, runtime)| {
-                                        (key.clone(), crate::import::triage::TriageRuntimeFacts::of(runtime))
-                                    })
-                                    .collect();
-                                true
+                                tracing::warn!(
+                                    "the selected candidate dropped {count} runtime changes; \
+                                     re-reading its runtime"
+                                );
+                                import
+                                    .candidate_runtimes()
+                                    .get(&key)
+                                    .map(TriageRuntimeFacts::of)
+                                    .unwrap_or_default()
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                         };
-                        if placement_changed {
-                            let value = candidates.borrow().clone();
-                            if tx.send(project(&value, &runtime)).is_err() {
-                                return;
-                            }
+                        if next == facts {
+                            continue;
+                        }
+                        facts = next;
+                        if projection.is_some()
+                            && tx.send(Ok(deliver(&projection, &facts))).is_err()
+                        {
+                            return;
                         }
                     }
                 }

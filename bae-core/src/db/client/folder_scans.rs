@@ -9,7 +9,7 @@
 //! — or a boundary row with its tree and the candidates it hides. [`write`]
 //! lays those rows down and [`read`] assembles them back.
 
-mod columns;
+pub(super) mod columns;
 mod read;
 mod write;
 
@@ -21,7 +21,10 @@ use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use read::StoredScanItem;
 use std::path::{Path, PathBuf};
 
-pub(super) use read::stored_entries;
+pub(super) use read::{
+    load_boundary_items, load_candidate_items, load_item_by_key, load_resolved_boundaries,
+    stored_entries,
+};
 pub(super) use write::{delete_entry, insert_candidate_files, StoredEntry};
 
 /// The entry at `entry_key`, on whichever connection the caller holds — the

@@ -129,16 +129,6 @@ pub struct BridgeInvalidCandidate {
     pub reason: BridgeInvalidReason,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeFolderImportCandidateSnapshot {
-    pub candidate: BridgeFolderCandidate,
-    pub actionable: bool,
-    /// The identify state the candidate's stored verdict stands back up as:
-    /// what the row shows when its runtime holds no run. `Idle` when nothing
-    /// is stored for the candidate's current files.
-    pub resumed_identify_state: BridgeIdentifyState,
-}
-
 /// One key's runtime after a change — the only thing a run advancing sends
 /// across — or its removal.
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -195,18 +185,6 @@ pub enum BridgeCandidateImportStatus {
     Error {
         error: BridgeError,
     },
-}
-
-/// The durable candidate list: one value per read of the folder-scan tables.
-/// Runtime arrives separately, per key, through
-/// `ImportCandidatesCallback::on_runtime`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportCandidatesSnapshot {
-    pub watched_folders: Vec<BridgeWatchedFolder>,
-    pub folder_candidates: Vec<BridgeFolderImportCandidateSnapshot>,
-    pub invalid_candidates: Vec<BridgeInvalidCandidate>,
-    pub boundaries: Vec<BridgeFolderReleaseBoundary>,
-    pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -585,30 +563,6 @@ pub struct BridgeTriageGroup {
     pub name: String,
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeTriageEntry {
-    Candidate {
-        stable_key: String,
-        row: BridgeTriageRow,
-    },
-    Boundary {
-        stable_key: String,
-        boundary: BridgeFolderReleaseBoundary,
-    },
-    Invalid {
-        stable_key: String,
-        invalid_candidate: BridgeInvalidCandidate,
-    },
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeTriageSection {
-    pub tab: BridgeTriageTab,
-    pub watched_folder_path: String,
-    pub group: Option<BridgeTriageGroup>,
-    pub entries: Vec<BridgeTriageEntry>,
-}
-
 /// How many rows each tab holds. Computed in core in the same pass that places
 /// them — a UI never counts an array length, which would be wrong the moment a
 /// filter is applied.
@@ -617,13 +571,4 @@ pub struct BridgeTriageTabCounts {
     pub pending: u32,
     pub done: u32,
     pub skipped: u32,
-}
-
-/// The whole sidebar.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeTriageQueue {
-    pub sections: Vec<BridgeTriageSection>,
-    /// `skipped` counts the Skipped rows **plus** `invalid`.
-    pub counts: BridgeTriageTabCounts,
-    pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
 }

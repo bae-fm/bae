@@ -18,6 +18,10 @@ tokio = { version = "1", features = ["sync", "time"] }
 
 [dev-dependencies]
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+bae-test-support = { path = "../bae-test-support" }
+coven = { workspace = true }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 
 [lints]
 workspace = true

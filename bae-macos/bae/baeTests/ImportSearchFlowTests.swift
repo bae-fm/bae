@@ -214,7 +214,7 @@ struct ImportSearchFlowCoverSelectionTests {
     func releaseDecisionSelectsItsDefaultCover() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
-        store.folderCandidates[candidate.key] = candidate
+        store.selectedCandidates[candidate.key] = candidate
 
         let detail = PreviewData.releaseDetailBridge
         let fixture = MappingFixtures.prefetch(
@@ -270,7 +270,7 @@ struct ImportSearchFlowLibraryStatusTests {
     func resultStatusUpdatesAndCancels() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
-        store.folderCandidates[candidate.key] = candidate
+        store.selectedCandidates[candidate.key] = candidate
         let harness = ReleaseStatusHarness()
         let response = searchResponse()
         let importer = Importer(
@@ -301,7 +301,7 @@ struct ImportSearchFlowLibraryStatusTests {
                 .albumId == "album-live"
         }
 
-        store.folderCandidates.removeValue(forKey: candidate.key)
+        store.selectedCandidates.removeValue(forKey: candidate.key)
         #expect(harness.subscription(releaseId: "rel-live")?.cancelled == true)
     }
 
@@ -321,7 +321,7 @@ struct ImportSearchFlowLibraryStatusTests {
             forTab: candidate.search.activeTab,
             source: candidate.search.activeSource
         )
-        store.folderCandidates[candidate.key] = candidate
+        store.selectedCandidates[candidate.key] = candidate
         let harness = ReleaseStatusHarness()
         let importer = Importer(
             subscribeReleaseLibraryStatus: harness.subscribe

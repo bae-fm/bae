@@ -211,7 +211,7 @@ pub(super) async fn record_selection_verdict(
     // Subscribe before reading the candidate, so no state change can land in
     // between.
     let mut bus = context.import.subscribe_events();
-    let Some(candidate) = folder_candidate(context, &candidate_key) else {
+    let Some(candidate) = folder_candidate(context, &candidate_key).await else {
         // Not a scanned folder candidate — a library release being
         // re-identified. It has no content hash to key a row by.
         return;
@@ -304,6 +304,6 @@ pub(super) async fn record_selection_verdict(
 
 /// The scanned folder candidate behind a key, or `None` when the key names
 /// something else (a library release being re-identified) or nothing.
-fn folder_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
-    super::actionable_candidate(context, key)
+async fn folder_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
+    super::actionable_candidate(context, key).await
 }

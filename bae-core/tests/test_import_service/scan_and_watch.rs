@@ -161,14 +161,43 @@ async fn scan_batch_until(
 async fn wait_for_candidates(
     f: &ImportFixture,
     what: &str,
-    accept: impl FnMut(&bae_core::import::ImportCandidatesSnapshot) -> bool,
-) -> bae_core::import::ImportCandidatesSnapshot {
+    accept: impl FnMut(&bae_core::import::ImportListProjection) -> bool,
+) -> bae_core::import::ImportListProjection {
+    wait_for_tab(f, what, bae_core::import::TriageTab::Pending, accept).await
+}
+
+/// The first read of one tab that `accept` admits, within the test deadline.
+async fn wait_for_tab(
+    f: &ImportFixture,
+    what: &str,
+    tab: bae_core::import::TriageTab,
+    accept: impl FnMut(&bae_core::import::ImportListProjection) -> bool,
+) -> bae_core::import::ImportListProjection {
+    let view = bae_core::import::ImportListView {
+        tab,
+        ..bae_core::import::ImportListView::default()
+    };
     tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        f.handle.wait_for_candidates(accept),
+        f.handle.wait_for_list(view, accept),
     )
     .await
     .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
+}
+
+/// The candidate rows one read of the list holds.
+fn candidate_rows(
+    projection: &bae_core::import::ImportListProjection,
+) -> Vec<&bae_core::import::TriageRow> {
+    projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            bae_core::import::ImportListItem::Candidate(row) => Some(row),
+            _ => None,
+        })
+        .collect()
 }
 
 async fn wait_for_scan_event(
@@ -248,8 +277,8 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
             .collect::<Vec<_>>(),
         vec![collection_key.clone()],
     );
-    wait_for_candidates(&f, "the list holds the scanned candidate", |snapshot| {
-        !snapshot.folder_candidates.is_empty()
+    wait_for_candidates(&f, "the list holds the scanned candidate", |projection| {
+        !candidate_rows(projection).is_empty()
     })
     .await;
 
@@ -267,7 +296,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     wait_for_candidates(
         &f,
         "the list dropped the removed folder's candidates",
-        |snapshot| snapshot.folder_candidates.is_empty(),
+        |projection| candidate_rows(projection).is_empty(),
     )
     .await;
 
@@ -309,8 +338,8 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     wait_for_candidates(
         &f,
         "unavailable watched root reports a failed scan",
-        |snapshot| {
-            snapshot.folder_scan_statuses.iter().any(|status| {
+        |projection| {
+            projection.summary.folder_scan_statuses.iter().any(|status| {
                 status.watched_folder_path == missing_key
                     && matches!(
                         status.status,
@@ -349,21 +378,23 @@ async fn refresh_missing_watched_folder_fails_and_preserves_candidates() {
         result.is_err(),
         "refreshing a missing watched folder must fail"
     );
-    let snapshot = wait_for_candidates(&f, "the failed refresh leaves its status", |snapshot| {
-        snapshot.folder_scan_statuses.iter().any(|status| {
-            matches!(
-                status.status,
-                bae_core::import::FolderScanStatus::Failed { .. }
-            )
-        })
+    let projection = wait_for_candidates(&f, "the failed refresh leaves its status", |projection| {
+        projection
+            .summary
+            .folder_scan_statuses
+            .iter()
+            .any(|status| {
+                matches!(
+                    status.status,
+                    bae_core::import::FolderScanStatus::Failed { .. }
+                )
+            })
     })
     .await;
-    assert!(snapshot.folder_candidates.iter().any(|candidate| candidate
-        .candidate
-        .path
-        .to_string_lossy()
-        == album_key));
-    assert!(snapshot.folder_scan_statuses.iter().any(|status| {
+    assert!(candidate_rows(&projection)
+        .iter()
+        .any(|row| row.candidate_key == album_key));
+    assert!(projection.summary.folder_scan_statuses.iter().any(|status| {
         status.watched_folder_path == root_key
             && matches!(
                 status.status,
@@ -398,12 +429,16 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     assert!(batch.added.contains(&album_key));
 
     async fn wait_for_skipped(f: &ImportFixture, album: &std::path::Path, expected: bool) {
-        wait_for_candidates(f, "the candidate's skip flag", |snapshot| {
-            snapshot
-                .folder_candidates
+        let tab = if expected {
+            bae_core::import::TriageTab::Skipped
+        } else {
+            bae_core::import::TriageTab::Pending
+        };
+        let key = album.to_string_lossy().into_owned();
+        wait_for_tab(f, "the candidate's skip flag", tab, |projection| {
+            candidate_rows(projection)
                 .iter()
-                .find(|c| c.candidate.path == album)
-                .is_some_and(|c| c.skipped == expected)
+                .any(|row| row.candidate_key == key)
         })
         .await;
     }

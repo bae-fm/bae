@@ -432,7 +432,12 @@ impl Fixture {
         tokio::time::timeout(
             Duration::from_secs(10),
             self.import
-                .wait_for_candidates(|snapshot| snapshot.folder_candidates.len() == expected),
+                .wait_for_list(crate::import::ImportListView::default(), |projection| {
+                    projection.summary.counts.pending as usize
+                        + projection.summary.counts.done as usize
+                        + projection.summary.counts.skipped as usize
+                        == expected
+                }),
         )
         .await
         .expect("the completed scan surfaces every fixture candidate");

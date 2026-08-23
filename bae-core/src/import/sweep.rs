@@ -98,25 +98,29 @@ impl QueueSweepHandle {
 
     /// Answer a folder candidate for a person who is looking at it: run
     /// identification when no stored verdict exists, and do nothing when one
-    /// does — the candidates subscription already serves a stored verdict as
-    /// the candidate's identify state, so an answered candidate has nothing
-    /// left to start. The run's verdict settles and persists like the sweep's
-    /// own, so a candidate a person answered opens with no network on every
-    /// launch after.
+    /// does — the selection's own query already serves a stored verdict as the
+    /// candidate's identify state, so an answered candidate has nothing left
+    /// to start. The run's verdict settles and persists like the sweep's own,
+    /// so a candidate a person answered opens with no network on every launch
+    /// after.
     pub fn identify_for_selection(&self, candidate_key: String) {
-        let Some(candidate) = actionable_candidate(&self.context, &candidate_key) else {
-            warn!("cannot identify selection {candidate_key}: it is not a folder candidate");
-            return;
-        };
         if self.token.is_cancelled() {
             return;
         }
-        // A candidate already answered needs nothing: its stored verdict is
-        // what the candidates subscription serves as its identify state.
-        // Only a candidate with no stored answer runs.
         let this = self.clone();
         self.tasks.spawn_on(
             async move {
+                let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
+                else {
+                    warn!(
+                        "cannot identify selection {candidate_key}: \
+                         it is not a folder candidate"
+                    );
+                    return;
+                };
+                // A candidate already answered needs nothing: its stored
+                // verdict is what the selection query serves as its identify
+                // state. Only a candidate with no stored answer runs.
                 if !has_stored_verdict(&this.context, &candidate_key).await {
                     this.start_selection_run(candidate_key, candidate);
                 }
@@ -129,11 +133,21 @@ impl QueueSweepHandle {
     /// Re-run control on a resumed verdict. The stored answer is deliberately
     /// not consulted: a re-run exists to replace it.
     pub fn rerun_for_selection(&self, candidate_key: String) {
-        let Some(candidate) = actionable_candidate(&self.context, &candidate_key) else {
-            warn!("cannot re-run selection {candidate_key}: it is not a folder candidate");
-            return;
-        };
-        self.start_selection_run(candidate_key, candidate);
+        let this = self.clone();
+        self.tasks.spawn_on(
+            async move {
+                let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
+                else {
+                    warn!(
+                        "cannot re-run selection {candidate_key}: \
+                         it is not a folder candidate"
+                    );
+                    return;
+                };
+                this.start_selection_run(candidate_key, candidate);
+            },
+            &self.runtime_handle,
+        );
     }
 
     /// The three steps of a selection's identify run, together and in this
@@ -874,35 +888,29 @@ async fn run_pass_for_test(context: &SweepContext, token: &CancellationToken) {
 /// Added candidates are already in the library and skipped candidates reflect
 /// an explicit user decision, so neither belongs in automatic identification.
 ///
-/// Read from the tables, not from the list's latest value: a pass is planned
-/// right after the event that changed the queue — a skip, a scan item — and
-/// the list's query lands after the commit it reflects, so the latest value
-/// can still describe the queue before that change.
+/// Read from the tables rather than through the list: a pass is planned right
+/// after the event that changed the queue — a skip, a scan item — and the
+/// list's query lands after the commit it reflects, so it can still describe
+/// the queue before that change.
 async fn new_candidates(
     context: &SweepContext,
 ) -> Result<Vec<FolderCandidate>, crate::library::LibraryError> {
-    let projection = context.library_manager.load_import_candidates().await?;
+    let candidates = context.library_manager.load_sweepable_candidates().await?;
     let runtime = context.import.candidate_runtimes();
-    Ok(projection
-        .snapshot
-        .folder_candidates
+    Ok(candidates
         .into_iter()
-        .filter(|snapshot| {
-            snapshot.actionable
-                && !snapshot.skipped
-                && !snapshot.is_added
-                && runtime
-                    .get(snapshot.candidate.path.to_string_lossy().as_ref())
-                    .is_none_or(|runtime| runtime.import_status.is_none())
+        .filter(|candidate| {
+            runtime
+                .get(candidate.path.to_string_lossy().as_ref())
+                .is_none_or(|runtime| runtime.import_status.is_none())
         })
-        .map(|snapshot| snapshot.candidate)
         .collect())
 }
 
-/// The scanned folder candidate behind `key` when it is actionable, from the
-/// list's latest value. A list that cannot be read answers no key.
-fn actionable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
-    match context.import.get_candidate(key) {
+/// The scanned folder candidate behind `key` when it is actionable, read by
+/// key. A read that fails answers no key, and says so.
+async fn actionable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
+    match context.import.get_candidate(key).await {
         Ok(Some(ImportCandidateSnapshot::Folder {
             candidate,
             actionable: true,

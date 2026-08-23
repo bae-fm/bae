@@ -299,6 +299,17 @@ pub async fn store(
     Ok(())
 }
 
+/// The archived documents, read one key at a time.
+///
+/// The set is assembled by following ids out of documents already in hand, so
+/// the keys of one round are only knowable once the round before it has been
+/// read — which is why this is a reader rather than a map handed over up
+/// front. A caller already inside a read implements it over that read, so the
+/// whole set comes out of one consistent view of the table.
+pub(crate) trait ArchivedDocuments {
+    fn document(&self, source: PayloadSource, id: &str) -> Result<Option<String>, ImportError>;
+}
+
 /// The stored set for `release`, or `None` when nothing has fetched it.
 ///
 /// The release's own document is the anchor: without it there is no set, and
@@ -309,33 +320,30 @@ pub async fn load(
     database: &Database,
     release: &MetadataRef,
 ) -> Result<Option<ReleasePayloads>, ImportError> {
-    let found = database
-        .load_all_source_release_payloads()
-        .await
-        .map_err(|error| ImportError::Db(crate::library::LibraryError::Database(error)))?;
-    load_from_map(release, &found)
+    database.load_release_payloads(release).await
 }
 
-pub(crate) fn load_from_map(
+/// [`load`]'s assembly, over a reader the caller holds.
+pub(crate) fn load_on(
+    documents: &impl ArchivedDocuments,
     release: &MetadataRef,
-    found: &std::collections::HashMap<(PayloadSource, String), String>,
 ) -> Result<Option<ReleasePayloads>, ImportError> {
-    let read = |keys: &[(PayloadSource, String)]| {
-        keys.iter()
-            .filter_map(|key| {
-                found
-                    .get(key)
-                    .map(|json| SourcePayload::new(key.0, key.1.clone(), json.clone()))
-            })
-            .collect::<Vec<_>>()
+    let read = |keys: &[(PayloadSource, String)]| -> Result<Vec<SourcePayload>, ImportError> {
+        let mut found = Vec::with_capacity(keys.len());
+        for (source, id) in keys {
+            if let Some(json) = documents.document(*source, id)? {
+                found.push(SourcePayload::new(*source, id.clone(), json));
+            }
+        }
+        Ok(found)
     };
     let anchor_source = PayloadSource::release_of(release.source);
-    let Some(anchor) = found.get(&(anchor_source, release.id.clone())).cloned() else {
+    let Some(anchor) = documents.document(anchor_source, &release.id)? else {
         return Ok(None);
     };
     // Everything else is keyed by an id read out of a document already in hand,
     // so each round of reads is what makes the next one's keys knowable.
-    let (mut documents, discogs_json) = match release.source {
+    let (mut supporting, discogs_json) = match release.source {
         MetadataSource::MusicBrainz => {
             let response: MbReleaseResponse =
                 serde_json::from_str(&anchor).map_err(|e| ImportError::SourceData {
@@ -353,18 +361,18 @@ pub(crate) fn load_from_map(
             {
                 keys.push((PayloadSource::Discogs, xref_id));
             }
-            let documents = read(&keys);
+            let supporting = read(&keys)?;
             // The master is named by the cross-referenced Discogs release.
-            let discogs_json = documents
+            let discogs_json = supporting
                 .iter()
                 .find(|d| d.source == PayloadSource::Discogs)
                 .map(|d| d.json.clone());
-            (documents, discogs_json)
+            (supporting, discogs_json)
         }
         MetadataSource::Discogs => {
-            let documents = read(&[(PayloadSource::MusicBrainzDiscogsXref, release.id.clone())]);
+            let supporting = read(&[(PayloadSource::MusicBrainzDiscogsXref, release.id.clone())])?;
             // Here the anchor is the Discogs release, so it names the master.
-            (documents, Some(anchor.clone()))
+            (supporting, Some(anchor.clone()))
         }
     };
 
@@ -376,14 +384,14 @@ pub(crate) fn load_from_map(
             })?
             .master_id;
         if let Some(master_id) = master_id {
-            documents.extend(read(&[(PayloadSource::DiscogsMaster, master_id)]));
+            supporting.extend(read(&[(PayloadSource::DiscogsMaster, master_id)])?);
         }
     }
 
     Ok(Some(ReleasePayloads {
         release: release.clone(),
         anchor,
-        supporting: documents,
+        supporting,
     }))
 }
 

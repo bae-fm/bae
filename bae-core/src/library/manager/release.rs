@@ -51,24 +51,6 @@ impl LibraryManager {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn imported_content_hashes(
-        &self,
-    ) -> Result<std::collections::HashSet<String>, LibraryError> {
-        Ok(self.database.imported_content_hashes().await?)
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn imported_releases_for_content_hashes(
-        &self,
-        content_hashes: &[String],
-    ) -> Result<HashMap<String, crate::import::ImportedRelease>, LibraryError> {
-        Ok(self
-            .database
-            .imported_releases_for_content_hashes(content_hashes)
-            .await?)
-    }
-
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,

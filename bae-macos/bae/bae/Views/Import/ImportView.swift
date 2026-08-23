@@ -34,6 +34,8 @@ struct ImportView: View {
     var openSettings
     @Environment(UiStore.self)
     var uiStore
+    @Environment(ImportListSlot.self)
+    var listSlot
 
     var selectedCandidate: Candidate? {
         guard uiStore.selectedFolderCandidates.count == 1,
@@ -41,7 +43,7 @@ struct ImportView: View {
         else {
             return nil
         }
-        return importStore.folderCandidates[key]
+        return importStore.selectedCandidates[key]
     }
 
     var body: some View {
@@ -150,7 +152,7 @@ struct ImportView: View {
                 try await importer.removeWatchedFolder(path)
                 let removed = Set(
                     uiStore.selectedFolderCandidates.filter {
-                        importStore.folderCandidates[$0]?.watchedFolderPath
+                        importStore.selectedCandidates[$0]?.watchedFolderPath
                             == path
                     }
                 )
@@ -236,12 +238,16 @@ struct ImportView: View {
     }
 
     extension View {
+        @MainActor
         fileprivate func importTabPreviewEnvironment(
+            scene: ImportPreviewFixture,
             uiStore: UiStore
         )
             -> some View
         {
             self
+                .environment(scene.store)
+                .environment(scene.slot(uiStore: uiStore))
                 .environment(uiStore)
                 .importPreviewEnvironment()
                 .environment(Library.stub())
@@ -258,10 +264,9 @@ struct ImportView: View {
             selected: PreviewData.importTabCandidate.key,
             ticked: [PreviewData.importTabCandidate.key]
         )
-        let importStore: ImportStore = PreviewData.importSmokeTestStore()
+        let scene = PreviewData.importSmokeTestScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — a release settled") {
@@ -270,10 +275,9 @@ struct ImportView: View {
             selected: PreviewData.importTabCandidate.key,
             ticked: [PreviewData.importTabCandidate.key]
         )
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — multiple pressings") {
@@ -281,10 +285,9 @@ struct ImportView: View {
             tab: .pending,
             selected: PreviewData.importTabSeveralMatchesCandidate.key
         )
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — identity signals disagree") {
@@ -292,10 +295,9 @@ struct ImportView: View {
             tab: .pending,
             selected: PreviewData.importTabConflictCandidate.key
         )
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — track counts disagree") {
@@ -303,10 +305,9 @@ struct ImportView: View {
             tab: .pending,
             selected: PreviewData.importTabTrackMismatchCandidate.key
         )
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — release already in library") {
@@ -314,10 +315,9 @@ struct ImportView: View {
             tab: .pending,
             selected: PreviewData.importTabAlreadyInLibraryCandidate.key
         )
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — no release matched") {
@@ -325,34 +325,29 @@ struct ImportView: View {
             tab: .pending,
             selected: PreviewData.importTabNoMatchCandidate.key
         )
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — folder boundaries") {
         let uiStore = ImportTabPreview.uiStore(tab: .pending)
-        let importStore: ImportStore =
-            PreviewData.releaseBoundaryPreviewImportStore
+        let scene = PreviewData.releaseBoundaryScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — completed imports") {
         let uiStore = ImportTabPreview.uiStore(tab: .done)
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — skipped and invalid folders") {
         let uiStore = ImportTabPreview.uiStore(tab: .skipped)
-        let importStore: ImportStore = PreviewData.importTabStore()
+        let scene = PreviewData.importTabScene()
         ImportView()
-            .environment(importStore)
-            .importTabPreviewEnvironment(uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 #endif

@@ -13,15 +13,14 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// The import triage sidebar: three tabs (Pending / Done / Skipped) over
-// core's BridgeTriageQueue projection, shown in the shell's content area when the
-// Library/Import switcher selects Import (the macOS import sidebar's Avalonia
-// counterpart — ImportCandidateListContent + TriageRowView share this partial
-// view owner while their section/row rendering lives in separate files. Every
-// row, its tab, its Pending group, and the tab counts come
-// from ImportStore.TriageQueue, read through TriageListModel's
-// filter/group/sort; this view iterates and renders — it decides nothing about
-// where a row belongs.
+// The import triage sidebar: three tabs (Pending / Done / Skipped) over core's
+// paged list, shown in the shell's content area when the Library/Import
+// switcher selects Import (the macOS import sidebar's Avalonia counterpart —
+// ImportCandidateListContent + TriageRowView share this partial view owner
+// while their row rendering lives in separate files). Which items exist, in
+// what order, under which header, in which tab, and the counts beside each tab
+// are all core's, and arrive one window at a time; this view iterates and
+// renders — it decides nothing about where a row belongs.
 //
 // A row click kicks off auto-identify for a still-queued candidate (there is
 // nothing to map until it has been looked at) and otherwise puts the row under
@@ -45,9 +44,20 @@ internal sealed partial class ImportSectionView : UserControl
     // its row without asking the pane.
     private string? _selectedKey;
 
+    // A selection whose row has not been read yet: the go-to-unidentified line
+    // names a key that may sit outside every loaded window, so the pane opens
+    // on it once its own query answers.
+    private string? _pendingSelection;
+
     // The importable covers already handed to the image store, so an unchanged
     // queue does not enqueue the same decodes again.
     private List<string> _warmedReadyCovers = new();
+
+    // The list itself, built once: a tab, filter, order or disclosure change
+    // travels to core in the view request, and the same list re-ingests at the
+    // same offsets rather than being rebuilt here.
+    private readonly IncrementalListView<BridgeImportListItem> _listView;
+    private readonly Panel _footBarHost = new();
 
     // Header controls, built once and mutated in place on Render() so the
     // filter TextBox never loses focus or caret position while the user types.
@@ -56,11 +66,6 @@ internal sealed partial class ImportSectionView : UserControl
     private readonly Button _clearFilterButton;
     private readonly Button _listMenuButton;
     private readonly Panel _progressHost = new();
-    private readonly ContentControl _contentSlot = new()
-    {
-        HorizontalContentAlignment = HorizontalAlignment.Stretch,
-        VerticalContentAlignment = VerticalAlignment.Stretch,
-    };
 
     public ImportSectionView(AppService app, ImportDialogs dialogs)
     {
@@ -68,7 +73,20 @@ internal sealed partial class ImportSectionView : UserControl
         _import = app.ImportStore;
         _storage = app.StorageStore;
         _pane = new ImportMappingPane(app, dialogs);
-        _pane.Cleared += () => { _selectedKey = null; Render(); };
+        _pane.Cleared += () => { _selectedKey = null; _import.ClearObservedCandidate(); Render(); };
+        _listView = new IncrementalListView<BridgeImportListItem>(
+            () => _import.List,
+            _import.Item,
+            BuildListCell,
+            () => Loc.Chrome(
+                _import.FilterText.Length > 0
+                    ? "import.empty.no_matches"
+                    : "import.empty.nothing_here"));
+        // The candidate under the pane can stop being a scanned folder — a
+        // decision reshaped it, or the scan dropped it — and its own query says
+        // so by delivering nothing.
+        _import.ObservedCandidateGone += () => { _selectedKey = null; _pane.Clear(); Render(); };
+        _import.ListSwapped += () => _listView.Rebind();
 
         _filterBox.Watermark = Loc.Chrome("import.filter.placeholder");
         _filterBox.FontSize = 12.5;
@@ -111,6 +129,13 @@ internal sealed partial class ImportSectionView : UserControl
 
     private Control BuildShell()
     {
+        // The list fills the sidebar, with Pending's bulk-import bar under it.
+        var listColumn = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
+        Grid.SetRow(_listView, 0);
+        Grid.SetRow(_footBarHost, 1);
+        listColumn.Children.Add(_listView);
+        listColumn.Children.Add(_footBarHost);
+
         var header = new StackPanel { Spacing = 0 };
         header.Children.Add(BuildTabBarRow());
         header.Children.Add(BuildFilterRow());
@@ -124,10 +149,10 @@ internal sealed partial class ImportSectionView : UserControl
         var column = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         Grid.SetRow(headerHost, 0);
         Grid.SetRow(divider, 1);
-        Grid.SetRow(_contentSlot, 2);
+        Grid.SetRow(listColumn, 2);
         column.Children.Add(headerHost);
         column.Children.Add(divider);
-        column.Children.Add(_contentSlot);
+        column.Children.Add(listColumn);
 
         var sidebar = new Border
         {
@@ -263,23 +288,24 @@ internal sealed partial class ImportSectionView : UserControl
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    // Rebuilds the tab bar, the progress line, and the tab content on every
-    // ImportStore.Changed tick. The filter TextBox itself is never touched here
-    // — it is the source of truth for what the user typed, not a mirror of it.
+    // Rebuilds the tab bar, the progress line and the foot bar on every
+    // ImportStore.Changed tick, and tells the realized rows to render again.
+    // The list itself is not rebuilt: its rows arrive from core one window at a
+    // time, and rebuilding it here would drop the scroll position with them.
+    // The filter TextBox is never touched here — it is the source of truth for
+    // what the user typed, not a mirror of it.
     private void Render()
     {
-        var retainedSelection = CandidateSelectionModel.Retain(
-            _selectedKey,
-            TriageListModel.CandidateKeys(_import.TriageQueue));
-        if (retainedSelection != _selectedKey)
-        {
-            _selectedKey = retainedSelection;
-            _pane.Clear();
-        }
         RenderTabBar();
         _clearFilterButton.IsVisible = _import.FilterText.Length > 0;
         RenderProgress();
-        RenderContent();
+        RenderFootBar();
+        ShowPendingSelection();
+        _listView.Refresh();
+        // A row's own content can change without the ordering changing — a
+        // checkbox toggled, an import ticking — so the realized rows render
+        // again in place rather than the list being rebuilt under them.
+        _import.List.NotifyRowsChanged();
         WarmReadyCovers();
     }
 
@@ -289,7 +315,11 @@ internal sealed partial class ImportSectionView : UserControl
     // nothing.
     private void WarmReadyCovers()
     {
-        var urls = TriageListModel.ReadyCoverThumbnailUrls(_import.TriageQueue);
+        var urls = _import.Summary.Ready
+            .Select(row => row.CoverThumbnailUrl)
+            .Where(url => !string.IsNullOrEmpty(url))
+            .Select(url => url!)
+            .ToList();
         if (urls.SequenceEqual(_warmedReadyCovers))
         {
             return;
@@ -304,7 +334,7 @@ internal sealed partial class ImportSectionView : UserControl
     {
         _tabBarHost.Children.Clear();
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 4 };
-        var counts = _import.TriageQueue.Counts;
+        var counts = _import.Summary.Counts;
         AddTabSegment(row, 0, BridgeTriageTab.Pending, Loc.Chrome("import.tab.pending"), counts.Pending);
         AddTabSegment(row, 1, BridgeTriageTab.Done, Loc.Chrome("import.tab.done"), counts.Done);
         AddTabSegment(row, 2, BridgeTriageTab.Skipped, Loc.Chrome("import.tab.skipped"), counts.Skipped);
@@ -365,7 +395,7 @@ internal sealed partial class ImportSectionView : UserControl
             Spacing = 7,
             Margin = new Thickness(14, 0, 14, 12),
         };
-        foreach (var scan in _import.TriageQueue.FolderScanStatuses)
+        foreach (var scan in _import.Summary.FolderScanStatuses)
         {
             var prefix = $"{scan.WatchedFolderName} ({scan.WatchedFolderPath})";
             var text = scan.Status switch
@@ -434,7 +464,7 @@ internal sealed partial class ImportSectionView : UserControl
             // waiting on are rows somewhere in the queue, and a number that
             // sits still while giving no way to reach what it is waiting on is
             // the frustrating half of this pane. Clicking it goes to the first.
-            var unidentified = TriageListModel.FirstUnidentified(_import.TriageQueue);
+            var unidentified = _import.Summary.FirstUnidentifiedKey;
             var lineContent = new StackPanel
             {
                 Spacing = 7,
@@ -455,12 +485,12 @@ internal sealed partial class ImportSectionView : UserControl
                 IsEnabled = unidentified is not null,
             };
             ToolTip.SetTip(line, Loc.Chrome("import.progress.go_to_unidentified"));
-            if (unidentified is { } row)
+            if (unidentified is { } key)
             {
                 line.Click += (_, _) =>
                 {
                     _import.SetActiveTab(BridgeTriageTab.Pending);
-                    OnRowActivated(row);
+                    SelectCandidate(key);
                 };
             }
             column.Children.Add(line);
@@ -484,61 +514,20 @@ internal sealed partial class ImportSectionView : UserControl
         return new Border { Height = 3, CornerRadius = new CornerRadius(1.5), Child = track, ClipToBounds = true };
     }
 
-    // ── Content: tab dispatch ────────────────────────────────────────────────
+    // ── The foot bar ─────────────────────────────────────────────────────────
 
-    private void RenderContent()
+    // Pending's bulk-import bar, over the Ready set core computed for the view
+    // the list is showing. The other two tabs have nothing to act on in bulk.
+    private void RenderFootBar()
     {
-        Control content = _import.ActiveTab switch
+        _footBarHost.Children.Clear();
+        if (_import.ActiveTab is not BridgeTriageTab.Pending)
         {
-            BridgeTriageTab.Pending => RenderPending(),
-            BridgeTriageTab.Done => RenderDone(),
-            BridgeTriageTab.Skipped => RenderSkipped(),
-            _ => new Panel(),
-        };
-        _contentSlot.Content = content;
-    }
-
-    private Control EmptyState(bool filtering)
-    {
-        var text = new TextBlock
-        {
-            Text = filtering ? Loc.Chrome("import.empty.no_matches") : Loc.Chrome("import.empty.nothing_here"),
-            FontSize = 13,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        return new Border { Child = text, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
-    }
-
-    private Control RenderPending()
-    {
-        var sections = TriageListModel.Sections(
-            _import.TriageQueue,
-            BridgeTriageTab.Pending,
-            _import.FilterText,
-            _import.SortOrder);
-        if (sections.Count == 0)
-        {
-            return EmptyState(_import.FilterText.Length > 0);
+            return;
         }
-
-        var rows = TriageListModel.SelectableReadyRows(
-            _import.TriageQueue,
-            _import.FilterText,
-            _import.SortOrder);
-        var scroller = RenderReleaseSections(BridgeTriageTab.Pending);
-
-        var readyKeys = rows.Select(row => row.CandidateKey).ToList();
+        var readyKeys = _import.Summary.Ready.Select(row => row.CandidateKey).ToList();
         var selectedCount = _import.SelectedReady.Count(readyKeys.Contains);
-        var footBar = BuildFootBar(selectedCount, readyKeys);
-
-        var column = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
-        Grid.SetRow(scroller, 0);
-        Grid.SetRow(footBar, 1);
-        column.Children.Add(scroller);
-        column.Children.Add(footBar);
-        return column;
+        _footBarHost.Children.Add(BuildFootBar(selectedCount, readyKeys));
     }
 
     private Control BuildFootBar(int selectedCount, List<string> readyKeys)
@@ -596,7 +585,9 @@ internal sealed partial class ImportSectionView : UserControl
     // the library, counts and lengths agree).
     private async Task ImportSelectedReady()
     {
-        var keys = _import.SelectedReady.ToList();
+        var ready = _import.Summary.Ready.ToList();
+        var readyKeys = ready.Select(row => row.CandidateKey).ToHashSet();
+        var keys = _import.SelectedReady.Where(readyKeys.Contains).ToList();
         if (keys.Count == 0)
         {
             return;
@@ -614,19 +605,19 @@ internal sealed partial class ImportSectionView : UserControl
         foreach (var key in keys)
         {
             // Selection can outlive the row that earned it (imported by a
-            // faster sibling call, or reclassified) — the list content already
-            // intersects the selection against Pending's current importable keys,
-            // so a miss here is defensive, not expected.
-            var row = TriageListModel.Row(_import.TriageQueue, key);
-            if (row?.Claim is not { } claim)
+            // faster sibling call, or reclassified) — the foot bar already
+            // intersects the selection against the current Ready set, so a miss
+            // here is defensive, not expected.
+            if (ready.FirstOrDefault(row => row.CandidateKey == key) is not { } readyRow)
             {
                 continue;
             }
+            var claim = readyRow.Claim;
 
             // A Ready row's decision is already stored — its settled single
             // match — so the commit reads the same answer opening the pane
             // would, from the archive.
-            if (_import.Candidate(key) is not { } candidate)
+            if (await _import.ReadCandidate(key) is not { } candidate)
             {
                 failureCount++;
                 continue;
@@ -663,33 +654,4 @@ internal sealed partial class ImportSectionView : UserControl
                 Loc.Chrome("import.bulk_import_failed", "count", (long)failureCount));
         }
     }
-
-    private Control RenderDone()
-    {
-        var sections = TriageListModel.Sections(
-            _import.TriageQueue,
-            BridgeTriageTab.Done,
-            _import.FilterText,
-            _import.SortOrder);
-        if (sections.Count == 0)
-        {
-            return EmptyState(_import.FilterText.Length > 0);
-        }
-        return RenderReleaseSections(BridgeTriageTab.Done);
-    }
-
-    private Control RenderSkipped()
-    {
-        var sections = TriageListModel.Sections(
-            _import.TriageQueue,
-            BridgeTriageTab.Skipped,
-            _import.FilterText,
-            _import.SortOrder);
-        if (sections.Count == 0)
-        {
-            return EmptyState(_import.FilterText.Length > 0);
-        }
-        return RenderReleaseSections(BridgeTriageTab.Skipped);
-    }
-
 }

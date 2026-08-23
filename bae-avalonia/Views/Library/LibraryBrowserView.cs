@@ -36,12 +36,12 @@ internal sealed class LibraryBrowserView : UserControl
             () => store.Composers,
             store.ComposerById,
             composer => BrowseRow.Build(composer, composer.Name, composer.WorkCountText),
-            "library.no_composers");
+            () => Loc.Chrome("library.no_composers"));
         _artistPane = new IncrementalListView<ArtistSummary>(
             () => store.Artists,
             store.ArtistById,
             artist => BrowseRow.Build(artist, artist.Name, artist.AlbumCountText),
-            "library.no_artists");
+            () => Loc.Chrome("library.no_artists"));
 
         var pane = new Panel();
         pane.Children.Add(_albumPane);

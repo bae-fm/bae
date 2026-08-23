@@ -20,7 +20,7 @@ struct ImportCandidateSkipAction {
 
     func perform() async {
         let selectedKeys = uiStore.selectedFolderCandidates
-        let keys = importStore.skippableCandidateKeys(in: selectedKeys)
+        let keys = eligibleKeys
         guard !keys.isEmpty else { return }
 
         var firstFailure: DisplayError?
@@ -47,9 +47,15 @@ struct ImportCandidateSkipAction {
         }
     }
 
+    /// The selected candidates whose own read says they accept the absolute
+    /// Skip command. Reading it off each selected candidate's row makes a
+    /// stale selection and a row whose import has started ineligible without
+    /// teaching either action surface lifecycle rules.
     private var eligibleKeys: [String] {
-        importStore.skippableCandidateKeys(
-            in: uiStore.selectedFolderCandidates
-        )
+        uiStore.selectedFolderCandidates
+            .sorted()
+            .filter {
+                importStore.selectedCandidates[$0]?.row?.skipAction == .skip
+            }
     }
 }

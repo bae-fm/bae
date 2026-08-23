@@ -769,6 +769,10 @@ impl AppServices {
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);
+    delegate_sync!(import, import_watched_folders => watched_folders() -> Vec<crate::import::WatchedFolder>);
+    #[cfg(any(test, feature = "test-utils"))]
+    delegate_sync!(import, import_emit_event_for_test => emit_event_for_test(event: crate::import::ImportEvent) -> ());
+    delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -810,7 +814,7 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_claim_for_pick => claim_for_pick(candidate_key: &str, release: &crate::import::ClaimRelease, level: crate::import::ClaimLevel) -> crate::import::ClaimLine);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(import, import_candidate_mapping => candidate_mapping(candidate_key: &str) -> Result<crate::import::MappingTable, crate::import::ImportError>);
+    delegate_async!(import, import_candidate_mapping => candidate_mapping(candidate_key: &str) -> Result<crate::import::MappingTable, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -920,7 +920,7 @@ internal static partial class NativeBae
     /// open.</summary>
     internal static (BridgeMappingTable? Mapping, string? Error) CandidateMapping(
         AppHandle handle, string candidateKey) =>
-        CaptureBridgeValue(() => handle.CandidateMapping(candidateKey));
+        CaptureBridgeValue(() => Await(() => handle.CandidateMapping(candidateKey)));
 
     internal static LiveSubscription SubscribeReleaseLibraryStatus(
         AppHandle handle,
@@ -965,5 +965,4 @@ internal static partial class NativeBae
 
     internal static byte[]? ReleaseImageBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
         handle is null ? null : Capture(() => Await(() => handle.FetchReleaseImageBytes(releaseId, source)));
-
 }

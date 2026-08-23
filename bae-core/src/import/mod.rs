@@ -34,6 +34,8 @@ mod image_response;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod handle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod list;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod loudness;
 // Projects the folder's audio units against a picked tracklist — the desktop
 // import pane's one structure, and desktop-only like the slots it reads.
@@ -105,9 +107,8 @@ pub struct ParsedAlbum {
 pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidates::{
-    CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderImportCandidateSnapshot,
-    FolderScanStatus, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportedRelease,
-    WatchedFolderScanStatus,
+    CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderScanStatus,
+    ImportCandidateSnapshot, ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
@@ -121,11 +122,15 @@ pub use folder_scanner::{
     ReleaseFileScope, ResolvedFolderReleaseBoundary,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use handle::ImportCandidatesValue;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
     parsed_album_to_user_edit, shape_user_edit_for_choice, DiscogsSaveOutcome,
     GroupedSearchResults, ImportEvent, ImportServiceHandle, ScanEvent, SearchQuery,
+};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use list::{
+    ImportCandidateDetail, ImportCandidateDetailProjection, ImportListItem, ImportListOrder,
+    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListSubscription,
+    ImportListSubscriptionError, ImportListView, ImportListWindow, ImportQueueSummary, ReadyRowRef,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use mapping::{
@@ -144,9 +149,9 @@ pub use track_slots::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use triage::{
-    Answered, CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease,
-    MatchedSignal, NeedsYouGroup, NeedsYouReason, TriageEntry, TriageGroup, TriagePlacement,
-    TriageQueue, TriageRow, TriageSection, TriageSkipAction, TriageTab, TriageTabCounts,
+    CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease, MatchedSignal,
+    NeedsYouGroup, NeedsYouReason, TriageGroup, TriageImportStatus, TriagePlacement, TriageRow,
+    TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::DecidedIdentity;

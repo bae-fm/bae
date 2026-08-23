@@ -10,9 +10,12 @@
 //! Needs you *with the disagreement named*, and importing it from there is one
 //! click; the rule only decides what may be imported unattended.
 
+use super::combine::ResultProvenance;
 use super::verdict::TerminalVerdict;
 use crate::db::LibraryStatus;
+use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
+use crate::import::MetadataSource;
 
 /// How much the candidate's probed total may differ from the source's own
 /// total and still count as agreement.
@@ -79,6 +82,117 @@ pub enum NeedsYou {
     LocalDurationUnknown,
 }
 
+/// Which of the four shapes a stored verdict has. The `verdict_kind` column's
+/// four values, read as a type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VerdictKind {
+    Found,
+    Conflict,
+    NotFound,
+    ManualOnly,
+}
+
+/// The match a `Found` verdict leads with, as its own columns.
+///
+/// One row of `import_candidate_match` at `list = 'found'`, `position = 0`.
+/// Everything the queue asks of a verdict's matches is asked of this one: the
+/// Ready rule consults the lead and nothing else (it only reaches the
+/// tracklist comparison when there is exactly one match), and the row leads
+/// with the lead's title, artist and cover whatever the count.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeadMatch {
+    pub release_id: String,
+    pub source: MetadataSource,
+    pub source_group_id: Option<String>,
+    pub title: String,
+    pub artist: Option<String>,
+    pub year: Option<i32>,
+    pub format: Option<String>,
+    pub cover_thumbnail_url: Option<String>,
+    pub source_tracks: Option<SourceTracks>,
+    pub by_disc_id: bool,
+    pub by_barcode: bool,
+}
+
+impl LeadMatch {
+    /// The lead of a `Found` verdict's index-aligned match and provenance
+    /// lists.
+    fn of(result: &MetadataResult, provenance: Option<&ResultProvenance>) -> Self {
+        Self {
+            release_id: result.release_id.clone(),
+            source: result.source,
+            source_group_id: result.source_group_id.clone(),
+            title: result.title.clone(),
+            artist: result.artist.clone(),
+            year: result.year,
+            format: result.format.clone(),
+            cover_thumbnail_url: result
+                .cover_art
+                .as_ref()
+                .map(|cover: &RemoteCover| cover.thumbnail_url.clone()),
+            source_tracks: result.source_tracks.clone(),
+            by_disc_id: provenance.is_some_and(|provenance| provenance.by_disc_id),
+            by_barcode: provenance.is_some_and(|provenance| provenance.by_barcode),
+        }
+    }
+}
+
+/// As much of a stored verdict as the queue's list reads: which shape it is,
+/// how many matches it names, and the lead match's own columns.
+///
+/// The list reads these off `import_candidate_state` and one
+/// `import_candidate_match` row rather than rebuilding a [`TerminalVerdict`],
+/// which would mean every match row of every candidate on every rerun. The
+/// pane, which shows the other matches, still reads the whole verdict.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerdictSummary {
+    pub kind: VerdictKind,
+    /// The folder's own track count, as identification counted it. `None` for
+    /// `NotFound`, which counts nothing.
+    pub track_count: Option<u32>,
+    /// How many releases the `found` list holds; zero for the other shapes.
+    pub match_count: u32,
+    pub lead: Option<LeadMatch>,
+}
+
+impl VerdictSummary {
+    pub fn of(verdict: &TerminalVerdict) -> Self {
+        match verdict {
+            TerminalVerdict::Found {
+                matches,
+                track_count,
+                provenance,
+                ..
+            } => Self {
+                kind: VerdictKind::Found,
+                track_count: Some(*track_count),
+                match_count: matches.len() as u32,
+                lead: matches
+                    .first()
+                    .map(|result| LeadMatch::of(result, provenance.first())),
+            },
+            TerminalVerdict::Conflict { track_count, .. } => Self {
+                kind: VerdictKind::Conflict,
+                track_count: Some(*track_count),
+                match_count: 0,
+                lead: None,
+            },
+            TerminalVerdict::NotFoundAnywhere => Self {
+                kind: VerdictKind::NotFound,
+                track_count: None,
+                match_count: 0,
+                lead: None,
+            },
+            TerminalVerdict::ManualOnly { track_count } => Self {
+                kind: VerdictKind::ManualOnly,
+                track_count: Some(*track_count),
+                match_count: 0,
+                lead: None,
+            },
+        }
+    }
+}
+
 /// Classify one candidate.
 ///
 /// `probed_total_duration_ms` is [`crate::signals::Signals`]' probed total, as
@@ -93,33 +207,43 @@ pub fn classify(
     probed_total_duration_ms: u64,
     library_statuses: &[LibraryStatus],
 ) -> QueueClassification {
-    let (matches, track_count) = match verdict {
-        TerminalVerdict::Found {
-            matches,
-            track_count,
-            ..
-        } => (matches, *track_count),
-        TerminalVerdict::Conflict { .. } => {
-            return QueueClassification::NeedsYou(NeedsYou::SignalsConflict)
-        }
-        TerminalVerdict::NotFoundAnywhere => {
-            return QueueClassification::NeedsYou(NeedsYou::NoMatch)
-        }
-        TerminalVerdict::ManualOnly { .. } => {
-            return QueueClassification::NeedsYou(NeedsYou::NothingToLookUp)
-        }
+    let summary = VerdictSummary::of(verdict);
+    let lead_status = summary.lead.as_ref().and_then(|lead| {
+        library_statuses
+            .iter()
+            .find(|status| status.release_id == lead.release_id)
+    });
+    classify_summary(&summary, probed_total_duration_ms, lead_status)
+}
+
+/// Classify one candidate from the columns its stored row holds.
+///
+/// `lead_status` is a **live** check of the lead match alone — the only match
+/// the rule consults, because every other shape is answered before the
+/// library is asked. `None` reads as "not in the library"; a caller that
+/// cannot answer for the lead must fail its read rather than hand over `None`.
+pub fn classify_summary(
+    summary: &VerdictSummary,
+    probed_total_duration_ms: u64,
+    lead_status: Option<&LibraryStatus>,
+) -> QueueClassification {
+    let track_count = match summary.kind {
+        VerdictKind::Found => summary.track_count.unwrap_or_default(),
+        VerdictKind::Conflict => return QueueClassification::NeedsYou(NeedsYou::SignalsConflict),
+        VerdictKind::NotFound => return QueueClassification::NeedsYou(NeedsYou::NoMatch),
+        VerdictKind::ManualOnly => return QueueClassification::NeedsYou(NeedsYou::NothingToLookUp),
     };
 
     // "An exact signal is not the same as a unique result" — a disc ID or a
     // barcode routinely returns several pressings of one release group, and
     // picking between them is the user's job.
-    let [only_match] = matches.as_slice() else {
+    let (Some(lead), 1) = (summary.lead.as_ref(), summary.match_count) else {
         return QueueClassification::NeedsYou(NeedsYou::SeveralMatches {
-            count: matches.len() as u32,
+            count: summary.match_count,
         });
     };
 
-    if in_library(only_match, library_statuses) {
+    if lead_status.is_some_and(|status| status.release_in_library || status.album_in_library) {
         return QueueClassification::NeedsYou(NeedsYou::AlreadyInLibrary);
     }
 
@@ -130,7 +254,7 @@ pub fn classify(
     let Some(SourceTracks::Listed {
         count,
         total_duration_ms,
-    }) = &only_match.source_tracks
+    }) = &lead.source_tracks
     else {
         return QueueClassification::NeedsYou(NeedsYou::SourceLengthsUnknown);
     };
@@ -165,17 +289,6 @@ pub fn classify(
     }
 
     QueueClassification::Ready
-}
-
-/// Whether the library already holds this match. Both levels count: holding the
-/// very release is the obvious case, and holding another pressing of the same
-/// album is still a decision — importing a second pressing is legitimate, but
-/// not something to do to a hundred folders while nobody is looking.
-fn in_library(result: &MetadataResult, statuses: &[LibraryStatus]) -> bool {
-    statuses
-        .iter()
-        .find(|status| status.release_id == result.release_id)
-        .is_some_and(|status| status.release_in_library || status.album_in_library)
 }
 
 #[cfg(test)]

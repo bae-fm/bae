@@ -77,7 +77,7 @@ struct ImportReleaseBoundaryViewTests {
                 .environment(uiStore)
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
-                .environment(PreviewData.releaseQueueImportStore)
+                .environment(PreviewData.releaseQueueScene().store)
                 .environment(importer),
             size: size
         )

@@ -3,12 +3,7 @@ use super::*;
 impl Automation {
     pub fn new(services: AppServices, runtime_handle: &tokio::runtime::Handle) -> Self {
         let _ = runtime_handle;
-        let runtimes = services.clone();
-        let state = Arc::new(AutomationState::new(
-            services.subscribe_import_candidates(),
-            Arc::new(move || runtimes.candidate_runtimes()),
-        ));
-        Self { services, state }
+        Self { services }
     }
 
     pub fn config_get(&self) -> AutomationConfig {
@@ -23,7 +18,7 @@ impl Automation {
 
     pub fn watched_folders(&self) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
         Ok(self
-            .current_watched_folders()?
+            .current_watched_folders()
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
                 path: folder.path,
@@ -59,7 +54,7 @@ impl Automation {
             ScanWait::UntilFinished { timeout_ms } => {
                 let mut rx = self.services.import_subscribe_folder_scan_events();
                 let mut pending: std::collections::HashSet<_> = self
-                    .current_watched_folders()?
+                    .current_watched_folders()
                     .into_iter()
                     .map(|folder| folder.path)
                     .collect();
@@ -99,25 +94,87 @@ impl Automation {
         }
         Ok(AutomationScanResult {
             watched_folders: self.watched_folders()?,
-            candidates: self.list_candidates()?,
+            candidates: self.list_candidates().await?,
         })
     }
 
-    fn current_watched_folders(
-        &self,
-    ) -> Result<Vec<bae_core::import::WatchedFolder>, AutomationError> {
-        self.state.watched_folders()
+    fn current_watched_folders(&self) -> Vec<bae_core::import::WatchedFolder> {
+        self.services.import_watched_folders()
     }
 
-    pub fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
-        self.state.list_candidates()
+    /// Every candidate the import tab holds, in path order.
+    ///
+    /// The tab's own order is per watched folder and per tab; automation
+    /// presents one flat list across both, so it walks all three tabs and
+    /// sorts by path — the key callers name candidates by.
+    pub async fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
+        let runtime = self.services.candidate_runtimes();
+        let mut candidates = Vec::new();
+        for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
+            let view = ImportListView {
+                tab,
+                ..ImportListView::default()
+            };
+            let projection = self
+                .services
+                .load_import_list(view, whole_list())
+                .await
+                .map_err(AutomationError::from)?;
+            for window in projection.windows {
+                for item in window.items {
+                    match item {
+                        ImportListItem::Candidate(row) => {
+                            let Some(detail) = self
+                                .services
+                                .load_import_candidate(&row.candidate_key)
+                                .await
+                                .map_err(AutomationError::from)?
+                            else {
+                                continue;
+                            };
+                            candidates.push(automation_candidate_from_folder(&detail, &runtime));
+                        }
+                        ImportListItem::Invalid(candidate) => {
+                            candidates.push(automation_candidate_from_invalid(&candidate));
+                        }
+                        ImportListItem::GroupHeader { .. } | ImportListItem::Boundary(_) => {}
+                    }
+                }
+            }
+        }
+        candidates.sort_by(|left, right| left.path().cmp(right.path()));
+        Ok(candidates)
     }
 
-    pub fn get_candidate(
+    /// One candidate by key, or `NotFound`. A request naming a key the import
+    /// tables hold nothing for is refused rather than answered: core reads a
+    /// key it has recorded nothing against as "the pipeline hasn't run", which
+    /// is right for a scanned candidate awaiting identification and
+    /// indistinguishable from a typo.
+    pub async fn get_candidate(
         &self,
         candidate_key: String,
     ) -> Result<AutomationCandidate, AutomationError> {
-        self.state.get_candidate(&candidate_key)
+        if let Some(detail) = self
+            .services
+            .load_import_candidate(&candidate_key)
+            .await
+            .map_err(AutomationError::from)?
+        {
+            let runtime = self.services.candidate_runtimes();
+            return Ok(automation_candidate_from_folder(&detail, &runtime));
+        }
+        if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) = self
+            .services
+            .import_get_candidate(&candidate_key)
+            .await
+            .map_err(AutomationError::from)?
+        {
+            return Ok(automation_candidate_from_invalid(&candidate));
+        }
+        Err(AutomationError::not_found(format!(
+            "candidate '{candidate_key}' not found"
+        )))
     }
 
     pub async fn set_candidate_skipped(
@@ -157,7 +214,7 @@ impl Automation {
         // identification, and indistinguishable from a typo. Answered rather
         // than refused, a typo comes back reading "found by searching", which
         // is what a key with no evidence behind it honestly is.
-        let candidate = self.state.get_candidate(&candidate_key)?;
+        let candidate = self.get_candidate(candidate_key.clone()).await?;
 
         let prefetch = self
             .services
@@ -182,7 +239,7 @@ impl Automation {
         &self,
         candidate_key: String,
     ) -> Result<AutomationReleaseUserEdit, AutomationError> {
-        self.state.get_candidate(&candidate_key)?;
+        self.get_candidate(candidate_key.clone()).await?;
         let edit = self
             .services
             .import_preview_file_tags_for_folder(candidate_key)
@@ -401,11 +458,11 @@ impl Automation {
             }
             AutomationTool::ImportCandidatesList => {
                 expect_no_args(args, tool.name())?;
-                to_list_value("candidates", self.list_candidates()?)
+                to_list_value("candidates", self.list_candidates().await?)
             }
             AutomationTool::ImportCandidateGet => {
                 let input: CandidateKeyInput = from_value(args)?;
-                to_value(self.get_candidate(input.candidate_key)?)
+                to_value(self.get_candidate(input.candidate_key).await?)
             }
             AutomationTool::ImportCandidateSkipSet => {
                 let input: CandidateSkipSetInput = from_value(args)?;
@@ -480,4 +537,14 @@ impl Automation {
             }
         }
     }
+}
+
+/// A window over every item the list holds. Automation presents the whole
+/// queue at once; the paging the tab does is a rendering concern.
+fn whole_list() -> bae_core::library::LibraryPageWindows {
+    std::iter::once(bae_core::library::LibraryPageWindow {
+        offset: 0,
+        limit: u64::MAX,
+    })
+    .collect()
 }

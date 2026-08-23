@@ -100,6 +100,9 @@ mod playback_state_load_tests;
 mod import_candidate_state_tests;
 
 #[cfg(test)]
+mod import_list_tests;
+
+#[cfg(test)]
 mod injected_ids_tests;
 
 #[cfg(test)]

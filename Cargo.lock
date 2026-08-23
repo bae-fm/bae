@@ -895,9 +895,12 @@ name = "bae-automation"
 version = "0.1.0"
 dependencies = [
  "bae-core",
+ "bae-test-support",
+ "coven",
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 

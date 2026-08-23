@@ -8,34 +8,33 @@ struct ImportPreviewDataTests {
     @MainActor
     @Test("smoke preview combines every queue state and boundary tree")
     func smokePreviewCombinesProductionShapes() {
-        let baseStore = PreviewData.importTabStore()
-        let smokeStore = PreviewData.importSmokeTestStore()
-        let entries = smokeStore.triageQueue.sections.flatMap(\.entries)
-        let boundaryCount = entries.count {
+        let base = PreviewData.importTabScene()
+        let smoke = PreviewData.importSmokeTestScene()
+        let items = smoke.itemsByTab.values.flatMap { $0 }
+        let boundaryCount = items.count {
             if case .boundary = $0 { return true }
             return false
         }
 
-        #expect(smokeStore.watchedFolders.count == 2)
+        #expect(smoke.store.watchedFolders.count == 2)
         #expect(boundaryCount == 5)
-        #expect(smokeStore.queueIdentifyProgress?.identified == 20)
+        #expect(smoke.store.queueIdentifyProgress?.identified == 20)
         #expect(
-            smokeStore.queueIdentifyProgress?.total
-                == smokeStore.triageQueue.counts.pending
-                + smokeStore.triageQueue.counts.done
-                + smokeStore.triageQueue.counts.skipped
+            smoke.store.queueIdentifyProgress?.total
+                == smoke.store.summary.counts.pending
+                + smoke.store.summary.counts.done
+                + smoke.store.summary.counts.skipped
         )
         #expect(
-            smokeStore.triageQueue.counts.pending
-                == baseStore.triageQueue.counts.pending + 4
+            smoke.store.summary.counts.pending
+                == base.store.summary.counts.pending + 4
         )
         #expect(
-            smokeStore.triageQueue.counts.done
-                == baseStore.triageQueue.counts.done
+            smoke.store.summary.counts.done == base.store.summary.counts.done
         )
         #expect(
-            smokeStore.triageQueue.counts.skipped
-                == baseStore.triageQueue.counts.skipped
+            smoke.store.summary.counts.skipped
+                == base.store.summary.counts.skipped
         )
     }
 
@@ -105,12 +104,11 @@ struct ImportPreviewDataTests {
     @MainActor
     @Test("boundary preview covers several trees and every child kind")
     func boundaryPreviewCoversProductionShapes() {
-        let entries = PreviewData.releaseBoundaryPreviewImportStore.triageQueue
-            .sections
-            .flatMap(\.entries)
-        let boundaries = entries.compactMap {
-            entry -> BridgeFolderReleaseBoundary? in
-            guard case .boundary(_, let boundary) = entry else {
+        let items = PreviewData.releaseBoundaryScene()
+            .itemsByTab[.pending] ?? []
+        let boundaries = items.compactMap {
+            item -> BridgeFolderReleaseBoundary? in
+            guard case .boundary(_, let boundary) = item else {
                 return nil
             }
             return boundary
@@ -149,16 +147,16 @@ struct ImportPreviewDataTests {
     @MainActor
     @Test("every preview queue row opens its production candidate")
     func everyCandidateRowResolves() {
-        let stores = [
-            PreviewData.importTabStore(),
-            PreviewData.importSmokeTestStore(),
-            PreviewData.releaseQueueImportStore,
+        let scenes = [
+            PreviewData.importTabScene(),
+            PreviewData.importSmokeTestScene(),
+            PreviewData.releaseQueueScene(),
         ]
-        for store in stores {
-            let rows = store.triageQueue.sections.flatMap(\.entries)
+        for scene in scenes {
+            let rows = scene.itemsByTab.values.flatMap { $0 }
                 .compactMap {
-                    entry -> BridgeTriageRow? in
-                    guard case .candidate(_, let row) = entry else {
+                    item -> BridgeTriageRow? in
+                    guard case .candidate(_, let row) = item else {
                         return nil
                     }
                     return row
@@ -167,7 +165,7 @@ struct ImportPreviewDataTests {
             #expect(!rows.isEmpty)
             #expect(
                 rows.allSatisfy {
-                    store.folderCandidates[$0.candidateKey] != nil
+                    scene.store.selectedCandidates[$0.candidateKey] != nil
                 }
             )
         }
@@ -176,10 +174,10 @@ struct ImportPreviewDataTests {
     @MainActor
     @Test("preview queue covers every pending question and terminal shape")
     func queueCoversProductionShapes() {
-        let store = PreviewData.importTabStore()
-        let entries = store.triageQueue.sections.flatMap(\.entries)
-        let rows = entries.compactMap { entry -> BridgeTriageRow? in
-            guard case .candidate(_, let row) = entry else { return nil }
+        let scene = PreviewData.importTabScene()
+        let entries = scene.itemsByTab.values.flatMap { $0 }
+        let rows = entries.compactMap { item -> BridgeTriageRow? in
+            guard case .candidate(_, let row) = item else { return nil }
             return row
         }
         let needsYouGroups = rows.compactMap { row -> BridgeNeedsYouGroup? in

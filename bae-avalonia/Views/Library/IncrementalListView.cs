@@ -22,9 +22,10 @@ internal sealed class IncrementalListView<TRow> : UserControl
     private readonly Func<PaginatedList<TRow, string>> _list;
     private readonly Func<string, TRow?> _lookup;
     private readonly Func<TRow, Control> _cell;
+    private readonly Func<string> _emptyText;
     private readonly RowSlotFacade _facade;
     private readonly ItemsControl _rows;
-    private readonly Control _emptyState;
+    private readonly TextBlock _emptyState;
     private readonly InitialLoadErrorView _errorState;
 
     private PaginatedList<TRow, string> _bound;
@@ -33,11 +34,12 @@ internal sealed class IncrementalListView<TRow> : UserControl
         Func<PaginatedList<TRow, string>> list,
         Func<string, TRow?> lookup,
         Func<TRow, Control> cell,
-        string emptyKey)
+        Func<string> emptyText)
     {
         _list = list;
         _lookup = lookup;
         _cell = cell;
+        _emptyText = emptyText;
         _bound = list();
 
         _facade = new RowSlotFacade(() => _list().TotalCount);
@@ -55,7 +57,7 @@ internal sealed class IncrementalListView<TRow> : UserControl
 
         _emptyState = new TextBlock
         {
-            Text = Loc.Chrome(emptyKey),
+            Text = emptyText(),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 24,
@@ -68,7 +70,11 @@ internal sealed class IncrementalListView<TRow> : UserControl
         RenderState();
     }
 
-    // Re-bind after a sort swap replaced the list instance.
+    // Re-read the empty line and which of the three states is showing, without
+    // resetting the realized rows.
+    public void Refresh() => RenderState();
+
+    // Re-bind after a swap replaced the list instance.
     public void Rebind()
     {
         _bound.PropertyChanged -= OnListChanged;
@@ -95,6 +101,7 @@ internal sealed class IncrementalListView<TRow> : UserControl
 
     private void RenderState()
     {
+        _emptyState.Text = _emptyText();
         var failed = _list().InitialLoadError is not null;
         var empty = !failed && _list().TotalCount == 0;
         _errorState.IsVisible = failed;

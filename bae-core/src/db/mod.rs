@@ -7,7 +7,10 @@ pub use client::{
     ComposerPageProjection, LibrarySearchProjection, ReleaseDetailProjection,
     StoragePageProjection, WorkDetailProjection,
 };
-pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use client::{ImportCandidatesProjection, ImportTriageDbProjection};
+pub use client::{
+    CandidateStateListRow, ImportQueueRows, ScanBoundaryListRow, ScanCandidateKind,
+    ScanCandidateListRow,
+};
+pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 pub use models::*;

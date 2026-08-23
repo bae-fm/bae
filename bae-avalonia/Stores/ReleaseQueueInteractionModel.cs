@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Bae.Desktop;
@@ -12,8 +13,11 @@ internal sealed class ReleaseQueueInteractionModel
     private readonly Dictionary<ReleaseGroupDisclosureKey, bool> _expandedGroups = new();
     private readonly HashSet<string> _refreshingRoots = new();
 
-    internal bool IsGroupExpanded(ReleaseGroupDisclosureKey key) =>
-        !_expandedGroups.TryGetValue(key, out var expanded) || expanded;
+    // The groups folded shut. Core needs them by name: a folded group's rows
+    // are not in the list at all, so which ones are folded decides what sits at
+    // every offset after them.
+    internal IEnumerable<ReleaseGroupDisclosureKey> CollapsedKeys() =>
+        _expandedGroups.Where(entry => !entry.Value).Select(entry => entry.Key).ToList();
 
     internal void SetGroupExpanded(ReleaseGroupDisclosureKey key, bool expanded) =>
         _expandedGroups[key] = expanded;
@@ -43,17 +47,6 @@ internal sealed class ReleaseQueueInteractionModel
             _refreshingRoots.Remove(root);
         }
     }
-}
-
-internal static class ReleaseQueueSortModel
-{
-    internal static List<T> Sort<T>(
-        IEnumerable<T> entries,
-        Func<T, string> title,
-        bool descending) =>
-        descending
-            ? entries.OrderByDescending(title, StringComparer.CurrentCultureIgnoreCase).ToList()
-            : entries.OrderBy(title, StringComparer.CurrentCultureIgnoreCase).ToList();
 }
 
 internal sealed class CoalescedReadModel
@@ -97,14 +90,4 @@ internal static class ReadySelectionModel
         selection.Clear();
         selection.UnionWith(keys);
     }
-}
-
-internal static class CandidateSelectionModel
-{
-    internal static string? Retain(
-        string? selectedKey,
-        IReadOnlySet<string> candidateKeys) =>
-        selectedKey is not null && candidateKeys.Contains(selectedKey)
-            ? selectedKey
-            : null;
 }

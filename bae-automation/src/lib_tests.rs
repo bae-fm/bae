@@ -24,33 +24,30 @@ fn every_tool_input_schema_has_root_object_type() {
 /// reads as if the release had been found by searching: a wrong answer
 /// that looks like a right one.
 mod candidate_lookup {
-    use super::snapshot_mirror::{folder_candidate, snapshot, state_over};
+    use super::import_queue::{automation_over, scan};
     use super::*;
 
-    fn state_holding(key: &str) -> AutomationState {
-        state_over(snapshot(
-            vec![folder_candidate(key)],
-            Vec::new(),
-            Vec::new(),
-        ))
-        .2
-    }
+    #[tokio::test]
+    async fn a_known_key_resolves() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
 
-    #[test]
-    fn a_known_key_resolves() {
-        let state = state_holding("/music/Album");
-        let found = state
-            .get_candidate("/music/Album")
+        let found = fixture
+            .get_candidate(&key)
+            .await
             .expect("a scanned candidate resolves");
-        assert_eq!(found.path(), "/music/Album");
+        assert_eq!(found.path(), key);
     }
 
     /// Absence is not "no evidence yet" — it is a key that names nothing.
-    #[test]
-    fn an_unknown_key_is_not_found_rather_than_empty_evidence() {
-        let state = state_holding("/music/Album");
-        let error = state
+    #[tokio::test]
+    async fn an_unknown_key_is_not_found_rather_than_empty_evidence() {
+        let fixture = automation_over().await;
+        scan(&fixture, "Album").await;
+
+        let error = fixture
             .get_candidate("/music/Albmu")
+            .await
             .expect_err("a key naming nothing must not be answered");
         assert_eq!(error.kind(), "not_found");
         assert!(
@@ -63,10 +60,12 @@ mod candidate_lookup {
     /// A candidate whose identify pipeline hasn't run still resolves: idle is a
     /// state a caller may legitimately prefetch against, distinct from a key
     /// that names nothing.
-    #[test]
-    fn a_candidate_with_no_identify_evidence_still_resolves() {
-        let state = state_holding("/music/Album");
-        let found = state.get_candidate("/music/Album").expect("resolves");
+    #[tokio::test]
+    async fn a_candidate_with_no_identify_evidence_still_resolves() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
+
+        let found = fixture.get_candidate(&key).await.expect("resolves");
         assert!(matches!(
             found,
             AutomationCandidate::Valid { ref runtime, .. }
@@ -416,124 +415,150 @@ mod identify_mirrors {
         assert_eq!(json["text"]["free_text"][0], "Album Title");
     }
 }
-
-/// The surface mirrors the import service's published candidate state, so what
-/// it lists is whatever that state currently says — and a key the state does not
-/// carry is simply absent, never a contradiction to latch on. The event-built
-/// index had to classify every update it could not place, and each class it had
-/// not thought of (candidates discovered before it subscribed, paths a
-/// `FolderReleaseBoundary` hides) took the whole surface down until it was
-/// special-cased.
-mod snapshot_mirror {
+/// The automation surface reads the import tables by key on every call: there
+/// is no accumulated index behind it, so a key it has recorded nothing against
+/// is a key that names nothing, and every class of key that used to latch an
+/// index dead — candidates a boundary withdrew, `reidentify:` runs that name no
+/// candidate at all — is simply a read that finds no row.
+mod import_queue {
     use super::*;
-    use bae_core::identify::IdentifyState;
     use bae_core::import::folder_scanner::{
-        CategorizedFiles, FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey,
-        InvalidCandidate, InvalidReason, ReleaseFileScope,
+        CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseBoundary,
+        FolderReleaseDecisionKey, ReleaseFileScope, ScanItem, ScannedFile,
     };
-    use bae_core::import::CandidateRuntime;
-    use bae_core::import::{
-        CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
-        ImportEvent, ImportProgress, ImportStep,
-    };
+    use bae_core::import::{ImportEvent, ImportProgress};
+    use bae_core::library::LibraryManager;
     use std::path::PathBuf;
 
-    pub(super) fn folder_candidate(path: &str) -> FolderImportCandidateSnapshot {
-        FolderImportCandidateSnapshot {
-            candidate: FolderCandidate {
-                path: PathBuf::from(path),
-                file_root: PathBuf::from(path),
-                name: format!("Candidate {path}"),
-                files: CategorizedFiles {
-                    files: Vec::new(),
-                    format_label: "FLAC".to_string(),
-                },
-                watched_folder_path: "/music".to_string(),
-                scope: ReleaseFileScope::Recursive,
-                file_edit_revision: 0,
-                display_path: path.trim_start_matches('/').to_string(),
-                resolved_boundaries: Vec::new(),
-                combine_ancestor_key: None,
-            },
-            actionable: true,
-            skipped: false,
-            is_added: false,
-            resumed_identify_state: IdentifyState::Idle,
+    /// An automation surface over a real library in a temporary directory,
+    /// with the manager and services behind it so a test can write the scan
+    /// rows and the runtime the surface reads.
+    pub(super) struct Fixture {
+        automation: Automation,
+        manager: LibraryManager,
+        services: AppServices,
+        tmp: tempfile::TempDir,
+    }
+
+    impl Fixture {
+        pub(super) async fn list_candidates(&self) -> Vec<AutomationCandidate> {
+            self.automation
+                .list_candidates()
+                .await
+                .expect("the list reads")
+        }
+
+        pub(super) async fn get_candidate(
+            &self,
+            key: &str,
+        ) -> Result<AutomationCandidate, AutomationError> {
+            self.automation.get_candidate(key.to_string()).await
+        }
+
+        pub(super) async fn skip(&self, key: &str) {
+            self.automation
+                .set_candidate_skipped(key.to_string(), true)
+                .await
+                .expect("the skip persists");
+        }
+
+        /// Record one import event the way the import service would.
+        pub(super) fn record(&self, event: ImportEvent) {
+            self.services.import_emit_event_for_test(event);
+        }
+
+        /// The watched root under this fixture's temporary directory.
+        pub(super) fn root(&self) -> String {
+            let root = self.tmp.path().join("watched");
+            std::fs::create_dir_all(&root).expect("the watched root exists");
+            root.to_string_lossy().into_owned()
         }
     }
 
-    fn invalid_candidate(path: &str) -> InvalidCandidate {
-        InvalidCandidate {
-            path: PathBuf::from(path),
-            name: format!("Invalid {path}"),
-            watched_folder_path: "/music".to_string(),
-            display_path: path.trim_start_matches('/').to_string(),
-            resolved_boundaries: Vec::new(),
-            reason: InvalidReason::NoValidAudio,
-        }
-    }
-
-    /// A boundary hiding `candidate_keys`: tentative paths the import service
-    /// has withdrawn from its candidate list while the user decides whether the
-    /// folder is one release or several. Runtime updates still arrive for them.
-    fn boundary(hidden: &[&str]) -> FolderReleaseBoundary {
-        FolderReleaseBoundary {
-            key: FolderReleaseDecisionKey {
-                watched_folder_path: "/music".to_string(),
-                relative_folder_path: "Between The Buttons".to_string(),
-            },
-            name: "Between The Buttons".to_string(),
-            display_path: "Between The Buttons".to_string(),
-            shared_file_count: 2,
-            tree_rows: Vec::new(),
-            candidate_keys: hidden.iter().map(|key| key.to_string()).collect(),
-        }
-    }
-
-    pub(super) fn snapshot(
-        folder_candidates: Vec<FolderImportCandidateSnapshot>,
-        invalid_candidates: Vec<InvalidCandidate>,
-        boundaries: Vec<FolderReleaseBoundary>,
-    ) -> ImportCandidatesSnapshot {
-        ImportCandidatesSnapshot {
-            watched_folders: Vec::new(),
-            folder_candidates,
-            invalid_candidates,
-            boundaries,
-            folder_scan_statuses: Vec::new(),
-        }
-    }
-
-    fn value(snapshot: ImportCandidatesSnapshot) -> ImportCandidatesValue {
-        Arc::new(Ok(bae_core::db::ImportCandidatesProjection {
-            snapshot,
-            triage: bae_core::db::ImportTriageDbProjection {
-                candidate_states: Default::default(),
-                library_statuses: Vec::new(),
-                source_payloads: Default::default(),
-                imported_releases: Default::default(),
-            },
-        }))
-    }
-
-    /// A state reading one list value and one runtime store, returned with
-    /// both so a test can publish the next list value or record runtime —
-    /// which is how every update reaches this surface.
-    pub(super) fn state_over(
-        snapshot: ImportCandidatesSnapshot,
-    ) -> (
-        watch::Sender<ImportCandidatesValue>,
-        CandidateRuntime,
-        AutomationState,
-    ) {
-        let (tx, rx) = watch::channel(value(snapshot));
-        let runtime = CandidateRuntime::default();
-        let runtimes = runtime.clone();
-        (
-            tx,
-            runtime,
-            AutomationState::new(rx, Arc::new(move || runtimes.all())),
+    pub(super) async fn automation_over() -> Fixture {
+        let tmp = tempfile::TempDir::new().expect("a temp library dir");
+        let library_dir = coven::StoreDir::new(tmp.path());
+        let manager = LibraryManager::open(
+            bae_test_support::test_config(&library_dir),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
+            tokio::runtime::Handle::current(),
+            None,
+            bae_core::import::cover_art::RemoteImageCache::for_test(),
         )
+        .expect("the library opens");
+        let services = AppServices::for_test(manager.clone())
+            .await
+            .expect("the services start");
+        let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
+        Fixture {
+            automation,
+            manager,
+            services,
+            tmp,
+        }
+    }
+
+    fn candidate(root: &str, name: &str) -> FolderCandidate {
+        FolderCandidate {
+            path: PathBuf::from(format!("{root}/{name}")),
+            file_root: PathBuf::from(format!("{root}/{name}")),
+            name: name.to_string(),
+            files: CategorizedFiles {
+                files: vec![CandidateFile {
+                    proposed_audio: true,
+                    file: ScannedFile::new(
+                        PathBuf::from(format!("{root}/{name}/01.flac")),
+                        "01.flac".to_string(),
+                        1_000,
+                    ),
+                    role: FileRole::Audio,
+                }],
+                format_label: "FLAC".to_string(),
+            },
+            watched_folder_path: root.to_string(),
+            scope: ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            display_path: name.to_string(),
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
+        }
+    }
+
+    /// Write one scanned candidate under a watched root, and hand back its key.
+    pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
+        let root = fixture.root();
+        write_scan(fixture, &root, |items| {
+            items.push(ScanItem::Valid(candidate(&root, name)))
+        })
+        .await;
+        format!("{root}/{name}")
+    }
+
+    /// Write a whole scan generation under a watched root.
+    async fn write_scan(fixture: &Fixture, root: &str, build: impl FnOnce(&mut Vec<ScanItem>)) {
+        let manager = &fixture.manager;
+        manager
+            .add_watched_import_folder(root)
+            .await
+            .expect("the root is watched");
+        let generation = manager
+            .begin_folder_scan(root)
+            .await
+            .expect("a scan generation opens");
+        let mut items = Vec::new();
+        build(&mut items);
+        for item in &items {
+            manager
+                .save_folder_scan_item(root, generation, item)
+                .await
+                .expect("the scan item persists");
+        }
+        manager
+            .finish_folder_scan(root, generation, None)
+            .await
+            .expect("the scan finishes");
     }
 
     fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {
@@ -552,30 +577,48 @@ mod snapshot_mirror {
         }
     }
 
-    /// The listing is the snapshot's folder and invalid candidates, in path
-    /// order. Paths a boundary hides are not candidates: the import service is
-    /// not publishing them, so this surface does not invent them — and does not
-    /// treat their existence in `candidate_keys` as an inconsistency either.
-    #[test]
-    fn a_boundary_s_hidden_keys_are_absent_rather_than_a_contradiction() {
-        let hidden = "/music/Between The Buttons US [Polydor P25L 25040]";
-        let (_tx, _runtime, state) = state_over(snapshot(
-            vec![folder_candidate("/music/B"), folder_candidate("/music/A")],
-            vec![invalid_candidate("/music/C")],
-            vec![boundary(&[hidden])],
-        ));
+    /// The listing is what the import tab holds, in path order. A path a
+    /// boundary withdrew is not a candidate: the boundary's write deleted the
+    /// tentative row, so nothing this surface can act on stands at that key.
+    #[tokio::test]
+    async fn a_boundary_s_hidden_keys_are_absent_rather_than_a_contradiction() {
+        let fixture = automation_over().await;
+        let root = fixture.root();
+        let hidden = format!("{root}/Box/CD1");
+        write_scan(&fixture, &root, |items| {
+            items.push(ScanItem::Valid(candidate(&root, "A")));
+            items.push(ScanItem::Valid(candidate(&root, "B")));
+            items.push(ScanItem::Discovered(candidate(&root, "Box/CD1")));
+            items.push(ScanItem::Boundary(FolderReleaseBoundary {
+                key: FolderReleaseDecisionKey {
+                    watched_folder_path: root.clone(),
+                    relative_folder_path: "Box".to_string(),
+                },
+                name: "Box".to_string(),
+                display_path: "Box".to_string(),
+                shared_file_count: 2,
+                tree_rows: Vec::new(),
+                candidate_keys: vec![hidden.clone()],
+            }));
+        })
+        .await;
 
+        let listed = fixture.list_candidates().await;
         assert_eq!(
-            keys(&state.list_candidates().unwrap()),
-            vec!["/music/A", "/music/B", "/music/C"]
+            keys(&listed),
+            [format!("{root}/A"), format!("{root}/B")]
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>()
         );
-        let error = state
-            .get_candidate(hidden)
+        let error = fixture
+            .get_candidate(&hidden)
+            .await
             .expect_err("a hidden path names no candidate a caller can act on");
         assert_eq!(error.kind(), "not_found");
         assert_eq!(
-            keys(&state.list_candidates().unwrap()),
-            vec!["/music/A", "/music/B", "/music/C"],
+            fixture.list_candidates().await.len(),
+            2,
             "the refused request left nothing latched"
         );
     }
@@ -583,106 +626,73 @@ mod snapshot_mirror {
     /// `reidentify:` runtime entries name releases, not scanned folders. They
     /// carry runtime but no candidate, so they are not listed — and their
     /// updates are not an unknown key to fail on.
-    #[test]
-    fn runtime_only_entries_are_not_candidates() {
-        let (_tx, runtime, state) = state_over(snapshot(
-            vec![folder_candidate("/music/A")],
-            Vec::new(),
-            Vec::new(),
-        ));
-        runtime.record_event_for_test(&importing("reidentify:release-1", 1));
+    #[tokio::test]
+    async fn runtime_only_entries_are_not_candidates() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "A").await;
+        fixture.record(importing("reidentify:release-1", 1));
 
-        assert_eq!(keys(&state.list_candidates().unwrap()), vec!["/music/A"]);
+        assert_eq!(keys(&fixture.list_candidates().await), vec![key.as_str()]);
         assert_eq!(
-            state
+            fixture
                 .get_candidate("reidentify:release-1")
+                .await
                 .expect_err("a re-identify run is not an import candidate")
                 .kind(),
             "not_found"
         );
     }
 
-    /// Updates arrive as a new list value. The surface reads the latest one,
-    /// so a candidate that changed reads changed and one that is gone is gone —
-    /// with no accumulated state that a missed or unplaceable update could
-    /// corrupt.
-    #[test]
-    fn the_latest_snapshot_is_the_answer() {
-        let (tx, runtime, state) = state_over(snapshot(
-            vec![folder_candidate("/music/A"), folder_candidate("/music/B")],
-            Vec::new(),
-            Vec::new(),
-        ));
+    /// Every call is a read of the tables, so a candidate that changed reads
+    /// changed and one that is gone is gone — with no accumulated state that a
+    /// missed update could corrupt.
+    #[tokio::test]
+    async fn the_tables_are_the_answer() {
+        let fixture = automation_over().await;
+        let root = fixture.root();
+        write_scan(&fixture, &root, |items| {
+            items.push(ScanItem::Valid(candidate(&root, "A")));
+            items.push(ScanItem::Valid(candidate(&root, "B")));
+        })
+        .await;
 
-        let mut skipped = folder_candidate("/music/A");
-        skipped.skipped = true;
-        runtime.record_event_for_test(&ImportEvent::ImportProgress {
-            candidate_key: "/music/A".to_string(),
-            progress: ImportProgress::Complete {
-                id: "release-1".to_string(),
-                import_id: "import-1".to_string(),
-                album_id: "album-1".to_string(),
-            },
-        });
-        tx.send(value(snapshot(vec![skipped], Vec::new(), Vec::new())))
-            .expect("the state holds the receiver");
+        fixture.skip(&format!("{root}/A")).await;
+        write_scan(&fixture, &root, |items| {
+            items.push(ScanItem::Valid(candidate(&root, "A")))
+        })
+        .await;
 
-        assert_eq!(keys(&state.list_candidates().unwrap()), vec!["/music/A"]);
-        let candidate = state.get_candidate("/music/A").expect("still published");
-        assert!(candidate.common().skipped, "the new value is what is read");
-        assert!(matches!(
-            candidate,
-            AutomationCandidate::Valid { ref runtime, .. }
-                if matches!(
-                    runtime.import_status,
-                    Some(AutomationImportStatus::Complete { ref release_id, .. })
-                        if release_id == "release-1"
-                )
-        ));
         assert_eq!(
-            state
-                .get_candidate("/music/B")
-                .expect_err("a candidate the service dropped is gone")
+            keys(&fixture.list_candidates().await),
+            vec![format!("{root}/A").as_str()]
+        );
+        let candidate = fixture
+            .get_candidate(&format!("{root}/A"))
+            .await
+            .expect("still scanned");
+        assert!(
+            candidate.common().skipped,
+            "the stored decision is what is read"
+        );
+        assert_eq!(
+            fixture
+                .get_candidate(&format!("{root}/B"))
+                .await
+                .expect_err("a candidate the scan dropped is gone")
                 .kind(),
             "not_found"
         );
     }
 
-    /// A list whose read failed answers every question with that failure
-    /// rather than the last value it held.
-    #[test]
-    fn a_failed_list_read_is_the_answer_until_the_next_read() {
-        let (tx, _runtime, state) = state_over(snapshot(
-            vec![folder_candidate("/music/A")],
-            Vec::new(),
-            Vec::new(),
-        ));
-        tx.send(Arc::new(Err(LibraryError::Internal(
-            "the tables are unreadable".to_string(),
-        ))))
-        .expect("the state holds the receiver");
-
-        let error = state
-            .list_candidates()
-            .expect_err("a failed read is an error");
-        assert_eq!(error.kind(), "database");
-        assert!(error.to_string().contains("the tables are unreadable"));
-    }
-
     /// The runtime a candidate carries is the import service's own, converted
     /// whole: identify state, toolbar, signals, and the candidate's import run.
-    /// With no run in flight the identify state is the stored verdict's
-    /// resumed state, the same answer the import tab shows.
-    #[test]
-    fn a_candidate_carries_the_import_service_s_runtime() {
-        let (_tx, runtime, state) = state_over(snapshot(
-            vec![folder_candidate("/music/A")],
-            Vec::new(),
-            Vec::new(),
-        ));
-        runtime.record_event_for_test(&importing("/music/A", 42));
+    #[tokio::test]
+    async fn a_candidate_carries_the_import_service_s_runtime() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "A").await;
+        fixture.record(importing(&key, 42));
 
-        let candidate = state.get_candidate("/music/A").expect("published");
+        let candidate = fixture.get_candidate(&key).await.expect("published");
         let json = serde_json::to_value(&candidate).unwrap();
         assert_eq!(json["runtime"]["import_status"]["kind"], "importing");
         assert_eq!(json["runtime"]["import_status"]["progress_percent"], 42);
@@ -692,39 +702,6 @@ mod snapshot_mirror {
             "measuring_loudness"
         );
         assert_eq!(json["runtime"]["identify_state"]["kind"], "idle");
-        let _ = (
-            CandidateImportStatusSnapshot::Error {
-                error: String::new(),
-            },
-            ImportStep::Preparing(bae_core::import::PrepareStep::Queued),
-        );
-    }
-
-    #[test]
-    fn an_idle_runtime_shows_the_resumed_identify_state() {
-        let mut answered = folder_candidate("/music/A");
-        answered.resumed_identify_state = IdentifyState::NotFoundAnywhere {
-            context: bae_core::identify::state::SignalsContext {
-                disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 4 },
-                barcode_codes: Vec::new(),
-                had_barcode_source: false,
-                catalogs: Vec::new(),
-                excluded: Default::default(),
-                discid_results: Vec::new(),
-                barcode_results: Vec::new(),
-                discid_failure: None,
-                barcode_failure: None,
-                matched_barcode: None,
-                track_count: 4,
-            },
-        };
-        let (_tx, _runtime, state) = state_over(snapshot(vec![answered], Vec::new(), Vec::new()));
-
-        let json = serde_json::to_value(state.get_candidate("/music/A").unwrap()).unwrap();
-        assert_eq!(
-            json["runtime"]["identify_state"]["kind"],
-            "not_found_anywhere"
-        );
     }
 }
 

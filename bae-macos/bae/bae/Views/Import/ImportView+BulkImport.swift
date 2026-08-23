@@ -23,22 +23,21 @@ extension ImportView {
         // queues the command — so the run happens off the foot bar's action.
         Task {
             var failureCount = 0
-            for key in keys {
-                guard
-                    let candidate = importStore.candidate(forKey: key),
-                    let row = importStore.triageRow(forKey: key),
-                    let claim = row.claim
-                else {
-                    // Selection can outlive the row that earned it (imported by
-                    // a faster sibling call, or reclassified) — the list content
-                    // already intersects the selection against the tab's current
-                    // Ready keys, so this is defensive, not expected.
-                    continue
-                }
+            let requested = Set(keys)
+            // Selection can outlive the row that earned it (imported by a
+            // faster sibling call, or reclassified), so the Ready set core
+            // published is what decides which keys still commit.
+            for ready in importStore.summary.ready
+            where requested.contains(ready.candidateKey) {
                 do {
                     try await importer.startImport(
                         ImportCommitRequest(
-                            candidate: candidate,
+                            candidateKey: ready.candidateKey,
+                            selectedCover:
+                                importStore
+                                .candidate(forKey: ready.candidateKey)?
+                                .selectedCover?
+                                .selection,
                             storageMode: storageMode,
                             pin: storagePinned,
                             // The row's stored decision, in the shape commit
@@ -46,7 +45,7 @@ extension ImportView {
                             // one match and recorded the pick, so a bulk import
                             // commits the same claim opening the pane would
                             // state.
-                            identityChoice: claim,
+                            identityChoice: ready.claim,
                             userEdit: nil
                         )
                     )

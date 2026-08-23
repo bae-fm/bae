@@ -202,31 +202,32 @@ internal static partial class NativeBae
         };
     }
 
-    /// <summary>A list row joined with its runtime: the run in flight when
+    /// <summary>One candidate joined with its runtime: the run in flight when
     /// there is one, else the state the stored verdict stands back up as.
     /// <paramref name="runtime"/> is null for a key nothing has run on.</summary>
     internal static ImportCandidate ImportCandidateRow(
-        BridgeFolderImportCandidateSnapshot row,
+        BridgeImportCandidateDetail detail,
         BridgeCandidateRuntimeSnapshot? runtime)
     {
-        var candidate = row.Candidate;
-        var effective = EffectiveRuntime(row, runtime);
+        var candidate = detail.Candidate;
+        var effective = EffectiveRuntime(detail, runtime);
         return ImportCandidateRow(candidate, effective);
     }
 
     /// <summary>The runtime a row renders: a live run's own, or an idle runtime
     /// carrying the row's resumed identify state.</summary>
     internal static BridgeCandidateRuntimeSnapshot EffectiveRuntime(
-        BridgeFolderImportCandidateSnapshot row,
+        BridgeImportCandidateDetail detail,
         BridgeCandidateRuntimeSnapshot? runtime) =>
         runtime switch
         {
             null => new BridgeCandidateRuntimeSnapshot(
-                row.ResumedIdentifyState,
+                detail.ResumedIdentifyState,
                 new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
                 null,
                 null),
-            { IdentifyState: BridgeIdentifyState.Idle } => runtime with { IdentifyState = row.ResumedIdentifyState },
+            { IdentifyState: BridgeIdentifyState.Idle } =>
+                runtime with { IdentifyState = detail.ResumedIdentifyState },
             _ => runtime,
         };
 

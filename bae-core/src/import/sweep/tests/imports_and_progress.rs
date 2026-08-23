@@ -145,9 +145,16 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     start_import_for(&fixture, &importing).await;
     // …and then the scan re-announces it, exactly as a watcher-triggered pass
     // over the same folder does.
-    let claimed = match fixture.import.get_candidate(&importing.to_string_lossy()) {
+    let claimed = match fixture
+        .import
+        .get_candidate(&importing.to_string_lossy())
+        .await
+    {
         Ok(Some(ImportCandidateSnapshot::Folder { candidate, .. })) => candidate,
-        other => panic!("the claimed candidate is still a folder candidate: {other:?}"),
+        other => panic!(
+            "the claimed candidate is still a folder candidate: {:?}",
+            other.map(|snapshot| snapshot.map(|_| "a candidate"))
+        ),
     };
     fixture
         .import

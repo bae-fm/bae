@@ -36,7 +36,7 @@ pub(super) fn load_items(
 
 /// The entry at `entry_key`, and the root it is under. Watched roots never
 /// overlap and keys are absolute paths, so at most one root holds it.
-pub(super) fn load_item_by_key(
+pub(crate) fn load_item_by_key(
     sql: &(impl QueryOne + QueryRows),
     entry_key: &str,
 ) -> Result<Option<(String, StoredScanItem)>, DbError> {
@@ -132,7 +132,7 @@ struct CandidateRow {
     invalid_reason_path: Option<String>,
 }
 
-fn load_candidate_items(
+pub(crate) fn load_candidate_items(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     only: Option<&str>,
@@ -327,7 +327,7 @@ fn load_files(
     Ok(files)
 }
 
-fn load_resolved_boundaries(
+pub(crate) fn load_resolved_boundaries(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     only: Option<&str>,
@@ -597,7 +597,7 @@ struct TreeRow {
     decision_relative_folder_path: String,
 }
 
-fn load_boundary_items(
+pub(crate) fn load_boundary_items(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     only: Option<&str>,

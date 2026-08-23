@@ -3,92 +3,58 @@ import Combine
 import OrderedCollections
 import SwiftUI
 
-struct ReleaseQueueEntry: Identifiable {
-    let id: String
-    let bridge: BridgeTriageEntry
-
-    init(_ bridge: BridgeTriageEntry) {
-        self.bridge = bridge
-        id =
-            switch bridge {
-            case .candidate(let stableKey, _),
-                .boundary(let stableKey, _),
-                .invalid(let stableKey, _):
-                stableKey
-            }
-    }
-}
-
-struct ReleaseQueueSectionID: Hashable {
-    let tab: BridgeTriageTab
-    let watchedFolderPath: String
-    let groupRelativeFolderPath: String?
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.tab == rhs.tab
-            && lhs.watchedFolderPath == rhs.watchedFolderPath
-            && lhs.groupRelativeFolderPath == rhs.groupRelativeFolderPath
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(tab)
-        hasher.combine(watchedFolderPath)
-        hasher.combine(groupRelativeFolderPath)
-    }
-}
-
-struct ReleaseQueueSection: Identifiable {
-    let tab: BridgeTriageTab
-    let watchedFolderPath: String
-    let group: BridgeTriageGroup?
-    let entries: [ReleaseQueueEntry]
-
-    var id: ReleaseQueueSectionID {
-        ReleaseQueueSectionID(
-            tab: tab,
-            watchedFolderPath: watchedFolderPath,
-            groupRelativeFolderPath: group?.key.relativeFolderPath
-        )
-    }
-}
-
-/// Session state for the import flow. Mixed-writer: core drives scan/identify,
-/// the triage queue, and preview state through value subscriptions, while views
-/// drive user-set fields
-/// (mode, selectedCover)
-/// via `mutateCandidate(forKey:_:)`. The single-writer rule applies per field,
-/// not per store.
+/// Session state for the import flow. Mixed-writer: core drives the list, the
+/// per-candidate reads and preview state through value subscriptions, while
+/// views drive user-set fields (mode, selectedCover) via
+/// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
+/// per store.
 ///
-/// One ordered dictionary per source: folder-scan candidates and re-identify
-/// candidates. Keys are unique across both (folder path or
-/// `reidentify:{releaseId}`), so cross-type helpers below can look up a
-/// candidate by key without knowing its source.
+/// The list itself is paged: `items` holds the entries the sidebar has loaded,
+/// keyed by the stable key core computes, and `selectedCandidates` holds the
+/// whole folder for each row the user selected. Keys are unique across the
+/// selected folders and the re-identify sessions (a folder path or
+/// `reidentify:{releaseId}`), so the cross-type helpers below look a candidate
+/// up by key without knowing its source.
 @Observable
 class ImportStore {
-    var folderCandidates: OrderedDictionary<String, Candidate> = [:]
-    /// The folders being watched for imports, in add order. Fetched when the
-    /// import view appears and updates through the candidate subscription.
-    var watchedFolders: [BridgeWatchedFolder] = []
+    /// The list entries the sidebar has loaded, by stable key. The paged list
+    /// holds the order; this holds what each key renders as.
+    var items: [String: BridgeImportListItem] = [:]
+
+    /// Everything the chrome around the list shows: the tab counts, the
+    /// watched folders and their scan statuses, the group keys, the Ready set,
+    /// and the row the identify count is still waiting on. Defaults to an
+    /// empty summary rather than `nil`: "not loaded yet" and "the queue is
+    /// genuinely empty" render identically, so no surface needs to tell them
+    /// apart.
+    var summary: BridgeImportQueueSummary = BridgeImportQueueSummary(
+        counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
+        watchedFolders: [],
+        folderScanStatuses: [],
+        groupKeys: [],
+        ready: [],
+        firstUnidentifiedKey: nil
+    )
+
+    /// Every candidate's runtime — a run in flight, its toolbar, extracted
+    /// signals, an import's progress — by key. Delivered per key, independent
+    /// of the list.
+    var runtimes: [String: BridgeCandidateRuntimeSnapshot] = [:]
+
+    /// The selected rows' folders, read by key. A selection opens one
+    /// subscription per key; the key leaves when its read says the folder is
+    /// gone.
+    var selectedCandidates: OrderedDictionary<String, Candidate> = [:]
+
     /// Re-identify candidates — one per active "Re-identify..." sheet.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
     /// way folder events do. The sheet inserts on open and removes on dismiss.
     var reIdentifyCandidates: OrderedDictionary<String, Candidate> = [:]
 
-    /// The sidebar's pre-shaped sections and tab counts — core's projection,
-    /// delivered whole whenever its database or candidate inputs change.
-    /// Defaults to
-    /// an empty queue rather than `nil`: "not loaded yet" and "the queue is
-    /// genuinely empty" render identically (the tab's empty state), so no
-    /// surface needs to tell them apart.
-    var triageQueue: BridgeTriageQueue = BridgeTriageQueue(
-        sections: [],
-        counts: BridgeTriageTabCounts(
-            pending: 0,
-            done: 0,
-            skipped: 0
-        ),
-        folderScanStatuses: []
-    )
+    /// The folders being watched for imports, in add order.
+    var watchedFolders: [BridgeWatchedFolder] {
+        summary.watchedFolders
+    }
 
     /// The queue sweep's identified-count over total, for the header's
     /// progress line and bar. `nil` before the first tick of a session — the
@@ -122,28 +88,23 @@ class ImportStore {
     /// caller doesn't know (or doesn't care about) the candidate's source —
     /// the shared search/confirmation flow.
     func candidate(forKey key: String) -> Candidate? {
-        folderCandidates[key] ?? reIdentifyCandidates[key]
+        selectedCandidates[key] ?? reIdentifyCandidates[key]
     }
 
-    func applyImportCandidatesSnapshot(
-        _ snapshot: BridgeImportCandidatesSnapshot
-    ) {
-        watchedFolders = snapshot.watchedFolders
+    // MARK: - The paged list
 
-        var nextFolderCandidates: OrderedDictionary<String, Candidate> = [:]
-        for row in snapshot.folderCandidates {
-            var incoming = Candidate(row: row)
-            if let existing = folderCandidates[incoming.key] {
-                incoming = incoming.withSessionState(from: existing)
-            }
-            else if let runtime = runtimeAheadOfList.removeValue(
-                forKey: incoming.key
-            ) {
-                incoming.applyRuntime(runtime)
-            }
-            nextFolderCandidates[incoming.key] = incoming
+    /// Hold one page of list entries. Called by the list as each page lands.
+    func ingest(_ entries: [BridgeImportListItem]) {
+        for entry in entries {
+            items[entry.id] = entry
         }
-        folderCandidates = nextFolderCandidates
+    }
+
+    /// Drop entries the list no longer holds a position for, so a page the
+    /// list evicted stops occupying memory.
+    func retainItems(_ loadedKeys: [String]) {
+        let loaded = Set(loadedKeys)
+        items = items.filter { loaded.contains($0.key) }
     }
 
     /// The running import behind a triage row, from the candidate's runtime:
@@ -151,46 +112,72 @@ class ImportStore {
     func importProgress(for row: BridgeTriageRow)
         -> BridgeCandidateImportStatus?
     {
-        folderCandidates[row.candidateKey]?.importStatus
+        runtimes[row.candidateKey]?.importStatus
     }
 
-    /// Runtime for folder keys the list has not delivered yet. A run can
-    /// start on a folder the moment its scan commits, before the list's
-    /// query re-reads; the change lands here and joins the row when it
-    /// arrives. Re-identify keys never wait: their candidate exists before
-    /// their run starts.
-    @ObservationIgnored
-    private var runtimeAheadOfList: [String: BridgeCandidateRuntimeSnapshot] =
-        [:]
+    /// The candidate's selected/default cover, or the queue's match thumbnail
+    /// before identification has supplied one.
+    func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
+        candidate(forKey: row.candidateKey)?.selectedCover?.thumbnailContent
+            ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
+    }
 
-    /// One candidate's runtime changed — a folder candidate's or a
-    /// re-identify candidate's, by key.
+    /// The title a row leads with — the matched release's, or the folder name
+    /// when nothing matched.
+    static func displayTitle(_ row: BridgeTriageRow) -> String {
+        row.matched?.title ?? row.folderName
+    }
+
+    /// Whether `displayTitle` fell through to the folder name — the rows that
+    /// take a folder icon, so the title reads as a place on disk rather than a
+    /// release nobody has matched.
+    static func titleIsFolderName(_ row: BridgeTriageRow) -> Bool {
+        row.matched == nil
+    }
+
+    // MARK: - Per-key reads
+
+    /// One selected candidate, as its own read describes it. The runtime this
+    /// key already carries joins it, so a run that started before the read
+    /// landed is not lost.
+    func applyCandidateDetail(
+        key: String,
+        detail: BridgeImportCandidateDetail
+    ) {
+        var incoming = Candidate(detail: detail)
+        if let existing = selectedCandidates[key] {
+            incoming = incoming.withSessionState(from: existing)
+        }
+        else if let runtime = runtimes[key] {
+            incoming.applyRuntime(runtime)
+        }
+        selectedCandidates[key] = incoming
+    }
+
+    /// One candidate's runtime changed — a selected folder's or a re-identify
+    /// candidate's, by key.
     func applyCandidateRuntimeChange(_ change: BridgeCandidateRuntimeChange) {
         switch change {
         case .updated(let key, let runtime):
-            if candidate(forKey: key) != nil {
-                mutateCandidate(forKey: key) { candidate in
-                    candidate.applyRuntime(runtime)
-                }
-            }
-            else if !key.hasPrefix("reidentify:") {
-                runtimeAheadOfList[key] = runtime
+            runtimes[key] = runtime
+            mutateCandidate(forKey: key) { candidate in
+                candidate.applyRuntime(runtime)
             }
         case .removed(let key):
-            runtimeAheadOfList.removeValue(forKey: key)
+            runtimes.removeValue(forKey: key)
             mutateCandidate(forKey: key) { candidate in
                 candidate.clearRuntime()
             }
         }
     }
 
-    private func mutateFolderCandidate(
+    private func mutateSelectedCandidate(
         key: String,
         _ mutate: (inout Candidate) -> Void
     ) {
-        if var candidate = folderCandidates[key] {
+        if var candidate = selectedCandidates[key] {
             mutate(&candidate)
-            folderCandidates[key] = candidate
+            selectedCandidates[key] = candidate
         }
     }
 
@@ -212,7 +199,7 @@ class ImportStore {
             mutateReIdentifyCandidate(key: key, mutate)
         }
         else {
-            mutateFolderCandidate(key: key, mutate)
+            mutateSelectedCandidate(key: key, mutate)
         }
     }
 
@@ -270,165 +257,6 @@ class ImportStore {
                 }
             )
             observation.install(subscription)
-        }
-    }
-}
-
-// MARK: - Triage rendering
-
-extension ImportStore {
-    func releaseSections(
-        tab: BridgeTriageTab,
-        filterText: String
-    ) -> [ReleaseQueueSection] {
-        triageQueue.sections
-            .filter { $0.tab == tab }
-            .compactMap { section in
-                let entries = filteredEntries(
-                    section.entries,
-                    filterText: filterText
-                )
-                guard !entries.isEmpty else { return nil }
-                return ReleaseQueueSection(
-                    tab: section.tab,
-                    watchedFolderPath: section.watchedFolderPath,
-                    group: section.group,
-                    entries: entries.map(ReleaseQueueEntry.init)
-                )
-            }
-    }
-
-    private func filteredEntries(
-        _ entries: [BridgeTriageEntry],
-        filterText: String
-    ) -> [BridgeTriageEntry] {
-        let query = filterText.lowercased()
-        let matching = entries.filter { entry in
-            guard !query.isEmpty else { return true }
-            switch entry {
-            case .candidate(_, let row):
-                return Self.displayTitle(row).lowercased().contains(query)
-                    || row.displayPath.lowercased().contains(query)
-            case .boundary(_, let boundary):
-                return boundary.name.lowercased().contains(query)
-                    || boundary.displayPath.lowercased().contains(query)
-                    || boundary.treeRows.contains {
-                        $0.displayPath.lowercased().contains(query)
-                    }
-            case .invalid(_, let candidate):
-                return candidate.sourceFolderName.lowercased().contains(query)
-                    || candidate.displayPath.lowercased().contains(query)
-            }
-        }
-        return matching
-    }
-
-    /// The title a row leads with — the matched release's, or the folder name
-    /// when nothing matched. What the sort order and the filter match
-    /// against, because it's what the row actually shows.
-    static func displayTitle(_ row: BridgeTriageRow) -> String {
-        row.matched?.title ?? row.folderName
-    }
-
-    /// Whether `displayTitle` fell through to the folder name — the rows that
-    /// take a folder icon, so the title reads as a place on disk rather than a
-    /// release nobody has matched.
-    static func titleIsFolderName(_ row: BridgeTriageRow) -> Bool {
-        row.matched == nil
-    }
-
-    func triageRow(forKey key: String) -> BridgeTriageRow? {
-        triageQueue.sections.lazy
-            .flatMap(\.entries)
-            .compactMap { entry in
-                guard case .candidate(_, let row) = entry else { return nil }
-                return row
-            }
-            .first { $0.candidateKey == key }
-    }
-
-    /// Selected rows that currently accept the absolute Skip command, in the
-    /// queue's authoritative order. Looking at the live projection here makes
-    /// stale selections and rows whose import has started ineligible without
-    /// teaching either action surface lifecycle rules.
-    func skippableCandidateKeys(in selectedKeys: Set<String>) -> [String] {
-        triageQueue.sections
-            .flatMap(\.entries)
-            .compactMap { entry in
-                guard case .candidate(_, let row) = entry,
-                    selectedKeys.contains(row.candidateKey),
-                    row.skipAction == .skip
-                else { return nil }
-                return row.candidateKey
-            }
-    }
-
-    /// The candidate's selected/default cover, or the queue's match thumbnail
-    /// before identification has supplied one.
-    func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
-        candidate(forKey: row.candidateKey)?.selectedCover?.thumbnailContent
-            ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
-    }
-
-    /// The first row the identify count is still waiting on — a candidate with
-    /// no verdict yet, whichever phase it is in. `nil` when the count has
-    /// nothing left to wait on.
-    ///
-    /// This is what the header's line points at: the number moves on its own,
-    /// but while it is short of its total there is a row somewhere behind it,
-    /// and the line is the only place that knows there is.
-    var firstUnidentifiedCandidateKey: String? {
-        triageQueue.sections.lazy
-            .flatMap(\.entries)
-            .compactMap { entry -> BridgeTriageRow? in
-                guard case .candidate(_, let row) = entry else { return nil }
-                return row
-            }
-            .first { row in
-                if case .needsYou(_, .stillIdentifying) = row.placement {
-                    return true
-                }
-                return false
-            }?
-            .candidateKey
-    }
-
-    /// The cover art of every bulk-importable Pending row, in queue order.
-    ///
-    /// Identification already fetched these — a row reaches Ready by settling
-    /// on one match, and that match carries the thumbnail URL — so Pending has
-    /// no reason to open on a grid of spinners. Read unfiltered and
-    /// unsorted: what the tab is about to draw does not depend on what the
-    /// filter box currently says.
-    var readyCoverContents: [ImageContent] {
-        triageQueue.sections
-            .filter { $0.tab == .pending }
-            .flatMap(\.entries)
-            .compactMap { entry in
-                guard
-                    case .candidate(_, let row) = entry,
-                    row.selectable
-                else { return nil }
-                return sidebarCover(for: row)
-            }
-    }
-
-    func selectableReadyRows(
-        filterText: String
-    ) -> [BridgeTriageRow] {
-        releaseSections(
-            tab: .pending,
-            filterText: filterText
-        )
-        .flatMap(\.entries)
-        .compactMap { entry in
-            guard
-                case .candidate(_, let row) = entry.bridge,
-                row.selectable
-            else {
-                return nil
-            }
-            return row
         }
     }
 }

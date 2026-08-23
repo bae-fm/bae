@@ -21,13 +21,6 @@ use super::candidates::{
     CandidateRuntimeSnapshot, ImportCandidateSnapshot, WatchedFolderScanStatus,
 };
 
-/// The latest read of the import tab's durable state, shared by every
-/// consumer of the candidate list. `Err` is the read that failed; the value
-/// before it is gone, because a list that silently stays stale is the wrong
-/// answer to a failed read.
-pub type ImportCandidatesValue =
-    Arc<Result<crate::db::ImportCandidatesProjection, crate::library::LibraryError>>;
-
 #[cfg(test)]
 mod tests;
 
@@ -163,11 +156,6 @@ pub struct ImportServiceHandle {
     /// Unified event channel — all import service events go here.
     event_tx: broadcast::Sender<ImportEvent>,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-    /// The candidate list, as one live query over the folder-scan tables.
-    /// Every reader of "what candidates are there" borrows this; the task
-    /// behind it forwards the query's values and ends with the last receiver.
-    candidates: tokio::sync::watch::Receiver<ImportCandidatesValue>,
-    candidates_task: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
     runtime: CandidateRuntime,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
@@ -273,8 +261,6 @@ impl ImportServiceHandle {
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
-        candidates: tokio::sync::watch::Receiver<ImportCandidatesValue>,
-        candidates_task: tokio::task::AbortHandle,
         runtime: CandidateRuntime,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     ) -> Self {
@@ -286,8 +272,6 @@ impl ImportServiceHandle {
             ids,
             event_tx,
             folder_registry,
-            candidates,
-            candidates_task: Arc::new(Mutex::new(Some(candidates_task))),
             runtime,
             folder_state_commit,
             watcher_tx,
@@ -324,44 +308,6 @@ impl ImportServiceHandle {
         });
     }
 
-    /// Start the candidate list's live query: the first read seeds the
-    /// shared value (a failed first read fails startup), and a task forwards
-    /// every later value until the last receiver is gone.
-    pub(super) async fn start_candidates_query(
-        library_manager: &LibraryManager,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> Result<
-        (
-            tokio::sync::watch::Receiver<ImportCandidatesValue>,
-            tokio::task::AbortHandle,
-        ),
-        crate::import::ImportError,
-    > {
-        let library_error = |error: coven::CovenError| {
-            crate::library::LibraryError::Database(match error {
-                coven::CovenError::Database(error) => *error,
-                other => coven::DbError::Message(other.to_string()),
-            })
-        };
-        let mut query = library_manager.subscribe_import_candidates();
-        let first = query.next().await.map_err(library_error)?;
-        let (tx, rx) = tokio::sync::watch::channel(Arc::new(Ok(first)));
-        let task = runtime_handle.spawn(async move {
-            loop {
-                tokio::select! {
-                    value = query.next() => {
-                        let value = Arc::new(value.map_err(library_error));
-                        if tx.send(value).is_err() {
-                            break;
-                        }
-                    }
-                    _ = tx.closed() => break,
-                }
-            }
-        });
-        Ok((rx, task.abort_handle()))
-    }
-
     pub(crate) fn start_candidate_services(
         &self,
     ) -> (
@@ -388,9 +334,6 @@ impl ImportServiceHandle {
     /// channel closure: `self` holds a live sender, so the channel can't close
     /// before the join.
     pub fn stop_and_join(&self) {
-        if let Some(task) = self.candidates_task.lock().unwrap().take() {
-            task.abort();
-        }
         if let Some(watcher_thread) = self.watcher_thread.lock().unwrap().take() {
             let (completion, receiver) = std::sync::mpsc::channel();
             if self
@@ -443,17 +386,6 @@ impl ImportServiceHandle {
         send_event(&self.event_tx, event);
     }
 
-    /// The latest value of the candidate list's live query.
-    pub fn import_candidates(&self) -> ImportCandidatesValue {
-        self.candidates.borrow().clone()
-    }
-
-    pub fn subscribe_import_candidates(
-        &self,
-    ) -> tokio::sync::watch::Receiver<ImportCandidatesValue> {
-        self.candidates.clone()
-    }
-
     /// Every candidate's runtime right now.
     pub fn candidate_runtimes(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
         self.runtime.all()
@@ -472,63 +404,89 @@ impl ImportServiceHandle {
         (self.runtime.all(), changes)
     }
 
-    /// The first candidate list `accept` admits, waiting through live-query
+    /// The first import list `accept` admits, waiting through the query's
     /// values until one does. The list lands after the commit it reflects, so
     /// a test that just observed a scan event waits here for the read.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn wait_for_candidates(
+    pub async fn wait_for_list(
         &self,
-        mut accept: impl FnMut(&super::ImportCandidatesSnapshot) -> bool,
-    ) -> super::ImportCandidatesSnapshot {
-        let mut candidates = self.candidates.clone();
+        view: crate::import::ImportListView,
+        mut accept: impl FnMut(&crate::import::ImportListProjection) -> bool,
+    ) -> crate::import::ImportListProjection {
+        let (initial_runtime, changes) = self.subscribe_candidate_runtime();
+        let request = crate::import::ImportListRequest {
+            view,
+            windows: std::iter::once(crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: u64::MAX,
+            })
+            .collect(),
+            runtime_facts: crate::import::list::facts_of(&initial_runtime),
+        };
+        let query = self.library_manager.subscribe_import_list(request.clone());
+        let runtime = self.runtime.clone();
+        let subscription = crate::import::ImportListSubscription::start(
+            query,
+            request,
+            changes,
+            move || runtime.all(),
+            &self.runtime_handle,
+        );
         loop {
-            let value = candidates.borrow_and_update().clone();
-            if let Ok(projection) = value.as_ref() {
-                if accept(&projection.snapshot) {
-                    return projection.snapshot.clone();
-                }
-            }
-            candidates
-                .changed()
+            let snapshot = subscription
+                .next()
                 .await
-                .expect("the candidate list query stays open");
+                .expect("the import list query stays open");
+            let projection = crate::import::ImportListProjection {
+                windows: snapshot.windows,
+                total_count: snapshot.total_count,
+                summary: snapshot.summary,
+            };
+            if accept(&projection) {
+                return projection;
+            }
         }
     }
 
-    /// One candidate as the list currently serves it, with its runtime
-    /// joined: the latest live-query value rather than a fresh read, which is
-    /// what lets a pane render from it without touching the disk. A write
-    /// that must see the row as it is at this instant reads the table under
-    /// the commit lock instead.
-    pub fn get_candidate(
+    /// One candidate by key, read from the tables with its runtime joined:
+    /// the scanned folder, whether it was skipped, whether its bytes are
+    /// already in the library. A key with runtime but no scanned folder — a
+    /// library release being re-identified — answers with its runtime alone.
+    pub async fn get_candidate(
         &self,
         key: &str,
     ) -> Result<Option<ImportCandidateSnapshot>, crate::library::LibraryError> {
-        let value = self.import_candidates();
-        let projection = match value.as_ref() {
-            Ok(projection) => projection,
-            Err(error) => {
-                return Err(crate::library::LibraryError::Internal(format!(
-                    "the import candidate list is unavailable: {error}"
-                )))
+        let stored = self.library_manager.load_folder_scan_item(key).await?;
+        let candidate = match stored {
+            Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => {
+                Some((candidate, true))
             }
+            Some(crate::import::folder_scanner::ScanItem::Discovered(candidate)) => {
+                Some((candidate, false))
+            }
+            Some(crate::import::folder_scanner::ScanItem::Invalid(candidate)) => {
+                return Ok(Some(ImportCandidateSnapshot::Invalid(candidate)))
+            }
+            Some(crate::import::folder_scanner::ScanItem::Boundary(_)) | None => None,
         };
-        if let Some(row) = projection.snapshot.folder_candidate(key) {
+        if let Some((candidate, actionable)) = candidate {
+            let skipped = self
+                .folder_registry
+                .lock()
+                .unwrap()
+                .is_skipped(&candidate.watched_folder_path, &candidate.path)
+                .map_err(|error| crate::library::LibraryError::Internal(error.to_string()))?;
+            let is_added = self
+                .library_manager
+                .is_content_hash_imported(&candidate.files.content_hash())
+                .await?;
             return Ok(Some(ImportCandidateSnapshot::Folder {
-                candidate: row.candidate.clone(),
+                candidate,
                 runtime: self.runtime.runtime_for(key),
-                actionable: row.actionable,
-                skipped: row.skipped,
-                is_added: row.is_added,
+                actionable,
+                skipped,
+                is_added,
             }));
-        }
-        if let Some(invalid) = projection
-            .snapshot
-            .invalid_candidates
-            .iter()
-            .find(|candidate| candidate.path.to_string_lossy() == key)
-        {
-            return Ok(Some(ImportCandidateSnapshot::Invalid(invalid.clone())));
         }
         Ok(self
             .runtime
@@ -540,7 +498,7 @@ impl ImportServiceHandle {
     }
 
     /// The stored scan entry for an actionable folder candidate at `key`, read
-    /// from the table right now rather than from the list's latest value —
+    /// read under the commit lock rather than through the list's own query —
     /// for a write whose check has to be exact, under the commit lock.
     pub(super) async fn stored_actionable_candidate(
         &self,
@@ -585,7 +543,7 @@ impl ImportServiceHandle {
     /// invalidate a verdict — a scan, a file re-decision, a skip, an import
     /// claim — is written under the same lock, so a `true` return means the row
     /// describes the candidate as it was at the moment it landed. The check
-    /// reads the stored entry, not the list's latest value: the list is a
+    /// reads the stored entry rather than waiting on the list, which is a
     /// query that lands after the commit it reflects, and this has to see the
     /// commit.
     pub(crate) async fn save_candidate_verdict_if_current(
@@ -610,9 +568,9 @@ impl ImportServiceHandle {
     /// The candidate at `key` as the queue sweep is responsible for it: a
     /// stored, actionable folder that is not skipped, not already in the
     /// library, and not claimed by an import. Read from the tables and the
-    /// runtime right now, not from the list's latest value — the sweep asks
-    /// this straight after the event that changed the answer, and the list's
-    /// query lands after the commit it reflects.
+    /// runtime right now rather than through the list — the sweep asks this
+    /// straight after the event that changed the answer, and the list's query
+    /// lands after the commit it reflects.
     pub(crate) async fn sweepable_candidate(
         &self,
         key: &str,

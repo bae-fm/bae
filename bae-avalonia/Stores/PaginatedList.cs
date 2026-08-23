@@ -401,6 +401,13 @@ internal sealed class PaginatedList<TRow, TId> : INotifyPropertyChanged
         _subscriptionIdentities.Clear();
     }
 
+    /// <summary>Tell the realized rows to render again: what a row shows can
+    /// change without the ordering changing (a selection toggle, a progress
+    /// tick), and a view that rebuilt the whole list for that would lose the
+    /// scroll position with it.</summary>
+    public void NotifyRowsChanged() =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Epoch)));
+
     /// <summary>Seed one segment synchronously for previews and tests.</summary>
     public void PreloadForPreview(IReadOnlyList<TId> ids)
     {

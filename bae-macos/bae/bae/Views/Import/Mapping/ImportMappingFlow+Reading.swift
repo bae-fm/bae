@@ -40,7 +40,7 @@ extension ImportMappingFlow {
             )
             .value
         case (.release, .none):
-            readCandidateMapping(key: key, services: services)
+            await readCandidateMapping(key: key, services: services)
             return
         }
     }
@@ -51,9 +51,9 @@ extension ImportMappingFlow {
     static func readCandidateMapping(
         key: String,
         services: ImportMappingServices
-    ) {
+    ) async {
         do {
-            let mapping = try services.importer.candidateMapping(key)
+            let mapping = try await services.importer.candidateMapping(key)
             services.importStore.mutateCandidate(forKey: key) {
                 $0.mapping = mapping
             }

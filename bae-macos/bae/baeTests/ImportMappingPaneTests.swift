@@ -115,7 +115,7 @@ struct ImportMappingPaneTests {
         "restored and arriving conflicts appear inline until identity settles"
     )
     func conflictsAppearInlineUntilIdentitySettles() async throws {
-        let store = PreviewData.importTabStore()
+        let store = PreviewData.importTabScene().store
         let key = PreviewData.importTabConflictCandidate.key
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
@@ -361,7 +361,7 @@ struct ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         let candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.identityChoice == nil)
         #expect(candidate.mapping != nil)
@@ -379,7 +379,7 @@ struct ImportMappingPaneTests {
             mapping: MappingFixtures.thirteenFileTable
         )
         let candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.claim?.level == .exact)
 
@@ -394,7 +394,7 @@ struct ImportMappingPaneTests {
         editor.wrappedValue = edited
 
         let after = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(after.claim?.level == .approximate)
         #expect(
@@ -409,7 +409,7 @@ struct ImportMappingPaneTests {
         titled.albumTitle = "Album Title Two"
         editor.wrappedValue = titled
         #expect(
-            store.folderCandidates[MappingFixtures.candidateKey]?.claim?.level
+            store.selectedCandidates[MappingFixtures.candidateKey]?.claim?.level
                 == .approximate
         )
     }
@@ -519,7 +519,7 @@ struct ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         var candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.identity == .unknown)
         #expect(candidate.identityChoice == .unknown)
@@ -544,7 +544,7 @@ struct ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.identity == .release)
         #expect(candidate.mapping?.rows.count == 13)
@@ -575,7 +575,7 @@ struct ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         let candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.claim?.level == .approximate)
         #expect(
@@ -623,7 +623,7 @@ struct ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         var candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         let held = try #require(candidate.pick)
         #expect(held.claim == .approximate)
@@ -642,7 +642,7 @@ struct ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         candidate = try #require(
-            store.folderCandidates[MappingFixtures.candidateKey]
+            store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.claim?.level == .approximate)
     }

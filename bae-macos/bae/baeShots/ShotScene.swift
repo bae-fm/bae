@@ -31,7 +31,7 @@ struct ShotScene {
         ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
-                    store: PreviewData.releaseQueueImportStore,
+                    scene: PreviewData.releaseQueueScene(),
                     tab: .pending,
                     collapsePendingGroup: false,
                     refreshingWatchedFolderPath: nil
@@ -44,7 +44,7 @@ struct ShotScene {
         ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
-                    store: PreviewData.releaseQueueImportStore,
+                    scene: PreviewData.releaseQueueScene(),
                     tab: .pending,
                     collapsePendingGroup: false,
                     refreshingWatchedFolderPath: nil
@@ -57,7 +57,7 @@ struct ShotScene {
         ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
-                    store: PreviewData.releaseQueueImportStore,
+                    scene: PreviewData.releaseQueueScene(),
                     tab: .pending,
                     collapsePendingGroup: true,
                     refreshingWatchedFolderPath: nil
@@ -70,7 +70,7 @@ struct ShotScene {
         ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
-                    store: PreviewData.releaseQueueScanningImportStore(),
+                    scene: PreviewData.releaseQueueScanningScene(),
                     tab: .pending,
                     collapsePendingGroup: false,
                     refreshingWatchedFolderPath:
@@ -84,7 +84,7 @@ struct ShotScene {
         ) {
             AnyView(
                 PreviewScenes.importReleaseQueue(
-                    store: PreviewData.releaseQueueResolvedImportStore,
+                    scene: PreviewData.releaseQueueResolvedScene(),
                     tab: .pending,
                     collapsePendingGroup: false,
                     refreshingWatchedFolderPath: nil

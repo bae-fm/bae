@@ -12,14 +12,22 @@ struct ImportCandidateCheckboxTests {
     func uncheckedCandidateCanBeChecked() async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
-        uiStore.setImportCandidateFilterText(
-            PreviewData.triageRowReady.folderName
+        // One Ready row, so the first checkbox in the rendered list is the one
+        // this test clicks. Which rows a tab holds is core's answer now, so a
+        // narrower list is stated as a narrower fixture rather than as a
+        // filter the view applies.
+        let store = PreviewData.importTabScene().store
+        let slot = ImportListSlot.preview(
+            importStore: store,
+            uiStore: uiStore,
+            items: [PreviewData.candidateItem(PreviewData.triageRowReady)]
         )
         let listSelection = CandidateListSelection()
         let size = NSSize(width: 400, height: 320)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportCandidateListContent(
-                importStore: PreviewData.importTabStore(),
+                importStore: store,
+                listSlot: slot,
                 selectedKeys: listSelection.binding,
                 onAddFolder: {},
                 onRemoveFolder: { _ in },

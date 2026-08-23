@@ -49,11 +49,14 @@ mod folder_scans;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_content_hash;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import_projection;
+mod import_list;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use import_projection::{ImportCandidatesProjection, ImportTriageDbProjection};
+pub use import_list::{
+    CandidateStateListRow, ImportQueueRows, ScanBoundaryListRow, ScanCandidateKind,
+    ScanCandidateListRow,
+};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod payloads;
 mod playback;

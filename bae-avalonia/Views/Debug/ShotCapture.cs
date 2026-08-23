@@ -60,45 +60,45 @@ internal static class ShotCapture
             900,
             700,
             () => BuildImportQueue(
-                PreviewData.ImportQueue,
+                PreviewData.ImportItems,
+                PreviewData.ImportSummary,
                 BridgeTriageTab.Pending,
-                collapseGroup: false,
                 refreshingRoot: null)),
         new Scene(
             "import-release-ambiguity-narrow",
             520,
             700,
             () => BuildImportQueue(
-                PreviewData.ImportQueue,
+                PreviewData.ImportItems,
+                PreviewData.ImportSummary,
                 BridgeTriageTab.Pending,
-                collapseGroup: false,
                 refreshingRoot: null)),
         new Scene(
             "import-release-queue-collapsed",
             900,
             700,
             () => BuildImportQueue(
-                PreviewData.ImportQueue,
+                PreviewData.ImportCollapsedItems,
+                PreviewData.ImportSummary,
                 BridgeTriageTab.Pending,
-                collapseGroup: true,
                 refreshingRoot: null)),
         new Scene(
             "import-release-scanning-refresh",
             900,
             700,
             () => BuildImportQueue(
-                PreviewData.ImportScanningQueue,
+                PreviewData.ImportItems,
+                PreviewData.ImportScanningSummary,
                 BridgeTriageTab.Pending,
-                collapseGroup: false,
                 refreshingRoot: PreviewData.ImportRoot)),
         new Scene(
             "import-release-resolved-reversal",
             900,
             700,
             () => BuildImportQueue(
-                PreviewData.ImportResolvedQueue,
+                PreviewData.ImportResolvedItems,
+                PreviewData.ImportResolvedSummary,
                 BridgeTriageTab.Pending,
-                collapseGroup: false,
                 refreshingRoot: null)),
     };
 
@@ -281,9 +281,9 @@ internal static class ShotCapture
     }
 
     private static Control BuildImportQueue(
-        BridgeTriageQueue queue,
+        List<BridgeImportListItem> items,
+        BridgeImportQueueSummary summary,
         BridgeTriageTab tab,
-        bool collapseGroup,
         string? refreshingRoot)
     {
         var session = new SessionStore(Dispatcher.UIThread);
@@ -293,21 +293,11 @@ internal static class ShotCapture
         var view = new ImportSectionView(
             app,
             new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask));
-        if (collapseGroup)
-        {
-            app.ImportStore.Interaction.SetGroupExpanded(
-                ImportStore.GroupDisclosureKey(
-                    PreviewData.ImportGroupKey),
-                false);
-        }
         if (refreshingRoot is not null)
         {
             app.ImportStore.Interaction.SetRefreshing(refreshingRoot, true);
         }
-        app.ImportStore.SeedPreview(
-            queue,
-            PreviewData.ImportWatchedFolders,
-            tab);
+        app.ImportStore.SeedPreview(items, summary, tab);
         return view;
     }
 

@@ -10,18 +10,36 @@ struct ImportCommitRequest: Sendable {
     let userEdit: BridgeReleaseUserEdit?
 
     init(
+        candidateKey: String,
+        selectedCover: BridgeCoverSelection?,
+        storageMode: BridgeStorageMode,
+        pin: Bool,
+        identityChoice: BridgeIdentityChoice,
+        userEdit: BridgeReleaseUserEdit?
+    ) {
+        self.candidateKey = candidateKey
+        self.selectedCover = selectedCover
+        self.storageMode = storageMode
+        self.pin = pin
+        self.identityChoice = identityChoice
+        self.userEdit = userEdit
+    }
+
+    init(
         candidate: Candidate,
         storageMode: BridgeStorageMode,
         pin: Bool,
         identityChoice: BridgeIdentityChoice,
         userEdit: BridgeReleaseUserEdit?
     ) {
-        candidateKey = candidate.key
-        selectedCover = candidate.selectedCover?.selection
-        self.storageMode = storageMode
-        self.pin = pin
-        self.identityChoice = identityChoice
-        self.userEdit = userEdit
+        self.init(
+            candidateKey: candidate.key,
+            selectedCover: candidate.selectedCover?.selection,
+            storageMode: storageMode,
+            pin: pin,
+            identityChoice: identityChoice,
+            userEdit: userEdit
+        )
     }
 }
 
@@ -83,7 +101,7 @@ private struct ImportOperations: Sendable {
     let toggleSignalForCandidate:
         @Sendable (String, BridgeExcludedSignal) -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
-    let candidateMapping: @Sendable (String) throws -> BridgeMappingTable
+    let candidateMapping: @Sendable (String) async throws -> BridgeMappingTable
     let claimForPick:
         @Sendable (String, BridgeMetadataResult, BridgeClaimLevel)
             -> BridgeClaimLine?
@@ -174,7 +192,7 @@ private struct ImportOperations: Sendable {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
             },
             candidateMapping: {
-                try handle.candidateMapping(candidateKey: $0)
+                try await handle.candidateMapping(candidateKey: $0)
             },
             claimForPick: {
                 handle.claimForPick(candidateKey: $0, result: $1, level: $2)
@@ -262,7 +280,8 @@ final class Importer: Sendable, Observable {
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
         candidateMapping:
-            @escaping @Sendable (String) throws -> BridgeMappingTable = { _ in
+            @escaping @Sendable (String) async throws -> BridgeMappingTable = {
+                _ in
                 throw StubError.notImplemented
             },
         claimForPick:
@@ -419,8 +438,10 @@ final class Importer: Sendable, Observable {
         operations.rerunIdentifyForCandidate(candidateKey)
     }
 
-    func candidateMapping(_ candidateKey: String) throws -> BridgeMappingTable {
-        try operations.candidateMapping(candidateKey)
+    func candidateMapping(_ candidateKey: String) async throws
+        -> BridgeMappingTable
+    {
+        try await operations.candidateMapping(candidateKey)
     }
 
     func claimForPick(

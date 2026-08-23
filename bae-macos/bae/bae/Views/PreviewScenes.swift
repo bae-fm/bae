@@ -94,7 +94,7 @@
         }
 
         static func importReleaseQueue(
-            store: ImportStore,
+            scene: ImportPreviewFixture,
             tab: BridgeTriageTab,
             collapsePendingGroup: Bool,
             refreshingWatchedFolderPath: String?
@@ -108,17 +108,16 @@
                 )
             }
             if collapsePendingGroup,
-                let group = store.triageQueue.sections
-                    .first(where: { $0.tab == .pending })?
-                    .group
+                let group = scene.store.summary.groupKeys.first
             {
                 uiStore.setReleaseGroupExpanded(
-                    releaseGroupDisclosureID(group.key),
+                    releaseGroupDisclosureID(group),
                     false
                 )
             }
             return ImportCandidateListContent(
-                importStore: store,
+                importStore: scene.store,
+                listSlot: scene.slot(uiStore: uiStore),
                 selectedKeys: .constant([]),
                 onAddFolder: {},
                 onRemoveFolder: { _ in },
@@ -136,7 +135,7 @@
 
     #Preview("Import Release Queue") {
         PreviewScenes.importReleaseQueue(
-            store: PreviewData.releaseQueueImportStore,
+            scene: PreviewData.releaseQueueScene(),
             tab: .pending,
             collapsePendingGroup: false,
             refreshingWatchedFolderPath: nil
@@ -145,7 +144,7 @@
 
     #Preview("Import Release Queue Scanning") {
         PreviewScenes.importReleaseQueue(
-            store: PreviewData.releaseQueueScanningImportStore(),
+            scene: PreviewData.releaseQueueScanningScene(),
             tab: .pending,
             collapsePendingGroup: false,
             refreshingWatchedFolderPath:
@@ -155,7 +154,7 @@
 
     #Preview("Import Release Queue Resolved") {
         PreviewScenes.importReleaseQueue(
-            store: PreviewData.releaseQueueResolvedImportStore,
+            scene: PreviewData.releaseQueueResolvedScene(),
             tab: .pending,
             collapsePendingGroup: false,
             refreshingWatchedFolderPath: nil

@@ -133,7 +133,7 @@ internal sealed class ImportMappingPane : UserControl
         _key = row.CandidateKey;
         _candidate = _import.Candidate(row.CandidateKey);
         ResetEdit();
-        ReadCandidateMapping();
+        await ReadCandidateMapping();
         Render();
 
         if (PickedResume.From(row, SeedState) is not null)
@@ -172,8 +172,7 @@ internal sealed class ImportMappingPane : UserControl
         {
             return;
         }
-        if (PickedResume.From(TriageListModel.Row(_import.TriageQueue, key), SeedState)
-            is not null)
+        if (PickedResume.From(_import.Row(key), SeedState) is not null)
         {
             _ = RefreshDecidedIdentity();
             return;
@@ -258,13 +257,13 @@ internal sealed class ImportMappingPane : UserControl
 
     // The table for a folder nobody has picked a release for: every source unit
     // it offers, with what each becomes left open.
-    private void ReadCandidateMapping()
+    private async Task ReadCandidateMapping()
     {
         if (_key is not { } key)
         {
             return;
         }
-        if (_import.CandidateMapping(key) is { } mapping)
+        if (await _import.CandidateMapping(key) is { } mapping)
         {
             _mapping = mapping;
         }
@@ -399,15 +398,15 @@ internal sealed class ImportMappingPane : UserControl
     // binding, a disc assignment or a role change re-shapes the tracklist, so
     // what comes back is for a different set of rows than the one the user was
     // editing — which is exactly why it replaces them.
-    private Task Reprefetch()
+    private async Task Reprefetch()
     {
         if (_identity == ImportIdentity.Unknown || _releaseId is not null)
         {
-            return RefreshDecidedIdentity();
+            await RefreshDecidedIdentity();
+            return;
         }
-        ReadCandidateMapping();
+        await ReadCandidateMapping();
         Render();
-        return Task.CompletedTask;
     }
 
     /// <summary>Switch what the folder is read as. Unknown reads its own file

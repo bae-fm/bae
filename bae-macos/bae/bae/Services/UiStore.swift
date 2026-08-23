@@ -133,6 +133,12 @@ class UiStore: @unchecked Sendable {
     var selectedReadyCandidates: Set<String> = []
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
         [:]
+
+    /// Notified after the import candidate selection changes, so the app can
+    /// open and drop the per-candidate reads behind it. Installed once by the
+    /// app's subscription wiring.
+    @ObservationIgnored
+    var onFolderCandidateSelectionChanged: ((Set<String>) -> Void)?
     private(set) var refreshingWatchedFolders: Set<String> = []
 
     // ── Overlays ────────────────────────────────────────────────────────
@@ -275,15 +281,13 @@ class UiStore: @unchecked Sendable {
     // MARK: - Import candidate selection methods
 
     func setFolderCandidateSelection(_ keys: Set<String>) {
+        guard keys != selectedFolderCandidates else { return }
         selectedFolderCandidates = keys
-    }
-
-    func retainFolderCandidateSelection(in candidateKeys: Set<String>) {
-        selectedFolderCandidates.formIntersection(candidateKeys)
+        onFolderCandidateSelectionChanged?(keys)
     }
 
     func removeFolderCandidateSelection(_ keys: Set<String>) {
-        selectedFolderCandidates.subtract(keys)
+        setFolderCandidateSelection(selectedFolderCandidates.subtracting(keys))
     }
 
     func setImportCandidateTab(_ tab: BridgeTriageTab) {
@@ -316,8 +320,17 @@ class UiStore: @unchecked Sendable {
         selectedReadyCandidates.removeAll()
     }
 
-    func releaseGroupExpanded(_ id: ReleaseGroupDisclosureID) -> Bool {
-        releaseGroupDisclosureState[id] ?? true
+    /// The groups folded shut, as the list request names them. A group with no
+    /// recorded state is open, so only the recorded `false` entries are here.
+    var collapsedReleaseGroupKeys: [BridgeFolderReleaseDecisionKey] {
+        releaseGroupDisclosureState
+            .filter { !$0.value }
+            .keys
+            .map(\.key)
+            .sorted {
+                ($0.watchedFolderPath, $0.relativeFolderPath)
+                    < ($1.watchedFolderPath, $1.relativeFolderPath)
+            }
     }
 
     func setReleaseGroupExpanded(

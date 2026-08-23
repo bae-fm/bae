@@ -1,18 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// Session state for the import flow: the sidebar's core-projected triage queue,
-// its watched folders, the sweep's identify progress, and the preview-position
-// label. TriageQueue/WatchedFolders are core-driven value streams and
-// QueueIdentifyProgress is driven by progress events; ActiveTab/FilterText/
-// SortOrder/SelectedReady are view state the sidebar itself sets. Unlike
-// macOS's per-field bindings, this store fires one coarse Changed event and the
-// sidebar rebuilds its content wholesale — the established pattern for this
-// app's imperative views (see QueuePane).
+// Session state for the import flow: the sidebar's paged list of core-placed
+// items, the chrome around it, the sweep's identify progress, and the
+// preview-position label. The list and its summary are core-driven and arrive
+// one window at a time; QueueIdentifyProgress is driven by progress events;
+// ActiveTab/FilterText/SortOrder/SelectedReady are view state the sidebar sets,
+// and each of the first three travels to core in the list's view request
+// because it changes which item sits at which offset. Unlike macOS's per-field
+// bindings, this store fires one coarse Changed event and the sidebar rebuilds
+// its chrome wholesale — the established pattern for this app's imperative
+// views (see QueuePane).
 internal sealed class ImportStore : IDisposable
 {
     private readonly ImportService _import;
@@ -22,31 +25,36 @@ internal sealed class ImportStore : IDisposable
     private IDisposable? _releaseLibraryStatusSubscription;
     private long _releaseLibraryStatusGeneration;
 
-    // The sidebar's pre-shaped sections and tab counts — core's
-    // triage projection, delivered whole whenever its inputs change. Defaults to an empty
-    // queue rather than null: "not loaded yet" and "the queue is genuinely
-    // empty" render identically (the tab's empty state), so no surface needs to
-    // tell them apart.
-    public BridgeTriageQueue TriageQueue { get; private set; } = new(
-        Sections: Array.Empty<BridgeTriageSection>(),
-        Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
-        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
+    // Everything the chrome around the list shows — the tab counts, the Ready
+    // set, the group keys, the row the identify count is waiting on — computed
+    // by core in the same pass as the items, so none of it can disagree with
+    // them. Defaults to an empty summary rather than null: "not loaded yet" and
+    // "the queue is genuinely empty" render identically (the tab's empty
+    // state), so no surface needs to tell them apart.
+    public BridgeImportQueueSummary Summary { get; private set; } = EmptySummary;
 
     // The folders being watched for imports, in add order — the sidebar's "+"
     // menu.
     public List<BridgeWatchedFolder> WatchedFolders { get; private set; } = new();
 
-    // The list as its query last read it, by key, and every key's runtime as
-    // the runtime stream last reported it. A candidate is the join of the two,
-    // projected when asked for; a runtime change re-projects one key, a list
-    // value re-projects the keys it holds.
-    private Dictionary<string, BridgeFolderImportCandidateSnapshot> _rows = new();
-    private Dictionary<string, BridgeCandidateRuntimeSnapshot> _runtime = new();
-    private Dictionary<string, ImportCandidate> _candidates = new();
-    private Dictionary<string, (
+    // The items of every window the list has loaded, by their stable key: what
+    // a realized row resolves its position through.
+    private readonly Dictionary<string, BridgeImportListItem> _items = new();
+
+    // Every key's runtime as the runtime stream last reported it, the candidate
+    // the pane is holding as its own query last read it, and the pipelines of
+    // the re-identify keys, which name releases rather than scanned folders.
+    private readonly Dictionary<string, BridgeCandidateRuntimeSnapshot> _runtime = new();
+    private readonly Dictionary<string, BridgeImportCandidateDetail> _details = new();
+    private readonly Dictionary<string, ImportCandidate> _candidates = new();
+    private readonly Dictionary<string, (
         ImportCandidateRowStatus RowStatus,
         List<ReleaseCandidateChoice> Matches,
         List<SignalBadge> Signals)> _runtimeCandidates = new();
+
+    private ImportListPageSource _source;
+    private IDisposable? _observedCandidate;
+    private string? _observedKey;
 
     // The queue sweep's identified-count over total, for the header's progress
     // line and bar. Null before the first tick of a session — the header hides
@@ -68,9 +76,29 @@ internal sealed class ImportStore : IDisposable
     public HashSet<string> SelectedReady { get; } = new();
     public ReleaseQueueInteractionModel Interaction { get; } = new();
 
-    // Fired whenever anything the sidebar renders changes: the triage queue,
-    // watched folders, progress, active tab, filter text, sort order, or
-    // selection. The sidebar rebuilds its content on every tick.
+    // The paged list itself: ordered stable keys, with the items interned in
+    // `_items` by the ingest below. Swapped for a fresh instance only when the
+    // library is reset — a tab, filter, order or disclosure change travels in
+    // the view request instead, and the same list re-ingests at the same
+    // offsets.
+    public PaginatedList<BridgeImportListItem, string> List { get; private set; }
+
+    // What the list is currently showing. Every field of it changes which item
+    // sits at which offset, so it crosses as one value.
+    public BridgeImportListView View { get; private set; }
+
+    /// <summary>Raised when the list is swapped for a fresh instance, so the
+    /// sidebar rebinds to the new one.</summary>
+    public event Action? ListSwapped;
+
+    /// <summary>Raised when the candidate the pane is holding stops being a
+    /// scanned folder, so the pane lets go of it.</summary>
+    public event Action? ObservedCandidateGone;
+
+    // Fired whenever anything the sidebar renders changes: a list value, the
+    // watched folders, progress, the active tab, the filter text, the sort
+    // order, or the selection. The sidebar rebuilds its chrome on every tick
+    // and tells the realized rows to render again.
     public event Action? Changed;
 
     // The live preview-position label ("0:23 / 3:45"), driven by preview events
@@ -103,6 +131,87 @@ internal sealed class ImportStore : IDisposable
         _mediaControls = mediaControls;
         _dispatch = dispatch;
         SortOrder = ImportSortStore.Load();
+        View = BuildView();
+        _source = ImportListPageSource.Closed();
+        List = BuildList(_source);
+    }
+
+    private static BridgeImportQueueSummary EmptySummary => new(
+        Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
+        WatchedFolders: Array.Empty<BridgeWatchedFolder>(),
+        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
+        Ready: Array.Empty<BridgeReadyRowRef>(),
+        FirstUnidentifiedKey: null);
+
+    private BridgeImportListView BuildView() => new(
+        Tab: ActiveTab,
+        FilterText: FilterText,
+        CollapsedGroups: Interaction.CollapsedKeys()
+            .Select(key => new BridgeFolderReleaseDecisionKey(key.WatchedRoot, key.RelativePath))
+            .ToArray(),
+        Order: TriageListModel.ListOrder(SortOrder));
+
+    private ImportListPageSource BuildSource() => new(
+        View,
+        _import.SubscribeImportList,
+        action => _dispatch(action),
+        ApplyListSnapshot);
+
+    private PaginatedList<BridgeImportListItem, string> BuildList(ImportListPageSource source) =>
+        new(source, StableKey, Ingest, error => Show(error));
+
+    private void Show(Exception error)
+    {
+        if (error is OperationCanceledException)
+        {
+            return;
+        }
+        _showError(
+            Loc.Chrome("import.error_title"),
+            error is PageLoadException { Line: { } line } ? line : Loc.Chrome("import.failed"));
+    }
+
+    internal static string StableKey(BridgeImportListItem item) => item switch
+    {
+        BridgeImportListItem.GroupHeader header => header.StableKey,
+        BridgeImportListItem.Candidate candidate => candidate.StableKey,
+        BridgeImportListItem.Boundary boundary => boundary.StableKey,
+        BridgeImportListItem.Invalid invalid => invalid.StableKey,
+        _ => throw new ArgumentOutOfRangeException(nameof(item), item, "Unknown list item"),
+    };
+
+    private void Ingest(IReadOnlyList<BridgeImportListItem> items)
+    {
+        foreach (var item in items)
+        {
+            _items[StableKey(item)] = item;
+        }
+    }
+
+    /// <summary>The item at a stable key, from whichever window loaded it.</summary>
+    public BridgeImportListItem? Item(string stableKey) => _items.GetValueOrDefault(stableKey);
+
+    /// <summary>Open the list over the library that is now current, and start
+    /// its first read. Called once the handle exists, which is what the cold
+    /// read runs against.</summary>
+    public void StartList()
+    {
+        List.Cancel();
+        _source.Dispose();
+        _items.Clear();
+        View = BuildView();
+        _source = BuildSource();
+        List = BuildList(_source);
+        ListSwapped?.Invoke();
+        _ = List.LoadInitialAsync();
+    }
+
+    private void ApplyView()
+    {
+        View = BuildView();
+        _source.SetView(View);
+        Changed?.Invoke();
     }
 
     public void ObserveReleaseLibraryStatus(
@@ -148,30 +257,50 @@ internal sealed class ImportStore : IDisposable
     }
 
 #if DEBUG
+    /// <summary>Seed one window of items and their summary without a bridge,
+    /// for the shot-capture scenes and the view tests.</summary>
     internal void SeedPreview(
-        BridgeTriageQueue queue,
-        List<BridgeWatchedFolder> watchedFolders,
+        IReadOnlyList<BridgeImportListItem> items,
+        BridgeImportQueueSummary summary,
         BridgeTriageTab activeTab,
         IEnumerable<ImportCandidate>? candidates = null)
     {
-        TriageQueue = queue;
-        WatchedFolders = watchedFolders;
         ActiveTab = activeTab;
+        View = BuildView();
+        Summary = summary;
+        WatchedFolders = summary.WatchedFolders.ToList();
+        Ingest(items);
+        List.PreloadForPreview(items.Select(StableKey).ToList());
         if (candidates is not null)
         {
-            _candidates = candidates.ToDictionary(candidate => candidate.Key);
+            foreach (var candidate in candidates)
+            {
+                _candidates[candidate.Key] = candidate;
+            }
         }
+        ListSwapped?.Invoke();
         Changed?.Invoke();
     }
 #endif
 
-    public void ApplyCandidates(BridgeImportCandidatesSnapshot snapshot)
+    /// <summary>One read of the list: its chrome, and the watched folders the
+    /// list is built from. The items themselves reach the store through the
+    /// page source's ingest.</summary>
+    private void ApplyListSnapshot(BridgeImportListSnapshot snapshot)
     {
-        WatchedFolders = snapshot.WatchedFolders.ToList();
-        _rows = snapshot.FolderCandidates.ToDictionary(row => row.Candidate.FolderPath);
-        _candidates = _rows.ToDictionary(
-            entry => entry.Key,
-            entry => _import.ProjectFolderCandidate(entry.Value, _runtime.GetValueOrDefault(entry.Key)));
+        Summary = snapshot.Summary;
+        WatchedFolders = snapshot.Summary.WatchedFolders.ToList();
+        Interaction.RetainGroupDisclosureKeys(
+            Summary.GroupKeys.Select(GroupDisclosureKey));
+
+        // Selection can outlive the rows that earned it (a row imported by a
+        // faster sibling call, or reclassified out of Ready) — drop keys no
+        // longer in Ready rather than let a bulk import act on a stale one.
+        var currentReady = Summary.Ready
+            .Select(row => row.CandidateKey)
+            .ToHashSet();
+        SelectedReady.RemoveWhere(key => !currentReady.Contains(key));
+
         Changed?.Invoke();
     }
 
@@ -184,9 +313,9 @@ internal sealed class ImportStore : IDisposable
         {
             case BridgeCandidateRuntimeChange.Updated updated:
                 _runtime[updated.Key] = updated.Runtime;
-                if (_rows.TryGetValue(updated.Key, out var row))
+                if (_details.TryGetValue(updated.Key, out var detail))
                 {
-                    _candidates[updated.Key] = _import.ProjectFolderCandidate(row, updated.Runtime);
+                    _candidates[updated.Key] = _import.ProjectFolderCandidate(detail, updated.Runtime);
                 }
                 else if (updated.Key.StartsWith("reidentify:", StringComparison.Ordinal))
                 {
@@ -196,7 +325,7 @@ internal sealed class ImportStore : IDisposable
             case BridgeCandidateRuntimeChange.Removed removed:
                 _runtime.Remove(removed.Key);
                 _runtimeCandidates.Remove(removed.Key);
-                if (_rows.TryGetValue(removed.Key, out var kept))
+                if (_details.TryGetValue(removed.Key, out var kept))
                 {
                     _candidates[removed.Key] = _import.ProjectFolderCandidate(kept, null);
                 }
@@ -207,31 +336,108 @@ internal sealed class ImportStore : IDisposable
         Changed?.Invoke();
     }
 
-    public void ApplyTriage(BridgeTriageQueue queue)
+    /// <summary>Put one candidate under its own query: the pane reads its
+    /// folder, its files and its resumed identify state from there, and a value
+    /// of null says the key names no scanned folder any more.</summary>
+    public void ObserveCandidate(string key)
     {
-        TriageQueue = queue;
-        Interaction.RetainGroupDisclosureKeys(
-            queue.Sections
-                .Select(section => section.Group)
-                .OfType<BridgeTriageGroup>()
-                .Select(group => GroupDisclosureKey(group.Key)));
+        if (_observedKey == key)
+        {
+            return;
+        }
+        ClearObservedCandidate();
+        _observedKey = key;
+        _observedCandidate = _import.SubscribeImportCandidate(
+            key,
+            detail => _dispatch(() => ApplyCandidateDetail(key, detail)),
+            error => _dispatch(() => Show(error)));
+    }
 
-        // Selection can outlive the rows that earned it (a row imported by a
-        // faster sibling call, or reclassified out of Ready) — drop keys no
-        // longer in Ready rather than let a bulk import act on a stale one.
-        var currentReady = TriageListModel
-            .SelectableReadyRows(TriageQueue, string.Empty, CandidateSortOrder.NameAZ)
-            .Select(row => row.CandidateKey)
-            .ToHashSet();
-        SelectedReady.RemoveWhere(key => !currentReady.Contains(key));
+    public void ClearObservedCandidate()
+    {
+        _observedCandidate?.Dispose();
+        _observedCandidate = null;
+        if (_observedKey is { } key)
+        {
+            _details.Remove(key);
+            _candidates.Remove(key);
+        }
+        _observedKey = null;
+    }
 
+    private void ApplyCandidateDetail(string key, BridgeImportCandidateDetail? detail)
+    {
+        if (_observedKey != key)
+        {
+            return;
+        }
+        if (detail is null)
+        {
+            _details.Remove(key);
+            _candidates.Remove(key);
+            ObservedCandidateGone?.Invoke();
+            Changed?.Invoke();
+            return;
+        }
+        _details[key] = detail;
+        _candidates[key] = _import.ProjectFolderCandidate(detail, _runtime.GetValueOrDefault(key));
         Changed?.Invoke();
     }
 
-    // Show a different tab (absolute set — the caller passes the tab its button
-    // represents).
+    /// <summary>The candidate at a key, when its own query is open for it.</summary>
     public ImportCandidate? Candidate(string key) =>
         _candidates.GetValueOrDefault(key);
+
+    /// <summary>The row at a candidate key: the pane's own read where one is
+    /// open, and the loaded window's item otherwise.</summary>
+    public BridgeTriageRow? Row(string key)
+    {
+        if (_details.TryGetValue(key, out var detail))
+        {
+            return detail.Row;
+        }
+        return _items.Values
+            .OfType<BridgeImportListItem.Candidate>()
+            .FirstOrDefault(item => item.Row.CandidateKey == key)?.Row;
+    }
+
+    /// <summary>What a row's runtime is doing, projected: the row says that an
+    /// import is running, this says how far. Null for a key nothing has run
+    /// on.</summary>
+    public ImportCandidateRowStatus? RowStatus(string key) =>
+        _runtime.GetValueOrDefault(key) is { } runtime
+            ? _import.ProjectRuntimeCandidate(runtime).RowStatus
+            : null;
+
+    /// <summary>One candidate read once from its own query, for a bulk import
+    /// acting on rows nobody has opened. The query is closed as soon as it has
+    /// answered.</summary>
+    public Task<ImportCandidate?> ReadCandidate(string key)
+    {
+        var completion = new TaskCompletionSource<ImportCandidate?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        IDisposable? subscription = null;
+        subscription = _import.SubscribeImportCandidate(
+            key,
+            detail => _dispatch(() =>
+            {
+                completion.TrySetResult(
+                    detail is null
+                        ? null
+                        : _import.ProjectFolderCandidate(detail, _runtime.GetValueOrDefault(key)));
+                subscription?.Dispose();
+            }),
+            _ => _dispatch(() =>
+            {
+                completion.TrySetResult(null);
+                subscription?.Dispose();
+            }));
+        if (subscription is null)
+        {
+            completion.TrySetResult(null);
+        }
+        return completion.Task;
+    }
 
     public (
         ImportCandidateRowStatus RowStatus,
@@ -239,16 +445,19 @@ internal sealed class ImportStore : IDisposable
         List<SignalBadge> Signals)? ReidentifyPipeline(string key) =>
         _runtimeCandidates.GetValueOrDefault(key);
 
+    // Show a different tab (absolute set — the caller passes the tab its button
+    // represents). Which rows the tab holds is core's answer, so the tab
+    // travels in the list's view request.
     public void SetActiveTab(BridgeTriageTab tab)
     {
         ActiveTab = tab;
-        Changed?.Invoke();
+        ApplyView();
     }
 
     public void SetFilterText(string text)
     {
         FilterText = text;
-        Changed?.Invoke();
+        ApplyView();
     }
 
     // Change and persist the candidate-list sort order (absolute set — the
@@ -257,7 +466,15 @@ internal sealed class ImportStore : IDisposable
     {
         SortOrder = order;
         ImportSortStore.Save(order);
-        Changed?.Invoke();
+        ApplyView();
+    }
+
+    // Fold a group open or shut. A folded group's rows are not in the list at
+    // all, so this travels in the view request too.
+    public void SetGroupExpanded(BridgeFolderReleaseDecisionKey key, bool expanded)
+    {
+        Interaction.SetGroupExpanded(GroupDisclosureKey(key), expanded);
+        ApplyView();
     }
 
     public void ToggleReadySelection(string key)
@@ -402,9 +619,9 @@ internal sealed class ImportStore : IDisposable
     // The mapping table for a folder nobody has picked a release for. Null when
     // the session moved on, and null with the reason on the import banner when
     // the read failed.
-    public BridgeMappingTable? CandidateMapping(string key)
+    public async Task<BridgeMappingTable?> CandidateMapping(string key)
     {
-        var (current, result) = _import.CandidateMapping(key);
+        var (current, result) = await _import.CandidateMapping(key);
         if (!current)
         {
             return null;
@@ -524,17 +741,24 @@ internal sealed class ImportStore : IDisposable
     public void Reset()
     {
         ClearReleaseLibraryStatus();
-        TriageQueue = new BridgeTriageQueue(
-            Sections: Array.Empty<BridgeTriageSection>(),
-            Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
-            FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
+        ClearObservedCandidate();
+        Summary = EmptySummary;
         WatchedFolders = new List<BridgeWatchedFolder>();
         QueueIdentifyProgress = null;
         ActiveTab = BridgeTriageTab.Pending;
         FilterText = string.Empty;
         SelectedReady.Clear();
+        _runtime.Clear();
+        _runtimeCandidates.Clear();
         Interaction.RetainGroupDisclosureKeys(
             Array.Empty<ReleaseGroupDisclosureKey>());
+        List.Cancel();
+        _source.Dispose();
+        _items.Clear();
+        View = BuildView();
+        _source = BuildSource();
+        List = BuildList(_source);
+        ListSwapped?.Invoke();
         Changed?.Invoke();
     }
 
@@ -548,5 +772,11 @@ internal sealed class ImportStore : IDisposable
         return $"{folder?.Name ?? path} ({path}): {detail}";
     }
 
-    public void Dispose() => ClearReleaseLibraryStatus();
+    public void Dispose()
+    {
+        ClearReleaseLibraryStatus();
+        ClearObservedCandidate();
+        List.Cancel();
+        _source.Dispose();
+    }
 }

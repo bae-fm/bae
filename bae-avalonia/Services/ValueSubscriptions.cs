@@ -53,13 +53,13 @@ internal sealed class ValueSubscriptions : IDisposable
                 dispatcher.Post(() => storage.ApplyOutputs(value)))));
             _subscriptions.Add(handle.SubscribeCastDevices(new CastSink(value =>
                 dispatcher.Post(() => cast.ApplyDevices(value)))));
-            _subscriptions.Add(handle.SubscribeImportCandidates(new ImportSink(
-                value => dispatcher.Post(() => import.ApplyCandidates(value)),
-                change => dispatcher.Post(() => import.ApplyCandidateRuntime(change)),
-                error => dispatcher.Post(() => Show(error, showError)))));
-            _subscriptions.Add(handle.SubscribeImportTriage(new ImportTriageSink(
-                value => dispatcher.Post(() => import.ApplyTriage(value)),
-                error => dispatcher.Post(() => Show(error, showError)))));
+            _subscriptions.Add(handle.SubscribeCandidateRuntime(new CandidateRuntimeSink(
+                change => dispatcher.Post(() => import.ApplyCandidateRuntime(change)))));
+            // The list is its own reconfigurable subscription, owned by the
+            // store's page source rather than by this bundle. Started here
+            // because this is where the open handle is known: without one the
+            // store keeps the closed list it was built with.
+            import.StartList();
         });
     }
 
@@ -129,21 +129,9 @@ internal sealed class ValueSubscriptions : IDisposable
         public void OnValue(BridgeCastDevice[] devices) => apply(devices);
     }
 
-    private sealed class ImportSink(
-        Action<BridgeImportCandidatesSnapshot> apply,
-        Action<BridgeCandidateRuntimeChange> applyRuntime,
-        Action<BridgeException> error) : ImportCandidatesCallback
+    private sealed class CandidateRuntimeSink(
+        Action<BridgeCandidateRuntimeChange> applyRuntime) : CandidateRuntimeCallback
     {
-        public void OnValue(BridgeImportCandidatesSnapshot value) => apply(value);
-        public void OnRuntime(BridgeCandidateRuntimeChange change) => applyRuntime(change);
-        public void OnError(BridgeException value) => error(value);
-    }
-
-    private sealed class ImportTriageSink(
-        Action<BridgeTriageQueue> apply,
-        Action<BridgeException> error) : ImportTriageCallback
-    {
-        public void OnValue(BridgeTriageQueue value) => apply(value);
-        public void OnError(BridgeException value) => error(value);
+        public void OnChange(BridgeCandidateRuntimeChange change) => applyRuntime(change);
     }
 }

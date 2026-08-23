@@ -24,46 +24,6 @@ struct UiStoreImportFolderPickerTests {
 
 @Suite("UiStore import candidate selection")
 struct UiStoreImportCandidateSelectionTests {
-    @Test("a snapshot retains every selected candidate it still contains")
-    func retainedCandidatesPreserveSelection() {
-        let store = UiStore()
-        store.setFolderCandidateSelection([
-            "/music/group/release-1",
-            "/music/group/release-2",
-        ])
-
-        store.retainFolderCandidateSelection(
-            in: [
-                "/music/group/release-1",
-                "/music/group/release-2",
-                "/music/other",
-            ]
-        )
-
-        #expect(
-            store.selectedFolderCandidates
-                == [
-                    "/music/group/release-1",
-                    "/music/group/release-2",
-                ]
-        )
-    }
-
-    @Test("a snapshot removes only selected candidates it replaced")
-    func replacedCandidatesAreRemovedFromSelection() {
-        let store = UiStore()
-        store.setFolderCandidateSelection([
-            "/music/group/disc-1",
-            "/music/group/disc-2",
-        ])
-
-        store.retainFolderCandidateSelection(
-            in: ["/music/group/disc-2", "/music/group"]
-        )
-
-        #expect(store.selectedFolderCandidates == ["/music/group/disc-2"])
-    }
-
     @Test("finishing an action removes its targets but preserves a newer pick")
     func completedTargetsDoNotClearNewSelection() {
         let store = UiStore()
@@ -332,15 +292,18 @@ struct UiStoreImportQueueInteractionTests {
         let store = UiStore()
         let key = groupDisclosureID(relativePath: "first")
 
-        #expect(store.releaseGroupExpanded(key))
+        #expect(store.collapsedReleaseGroupKeys.isEmpty)
         store.setReleaseGroupExpanded(key, false)
         store.setReleaseGroupExpanded(key, false)
-        #expect(!store.releaseGroupExpanded(key))
+        #expect(
+            store.collapsedReleaseGroupKeys.map(\.relativeFolderPath)
+                == ["first"]
+        )
         store.setReleaseGroupExpanded(key, true)
-        #expect(store.releaseGroupExpanded(key))
+        #expect(store.collapsedReleaseGroupKeys.isEmpty)
     }
 
-    @Test("projection refresh drops disclosure state for absent keys")
+    @Test("a queue that no longer holds a group drops its disclosure state")
     func disclosureStatePrunesStaleKeys() {
         let store = UiStore()
         let stale = groupDisclosureID(relativePath: "stale")
@@ -350,7 +313,7 @@ struct UiStoreImportQueueInteractionTests {
             groupDisclosureID(relativePath: "current")
         ])
 
-        #expect(store.releaseGroupExpanded(stale))
+        #expect(store.collapsedReleaseGroupKeys.isEmpty)
     }
 
     @Test("path component boundaries do not collide")

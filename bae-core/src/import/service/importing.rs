@@ -21,11 +21,6 @@ impl ImportService {
         let loaded_registry = library_manager_for_handle
             .load_import_folder_registry()
             .await?;
-        let (candidates, candidates_task) = ImportServiceHandle::start_candidates_query(
-            &library_manager_for_handle,
-            &runtime_handle,
-        )
-        .await?;
         let runtime = CandidateRuntime::default();
         let folder_registry = Arc::new(Mutex::new(loaded_registry));
         let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
@@ -83,8 +78,6 @@ impl ImportService {
             watcher_tx,
             event_tx,
             folder_registry,
-            candidates,
-            candidates_task,
             runtime,
             folder_state_commit,
         ))

@@ -78,7 +78,9 @@ pub enum ReleaseFileScope {
 }
 
 /// The stable address of one folder-boundary decision.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct FolderReleaseDecisionKey {
     pub watched_folder_path: String,
     /// `/`-separated path below the watched root. Empty names the root.

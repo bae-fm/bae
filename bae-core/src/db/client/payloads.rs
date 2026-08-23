@@ -7,15 +7,50 @@
 //! that candidate becomes reads the same rows back through its
 //! `metadata_source` / `metadata_source_release_id` pointer.
 
+use super::query::QueryOne;
 use super::*;
+use crate::import::payloads::ArchivedDocuments;
+use crate::import::{ImportError, MetadataRef, PayloadSource};
+
+/// One document by its key, on whichever connection the caller holds. The
+/// import module drives the rounds; this answers each key.
+pub(super) struct StoredDocuments<'a, S>(pub(super) &'a S);
+
+impl<S: QueryOne> ArchivedDocuments for StoredDocuments<'_, S> {
+    fn document(&self, source: PayloadSource, id: &str) -> Result<Option<String>, ImportError> {
+        self.0
+            .query_row(
+                "SELECT json FROM source_release_payloads \
+                 WHERE source = ? AND source_release_id = ?",
+                params![source.as_str(), id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|error| {
+                ImportError::Db(crate::library::LibraryError::Database(DbError::from(error)))
+            })
+    }
+}
+
+/// The archived set for one release, read by id inside `sql`'s read.
+pub(super) fn load_release_payloads_on(
+    sql: &impl QueryOne,
+    release: &MetadataRef,
+) -> Result<Option<crate::import::payloads::ReleasePayloads>, ImportError> {
+    crate::import::payloads::load_on(&StoredDocuments(sql), release)
+}
 
 impl Database {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn load_all_source_release_payloads(
+    /// The archived set for one release: the anchor document and everything it
+    /// names, each read by id in one read.
+    pub(crate) async fn load_release_payloads(
         &self,
-    ) -> Result<HashMap<(crate::import::PayloadSource, String), String>, DbError> {
-        self.read(move |sql| load_all_source_release_payloads_on(&sql))
+        release: &MetadataRef,
+    ) -> Result<Option<crate::import::payloads::ReleasePayloads>, ImportError> {
+        let release = release.clone();
+        self.read(move |sql| Ok(load_release_payloads_on(&sql, &release)))
             .await
+            .map_err(|error| ImportError::Db(crate::library::LibraryError::Database(error)))?
     }
 
     /// Write documents, replacing any already stored under the same entity. One
@@ -72,23 +107,4 @@ impl Database {
         })
         .await
     }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn load_all_source_release_payloads_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<HashMap<(crate::import::PayloadSource, String), String>, DbError> {
-    let rows = sql.query(
-        "SELECT source, source_release_id, json FROM source_release_payloads",
-        [],
-        |row| {
-            let source = crate::import::PayloadSource::from_str(&row.get::<_, String>(0)?)
-                .map_err(|error| column_conversion_error(row, "source", error))?;
-            Ok((source, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-        },
-    )?;
-    Ok(rows
-        .into_iter()
-        .map(|(source, id, json)| ((source, id), json))
-        .collect())
 }

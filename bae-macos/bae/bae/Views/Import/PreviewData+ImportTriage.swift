@@ -452,88 +452,87 @@
                 folderCandidates[1],
             ] + importTabGroupedCandidates
 
-        private static let triageImportQueue: BridgeTriageQueue = {
-            BridgeTriageQueue(
-                sections: [
-                    BridgeTriageSection(
-                        tab: .pending,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [
-                            triageRowReady,
-                            triageRowPickAPressing,
-                            triageRowSignalsConflict,
-                            triageRowTrackMismatch,
-                            triageRowAlreadyInLibrary,
-                            triageRowNoMatch,
-                            triageRowStillIdentifying,
-                            triageRowImporting,
-                        ]
-                        .map(candidateEntry)
-                    ),
-                    BridgeTriageSection(
-                        tab: .pending,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: BridgeTriageGroup(
-                            key: BridgeFolderReleaseDecisionKey(
-                                watchedFolderPath: importWatchedFolder.path,
-                                relativeFolderPath: "Artist Collection"
-                            ),
-                            name: "Artist Collection"
-                        ),
-                        entries: triageGroupedRows.map(candidateEntry)
-                    ),
-                    BridgeTriageSection(
-                        tab: .pending,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: BridgeTriageGroup(
-                            key: folderReleaseBoundary.key,
-                            name: folderReleaseBoundary.name
-                        ),
-                        entries: [
-                            boundaryEntry(folderReleaseBoundary)
-                        ]
-                    ),
-                    BridgeTriageSection(
-                        tab: .done,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [
-                            triageRowDoneImported,
-                            triageRowDoneFailed,
-                        ]
-                        .map(candidateEntry)
-                    ),
-                    BridgeTriageSection(
-                        tab: .skipped,
-                        watchedFolderPath: importWatchedFolder.path,
-                        group: nil,
-                        entries: [candidateEntry(triageRowSkipped)]
-                            + invalidCandidates.map(invalidEntry)
-                    ),
-                ],
-                counts: BridgeTriageTabCounts(
-                    pending: 11,
-                    done: 2,
-                    skipped: 1 + UInt32(invalidCandidates.count)
-                ),
-                folderScanStatuses: []
-            )
-        }()
+        private static let importTabGroupKey = BridgeFolderReleaseDecisionKey(
+            watchedFolderPath: importWatchedFolder.path,
+            relativeFolderPath: "Artist Collection"
+        )
 
-        /// One store for the sidebar and whole Import-tab previews. Every
-        /// candidate row resolves to the candidate the detail pane opens, while
-        /// boundary and invalid entries exercise the two non-candidate shapes.
-        @MainActor
-        static func importTabStore() -> ImportStore {
-            let s = ImportStore()
-            s.watchedFolders = [importWatchedFolder]
-            for candidate in importTabCandidates {
-                s.folderCandidates[candidate.key] = candidate
+        private static let importTabPendingRows = [
+            triageRowReady,
+            triageRowPickAPressing,
+            triageRowSignalsConflict,
+            triageRowTrackMismatch,
+            triageRowAlreadyInLibrary,
+            triageRowNoMatch,
+            triageRowStillIdentifying,
+            triageRowImporting,
+        ]
+
+        private static let importTabDoneRows = [
+            triageRowDoneImported,
+            triageRowDoneFailed,
+        ]
+
+        static func importTabItems(
+            _ tab: BridgeTriageTab
+        ) -> [BridgeImportListItem] {
+            switch tab {
+            case .pending:
+                return importTabPendingRows.map(candidateItem)
+                    + [
+                        groupHeaderItem(
+                            key: importTabGroupKey,
+                            name: "Artist Collection",
+                            entryCount: UInt32(triageGroupedRows.count)
+                        )
+                    ]
+                    + triageGroupedRows.map(candidateItem)
+                    + [
+                        groupHeaderItem(
+                            key: folderReleaseBoundary.key,
+                            name: folderReleaseBoundary.name,
+                            entryCount: 1
+                        ),
+                        boundaryItem(folderReleaseBoundary),
+                    ]
+            case .done:
+                return importTabDoneRows.map(candidateItem)
+            case .skipped:
+                return [candidateItem(triageRowSkipped)]
+                    + invalidCandidates.map(invalidItem)
             }
-            s.triageQueue = triageImportQueue
-            s.queueIdentifyProgress = (identified: 112, total: 130)
-            return s
+        }
+
+        private static let importTabSummary = importQueueSummary(
+            pending: 11,
+            done: 2,
+            skipped: 1 + UInt32(invalidCandidates.count),
+            watchedFolders: [importWatchedFolder],
+            groupKeys: [importTabGroupKey, folderReleaseBoundary.key],
+            ready: readyRows(importTabPendingRows),
+            firstUnidentifiedKey: triageRowStillIdentifying.candidateKey
+        )
+
+        /// One preview of the whole Import tab: the store the sidebar and the
+        /// detail pane read, and the items each tab holds. Every candidate row
+        /// resolves to the candidate the detail pane opens, while boundary and
+        /// invalid entries exercise the two non-candidate shapes.
+        @MainActor
+        static func importTabScene() -> ImportPreviewFixture {
+            let store = ImportStore()
+            store.summary = importTabSummary
+            for candidate in importTabCandidates {
+                store.selectedCandidates[candidate.key] = candidate
+            }
+            store.queueIdentifyProgress = (identified: 112, total: 130)
+            return ImportPreviewFixture(
+                store: store,
+                itemsByTab: [
+                    .pending: importTabItems(.pending),
+                    .done: importTabItems(.done),
+                    .skipped: importTabItems(.skipped),
+                ]
+            )
         }
 
         static func importTabImporter() -> Importer {

@@ -53,29 +53,36 @@ fn scan_projected_items_with_decisions(
         stored.insert(item.persisted_key(), item);
     })
     .unwrap();
-    let snapshot = crate::import::candidates::build_snapshot(
-        vec![watched_folder.clone()],
-        vec![crate::db::DbFolderScanSnapshot {
-            watched_folder_path: watched_folder.path,
-            generation: 0,
-            status: crate::import::FolderScanStatus::Complete,
-            items: stored.into_values().collect(),
-        }],
-        &Default::default(),
-        &Default::default(),
-    )
-    .unwrap();
-    snapshot
-        .folder_candidates
+    let _ = &watched_folder;
+    // The order the import tab shows them in: valid releases first in natural
+    // path order, then the folders that failed validation, then the boundaries
+    // still waiting on a decision.
+    let mut valid = Vec::new();
+    let mut invalid = Vec::new();
+    let mut boundaries = Vec::new();
+    for item in stored.into_values() {
+        match item {
+            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => valid.push(candidate),
+            ScanItem::Invalid(candidate) => invalid.push(candidate),
+            ScanItem::Boundary(boundary) => boundaries.push(boundary),
+        }
+    }
+    valid.sort_by(|left, right| {
+        natord::compare_ignore_case(&left.display_path, &right.display_path)
+    });
+    invalid.sort_by(|left, right| {
+        natord::compare_ignore_case(&left.display_path, &right.display_path)
+    });
+    boundaries.sort_by(|left, right| {
+        left.key
+            .relative_folder_path
+            .cmp(&right.key.relative_folder_path)
+    });
+    valid
         .into_iter()
-        .map(|candidate| ScanItem::Valid(candidate.candidate))
-        .chain(
-            snapshot
-                .invalid_candidates
-                .into_iter()
-                .map(ScanItem::Invalid),
-        )
-        .chain(snapshot.boundaries.into_iter().map(ScanItem::Boundary))
+        .map(ScanItem::Valid)
+        .chain(invalid.into_iter().map(ScanItem::Invalid))
+        .chain(boundaries.into_iter().map(ScanItem::Boundary))
         .collect()
 }
 

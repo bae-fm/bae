@@ -56,6 +56,10 @@ mod desktop_services;
 #[cfg(feature = "desktop")]
 mod editing_projection;
 #[cfg(feature = "desktop")]
+mod import_list;
+#[cfg(feature = "desktop")]
+pub use import_list::ImportListSubscription;
+#[cfg(feature = "desktop")]
 mod import_projection;
 mod library_projection;
 mod playback_persistence;

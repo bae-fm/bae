@@ -1,6 +1,7 @@
 ﻿#if DEBUG
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
@@ -29,87 +30,88 @@ internal static class PreviewData
     internal static BridgeFolderReleaseDecisionKey ImportGroupKey { get; } =
         new(ImportRoot, "Collection");
 
-    internal static BridgeTriageQueue ImportQueue { get; } = new(
-        Sections: new[]
-        {
-            new BridgeTriageSection(
-                BridgeTriageTab.Pending,
-                ImportRoot,
-                new BridgeTriageGroup(
-                    ImportGroupKey,
-                    "Collection"),
-                new BridgeTriageEntry[]
+    // One window of the import list: the group header core emits before the run
+    // of rows it holds, two grouped rows, an ungrouped row, and a boundary
+    // still waiting on a decision.
+    internal static List<BridgeImportListItem> ImportItems { get; } = new()
+    {
+        new BridgeImportListItem.GroupHeader(
+            GroupStableKey(ImportGroupKey),
+            new BridgeTriageGroup(ImportGroupKey, "Collection"),
+            ImportRoot,
+            true,
+            2),
+        ImportCandidateItem("Release 01", "Collection/Release 01"),
+        ImportCandidateItem("Release 02", "Collection/Release 02"),
+        ImportCandidateItem("Release 03", "Release 03"),
+        new BridgeImportListItem.Boundary(
+            BoundaryStableKey(ImportRoot, "Archive/Box"),
+            new BridgeFolderReleaseBoundary(
+                new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box"),
+                "Box",
+                "Archive/Box",
+                2,
+                new[]
                 {
-                    new BridgeTriageEntry.Candidate(
-                        $"{ImportRoot}/Collection/Release 01",
-                        ImportRow("Release 01", "Collection/Release 01")),
-                    new BridgeTriageEntry.Candidate(
-                        $"{ImportRoot}/Collection/Release 02",
-                        ImportRow("Release 02", "Collection/Release 02")),
-                }),
-            new BridgeTriageSection(
-                BridgeTriageTab.Pending,
-                ImportRoot,
-                null,
-                new BridgeTriageEntry[]
-                {
-                    new BridgeTriageEntry.Candidate(
-                        $"{ImportRoot}/Release 03",
-                        ImportRow("Release 03", "Release 03")),
-                    new BridgeTriageEntry.Boundary(
-                        $"{ImportRoot}/Archive/Box",
-                        new BridgeFolderReleaseBoundary(
-                            new BridgeFolderReleaseDecisionKey(
-                                ImportRoot,
-                                "Archive/Box"),
-                            "Box",
-                            "Archive/Box",
-                            2,
-                            new[]
-                            {
-                                new BridgeFolderReleaseTreeRow(
-                                    "Part 01",
-                                    "Part 01",
-                                    0,
-                                    new BridgeFolderReleaseTreeRowKind.Candidate(9, "FLAC"),
-                                    new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Part 01"),
-                                    new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
-                                new BridgeFolderReleaseTreeRow(
-                                    "Part 02",
-                                    "Part 02",
-                                    0,
-                                    new BridgeFolderReleaseTreeRowKind.Candidate(11, "FLAC"),
-                                    new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Part 02"),
-                                    new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
-                                new BridgeFolderReleaseTreeRow(
-                                    "Scans",
-                                    "Scans",
-                                    0,
-                                    new BridgeFolderReleaseTreeRowKind.Folder(),
-                                    new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans"),
-                                    new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
-                                new BridgeFolderReleaseTreeRow(
-                                    "Booklet",
-                                    "Scans/Booklet",
-                                    1,
-                                    new BridgeFolderReleaseTreeRowKind.Folder(),
-                                    new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans/Booklet"),
-                                    new[]
-                                    {
-                                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box"),
-                                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans"),
-                                    }),
-                            }))
-                }),
-        },
-        Counts: new BridgeTriageTabCounts(
-            Pending: 4,
-            Done: 0,
-            Skipped: 0),
-        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
+                    new BridgeFolderReleaseTreeRow(
+                        "Part 01",
+                        "Part 01",
+                        0,
+                        new BridgeFolderReleaseTreeRowKind.Candidate(9, "FLAC"),
+                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Part 01"),
+                        new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
+                    new BridgeFolderReleaseTreeRow(
+                        "Part 02",
+                        "Part 02",
+                        0,
+                        new BridgeFolderReleaseTreeRowKind.Candidate(11, "FLAC"),
+                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Part 02"),
+                        new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
+                    new BridgeFolderReleaseTreeRow(
+                        "Scans",
+                        "Scans",
+                        0,
+                        new BridgeFolderReleaseTreeRowKind.Folder(),
+                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans"),
+                        new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
+                    new BridgeFolderReleaseTreeRow(
+                        "Booklet",
+                        "Scans/Booklet",
+                        1,
+                        new BridgeFolderReleaseTreeRowKind.Folder(),
+                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans/Booklet"),
+                        new[]
+                        {
+                            new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box"),
+                            new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans"),
+                        }),
+                })),
+    };
 
-    internal static BridgeTriageQueue ImportScanningQueue { get; } =
-        ImportQueue with
+    internal static BridgeImportQueueSummary ImportSummary { get; } = Summary(
+        pending: 4,
+        ready: new[]
+        {
+            ReadyRow("Collection/Release 01"),
+            ReadyRow("Collection/Release 02"),
+            ReadyRow("Release 03"),
+        },
+        groupKeys: new[] { ImportGroupKey });
+
+    // The same queue with its one group folded shut: core emits the header and
+    // none of the rows it holds.
+    internal static List<BridgeImportListItem> ImportCollapsedItems { get; } = new List<BridgeImportListItem>
+    {
+        new BridgeImportListItem.GroupHeader(
+            GroupStableKey(ImportGroupKey),
+            new BridgeTriageGroup(ImportGroupKey, "Collection"),
+            ImportRoot,
+            false,
+            2),
+    }.Concat(ImportItems.Skip(3)).ToList();
+
+    internal static BridgeImportQueueSummary ImportScanningSummary { get; } =
+        ImportSummary with
         {
             FolderScanStatuses = new[]
             {
@@ -120,46 +122,72 @@ internal static class PreviewData
             },
         };
 
-    internal static BridgeTriageQueue ImportResolvedQueue { get; } = new(
-        Sections: new[]
-        {
-            new BridgeTriageSection(
-                BridgeTriageTab.Pending,
-                ImportRoot,
-                null,
-                new BridgeTriageEntry[]
+    // One row exposed by an explicit folder decision, so its context menu can
+    // set the opposite interpretation.
+    internal static List<BridgeImportListItem> ImportResolvedItems { get; } = new()
+    {
+        new BridgeImportListItem.Candidate(
+            CandidateStableKey($"{ImportRoot}/Collection/Release 01"),
+            new BridgeTriageRow(
+                CandidateKey: $"{ImportRoot}/Collection/Release 01",
+                FolderName: "Release 01",
+                WatchedFolderPath: ImportRoot,
+                DisplayPath: "Collection/Release 01",
+                ResolvedBoundaries: new[]
                 {
-                    new BridgeTriageEntry.Candidate(
-                        $"{ImportRoot}/Collection/Release 01",
-                        new BridgeTriageRow(
-                            CandidateKey: $"{ImportRoot}/Collection/Release 01",
-                            FolderName: "Release 01",
-                            WatchedFolderPath: ImportRoot,
-                            DisplayPath: "Collection/Release 01",
-                            ResolvedBoundaries: new[]
-                            {
-                                new BridgeResolvedFolderReleaseBoundary(
-                                    ImportGroupKey,
-                                    BridgeFolderReleaseDecision.KeepAsSeparateReleases,
-                                    "Collection",
-                                    "Collection"),
-                            },
-                            CombineAncestorKey: null,
-                            Actionable: true,
-                            Placement: new BridgeTriagePlacement.Ready(),
-                            SkipAction: BridgeTriageSkipAction.Skip,
-                            Matched: null,
-                            Selectable: true,
-                            ImportStatus: null,
-                            Picked: null,
-                            Claim: null))
-                }),
-        },
-        Counts: new BridgeTriageTabCounts(
-            Pending: 1,
-            Done: 0,
-            Skipped: 0),
-        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
+                    new BridgeResolvedFolderReleaseBoundary(
+                        ImportGroupKey,
+                        BridgeFolderReleaseDecision.KeepAsSeparateReleases,
+                        "Collection",
+                        "Collection"),
+                },
+                CombineAncestorKey: null,
+                Actionable: true,
+                Placement: new BridgeTriagePlacement.Ready(),
+                SkipAction: BridgeTriageSkipAction.Skip,
+                Matched: null,
+                Selectable: true,
+                ImportStatus: null,
+                Picked: null,
+                Claim: null)),
+    };
+
+    internal static BridgeImportQueueSummary ImportResolvedSummary { get; } = Summary(
+        pending: 1,
+        ready: new[] { ReadyRow("Collection/Release 01") },
+        groupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>());
+
+    // The stable keys core gives each item kind. Named here so the fixtures
+    // carry the same identities a real read would.
+    internal static string CandidateStableKey(string candidateKey) =>
+        $"candidate:{candidateKey}";
+
+    internal static string GroupStableKey(BridgeFolderReleaseDecisionKey key) =>
+        $"group:{key.WatchedFolderPath.Length}{key.WatchedFolderPath}{key.RelativeFolderPath}";
+
+    internal static string BoundaryStableKey(string watchedRoot, string relativePath) =>
+        $"boundary:{watchedRoot.Length}:{watchedRoot}{relativePath}";
+
+    private static BridgeImportListItem ImportCandidateItem(string name, string displayPath) =>
+        new BridgeImportListItem.Candidate(
+            CandidateStableKey($"{ImportRoot}/{displayPath}"),
+            ImportRow(name, displayPath));
+
+    private static BridgeReadyRowRef ReadyRow(string displayPath) => new(
+        $"{ImportRoot}/{displayPath}",
+        new BridgeIdentityChoice.Unknown(),
+        null);
+
+    private static BridgeImportQueueSummary Summary(
+        uint pending,
+        IReadOnlyList<BridgeReadyRowRef> ready,
+        IReadOnlyList<BridgeFolderReleaseDecisionKey> groupKeys) => new(
+        Counts: new BridgeTriageTabCounts(Pending: pending, Done: 0, Skipped: 0),
+        WatchedFolders: ImportWatchedFolders.ToArray(),
+        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        GroupKeys: groupKeys.ToArray(),
+        Ready: ready.ToArray(),
+        FirstUnidentifiedKey: null);
 
     private static BridgeTriageRow ImportRow(string name, string displayPath) =>
         new(

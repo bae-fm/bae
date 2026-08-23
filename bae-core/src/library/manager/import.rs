@@ -4,17 +4,46 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn subscribe_import_candidates(
+    pub(crate) fn subscribe_import_list(
         &self,
-    ) -> coven::LiveQuery<crate::db::ImportCandidatesProjection> {
-        self.database.subscribe_import_candidates()
+        initial: crate::import::ImportListRequest,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::import::ImportListRequest,
+        crate::import::ImportListProjection,
+    > {
+        self.database.subscribe_import_list(initial)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn load_import_candidates(
+    pub(crate) async fn load_import_list(
         &self,
-    ) -> Result<crate::db::ImportCandidatesProjection, LibraryError> {
-        Ok(self.database.load_import_candidates().await?)
+        request: crate::import::ImportListRequest,
+    ) -> Result<crate::import::ImportListProjection, LibraryError> {
+        Ok(self.database.load_import_list(request).await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn subscribe_import_candidate(
+        &self,
+        key: &str,
+    ) -> coven::LiveQuery<Option<crate::import::ImportCandidateDetailProjection>> {
+        self.database.subscribe_import_candidate(key)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn load_import_candidate(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::import::ImportCandidateDetailProjection>, LibraryError> {
+        Ok(self.database.load_import_candidate(key).await?)
+    }
+
+    /// Every candidate the queue sweep is responsible for, with its files.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn load_sweepable_candidates(
+        &self,
+    ) -> Result<Vec<crate::import::FolderCandidate>, LibraryError> {
+        Ok(self.database.load_sweepable_candidates().await?)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

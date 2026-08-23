@@ -8,7 +8,7 @@ use crate::import::folder_scanner::{
 };
 
 /// A column holding a value no writer here produces.
-pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
+pub(crate) fn unreadable(column: &str, stored: &str) -> DbError {
     DbError::Message(format!("folder scan column {column} holds {stored:?}"))
 }
 
@@ -17,11 +17,11 @@ pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
         .map_err(|_| DbError::Message(format!("{what} exceeds SQLite's integer range")))
 }
 
-pub(super) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
+pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
     u64::try_from(value).map_err(|_| DbError::Message(format!("{what} is negative")))
 }
 
-pub(super) fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
+pub(crate) fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
     u32::try_from(value)
         .map_err(|_| DbError::Message(format!("{what} is outside the range it counts over")))
 }
@@ -65,7 +65,7 @@ pub(super) fn invalid_reason_columns(reason: &InvalidReason) -> (&'static str, O
     }
 }
 
-pub(super) fn invalid_reason_of(
+pub(crate) fn invalid_reason_of(
     stored: &str,
     path: Option<String>,
 ) -> Result<InvalidReason, DbError> {

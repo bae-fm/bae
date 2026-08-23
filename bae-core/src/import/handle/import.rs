@@ -81,7 +81,7 @@ impl ImportServiceHandle {
     ///
     /// Costs no disk read — which is what lets the pane render the same table
     /// through the identify phase as it does after a pick.
-    pub fn candidate_mapping(
+    pub async fn candidate_mapping(
         &self,
         candidate_key: &str,
     ) -> Result<crate::import::mapping::MappingTable, crate::import::ImportError> {
@@ -89,7 +89,7 @@ impl ImportServiceHandle {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(candidate_key)?
+        }) = self.get_candidate(candidate_key).await?
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -118,7 +118,7 @@ impl ImportServiceHandle {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(candidate_key)?
+        }) = self.get_candidate(candidate_key).await?
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -168,7 +168,7 @@ impl ImportServiceHandle {
             candidate,
             actionable: true,
             ..
-        }) = self.get_candidate(candidate_key)?
+        }) = self.get_candidate(candidate_key).await?
         else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),

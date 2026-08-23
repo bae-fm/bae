@@ -16,7 +16,7 @@ struct ImportCandidateSkipActionTests {
     @MainActor
     @Test("the shared action skips exactly the eligible current selection")
     func skipsEligibleCurrentSelectionAndClearsIt() async {
-        let importStore = PreviewData.importTabStore()
+        let importStore = PreviewData.importTabScene().store
         let uiStore = UiStore()
         let recorder = SkippedCandidateRecorder()
         let selected: Set<String> = [
@@ -57,7 +57,7 @@ struct ImportCandidateSkipActionTests {
 
         await ImportCandidateSkipAction(
             importer: importer,
-            importStore: PreviewData.importTabStore(),
+            importStore: PreviewData.importTabScene().store,
             uiStore: UiStore()
         ).perform()
 

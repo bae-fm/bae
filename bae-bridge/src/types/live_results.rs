@@ -181,24 +181,21 @@ pub trait OutputCallback: Send + Sync {
     fn on_value(&self, value: BridgeOutputSnapshot);
 }
 
+/// One candidate as the pane reads it. `None` once the key names no scanned
+/// folder, which is what clears a selection.
 #[cfg(feature = "desktop")]
 #[uniffi::export(callback_interface)]
-pub trait ImportCandidatesCallback: Send + Sync {
-    /// The candidate list: on subscribe, and whenever a commit changed it.
-    fn on_value(&self, value: BridgeImportCandidatesSnapshot);
-    /// One candidate's runtime changed. After the first `on_value`, one call
-    /// per key already holding runtime; then one per change.
-    fn on_runtime(&self, change: BridgeCandidateRuntimeChange);
-    /// The list's read failed; the last value delivered no longer describes
-    /// the tables.
+pub trait ImportCandidateCallback: Send + Sync {
+    fn on_value(&self, value: Option<BridgeImportCandidateDetail>);
     fn on_error(&self, error: BridgeError);
 }
 
+/// Every candidate's runtime: one call per key already holding runtime on
+/// subscribe, then one per change.
 #[cfg(feature = "desktop")]
 #[uniffi::export(callback_interface)]
-pub trait ImportTriageCallback: Send + Sync {
-    fn on_value(&self, value: BridgeTriageQueue);
-    fn on_error(&self, error: BridgeError);
+pub trait CandidateRuntimeCallback: Send + Sync {
+    fn on_change(&self, change: BridgeCandidateRuntimeChange);
 }
 
 #[cfg(feature = "desktop")]

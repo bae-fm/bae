@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -18,7 +19,7 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void ReadyCheckboxTapDoesNotActivateItsCandidateRow()
     {
-        var view = BuildView(PreviewData.ImportQueue);
+        var view = BuildView(PreviewData.ImportItems, PreviewData.ImportSummary);
         var row = CandidateRow(view);
         var checkbox = row
             .GetLogicalDescendants()
@@ -33,7 +34,7 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void FolderDecisionClearsTheSelectedCandidateBeforeDispatch()
     {
-        var view = BuildView(PreviewData.ImportResolvedQueue);
+        var view = BuildView(PreviewData.ImportResolvedItems, PreviewData.ImportResolvedSummary);
         var row = CandidateRow(view);
         RaiseTap(row);
         Assert.Equal(CandidateKey, SelectedKey(view));
@@ -47,7 +48,7 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void FolderDecisionTapDoesNotReactivateItsCandidateRow()
     {
-        var view = BuildView(PreviewData.ImportResolvedQueue);
+        var view = BuildView(PreviewData.ImportResolvedItems, PreviewData.ImportResolvedSummary);
         var row = CandidateRow(view);
         var decision = DecisionButton(row);
 
@@ -62,11 +63,10 @@ public sealed class ImportSectionViewTests
     public void ActivatingAReadyRowPrefetchesItsSettledMatch()
     {
         var resumed = new List<string>();
+        var placement = new BridgeTriagePlacement.Ready();
         var view = BuildView(
-            MatchedQueue(
-                new BridgeTriagePlacement.Ready(),
-                BridgeTriageSkipAction.Skip,
-                BridgeTriageTab.Pending),
+            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedSummary(placement, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending,
             resumed);
 
@@ -81,11 +81,10 @@ public sealed class ImportSectionViewTests
     public void ActivatingADoneRowPrefetchesNothing()
     {
         var resumed = new List<string>();
+        var placement = new BridgeTriagePlacement.Done();
         var view = BuildView(
-            MatchedQueue(
-                new BridgeTriagePlacement.Done(),
-                null,
-                BridgeTriageTab.Done),
+            MatchedItems(placement, null),
+            MatchedSummary(placement, BridgeTriageTab.Done),
             BridgeTriageTab.Done,
             resumed);
 
@@ -101,24 +100,21 @@ public sealed class ImportSectionViewTests
     public void AVerdictSettlingToReadyPrefetchesUnderTheOpenPane()
     {
         var resumed = new List<string>();
+        var identifying = new BridgeTriagePlacement.NeedsYou(
+            BridgeNeedsYouGroup.StillIdentifying,
+            new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running));
         var (view, app) = BuildSection(
-            MatchedQueue(
-                new BridgeTriagePlacement.NeedsYou(
-                    BridgeNeedsYouGroup.StillIdentifying,
-                    new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running)),
-                BridgeTriageSkipAction.Skip,
-                BridgeTriageTab.Pending),
+            MatchedItems(identifying, BridgeTriageSkipAction.Skip),
+            MatchedSummary(identifying, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending,
             resumed);
         RaiseTap(CandidateRow(view));
         Assert.Empty(resumed);
 
+        var ready = new BridgeTriagePlacement.Ready();
         app.ImportStore.SeedPreview(
-            MatchedQueue(
-                new BridgeTriagePlacement.Ready(),
-                BridgeTriageSkipAction.Skip,
-                BridgeTriageTab.Pending),
-            PreviewData.ImportWatchedFolders,
+            MatchedItems(ready, BridgeTriageSkipAction.Skip),
+            MatchedSummary(ready, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
 
         Assert.Equal(new[] { CandidateKey }, resumed);
@@ -128,19 +124,43 @@ public sealed class ImportSectionViewTests
     // there is no Expander indenting them. Collapsing therefore has to be this
     // view's own doing: the header re-renders the list without the group's
     // rows.
+    // Which rows a folded group leaves in the list is core's answer, so the
+    // header's job is to say the group is folded. The next read comes back
+    // without its rows.
     [AvaloniaFact]
-    public void CollapsingAFolderGroupHidesItsRows()
+    public void CollapsingAFolderGroupAsksCoreToFoldIt()
     {
-        var view = BuildView(PreviewData.ImportQueue);
-        var groupedKey = $"{PreviewData.ImportRoot}/Collection/Release 01";
-        Assert.Contains(groupedKey, RowTags(view));
+        var (view, app) = BuildSection(PreviewData.ImportItems, PreviewData.ImportSummary);
+        Assert.Empty(app.ImportStore.View.CollapsedGroups);
 
         RaiseClick(GroupHeader(view, "Collection"));
 
-        Assert.DoesNotContain(groupedKey, RowTags(view));
-        // The ungrouped row is untouched — collapsing hides one group, not the
-        // tab.
-        Assert.Contains($"{PreviewData.ImportRoot}/Release 03", RowTags(view));
+        Assert.Equal(
+            new[] { PreviewData.ImportGroupKey },
+            app.ImportStore.View.CollapsedGroups);
+    }
+
+    // One window of the list carries every item kind core places into it, and
+    // the numbers beside the tabs are the summary's, not a count of what is on
+    // screen.
+    [AvaloniaFact]
+    public void OneWindowRendersEveryItemKindAndTheSummarysCounts()
+    {
+        var (view, _) = BuildSection(MixedItems(), MixedSummary());
+
+        var tags = RowTags(view);
+        Assert.Contains(PreviewData.GroupStableKey(PreviewData.ImportGroupKey), tags);
+        Assert.Contains(PreviewData.CandidateStableKey(CandidateKey), tags);
+        Assert.Contains(PreviewData.BoundaryStableKey(PreviewData.ImportRoot, "Archive/Box"), tags);
+        Assert.Contains($"invalid:{PreviewData.ImportRoot}/Broken", tags);
+
+        var badges = view
+            .GetLogicalDescendants()
+            .OfType<Border>()
+            .Where(border => border.CornerRadius.TopLeft > 900)
+            .Select(border => ((TextBlock)border.Child!).Text)
+            .ToList();
+        Assert.Equal(new[] { "4", "2", "3" }, badges);
     }
 
     [AvaloniaFact]
@@ -150,12 +170,10 @@ public sealed class ImportSectionViewTests
             "release-a",
             "album-a",
             7);
+        var done = new BridgeTriagePlacement.Done();
         var (view, app) = BuildSection(
-            MatchedQueue(
-                new BridgeTriagePlacement.Done(),
-                null,
-                BridgeTriageTab.Done,
-                status),
+            MatchedItems(done, null, status),
+            MatchedSummary(done, BridgeTriageTab.Done),
             BridgeTriageTab.Done);
 
         var queuedRow = CandidateRow(view);
@@ -209,13 +227,15 @@ public sealed class ImportSectionViewTests
     }
 
     private static ImportSectionView BuildView(
-        BridgeTriageQueue queue,
+        IReadOnlyList<BridgeImportListItem> items,
+        BridgeImportQueueSummary summary,
         BridgeTriageTab activeTab = BridgeTriageTab.Pending,
         List<string>? resumed = null) =>
-        BuildSection(queue, activeTab, resumed).View;
+        BuildSection(items, summary, activeTab, resumed).View;
 
     private static (ImportSectionView View, AppService App) BuildSection(
-        BridgeTriageQueue queue,
+        IReadOnlyList<BridgeImportListItem> items,
+        BridgeImportQueueSummary summary,
         BridgeTriageTab activeTab = BridgeTriageTab.Pending,
         List<string>? resumed = null)
     {
@@ -233,11 +253,14 @@ public sealed class ImportSectionViewTests
             // Selecting a candidate reads its mapping before anything is
             // picked, so the pane has a table to show while the release is
             // still the open question.
-            CandidateMapping = _ => (
+            CandidateMapping = _ => Task.FromResult((
                 true,
                 ((BridgeMappingTable?)new BridgeMappingTable(
                     Array.Empty<BridgeMappingImage>(),
-                    Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null)),
+                    Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null))),
+            // The pane's candidate is seeded below; its own query stays open
+            // and silent, so the seeded value is what the pane reads.
+            SubscribeImportCandidate = (_, _, _) => new TestSubscription(),
             CandidateDecidedIdentity = (key, _) =>
             {
                 resumed?.Add(key);
@@ -263,8 +286,8 @@ public sealed class ImportSectionViewTests
                 app.Images,
                 _ => Task.CompletedTask));
         app.ImportStore.SeedPreview(
-            queue,
-            PreviewData.ImportWatchedFolders,
+            items,
+            summary,
             activeTab,
             new[]
             {
@@ -275,69 +298,132 @@ public sealed class ImportSectionViewTests
                     FolderPath = CandidateKey,
                 },
             });
+        Realize(view);
         return (view, app);
+    }
+
+    // The list virtualizes, so its rows exist only once something has laid it
+    // out. A headless window is what does that here; without it the panel
+    // realizes nothing and every row lookup below finds nothing.
+    private static void Realize(Control view)
+    {
+        var window = new Window { Width = 900, Height = 700, Content = view };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        window.Measure(new Size(900, 700));
+        window.Arrange(new Rect(0, 0, 900, 700));
+        Dispatcher.UIThread.RunJobs();
     }
 
     // One candidate carrying a settled match, under whichever placement the test
     // is asking about — the shape only the placement distinguishes.
-    private static BridgeTriageQueue MatchedQueue(
+    private static List<BridgeImportListItem> MatchedItems(
         BridgeTriagePlacement placement,
         BridgeTriageSkipAction? skipAction,
-        BridgeTriageTab tab,
-        BridgeTriageImportStatus? importStatus = null) => new(
-        Sections: new[]
-        {
-            new BridgeTriageSection(
-                tab,
-                PreviewData.ImportRoot,
-                null,
-                new BridgeTriageEntry[]
-                {
-                    new BridgeTriageEntry.Candidate(
-                        CandidateKey,
-                        new BridgeTriageRow(
-                            CandidateKey: CandidateKey,
-                            FolderName: "Release 01",
-                            WatchedFolderPath: PreviewData.ImportRoot,
-                            DisplayPath: "Collection/Release 01",
-                            ResolvedBoundaries: Array.Empty<BridgeResolvedFolderReleaseBoundary>(),
-                            CombineAncestorKey: null,
-                            Actionable: true,
-                            Placement: placement,
-                            SkipAction: skipAction,
-                            Matched: new BridgeMatchedRelease(
-                                ReleaseId: "rel-matched",
-                                Title: "Album Title",
-                                Artist: "Artist Name",
-                                Pressing: null,
-                                CoverThumbnailUrl: null,
-                                Evidence: new BridgeMatchEvidence(
-                                    BridgeMetadataSource.MusicBrainz,
-                                    BridgeMatchedSignal.DiscId)),
-                            Selectable: placement is BridgeTriagePlacement.Ready,
-                            ImportStatus: importStatus,
-                            Picked: placement
-                                is BridgeTriagePlacement.Ready
-                                    or BridgeTriagePlacement.Done
-                                ? new BridgeIdentityPick.Release(
-                                    BridgeMetadataSource.MusicBrainz,
-                                    "rel-matched",
-                                    BridgeClaimLevel.Exact)
-                                : null,
-                            Claim: placement
-                                is BridgeTriagePlacement.Ready
-                                    or BridgeTriagePlacement.Done
-                                ? new BridgeIdentityChoice.Exact(
-                                    "rel-matched",
-                                    BridgeMetadataSource.MusicBrainz)
-                                : null)),
-                }),
-        },
+        BridgeTriageImportStatus? importStatus = null) => new()
+    {
+        new BridgeImportListItem.Candidate(
+            PreviewData.CandidateStableKey(CandidateKey),
+            new BridgeTriageRow(
+                CandidateKey: CandidateKey,
+                FolderName: "Release 01",
+                WatchedFolderPath: PreviewData.ImportRoot,
+                DisplayPath: "Collection/Release 01",
+                ResolvedBoundaries: Array.Empty<BridgeResolvedFolderReleaseBoundary>(),
+                CombineAncestorKey: null,
+                Actionable: true,
+                Placement: placement,
+                SkipAction: skipAction,
+                Matched: new BridgeMatchedRelease(
+                    ReleaseId: "rel-matched",
+                    Title: "Album Title",
+                    Artist: "Artist Name",
+                    Pressing: null,
+                    CoverThumbnailUrl: null,
+                    Evidence: new BridgeMatchEvidence(
+                        BridgeMetadataSource.MusicBrainz,
+                        BridgeMatchedSignal.DiscId)),
+                Selectable: placement is BridgeTriagePlacement.Ready,
+                ImportStatus: importStatus,
+                Picked: placement
+                    is BridgeTriagePlacement.Ready
+                        or BridgeTriagePlacement.Done
+                    ? new BridgeIdentityPick.Release(
+                        BridgeMetadataSource.MusicBrainz,
+                        "rel-matched",
+                        BridgeClaimLevel.Exact)
+                    : null,
+                Claim: placement
+                    is BridgeTriagePlacement.Ready
+                        or BridgeTriagePlacement.Done
+                    ? new BridgeIdentityChoice.Exact(
+                        "rel-matched",
+                        BridgeMetadataSource.MusicBrainz)
+                    : null)),
+    };
+
+    private static BridgeImportQueueSummary MatchedSummary(
+        BridgeTriagePlacement placement,
+        BridgeTriageTab tab) => new(
         Counts: new BridgeTriageTabCounts(
             Pending: tab is BridgeTriageTab.Pending ? 1u : 0u,
             Done: tab is BridgeTriageTab.Done ? 1u : 0u,
             Skipped: tab is BridgeTriageTab.Skipped ? 1u : 0u),
-        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>());
+        WatchedFolders: PreviewData.ImportWatchedFolders.ToArray(),
+        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
+        Ready: placement is BridgeTriagePlacement.Ready
+            ? new[]
+            {
+                new BridgeReadyRowRef(
+                    CandidateKey,
+                    new BridgeIdentityChoice.Exact("rel-matched", BridgeMetadataSource.MusicBrainz),
+                    null),
+            }
+            : Array.Empty<BridgeReadyRowRef>(),
+        FirstUnidentifiedKey: null);
+
+    // A window carrying one of each item kind, with the group header core emits
+    // before the run of rows it holds.
+    private static List<BridgeImportListItem> MixedItems()
+    {
+        var items = new List<BridgeImportListItem>
+        {
+            new BridgeImportListItem.GroupHeader(
+                PreviewData.GroupStableKey(PreviewData.ImportGroupKey),
+                new BridgeTriageGroup(PreviewData.ImportGroupKey, "Collection"),
+                PreviewData.ImportRoot,
+                true,
+                1),
+        };
+        items.AddRange(MatchedItems(new BridgeTriagePlacement.Ready(), BridgeTriageSkipAction.Skip));
+        items.Add(new BridgeImportListItem.Boundary(
+            PreviewData.BoundaryStableKey(PreviewData.ImportRoot, "Archive/Box"),
+            new BridgeFolderReleaseBoundary(
+                new BridgeFolderReleaseDecisionKey(PreviewData.ImportRoot, "Archive/Box"),
+                "Box",
+                "Archive/Box",
+                2,
+                Array.Empty<BridgeFolderReleaseTreeRow>())));
+        items.Add(new BridgeImportListItem.Invalid(
+            $"invalid:{PreviewData.ImportRoot}/Broken",
+            new BridgeInvalidCandidate(
+                $"{PreviewData.ImportRoot}/Broken",
+                "Broken",
+                PreviewData.ImportRoot,
+                "Broken",
+                Array.Empty<BridgeResolvedFolderReleaseBoundary>(),
+                new BridgeInvalidReason.NoValidAudio())));
+        return items;
+    }
+
+    private static BridgeImportQueueSummary MixedSummary() => new(
+        Counts: new BridgeTriageTabCounts(Pending: 4, Done: 2, Skipped: 3),
+        WatchedFolders: PreviewData.ImportWatchedFolders.ToArray(),
+        FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        GroupKeys: new[] { PreviewData.ImportGroupKey },
+        Ready: Array.Empty<BridgeReadyRowRef>(),
+        FirstUnidentifiedKey: null);
 
     private static BridgeOutboxSnapshot Outbox(
         ulong revision,
@@ -387,7 +473,9 @@ public sealed class ImportSectionViewTests
         view
             .GetLogicalDescendants()
             .OfType<Control>()
-            .Single(control => Equals(control.Tag, CandidateKey));
+            .Single(control => Equals(
+                control.Tag,
+                PreviewData.CandidateStableKey(CandidateKey)));
 
     private static Button DecisionButton(Control row) =>
         row

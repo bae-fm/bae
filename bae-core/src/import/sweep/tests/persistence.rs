@@ -169,7 +169,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
 }
 
 /// Selecting an answered candidate starts nothing: no run, no lookup, no
-/// event. Its stored verdict is what the candidates subscription serves as
+/// event. Its stored verdict is what the selection's own query serves as
 /// its identify state, so there is nothing left for a click to do.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
@@ -286,7 +286,7 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     fixture.import.emit_event_for_test(marker());
     recorded(changes.recv().await);
     let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
-        fixture.import.get_candidate(&key)
+        fixture.import.get_candidate(&key).await
     else {
         panic!("the scanned candidate is readable");
     };
@@ -324,7 +324,7 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         .emit_event_for_test(changed(IdentifyState::Idle));
     changes.recv().await.expect("runtime changes stay open");
     let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
-        fixture.import.get_candidate(&key)
+        fixture.import.get_candidate(&key).await
     else {
         panic!("the scanned candidate is readable");
     };
@@ -508,19 +508,9 @@ async fn a_pick_reads_back_as_the_same_answer() {
     assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Exact);
 
     // The row carries the same decision for the sidebar's resume trigger.
-    let queue = crate::import::triage::load(&fixture.import, &fixture.manager)
+    let picked = queue_row(&fixture, &key)
         .await
-        .expect("the triage queue loads");
-    let picked = queue
-        .sections
-        .iter()
-        .flat_map(|section| &section.entries)
-        .find_map(|entry| match entry {
-            crate::import::triage::TriageEntry::Candidate(row) if row.candidate_key == key => {
-                row.picked.clone()
-            }
-            _ => None,
-        })
+        .picked
         .expect("the row carries the decision");
     assert_eq!(
         picked,
@@ -625,23 +615,13 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         }
     }
 
-    let queue = crate::import::triage::load(&fixture.import, &fixture.manager)
-        .await
-        .expect("the triage queue loads");
     picking
         .await
         .expect("the pick task runs")
         .expect("picking the searched release succeeds");
-    let matched = queue
-        .sections
-        .iter()
-        .flat_map(|section| &section.entries)
-        .find_map(|entry| match entry {
-            crate::import::triage::TriageEntry::Candidate(row) if row.candidate_key == key => {
-                row.matched.clone()
-            }
-            _ => None,
-        })
+    let matched = queue_row(&fixture, &key)
+        .await
+        .matched
         .expect("the row leads with the release the pick settled it on");
     assert_eq!(matched.release_id, "mb-picked-1");
     assert_eq!(matched.title, "Picked Album Title");
@@ -713,20 +693,7 @@ async fn a_lowered_claim_reads_back_lowered() {
 
     // And the row carries it both ways: the pick the pane reopens on, and the
     // identity a bulk import of this row would commit.
-    let queue = crate::import::triage::load(&fixture.import, &fixture.manager)
-        .await
-        .expect("the triage queue loads");
-    let row = queue
-        .sections
-        .iter()
-        .flat_map(|section| &section.entries)
-        .find_map(|entry| match entry {
-            crate::import::triage::TriageEntry::Candidate(row) if row.candidate_key == key => {
-                Some(row.clone())
-            }
-            _ => None,
-        })
-        .expect("the row is in the queue");
+    let row = queue_row(&fixture, &key).await;
     assert_eq!(row.picked, Some(lowered));
     assert_eq!(
         row.claim,
@@ -740,7 +707,7 @@ async fn a_lowered_claim_reads_back_lowered() {
 }
 
 /// Once a run's verdict lands in its row, the recorded runtime state clears:
-/// the row owns the answer, and the candidates subscription serves it from
+/// the row owns the answer, and the selection's own query serves it from
 /// there. Nothing in memory is left to shadow a row that later changes.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
@@ -771,7 +738,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     let cleared = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             if let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
-                fixture.import.get_candidate(&key)
+                fixture.import.get_candidate(&key).await
             {
                 if matches!(runtime.identify_state, IdentifyState::Idle) {
                     return;
@@ -785,4 +752,37 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
         cleared.is_ok(),
         "the recorded terminal state clears once its verdict is stored"
     );
+}
+
+/// The list's row for one candidate, over every tab — which tab it lands in is
+/// not what these tests are about.
+async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
+    for tab in [
+        crate::import::TriageTab::Pending,
+        crate::import::TriageTab::Done,
+        crate::import::TriageTab::Skipped,
+    ] {
+        let view = crate::import::ImportListView {
+            tab,
+            ..crate::import::ImportListView::default()
+        };
+        let projection = fixture
+            .import
+            .wait_for_list(view, |_| true)
+            .await;
+        let row = projection
+            .windows
+            .iter()
+            .flat_map(|window| &window.items)
+            .find_map(|item| match item {
+                crate::import::ImportListItem::Candidate(row) if row.candidate_key == key => {
+                    Some(row.clone())
+                }
+                _ => None,
+            });
+        if let Some(row) = row {
+            return row;
+        }
+    }
+    panic!("the row is in the queue");
 }

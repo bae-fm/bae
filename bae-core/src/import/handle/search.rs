@@ -282,7 +282,7 @@ impl ImportServiceHandle {
             })
             .collect();
 
-        let mapping = match self.get_candidate(candidate_key)? {
+        let mapping = match self.get_candidate(candidate_key).await? {
             Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
                 // One FFmpeg open per container, so it goes off the async
                 // executor rather than holding it for the length of a folder.
@@ -365,7 +365,7 @@ impl ImportServiceHandle {
         release: &crate::import::MetadataRef,
     ) -> Result<bool, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(candidate_key)?
+            self.get_candidate(candidate_key).await?
         else {
             return Ok(false);
         };
@@ -438,7 +438,7 @@ impl ImportServiceHandle {
         candidate_key: String,
     ) -> Result<Option<crate::import::DecidedIdentity>, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(&candidate_key)?
+            self.get_candidate(&candidate_key).await?
         else {
             return Ok(None);
         };
@@ -527,7 +527,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
     ) -> Result<Option<crate::identify::TerminalVerdict>, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(candidate_key)?
+            self.get_candidate(candidate_key).await?
         else {
             return Ok(None);
         };

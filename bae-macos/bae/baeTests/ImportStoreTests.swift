@@ -98,38 +98,6 @@ private func bridgeInvalid(
     )
 }
 
-private func candidateEntry(_ row: BridgeTriageRow) -> BridgeTriageEntry {
-    .candidate(stableKey: "candidate:\(row.candidateKey)", row: row)
-}
-
-private func invalidEntry(
-    _ candidate: BridgeInvalidCandidate
-) -> BridgeTriageEntry {
-    .invalid(
-        stableKey: "invalid:\(candidate.folderPath)",
-        invalidCandidate: candidate
-    )
-}
-
-private func boundaryEntry(
-    key: String,
-    displayPath: String
-) -> BridgeTriageEntry {
-    .boundary(
-        stableKey: "boundary:\(key)",
-        boundary: BridgeFolderReleaseBoundary(
-            key: BridgeFolderReleaseDecisionKey(
-                watchedFolderPath: "/w",
-                relativeFolderPath: key
-            ),
-            name: key,
-            displayPath: displayPath,
-            sharedFileCount: 0,
-            treeRows: []
-        )
-    )
-}
-
 // MARK: - Triage row builders
 
 private func matchedRelease(
@@ -241,14 +209,15 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
     )
 }
 
-private func bridgeRow(
+private func detail(
     folderPath: String,
     watchedFolderPath: String,
     name: String,
     skipped: Bool = false,
-    resumedIdentifyState: BridgeIdentifyState = .idle
-) -> BridgeFolderImportCandidateSnapshot {
-    BridgeFolderImportCandidateSnapshot(
+    resumedIdentifyState: BridgeIdentifyState = .idle,
+    row: BridgeTriageRow? = nil
+) -> BridgeImportCandidateDetail {
+    BridgeImportCandidateDetail(
         candidate: bridgeFolder(
             folderPath: folderPath,
             watchedFolderPath: watchedFolderPath,
@@ -256,63 +225,38 @@ private func bridgeRow(
             skipped: skipped
         ),
         actionable: true,
-        resumedIdentifyState: resumedIdentifyState
+        resumedIdentifyState: resumedIdentifyState,
+        row: row ?? readyRow(folderPath, title: name)
     )
 }
 
-private func listSnapshot(
-    watchedFolders: [BridgeWatchedFolder] = [
-        BridgeWatchedFolder(path: "/w1", name: "w1")
-    ],
-    folderCandidates: [BridgeFolderImportCandidateSnapshot],
-    invalidCandidates: [BridgeInvalidCandidate] = []
-) -> BridgeImportCandidatesSnapshot {
-    BridgeImportCandidatesSnapshot(
-        watchedFolders: watchedFolders,
-        folderCandidates: folderCandidates,
-        invalidCandidates: invalidCandidates,
-        boundaries: [],
-        folderScanStatuses: []
-    )
-}
-
-@Suite("ImportStore.applyImportCandidatesSnapshot")
-struct ImportStoreListSnapshotTests {
+@Suite("ImportStore per-candidate reads")
+struct ImportStoreCandidateDetailTests {
     @MainActor
-    @Test("inserts fresh candidates and watched folders")
-    func insertsFresh() throws {
+    @Test("a read installs the folder, its resumed state and its row")
+    func installsTheRead() throws {
         let store = ImportStore()
 
-        store.applyImportCandidatesSnapshot(
-            listSnapshot(
-                folderCandidates: [
-                    bridgeRow(
-                        folderPath: "/w1/a",
-                        watchedFolderPath: "/w1",
-                        name: "A",
-                        resumedIdentifyState: .notFoundAnywhere
-                    )
-                ],
-                invalidCandidates: [
-                    bridgeInvalid(
-                        folderPath: "/w1/bad",
-                        watchedFolderPath: "/w1",
-                        name: "Bad"
-                    )
-                ]
+        store.applyCandidateDetail(
+            key: "/w1/a",
+            detail: detail(
+                folderPath: "/w1/a",
+                watchedFolderPath: "/w1",
+                name: "A",
+                resumedIdentifyState: .notFoundAnywhere
             )
         )
 
-        #expect(store.watchedFolders.map(\.path) == ["/w1"])
-        let fresh = try #require(store.folderCandidates["/w1/a"])
-        #expect(fresh.displayName == "A")
-        // A fresh candidate with no run live shows its resumed state.
-        #expect(fresh.identifyState == .notFoundAnywhere)
-        #expect(fresh.importStatus == nil)
+        let read = try #require(store.selectedCandidates["/w1/a"])
+        #expect(read.displayName == "A")
+        // With no run live the resumed state is what the pane shows.
+        #expect(read.identifyState == .notFoundAnywhere)
+        #expect(read.row?.candidateKey == "/w1/a")
+        #expect(read.importStatus == nil)
     }
 
     @MainActor
-    @Test("a re-read list keeps runtime and editor state on a surviving key")
+    @Test("a re-read keeps the runtime and the editor state on its key")
     func keepsRuntimeAndEditorState() throws {
         let store = ImportStore()
         var existing = folderCandidate(
@@ -332,25 +276,22 @@ struct ImportStoreListSnapshotTests {
         )
         existing.signalsToolbar = PreviewData.toolbarBothRunning
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
-        store.folderCandidates["/w1/a"] = existing
+        store.selectedCandidates["/w1/a"] = existing
 
         // Same key, renamed + skip flipped.
-        store.applyImportCandidatesSnapshot(
-            listSnapshot(
-                folderCandidates: [
-                    bridgeRow(
-                        folderPath: "/w1/a",
-                        watchedFolderPath: "/w1",
-                        name: "A-renamed",
-                        skipped: true
-                    )
-                ]
+        store.applyCandidateDetail(
+            key: "/w1/a",
+            detail: detail(
+                folderPath: "/w1/a",
+                watchedFolderPath: "/w1",
+                name: "A-renamed",
+                skipped: true
             )
         )
 
-        let merged = try #require(store.folderCandidates["/w1/a"])
-        // Editor/session state and the run in flight survive; the list only
-        // re-read the folder.
+        let merged = try #require(store.selectedCandidates["/w1/a"])
+        // Editor and session state and the run in flight survive; the read
+        // only re-read the folder.
         #expect(merged.identity == .unknown)
         #expect(
             merged.importStatus
@@ -363,66 +304,59 @@ struct ImportStoreListSnapshotTests {
         #expect(merged.signals != nil)
         #expect(!merged.signalsToolbar.signals.isEmpty)
         #expect(merged.libraryStatuses["rel-1"] != nil)
-        // Scan fields come from the incoming list.
+        // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)
     }
 
     @MainActor
-    @Test("drops candidates absent from the new list")
-    func dropsAbsent() {
+    @Test("a run recorded before the read joins the folder when it lands")
+    func runtimeAheadOfTheRead() throws {
         let store = ImportStore()
-        store.folderCandidates["/w1/a"] = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
+        store.applyCandidateRuntimeChange(
+            .updated(
+                key: "/w1/a",
+                runtime: idleRuntime(
+                    importStatus: .importing(progressPercent: 5, step: nil)
+                )
+            )
         )
-        store.folderCandidates["/w1/b"] = folderCandidate(
-            folderPath: "/w1/b",
-            watchedFolderPath: "/w1",
-            name: "B"
-        )
+        #expect(store.selectedCandidates["/w1/a"] == nil)
 
-        store.applyImportCandidatesSnapshot(
-            listSnapshot(
-                folderCandidates: [
-                    bridgeRow(
-                        folderPath: "/w1/a",
-                        watchedFolderPath: "/w1",
-                        name: "A"
-                    )
-                ]
+        store.applyCandidateDetail(
+            key: "/w1/a",
+            detail: detail(
+                folderPath: "/w1/a",
+                watchedFolderPath: "/w1",
+                name: "A"
             )
         )
 
-        #expect(store.folderCandidates["/w1/a"] != nil)
-        #expect(store.folderCandidates["/w1/b"] == nil)
+        let landed = try #require(store.selectedCandidates["/w1/a"])
+        #expect(
+            landed.importStatus == .importing(progressPercent: 5, step: nil)
+        )
     }
 }
 
 @Suite("ImportStore.applyCandidateRuntimeChange")
 struct ImportStoreRuntimeChangeTests {
     @MainActor
-    @Test("a runtime change updates one folder candidate")
+    @Test("a runtime change updates one selected candidate")
     func updatesOneCandidate() throws {
         let store = ImportStore()
-        store.applyImportCandidatesSnapshot(
-            listSnapshot(
-                folderCandidates: [
-                    bridgeRow(
-                        folderPath: "/w1/a",
-                        watchedFolderPath: "/w1",
-                        name: "A",
-                        resumedIdentifyState: .notFoundAnywhere
-                    ),
-                    bridgeRow(
-                        folderPath: "/w1/b",
-                        watchedFolderPath: "/w1",
-                        name: "B"
-                    ),
-                ]
+        for key in ["/w1/a", "/w1/b"] {
+            store.applyCandidateDetail(
+                key: key,
+                detail: detail(
+                    folderPath: key,
+                    watchedFolderPath: "/w1",
+                    name: key,
+                    resumedIdentifyState: key == "/w1/a"
+                        ? .notFoundAnywhere : .idle
+                )
             )
-        )
+        }
 
         store.applyCandidateRuntimeChange(
             .updated(
@@ -439,7 +373,7 @@ struct ImportStoreRuntimeChangeTests {
             )
         )
 
-        let running = try #require(store.folderCandidates["/w1/a"])
+        let running = try #require(store.selectedCandidates["/w1/a"])
         // A live run outranks the resumed state.
         #expect(
             running.identifyState
@@ -448,45 +382,18 @@ struct ImportStoreRuntimeChangeTests {
         #expect(
             running.importStatus == .importing(progressPercent: 40, step: nil)
         )
-        #expect(store.folderCandidates["/w1/b"]?.importStatus == nil)
+        #expect(
+            store.importProgress(for: readyRow("/w1/a", title: "A"))
+                == .importing(progressPercent: 40, step: nil)
+        )
+        #expect(store.selectedCandidates["/w1/b"]?.importStatus == nil)
 
         store.applyCandidateRuntimeChange(.removed(key: "/w1/a"))
-        let cleared = try #require(store.folderCandidates["/w1/a"])
+        let cleared = try #require(store.selectedCandidates["/w1/a"])
         #expect(cleared.importStatus == nil)
+        #expect(store.importProgress(for: readyRow("/w1/a", title: "A")) == nil)
         // With no run live the resumed state shows again.
         #expect(cleared.identifyState == .notFoundAnywhere)
-    }
-
-    @MainActor
-    @Test("runtime that arrives before its row joins the row when it lands")
-    func runtimeAheadOfList() throws {
-        let store = ImportStore()
-        store.applyCandidateRuntimeChange(
-            .updated(
-                key: "/w1/a",
-                runtime: idleRuntime(
-                    importStatus: .importing(progressPercent: 5, step: nil)
-                )
-            )
-        )
-        #expect(store.folderCandidates["/w1/a"] == nil)
-
-        store.applyImportCandidatesSnapshot(
-            listSnapshot(
-                folderCandidates: [
-                    bridgeRow(
-                        folderPath: "/w1/a",
-                        watchedFolderPath: "/w1",
-                        name: "A"
-                    )
-                ]
-            )
-        )
-
-        let landed = try #require(store.folderCandidates["/w1/a"])
-        #expect(
-            landed.importStatus == .importing(progressPercent: 5, step: nil)
-        )
     }
 
     @MainActor
@@ -543,341 +450,6 @@ struct ImportLoudnessProgressTests {
     }
 }
 
-// MARK: - Triage rendering
-
-@Suite("ImportStore triage rendering")
-struct ImportStoreTriageRenderingTests {
-    private func seededStore() -> ImportStore {
-        let store = ImportStore()
-        store.triageQueue = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: [
-                        candidateEntry(readyRow("/w/ready-b", title: "Beta")),
-                        candidateEntry(readyRow("/w/ready-a", title: "Alpha")),
-                    ]
-                ),
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: "/w",
-                    group: BridgeTriageGroup(
-                        key: BridgeFolderReleaseDecisionKey(
-                            watchedFolderPath: "/w",
-                            relativeFolderPath: "collection"
-                        ),
-                        name: "Collection"
-                    ),
-                    entries: [
-                        candidateEntry(
-                            needsYouRow(
-                                "/w/collection/first",
-                                title: "First",
-                                group: .pickAPressing,
-                                reason: .disagreement(
-                                    disagreement: .severalMatches(count: 2)
-                                )
-                            )
-                        ),
-                        candidateEntry(
-                            needsYouRow(
-                                "/w/collection/second",
-                                title: "Second",
-                                group: .signalsDisagree,
-                                reason: .disagreement(
-                                    disagreement: .signalsConflict
-                                )
-                            )
-                        ),
-                    ]
-                ),
-                BridgeTriageSection(
-                    tab: .done,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: [
-                        candidateEntry(doneRow("/w/done", title: "Finished"))
-                    ]
-                ),
-                BridgeTriageSection(
-                    tab: .skipped,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: [
-                        candidateEntry(
-                            skippedRow(
-                                "/w/skipped",
-                                title: "Set Aside"
-                            )
-                        ),
-                        invalidEntry(
-                            bridgeInvalid(
-                                folderPath: "/w/bad",
-                                watchedFolderPath: "/w",
-                                name: "Bad Folder"
-                            )
-                        ),
-                    ]
-                ),
-            ],
-            counts: BridgeTriageTabCounts(
-                pending: 4,
-                done: 1,
-                skipped: 2
-            ),
-            folderScanStatuses: []
-        )
-        return store
-    }
-
-    @MainActor
-    @Test("filtering preserves core order when matched titles change")
-    func filteringPreservesCoreOrderAcrossSnapshots() {
-        let store = ImportStore()
-        let firstEntries: [BridgeTriageEntry] = [
-            candidateEntry(readyRow("/w/01", title: "Zulu Common")),
-            boundaryEntry(key: "02 Common", displayPath: "02 Common"),
-            candidateEntry(readyRow("/w/03", title: "Alpha Common")),
-        ]
-        store.triageQueue = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: firstEntries
-                )
-            ],
-            counts: BridgeTriageTabCounts(pending: 3, done: 0, skipped: 0),
-            folderScanStatuses: []
-        )
-
-        #expect(
-            store.releaseSections(
-                tab: .pending,
-                filterText: "common"
-            )
-            .flatMap(\.entries).map(\.id)
-                == firstEntries.map(ReleaseQueueEntry.init).map(\.id)
-        )
-
-        let secondEntries: [BridgeTriageEntry] = [
-            candidateEntry(readyRow("/w/01", title: "Alpha Common")),
-            boundaryEntry(key: "02 Common", displayPath: "02 Common"),
-            candidateEntry(readyRow("/w/03", title: "Zulu Common")),
-        ]
-        store.triageQueue = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: secondEntries
-                )
-            ],
-            counts: BridgeTriageTabCounts(pending: 3, done: 0, skipped: 0),
-            folderScanStatuses: []
-        )
-
-        #expect(
-            store.releaseSections(
-                tab: .pending,
-                filterText: "common"
-            )
-            .flatMap(\.entries).map(\.id)
-                == secondEntries.map(ReleaseQueueEntry.init).map(\.id)
-        )
-    }
-
-    @MainActor
-    @Test("sections preserve grouping and entry order")
-    func sectionsPreserveGrouping() throws {
-        let store = seededStore()
-        let importable = try #require(
-            store.releaseSections(
-                tab: .pending,
-                filterText: ""
-            )
-            .first { $0.group == nil }
-        )
-        #expect(
-            importable.entries.compactMap { entry in
-                guard
-                    case .candidate(_, let row) = entry.bridge
-                else { return nil }
-                return row.folderName
-            }
-                == ["Beta", "Alpha"]
-        )
-        #expect(
-            importable.entries.map(\.id)
-                == [
-                    "candidate:/w/ready-b",
-                    "candidate:/w/ready-a",
-                ]
-        )
-
-        let grouped = try #require(
-            store.releaseSections(
-                tab: .pending,
-                filterText: ""
-            )
-            .first { $0.group != nil }
-        )
-        #expect(grouped.group?.name == "Collection")
-        #expect(
-            grouped.group?.key.relativeFolderPath == "collection"
-        )
-    }
-
-    @MainActor
-    @Test("filter keeps matching entries inside their section")
-    func filterKeepsMatchingSectionEntries() throws {
-        let section = try #require(
-            seededStore()
-                .releaseSections(
-                    tab: .skipped,
-                    filterText: "bad"
-                )
-                .first
-        )
-        #expect(section.entries.count == 1)
-        guard
-            case .invalid(_, let invalid) = section.entries[0].bridge
-        else {
-            Issue.record("expected invalid entry")
-            return
-        }
-        #expect(invalid.folderPath == "/w/bad")
-    }
-
-    @MainActor
-    @Test("an answered row stays in Pending and becomes selectable")
-    func answeringMakesThePendingRowSelectable() {
-        let store = ImportStore()
-        store.triageQueue = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: [
-                        candidateEntry(
-                            needsYouRow(
-                                "/w/subject",
-                                title: "Subject",
-                                group: .pickAPressing,
-                                reason: .disagreement(
-                                    disagreement: .severalMatches(count: 2)
-                                )
-                            )
-                        )
-                    ]
-                )
-            ],
-            counts: BridgeTriageTabCounts(
-                pending: 1,
-                done: 0,
-                skipped: 0
-            ),
-            folderScanStatuses: []
-        )
-
-        #expect(
-            store.releaseSections(
-                tab: .pending,
-                filterText: ""
-            )
-            .count == 1
-        )
-
-        store.triageQueue = BridgeTriageQueue(
-            sections: [
-                BridgeTriageSection(
-                    tab: .pending,
-                    watchedFolderPath: "/w",
-                    group: nil,
-                    entries: [
-                        candidateEntry(
-                            readyRow("/w/subject", title: "Subject")
-                        )
-                    ]
-                )
-            ],
-            counts: BridgeTriageTabCounts(
-                pending: 1,
-                done: 0,
-                skipped: 0
-            ),
-            folderScanStatuses: []
-        )
-
-        #expect(
-            store.releaseSections(
-                tab: .pending,
-                filterText: ""
-            )
-            .count == 1
-        )
-        #expect(
-            store.selectableReadyRows(filterText: "")
-                .map(\.candidateKey) == ["/w/subject"]
-        )
-    }
-
-    @MainActor
-    @Test("row lookup addresses candidates inside grouped sections")
-    func rowLookupUsesSections() {
-        #expect(
-            seededStore().triageRow(forKey: "/w/collection/second")?
-                .folderName == "Second"
-        )
-        #expect(seededStore().triageRow(forKey: "/w/missing") == nil)
-    }
-
-    @MainActor
-    @Test("bulk skip keeps queue order and excludes ineligible or stale picks")
-    func skippableSelectionUsesLiveQueueRows() {
-        let keys = seededStore()
-            .skippableCandidateKeys(
-                in: [
-                    "/w/ready-a",
-                    "/w/ready-b",
-                    "/w/collection/second",
-                    "/w/done",
-                    "/w/skipped",
-                    "/w/missing",
-                ]
-            )
-
-        #expect(
-            keys
-                == [
-                    "/w/ready-b",
-                    "/w/ready-a",
-                    "/w/collection/second",
-                ]
-        )
-    }
-
-    @Test("section identity keeps path components distinct")
-    func sectionIdentityDoesNotConcatenatePaths() {
-        let first = ReleaseQueueSectionID(
-            tab: .pending,
-            watchedFolderPath: "/a|b",
-            groupRelativeFolderPath: "c"
-        )
-        let second = ReleaseQueueSectionID(
-            tab: .pending,
-            watchedFolderPath: "/a",
-            groupRelativeFolderPath: "b|c"
-        )
-        #expect(first != second)
-    }
-}
-
 @Suite("ImportStore sidebar covers")
 struct ImportStoreSidebarCoverTests {
     @MainActor
@@ -906,7 +478,7 @@ struct ImportStoreSidebarCoverTests {
         ]
         for choice in choices {
             candidate.selectedCover = choice
-            store.folderCandidates[key] = candidate
+            store.selectedCandidates[key] = candidate
 
             #expect(
                 store.sidebarCover(for: row)
@@ -926,7 +498,7 @@ struct ImportStoreSidebarCoverTests {
             name: "Subject"
         )
         candidate.setReleaseDetail(PreviewData.releaseDetailBridge)
-        store.folderCandidates[key] = candidate
+        store.selectedCandidates[key] = candidate
 
         let row = readyRow(
             key,
@@ -957,5 +529,203 @@ struct ImportStoreSidebarCoverTests {
             ImportStore().sidebarCover(for: row)
                 == .remote(url: "https://example.com/queue-thumbnail.jpg")
         )
+    }
+}
+
+// MARK: - The paged list
+
+@Suite("Import list page source")
+struct ImportListPageSourceTests {
+    /// A stub bridge subscription: it records the windows asked for and hands
+    /// back the values a test queues.
+    private final class StubListSubscription: ImportListSubscriptionProtocol,
+        @unchecked Sendable
+    {
+        private let lock = NSLock()
+        private var windows: [[BridgeLibraryPageWindow]] = []
+        private var pending: [BridgeImportListSnapshot] = []
+        private var waiter: CheckedContinuation<
+            BridgeImportListSnapshot, Never
+        >?
+
+        var requestedWindows: [[BridgeLibraryPageWindow]] {
+            lock.lock()
+            defer { lock.unlock() }
+            return windows
+        }
+
+        func setWindows(windows: [BridgeLibraryPageWindow]) throws {
+            lock.lock()
+            self.windows.append(windows)
+            lock.unlock()
+        }
+
+        func setView(view: BridgeImportListView) throws {}
+
+        func cancel() async throws {}
+
+        func deliver(_ snapshot: BridgeImportListSnapshot) {
+            lock.lock()
+            let waiter = self.waiter
+            self.waiter = nil
+            if waiter == nil { pending.append(snapshot) }
+            lock.unlock()
+            waiter?.resume(returning: snapshot)
+        }
+
+        func next() async -> BridgeImportListSnapshot {
+            await withCheckedContinuation { continuation in
+                lock.lock()
+                if pending.isEmpty {
+                    waiter = continuation
+                    lock.unlock()
+                }
+                else {
+                    let snapshot = pending.removeFirst()
+                    lock.unlock()
+                    continuation.resume(returning: snapshot)
+                }
+            }
+        }
+    }
+
+    private func item(_ key: String) -> BridgeImportListItem {
+        .candidate(
+            stableKey: "candidate:\(key)",
+            row: readyRow(key, title: key)
+        )
+    }
+
+    private func snapshot(
+        _ windows: [(UInt64, UInt64, [String])],
+        totalCount: UInt64,
+        firstUnidentifiedKey: String? = nil
+    ) -> BridgeImportListSnapshot {
+        BridgeImportListSnapshot(
+            windows: windows.map { offset, limit, keys in
+                BridgeImportListWindow(
+                    window: BridgeLibraryPageWindow(
+                        offset: offset,
+                        limit: limit
+                    ),
+                    items: keys.map(item)
+                )
+            },
+            totalCount: totalCount,
+            summary: BridgeImportQueueSummary(
+                counts: BridgeTriageTabCounts(
+                    pending: UInt32(totalCount),
+                    done: 0,
+                    skipped: 0
+                ),
+                watchedFolders: [BridgeWatchedFolder(path: "/w", name: "w")],
+                folderScanStatuses: [],
+                groupKeys: [],
+                ready: [],
+                firstUnidentifiedKey: firstUnidentifiedKey
+            ),
+            requestRevision: 0,
+            cause: .requestChanged
+        )
+    }
+
+    @MainActor
+    @Test("one value updates every registered page, and its summary")
+    func oneValueUpdatesEveryPage() async throws {
+        let subscription = StubListSubscription()
+        var summaries: [BridgeImportQueueSummary] = []
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { summaries.append($0) }
+        )
+        var first: [String] = []
+        var second: [String] = []
+        var totals: [Int] = []
+        _ = source.subscribe(
+            offset: 0,
+            limit: 2,
+            onValue: { items, total in
+                first = items.map(\.id)
+                totals.append(total)
+            },
+            onError: { _ in }
+        )
+        _ = source.subscribe(
+            offset: 2,
+            limit: 2,
+            onValue: { items, total in
+                second = items.map(\.id)
+                totals.append(total)
+            },
+            onError: { _ in }
+        )
+
+        subscription.deliver(
+            snapshot(
+                [(0, 2, ["/w/a", "/w/b"]), (2, 2, ["/w/c"])],
+                totalCount: 3,
+                firstUnidentifiedKey: "/w/c"
+            )
+        )
+        try await settle()
+
+        #expect(first == ["candidate:/w/a", "candidate:/w/b"])
+        #expect(second == ["candidate:/w/c"])
+        #expect(totals == [3, 3])
+        #expect(summaries.last?.firstUnidentifiedKey == "/w/c")
+    }
+
+    @MainActor
+    @Test("cancelling one page asks for the windows that are left")
+    func cancellingOnePageShrinksTheWindows() async throws {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        _ = source.subscribe(
+            offset: 0,
+            limit: 2,
+            onValue: { _, _ in },
+            onError: { _ in }
+        )
+        let second = source.subscribe(
+            offset: 2,
+            limit: 2,
+            onValue: { _, _ in },
+            onError: { _ in }
+        )
+
+        #expect(
+            subscription.requestedWindows.last?.map(\.offset) == [0, 2]
+        )
+
+        second.cancel()
+        #expect(subscription.requestedWindows.last?.map(\.offset) == [0])
+    }
+
+    /// Let the source's delivery task reach the main actor.
+    private func settle() async throws {
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+    }
+}
+
+@Suite("Import selection")
+struct ImportSelectionTests {
+    @MainActor
+    @Test("a read that says the folder is gone drops it from the selection")
+    func aMissingCandidateClearsItsSelection() {
+        let uiStore = UiStore()
+        var reported: [Set<String>] = []
+        uiStore.onFolderCandidateSelectionChanged = { reported.append($0) }
+
+        uiStore.setFolderCandidateSelection(["/w/a", "/w/b"])
+        // What the per-key read does when it delivers no candidate.
+        uiStore.removeFolderCandidateSelection(["/w/a"])
+
+        #expect(uiStore.selectedFolderCandidates == ["/w/b"])
+        #expect(reported == [["/w/a", "/w/b"], ["/w/b"]])
     }
 }

@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 
 private final class OutputValueSink: OutputCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeOutputSnapshot) -> Void
@@ -14,35 +15,44 @@ private final class OutputValueSink: OutputCallback, @unchecked Sendable {
     }
 }
 
-private final class ImportCandidatesValueSink: ImportCandidatesCallback,
+private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     @unchecked Sendable
 {
     private let apply:
-        @MainActor @Sendable (BridgeImportCandidatesSnapshot) -> Void
-    private let applyRuntime:
         @MainActor @Sendable (BridgeCandidateRuntimeChange) -> Void
+
+    init(
+        apply:
+            @escaping @MainActor @Sendable (BridgeCandidateRuntimeChange)
+            -> Void
+    ) {
+        self.apply = apply
+    }
+
+    func onChange(change: BridgeCandidateRuntimeChange) {
+        Task { @MainActor in apply(change) }
+    }
+}
+
+private final class ImportCandidateSink: ImportCandidateCallback,
+    @unchecked Sendable
+{
+    private let apply:
+        @MainActor @Sendable (BridgeImportCandidateDetail?) -> Void
     private let fail: @MainActor @Sendable (BridgeError) -> Void
 
     init(
         apply:
-            @escaping @MainActor @Sendable (BridgeImportCandidatesSnapshot)
-            -> Void,
-        applyRuntime:
-            @escaping @MainActor @Sendable (BridgeCandidateRuntimeChange)
+            @escaping @MainActor @Sendable (BridgeImportCandidateDetail?)
             -> Void,
         fail: @escaping @MainActor @Sendable (BridgeError) -> Void
     ) {
         self.apply = apply
-        self.applyRuntime = applyRuntime
         self.fail = fail
     }
 
-    func onValue(value: BridgeImportCandidatesSnapshot) {
+    func onValue(value: BridgeImportCandidateDetail?) {
         Task { @MainActor in apply(value) }
-    }
-
-    func onRuntime(change: BridgeCandidateRuntimeChange) {
-        Task { @MainActor in applyRuntime(change) }
     }
 
     func onError(error: BridgeError) {
@@ -50,47 +60,137 @@ private final class ImportCandidatesValueSink: ImportCandidatesCallback,
     }
 }
 
-private final class ImportTriageValueSink: ImportTriageCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgeTriageQueue) -> Void
-    private let fail: @MainActor @Sendable (BridgeError) -> Void
+/// The reads behind the selected import candidates: one per selected key,
+/// opened when the key is selected and closed when it leaves the selection.
+/// A read that says the folder is gone drops the key from the selection, which
+/// is what clears a row the scan removed.
+@MainActor
+private final class ImportSelectionObservations {
+    private struct Observation {
+        let identity: UUID
+        let subscription: LiveSubscription
+    }
+
+    private let appHandle: AppHandle
+    private let importStore: ImportStore
+    private let uiStore: UiStore
+    private let importer: Importer
+    private var observations: [String: Observation] = [:]
 
     init(
-        apply: @escaping @MainActor @Sendable (BridgeTriageQueue) -> Void,
-        fail: @escaping @MainActor @Sendable (BridgeError) -> Void
+        appHandle: AppHandle,
+        importStore: ImportStore,
+        uiStore: UiStore,
+        importer: Importer
     ) {
-        self.apply = apply
-        self.fail = fail
+        self.appHandle = appHandle
+        self.importStore = importStore
+        self.uiStore = uiStore
+        self.importer = importer
     }
 
-    func onValue(value: BridgeTriageQueue) {
-        Task { @MainActor in apply(value) }
+    func selectionChanged(_ keys: Set<String>) {
+        for key in observations.keys where !keys.contains(key) {
+            observations.removeValue(forKey: key)?.subscription.cancel()
+            importStore.selectedCandidates.removeValue(forKey: key)
+        }
+        for key in keys where observations[key] == nil {
+            observe(key)
+        }
     }
 
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
+    private func observe(_ key: String) {
+        let identity = UUID()
+        let subscription = appHandle.subscribeImportCandidate(
+            candidateKey: key,
+            callback: ImportCandidateSink(
+                apply: { [weak self] detail in
+                    self?.deliver(detail, key: key, identity: identity)
+                },
+                fail: { [weak self] error in
+                    self?.uiStore.showError(error)
+                }
+            )
+        )
+        observations[key] = Observation(
+            identity: identity,
+            subscription: subscription
+        )
+    }
+
+    private func deliver(
+        _ detail: BridgeImportCandidateDetail?,
+        key: String,
+        identity: UUID
+    ) {
+        guard observations[key]?.identity == identity else { return }
+        guard let detail else {
+            // The key names no scanned folder any more, so nothing can be done
+            // with it: drop it from the selection, which closes this read.
+            uiStore.removeFolderCandidateSelection([key])
+            return
+        }
+        let isFirstRead = importStore.selectedCandidates[key] == nil
+        importStore.applyCandidateDetail(key: key, detail: detail)
+        guard isFirstRead,
+            let candidate = importStore.selectedCandidates[key],
+            case .idle = candidate.identifyState
+        else { return }
+        // The first selection of a folder nothing has run for starts its
+        // identification; a later selection finds a state that is no longer
+        // idle and starts nothing.
+        importer.autoIdentifyFolder(key)
+    }
+
+    deinit {
+        for observation in observations.values {
+            observation.subscription.cancel()
+        }
     }
 }
 
 @MainActor
 final class DesktopSubscriptions {
+    /// The import sidebar's paged list, installed in the view environment.
+    let importList: ImportListSlot
+
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let outputStore: OutputStore
     private let uiStore: UiStore
+    private let selection: ImportSelectionObservations
     private var subscriptions: [LiveSubscription] = []
 
     init(
         appHandle: AppHandle,
         importStore: ImportStore,
         outputStore: OutputStore,
-        uiStore: UiStore
+        uiStore: UiStore,
+        importer: Importer
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
         self.outputStore = outputStore
         self.uiStore = uiStore
+        selection = ImportSelectionObservations(
+            appHandle: appHandle,
+            importStore: importStore,
+            uiStore: uiStore,
+            importer: importer
+        )
+        importList = ImportListSlot(
+            importStore: importStore,
+            uiStore: uiStore,
+            makeSource: { view in
+                ImportListPageSource(
+                    subscription: appHandle.subscribeImportList(view: view),
+                    onSummary: { summary in
+                        importStore.summary = summary
+                    }
+                )
+                .pages
+            }
+        )
     }
 
     func start() {
@@ -101,32 +201,15 @@ final class DesktopSubscriptions {
                     outputStore.applySnapshot(value)
                 }
             ),
-            appHandle.subscribeImportCandidates(
-                callback: ImportCandidatesValueSink(
-                    apply: { [importStore, uiStore] value in
-                        importStore.applyImportCandidatesSnapshot(value)
-                        uiStore.retainFolderCandidateSelection(
-                            in: Set(importStore.folderCandidates.keys)
-                        )
-                    },
-                    applyRuntime: { [importStore] change in
-                        importStore.applyCandidateRuntimeChange(change)
-                    },
-                    fail: { [uiStore] error in
-                        uiStore.showError(error)
-                    }
-                )
-            ),
-            appHandle.subscribeImportTriage(
-                callback: ImportTriageValueSink(
-                    apply: { [importStore] value in
-                        importStore.triageQueue = value
-                    },
-                    fail: { [uiStore] error in
-                        uiStore.showError(error)
-                    }
-                )
+            appHandle.subscribeCandidateRuntime(
+                callback: CandidateRuntimeSink { [importStore] change in
+                    importStore.applyCandidateRuntimeChange(change)
+                }
             ),
         ]
+        uiStore.onFolderCandidateSelectionChanged = { [selection] keys in
+            selection.selectionChanged(keys)
+        }
+        importList.startLoad()
     }
 }

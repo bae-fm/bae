@@ -1,8 +1,9 @@
 use super::*;
 
 /// The sidebar's three lifecycle tabs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TriageTab {
+    #[default]
     Pending,
     Done,
     Skipped,
@@ -200,12 +201,12 @@ impl MatchedSignal {
     /// `None` when neither lookup claims the result — the row then shows the
     /// provider alone. `combine` takes every match from one of the two result
     /// sets, so this does not arise from its output; the booleans are
-    /// independent in the type, and naming a signal for a provenance that
-    /// claims none would be worse than admitting there isn't one.
-    fn of(provenance: &ResultProvenance) -> Option<Self> {
-        if provenance.by_disc_id {
+    /// independent in the type, and naming a signal for a lead that claims
+    /// none would be worse than admitting there isn't one.
+    fn of(lead: &LeadMatch) -> Option<Self> {
+        if lead.by_disc_id {
             Some(Self::DiscId)
-        } else if provenance.by_barcode {
+        } else if lead.by_barcode {
             Some(Self::Barcode)
         } else {
             None
@@ -270,7 +271,8 @@ pub struct MatchedRelease {
 }
 
 impl MatchedRelease {
-    /// The release a verdict leads with, or `None` when it named none.
+    /// The release a stored verdict leads with, read off the columns of its
+    /// lead match row, or `None` when it named none.
     ///
     /// `Conflict`, `NotFoundAnywhere` and `ManualOnly` all lead with nothing:
     /// the first has results but no agreement on which is the match, and the
@@ -283,18 +285,9 @@ impl MatchedRelease {
     /// *not* shown is `pressing`: year, format and track count are the question
     /// being asked, and answering it from the first candidate would be the app
     /// pre-empting the user.
-    pub(super) fn of(verdict: &TerminalVerdict) -> Option<Self> {
-        let TerminalVerdict::Found {
-            matches,
-            provenance,
-            ..
-        } = verdict
-        else {
-            return None;
-        };
-        let lead = matches.first()?;
-        let settled = matches.len() == 1;
-        let signal = provenance.first().and_then(MatchedSignal::of);
+    pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
+        let lead = summary.lead.as_ref()?;
+        let settled = summary.match_count == 1;
         Some(Self {
             release_id: lead.release_id.clone(),
             title: lead.title.clone(),
@@ -302,14 +295,14 @@ impl MatchedRelease {
             pressing: settled.then(|| MatchedPressing {
                 year: lead.year,
                 format: lead.format.clone(),
-                track_count: source_track_count(lead),
+                track_count: source_track_count(&lead.source_tracks),
             }),
-            cover_thumbnail_url: lead.cover_art.as_ref().map(|c| c.thumbnail_url.clone()),
+            cover_thumbnail_url: lead.cover_thumbnail_url.clone(),
             evidence: MatchEvidence {
                 source: lead.source,
                 // Index-aligned with `matches`, so the lead's provenance is the
                 // first one.
-                signal,
+                signal: MatchedSignal::of(lead),
             },
         })
     }
@@ -342,33 +335,15 @@ impl MatchedRelease {
     }
 }
 
-/// What a candidate's stored pick settled it on: the choice itself, and — for
-/// a release — how that release reads.
-///
-/// The two travel together because the row leads with the identity the
-/// candidate is settled on, and a pick is that identity: a manual search
-/// settles a folder on a release the verdict never named, and a row reading the
-/// verdict alone would go on showing the folder name while the pane shows the
-/// release.
-#[derive(Debug, Clone)]
-pub struct Picked {
-    pub pick: crate::import::IdentityPick,
-    /// The picked release as its own archived documents describe it. `None`
-    /// when the folder is read as its own tags, and when nothing archived the
-    /// documents behind a release pick — the row then leads with the folder
-    /// name until the pane's own read fetches them.
-    pub release: Option<MatchedRelease>,
-}
-
-fn source_track_count(result: &MetadataResult) -> Option<u32> {
-    match result.source_tracks {
-        Some(SourceTracks::Listed { count, .. }) => Some(count),
+fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
+    match source_tracks {
+        Some(SourceTracks::Listed { count, .. }) => Some(*count),
         Some(SourceTracks::Nothing) | None => None,
     }
 }
 
 /// One candidate's row.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TriageRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
@@ -405,43 +380,10 @@ pub struct TriageRow {
     pub claim: Option<IdentityChoice>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,
     pub name: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum TriageEntry {
-    Candidate(TriageRow),
-    Boundary(FolderReleaseBoundary),
-    Invalid(InvalidCandidate),
-}
-
-impl TriageEntry {
-    /// Stable identity for a projected sidebar entry. Variant prefixes keep a
-    /// candidate and a boundary at the same folder from sharing view state;
-    /// the boundary length prefix makes its two path components unambiguous.
-    pub fn stable_key(&self) -> String {
-        match self {
-            Self::Candidate(row) => format!("candidate:{}", row.candidate_key),
-            Self::Boundary(boundary) => format!(
-                "boundary:{}:{}{}",
-                boundary.key.watched_folder_path.len(),
-                boundary.key.watched_folder_path,
-                boundary.key.relative_folder_path
-            ),
-            Self::Invalid(candidate) => format!("invalid:{}", candidate.path.display()),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TriageSection {
-    pub tab: TriageTab,
-    pub watched_folder_path: String,
-    pub group: Option<TriageGroup>,
-    pub entries: Vec<TriageEntry>,
 }
 
 /// How many rows each tab holds. Computed in the same pass that places them, so
@@ -455,51 +397,11 @@ pub struct TriageTabCounts {
 }
 
 impl TriageTabCounts {
-    pub(super) fn bump(&mut self, tab: TriageTab) {
+    pub(crate) fn bump(&mut self, tab: TriageTab) {
         match tab {
             TriageTab::Pending => self.pending += 1,
             TriageTab::Done => self.done += 1,
             TriageTab::Skipped => self.skipped += 1,
-        }
-    }
-}
-
-/// The whole sidebar, grouped into the hierarchy both UIs render.
-#[derive(Debug, Clone)]
-pub struct TriageQueue {
-    /// Tab-specific, core-shaped hierarchy. A section without `group` contains
-    /// linear rows directly below the watched root.
-    pub sections: Vec<TriageSection>,
-    /// `skipped` counts the Skipped rows **plus** `invalid`.
-    pub counts: TriageTabCounts,
-    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
-}
-
-/// What a candidate's stored row says, read back.
-///
-/// The verdict and its classification travel as one value because they are the
-/// same fact read two ways — the row's release comes from the verdict and its
-/// placement from the classification — and pairing them here is what stops a
-/// caller matching a verdict against somebody else's classification.
-#[derive(Debug, Clone)]
-pub struct Answered {
-    pub verdict: TerminalVerdict,
-    pub classification: QueueClassification,
-}
-
-impl Answered {
-    /// Classify a stored verdict. `library_statuses` is a **live** check of the
-    /// verdict's own matches — see [`classify`], which is why nothing here is
-    /// cached.
-    pub fn new(
-        verdict: TerminalVerdict,
-        probed_total_duration_ms: u64,
-        library_statuses: &[LibraryStatus],
-    ) -> Self {
-        let classification = classify(&verdict, probed_total_duration_ms, library_statuses);
-        Self {
-            verdict,
-            classification,
         }
     }
 }

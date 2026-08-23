@@ -167,6 +167,10 @@ struct Candidate: Equatable, Identifiable {
     /// It outlives a switch to Unknown, which is what makes switching back a
     /// re-pick of this release rather than a trip through the search.
     var pick: CandidatePick?
+    /// How the sidebar places this candidate — the same row the list holds,
+    /// read by key alongside the folder. `nil` for a re-identify session,
+    /// which has no scanned folder and so no row.
+    var row: BridgeTriageRow?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var libraryStatusSubscriptions:
         [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
@@ -232,11 +236,15 @@ struct Candidate: Equatable, Identifiable {
         files = bridge.files
     }
 
-    /// A row from the candidate list: the folder plus its resumed identify
-    /// state. Runtime joins it through `applyRuntime`.
-    init(row: BridgeFolderImportCandidateSnapshot) {
-        self.init(bridge: row.candidate)
-        resumedIdentifyState = IdentifyState(bridge: row.resumedIdentifyState)
+    /// One read of a selected candidate: the folder, its resumed identify
+    /// state, and the row the sidebar places it as. Runtime joins it through
+    /// `applyRuntime`.
+    init(detail: BridgeImportCandidateDetail) {
+        self.init(bridge: detail.candidate)
+        resumedIdentifyState = IdentifyState(
+            bridge: detail.resumedIdentifyState
+        )
+        row = detail.row
         reconcileIdentifyState()
     }
 

@@ -10,6 +10,7 @@ extension ImportView {
     var candidateList: some View {
         ImportCandidateListContent(
             importStore: importStore,
+            listSlot: listSlot,
             selectedKeys: candidateSelectionBinding,
             onAddFolder: {
                 uiStore.setImportFolderPickerPresented(true)
@@ -75,7 +76,7 @@ extension ImportView {
         // the user has been editing.
         .task(id: candidate.key + fileNames(candidate)) {
             if candidate.identityChoice == nil {
-                ImportMappingFlow.readCandidateMapping(
+                await ImportMappingFlow.readCandidateMapping(
                     key: candidate.key,
                     services: mappingServices
                 )

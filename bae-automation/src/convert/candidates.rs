@@ -1,65 +1,18 @@
-//! Candidate conversion: the import service's published candidate snapshot as
-//! the automation surface's own shapes.
+//! Candidate conversion: what core reads by key, as the automation surface's
+//! own shapes.
 //!
-//! Every candidate read goes through here. The snapshot is the whole input —
-//! there is no accumulated index behind these functions, so what they return is
-//! whatever the import service is publishing right now.
+//! Every candidate read goes through here, and every one of them is a read of
+//! the tables: there is no accumulated index behind these functions, so what
+//! they return is what the import tables say right now.
 
 use super::*;
 use std::collections::HashMap;
 
-/// Every candidate the import service is publishing, in path order.
-///
-/// The snapshot's own order is per watched folder; automation presents one flat
-/// list across folders and kinds, so it sorts by path — the key callers name
-/// candidates by.
-pub(crate) fn automation_candidates(
-    snapshot: &ImportCandidatesSnapshot,
-    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
-) -> Vec<AutomationCandidate> {
-    let mut candidates: Vec<AutomationCandidate> = snapshot
-        .folder_candidates
-        .iter()
-        .map(|folder| automation_candidate_from_folder(folder, runtime))
-        .chain(
-            snapshot
-                .invalid_candidates
-                .iter()
-                .map(automation_candidate_from_invalid),
-        )
-        .collect();
-    candidates.sort_by(|left, right| left.path().cmp(right.path()));
-    candidates
-}
-
-/// The one candidate `candidate_key` names, or `None` when the snapshot holds
-/// no such candidate. A key the snapshot doesn't carry names nothing this
-/// surface can act on — including a path a `FolderReleaseBoundary` currently
-/// hides, which is a candidate the import service has deliberately withdrawn.
-pub(crate) fn automation_candidate(
-    snapshot: &ImportCandidatesSnapshot,
-    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
-    candidate_key: &str,
-) -> Option<AutomationCandidate> {
-    snapshot
-        .folder_candidates
-        .iter()
-        .find(|folder| candidate_path(&folder.candidate.path) == candidate_key)
-        .map(|folder| automation_candidate_from_folder(folder, runtime))
-        .or_else(|| {
-            snapshot
-                .invalid_candidates
-                .iter()
-                .find(|invalid| candidate_path(&invalid.path) == candidate_key)
-                .map(automation_candidate_from_invalid)
-        })
-}
-
 /// A folder candidate with its runtime joined. The identify state is the run
 /// in flight when there is one, else the state its stored verdict stands back
 /// up as — the same answer the import tab shows.
-fn automation_candidate_from_folder(
-    folder: &FolderImportCandidateSnapshot,
+pub(crate) fn automation_candidate_from_folder(
+    folder: &ImportCandidateDetail,
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
 ) -> AutomationCandidate {
     let candidate = &folder.candidate;
@@ -90,7 +43,9 @@ fn automation_candidate_from_folder(
 
 /// An unimportable folder. The import service records no runtime against one —
 /// nothing identifies or imports it — so the automation shape carries none.
-fn automation_candidate_from_invalid(candidate: &InvalidCandidate) -> AutomationCandidate {
+pub(crate) fn automation_candidate_from_invalid(
+    candidate: &InvalidCandidate,
+) -> AutomationCandidate {
     AutomationCandidate::Invalid {
         common: automation_candidate_common(
             &candidate.path,

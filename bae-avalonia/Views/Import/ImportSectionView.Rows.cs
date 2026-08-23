@@ -15,44 +15,22 @@ namespace Bae.Desktop;
 
 internal sealed partial class ImportSectionView
 {
-    private ScrollViewer RenderReleaseSections(BridgeTriageTab tab)
+    // One item of the list, by kind. Which items exist, in what order, under
+    // which header and in which tab is core's answer; this only draws them.
+    private Control BuildListCell(BridgeImportListItem item)
     {
-        var list = new StackPanel { Spacing = 0 };
-        foreach (var section in TriageListModel.Sections(
-            _import.TriageQueue,
-            tab,
-            _import.FilterText,
-            _import.SortOrder))
+        Control control = item switch
         {
-            var content = new StackPanel { Spacing = 0 };
-            foreach (var entry in section.Entries)
-            {
-                var control = entry.Bridge switch
-                {
-                    BridgeTriageEntry.Candidate candidate => BuildRow(candidate.Row),
-                    BridgeTriageEntry.Boundary boundary => BuildBoundaryRow(boundary.BoundaryValue),
-                    BridgeTriageEntry.Invalid invalid => BuildInvalidRow(invalid.InvalidCandidate),
-                    _ => new Panel(),
-                };
-                control.Tag = entry.StableKey;
-                content.Children.Add(control);
-            }
-            if (section.Group is { } group)
-            {
-                var expanded = _import.Interaction.IsGroupExpanded(
-                    ImportStore.GroupDisclosureKey(group.Key));
-                list.Children.Add(BuildGroupHeader(group, expanded));
-                if (expanded)
-                {
-                    list.Children.Add(content);
-                }
-            }
-            else
-            {
-                list.Children.Add(content);
-            }
-        }
-        return new ScrollViewer { Content = list };
+            BridgeImportListItem.GroupHeader header => BuildGroupHeader(
+                header.Group,
+                header.Expanded),
+            BridgeImportListItem.Candidate candidate => BuildRow(candidate.Row),
+            BridgeImportListItem.Boundary boundary => BuildBoundaryRow(boundary.BoundaryValue),
+            BridgeImportListItem.Invalid invalid => BuildInvalidRow(invalid.InvalidCandidate),
+            _ => new Panel(),
+        };
+        control.Tag = ImportStore.StableKey(item);
+        return control;
     }
 
     // A folder group's header row: the disclosure caret, a folder glyph, and
@@ -91,13 +69,7 @@ internal sealed partial class ImportSectionView
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Left,
         };
-        button.Click += (_, _) =>
-        {
-            _import.Interaction.SetGroupExpanded(
-                ImportStore.GroupDisclosureKey(group.Key),
-                !expanded);
-            Render();
-        };
+        button.Click += (_, _) => _import.SetGroupExpanded(group.Key, !expanded);
 
         var combine = new MenuItem { Header = Loc.Chrome("import.release.one") };
         combine.Click += (_, _) => ApplyFolderReleaseDecision(
@@ -440,7 +412,7 @@ internal sealed partial class ImportSectionView
     /// the start with no step named.</summary>
     private (int Percent, ImportStep? Step) ImportingProgress(BridgeTriageRow row)
     {
-        var status = _import.Candidate(row.CandidateKey)?.RowStatus;
+        var status = _import.RowStatus(row.CandidateKey);
         return status is { Kind: "importing" }
             ? (status.ProgressPercent, status.Step)
             : (0, null);
@@ -817,6 +789,7 @@ internal sealed partial class ImportSectionView
         BridgeFolderReleaseDecision decision)
     {
         _selectedKey = null;
+        _import.ClearObservedCandidate();
         _pane.Clear();
         _import.SetFolderReleaseDecision(key, decision);
     }
@@ -840,8 +813,36 @@ internal sealed partial class ImportSectionView
             _ = _import.AutoIdentify(row.CandidateKey);
             return;
         }
-        _selectedKey = row.CandidateKey;
+        SelectCandidate(row.CandidateKey);
+    }
+
+    // Put the candidate at `key` under the pane. Its folder, its files and its
+    // resumed identify state come from its own query, so a key whose row is not
+    // in a loaded window opens the pane as soon as that query answers.
+    private void SelectCandidate(string key)
+    {
+        _selectedKey = key;
+        _import.ObserveCandidate(key);
         Render();
+        if (_import.Row(key) is { } row)
+        {
+            _pendingSelection = null;
+            _ = _pane.ShowCandidate(row);
+        }
+        else
+        {
+            _pendingSelection = key;
+        }
+    }
+
+    // The row a pending selection was waiting for has arrived.
+    private void ShowPendingSelection()
+    {
+        if (_pendingSelection is not { } key || _import.Row(key) is not { } row)
+        {
+            return;
+        }
+        _pendingSelection = null;
         _ = _pane.ShowCandidate(row);
     }
 

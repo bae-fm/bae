@@ -268,90 +268,6 @@ impl AppHandle {
         .await
     }
 
-    pub fn subscribe_import_candidates(
-        &self,
-        callback: Box<dyn crate::types::ImportCandidatesCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_import_candidates();
-            let deliver = |value: &bae_core::import::ImportCandidatesValue| match value.as_ref() {
-                Ok(projection) => {
-                    callback.on_value(crate::types::BridgeImportCandidatesSnapshot::from_core(
-                        projection.snapshot.clone(),
-                    ))
-                }
-                Err(error) => callback.on_error(BridgeError::database(error)),
-            };
-            // The runtime stream is taken before the first list goes out, so
-            // every change after the initial map is seen.
-            let (initial_runtime, mut changes) = services.subscribe_candidate_runtime();
-            deliver(&values.borrow_and_update().clone());
-            for (key, runtime) in initial_runtime {
-                callback.on_runtime(crate::types::BridgeCandidateRuntimeChange::Updated {
-                    key,
-                    runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
-                });
-            }
-            loop {
-                tokio::select! {
-                    changed = values.changed() => {
-                        if changed.is_err() {
-                            break;
-                        }
-                        deliver(&values.borrow_and_update().clone());
-                    }
-                    change = changes.recv() => match change {
-                        Ok(change) => callback.on_runtime(
-                            crate::types::BridgeCandidateRuntimeChange::from_core(change),
-                        ),
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                            tracing::warn!(
-                                "candidate runtime subscription dropped {count} changes; \
-                                 re-sending every key's runtime"
-                            );
-                            for (key, runtime) in services.subscribe_candidate_runtime().0 {
-                                callback.on_runtime(
-                                    crate::types::BridgeCandidateRuntimeChange::Updated {
-                                        key,
-                                        runtime:
-                                            crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-                                                runtime,
-                                            ),
-                                    },
-                                );
-                            }
-                        }
-                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-                    },
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
-    }
-
-    pub fn subscribe_import_triage(
-        &self,
-        callback: Box<dyn crate::types::ImportTriageCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_import_triage_values(&service_runtime);
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => {
-                        callback.on_value(crate::types::BridgeTriageQueue::from_core(value))
-                    }
-                    Err(error) => callback.on_error(BridgeError::database(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
-    }
-
     pub fn subscribe_release_library_status(
         &self,
         source: crate::types::BridgeMetadataSource,
@@ -711,15 +627,19 @@ impl AppHandle {
 
     /// The mapping table for a candidate nobody has picked a release for:
     /// every source unit the folder offers, with what it becomes left open.
-    pub fn candidate_mapping(
-        &self,
+    pub async fn candidate_mapping(
+        self: std::sync::Arc<Self>,
         candidate_key: String,
     ) -> Result<crate::types::BridgeMappingTable, BridgeError> {
-        let mapping = self
-            .services
-            .import_candidate_mapping(&candidate_key)
-            .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeMappingTable::from_core(mapping))
+        self.run_exported(move |this| async move {
+            let mapping = this
+                .services
+                .import_candidate_mapping(&candidate_key)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeMappingTable::from_core(mapping))
+        })
+        .await
     }
 
     /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a

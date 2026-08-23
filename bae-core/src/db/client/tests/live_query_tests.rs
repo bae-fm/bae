@@ -680,24 +680,38 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     assert_eq!(updated.album_id.as_deref(), Some(ALBUM_ID));
 }
 
-#[tokio::test]
-async fn import_candidates_subscription_rejoins_an_imported_release_by_content_hash() {
+/// The import list's request carries the view and the windows, so every test
+/// below states both.
+fn list_request(
+    tab: crate::import::TriageTab,
+    windows: impl IntoIterator<Item = (u64, u64)>,
+) -> crate::import::ImportListRequest {
+    crate::import::ImportListRequest {
+        view: crate::import::ImportListView {
+            tab,
+            ..crate::import::ImportListView::default()
+        },
+        windows: windows
+            .into_iter()
+            .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
+            .collect(),
+        runtime_facts: Default::default(),
+    }
+}
+
+fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
     use crate::import::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
     };
-    use crate::import::FolderCandidate;
-
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
-    let candidate = FolderCandidate {
-        path: format!("{root}/release").into(),
-        file_root: format!("{root}/release").into(),
-        name: "Release".to_string(),
+    ScanItem::Valid(crate::import::FolderCandidate {
+        path: format!("{root}/{name}").into(),
+        file_root: format!("{root}/{name}").into(),
+        name: name.to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
                 proposed_audio: true,
                 file: ScannedFile::new(
-                    format!("{root}/release/01.flac").into(),
+                    format!("{root}/{name}/01.flac").into(),
                     "01.flac".to_string(),
                     1_000,
                 ),
@@ -708,29 +722,51 @@ async fn import_candidates_subscription_rejoins_an_imported_release_by_content_h
         watched_folder_path: root.to_string(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: "release".to_string(),
+        display_path: name.to_string(),
         resolved_boundaries: Vec::new(),
         combine_ancestor_key: None,
+    })
+}
+
+fn candidate_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
+    projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            crate::import::ImportListItem::Candidate(row) => Some(row.folder_name.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::folder_registry::host_root("/music");
+    let item = scan_candidate(root, "release");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
+        unreachable!("the fixture builds a valid candidate");
     };
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate))
+    db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let mut live = db.subscribe_import_candidates();
-    let initial = live.next().await.unwrap();
-    assert_eq!(initial.snapshot.folder_candidates.len(), 1);
-    assert!(!initial.snapshot.folder_candidates[0].is_added);
-    assert!(initial.triage.imported_releases.is_empty());
+    let mut live =
+        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
+    let initial = live.next().await.into_result().unwrap();
+    assert_eq!(initial.total_count, 1);
+    assert_eq!(initial.summary.counts.pending, 1);
+    assert_eq!(initial.summary.counts.done, 0);
 
-    let imported_hash = content_hash.clone();
     db.call(move |sql| {
         sql.execute(
             "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-            params![imported_hash, RELEASE_ID],
+            params![content_hash, RELEASE_ID],
         )
         .map(|_| ())
         .map_err(DbError::from)
@@ -740,101 +776,129 @@ async fn import_candidates_subscription_rejoins_an_imported_release_by_content_h
 
     let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("the imported release wakes the candidate list")
+        .expect("the imported release wakes the list")
+        .into_result()
         .unwrap();
-    assert!(imported.snapshot.folder_candidates[0].is_added);
-    let release = imported
-        .triage
-        .imported_releases
-        .get(&content_hash)
-        .expect("the content hash resolves its imported release");
-    assert_eq!(release.release_id, RELEASE_ID);
-    assert_eq!(release.album_id, ALBUM_ID);
+    assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
+    assert_eq!(imported.summary.counts.done, 1);
+}
 
-    db.call(|sql| {
+/// The list is a live query over the scan tables, so a scan item written while
+/// someone is watching wakes it. A candidate's rows span several tables now; a
+/// dependency missed on any of them would leave the list showing the previous
+/// scan until something unrelated changed.
+#[tokio::test]
+async fn import_list_wakes_on_a_scan_item() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::folder_registry::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
+        .await
+        .unwrap();
+
+    let mut live =
+        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
+    let initial = live.next().await.into_result().unwrap();
+    assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
+
+    db.save_folder_scan_item(root, generation, &scan_candidate(root, "second"))
+        .await
+        .unwrap();
+    let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("a scan item wakes the list")
+        .into_result()
+        .unwrap();
+    assert_eq!(
+        candidate_names(&grown),
+        vec!["first".to_string(), "second".to_string()]
+    );
+    assert_eq!(grown.total_count, 2);
+}
+
+/// Moving the window is a request change, not a commit: the query reruns and
+/// says so without anything having been written.
+#[tokio::test]
+async fn import_list_moving_the_window_reruns_without_a_commit() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::folder_registry::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    for name in ["first", "second"] {
+        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
+            .await
+            .unwrap();
+    }
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let live = db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
+    let requests = live.requests();
+    let mut live = live;
+    let initial = live.next().await;
+    assert_eq!(
+        initial.cause(),
+        coven::ReconfigurableLiveQueryCause::Initial
+    );
+    assert_eq!(
+        candidate_names(&initial.into_result().unwrap()),
+        vec!["first".to_string()]
+    );
+
+    requests
+        .set(list_request(crate::import::TriageTab::Pending, [(1, 1)]))
+        .unwrap();
+    let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("the window change reruns the query");
+    assert_eq!(
+        moved.cause(),
+        coven::ReconfigurableLiveQueryCause::RequestChanged
+    );
+    assert_eq!(
+        candidate_names(&moved.into_result().unwrap()),
+        vec!["second".to_string()]
+    );
+}
+
+/// A commit that touches a column the list does not read leaves the projection
+/// equal, and coven withholds it: the tab does not re-render for a write it
+/// cannot show.
+#[tokio::test]
+async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::folder_registry::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    for name in ["first", "second"] {
+        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
+            .await
+            .unwrap();
+    }
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let mut live =
+        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
+    let initial = live.next().await.into_result().unwrap();
+    assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
+
+    let second = format!("{root}/second");
+    db.call(move |sql| {
         sql.execute(
-            "UPDATE releases SET content_hash = NULL WHERE id = ?1",
-            params![RELEASE_ID],
+            "UPDATE scan_candidate SET format_label = 'ALAC' WHERE path = ?1",
+            params![second],
         )
         .map(|_| ())
         .map_err(DbError::from)
     })
     .await
     .unwrap();
-    let removed = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("removing the imported release wakes the candidate list")
-        .unwrap();
-    assert!(!removed.snapshot.folder_candidates[0].is_added);
-    assert!(removed.triage.imported_releases.is_empty());
-}
 
-/// The candidate list is a live query over the scan tables, so a scan item
-/// written while someone is watching wakes it. A candidate's rows span
-/// several tables now; a dependency missed on any of them would leave the
-/// list showing the previous scan until something unrelated changed.
-#[tokio::test]
-async fn import_candidates_subscription_wakes_on_a_scan_item() {
-    use crate::import::folder_scanner::{
-        CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
-    };
-    use crate::import::FolderCandidate;
-
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
-    let candidate = |name: &str| {
-        ScanItem::Valid(FolderCandidate {
-            path: format!("{root}/{name}").into(),
-            file_root: format!("{root}/{name}").into(),
-            name: name.to_string(),
-            files: CategorizedFiles {
-                files: vec![CandidateFile {
-                    proposed_audio: true,
-                    file: ScannedFile::new(
-                        format!("{root}/{name}/01.flac").into(),
-                        "01.flac".to_string(),
-                        1_000,
-                    ),
-                    role: FileRole::Audio,
-                }],
-                format_label: "FLAC".to_string(),
-            },
-            watched_folder_path: root.to_string(),
-            scope: ReleaseFileScope::Recursive,
-            file_edit_revision: 0,
-            display_path: name.to_string(),
-            resolved_boundaries: Vec::new(),
-            combine_ancestor_key: None,
-        })
-    };
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &candidate("first"))
-        .await
-        .unwrap();
-
-    let mut live = db.subscribe_import_candidates();
-    let initial = live.next().await.unwrap();
-    assert_eq!(initial.snapshot.folder_candidates.len(), 1);
-
-    db.save_folder_scan_item(root, generation, &candidate("second"))
-        .await
-        .unwrap();
-    let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("a scan item wakes the candidate list")
-        .unwrap();
-    let names: Vec<_> = grown
-        .snapshot
-        .folder_candidates
-        .iter()
-        .map(|candidate| candidate.candidate.name.clone())
-        .collect();
-    assert_eq!(names, vec!["first".to_string(), "second".to_string()]);
-    assert_eq!(
-        grown.snapshot.folder_candidates[0].candidate.track_count(),
-        1,
-        "the file rows come back with the candidate they hang off"
+    assert!(
+        tokio::time::timeout(Duration::from_millis(500), live.next())
+            .await
+            .is_err(),
+        "a commit the list reads nothing from delivers no value"
     );
 }
 

@@ -35,7 +35,10 @@ pub mod verdict;
 pub mod view;
 
 pub use combine::{GroupKey, ResultProvenance};
-pub use ready::{classify, NeedsYou, QueueClassification};
+pub use ready::{
+    classify, classify_summary, LeadMatch, NeedsYou, QueueClassification, VerdictKind,
+    VerdictSummary,
+};
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifyState};
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};

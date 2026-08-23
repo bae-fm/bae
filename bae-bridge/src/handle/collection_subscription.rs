@@ -133,7 +133,7 @@ fn core_windows(
 }
 
 impl crate::types::BridgeLibraryPageWindow {
-    fn from_core(window: bae_core::library::LibraryPageWindow) -> Self {
+    pub(super) fn from_core(window: bae_core::library::LibraryPageWindow) -> Self {
         Self {
             offset: window.offset,
             limit: window.limit,
@@ -197,7 +197,7 @@ impl crate::types::BridgeComposerBrowseSnapshot {
 }
 
 impl crate::types::BridgeLiveQueryCause {
-    fn from_core(cause: coven::ReconfigurableLiveQueryCause) -> Self {
+    pub(super) fn from_core(cause: coven::ReconfigurableLiveQueryCause) -> Self {
         match cause {
             coven::ReconfigurableLiveQueryCause::Initial => Self::Initial,
             coven::ReconfigurableLiveQueryCause::RequestChanged => Self::RequestChanged,
