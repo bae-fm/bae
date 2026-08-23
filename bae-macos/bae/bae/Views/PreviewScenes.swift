@@ -68,6 +68,7 @@
                 uiStore: uiStore,
                 libraryStore: libraryStore
             )
+            let importScene = PreviewData.importTabScene()
             return MainAppView()
                 .environment(backing.library)
                 .environment(
@@ -76,6 +77,8 @@
                 .environment(backing.session)
                 .environment(libraryStore)
                 .environment(uiStore)
+                .environment(importScene.store)
+                .environment(importScene.slot(uiStore: uiStore))
                 .environment(PreviewAudio.stub())
                 .environment(Cast.stub())
                 .environment(CastStore())

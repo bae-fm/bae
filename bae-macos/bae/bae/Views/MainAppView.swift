@@ -321,12 +321,15 @@ struct MainAppView: View {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         let libraryProjections = LibraryProjectionStore(library: library)
+        let importScene = PreviewData.importTabScene()
         return MainAppView()
             .environment(library)
             .environment(session)
             .environment(libraryStore)
             .environment(libraryProjections)
             .environment(uiStore)
+            .environment(importScene.store)
+            .environment(importScene.slot(uiStore: uiStore))
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
             .environment(CastStore())
