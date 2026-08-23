@@ -94,6 +94,35 @@ pub fn place(
     }
 }
 
+/// Where a candidate's import stands, from the three places that can say so.
+///
+/// A running import is the only live fact, so it outranks both stored ones. Of
+/// those, the release wins: the failure row is written when an attempt fails
+/// and cleared when the next one is queued, so a release for this hash means
+/// an attempt already succeeded and any leftover error is behind it.
+///
+/// The stored failure is here rather than only in the pane because a row has
+/// to say it too. Without it, quitting after a failed import brings the
+/// candidate back as an ordinary pending row, and the only way to find out it
+/// failed is to open it.
+pub fn import_status_of(
+    runtime: Option<&TriageImportStatus>,
+    imported: Option<&ImportedRelease>,
+    failure: Option<&str>,
+) -> Option<TriageImportStatus> {
+    if let Some(runtime) = runtime {
+        return Some(runtime.clone());
+    }
+    if let Some(release) = imported {
+        return Some(TriageImportStatus::Complete {
+            release: release.clone(),
+        });
+    }
+    failure.map(|error| TriageImportStatus::Error {
+        error: error.to_string(),
+    })
+}
+
 /// The runtime facts a row's placement reads: a change to any other part of
 /// a candidate's runtime (a progress tick, a signals update) leaves the queue
 /// as projected.

@@ -388,8 +388,12 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 
 /// The list reads placement columns and nothing else. Everything stored for
 /// the pane — what the audio plays for, the extracted signals, the metadata
-/// and rows the user typed, the cover, the last failure — is read only when a
-/// candidate is opened, so the queue cannot pay for it.
+/// and rows the user typed, the cover — is read only when a candidate is
+/// opened, so the queue cannot pay for it.
+///
+/// `import_candidate_failure` is the one exception, and it is deliberate: an
+/// error is where the row goes, not something the pane decorates it with. It
+/// has its own test below.
 #[tokio::test]
 async fn the_list_reads_none_of_what_the_pane_stores() {
     let (db, tmp) = empty_db().await;
@@ -421,9 +425,6 @@ async fn the_list_reads_none_of_what_the_pane_stores() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_failure(&hash, &candidate.path.to_string_lossy(), 0, "it failed")
-        .await
-        .unwrap();
 
     let before = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -434,7 +435,6 @@ async fn the_list_reads_none_of_what_the_pane_stores() {
             "import_candidate_file_duration",
             "import_candidate_signal_value",
             "import_candidate_signals",
-            "import_candidate_failure",
             "import_candidate_cover",
             "import_candidate_edit",
             "import_candidate_track_edit",
@@ -452,4 +452,53 @@ async fn the_list_reads_none_of_what_the_pane_stores() {
 
     assert_eq!(rows(&before), rows(&after));
     assert_eq!(before.summary, after.summary);
+}
+
+/// The failure the last attempt stored is a placement fact, so the list reads
+/// it: after a relaunch, with nothing running, the row that failed is on Done
+/// saying so rather than sitting in Pending looking untried. Queueing the next
+/// attempt clears the row and the candidate goes back where it was.
+#[tokio::test]
+async fn a_stored_failure_places_the_row_on_done_until_the_next_attempt() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let candidate = scanned(&db, root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+    let hash = candidate.files.content_hash();
+
+    async fn tab(db: &Database, tab: TriageTab) -> Vec<crate::import::TriageRow> {
+        rows(&db.load_import_list(request(tab).await).await.unwrap())
+    }
+
+    let pending = tab(&db, TriageTab::Pending).await;
+    assert_eq!(pending.len(), 1, "before any attempt the row is pending");
+    assert!(pending[0].import_status.is_none());
+
+    let folder_path = candidate.path.to_string_lossy().into_owned();
+    db.save_import_candidate_failure(&hash, &folder_path, 0, "the disk filled")
+        .await
+        .unwrap();
+
+    assert!(
+        tab(&db, TriageTab::Pending).await.is_empty(),
+        "a failed candidate has left Pending"
+    );
+    let done = tab(&db, TriageTab::Done).await;
+    assert_eq!(done.len(), 1);
+    assert_eq!(done[0].placement, crate::import::TriagePlacement::Done);
+    assert_eq!(
+        done[0].import_status,
+        Some(crate::import::TriageImportStatus::Error {
+            error: "the disk filled".to_string()
+        }),
+        "with no runtime entry of its own"
+    );
+
+    db.clear_import_candidate_failure(&hash).await.unwrap();
+
+    let pending = tab(&db, TriageTab::Pending).await;
+    assert_eq!(pending.len(), 1, "queueing the next attempt puts it back");
+    assert!(pending[0].import_status.is_none());
 }

@@ -89,6 +89,11 @@ pub struct ImportQueueRows {
     pub skipped: HashSet<(String, String)>,
     /// The library release each imported content hash became.
     pub imported: HashMap<String, ImportedRelease>,
+    /// The error the last import attempt left behind, by content hash. Read
+    /// here rather than only in the pane because it is what a row's placement
+    /// says on the next launch: without it a candidate whose import failed
+    /// before the app quit comes back looking untouched.
+    pub failures: HashMap<String, String>,
     pub states: HashMap<String, CandidateStateListRow>,
     /// The live library check of every lead match, by release id. Only the
     /// leads of single-match verdicts are checked: those are the only ones the
@@ -141,6 +146,15 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         }
     }
 
+    let failures: HashMap<String, String> = sql
+        .query(
+            "SELECT content_hash, error FROM import_candidate_failure",
+            [],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?
+        .into_iter()
+        .collect();
+
     let states = state_rows(sql)?;
     let mut checks = Vec::new();
     for state in states.values() {
@@ -174,6 +188,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         boundaries,
         skipped,
         imported,
+        failures,
         states,
         lead_statuses,
     })

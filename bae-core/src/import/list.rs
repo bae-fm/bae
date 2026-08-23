@@ -23,7 +23,7 @@ use super::folder_scanner::{
 use super::mapping::MappingTable;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus, TriagePlacement,
+    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriagePlacement,
     TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{AudioFile, IdentityChoice, IdentityPick, RawReleaseEdit};
@@ -291,11 +291,11 @@ impl ImportCandidateDetailProjection {
             }
             IdentityPick::Unknown => None,
         });
-        let import_status = facts.import_status.clone().or_else(|| {
-            imported_release
-                .clone()
-                .map(|release| TriageImportStatus::Complete { release })
-        });
+        let import_status = import_status_of(
+            facts.import_status.as_ref(),
+            imported_release.as_ref(),
+            failure.as_ref().map(|failure| failure.error.as_str()),
+        );
         let known = match answer.filter(|_| actionable) {
             Some(classification) => CandidateAnswer::Classified(classification),
             None => CandidateAnswer::Unanswered(facts.phase),

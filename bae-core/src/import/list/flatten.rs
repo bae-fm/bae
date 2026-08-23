@@ -15,7 +15,7 @@ use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
 use crate::import::folder_registry::candidate_relative_path;
 use crate::import::triage::{
-    place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus, TriagePlacement,
+    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriagePlacement,
     TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
 use crate::import::types::IdentityPick;
@@ -192,11 +192,11 @@ fn place_row(
         .filter(|state| state.edit_revision == row.file_edit_revision);
     let verdict = state.and_then(|state| state.verdict.as_ref());
     let imported = rows.imported.get(content_hash);
-    let import_status = facts.import_status.clone().or_else(|| {
-        imported
-            .cloned()
-            .map(|release| TriageImportStatus::Complete { release })
-    });
+    let import_status = import_status_of(
+        facts.import_status.as_ref(),
+        imported,
+        rows.failures.get(content_hash).map(String::as_str),
+    );
     let answer = verdict.map(|verdict| {
         let lead_status = verdict
             .lead
