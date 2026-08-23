@@ -18,7 +18,6 @@ use super::query::{QueryOne, QueryRows};
 use super::*;
 use crate::import::candidates::StoredEntryKey;
 use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
-use read::StoredScanItem;
 use std::path::{Path, PathBuf};
 
 pub(super) use read::{
@@ -208,6 +207,7 @@ impl Database {
         .await
     }
 
+    #[cfg(test)]
     pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
         self.read(move |sql| load_folder_scan_snapshots_on(&sql))
             .await
@@ -266,7 +266,8 @@ pub(super) fn load_folder_scan_items_on(
         .collect()
 }
 
-pub(super) fn load_folder_scan_snapshots_on(
+#[cfg(test)]
+fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
     let roots = sql.query(
@@ -301,23 +302,7 @@ pub(super) fn load_folder_scan_snapshots_on(
                 )))
             }
         };
-        let stored = read::load_items(sql, &watched_folder_path)?;
-        let mut items = Vec::with_capacity(stored.len());
-        for StoredScanItem {
-            key,
-            generation: entry_generation,
-            item,
-        } in stored
-        {
-            if entry_generation > generation {
-                return Err(DbError::Message(format!(
-                    "folder scan entry {key} has generation {entry_generation} newer than \
-                     root generation {generation}"
-                )));
-            }
-            validate_scan_item_ownership(&watched_folder_path, &key, &item)?;
-            items.push(item);
-        }
+        let items = load_folder_scan_items_on(sql, &watched_folder_path)?;
         snapshots.push(DbFolderScanSnapshot {
             watched_folder_path,
             generation,

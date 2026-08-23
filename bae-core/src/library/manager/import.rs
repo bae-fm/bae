@@ -162,7 +162,7 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(test)]
     pub async fn load_folder_scan_snapshots(
         &self,
     ) -> Result<Vec<crate::db::DbFolderScanSnapshot>, LibraryError> {

@@ -429,7 +429,9 @@ pub struct DbImportCandidateState {
     pub identity_pick: Option<crate::import::IdentityPick>,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+/// Every watched root with its status and every stored entry under it.
+/// Only tests read whole snapshots; production reads entries by key.
+#[cfg(test)]
 #[derive(Debug, Clone)]
 pub struct DbFolderScanSnapshot {
     pub watched_folder_path: String,

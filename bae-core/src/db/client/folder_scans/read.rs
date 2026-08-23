@@ -24,6 +24,9 @@ pub(crate) struct StoredScanItem {
 }
 
 /// Every entry stored under one watched root, in persisted-key order.
+///
+/// An entry stamped with a generation the root never reached is a store
+/// nothing here wrote, so the assembly refuses it.
 pub(super) fn load_items(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
@@ -31,6 +34,26 @@ pub(super) fn load_items(
     let mut items = load_candidate_items(sql, watched_folder_path, None)?;
     items.extend(load_boundary_items(sql, watched_folder_path, None)?);
     items.sort_by(|left, right| left.key.cmp(&right.key));
+    let root_generation = sql
+        .query(
+            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
+            [watched_folder_path],
+            |row| row.get::<_, i64>(0),
+        )?
+        .into_iter()
+        .next()
+        .map(|generation| to_u64(generation, "a folder scan root's generation"))
+        .transpose()?;
+    if let Some(root_generation) = root_generation {
+        for item in &items {
+            if item.generation > root_generation {
+                return Err(DbError::Message(format!(
+                    "folder scan entry {} has generation {} newer than root generation {}",
+                    item.key, item.generation, root_generation
+                )));
+            }
+        }
+    }
     Ok(items)
 }
 
