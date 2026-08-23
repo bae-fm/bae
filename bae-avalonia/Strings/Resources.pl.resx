@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>Importuj {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Importuj mimo to</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Ponów</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>Odczytywanie długości</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>Konflikt</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>szukaj ręcznie</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Niepowodzenie</value></data>

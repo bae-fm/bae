@@ -6,23 +6,24 @@ import Testing
 @testable import bae
 
 /// Recording stubs for the services the mapping table's controls reach.
+///
+/// Every control writes: nothing here answers with a table, because the pane
+/// has none to replace. What each recorder holds is the call core would have
+/// received, and the next value of the candidate is what would redraw it.
 @MainActor
 private final class Recorder {
     var roleCalls:
-        [(key: String, fileId: String, choice: BridgeFileRoleChoice)] =
-            []
+        [(key: String, fileId: String, choice: BridgeFileRoleChoice)] = []
     var bindCalls: [(sheetFileId: String, audioFileId: String?)] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
+    var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
+    var droppedTracks: [(key: String, trackId: String)] = []
+    var editFields: [(field: BridgeCandidateEditField, value: String)] = []
+    var picks: [BridgeIdentityPick] = []
     var played: [String] = []
     var stops = 0
-    /// What a re-read of the folder's mapping comes back with — the table core
-    /// projects once the decision under test has landed.
-    var remapped: BridgeMappingTable = MappingFixtures.thirteenFileTable
-    /// What reading the folder as Unknown comes back with.
-    var unknown: BridgeUnknownMapping = BridgeUnknownMapping(
-        seed: MappingFixtures.albumSeed,
-        mapping: MappingFixtures.unknownTable
-    )
+    /// What the pick call throws, when the test is about a pick that fails.
+    var pickFailure: (any Error)?
 
     var importer: Importer {
         Importer(
@@ -34,11 +35,9 @@ private final class Recorder {
                 }
             },
             pickCandidateIdentity: { [self] _, pick in
-                await MainActor.run { decided(for: pick) }
-            },
-            candidateDecidedIdentity: { [self] _ in
-                await MainActor.run {
-                    stored.map { decided(for: $0) }
+                try await MainActor.run {
+                    picks.append(pick)
+                    if let pickFailure { throw pickFailure }
                 }
             },
             setSheetDisc: { [self] _, sheetFileId, disc in
@@ -52,37 +51,23 @@ private final class Recorder {
                         (key: key, fileId: fileId, choice: choice)
                     )
                 }
+            },
+            setCandidateEditField: { [self] _, field, value in
+                await MainActor.run {
+                    editFields.append((field: field, value: value))
+                }
+            },
+            setCandidateTrackEdit: { [self] key, track in
+                await MainActor.run {
+                    trackEdits.append((key: key, track: track))
+                }
+            },
+            dropCandidateTrack: { [self] key, trackId in
+                await MainActor.run {
+                    droppedTracks.append((key: key, trackId: trackId))
+                }
             }
         )
-    }
-
-    /// The pick a stored decision would resume — `nil` reads as "nothing
-    /// decided". Defaults to the fixture release, which is what a candidate
-    /// with `MappingFixtures.pick` in force has stored.
-    var stored: BridgeIdentityPick? = .release(
-        source: MappingFixtures.pick.source,
-        releaseId: MappingFixtures.pick.releaseId,
-        claim: MappingFixtures.pick.claim
-    )
-
-    /// The answer either identity stands for, from the same fixtures the old
-    /// per-call stubs served. A release pick comes back claimed at the level it
-    /// carried, which is what core does with it.
-    private func decided(for pick: BridgeIdentityPick) -> BridgeDecidedIdentity
-    {
-        switch pick {
-        case .release(let source, let releaseId, let claim):
-            .release(
-                source: source,
-                releaseId: releaseId,
-                prefetch: MappingFixtures.prefetch(
-                    mapping: remapped,
-                    level: claim
-                )
-            )
-        case .unknown:
-            .unknown(seed: unknown.seed, mapping: unknown.mapping)
-        }
     }
 
     var previewAudio: PreviewAudio {
@@ -163,12 +148,14 @@ struct ImportMappingPaneTests {
 
         #expect(conflict != before)
 
-        store.mutateCandidate(forKey: key) {
-            $0.identityChoice = .exact(
-                releaseId: "restored-release",
-                source: .musicBrainz
+        // A stored pick settles the identity: the conflict offer gives way to
+        // the release card, whatever the run left behind.
+        store.applyCandidateDetail(
+            key: key,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable
             )
-        }
+        )
         await Task.yield()
         host.layoutSubtreeIfNeeded()
         let settledConflict = try await SnapshotTestSupport.capturePNG(
@@ -189,13 +176,12 @@ struct ImportMappingPaneTests {
         #expect(settledConflict == settledWithoutConflict)
     }
 
-    // 1. Binding a track sheet turns one container into the release's twelve
-    //    entries. The pane re-reads the mapping the pick produces, so the
-    //    folder goes from one row carrying audio to twelve without leaving the
-    //    pane — and the twelve are the sheet's own group.
+    // 1. Binding a track sheet is a decision about the folder, so it goes to
+    //    core and nothing else. The table it re-shapes — one container into the
+    //    release's twelve entries — arrives as the candidate's next value.
     @MainActor
-    @Test("binding a sheet rebuilds the mapping table")
-    func bindingASheetRebuildsTheTable() async {
+    @Test("binding a sheet is written and nothing else")
+    func bindingASheetIsWritten() async {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.unboundSheetTable
         )
@@ -206,7 +192,6 @@ struct ImportMappingPaneTests {
         )
 
         let recorder = Recorder()
-        recorder.remapped = MappingFixtures.boundSheetTable()
         await ImportMappingFlow.bindSheet(
             key: MappingFixtures.candidateKey,
             sheetFileId: MappingFixtures.sheetId,
@@ -222,6 +207,17 @@ struct ImportMappingPaneTests {
             recorder.bindCalls.first?.audioFileId
                 == MappingFixtures.containerId
         )
+        // The pane does not rewrite its own table: it still shows what it was
+        // handed, and the next read replaces it whole.
+        #expect(MappingFixtures.mapping(of: store).willWriteCount == 1)
+
+        // What that read comes back with is the sheet's group.
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.boundSheetTable()
+            )
+        )
         let after = MappingFixtures.mapping(of: store)
         #expect(after.rows.count == 1)
         guard case .sheet(let sheet, let entries) = after.rows[0] else {
@@ -234,83 +230,124 @@ struct ImportMappingPaneTests {
         #expect(after.reconciliation == .agrees(count: 12))
     }
 
-    // 2. Thirteen files against a twelve-track release: the bar starts at
-    //    thirteen tracks with one row unnamed, and typing a title leaves
-    //    thirteen tracks with none unnamed. Naming a row never changes what
-    //    will be written — only whether anyone has said what it is.
+    // 2. Naming a row writes that row. The count the bar states comes from the
+    //    table core answers with, so the write is the whole of what the field
+    //    does.
     @MainActor
-    @Test("naming an unmatched row updates the commit bar")
-    func namingAnUnmatchedRowUpdatesTheCommitBar() throws {
+    @Test("naming an unmatched row writes the row")
+    func namingAnUnmatchedRowWritesTheRow() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
         #expect(MappingFixtures.mapping(of: store).willWriteCount == 13)
         #expect(MappingFixtures.mapping(of: store).unansweredCount == 1)
 
-        // Through the same call the row's title field writes with.
         let unnamed = try #require(
             MappingFixtures.mapping(of: store).units.last?.track
         )
         var named = unnamed
         named.title = "Hidden Track"
-        ImportMappingFlow.editTrack(
+        let recorder = Recorder()
+        await ImportMappingFlow.editTrack(
             key: MappingFixtures.candidateKey,
             track: named,
-            importStore: store
+            services: recorder.services(store)
         )
 
+        #expect(recorder.trackEdits.count == 1)
+        #expect(recorder.trackEdits.first?.key == MappingFixtures.candidateKey)
+        #expect(recorder.trackEdits.first?.track.title == "Hidden Track")
+        #expect(recorder.trackEdits.first?.track.id == unnamed.id)
+
+        // And the next read is what answers the bar.
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable(
+                    lastTitle: "Hidden Track"
+                )
+            )
+        )
         #expect(MappingFixtures.mapping(of: store).willWriteCount == 13)
         #expect(MappingFixtures.mapping(of: store).unansweredCount == 0)
     }
 
-    // 3. Excluding a file takes its row with it — thirteen rows back to twelve,
-    //    and the tally back to agreement — and the decision is persisted rather
-    //    than kept in the pane.
+    // 2b. Pointing a row at a different file writes the whole row with its new
+    //     audio — a binding is part of the row, not a second thing to store.
     @MainActor
-    @Test("excluding a file removes its row and restores the count")
-    func excludingAFileRemovesItsRow() async {
+    @Test("pointing a row at a file writes the row with that audio")
+    func choosingAFileWritesTheRow() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
         let recorder = Recorder()
-        await ImportMappingFlow.exclude(
+        let target = try #require(
+            MappingFixtures.mapping(of: store).units.first?.track
+        )
+
+        await ImportMappingFlow.chooseFile(
             key: MappingFixtures.candidateKey,
-            fileId: "13.flac",
+            trackId: target.id,
+            audio: .standalone(fileId: "13.flac"),
             services: recorder.services(store)
         )
 
-        let mapping = MappingFixtures.mapping(of: store)
-        #expect(mapping.rows.count == 12)
-        #expect(mapping.willWriteCount == 12)
-        #expect(mapping.unansweredCount == 0)
-        #expect(mapping.reconciliation == .agrees(count: 12))
-        #expect(mapping.audioChoices.count == 12)
-        // Persisted, not a list edit: core is told, with the role that takes
-        // the file out of the tracklist.
+        #expect(recorder.trackEdits.count == 1)
+        #expect(recorder.trackEdits.first?.track.id == target.id)
+        #expect(
+            recorder.trackEdits.first?.track.file
+                == .standalone(fileId: "13.flac")
+        )
+    }
+
+    // 2c. Dropping a row takes it out of the import and nothing on disk
+    //     changes, so the whole of it is one write core keys by the row.
+    @MainActor
+    @Test("dropping a row writes the drop")
+    func droppingARowWritesTheDrop() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let recorder = Recorder()
+        let target = try #require(
+            MappingFixtures.mapping(of: store).units.last?.track
+        )
+
+        await ImportMappingFlow.drop(
+            key: MappingFixtures.candidateKey,
+            trackId: target.id,
+            services: recorder.services(store)
+        )
+
+        #expect(
+            recorder.droppedTracks.map(\.trackId) == [target.id]
+        )
+        #expect(recorder.trackEdits.isEmpty)
+    }
+
+    // 3. Excluding a file is one write: the role. Its rows leave because the
+    //    folder they described is a different set now, which is core's answer
+    //    and not the pane's edit.
+    @MainActor
+    @Test("excluding a file writes only its role")
+    func excludingAFileWritesOnlyItsRole() async {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let recorder = Recorder()
+        let actions = ImportMappingFlow.actions(
+            key: MappingFixtures.candidateKey,
+            services: recorder.services(store)
+        )
+
+        actions.exclude("13.flac")
+        try? await Task.sleep(for: .milliseconds(50))
+
         #expect(recorder.roleCalls.count == 1)
         #expect(recorder.roleCalls.first?.fileId == "13.flac")
         #expect(recorder.roleCalls.first?.choice == .notATrack)
-    }
-
-    // 3b. Excluding the audio a sheet describes takes the whole group with it:
-    //     twelve entries are one file's rows, and the file is leaving.
-    @MainActor
-    @Test("excluding a sheet's container removes the whole group")
-    func excludingASheetsContainerRemovesTheGroup() async {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.boundSheetTable()
-        )
-        let recorder = Recorder()
-        await ImportMappingFlow.exclude(
-            key: MappingFixtures.candidateKey,
-            fileId: MappingFixtures.containerId,
-            services: recorder.services(store)
-        )
-
-        let mapping = MappingFixtures.mapping(of: store)
-        #expect(mapping.rows.isEmpty)
-        #expect(mapping.willWriteCount == 0)
-        #expect(recorder.roleCalls.first?.choice == .notATrack)
+        #expect(recorder.trackEdits.isEmpty)
+        #expect(recorder.droppedTracks.isEmpty)
     }
 
     // 4. Nothing in the pane disables the commit. A row nobody named and a
@@ -325,7 +362,7 @@ struct ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unanswered))
         #expect(
-            MappingFixtures.mapping(of: unanswered).commitTracks.count == 13
+            bridgeMappingTracks(table: MappingFixtures.mapping(of: unanswered)).count == 13
         )
 
         // A release that names more tracks than the folder has anything for.
@@ -334,29 +371,31 @@ struct ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unbacked))
         #expect(MappingFixtures.mapping(of: unbacked).willWriteCount == 1)
-        #expect(MappingFixtures.mapping(of: unbacked).commitTracks.count == 12)
+        #expect(bridgeMappingTracks(table: MappingFixtures.mapping(of: unbacked)).count == 12)
     }
 
-    // 4b. A re-pick that fails unsettles the identity: the table and the album
-    //     fields stay put, but there is nothing to commit them under, so the
-    //     commit bar has nothing to render and the commit has nothing to read.
+    // 4b. A pick whose fetch drops stores nothing, so the pane keeps showing
+    //     what it had and says the command failed. Nothing about the candidate
+    //     is rolled back — there was nothing to roll back.
     @MainActor
-    @Test("a failed re-pick leaves nothing to commit")
-    func aFailedRepickLeavesNothingToCommit() async throws {
+    @Test("a failed pick leaves the pane as it was and states the failure")
+    func aFailedPickLeavesThePaneAsItWas() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
-        #expect(MappingFixtures.isCommittable(store))
+        let before = try #require(
+            store.selectedCandidates[MappingFixtures.candidateKey]?.detail
+        )
+        let recorder = Recorder()
+        recorder.pickFailure = StubError.notImplemented
 
         ImportSearchFlow.decideIdentity(
-            importer: Importer(pickCandidateIdentity: { _, _ in
-                throw StubError.notImplemented
-            }),
+            importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
             pick: .release(
-                source: MappingFixtures.pick.source,
-                releaseId: MappingFixtures.pick.releaseId,
+                source: MappingFixtures.source,
+                releaseId: "another-pressing",
                 claim: .exact
             )
         )
@@ -365,54 +404,42 @@ struct ImportMappingPaneTests {
         let candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.identityChoice == nil)
-        #expect(candidate.mapping != nil)
-        #expect(candidate.editValues != nil)
-        #expect(candidate.commitEdit == nil)
+        #expect(candidate.error != nil)
+        #expect(candidate.pickInFlight == false)
+        #expect(candidate.detail == before)
+        #expect(candidate.hasSettled)
     }
 
-    // 4c. Claiming exactly this pressing is a claim about the values on the
-    //     screen, so editing one of them away lowers the claim by itself — and
-    //     the commit carries the lowered one, because it is the same state.
+    // 4c. Typing in a release field writes that one field, once, as the field
+    //     is left. Nothing else about the form moves.
     @MainActor
-    @Test("editing the pressing lowers the claim the commit carries")
-    func editingThePressingLowersTheClaim() throws {
+    @Test("leaving a release field writes that field")
+    func leavingAReleaseFieldWritesThatField() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
-        let candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        #expect(candidate.claim?.level == .exact)
-
-        // Through the same binding the release fields write with.
-        let editor = ImportSearchFlow.makeEditValuesBinding(
-            importStore: store,
-            key: MappingFixtures.candidateKey,
-            candidate: candidate
-        )
-        var edited = editor.wrappedValue
-        edited.pressing.year = "2011"
-        editor.wrappedValue = edited
-
-        let after = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        #expect(after.claim?.level == .approximate)
-        #expect(
-            after.identityChoice
-                == .approximate(
-                    releaseId: MappingFixtures.pick.releaseId,
-                    source: MappingFixtures.pick.source
+        let recorder = Recorder()
+        let writer = ReleaseFieldWriter { field, value in
+            Task { @MainActor in
+                try? await recorder.importer.setCandidateEditField(
+                    MappingFixtures.candidateKey,
+                    field,
+                    value
                 )
-        )
-        // Editing anything else says nothing about which pressing is held.
-        var titled = after.editValues ?? edited
-        titled.albumTitle = "Album Title Two"
-        editor.wrappedValue = titled
+            }
+        }
+
+        writer.setField(.year, "2011")
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(recorder.editFields.count == 1)
+        #expect(recorder.editFields.first?.field == .year)
+        #expect(recorder.editFields.first?.value == "2011")
+        // The store holds no copy of the form: it still reads what core last
+        // answered with.
         #expect(
-            store.selectedCandidates[MappingFixtures.candidateKey]?.claim?.level
-                == .approximate
+            store.selectedCandidates[MappingFixtures.candidateKey]?
+                .edit?.pressing.year == MappingFixtures.albumEdit.pressing.year
         )
     }
 
@@ -442,18 +469,15 @@ struct ImportMappingPaneTests {
     }
 
     // 6. Cue filenames are arbitrary, so which disc a sheet is is the user's to
-    //    say. Saying it persists the decision and comes back as the tracklist
-    //    it re-shapes.
+    //    say. Saying it is one write; the tracklist it re-shapes arrives as the
+    //    candidate's next value.
     @MainActor
-    @Test("assigning a cue to a disc persists it and re-reads the table")
+    @Test("assigning a cue to a disc is written")
     func assigningACueToADisc() async {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.boundSheetTable()
         )
         let recorder = Recorder()
-        recorder.remapped = MappingFixtures.boundSheetTable(
-            assignment: .disc(number: 2)
-        )
         await ImportMappingFlow.setSheetDisc(
             key: MappingFixtures.candidateKey,
             sheetFileId: MappingFixtures.sheetId,
@@ -463,6 +487,15 @@ struct ImportMappingPaneTests {
 
         #expect(recorder.discCalls.count == 1)
         #expect(recorder.discCalls.first?.disc == .disc(number: 2))
+
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.boundSheetTable(
+                    assignment: .disc(number: 2)
+                )
+            )
+        )
         guard
             case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
                 .rows[0]
@@ -482,7 +515,6 @@ struct ImportMappingPaneTests {
             mapping: MappingFixtures.boundSheetTable()
         )
         let recorder = Recorder()
-        recorder.remapped = MappingFixtures.ignoredSheetTable
         await ImportMappingFlow.setSheetDisc(
             key: MappingFixtures.candidateKey,
             sheetFileId: MappingFixtures.sheetId,
@@ -491,6 +523,13 @@ struct ImportMappingPaneTests {
         )
 
         #expect(recorder.discCalls.first?.disc == .ignored)
+
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.ignoredSheetTable
+            )
+        )
         let mapping = MappingFixtures.mapping(of: store)
         guard case .sheet(let sheet, let entries) = mapping.rows[0] else {
             Issue.record("expected a sheet row")
@@ -501,12 +540,12 @@ struct ImportMappingPaneTests {
         #expect(mapping.willWriteCount == 1)
     }
 
-    // 8. The identity toggle is the one control, and both directions leave a
-    //    table to work in: Unknown reads the folder's own tags, and switching
-    //    back re-picks the release the candidate already held.
+    // 8. The identity toggle is the one control, and both directions are one
+    //    pick core stores. Which side it shows is read off the stored pick, so
+    //    the control cannot disagree with what will be committed.
     @MainActor
-    @Test("switching release to Unknown and back keeps the table populated")
-    func switchingIdentityKeepsTheTablePopulated() async throws {
+    @Test("switching release to Unknown and back is two picks")
+    func switchingIdentityIsTwoPicks() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
@@ -519,133 +558,46 @@ struct ImportMappingPaneTests {
             pick: .unknown
         )
         try await Task.sleep(for: .milliseconds(50))
+        #expect(recorder.picks == [.unknown])
 
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.unknownTable,
+                picked: .unknown
+            )
+        )
         var candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.identity == .unknown)
-        #expect(candidate.identityChoice == .unknown)
-        #expect(candidate.mapping?.rows.count == 2)
-        #expect(candidate.mapping?.reconciliation == nil)
-        // The release it came from is still held, which is what switching back
-        // re-picks rather than sending the user back to the search.
-        #expect(candidate.pick == MappingFixtures.pick)
+        #expect(candidate.mapping.rows.count == 2)
+        #expect(candidate.mapping.reconciliation == nil)
+        #expect(candidate.pickedRelease == nil)
 
-        let pick = try #require(candidate.pick)
-        recorder.remapped = MappingFixtures.thirteenFileTable
         ImportSearchFlow.decideIdentity(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: .release(
-                source: pick.source,
-                releaseId: pick.releaseId,
-                claim: pick.claim
-            )
+            pick: MappingFixtures.pick
         )
         try await Task.sleep(for: .milliseconds(50))
+        #expect(recorder.picks == [.unknown, MappingFixtures.pick])
 
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable
+            )
+        )
         candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.identity == .release)
-        #expect(candidate.mapping?.rows.count == 13)
-        #expect(candidate.mapping?.willWriteCount == 13)
-    }
-
-    // 9. Lowering the claim is a re-pick of the same release at the album
-    //    level: the claim is part of the decision core stores, so it lands the
-    //    same way a pick does and the commit carries it.
-    @MainActor
-    @Test("lowering the claim re-picks the release at the album level")
-    func loweringTheClaimRePicksTheRelease() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        let recorder = Recorder()
-
-        ImportSearchFlow.decideIdentity(
-            importer: recorder.importer,
-            importStore: store,
-            key: MappingFixtures.candidateKey,
-            pick: .release(
-                source: MappingFixtures.pick.source,
-                releaseId: MappingFixtures.pick.releaseId,
-                claim: .approximate
-            )
-        )
-        try await Task.sleep(for: .milliseconds(50))
-
-        let candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        #expect(candidate.claim?.level == .approximate)
+        #expect(candidate.mapping.rows.count == 13)
+        #expect(candidate.mapping.willWriteCount == 13)
         #expect(
-            candidate.identityChoice
-                == .approximate(
-                    releaseId: MappingFixtures.pick.releaseId,
-                    source: MappingFixtures.pick.source
-                )
+            candidate.pickedRelease?.releaseId == MappingFixtures.releaseId
         )
-        // The same release, still picked — lowering the claim says the
-        // pressing is not vouched for, not that the release is wrong.
-        #expect(candidate.pick?.releaseId == MappingFixtures.pick.releaseId)
-        #expect(candidate.pick?.claim == .approximate)
-    }
-
-    // 9b. And it survives the round trip through the folder's own tags:
-    //     switching back re-picks at the level the user set, because the
-    //     candidate's held pick carries it rather than defaulting again.
-    @MainActor
-    @Test("a lowered claim survives switching to Unknown and back")
-    func aLoweredClaimSurvivesTheUnknownRoundTrip() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        let recorder = Recorder()
-
-        ImportSearchFlow.decideIdentity(
-            importer: recorder.importer,
-            importStore: store,
-            key: MappingFixtures.candidateKey,
-            pick: .release(
-                source: MappingFixtures.pick.source,
-                releaseId: MappingFixtures.pick.releaseId,
-                claim: .approximate
-            )
-        )
-        try await Task.sleep(for: .milliseconds(50))
-
-        ImportSearchFlow.decideIdentity(
-            importer: recorder.importer,
-            importStore: store,
-            key: MappingFixtures.candidateKey,
-            pick: .unknown
-        )
-        try await Task.sleep(for: .milliseconds(50))
-
-        var candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        let held = try #require(candidate.pick)
-        #expect(held.claim == .approximate)
-
-        // Exactly what the identity control sends to switch back.
-        ImportSearchFlow.decideIdentity(
-            importer: recorder.importer,
-            importStore: store,
-            key: MappingFixtures.candidateKey,
-            pick: .release(
-                source: held.source,
-                releaseId: held.releaseId,
-                claim: held.claim
-            )
-        )
-        try await Task.sleep(for: .milliseconds(50))
-
-        candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        #expect(candidate.claim?.level == .approximate)
     }
 }

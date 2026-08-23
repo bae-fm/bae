@@ -199,40 +199,49 @@ impl Automation {
         Ok(automation_search_results(results))
     }
 
-    pub async fn prefetch_release(
+    /// Pick an identity for a candidate: a release, or the folder's own tags.
+    /// The documents land before the pick does, so a pane opened afterwards
+    /// draws whole.
+    pub async fn pick_candidate_identity(
         &self,
         candidate_key: String,
-        source: AutomationMetadataSource,
-        release_id: String,
-    ) -> Result<AutomationReleasePrefetch, AutomationError> {
-        // Resolve the candidate before fetching anything, and hand core the key
-        // the snapshot resolved rather than the caller's string, so the lookup
-        // is load-bearing: deleting it on its own stops compiling.
-        //
-        // Core reads a key it has recorded nothing against as "the pipeline
-        // hasn't run": the right answer for a scanned candidate awaiting
-        // identification, and indistinguishable from a typo. Answered rather
-        // than refused, a typo comes back reading "found by searching", which
-        // is what a key with no evidence behind it honestly is.
-        let candidate = self.get_candidate(candidate_key.clone()).await?;
-
-        let prefetch = self
-            .services
-            .import_prefetch_release(
-                candidate.key(),
-                &release_id,
-                source.into(),
-                // The claim a pick records. A caller committing only the album
-                // passes its own `identity_choice` to `import_start` and shapes
-                // the seed for it with `import_release_edit_shape`.
-                bae_core::import::ClaimLevel::Exact,
-            )
+        pick: AutomationIdentityPick,
+    ) -> Result<EmptyResponse, AutomationError> {
+        // Resolve the candidate first, and hand core the key the snapshot
+        // resolved rather than the caller's string, so a typo is refused here
+        // rather than stored.
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_pick_candidate_identity(candidate.key().to_string(), identity_pick(pick))
             .await?;
-        Ok(AutomationReleasePrefetch {
-            detail: automation_release_detail(prefetch.detail),
-            unmasked_seed: automation_release_user_edit(prefetch.seed),
-            claim: automation_claim_line(prefetch.claim),
-        })
+        Ok(EmptyResponse {})
+    }
+
+    /// Type one album-level metadata field over what the pick seeds.
+    pub async fn set_candidate_edit_field(
+        &self,
+        candidate_key: String,
+        field: AutomationCandidateEditField,
+        value: String,
+    ) -> Result<EmptyResponse, AutomationError> {
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_set_candidate_edit_field(candidate.key(), candidate_edit_field(field), value)
+            .await?;
+        Ok(EmptyResponse {})
+    }
+
+    /// Choose the cover this candidate commits with.
+    pub async fn set_candidate_cover(
+        &self,
+        candidate_key: String,
+        cover: AutomationCoverSelection,
+    ) -> Result<EmptyResponse, AutomationError> {
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_set_candidate_cover(candidate.key(), cover_selection(cover))
+            .await?;
+        Ok(EmptyResponse {})
     }
 
     pub async fn preview_file_tags(
@@ -247,18 +256,6 @@ impl Automation {
         Ok(automation_release_user_edit(edit))
     }
 
-    pub async fn shape_release_edit(
-        &self,
-        seed: AutomationReleaseUserEdit,
-        choice: AutomationIdentityChoice,
-    ) -> Result<AutomationReleaseUserEdit, AutomationError> {
-        let seed = release_user_edit(seed);
-        let choice = identity_choice(choice);
-        Ok(automation_release_user_edit(shape_user_edit_for_choice(
-            &seed, &choice,
-        )))
-    }
-
     pub async fn start_import(
         &self,
         request: AutomationStartImport,
@@ -267,11 +264,8 @@ impl Automation {
             .services
             .import_start_import(
                 &request.candidate_key,
-                request.selected_cover.map(cover_selection),
                 storage_mode(request.storage_mode),
                 request.pin,
-                identity_choice(request.identity_choice),
-                request.user_edit.map(release_user_edit),
             )
             .await?;
         Ok(AutomationImportStarted { import_id })
@@ -474,20 +468,30 @@ impl Automation {
                 let query: AutomationSearchQuery = from_value(args)?;
                 to_value(self.search_imports(query).await?)
             }
-            AutomationTool::ImportReleasePrefetch => {
-                let input: ReleasePrefetchInput = from_value(args)?;
+            AutomationTool::ImportCandidateIdentityPick => {
+                let input: CandidateIdentityPickInput = from_value(args)?;
                 to_value(
-                    self.prefetch_release(input.candidate_key, input.source, input.release_id)
+                    self.pick_candidate_identity(input.candidate_key, input.pick)
+                        .await?,
+                )
+            }
+            AutomationTool::ImportCandidateEditFieldSet => {
+                let input: CandidateEditFieldInput = from_value(args)?;
+                to_value(
+                    self.set_candidate_edit_field(input.candidate_key, input.field, input.value)
+                        .await?,
+                )
+            }
+            AutomationTool::ImportCandidateCoverSet => {
+                let input: CandidateCoverInput = from_value(args)?;
+                to_value(
+                    self.set_candidate_cover(input.candidate_key, input.cover)
                         .await?,
                 )
             }
             AutomationTool::ImportFileTagsPreview => {
                 let input: CandidateKeyInput = from_value(args)?;
                 to_value(self.preview_file_tags(input.candidate_key).await?)
-            }
-            AutomationTool::ImportReleaseEditShape => {
-                let input: ShapeReleaseEditInput = from_value(args)?;
-                to_value(self.shape_release_edit(input.seed, input.choice).await?)
             }
             AutomationTool::ImportStart => {
                 let input: AutomationStartImport = from_value(args)?;

@@ -140,8 +140,8 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
     }
 }
 
-/// The editor seed for a release, exactly as `prefetch_release` builds it: the
-/// commit worker's own `ParsedAlbum`, projected into the editor's shape.
+/// The editor seed for a release, exactly as the pane builds it: the commit
+/// worker's own `ParsedAlbum`, projected into the editor's shape.
 fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
     let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
         response,
@@ -152,15 +152,6 @@ fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::
     )
     .expect("synthetic MB response maps");
     parsed_album_to_user_edit(&parsed)
-}
-
-fn exact_choice() -> crate::import::IdentityChoice {
-    crate::import::IdentityChoice::Exact {
-        release_ref: crate::import::MetadataRef {
-            id: REL_1.to_string(),
-            source: MetadataSource::MusicBrainz,
-        },
-    }
 }
 
 /// The seed carries the mapper's per-side track numbering (A1,A2 -> 1,2 ; B1 ->
@@ -175,38 +166,6 @@ fn seed_numbers_tracks_per_side() {
     assert_eq!(numbers, vec![Some(1), Some(2), Some(1)]);
     let sides: Vec<i32> = edit.tracks.iter().map(|t| t.side).collect();
     assert_eq!(sides, vec![1, 1, 2]);
-}
-
-/// Exact keeps the picked release's pressing fields; Approximate and Unknown
-/// blank them — the user didn't claim a specific pressing. Nothing else about
-/// the seed depends on the claim.
-#[test]
-fn shape_user_edit_for_choice_masks_pressing_only() {
-    let seed = seed_for(&vinyl_response());
-
-    let exact = shape_user_edit_for_choice(&seed, &exact_choice());
-    assert_eq!(exact.pressing.year, Some(1969));
-    assert_eq!(exact.pressing.label.as_deref(), Some("Label"));
-    assert_eq!(exact.pressing.catalog_number.as_deref(), Some("CAT-1"));
-    assert_eq!(exact.pressing.country.as_deref(), Some("US"));
-    assert_eq!(exact, seed);
-
-    let blank = crate::import::PressingEdit::blank();
-    for choice in [
-        crate::import::IdentityChoice::Approximate {
-            release_ref: crate::import::MetadataRef {
-                id: REL_1.to_string(),
-                source: MetadataSource::MusicBrainz,
-            },
-        },
-        crate::import::IdentityChoice::Unknown,
-    ] {
-        let masked = shape_user_edit_for_choice(&seed, &choice);
-        assert_eq!(masked.pressing, blank);
-        assert_eq!(masked.album_title, seed.album_title);
-        assert_eq!(masked.album_artist_names, seed.album_artist_names);
-        assert_eq!(masked.tracks, seed.tracks);
-    }
 }
 
 /// Every artist the release credits reaches the editor, in credit order. The

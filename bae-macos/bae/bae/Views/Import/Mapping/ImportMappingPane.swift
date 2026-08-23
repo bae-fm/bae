@@ -18,10 +18,9 @@ struct ImportMappingPane: View {
     let libraryStatus: BridgeLibraryStatus?
     let hasCoverOptions: Bool
     let coverContent: ImageContent?
-    /// The album-level fields. `nil` while nothing has been settled for this
-    /// folder — there is nothing to edit or commit then, so the commit bar
-    /// stays off the pane.
-    let editor: Binding<BridgeRawReleaseEdit>?
+    /// Where an album-level field's typed value goes: a row under this
+    /// candidate, written as the field is left.
+    let editActions: ReleaseFieldWriter
     @Binding
     var storageCloud: Bool
     @Binding
@@ -37,15 +36,10 @@ struct ImportMappingPane: View {
     /// identification derive the candidate again from the remaining signals.
     let onToggleSignal: (BridgeExcludedSignal) -> Void
     let onEditCover: () -> Void
-    /// Set how far the claim on the picked release reaches — the claim line's
-    /// own control.
-    let onSetClaimLevel: (BridgeClaimLevel) -> Void
 
-    /// The folder's mapping, or an empty table while the first read is still in
-    /// flight — the pane's own shape does not change for it.
+    /// The folder's mapping, as core reads it back for this candidate.
     private var mapping: BridgeMappingTable {
         candidate.mapping
-            ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
     }
 
     var body: some View {
@@ -64,6 +58,7 @@ struct ImportMappingPane: View {
                     table: mapping,
                     bindingOptions: bindingOptions,
                     previewingPath: previewingPath,
+                    unprobed: Set(candidate.detail?.unprobed ?? []),
                     actions: mappingActions,
                 )
             }
@@ -73,14 +68,11 @@ struct ImportMappingPane: View {
 
     @ViewBuilder
     private var conflictResolution: some View {
-        if candidate.identityChoice == nil,
-            case .conflict = candidate.identifyState
-        {
+        if !candidate.hasSettled, case .conflict = candidate.identifyState {
             ImportConflictResolutionView(
                 identifyState: candidate.identifyState,
                 isImporting: ImportSearchFlow.isImporting(candidate),
-                selectedReleaseId: candidate.prefetchTask != nil
-                    ? candidate.pick?.releaseId : nil,
+                selectedReleaseId: nil,
                 error: nil,
                 scrollsResults: false,
                 onToggle: onToggleSignal,
@@ -94,7 +86,7 @@ struct ImportMappingPane: View {
     /// re-pick leaves the table and the album fields in place but nothing
     /// settled to commit them under.
     private var commitControls: ImportCommitControls? {
-        guard candidate.commitEdit != nil else {
+        guard candidate.hasSettled else {
             return nil
         }
         return ImportCommitControls(
@@ -113,24 +105,21 @@ struct ImportMappingPane: View {
             folderName: candidate.displayName,
             formatLabel: candidate.files.formatLabel,
             title: headerTitle,
-            artist: editor?.wrappedValue.albumArtistText ?? "",
+            artist: candidate.edit?.albumArtistText ?? "",
             metaLine: headerMetaLine,
-            claim: candidate.claim,
-            hasPick: candidate.pick != nil,
-            isReading: candidate.prefetchTask != nil,
+            evidence: candidate.evidence,
+            hasPick: candidate.pickedRelease != nil,
+            isReading: candidate.pickInFlight,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
-            editor: editor,
+            editValues: candidate.edit,
+            editActions: editActions,
             matchOptions: matchOptions,
-            // The card waits for a settled identity, not for the pick: while
-            // the pick's read is in flight the options above carry the
-            // spinner, and a card would only restate the folder name.
-            hasSettled: candidate.identityChoice != nil,
+            hasSettled: candidate.hasSettled,
             commit: commitControls,
             onSetIdentity: onSetIdentity,
             onFindRelease: onFindRelease,
             onEditCover: onEditCover,
-            onSetClaimLevel: onSetClaimLevel,
         )
     }
 
@@ -141,7 +130,7 @@ struct ImportMappingPane: View {
     /// to the release card only when the read lands and settles the identity.
     private var matchOptions: ImportMatchOptions? {
         guard candidate.identity == .release,
-            candidate.identityChoice == nil,
+            !candidate.hasSettled,
             case .found(let group, let libraryStatuses, _, let provenance) =
                 candidate.identifyState
         else {
@@ -152,8 +141,7 @@ struct ImportMappingPane: View {
             libraryStatuses: libraryStatuses,
             provenance: provenance,
             isImporting: ImportSearchFlow.isImporting(candidate),
-            loadingReleaseId: candidate.prefetchTask != nil
-                ? candidate.pick?.releaseId : nil,
+            loadingReleaseId: nil,
             onSelect: onPickRelease,
         )
     }
@@ -161,7 +149,7 @@ struct ImportMappingPane: View {
     /// The album title the card leads with: what the editor holds once there is
     /// one, and the folder's own name before that.
     private var headerTitle: String {
-        let title = editor?.wrappedValue.albumTitle ?? ""
+        let title = candidate.edit?.albumTitle ?? ""
         return title.isEmpty ? candidate.displayName : title
     }
 
@@ -170,7 +158,7 @@ struct ImportMappingPane: View {
     /// leaving stray separators, and reading the folder as Unknown says so
     /// where a pressing would be.
     private var headerMetaLine: String {
-        guard let values = editor?.wrappedValue else {
+        guard let values = candidate.edit else {
             return candidate.files.formatLabel
         }
         let count = mapping.willWriteCount
@@ -189,6 +177,8 @@ struct ImportMappingPane: View {
             libraryStatus: libraryStatus,
             importStatus: candidate.importStatus,
             error: candidate.error,
+            failure: candidate.failure,
+            onRetry: commitActions.confirmImport,
             onViewInLibrary: commitActions.viewInLibrary,
         )
     }

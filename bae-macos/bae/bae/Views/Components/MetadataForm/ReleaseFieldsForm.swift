@@ -1,15 +1,50 @@
 import BaeKit
 import SwiftUI
 
-/// The release's own fields — album title and artist, then the six pressing
-/// fields — as two grouped cards of label-left / value-right rows.
+/// Where one field's typed value goes.
 ///
-/// Split out of `EditMetadataForm` because the import's mapping pane edits
-/// exactly these: its tracks are the mapping table, so the track half of the
-/// metadata form has no place there.
+/// The library's release editor holds its form in memory and saves it whole,
+/// so its fields write into a binding. The import pane holds nothing: each
+/// field is a row under the candidate, and typing in one writes that row. Both
+/// hand this the same eight fields.
+struct ReleaseFieldWriter {
+    let setField: (BridgeCandidateEditField, String) -> Void
+
+    /// Write into a form held in memory.
+    static func binding(_ form: Binding<BridgeRawReleaseEdit>) -> Self {
+        Self { field, value in
+            switch field {
+            case .albumTitle: form.wrappedValue.albumTitle = value
+            case .albumArtistText: form.wrappedValue.albumArtistText = value
+            case .year: form.wrappedValue.pressing.year = value
+            case .format: form.wrappedValue.pressing.format = value
+            case .label: form.wrappedValue.pressing.label = value
+            case .catalogNumber:
+                form.wrappedValue.pressing.catalogNumber = value
+            case .country: form.wrappedValue.pressing.country = value
+            case .barcode: form.wrappedValue.pressing.barcode = value
+            }
+        }
+    }
+}
+
+/// The album and pressing fields of a release, as one form.
+///
+/// It reads values and reports edits; where those values live is the caller's.
 struct ReleaseFieldsForm: View {
-    @Binding
-    var form: BridgeRawReleaseEdit
+    let values: BridgeRawReleaseEdit
+    let writer: ReleaseFieldWriter
+
+    init(values: BridgeRawReleaseEdit, writer: ReleaseFieldWriter) {
+        self.values = values
+        self.writer = writer
+    }
+
+    /// A form over a value held in memory — the library's release editor.
+    init(form: Binding<BridgeRawReleaseEdit>) {
+        values = form.wrappedValue
+        writer = .binding(form)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -18,21 +53,43 @@ struct ReleaseFieldsForm: View {
         }
     }
 
+    private func row(
+        _ field: BridgeCandidateEditField,
+        label: String,
+        hint: String? = nil,
+        placeholder: String,
+        text: String,
+        width: FieldWidth,
+        monospaced: Bool = false
+    ) -> FieldRow {
+        FieldRow(
+            label: label,
+            hint: hint,
+            placeholder: placeholder,
+            text: text,
+            onCommit: { writer.setField(field, $0) },
+            width: width,
+            monospaced: monospaced,
+        )
+    }
+
     private var albumGroup: some View {
         groupCard(
             title: String(localized: "Album"),
             rows: [
-                FieldRow(
+                row(
+                    .albumTitle,
                     label: String(localized: "Title"),
                     placeholder: String(localized: "Album title"),
-                    text: $form.albumTitle,
+                    text: values.albumTitle,
                     width: .long,
                 ),
-                FieldRow(
+                row(
+                    .albumArtistText,
                     label: String(localized: "Artist"),
                     hint: String(localized: "comma-separated"),
                     placeholder: String(localized: "Album artist"),
-                    text: $form.albumArtistText,
+                    text: values.albumArtistText,
                     width: .long,
                 ),
             ],
@@ -43,41 +100,47 @@ struct ReleaseFieldsForm: View {
         groupCard(
             title: String(localized: "Release pressing"),
             rows: [
-                FieldRow(
+                row(
+                    .year,
                     label: String(localized: "Year"),
                     placeholder: String(localized: "Year"),
-                    text: $form.pressing.year,
+                    text: values.pressing.year,
                     width: .short,
                     monospaced: true,
                 ),
-                FieldRow(
+                row(
+                    .format,
                     label: String(localized: "Format"),
                     placeholder: String(localized: "Format"),
-                    text: $form.pressing.format,
+                    text: values.pressing.format,
                     width: .short,
                 ),
-                FieldRow(
+                row(
+                    .label,
                     label: String(localized: "Label"),
                     placeholder: String(localized: "Label"),
-                    text: $form.pressing.label,
+                    text: values.pressing.label,
                     width: .long,
                 ),
-                FieldRow(
+                row(
+                    .catalogNumber,
                     label: String(localized: "Catalog number"),
                     placeholder: String(localized: "Catalog number"),
-                    text: $form.pressing.catalogNumber,
+                    text: values.pressing.catalogNumber,
                     width: .medium,
                 ),
-                FieldRow(
+                row(
+                    .country,
                     label: String(localized: "Country"),
                     placeholder: String(localized: "Country"),
-                    text: $form.pressing.country,
+                    text: values.pressing.country,
                     width: .short,
                 ),
-                FieldRow(
+                row(
+                    .barcode,
                     label: String(localized: "Barcode"),
                     placeholder: String(localized: "Barcode"),
-                    text: $form.pressing.barcode,
+                    text: values.pressing.barcode,
                     width: .medium,
                     monospaced: true,
                 ),
@@ -118,10 +181,11 @@ struct ReleaseFieldsForm: View {
                 }
             }
             .frame(width: 150, alignment: .leading)
-            MetadataField(
+            CommittedTextField(
                 placeholder: row.placeholder,
-                text: row.text,
+                value: row.text,
                 monospaced: row.monospaced,
+                onCommit: row.onCommit,
             )
             .frame(maxWidth: row.width.maxWidth)
             Spacer(minLength: 0)

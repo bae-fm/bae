@@ -12,9 +12,11 @@ import Foundation
 /// convenience shape invented for them.
 enum MappingFixtures {
     static let candidateKey = "/Music/Downloads/Walkthrough"
-    static let pick = CandidatePick(
-        releaseId: "rel-walkthrough",
-        source: .musicBrainz,
+    static let releaseId = "rel-walkthrough"
+    static let source: BridgeMetadataSource = .musicBrainz
+    static let pick: BridgeIdentityPick = .release(
+        source: source,
+        releaseId: releaseId,
         claim: .exact
     )
 
@@ -66,28 +68,33 @@ enum MappingFixtures {
         )
     }
 
-    /// A thirteenth file the release's tracklist does not name: it carries
-    /// audio, so it writes a track, and nobody has said what that track is.
-    static let unnamedRow: BridgeMappingRow = .unit(
-        unit: BridgeMappingUnit(
-            source: .file(file: audioFile(13)),
-            becomes: .track(
-                track: trackEdit(
-                    12,
-                    title: "",
-                    file: .standalone(fileId: "13.flac")
-                ),
-                sourcePosition: nil,
-                sourceDurationMs: nil
-            )
-        )
-    )
+    static let thirteenFileTable = thirteenFileTable(lastTitle: "")
 
-    static let thirteenFileTable = BridgeMappingTable(
-        images: [],
-        rows: (1...12).map(pairedRow) + [unnamedRow],
-        reconciliation: .moreFiles(files: 13, tracks: 12)
-    )
+    /// The same thirteen rows with the last one named — what the next read
+    /// answers with once that row has been written.
+    static func thirteenFileTable(lastTitle: String) -> BridgeMappingTable {
+        BridgeMappingTable(
+            images: [],
+            rows: (1...12).map(pairedRow)
+                + [
+                    .unit(
+                        unit: BridgeMappingUnit(
+                            source: .file(file: audioFile(13)),
+                            becomes: .track(
+                                track: trackEdit(
+                                    12,
+                                    title: lastTitle,
+                                    file: .standalone(fileId: "13.flac")
+                                ),
+                                sourcePosition: nil,
+                                sourceDurationMs: nil
+                            )
+                        )
+                    )
+                ],
+            reconciliation: .moreFiles(files: 13, tracks: 12)
+        )
+    }
 
     // MARK: - One container, before and after its sheet is bound
 
@@ -295,52 +302,25 @@ enum MappingFixtures {
         tracks: []
     )
 
-    /// A prefetch carrying `mapping`, claiming the release at `level` the way
-    /// core answers a pick that carries it. The pane reads the claim, the seed
-    /// and the mapping; `slots` stays in the bridge for the other desktop
-    /// surface, and is empty here because nothing under test reads it.
-    static func prefetch(
-        mapping: BridgeMappingTable,
-        level: BridgeClaimLevel = .exact
-    ) -> BridgeReleasePrefetch {
-        BridgeReleasePrefetch(
-            detail: BridgeReleaseDetail(
-                releaseId: pick.releaseId,
-                source: pick.source,
-                sourceGroupId: nil,
-                title: "Album Title",
-                artist: "Artist Name",
-                year: 1996,
-                format: "CD",
-                label: nil,
-                catalogNumber: nil,
-                country: nil,
-                barcode: nil,
-                trackCount: 12,
-                tracks: [],
-                coverArt: [],
-                defaultCover: nil
-            ),
-            seed: albumSeed,
-            claim: BridgeClaimLine(
-                choice: level == .exact
-                    ? .exact(
-                        releaseId: pick.releaseId,
-                        source: pick.source
-                    )
-                    : .approximate(
-                        releaseId: pick.releaseId,
-                        source: pick.source
-                    ),
-                level: level,
-                evidence: .discIdAlone,
-                release: "CD \u{00b7} 1996",
-                trackCount: 12
-            ),
-            exactPressing: exactPressing,
-            mapping: mapping
-        )
-    }
+    /// The release the fixture folder is picked as, as its documents describe
+    /// it.
+    static let releaseDetail = BridgeReleaseDetail(
+        releaseId: releaseId,
+        source: source,
+        sourceGroupId: nil,
+        title: "Album Title",
+        artist: "Artist Name",
+        year: 1996,
+        format: "CD",
+        label: nil,
+        catalogNumber: nil,
+        country: nil,
+        barcode: nil,
+        trackCount: 12,
+        tracks: [],
+        coverArt: [],
+        defaultCover: nil
+    )
 
     /// The pressing the fixture release states — what claiming it exactly is a
     /// claim about, and what an edit is read against.
@@ -359,41 +339,70 @@ enum MappingFixtures {
         collapsedDirectories: []
     )
 
+    /// The value the per-candidate read answers with for the fixture folder:
+    /// picked as the release above, with `mapping` as its table.
+    @MainActor
+    static func detail(
+        mapping: BridgeMappingTable?,
+        edit: BridgeRawReleaseEdit? = albumEdit,
+        picked: BridgeIdentityPick? = pick,
+        failure: BridgeImportFailure? = nil
+    ) -> BridgeImportCandidateDetail {
+        let folder = BridgeFolderCandidate(
+            folderPath: candidateKey,
+            sourceFolderName: "Walkthrough",
+            watchedFolderPath: "/Music/Downloads",
+            files: emptyFiles,
+            trackCount: 13,
+            skipped: false,
+            isAdded: false
+        )
+        return BridgeImportCandidateDetail(
+            candidate: folder,
+            actionable: true,
+            resumedIdentifyState: .idle,
+            row: BridgeTriageRow(
+                candidateKey: candidateKey,
+                folderName: "Walkthrough",
+                watchedFolderPath: "/Music/Downloads",
+                displayPath: "Walkthrough",
+                resolvedBoundaries: [],
+                combineAncestorKey: nil,
+                actionable: true,
+                placement: .ready,
+                skipAction: .skip,
+                matched: nil,
+                selectable: true,
+                importStatus: nil,
+                picked: picked,
+                claim: nil
+            ),
+            release: picked == nil ? nil : releaseDetail,
+            pickedLibraryStatus: nil,
+            evidence: picked == nil ? nil : .discIdAlone,
+            edit: picked == nil ? nil : edit,
+            mapping: mapping
+                ?? BridgeMappingTable(
+                    images: [],
+                    rows: [],
+                    reconciliation: nil
+                ),
+            unprobed: [],
+            cover: nil,
+            signals: nil,
+            failure: failure
+        )
+    }
+
     /// A store holding one folder candidate read as the release picked for it,
-    /// with `mapping` on it — the state a pick leaves behind.
+    /// with `mapping` as the table core answers with.
     @MainActor
     static func store(mapping: BridgeMappingTable?) -> ImportStore {
         let store = ImportStore()
-        var candidate = Candidate(
-            bridge: BridgeFolderCandidate(
-                folderPath: candidateKey,
-                sourceFolderName: "Walkthrough",
-                watchedFolderPath: "/Music/Downloads",
-                files: emptyFiles,
-                trackCount: 13,
-                skipped: false,
-                isAdded: false
-            )
+        store.applyCandidateDetail(
+            key: candidateKey,
+            detail: detail(mapping: mapping)
         )
-        candidate.pick = pick
-        candidate.identityChoice = .exact(
-            releaseId: pick.releaseId,
-            source: pick.source
-        )
-        candidate.editValues = albumEdit
-        candidate.exactPressing = exactPressing
-        candidate.claim =
-            prefetch(
-                mapping: mapping
-                    ?? BridgeMappingTable(
-                        images: [],
-                        rows: [],
-                        reconciliation: nil
-                    )
-            )
-            .claim
-        candidate.mapping = mapping
-        store.selectedCandidates[candidate.key] = candidate
         return store
     }
 
@@ -409,8 +418,10 @@ enum MappingFixtures {
     /// import.
     @MainActor
     static func isCommittable(_ store: ImportStore) -> Bool {
-        guard let edit = store.selectedCandidates[candidateKey]?.commitEdit
+        guard let candidate = store.selectedCandidates[candidateKey],
+            var edit = candidate.edit
         else { return false }
+        edit.tracks = bridgeMappingTracks(table: candidate.mapping)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
     }

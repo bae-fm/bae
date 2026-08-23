@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count}개 가져오기</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>그래도 가져오기</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>다시 시도</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>재생 시간을 읽는 중</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>충돌</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>직접 검색</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>실패</value></data>

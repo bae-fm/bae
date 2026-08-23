@@ -6,12 +6,10 @@ import SwiftUI
 extension ImportView {
     /// Import every Ready candidate named in `keys` — the foot bar's action.
     /// Each is one existing single import, dispatched independently; there is
-    /// no batch primitive in core. A bulk import never opens the mapping
-    /// pane: it commits straight onto the row's matched release with no
-    /// metadata edit, which is exactly what the Ready rule already guarantees
-    /// is safe (one confident match, not in the library, counts and lengths
-    /// agree). If the candidate has a selected cover, the same request shape as
-    /// an individual commit carries it.
+    /// no batch primitive in core. A bulk import never opens the mapping pane
+    /// and needs nothing from it: the pick, the metadata and the cover are
+    /// stored under each candidate, so committing without opening it writes
+    /// exactly what opening it would have shown.
     func importReadyCandidates(_ keys: [String]) {
         guard !keys.isEmpty else {
             return
@@ -33,20 +31,8 @@ extension ImportView {
                     try await importer.startImport(
                         ImportCommitRequest(
                             candidateKey: ready.candidateKey,
-                            selectedCover:
-                                importStore
-                                .candidate(forKey: ready.candidateKey)?
-                                .selectedCover?
-                                .selection,
                             storageMode: storageMode,
                             pin: storagePinned,
-                            // The row's stored decision, in the shape commit
-                            // takes — identification settled this candidate on
-                            // one match and recorded the pick, so a bulk import
-                            // commits the same claim opening the pane would
-                            // state.
-                            identityChoice: ready.claim,
-                            userEdit: nil
                         )
                     )
                 }

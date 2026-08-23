@@ -17,10 +17,14 @@ use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 
 mod images;
+// Every type here describes the import queue's own state, which the mobile
+// builds leave out along with the import pipeline that produces it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 mod query;
 
 pub use images::*;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use import::*;
 pub use query::*;
 

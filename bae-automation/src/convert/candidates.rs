@@ -38,7 +38,39 @@ pub(crate) fn automation_candidate_from_folder(
         format_label: candidate.files.format_label.clone(),
         content_hash: candidate.files.content_hash(),
         runtime: automation_candidate_runtime(&joined),
+        picked_release: folder.release.clone().map(automation_release_detail),
+        evidence: folder.evidence.map(automation_claim_evidence),
+        edit: folder
+            .edit
+            .as_ref()
+            .map(|edit| automation_release_user_edit(shaped_edit(edit, &folder.mapping))),
+        failure: folder
+            .failure
+            .as_ref()
+            .map(|failure| AutomationImportFailure {
+                error: failure.error.clone(),
+                failed_at: failure.failed_at.to_rfc3339(),
+            }),
     }
+}
+
+/// The metadata a commit of this candidate would write: the form's album
+/// fields with the table's own track rows, normalized the way the commit
+/// normalizes them. A form that will not shape yet — an empty album title —
+/// reads back as the seed it came from.
+fn shaped_edit(
+    edit: &bae_core::import::RawReleaseEdit,
+    mapping: &bae_core::import::MappingTable,
+) -> bae_core::import::ReleaseUserEdit {
+    let mut raw = edit.clone();
+    raw.tracks = bae_core::import::mapping_tracks(mapping);
+    raw.shape()
+        .unwrap_or_else(|_| bae_core::import::ReleaseUserEdit {
+            album_title: raw.album_title.clone(),
+            album_artist_names: Vec::new(),
+            pressing: bae_core::import::PressingEdit::blank(),
+            tracks: Vec::new(),
+        })
 }
 
 /// An unimportable folder. The import service records no runtime against one —

@@ -215,7 +215,9 @@ private func detail(
     name: String,
     skipped: Bool = false,
     resumedIdentifyState: BridgeIdentifyState = .idle,
-    row: BridgeTriageRow? = nil
+    row: BridgeTriageRow? = nil,
+    cover: BridgeCoverChoice? = nil,
+    release: BridgeReleaseDetail? = nil
 ) -> BridgeImportCandidateDetail {
     BridgeImportCandidateDetail(
         candidate: bridgeFolder(
@@ -226,7 +228,20 @@ private func detail(
         ),
         actionable: true,
         resumedIdentifyState: resumedIdentifyState,
-        row: row ?? readyRow(folderPath, title: name)
+        row: row ?? readyRow(folderPath, title: name),
+        release: release,
+        pickedLibraryStatus: nil,
+        evidence: nil,
+        edit: nil,
+        mapping: BridgeMappingTable(
+            images: [],
+            rows: [],
+            reconciliation: nil
+        ),
+        unprobed: [],
+        cover: cover,
+        signals: nil,
+        failure: nil
     )
 }
 
@@ -264,7 +279,6 @@ struct ImportStoreCandidateDetailTests {
             watchedFolderPath: "/w1",
             name: "A"
         )
-        existing.identity = .unknown
         existing.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
         existing.runtimeIdentifyState = .triangulating(
             discid: .computing,
@@ -290,9 +304,8 @@ struct ImportStoreCandidateDetailTests {
         )
 
         let merged = try #require(store.selectedCandidates["/w1/a"])
-        // Editor and session state and the run in flight survive; the read
-        // only re-read the folder.
-        #expect(merged.identity == .unknown)
+        // Session state and the run in flight survive; the read only re-read
+        // the folder.
         #expect(
             merged.importStatus
                 == .complete(releaseId: "rel-1", albumId: "al-1")
@@ -453,15 +466,10 @@ struct ImportLoudnessProgressTests {
 @Suite("ImportStore sidebar covers")
 struct ImportStoreSidebarCoverTests {
     @MainActor
-    @Test("the sidebar uses every user-chosen cover")
+    @Test("the sidebar uses every cover core answers with")
     func selectedCoversWinOverQueueThumbnail() throws {
         let store = ImportStore()
         let key = "/w/subject"
-        var candidate = folderCandidate(
-            folderPath: key,
-            watchedFolderPath: "/w",
-            name: "Subject"
-        )
         let row = readyRow(
             key,
             title: "Subject",
@@ -477,8 +485,16 @@ struct ImportStoreSidebarCoverTests {
             try #require(localArtwork.coverChoice),
         ]
         for choice in choices {
-            candidate.selectedCover = choice
-            store.selectedCandidates[key] = candidate
+            store.applyCandidateDetail(
+                key: key,
+                detail: detail(
+                    folderPath: key,
+                    watchedFolderPath: "/w",
+                    name: "Subject",
+                    row: row,
+                    cover: choice
+                )
+            )
 
             #expect(
                 store.sidebarCover(for: row)
@@ -488,33 +504,35 @@ struct ImportStoreSidebarCoverTests {
     }
 
     @MainActor
-    @Test("the sidebar uses the automatically selected default cover")
+    @Test("the sidebar uses the picked release's default cover")
     func defaultCoverWinsOverQueueThumbnail() throws {
         let store = ImportStore()
         let key = "/w/subject"
-        var candidate = folderCandidate(
-            folderPath: key,
-            watchedFolderPath: "/w",
-            name: "Subject"
-        )
-        candidate.setReleaseDetail(PreviewData.releaseDetailBridge)
-        store.selectedCandidates[key] = candidate
-
+        let releaseDetail = PreviewData.releaseDetailBridge
+        let defaultCover = try #require(releaseDetail.defaultCover)
         let row = readyRow(
             key,
             title: "Subject",
             coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
         )
+        store.applyCandidateDetail(
+            key: key,
+            detail: detail(
+                folderPath: key,
+                watchedFolderPath: "/w",
+                name: "Subject",
+                row: row,
+                cover: defaultCover,
+                release: releaseDetail
+            )
+        )
 
-        let releaseDetail = try #require(candidate.releaseDetailBridge)
-        let defaultCover = try #require(releaseDetail.defaultCover)
         #expect(
             store.sidebarCover(for: row)
                 == ImageContent(bridge: defaultCover.thumbnailSource)
         )
     }
 
-    @MainActor
     @Test(
         "the sidebar retains the queue thumbnail before a candidate has a cover"
     )

@@ -30,7 +30,7 @@ extension ImportView {
     /// Release re-picks the release the candidate already holds, and opens the
     /// search when it holds none — there is nothing to go back to then.
     func setIdentity(_ identity: ImportIdentity, for candidate: Candidate) {
-        switch (identity, candidate.pick) {
+        switch (identity, candidate.pickedRelease) {
         case (.unknown, _):
             ImportSearchFlow.decideIdentity(
                 importer: importer,
@@ -38,15 +38,15 @@ extension ImportView {
                 key: candidate.key,
                 pick: .unknown
             )
-        case (.release, .some(let pick)):
+        case (.release, .some(let picked)):
             ImportSearchFlow.decideIdentity(
                 importer: importer,
                 importStore: importStore,
                 key: candidate.key,
                 pick: .release(
-                    source: pick.source,
-                    releaseId: pick.releaseId,
-                    claim: pick.claim
+                    source: picked.source,
+                    releaseId: picked.releaseId,
+                    claim: .exact
                 )
             )
         case (.release, .none):

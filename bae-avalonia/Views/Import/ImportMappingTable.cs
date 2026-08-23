@@ -30,6 +30,10 @@ internal sealed class ImportMappingTable
     private readonly ImportMappingActions _actions;
     private readonly IReadOnlyList<ImportAudioChoice> _audioChoices;
 
+    // The audio units nothing has read yet. Their rows say so while the read
+    // runs; every other length in the table is already stored.
+    private readonly IReadOnlyList<BridgeAudioFile> _unprobed;
+
     // The row hosts and the audio each one plays, in row order, so the accent on
     // the playing row moves without rebuilding the table under the fields the
     // user is typing in.
@@ -43,13 +47,15 @@ internal sealed class ImportMappingTable
         BridgeMappingTable table,
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
         Func<string?> previewingPath,
-        ImportMappingActions actions)
+        ImportMappingActions actions,
+        IReadOnlyList<BridgeAudioFile>? unprobed = null)
     {
         _table = table;
         _bindingOptions = bindingOptions;
         _previewingPath = previewingPath;
         _actions = actions;
         _audioChoices = table.AudioChoices();
+        _unprobed = unprobed ?? Array.Empty<BridgeAudioFile>();
     }
 
     internal Control Build()
@@ -210,7 +216,7 @@ internal sealed class ImportMappingTable
 
         var lengthsDiverge = LengthsDiverge(unit);
 
-        var source = SourceCell(unit.Source, lengthsDiverge);
+        var source = SourceCell(unit.Source, lengthsDiverge, IsMeasuring(unit.Source));
         Avalonia.Controls.Grid.SetColumn(source, 0);
         grid.Children.Add(source);
 
@@ -372,10 +378,17 @@ internal sealed class ImportMappingTable
 
     // ── The left half ────────────────────────────────────────────────────────
 
-    private Control SourceCell(BridgeMappingSource source, bool lengthsDiverge) => source switch
+    // Whether this row's audio has not been read yet. Its length is the one
+    // thing on the pane that is still being fetched, so it is the one place a
+    // spinner belongs.
+    private bool IsMeasuring(BridgeMappingSource source) =>
+        source.Audio() is { } audio && _unprobed.Contains(audio);
+
+    private Control SourceCell(
+        BridgeMappingSource source, bool lengthsDiverge, bool isMeasuring) => source switch
     {
-        BridgeMappingSource.File file => FileCell(file.FileValue),
-        BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge),
+        BridgeMappingSource.File file => FileCell(file.FileValue, isMeasuring),
+        BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge, isMeasuring),
         BridgeMappingSource.Missing => ImportPaneUi.Cell(
             $"╌ {Loc.Core("ui.import.slots.no_file")}", secondary: true),
         _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown mapping source"),
@@ -384,7 +397,7 @@ internal sealed class ImportMappingTable
     // One of the folder's files, whole: its name in mono with its size after it,
     // the audition control where it is audio, and — where there is something to
     // open — opening it.
-    private Control FileCell(BridgeMappingFile file)
+    private Control FileCell(BridgeMappingFile file, bool isMeasuring)
     {
         var line = new StackPanel
         {
@@ -415,6 +428,10 @@ internal sealed class ImportMappingTable
         {
             line.Children.Add(name);
         }
+        if (isMeasuring)
+        {
+            line.Children.Add(MeasuringSpinner());
+        }
         return line;
     }
 
@@ -429,7 +446,7 @@ internal sealed class ImportMappingTable
     // One entry of a track sheet: the number it prints, the title it gives, and
     // how long it says the entry runs. The audio is the container's, which is the
     // only file on disk there is to audition.
-    private Control EntryCell(BridgeMappingEntry entry, bool lengthsDiverge)
+    private Control EntryCell(BridgeMappingEntry entry, bool lengthsDiverge, bool isMeasuring)
     {
         var line = new StackPanel
         {
@@ -445,18 +462,40 @@ internal sealed class ImportMappingTable
         line.Children.Add(number);
         line.Children.Add(ImportPaneUi.Cell(entry.Title));
 
-        var length = new TextBlock
+        if (isMeasuring)
         {
-            Text = MappingTableReading.DurationText(entry.DurationMs),
-            FontSize = 11.5,
-            FontFamily = new FontFamily("monospace"),
+            line.Children.Add(MeasuringSpinner());
+        }
+        else
+        {
+            var length = new TextBlock
+            {
+                Text = MappingTableReading.DurationText(entry.DurationMs),
+                FontSize = 11.5,
+                FontFamily = new FontFamily("monospace"),
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            length[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+                lengthsDiverge ? "BaeWarningBrush" : "BaeTextSecondaryBrush");
+            line.Children.Add(length);
+        }
+        return line;
+    }
+
+    // The one spinner on the pane: a row whose audio is still being read.
+    private static Control MeasuringSpinner()
+    {
+        var spinner = new ProgressBar
+        {
+            IsIndeterminate = true,
+            Width = 40,
+            Height = 3,
             Margin = new Thickness(8, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        length[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
-            lengthsDiverge ? "BaeWarningBrush" : "BaeTextSecondaryBrush");
-        line.Children.Add(length);
-        return line;
+        ToolTip.SetTip(spinner, Loc.Chrome("import.measuring_length"));
+        return spinner;
     }
 
     private Control AuditionButton(string path)

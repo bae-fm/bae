@@ -86,19 +86,17 @@ struct ImportPreviewDataTests {
             if case .missing = $0.source { return true }
             return false
         }
-        let commitTracks = mapping.commitTracks
+        let commitTracks = bridgeMappingTracks(table: mapping)
 
         #expect(candidate.files.files.count == 1)
         #expect(candidate.files.files[0].file.name == fileSources.first?.fileId)
-        #expect(candidate.releaseDetailBridge?.trackCount == 10)
-        #expect(candidate.editValues?.tracks.count == 10)
+        #expect(candidate.release?.trackCount == 10)
         #expect(fileSources.count == 1)
         #expect(missingSources == 9)
         #expect(mapping.reconciliation == .moreTracks(files: 1, tracks: 10))
         #expect(commitTracks.count == 10)
         #expect(commitTracks.count { $0.file != nil } == 1)
         #expect(commitTracks.count { $0.file == nil } == 9)
-        #expect(candidate.commitEdit?.tracks == commitTracks)
     }
 
     @MainActor

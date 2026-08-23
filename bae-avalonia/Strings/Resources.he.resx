@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>ייבא {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>ייבא בכל זאת</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>נסה שוב</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>קורא כמה זמן זה נמשך</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>התנגשות</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>חפש ידנית</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>נכשל</value></data>

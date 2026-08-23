@@ -211,7 +211,9 @@ internal static partial class NativeBae
     {
         var candidate = detail.Candidate;
         var effective = EffectiveRuntime(detail, runtime);
-        return ImportCandidateRow(candidate, effective);
+        var row = ImportCandidateRow(candidate, effective);
+        row.Detail = detail;
+        return row;
     }
 
     /// <summary>The runtime a row renders: a live run's own, or an idle runtime

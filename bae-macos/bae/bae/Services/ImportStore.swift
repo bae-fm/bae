@@ -118,7 +118,7 @@ class ImportStore {
     /// The candidate's selected/default cover, or the queue's match thumbnail
     /// before identification has supplied one.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
-        candidate(forKey: row.candidateKey)?.selectedCover?.thumbnailContent
+        candidate(forKey: row.candidateKey)?.cover?.thumbnailContent
             ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
     }
 

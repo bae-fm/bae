@@ -847,66 +847,33 @@ internal static partial class NativeBae
     /// <summary>Decide the candidate's identity: persist the choice and come
     /// back with the seeded edit — the same payload the selection query
     /// serves, so a fresh launch renders exactly what the click rendered.</summary>
-    internal static (DecidedEdit? Decided, string? Error) PickCandidateIdentity(
+    /// <summary>Decide the candidate's identity. Nothing comes back: the
+    /// per-candidate read delivers the pane's next value.</summary>
+    internal static string? PickCandidateIdentity(
         AppHandle handle,
         string candidateKey,
-        BridgeIdentityPick pick,
-        IReadOnlyList<LocalArtwork> localArtwork) =>
-        CaptureBridgeValue(() =>
-            DecidedEdit(
-                Await(() => handle.PickCandidateIdentity(candidateKey, pick)),
-                localArtwork));
+        BridgeIdentityPick pick) =>
+        CaptureError(() => Await(() => handle.PickCandidateIdentity(candidateKey, pick)));
 
-    /// <summary>The candidate's decided identity read back, or null while
-    /// nothing is decided — what selecting a row asks.</summary>
-    internal static (DecidedEdit? Decided, bool Undecided, string? Error) CandidateDecidedIdentity(
-        AppHandle handle,
-        string candidateKey,
-        IReadOnlyList<LocalArtwork> localArtwork)
-    {
-        var (value, error) = CaptureBridgeValue(() =>
-        {
-            var answer = Await(() => handle.CandidateDecidedIdentity(candidateKey));
-            return answer is null ? null : DecidedEdit(answer, localArtwork);
-        });
-        return (value, value is null && error is null, error);
-    }
+    /// <summary>Record the cover this candidate commits with.</summary>
+    internal static string? SetCandidateCover(
+        AppHandle handle, string candidateKey, BridgeCoverSelection cover) =>
+        CaptureError(() => Await(() => handle.SetCandidateCover(candidateKey, cover)));
 
-    /// <summary>Map either identity's answer onto the pane's edit shape; the
-    /// discriminator rides along so the pane knows which side it seeds.</summary>
-    private static DecidedEdit DecidedEdit(
-        BridgeDecidedIdentity answer,
-        IReadOnlyList<LocalArtwork> localArtwork) => answer switch
-        {
-            BridgeDecidedIdentity.Release release => new DecidedEdit
-            {
-                Release = (
-                    release.Source,
-                    release.ReleaseId,
-                    release.Prefetch.Detail.SourceGroupId,
-                    release.Prefetch.Claim.Level),
-                Edit = new PrefetchedEdit
-                {
-                    Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(release.Prefetch.Seed, "prefetch-track"),
-                    RemoteCovers = release.Prefetch.Detail.CoverArt.ToList(),
-                    LocalArtwork = localArtwork.ToList(),
-                    Claim = release.Prefetch.Claim,
-                    ExactPressing = release.Prefetch.ExactPressing,
-                    Mapping = release.Prefetch.Mapping,
-                },
-            },
-            BridgeDecidedIdentity.Unknown unknown => new DecidedEdit
-            {
-                Release = null,
-                Edit = new PrefetchedEdit
-                {
-                    Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(unknown.Seed, "unknown-track"),
-                    Mapping = unknown.Mapping,
-                    LocalArtwork = localArtwork.ToList(),
-                },
-            },
-            _ => throw new ArgumentOutOfRangeException(nameof(answer), answer, "Unknown decided identity"),
-        };
+    /// <summary>Record one album-level metadata field as the user left it.</summary>
+    internal static string? SetCandidateEditField(
+        AppHandle handle, string candidateKey, BridgeCandidateEditField field, string value) =>
+        CaptureError(() => Await(() => handle.SetCandidateEditField(candidateKey, field, value)));
+
+    /// <summary>Record one mapping-table row as the user left it.</summary>
+    internal static string? SetCandidateTrackEdit(
+        AppHandle handle, string candidateKey, BridgeRawTrackEdit track) =>
+        CaptureError(() => Await(() => handle.SetCandidateTrackEdit(candidateKey, track)));
+
+    /// <summary>Take one mapping-table row out of the import.</summary>
+    internal static string? DropCandidateTrack(
+        AppHandle handle, string candidateKey, string trackId) =>
+        CaptureError(() => Await(() => handle.DropCandidateTrack(candidateKey, trackId)));
 
     /// <summary>What picking a release under a candidate claims, and where its
     /// metadata comes from. The re-identify dialog's path: it commits straight
@@ -914,13 +881,6 @@ internal static partial class NativeBae
     internal static BridgeClaimLine ClaimForPick(
         AppHandle handle, string candidateKey, BridgeMetadataResult result, BridgeClaimLevel level) =>
         handle.ClaimForPick(candidateKey, result, level);
-
-    /// <summary>The mapping table for a candidate nobody has picked a release
-    /// for: every source unit the folder offers, with what it becomes left
-    /// open.</summary>
-    internal static (BridgeMappingTable? Mapping, string? Error) CandidateMapping(
-        AppHandle handle, string candidateKey) =>
-        CaptureBridgeValue(() => Await(() => handle.CandidateMapping(candidateKey)));
 
     internal static LiveSubscription SubscribeReleaseLibraryStatus(
         AppHandle handle,
@@ -943,15 +903,15 @@ internal static partial class NativeBae
         public void OnError(BridgeException error) => onError(error);
     }
 
+    /// <summary>Commit a candidate. Nothing about the release rides in: the
+    /// pick, the metadata typed over it, the corrected rows and the chosen
+    /// cover are all stored under the candidate.</summary>
     internal static string? ImportCandidate(
-        AppHandle handle, string candidateKey, BridgeIdentityChoice identity, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
+        AppHandle handle, string candidateKey, string storageMode, bool pin) =>
         CaptureError(() => Await(() => handle.StartImport(
             candidateKey,
-            selectedCover,
             StorageMode(storageMode),
-            pin,
-            identity,
-            ReleaseUserEdit(userEdit))));
+            pin)));
 
     /// <summary>Provider art at a URL for the import flow's cover search — its
     /// bytes and the validator identifying them — or null when the source

@@ -267,7 +267,7 @@ impl BridgePressingEdit {
 
 #[cfg(feature = "desktop")]
 impl BridgeAudioFile {
-    fn from_core(file: bae_core::import::AudioFile) -> Self {
+    pub(crate) fn from_core(file: bae_core::import::AudioFile) -> Self {
         match file {
             bae_core::import::AudioFile::Standalone { file_id } => Self::Standalone { file_id },
             bae_core::import::AudioFile::SheetSlice {

@@ -1,41 +1,17 @@
 import BaeKit
 import SwiftUI
 
-/// Commit tail for a confirmed import. Shapes the candidate's raw editor
-/// form into the wire edit — writing bae-core's `.invalid` reason onto the
-/// candidate and bailing if it doesn't validate, which the commit bar states as
-/// a banner rather than pre-empting with a disabled button — then runs `start`,
-/// writing any thrown error onto the candidate.
-@MainActor
-private func commitImport(
-    store: ImportStore,
-    key: String,
-    rawEdit: BridgeRawReleaseEdit,
-    start: (BridgeReleaseUserEdit) async throws -> Void
-) async {
-    let userEdit: BridgeReleaseUserEdit
-    switch shapeReleaseEdit(raw: rawEdit) {
-    case .valid(let edit):
-        userEdit = edit
-    case .invalid(let reason):
-        store.mutateCandidate(forKey: key) {
-            $0.error = reason.localizedMessage
-        }
-        return
-    }
-    do {
-        try await start(userEdit)
-    }
-    catch {
-        store.mutateCandidate(forKey: key) {
-            $0.error = error.displayLine
-        }
-    }
-}
-
 // MARK: - Commit
 
 extension ImportView {
+    /// Commit the selected candidate. Nothing about the release is sent: the
+    /// pick, the metadata typed over it, the corrected rows and the chosen
+    /// cover are all stored under the candidate, so the commit consumes the
+    /// very values this pane drew. Only where the files should live is this
+    /// view's to say.
+    ///
+    /// A failure — a folder that moved, an album title left empty — lands on
+    /// the candidate's banner and the fields stay as they were.
     func commitConfirmedImport(candidate: Candidate) {
         guard case .folder = candidate.source else {
             return
@@ -43,36 +19,22 @@ extension ImportView {
         // Start each attempt from a clean error state so a prior failed
         // commit's banner doesn't linger over a now-succeeding retry.
         importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
-        let storageMode = configStore.config.importStorageMode(
-            cloud: storageCloud
+        let request = ImportCommitRequest(
+            candidateKey: candidate.key,
+            storageMode: configStore.config.importStorageMode(
+                cloud: storageCloud
+            ),
+            pin: storagePinned,
         )
-
-        // The edit is the album fields over the mapping table's rows, and it
-        // exists exactly when an identity has been settled — a pick's claim, or
-        // `.unknown`. The commit bar is the only surface carrying this button
-        // and it renders on the same condition, so absence here is a structural
-        // bug.
-        guard let identityChoice = candidate.identityChoice,
-            let commitEdit = candidate.commitEdit
-        else {
-            fatalError("commit reached with nothing settled to commit")
-        }
-
-        Task {
-            await commitImport(
-                store: importStore,
-                key: candidate.key,
-                rawEdit: commitEdit
-            ) {
-                try await importer.startImport(
-                    ImportCommitRequest(
-                        candidate: candidate,
-                        storageMode: storageMode,
-                        pin: storagePinned,
-                        identityChoice: identityChoice,
-                        userEdit: $0
-                    )
-                )
+        Task { @MainActor in
+            do {
+                try await importer.startImport(request)
+            }
+            catch is CancellationError {}
+            catch {
+                importStore.mutateCandidate(forKey: candidate.key) {
+                    $0.error = error.displayLine
+                }
             }
         }
     }

@@ -151,29 +151,39 @@ impl BridgeReleaseTrack {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeReleasePrefetch {
-    pub(crate) fn from_core(p: bae_core::import::search::ImportReleasePrefetch) -> Self {
-        let bae_core::import::search::ImportReleasePrefetch {
-            detail,
-            seed,
-            claim,
-            mapping,
-        } = p;
-        // The seed crosses masked for the claim the pick settled, so the editor
-        // binds it directly. Doing it here rather than in the UI is what keeps
-        // the two desktop surfaces from each deciding what an album-level claim
-        // shows.
-        let exact_pressing = BridgeRawPressingEdit::from_core(
-            bae_core::import::RawPressingEdit::from_pressing(&seed.pressing),
-        );
-        let seed = bae_core::import::shape_user_edit_for_choice(&seed, &claim.choice);
-        BridgeReleasePrefetch {
-            detail: BridgeReleaseDetail::from_core(detail),
-            seed: BridgeReleaseUserEdit::from_core(seed),
-            claim: BridgeClaimLine::from_core(claim),
-            exact_pressing,
-            mapping: BridgeMappingTable::from_core(mapping),
+impl BridgeCoverChoice {
+    pub(crate) fn from_core(choice: bae_core::import::CoverChoice) -> Self {
+        let bae_core::import::CoverChoice {
+            selection,
+            preview,
+            thumbnail,
+        } = choice;
+        Self {
+            selection: match selection {
+                bae_core::import::CoverSelection::Local(file_id) => {
+                    BridgeCoverSelection::ReleaseImage { file_id }
+                }
+                bae_core::import::CoverSelection::Remote(url, source) => {
+                    BridgeCoverSelection::RemoteCover {
+                        selection: bridge_remote_cover_selection(url, source),
+                    }
+                }
+            },
+            preview_source: cover_image_source(preview),
+            thumbnail_source: cover_image_source(thumbnail),
         }
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn cover_image_source(source: bae_core::import::CoverImageSource) -> BridgeCoverImageSource {
+    match source {
+        bae_core::import::CoverImageSource::Remote { url } => {
+            BridgeCoverImageSource::Remote { url }
+        }
+        bae_core::import::CoverImageSource::Local { path } => BridgeCoverImageSource::Local {
+            path: path.to_string_lossy().into_owned(),
+        },
     }
 }
 
@@ -236,7 +246,7 @@ pub fn bridge_claim_for_edit(
 
 #[cfg(feature = "desktop")]
 impl BridgeClaimEvidence {
-    fn from_core(evidence: bae_core::import::ClaimEvidence) -> Self {
+    pub(crate) fn from_core(evidence: bae_core::import::ClaimEvidence) -> Self {
         use bae_core::import::ClaimEvidence;
         match evidence {
             ClaimEvidence::DiscIdAlone => BridgeClaimEvidence::DiscIdAlone,

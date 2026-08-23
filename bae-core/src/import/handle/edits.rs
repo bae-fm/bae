@@ -68,6 +68,38 @@ impl ImportServiceHandle {
         Ok(())
     }
 
+    /// Open the named audio units and store what they play for.
+    ///
+    /// Run by the selected candidate's own query when identification has not
+    /// measured them — a refused verdict, or a folder picked before the sweep
+    /// reached it. This is the one place a pane read opens a file, and it
+    /// writes what it read, so the next projection asks for nothing.
+    ///
+    /// A unit that will not open is written with no length rather than left
+    /// out: the row is what ends the asking.
+    pub async fn probe_candidate_durations(
+        &self,
+        candidate_key: &str,
+        units: Vec<crate::import::AudioFile>,
+    ) -> Result<(), crate::import::ImportError> {
+        let Some((files, _)) = self.actionable_candidate_files(candidate_key).await? else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let hash = files.content_hash();
+        let probed =
+            tokio::task::spawn_blocking(move || crate::import::probe::probe_units(&files, &units))
+                .await
+                .map_err(|e| crate::import::ImportError::Internal {
+                    detail: format!("duration probe task failed: {e}"),
+                })?;
+        self.library_manager
+            .save_import_candidate_durations(&hash, &probed)
+            .await?;
+        Ok(())
+    }
+
     /// The content hash a pane edit is stored under, or the refusal for a key
     /// that names no editable folder.
     async fn edited_candidate_hash(

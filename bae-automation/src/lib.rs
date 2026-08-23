@@ -12,8 +12,8 @@ use bae_core::import::folder_scanner::InvalidCandidate;
 use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use bae_core::import::{
-    shape_user_edit_for_choice, CandidateImportStatusSnapshot, CandidateRuntimeSnapshot,
-    CoverSelection, GroupedSearchResults, IdentityChoice, ImportCandidateDetail, ImportError,
+    CandidateEditField, CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, CoverSelection,
+    GroupedSearchResults, IdentityChoice, IdentityPick, ImportCandidateDetail, ImportError,
     ImportListItem, ImportListView, ImportPhase, ImportStep, MetadataRef, MetadataSource,
     PrepareStep, PressingEdit, ScanEvent, SearchQuery, StorageMode, TrackUserEdit, TriageTab,
 };

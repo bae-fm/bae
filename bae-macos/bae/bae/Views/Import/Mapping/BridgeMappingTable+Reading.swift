@@ -49,13 +49,31 @@ extension BridgeMappingSource {
         }
     }
 
-    /// The playing time the folder itself offers for this row: probed off the
-    /// file, or stated by the sheet for one of its entries.
+    /// The playing time the folder itself offers for this row: measured off
+    /// the file, or stated by the sheet for one of its entries.
     var durationMs: UInt64? {
         switch self {
         case .file(let file): file.probedDurationMs
         case .sheetEntry(let entry): entry.durationMs
         case .missing: nil
+        }
+    }
+
+    /// The audio unit this row's samples come from — the identity core keys a
+    /// measurement by. `nil` for a track the release names that the folder has
+    /// nothing for.
+    var audio: BridgeAudioFile? {
+        switch self {
+        case .file(let file):
+            .standalone(fileId: file.fileId)
+        case .sheetEntry(let entry):
+            .sheetSlice(
+                fileId: entry.containerId,
+                sheetId: entry.sheetId,
+                index: entry.index
+            )
+        case .missing:
+            nil
         }
     }
 }
@@ -76,11 +94,6 @@ extension BridgeMappingTable {
     /// the order the table lays them out.
     var units: [BridgeMappingUnit] { rows.flatMap(\.units) }
 
-    /// The tracks committing writes, in the order core lays them out.
-    var commitTracks: [BridgeRawTrackEdit] {
-        bridgeMappingTracks(table: self)
-    }
-
     /// Rows that will write a track.
     var willWriteCount: Int { units.count(where: \.writesTrack) }
 
@@ -93,21 +106,6 @@ extension BridgeMappingTable {
         units.compactMap(ImportAudioChoice.init(unit:))
     }
 
-    /// Write `track` back onto the row that commits it, and drop rows out of
-    /// the table. Each is core's — which row a track edits, which rows a file
-    /// backs, and what the tally reads once a row has left are one answer for
-    /// every surface, not one per surface.
-    mutating func setTrack(_ track: BridgeRawTrackEdit) {
-        self = bridgeMappingWithTrack(table: self, track: track)
-    }
-
-    mutating func removeTrack(id: String) {
-        self = bridgeMappingWithoutTrack(table: self, trackId: id)
-    }
-
-    mutating func removeFile(id fileId: String) {
-        self = bridgeMappingWithoutFile(table: self, fileId: fileId)
-    }
 }
 
 /// One of the folder's audio units as the "Choose file…" menu offers it: what

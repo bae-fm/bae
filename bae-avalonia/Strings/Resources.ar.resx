@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>استيراد {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>استيراد على أي حال</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>جارٍ قراءة مدة التشغيل</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>تعارض</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>البحث يدويًا</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>فشل</value></data>

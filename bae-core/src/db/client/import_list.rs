@@ -526,8 +526,11 @@ impl Database {
         key: &str,
     ) -> coven::LiveQuery<Option<ImportCandidateDetailProjection>> {
         let key = key.to_string();
+        let clock = self.inner.clock.clone();
+        let ids = self.inner.ids.clone();
         self.inner.handle.subscribe(move |sql| {
-            window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
+            window::load_candidate_detail_on(&sql, &key, clock.as_ref(), ids.as_ref())
+                .map_err(CovenError::from)
         })
     }
 
@@ -550,8 +553,12 @@ impl Database {
         key: &str,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
-        self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
-            .await
+        let clock = self.inner.clock.clone();
+        let ids = self.inner.ids.clone();
+        self.read(move |sql| {
+            window::load_candidate_detail_on(&sql, &key, clock.as_ref(), ids.as_ref())
+        })
+        .await
     }
 }
 

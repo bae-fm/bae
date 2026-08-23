@@ -598,10 +598,10 @@ async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
     );
 }
 
-/// The receipt for "so ready it is offline": a candidate whose lead is settled
-/// opens with nothing routed and no cover-art answer seeded — the hermetic
-/// client would panic on a live lookup, and the provider would answer 404. The
-/// release id is this test's own, so no session cache holds it either.
+/// The receipt for "so ready it is offline": picking a candidate whose lead is
+/// settled reaches the wire for nothing and its pane draws whole — the
+/// hermetic client would panic on a live lookup, and the provider would answer
+/// 404. The release id is this test's own, so no session cache holds it either.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_settled_candidate_opens_with_the_provider_gone() {
@@ -620,23 +620,30 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
         .await;
     let before = fixture.provider.requests().len();
 
-    let prefetch = fixture
+    fixture
         .import
-        .prefetch_release(
-            &dir.to_string_lossy(),
-            "mb-offline-1",
-            crate::import::MetadataSource::MusicBrainz,
-            crate::import::ClaimLevel::Exact,
+        .pick_candidate_identity(
+            dir.to_string_lossy().into_owned(),
+            crate::import::IdentityPick::Release {
+                source: crate::import::MetadataSource::MusicBrainz,
+                release_id: "mb-offline-1".to_string(),
+                claim: crate::import::ClaimLevel::Exact,
+            },
         )
         .await
         .expect("a settled candidate opens from what identification archived");
 
-    assert_eq!(prefetch.detail.release_id, "mb-offline-1");
-    assert_eq!(prefetch.detail.tracks.len(), 2);
-    assert_eq!(prefetch.seed.tracks.len(), 2);
+    let detail = fixture
+        .pane(&dir)
+        .await
+        .expect("the picked candidate reads back");
+    let release = detail.release.expect("the pick names a release");
+    assert_eq!(release.release_id, "mb-offline-1");
+    assert_eq!(release.tracks.len(), 2);
+    let edit = detail.edit.expect("a pick draws the metadata form");
+    assert_eq!(edit.album_title, "Album");
     assert_eq!(
-        prefetch
-            .detail
+        release
             .cover_art
             .iter()
             .map(|cover| cover.url.as_str())
@@ -657,7 +664,8 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
 }
 
 /// A settled lead whose documents are missing is a broken invariant, not a cold
-/// cache. Opening it fails loudly rather than re-fetching and hiding the break.
+/// cache. Picking it fails loudly, and stores no pick — so nothing is left
+/// naming a release the pane could not draw.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_settled_lead_with_no_documents_fails_loud() {
@@ -671,11 +679,13 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
 
     let error = fixture
         .import
-        .prefetch_release(
-            &dir.to_string_lossy(),
-            "mb-missing-1",
-            crate::import::MetadataSource::MusicBrainz,
-            crate::import::ClaimLevel::Exact,
+        .pick_candidate_identity(
+            dir.to_string_lossy().into_owned(),
+            crate::import::IdentityPick::Release {
+                source: crate::import::MetadataSource::MusicBrainz,
+                release_id: "mb-missing-1".to_string(),
+                claim: crate::import::ClaimLevel::Exact,
+            },
         )
         .await
         .expect_err("a settled lead with nothing archived must not silently re-fetch");
@@ -708,14 +718,14 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "nothing has fetched this release yet"
     );
 
+    let pick = || crate::import::IdentityPick::Release {
+        source: crate::import::MetadataSource::MusicBrainz,
+        release_id: "mb-manual-1".to_string(),
+        claim: crate::import::ClaimLevel::Exact,
+    };
     fixture
         .import
-        .prefetch_release(
-            &dir.to_string_lossy(),
-            "mb-manual-1",
-            crate::import::MetadataSource::MusicBrainz,
-            crate::import::ClaimLevel::Exact,
-        )
+        .pick_candidate_identity(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("a manual pick fetches");
 
@@ -724,22 +734,17 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "and archives the release it fetched"
     );
 
-    // Re-opening it costs nothing.
+    // Re-picking it costs nothing.
     let before = fixture.provider.requests().len();
     fixture
         .import
-        .prefetch_release(
-            &dir.to_string_lossy(),
-            "mb-manual-1",
-            crate::import::MetadataSource::MusicBrainz,
-            crate::import::ClaimLevel::Exact,
-        )
+        .pick_candidate_identity(dir.to_string_lossy().into_owned(), pick())
         .await
-        .expect("re-opening reads what the first open archived");
+        .expect("re-picking reads what the first pick archived");
     assert_eq!(
         fixture.provider.requests().len(),
         before,
-        "the second open reached the wire: {:?}",
+        "the second pick reached the wire: {:?}",
         fixture.provider.requests()
     );
 }

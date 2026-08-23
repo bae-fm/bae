@@ -200,42 +200,22 @@ impl AppHandle {
     }
 
     /// Decide a candidate's identity — the pressing the user picked, or the
-    /// decision to read the folder's own tags. Persists the choice and comes
-    /// back with everything the pane seeds from it, the same payload
-    /// [`Self::candidate_decided_identity`] serves, so a fresh launch renders
-    /// exactly what this click rendered. Identification writes the same
-    /// record itself when a verdict settles on exactly one match; this is the
-    /// path for the choices only a person can make.
+    /// decision to read the folder's own tags. The release's documents land
+    /// before the pick does, so the candidate's next value draws whole;
+    /// nothing comes back, because that value is what the pane renders.
+    /// Identification writes the same record itself when a verdict settles on
+    /// exactly one match; this is the path for the choices only a person can
+    /// make.
     pub async fn pick_candidate_identity(
         self: std::sync::Arc<Self>,
         candidate_key: String,
         pick: crate::types::BridgeIdentityPick,
-    ) -> Result<crate::types::BridgeDecidedIdentity, BridgeError> {
+    ) -> Result<(), BridgeError> {
         self.run_exported(move |this| async move {
-            let answer = this
-                .services
+            this.services
                 .import_pick_candidate_identity(candidate_key, pick.into_core())
                 .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeDecidedIdentity::from_core(answer))
-        })
-        .await
-    }
-
-    /// The candidate's decided identity read back, or `None` while nothing is
-    /// decided — what selecting a row asks, and the whole of "resume": a
-    /// stored decision answers exactly like the click that made it did.
-    pub async fn candidate_decided_identity(
-        self: std::sync::Arc<Self>,
-        candidate_key: String,
-    ) -> Result<Option<crate::types::BridgeDecidedIdentity>, BridgeError> {
-        self.run_exported(move |this| async move {
-            let answer = this
-                .services
-                .import_candidate_answer(candidate_key)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(answer.map(crate::types::BridgeDecidedIdentity::from_core))
+                .map_err(BridgeError::import)
         })
         .await
     }
@@ -572,32 +552,19 @@ impl AppHandle {
         ))
     }
 
-    // The bridge boundary surface is wide on purpose — uniffi flattens
-    // primitives across the FFI per Swift idiom, not per Rust idiom.
-    #[allow(clippy::too_many_arguments)]
+    /// Commit a candidate. Nothing about the release rides in: the pick, the
+    /// metadata typed over it, the corrected rows and the chosen cover are all
+    /// stored under the candidate, so the commit consumes the very values the
+    /// pane drew.
     pub async fn start_import(
         self: std::sync::Arc<Self>,
         candidate_key: String,
-        selected_cover: Option<BridgeCoverSelection>,
         storage_mode: BridgeStorageMode,
         pin: bool,
-        identity_choice: crate::types::BridgeIdentityChoice,
-        user_edit: Option<crate::types::BridgeReleaseUserEdit>,
     ) -> Result<(), BridgeError> {
         self.run_exported(move |this| async move {
-            let cover = selected_cover.map(crate::types::BridgeCoverSelection::into_core);
-
-            let user_edit = user_edit.map(crate::types::BridgeReleaseUserEdit::into_core);
-
             this.services
-                .import_start_import(
-                    &candidate_key,
-                    cover,
-                    storage_mode.into_core(),
-                    pin,
-                    identity_choice.into_core(),
-                    user_edit,
-                )
+                .import_start_import(&candidate_key, storage_mode.into_core(), pin)
                 .await
                 .map(|_| ())
                 .map_err(BridgeError::import)
@@ -621,23 +588,6 @@ impl AppHandle {
                 .await
                 .map_err(BridgeError::import)?;
             Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
-        })
-        .await
-    }
-
-    /// The mapping table for a candidate nobody has picked a release for:
-    /// every source unit the folder offers, with what it becomes left open.
-    pub async fn candidate_mapping(
-        self: std::sync::Arc<Self>,
-        candidate_key: String,
-    ) -> Result<crate::types::BridgeMappingTable, BridgeError> {
-        self.run_exported(move |this| async move {
-            let mapping = this
-                .services
-                .import_candidate_mapping(&candidate_key)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeMappingTable::from_core(mapping))
         })
         .await
     }

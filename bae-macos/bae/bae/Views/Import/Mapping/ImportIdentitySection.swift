@@ -34,10 +34,9 @@ struct ImportIdentitySection: View {
     /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
     /// fetched.
     let metaLine: String
-    /// What this import claims to hold and where its metadata came from, as
-    /// core reads it back off the stored pick. `nil` before a pick, and for
-    /// Unknown, which claims nothing.
-    let claim: BridgeClaimLine?
+    /// What identified the picked release. `nil` before a pick, and for a
+    /// folder read as its own tags, which nothing looked up.
+    let evidence: BridgeClaimEvidence?
     /// Whether a release has been picked — what the change control reads as.
     let hasPick: Bool
     /// Whether a read is in flight. The controls that start one read as pending
@@ -48,7 +47,9 @@ struct ImportIdentitySection: View {
     /// The album-level fields, behind the card's own disclosure. `nil` until
     /// something has been settled for this folder and there is a release to
     /// edit.
-    let editor: Binding<BridgeRawReleaseEdit>?
+    let editValues: BridgeRawReleaseEdit?
+    /// Where a typed field's value goes.
+    let editActions: ReleaseFieldWriter
     /// Identification's unresolved matches, offered inline. `nil` once a pick
     /// is in, when the folder reads as Unknown, or when there is nothing
     /// matched to offer.
@@ -62,8 +63,6 @@ struct ImportIdentitySection: View {
     let onSetIdentity: (ImportIdentity) -> Void
     let onFindRelease: () -> Void
     let onEditCover: () -> Void
-    /// Set how far the claim on the picked release reaches.
-    let onSetClaimLevel: (BridgeClaimLevel) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -95,16 +94,16 @@ struct ImportIdentitySection: View {
                         title: title,
                         artist: artist,
                         metaLine: metaLine,
-                        claim: claim,
+                        evidence: evidence,
                         hasPick: hasPick,
                         isReading: isReading,
                         coverContent: coverContent,
                         hasCoverOptions: hasCoverOptions,
-                        editor: editor,
+                        editValues: editValues,
+                        editActions: editActions,
                         commit: commit,
                         onEditCover: onEditCover,
                         onFindRelease: onFindRelease,
-                        onSetClaimLevel: onSetClaimLevel,
                     )
                 }
                 else {

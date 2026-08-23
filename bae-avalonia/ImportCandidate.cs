@@ -51,6 +51,50 @@ public sealed class ImportCandidate
     /// <summary>The folder's image files as cover choices.</summary>
     internal List<LocalArtwork> LocalArtwork { get; set; } = new();
 
+    /// <summary>Everything the pane draws, as core reads it back for this key:
+    /// the picked release, the metadata form, the mapping table, the cover, the
+    /// evidence badge, the last failed import. Null until the per-candidate read
+    /// has answered. The pane keeps no copy of any of it — a control writes,
+    /// core commits, and the next value of this lands here.</summary>
+    internal BridgeImportCandidateDetail? Detail { get; set; }
+
+    /// <summary>The picked release as its archived documents describe it.</summary>
+    internal BridgeReleaseDetail? Release => Detail?.Release;
+
+    /// <summary>What identified the picked release — the header's badge.</summary>
+    internal BridgeClaimEvidence? Evidence => Detail?.Evidence;
+
+    /// <summary>The metadata form: the pick's own values with whatever has been
+    /// typed over them. Null while nothing is picked.</summary>
+    internal BridgeRawReleaseEdit? Edit => Detail?.Edit;
+
+    /// <summary>Every source unit the folder offers with the track committing
+    /// makes of it. An empty table until the first read answers.</summary>
+    internal BridgeMappingTable Mapping =>
+        Detail?.Mapping ?? new BridgeMappingTable([], [], Reconciliation: null);
+
+    /// <summary>The cover this candidate commits with.</summary>
+    internal BridgeCoverChoice? Cover => Detail?.Cover;
+
+    /// <summary>The last import of this candidate that failed.</summary>
+    internal BridgeImportFailure? Failure => Detail?.Failure;
+
+    /// <summary>What the folder is being read as. The picker's two sides are
+    /// the two kinds of pick, so the control shows what is stored rather than a
+    /// copy of what was clicked.</summary>
+    internal ImportIdentity Identity =>
+        Detail?.Row.Picked is BridgeIdentityPick.Unknown
+            ? ImportIdentity.Unknown
+            : ImportIdentity.Release;
+
+    /// <summary>The release this candidate is picked as, where it names one.</summary>
+    internal BridgeIdentityPick.Release? PickedRelease =>
+        Detail?.Row.Picked as BridgeIdentityPick.Release;
+
+    /// <summary>Whether anything is settled for this folder — a release picked,
+    /// or the decision to read its own tags.</summary>
+    internal bool HasSettled => Detail?.Row.Picked is not null;
+
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
 

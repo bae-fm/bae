@@ -87,7 +87,7 @@ impl From<&MetadataResult> for crate::db::LibraryCheck {
 /// override in the edit-metadata form before commit. `source_group_id` carries
 /// the per-source group (MB release-group ID or Discogs master ID) so the UI can
 /// build a `ReleaseIdentity` row from the picked release without a second fetch.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImportSearchReleaseDetail {
     pub release_id: String,
     pub source: MetadataSource,
@@ -112,7 +112,7 @@ impl ImportSearchReleaseDetail {
 }
 
 /// A track within a release detail.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseTrack {
     pub title: String,
     pub artist: Option<String>,
@@ -384,37 +384,6 @@ pub(crate) fn build_mb_detail(
         tracks,
         cover_art,
     })
-}
-
-/// What the confirmation step gets from picking a release: the picker's display
-/// shape, the metadata editor's seed, and the identity claim the pick implies.
-///
-/// `seed` is projected from the very `ParsedAlbum` the commit worker builds — so
-/// the artists, titles and pressing the editor shows are the ones commit compares
-/// the returned overlay against. `detail` is display only: covers, the raw source
-/// position strings, the track count to reconcile against the folder. Nothing is
-/// seeded from it.
-///
-/// `claim` states what the import claims to hold at the level the pick carried,
-/// with the evidence that identified the candidate as its explanation. `seed`
-/// here is the *unshaped* projection; a surface
-/// showing the editor masks it for `claim.choice` with
-/// [`crate::import::shape_user_edit_for_choice`], which is what the bridge does
-/// before the record crosses.
-///
-/// `mapping` is the file↔release pairing this pick produces: every source unit
-/// the folder offers with the track committing makes of it, carrying both
-/// durations and saying whether the two sides agree. It is computed here so a
-/// disagreement is something to look at and correct rather than something the
-/// commit discovers, and so the commit consumes the mapping the user saw. Empty
-/// when `candidate_key` names no scanned folder — re-identify picks a release
-/// for a release already in the library, whose files are bound already.
-#[derive(Debug, Clone)]
-pub struct ImportReleasePrefetch {
-    pub detail: ImportSearchReleaseDetail,
-    pub seed: crate::import::ReleaseUserEdit,
-    pub claim: crate::import::ClaimLine,
-    pub mapping: crate::import::mapping::MappingTable,
 }
 
 /// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed Discogs

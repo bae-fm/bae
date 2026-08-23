@@ -15,6 +15,12 @@ struct ImportConfirmationBanners: View {
     /// `start_import` dispatch). Distinct from the `importStatus`-derived error,
     /// which the import pipeline emits once an import is under way.
     let error: String?
+    /// The last import of this candidate that failed, as it survives a
+    /// relaunch. Shown when nothing is running for the candidate — while an
+    /// import is under way, its own status is the current answer.
+    let failure: BridgeImportFailure?
+    /// Try the failed import again.
+    let onRetry: () -> Void
     let onViewInLibrary: (String) -> Void
 
     var body: some View {
@@ -69,6 +75,22 @@ struct ImportConfirmationBanners: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
 
+        if importStatus == nil, let failure {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text(failure.error)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                Spacer()
+                Button("Retry") { onRetry() }
+                    .controlSize(.small)
+            }
+            .padding(10)
+            .background(Color.red.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+
         if let error {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -97,6 +119,11 @@ struct ImportConfirmationBanners: View {
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
+                failure: BridgeImportFailure(
+                    error: "The folder is no longer where it was",
+                    failedAt: "2026-08-23T04:00:00Z"
+                ),
+                onRetry: {},
                 onViewInLibrary: { _ in },
             )
         }

@@ -13,20 +13,6 @@ enum CandidateSource: Equatable {
     case releaseReIdentify(releaseId: String)
 }
 
-// MARK: - CandidatePick
-
-/// The decision made for a candidate: which release, which metadata source it
-/// came from, and how far the claim on it reaches. Every re-pick — switching
-/// back from the folder's own tags, re-reading the mapping under a changed
-/// shape — sends these three back, so none of them is lost on the way.
-struct CandidatePick: Equatable {
-    let releaseId: String
-    let source: BridgeMetadataSource
-    /// The claim the user holds this release at. `exact` unless they lowered
-    /// it; carried so a re-pick keeps it rather than resetting it.
-    let claim: BridgeClaimLevel
-}
-
 // MARK: - ImportIdentity
 
 /// What a folder is being read as. `release` covers the identify phase too:
@@ -150,23 +136,14 @@ struct Candidate: Equatable, Identifiable {
     /// candidate list. `.idle` when nothing is stored for its current files.
     var resumedIdentifyState: IdentifyState = .idle
     var importStatus: BridgeCandidateImportStatus?
-    /// The picked release's display detail. The confirm pane reads its cover
-    /// art, track counts, and library status from it. It never seeds the editor:
-    /// it is the picker's shape, and it collapses the release's artists and
-    /// positions for display.
-    var releaseDetailBridge: BridgeReleaseDetail?
-    /// What the pick claims and where its metadata came from, as bae-core
-    /// derived it from the evidence that identified this candidate. Rendered by
-    /// the confirm header; `nil` while identifying and for an Unknown import,
-    /// which claims nothing.
-    var claim: BridgeClaimLine?
-    /// The release the user clicked, held from the click itself so the results
-    /// row stays selected while the prefetch is in flight. The claim arrives
-    /// with the prefetch and names the same release.
+    /// Everything the pane draws, as core reads it back for this key: the
+    /// picked release, the metadata form, the mapping table, the cover, the
+    /// evidence badge, the last failed import. `nil` until the per-candidate
+    /// read has answered, and for a re-identify session, which has no folder.
     ///
-    /// It outlives a switch to Unknown, which is what makes switching back a
-    /// re-pick of this release rather than a trip through the search.
-    var pick: CandidatePick?
+    /// The pane keeps no copy of any of it. A control writes through the
+    /// importer, core commits, and the next value of this lands here.
+    var detail: BridgeImportCandidateDetail?
     /// How the sidebar places this candidate — the same row the list holds,
     /// read by key alongside the folder. `nil` for a re-identify session,
     /// which has no scanned folder and so no row.
@@ -175,13 +152,13 @@ struct Candidate: Equatable, Identifiable {
     var libraryStatusSubscriptions:
         [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
             [:]
-    /// What the folder is being read as, set the moment the user says so —
-    /// before the pick or the tag read it starts has come back.
-    var identity: ImportIdentity = .release
+    /// The last command this pane ran, when it failed — a pick whose fetch
+    /// dropped, a write that would not land, a commit the fields do not
+    /// support. Shown in the banner and cleared by the next command.
     var error: String?
-    /// The cover shown as selected and sent on commit. Settling a release
-    /// selects its default cover; choosing another replaces it.
-    var selectedCover: BridgeCoverChoice?
+    /// Whether a pick is in flight. The control that started it says so; the
+    /// pane behind it keeps showing whatever is stored until the pick lands.
+    var pickInFlight: Bool = false
     var search: CandidateSearchState = .init()
     /// Extracted signals (disc ID, barcodes, classified text), `nil` until the
     /// first extraction snapshot. The search UI surfaces these and feeds the
@@ -191,37 +168,12 @@ struct Candidate: Equatable, Identifiable {
     /// broadcasts alongside each identify-state transition. Empty until the
     /// first transition. The toolbar view iterates and renders it.
     var signalsToolbar: BridgeSignalsToolbar = BridgeSignalsToolbar(signals: [])
-    /// The identity claim the import command carries: `claim.choice` for a
-    /// source-backed pick, `.unknown` for an "Add as Unknown" import. The
-    /// commit pipeline post-processes the seeded identity from it (Exact
-    /// preserves `source_release_id`, Approximate NULLs it). `nil` while the
-    /// user is still in the identify phase.
-    var identityChoice: BridgeIdentityChoice?
-    /// The album-level half of the editable metadata, seeded from the prefetch's
-    /// editor seed (already masked for the claim by bae-core) or from the
-    /// folder's own tags. Its `tracks` stay empty: the tracklist lives in
-    /// `mapping`, where the row that produces a track is the row that edits it.
-    var editValues: BridgeRawReleaseEdit?
-    /// The picked release's own pressing fields — what claiming this pressing
-    /// exactly is a claim about. `nil` for an Unknown import, which claims
-    /// nothing. Editing `editValues` away from these is a different claim, and
-    /// core is what says so.
-    var exactPressing: BridgeRawPressingEdit?
-    /// Every source unit the folder offers with the track committing makes of
-    /// it. `nil` until the folder's mapping has been read. Excluding a file or
-    /// dropping a row trims it in place — re-reading it from core would throw
-    /// away the user's edits.
-    var mapping: BridgeMappingTable?
-
     // periphery:ignore
     /// In-flight search task. Replacing it cancels the old one via the
     /// previous wrapper's `deinit`; clearing it after the task completes
     /// lets the wrapper drop without re-cancelling. Removing the candidate
     /// from the store drops the wrapper too, cancelling the request.
     var searchTask: CancelOnDeinit?
-    // periphery:ignore
-    /// In-flight prefetch task. Same pattern as `searchTask`.
-    var prefetchTask: CancelOnDeinit?
 
     var id: String {
         key
@@ -245,6 +197,7 @@ struct Candidate: Equatable, Identifiable {
             bridge: detail.resumedIdentifyState
         )
         row = detail.row
+        self.detail = detail
         reconcileIdentifyState()
     }
 
@@ -289,21 +242,12 @@ struct Candidate: Equatable, Identifiable {
         copy.signals = existing.signals
         copy.importStatus = existing.importStatus
         copy.reconcileIdentifyState()
-        copy.releaseDetailBridge = existing.releaseDetailBridge
-        copy.claim = existing.claim
-        copy.pick = existing.pick
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
-        copy.identity = existing.identity
         copy.error = existing.error
-        copy.selectedCover = existing.selectedCover
+        copy.pickInFlight = existing.pickInFlight
         copy.search = existing.search
-        copy.identityChoice = existing.identityChoice
-        copy.editValues = existing.editValues
-        copy.exactPressing = existing.exactPressing
-        copy.mapping = existing.mapping
         copy.searchTask = existing.searchTask
-        copy.prefetchTask = existing.prefetchTask
         return copy
     }
 
@@ -328,28 +272,74 @@ struct Candidate: Equatable, Identifiable {
         )
     }
 
-    /// What committing this candidate writes: the album fields the editor
-    /// holds, over the tracklist the mapping table's rows are. `nil` until
-    /// something has been settled for this folder — a release, or its own tags
-    /// — and again after a re-pick fails, which unsettles it: there is no
-    /// identity to commit under then, so there is nothing to commit.
-    var commitEdit: BridgeRawReleaseEdit? {
-        guard identityChoice != nil, let editValues, let mapping else {
-            return nil
-        }
-        return BridgeRawReleaseEdit(
-            albumTitle: editValues.albumTitle,
-            albumArtistText: editValues.albumArtistText,
-            pressing: editValues.pressing,
-            tracks: mapping.commitTracks
-        )
+    /// The picked release as its archived documents describe it.
+    var release: BridgeReleaseDetail? {
+        detail?.release
     }
 
-    /// Replace the displayed release and select the cover that release names
-    /// as its default. Clearing the release clears its cover selection too.
-    mutating func setReleaseDetail(_ detail: BridgeReleaseDetail?) {
-        releaseDetailBridge = detail
-        selectedCover = detail?.defaultCover
+    /// What identified the picked release — the header's badge.
+    var evidence: BridgeClaimEvidence? {
+        detail?.evidence
+    }
+
+    /// The metadata form: the pick's own values with whatever has been typed
+    /// over them. `nil` while nothing is picked — there is nothing to edit.
+    var edit: BridgeRawReleaseEdit? {
+        detail?.edit
+    }
+
+    /// Every source unit the folder offers with the track committing makes of
+    /// it. An empty table until the first read answers; the pane's own shape
+    /// does not change for it.
+    var mapping: BridgeMappingTable {
+        detail?.mapping
+            ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
+    }
+
+    /// The cover this candidate commits with.
+    var cover: BridgeCoverChoice? {
+        detail?.cover
+    }
+
+    /// The last import of this candidate that failed, as it survives a
+    /// relaunch.
+    var failure: BridgeImportFailure? {
+        detail?.failure
+    }
+
+    /// Whether the picked release is already in the library.
+    var pickedLibraryStatus: BridgeLibraryStatus? {
+        detail?.pickedLibraryStatus
+    }
+
+    /// What the folder is being read as. The picker's two sides are the two
+    /// kinds of pick, so the control shows what is stored rather than a copy
+    /// of what was clicked.
+    var identity: ImportIdentity {
+        if case .unknown = detail?.row.picked {
+            return .unknown
+        }
+        return .release
+    }
+
+    /// The release this candidate is picked as, where it names one.
+    var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
+        guard case .release(let source, let releaseId, _) = detail?.row.picked
+        else { return nil }
+        return (source: source, releaseId: releaseId)
+    }
+
+    /// Whether anything is settled for this folder — a release picked, or the
+    /// decision to read its own tags. The commit bar and the release card
+    /// render on it.
+    var hasSettled: Bool {
+        detail?.row.picked != nil
+    }
+
+    /// The signals behind this candidate: the run in flight while there is
+    /// one, else the ones identification settled on and stored.
+    var settledSignals: Signals? {
+        signals ?? detail?.signals.map(Signals.init(bridge:))
     }
 
     /// The watched folder this candidate was scanned from — the candidate-list

@@ -4,260 +4,90 @@ import Testing
 
 @testable import bae
 
-/// `pickedResume` decides when a selected candidate's pane opens on the
-/// identity its row already carries — the settled single match, or the choice
-/// the user made before a restart — without a click. Its guards are what keep
-/// the resume from firing where it would be wrong: rows past deciding,
-/// folders whose identity is already settled, and prefetches that already
-/// failed once.
 @MainActor
-struct ImportSearchFlowPickedResumeTests {
-    private var candidate: Candidate {
-        PreviewData.folderCandidates[0]
-    }
-
-    private let releasePick = BridgeIdentityPick.release(
-        source: .musicBrainz,
-        releaseId: "rel-picked",
-        claim: .exact
-    )
-
-    private func pickedRow(
-        for candidate: Candidate,
-        placement: BridgeTriagePlacement,
-        skipAction: BridgeTriageSkipAction?,
-        picked: BridgeIdentityPick?
-    ) -> BridgeTriageRow {
-        PreviewData.triageRow(
-            for: candidate,
-            placement: placement,
-            skipAction: skipAction,
-            matched: PreviewData.triageMatch(
-                releaseId: "rel-picked",
-                title: "Album Title"
-            ),
-            selectable: false,
-            picked: picked
+@Suite("ImportSearchFlow identity picks")
+struct ImportSearchFlowIdentityTests {
+    @Test("a pick that lands leaves no error and nothing in flight")
+    func aPickThatLandsClearsTheFlag() async throws {
+        let store = ImportStore()
+        let candidate = PreviewData.folderCandidates[0]
+        store.selectedCandidates[candidate.key] = candidate
+        var picked: [BridgeIdentityPick] = []
+        let importer = Importer(
+            pickCandidateIdentity: { _, pick in
+                await MainActor.run { picked.append(pick) }
+            }
         )
-    }
-
-    @Test
-    func appliesAReadyRowsSettledPick() {
-        // A settled single match is a pick identification made — the same
-        // record a click writes, resumed the same way.
-        let row = pickedRow(
-            for: candidate,
-            placement: .ready,
-            skipAction: .skip,
-            picked: releasePick
-        )
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
-                == releasePick
-        )
-    }
-
-    @Test
-    func appliesAChoiceMadeOnANeedsYouRow() {
-        let row = pickedRow(
-            for: candidate,
-            placement: .needsYou(
-                group: .pickAPressing,
-                reason: .disagreement(
-                    disagreement: .severalMatches(count: 4)
-                )
-            ),
-            skipAction: .skip,
-            picked: releasePick
-        )
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
-                == releasePick
-        )
-    }
-
-    @Test
-    func appliesAStoredUnknownChoice() {
-        let row = pickedRow(
-            for: candidate,
-            placement: .needsYou(
-                group: .noMatch,
-                reason: .disagreement(disagreement: .noMatch)
-            ),
-            skipAction: .skip,
-            picked: .unknown
-        )
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
-                == .unknown
-        )
-    }
-
-    @Test
-    func aRowWithNothingDecidedResumesNothing() {
-        let row = pickedRow(
-            for: candidate,
-            placement: .needsYou(
-                group: .pickAPressing,
-                reason: .disagreement(
-                    disagreement: .severalMatches(count: 4)
-                )
-            ),
-            skipAction: .skip,
-            picked: nil
-        )
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: candidate, row: row)
-                == nil
-        )
-    }
-
-    @Test
-    func ignoresRowsPastDeciding() {
-        // Done and Skipped rows keep their pick too, and a candidate rebuilt
-        // at launch starts back with nothing settled — placement is the only
-        // thing standing between an imported row and a re-opened commit-able
-        // pane.
-        let terminalRows: [(BridgeTriagePlacement, BridgeTriageSkipAction?)] = [
-            (.done, nil),
-            (.skipped, .unskip),
-        ]
-        for (placement, skipAction) in terminalRows {
-            let row = pickedRow(
-                for: candidate,
-                placement: placement,
-                skipAction: skipAction,
-                picked: releasePick
-            )
-            #expect(
-                ImportSearchFlow.pickedResume(candidate: candidate, row: row)
-                    == nil
-            )
-        }
-    }
-
-    @Test
-    func yieldsToAPickAlreadyIn() {
-        var picked = candidate
-        picked.pick = CandidatePick(
-            releaseId: "rel-user-chose",
+        let pick = BridgeIdentityPick.release(
             source: .musicBrainz,
+            releaseId: "rel-picked",
             claim: .exact
         )
-        let row = pickedRow(
-            for: picked,
-            placement: .ready,
-            skipAction: .skip,
-            picked: releasePick
+
+        ImportSearchFlow.decideIdentity(
+            importer: importer,
+            importStore: store,
+            key: candidate.key,
+            pick: pick
         )
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: picked, row: row) == nil
-        )
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(picked == [pick])
+        let after = try #require(store.candidate(forKey: candidate.key))
+        #expect(after.error == nil)
+        #expect(after.pickInFlight == false)
     }
 
-    @Test
-    func yieldsToAnIdentityAlreadySettled() {
-        // A pick that resolved and a folder read as its own tags both settle
-        // the identity choice; neither wants the stored pick re-applied over
-        // it.
-        let settled: [BridgeIdentityChoice] = [
-            .exact(releaseId: "rel-picked", source: .musicBrainz),
-            .unknown,
-        ]
-        for choice in settled {
-            var advanced = candidate
-            advanced.identityChoice = choice
-            let row = pickedRow(
-                for: advanced,
-                placement: .ready,
-                skipAction: .skip,
-                picked: releasePick
-            )
-            #expect(
-                ImportSearchFlow.pickedResume(candidate: advanced, row: row)
-                    == nil
-            )
-        }
-    }
+    @Test("a pick that fails states the failure and stores nothing")
+    func aPickThatFailsStatesIt() async throws {
+        let store = ImportStore()
+        let candidate = PreviewData.folderCandidates[0]
+        store.selectedCandidates[candidate.key] = candidate
+        let importer = Importer(
+            pickCandidateIdentity: { _, _ in throw StubError.notImplemented }
+        )
 
-    @Test
-    func staysDownAfterAFailedPrefetch() {
-        // Failure clears what the pick had settled and sets `error`; without
-        // this guard the resume would immediately retry the same prefetch,
-        // and on a persistent failure, retry it forever.
-        var failed = candidate
-        failed.error = "Failed to load release details"
-        let row = pickedRow(
-            for: failed,
-            placement: .ready,
-            skipAction: .skip,
-            picked: releasePick
+        ImportSearchFlow.decideIdentity(
+            importer: importer,
+            importStore: store,
+            key: candidate.key,
+            pick: .unknown
         )
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: failed, row: row) == nil
-        )
-    }
+        try await Task.sleep(for: .milliseconds(50))
 
-    @Test
-    func absentRowResumesNothing() {
-        #expect(
-            ImportSearchFlow.pickedResume(candidate: candidate, row: nil)
-                == nil
-        )
+        let after = try #require(store.candidate(forKey: candidate.key))
+        #expect(after.error != nil)
+        #expect(after.pickInFlight == false)
+        // Nothing about the pane moved: the pick never landed, so there is
+        // nothing new for it to draw.
+        #expect(after.detail == nil)
     }
 }
 
 @MainActor
 @Suite("ImportSearchFlow cover selection")
 struct ImportSearchFlowCoverSelectionTests {
-    @Test("a release decision commits the cover shown by default")
-    func releaseDecisionSelectsItsDefaultCover() async throws {
+    @Test("a picked candidate shows the cover core answers with")
+    func aPickedCandidateShowsItsCover() throws {
         let store = ImportStore()
-        let candidate = PreviewData.folderCandidates[0]
-        store.selectedCandidates[candidate.key] = candidate
-
-        let detail = PreviewData.releaseDetailBridge
-        let fixture = MappingFixtures.prefetch(
+        var detail = MappingFixtures.detail(
             mapping: MappingFixtures.thirteenFileTable
         )
-        let answer = BridgeDecidedIdentity.release(
-            source: detail.source,
-            releaseId: detail.releaseId,
-            prefetch: BridgeReleasePrefetch(
-                detail: detail,
-                seed: fixture.seed,
-                claim: fixture.claim,
-                exactPressing: fixture.exactPressing,
-                mapping: fixture.mapping
-            )
-        )
-        let importer = Importer(candidateDecidedIdentity: { _ in answer })
-        let pick = BridgeIdentityPick.release(
-            source: detail.source,
-            releaseId: detail.releaseId,
-            claim: .exact
+        let cover = try #require(PreviewData.releaseDetailBridge.defaultCover)
+        detail.cover = cover
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: detail
         )
 
-        await ImportSearchFlow.refreshDecidedIdentity(
-            importer: importer,
-            importStore: store,
-            key: candidate.key,
-            pick: pick
+        let seeded = try #require(
+            store.candidate(forKey: MappingFixtures.candidateKey)
         )
-        .value
-
-        let seeded = try #require(store.candidate(forKey: candidate.key))
-        let expectedCover = try #require(detail.defaultCover)
-        #expect(seeded.selectedCover == expectedCover)
-
-        let request = ImportCommitRequest(
-            candidate: seeded,
-            storageMode: .local,
-            pin: false,
-            identityChoice: fixture.claim.choice,
-            userEdit: nil
+        #expect(seeded.cover == cover)
+        // And the sidebar reads the same one.
+        #expect(
+            store.sidebarCover(for: detail.row) == cover.thumbnailContent
         )
-        #expect(request.selectedCover == expectedCover.selection)
     }
 }
 

@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} درآمد کریں</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>پھر بھی درآمد کریں</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>دوبارہ کوشش کریں</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>دورانیہ پڑھا جا رہا ہے</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>ٹکراؤ</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ہاتھ سے تلاش کریں</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ناکام</value></data>

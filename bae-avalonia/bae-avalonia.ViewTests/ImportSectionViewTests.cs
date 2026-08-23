@@ -58,48 +58,50 @@ public sealed class ImportSectionViewTests
     }
 
     // Activating a Ready row opens the pane on the release the row settled on,
-    // with no trip through the search editor.
+    // with no trip through the search editor and nothing asked of core: the
+    // pick and everything it produced are already stored.
     [AvaloniaFact]
-    public void ActivatingAReadyRowPrefetchesItsSettledMatch()
+    public void ActivatingAReadyRowOpensOnItsSettledMatch()
     {
-        var resumed = new List<string>();
+        var asked = new List<string>();
         var placement = new BridgeTriagePlacement.Ready();
         var view = BuildView(
             MatchedItems(placement, BridgeTriageSkipAction.Skip),
             MatchedSummary(placement, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending,
-            resumed);
+            asked);
 
         RaiseTap(CandidateRow(view));
 
-        Assert.Equal(new[] { CandidateKey }, resumed);
+        Assert.Equal(CandidateKey, SelectedKey(view));
+        Assert.Empty(asked);
     }
 
     // A Done row holds a match as well, and re-showing an imported folder must
-    // not re-open a pane that can commit it a second time.
+    // not decide anything about it again.
     [AvaloniaFact]
-    public void ActivatingADoneRowPrefetchesNothing()
+    public void ActivatingADoneRowDecidesNothing()
     {
-        var resumed = new List<string>();
+        var asked = new List<string>();
         var placement = new BridgeTriagePlacement.Done();
         var view = BuildView(
             MatchedItems(placement, null),
             MatchedSummary(placement, BridgeTriageTab.Done),
             BridgeTriageTab.Done,
-            resumed);
+            asked);
 
         RaiseTap(CandidateRow(view));
 
-        Assert.Empty(resumed);
+        Assert.Empty(asked);
     }
 
     // Identify can settle while the folder is already under the pane. The row
-    // arrives as a queue read, not as a click, and the pane opens on the match
-    // the same way it would have on a click.
+    // arrives as a queue read, not as a click, and the pane redraws from it
+    // without deciding anything on the user's behalf.
     [AvaloniaFact]
-    public void AVerdictSettlingToReadyPrefetchesUnderTheOpenPane()
+    public void AVerdictSettlingUnderTheOpenPaneDecidesNothing()
     {
-        var resumed = new List<string>();
+        var asked = new List<string>();
         var identifying = new BridgeTriagePlacement.NeedsYou(
             BridgeNeedsYouGroup.StillIdentifying,
             new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running));
@@ -107,9 +109,8 @@ public sealed class ImportSectionViewTests
             MatchedItems(identifying, BridgeTriageSkipAction.Skip),
             MatchedSummary(identifying, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending,
-            resumed);
+            asked);
         RaiseTap(CandidateRow(view));
-        Assert.Empty(resumed);
 
         var ready = new BridgeTriagePlacement.Ready();
         app.ImportStore.SeedPreview(
@@ -117,7 +118,8 @@ public sealed class ImportSectionViewTests
             MatchedSummary(ready, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
 
-        Assert.Equal(new[] { CandidateKey }, resumed);
+        Assert.Equal(CandidateKey, SelectedKey(view));
+        Assert.Empty(asked);
     }
 
     // A folder group renders as a header row with its rows as siblings, so
@@ -250,23 +252,18 @@ public sealed class ImportSectionViewTests
         {
             SetFolderReleaseDecision = (_, _) =>
                 Task.FromResult((true, (string?)null)),
-            // Selecting a candidate reads its mapping before anything is
-            // picked, so the pane has a table to show while the release is
-            // still the open question.
-            CandidateMapping = _ => Task.FromResult((
-                true,
-                ((BridgeMappingTable?)new BridgeMappingTable(
-                    Array.Empty<BridgeMappingImage>(),
-                    Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null))),
             // The pane's candidate is seeded below; its own query stays open
             // and silent, so the seeded value is what the pane reads.
             SubscribeImportCandidate = (_, _, _) => new TestSubscription(),
-            CandidateDecidedIdentity = (key, _) =>
+            // Nothing about selecting a row decides an identity: what a pick
+            // produced is already stored. A test that sees a call here has
+            // found the pane deciding on the user's behalf.
+            PickCandidateIdentity = (key, _) =>
             {
                 resumed?.Add(key);
-                return Task.FromResult(
-                    (true, ((DecidedEdit?)null, Undecided: false, (string?)"stub")));
+                return Task.FromResult((true, (string?)null));
             },
+            AutoIdentifyFolder = _ => Task.FromResult(true),
         };
         var playback = new PlaybackService
         {

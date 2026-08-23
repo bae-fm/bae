@@ -86,7 +86,6 @@
             )
             candidate.identifyState = identifyState
             candidate.signalsToolbar = signalsToolbar
-            candidate.mapping = awaitingPickTable
             return candidate
         }
 
@@ -194,6 +193,7 @@
             ),
         ]
 
+        @MainActor
         static let triageRowReady = triageRow(
             for: importTabCandidate,
             placement: .ready,
@@ -437,6 +437,7 @@
             )
         }
 
+        @MainActor
         static let importTabCandidates =
             [
                 importTabCandidate,
@@ -457,6 +458,7 @@
             relativeFolderPath: "Artist Collection"
         )
 
+        @MainActor
         private static let importTabPendingRows = [
             triageRowReady,
             triageRowPickAPressing,
@@ -473,6 +475,7 @@
             triageRowDoneFailed,
         ]
 
+        @MainActor
         static func importTabItems(
             _ tab: BridgeTriageTab
         ) -> [BridgeImportListItem] {
@@ -503,6 +506,7 @@
             }
         }
 
+        @MainActor
         private static let importTabSummary = importQueueSummary(
             pending: 11,
             done: 2,
@@ -553,7 +557,6 @@
         }
 
         static func importTabImporter() -> Importer {
-            let mapping = awaitingPickTable
             let optionsBySheet = sheetBindingOptions
             return Importer(
                 sheetBindingOptions: { _, sheetFileId in
@@ -561,8 +564,7 @@
                         throw StubError.notImplemented
                     }
                     return options
-                },
-                candidateMapping: { _ in mapping }
+                }
             )
         }
 

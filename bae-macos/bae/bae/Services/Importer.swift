@@ -1,46 +1,14 @@
 import BaeKit
 import Foundation
 
+/// What committing a candidate needs from the caller: where its files should
+/// live. Everything about the release — the pick, the metadata, the corrected
+/// rows, the cover — is stored under the candidate, so the commit reads the
+/// very values the pane drew.
 struct ImportCommitRequest: Sendable {
     let candidateKey: String
-    let selectedCover: BridgeCoverSelection?
     let storageMode: BridgeStorageMode
     let pin: Bool
-    let identityChoice: BridgeIdentityChoice
-    let userEdit: BridgeReleaseUserEdit?
-
-    init(
-        candidateKey: String,
-        selectedCover: BridgeCoverSelection?,
-        storageMode: BridgeStorageMode,
-        pin: Bool,
-        identityChoice: BridgeIdentityChoice,
-        userEdit: BridgeReleaseUserEdit?
-    ) {
-        self.candidateKey = candidateKey
-        self.selectedCover = selectedCover
-        self.storageMode = storageMode
-        self.pin = pin
-        self.identityChoice = identityChoice
-        self.userEdit = userEdit
-    }
-
-    init(
-        candidate: Candidate,
-        storageMode: BridgeStorageMode,
-        pin: Bool,
-        identityChoice: BridgeIdentityChoice,
-        userEdit: BridgeReleaseUserEdit?
-    ) {
-        self.init(
-            candidateKey: candidate.key,
-            selectedCover: candidate.selectedCover?.selection,
-            storageMode: storageMode,
-            pin: pin,
-            identityChoice: identityChoice,
-            userEdit: userEdit
-        )
-    }
 }
 
 private final class ReleaseLibraryStatusSink: ReleaseLibraryStatusCallback,
@@ -80,10 +48,7 @@ private struct ImportOperations: Sendable {
     let setSheetBinding:
         @Sendable (String, String, String?) async throws -> Void
     let pickCandidateIdentity:
-        @Sendable (String, BridgeIdentityPick) async throws
-            -> BridgeDecidedIdentity
-    let candidateDecidedIdentity:
-        @Sendable (String) async throws -> BridgeDecidedIdentity?
+        @Sendable (String, BridgeIdentityPick) async throws -> Void
     let setSheetDisc:
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
     let setFileRole:
@@ -101,7 +66,14 @@ private struct ImportOperations: Sendable {
     let toggleSignalForCandidate:
         @Sendable (String, BridgeExcludedSignal) -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
-    let candidateMapping: @Sendable (String) async throws -> BridgeMappingTable
+    let setCandidateCover:
+        @Sendable (String, BridgeCoverSelection) async throws -> Void
+    let setCandidateEditField:
+        @Sendable (String, BridgeCandidateEditField, String) async throws ->
+            Void
+    let setCandidateTrackEdit:
+        @Sendable (String, BridgeRawTrackEdit) async throws -> Void
+    let dropCandidateTrack: @Sendable (String, String) async throws -> Void
     let claimForPick:
         @Sendable (String, BridgeMetadataResult, BridgeClaimLevel)
             -> BridgeClaimLine?
@@ -148,9 +120,6 @@ private struct ImportOperations: Sendable {
                     pick: $1
                 )
             },
-            candidateDecidedIdentity: {
-                try await handle.candidateDecidedIdentity(candidateKey: $0)
-            },
             setSheetDisc: {
                 try await handle.setSheetDisc(
                     candidateKey: $0,
@@ -191,8 +160,27 @@ private struct ImportOperations: Sendable {
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
             },
-            candidateMapping: {
-                try await handle.candidateMapping(candidateKey: $0)
+            setCandidateCover: {
+                try await handle.setCandidateCover(candidateKey: $0, cover: $1)
+            },
+            setCandidateEditField: {
+                try await handle.setCandidateEditField(
+                    candidateKey: $0,
+                    field: $1,
+                    value: $2
+                )
+            },
+            setCandidateTrackEdit: {
+                try await handle.setCandidateTrackEdit(
+                    candidateKey: $0,
+                    track: $1
+                )
+            },
+            dropCandidateTrack: {
+                try await handle.dropCandidateTrack(
+                    candidateKey: $0,
+                    trackId: $1
+                )
             },
             claimForPick: {
                 handle.claimForPick(candidateKey: $0, result: $1, level: $2)
@@ -200,11 +188,8 @@ private struct ImportOperations: Sendable {
             startImport: { request in
                 try await handle.startImport(
                     candidateKey: request.candidateKey,
-                    selectedCover: request.selectedCover,
                     storageMode: request.storageMode,
-                    pin: request.pin,
-                    identityChoice: request.identityChoice,
-                    userEdit: request.userEdit
+                    pin: request.pin
                 )
             }
         )
@@ -241,12 +226,7 @@ final class Importer: Sendable, Observable {
             { _, _, _ in },
         pickCandidateIdentity:
             @escaping @Sendable (String, BridgeIdentityPick) async throws
-            -> BridgeDecidedIdentity = { _, _ in
-                throw StubError.notImplemented
-            },
-        candidateDecidedIdentity:
-            @escaping @Sendable (String) async throws
-            -> BridgeDecidedIdentity? = { _ in nil },
+            -> Void = { _, _ in },
         setSheetDisc:
             @escaping @Sendable (String, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
@@ -279,10 +259,19 @@ final class Importer: Sendable, Observable {
             },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
-        candidateMapping:
-            @escaping @Sendable (String) async throws -> BridgeMappingTable = {
+        setCandidateCover:
+            @escaping @Sendable (String, BridgeCoverSelection) async throws ->
+            Void = { _, _ in },
+        setCandidateEditField:
+            @escaping @Sendable (String, BridgeCandidateEditField, String)
+            async throws -> Void = { _, _, _ in },
+        setCandidateTrackEdit:
+            @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
+            Void = { _, _ in },
+        dropCandidateTrack:
+            @escaping @Sendable (String, String) async throws -> Void = {
+                _,
                 _ in
-                throw StubError.notImplemented
             },
         claimForPick:
             @escaping @Sendable (
@@ -302,7 +291,6 @@ final class Importer: Sendable, Observable {
             sheetBindingOptions: sheetBindingOptions,
             setSheetBinding: setSheetBinding,
             pickCandidateIdentity: pickCandidateIdentity,
-            candidateDecidedIdentity: candidateDecidedIdentity,
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
             autoIdentifyFolder: autoIdentifyFolder,
@@ -312,7 +300,10 @@ final class Importer: Sendable, Observable {
             subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
             toggleSignalForCandidate: toggleSignalForCandidate,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
-            candidateMapping: candidateMapping,
+            setCandidateCover: setCandidateCover,
+            setCandidateEditField: setCandidateEditField,
+            setCandidateTrackEdit: setCandidateTrackEdit,
+            dropCandidateTrack: dropCandidateTrack,
             claimForPick: claimForPick,
             startImport: startImport
         )
@@ -363,19 +354,13 @@ final class Importer: Sendable, Observable {
         )
     }
 
+    /// Decide this candidate's identity. Nothing comes back: the per-candidate
+    /// read delivers the pane's next value.
     func pickCandidateIdentity(
         _ candidateKey: String,
         _ pick: BridgeIdentityPick
-    )
-        async throws -> BridgeDecidedIdentity
-    {
+    ) async throws {
         try await operations.pickCandidateIdentity(candidateKey, pick)
-    }
-
-    func candidateDecidedIdentity(_ candidateKey: String) async throws
-        -> BridgeDecidedIdentity?
-    {
-        try await operations.candidateDecidedIdentity(candidateKey)
     }
 
     func setSheetDisc(
@@ -438,10 +423,37 @@ final class Importer: Sendable, Observable {
         operations.rerunIdentifyForCandidate(candidateKey)
     }
 
-    func candidateMapping(_ candidateKey: String) async throws
-        -> BridgeMappingTable
-    {
-        try await operations.candidateMapping(candidateKey)
+    /// Record the cover this candidate commits with.
+    func setCandidateCover(
+        _ candidateKey: String,
+        _ cover: BridgeCoverSelection
+    ) async throws {
+        try await operations.setCandidateCover(candidateKey, cover)
+    }
+
+    /// Record one album-level metadata field as the user left it.
+    func setCandidateEditField(
+        _ candidateKey: String,
+        _ field: BridgeCandidateEditField,
+        _ value: String
+    ) async throws {
+        try await operations.setCandidateEditField(candidateKey, field, value)
+    }
+
+    /// Record one mapping-table row as the user left it.
+    func setCandidateTrackEdit(
+        _ candidateKey: String,
+        _ track: BridgeRawTrackEdit
+    ) async throws {
+        try await operations.setCandidateTrackEdit(candidateKey, track)
+    }
+
+    /// Take one mapping-table row out of the import.
+    func dropCandidateTrack(
+        _ candidateKey: String,
+        _ trackId: String
+    ) async throws {
+        try await operations.dropCandidateTrack(candidateKey, trackId)
     }
 
     func claimForPick(

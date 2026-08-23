@@ -162,7 +162,7 @@ extension ImportSearchFlow {
             isImporting: isImporting(candidate),
             libraryStatuses: candidate.libraryStatuses,
             discogsEnabled: services.configStore.config.discogsUsable,
-            signals: candidate.signals,
+            signals: candidate.settledSignals,
             signalsToolbar: candidate.signalsToolbar,
         )
     }

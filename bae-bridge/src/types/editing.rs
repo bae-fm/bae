@@ -62,40 +62,10 @@ pub struct BridgeReleaseTrack {
     pub side: u32,
 }
 
-/// What picking a release in the import search gives the confirmation pane.
-///
-/// `detail` is display: covers, source positions, the track count to reconcile
-/// against the folder. `seed` is the metadata editor's starting value, projected
-/// from the release exactly as the commit worker maps it — so the UI must seed
-/// the editor from `seed`, never from `detail`, or an untouched artist list reads
-/// as an edit at commit and the release loses its secondary album artists.
-///
-/// `seed` arrives already masked for `claim.choice` (an album-level claim blanks
-/// the pressing block), so the UI binds it straight to the editor. The claim
-/// itself came in on the pick, and lowering it is another pick — so there is no
-/// re-shaping for the UI to do either way.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleasePrefetch {
-    pub detail: BridgeReleaseDetail,
-    pub seed: BridgeReleaseUserEdit,
-    pub claim: BridgeClaimLine,
-    /// The picked release's own pressing fields, whatever the claim reaches to
-    /// — what claiming this pressing exactly is a claim *about*. The control
-    /// that makes that claim restores these values, and
-    /// `bridge_claim_for_edit` reads an edit against them.
-    pub exact_pressing: BridgeRawPressingEdit,
-    /// The file↔release pairing this pick produces: every source unit the
-    /// folder offers with the track committing makes of it, the editable row
-    /// inside the row that produces it. Empty for a key that names no scanned
-    /// folder.
-    pub mapping: BridgeMappingTable,
-}
-
 /// What identified the picked release. Mirrors
 /// `bae_core::import::ClaimEvidence`. It explains the pick and decides nothing:
-/// the UI renders it as the claim sentence's trailing clause, and the claim
-/// itself is the user's, carried on the pick.
+/// the header renders it as a badge beside the release, and the claim itself
+/// is the user's, carried on the pick.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeClaimEvidence {
@@ -458,16 +428,6 @@ pub struct BridgeMappingTable {
     pub reconciliation: Option<BridgeSlotReconciliation>,
 }
 
-/// What committing a folder as Unknown produces: the release its own files
-/// describe, and the mapping table that lands each of its audio units on one of
-/// those tracks.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeUnknownMapping {
-    pub seed: BridgeReleaseUserEdit,
-    pub mapping: BridgeMappingTable,
-}
-
 /// The table's track rows in commit order — what the editor shapes into the
 /// release it writes. Core decides the order, so the two desktop surfaces
 /// cannot commit two different tracklists from one table.
@@ -478,50 +438,6 @@ pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdi
         .into_iter()
         .map(BridgeRawTrackEdit::from_core)
         .collect()
-}
-
-/// Write an edited track row back onto the row that commits it, found by the
-/// track's own id. A row nothing matches leaves the table alone.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_mapping_with_track(
-    table: BridgeMappingTable,
-    track: BridgeRawTrackEdit,
-) -> BridgeMappingTable {
-    BridgeMappingTable::from_core(bae_core::import::mapping_with_track(
-        table.into_core(),
-        track.into_core(),
-    ))
-}
-
-/// Drop the row committing the track with `track_id` — the Drop action on a
-/// track the release names that this folder has nothing for. Nothing is
-/// persisted: the folder is unchanged, the release is committed without it.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_mapping_without_track(
-    table: BridgeMappingTable,
-    track_id: String,
-) -> BridgeMappingTable {
-    BridgeMappingTable::from_core(bae_core::import::mapping_without_track(
-        table.into_core(),
-        &track_id,
-    ))
-}
-
-/// Drop every row the file `file_id` backs — the Exclude action, once the role
-/// change that persists it has landed. One container backs every entry of the
-/// sheet bound to it, so that sheet's whole group leaves with it.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_mapping_without_file(
-    table: BridgeMappingTable,
-    file_id: String,
-) -> BridgeMappingTable {
-    BridgeMappingTable::from_core(bae_core::import::mapping_without_file(
-        table.into_core(),
-        &file_id,
-    ))
 }
 
 /// One album-level field of the import pane's metadata form.

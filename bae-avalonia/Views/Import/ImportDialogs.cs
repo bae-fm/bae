@@ -186,6 +186,17 @@ internal sealed class ImportDialogs
     internal static ImageContent CoverFaceContent(bool isLocal, string source) =>
         isLocal ? new ImageContent.LocalFile(source) : new ImageContent.Remote(source);
 
+    /// <summary>Where a cover's thumbnail is read from. Core says which of the
+    /// two it is, so no surface decides from a URL's shape.</summary>
+    internal static ImageContent CoverChoiceContent(BridgeCoverChoice cover) =>
+        cover.ThumbnailSource switch
+        {
+            BridgeCoverImageSource.Local local => new ImageContent.LocalFile(local.Path),
+            BridgeCoverImageSource.Remote remote => new ImageContent.Remote(remote.Url),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(cover), cover.ThumbnailSource, "Unknown cover image source"),
+        };
+
 
     // The document viewer: the file's decoded text, monospace and selectable, in a
     // scrollable modal.

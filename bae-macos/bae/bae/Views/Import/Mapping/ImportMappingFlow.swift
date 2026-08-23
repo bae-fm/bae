@@ -4,8 +4,9 @@ import Foundation
 /// The services the mapping pane's actions drive.
 struct ImportMappingServices {
     let importer: Importer
-    /// Re-reading the folder against the release picked for it runs through
-    /// the prefetch, which is what produces the mapping table.
+    /// Where a failed command's line lands, on the candidate whose pane ran
+    /// it. Nothing about the table is held here — every edit is a row core
+    /// stores, and the per-candidate read redraws from it.
     let importStore: ImportStore
     let previewAudio: PreviewAudio
     /// Show a document (a log, a text file, a track sheet) in the viewer: its
@@ -38,30 +39,37 @@ enum ImportMappingFlow {
             preview: { path in services.previewAudio.previewPlay(path) },
             stopPreview: { services.previewAudio.previewStop() },
             editTrack: { track in
-                editTrack(
-                    key: key,
-                    track: track,
-                    importStore: services.importStore
-                )
+                start {
+                    await editTrack(
+                        key: key,
+                        track: track,
+                        services: services
+                    )
+                }
             },
             chooseFile: { trackId, audio in
-                chooseFile(
-                    key: key,
-                    trackId: trackId,
-                    audio: audio,
-                    importStore: services.importStore
-                )
+                start {
+                    await chooseFile(
+                        key: key,
+                        trackId: trackId,
+                        audio: audio,
+                        services: services
+                    )
+                }
             },
             drop: { trackId in
-                drop(
-                    key: key,
-                    trackId: trackId,
-                    importStore: services.importStore
-                )
+                start {
+                    await drop(key: key, trackId: trackId, services: services)
+                }
             },
             exclude: { fileId in
                 start {
-                    await exclude(key: key, fileId: fileId, services: services)
+                    _ = await writeRole(
+                        key: key,
+                        fileId: fileId,
+                        choice: .notATrack,
+                        services: services
+                    )
                 }
             },
         )
@@ -129,78 +137,9 @@ enum ImportMappingFlow {
         }
     }
 
-    /// Write a row's edited track back onto the row that commits it.
-    @MainActor
-    static func editTrack(
-        key: String,
-        track: BridgeRawTrackEdit,
-        importStore: ImportStore
-    ) {
-        importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.mapping?.setTrack(track)
-        }
-    }
-
-    /// Point a row at one of the folder's audio units. The row starts writing
-    /// that audio because the editor is what says which audio a track's samples
-    /// come from — core's reading of the folder produced the row, and this is
-    /// the user overruling it.
-    @MainActor
-    static func chooseFile(
-        key: String,
-        trackId: String,
-        audio: BridgeAudioFile,
-        importStore: ImportStore
-    ) {
-        importStore.mutateCandidate(forKey: key) { candidate in
-            guard
-                var track = candidate.mapping?.units
-                    .compactMap(\.track)
-                    .first(where: { $0.id == trackId })
-            else { return }
-            track.file = audio
-            candidate.mapping?.setTrack(track)
-        }
-    }
-
-    /// Drop a row the release names and this folder has nothing for. Nothing is
-    /// persisted: the folder is unchanged, the release is simply imported
-    /// without that track.
-    @MainActor
-    static func drop(key: String, trackId: String, importStore: ImportStore) {
-        importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.mapping?.removeTrack(id: trackId)
-        }
-    }
-
-    /// Take a file out of the tracklist. Core persists the decision — it is a
-    /// fact about the folder, so it survives re-picking a release and
-    /// relaunching — and the table drops the file's rows here, because the only
-    /// other way to refresh it is another read from core, which would discard
-    /// the user's edits.
-    @MainActor
-    static func exclude(
-        key: String,
-        fileId: String,
-        services: ImportMappingServices
-    ) async {
-        guard
-            await writeRole(
-                key: key,
-                fileId: fileId,
-                choice: .notATrack,
-                services: services
-            )
-        else { return }
-        services.importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.mapping?.removeFile(id: fileId)
-        }
-    }
-
-    /// Put a file in a role, or put it back. Core persists it and drops the
-    /// candidate's stored identify verdict; the table is re-read because a
-    /// file that has changed jobs is a different set of rows, and there is no
-    /// row to put back from here.
+    /// Put a file in a role, or put it back.    /// Put a file in a role, or put it back. Core persists it and drops the
+    /// candidate's stored identify verdict; a file that has changed jobs is a
+    /// different set of rows, and the per-candidate read draws them.
     @MainActor
     static func setRole(
         key: String,
@@ -208,24 +147,20 @@ enum ImportMappingFlow {
         choice: BridgeFileRoleChoice,
         services: ImportMappingServices
     ) async {
-        guard
-            await writeRole(
-                key: key,
-                fileId: fileId,
-                choice: choice,
-                services: services
-            )
-        else { return }
-        await readMapping(key: key, services: services)
+        _ = await writeRole(
+            key: key,
+            fileId: fileId,
+            choice: choice,
+            services: services
+        )
     }
 
     /// Name the audio `sheetFileId` describes, or clear it with `nil`. Core
     /// persists the decision and drops the candidate's stored identify verdict.
     ///
-    /// The table is re-read, because a binding changes what the folder's audio
-    /// *is*: one container becomes a dozen entries. What comes back is for a
-    /// different set of rows than the one the user was editing, which is
-    /// exactly why it replaces them.
+    /// A binding changes what the folder's audio *is*: one container becomes a
+    /// dozen entries. The rows the person was editing are a different set
+    /// afterwards, which is why core drops their row edits with the binding.
     @MainActor
     static func bindSheet(
         key: String,
@@ -256,12 +191,10 @@ enum ImportMappingFlow {
             }
             return
         }
-        await readMapping(key: key, services: services)
     }
 
     /// Say which disc of the release a sheet's entries are, or take them out of
-    /// the tracklist. Re-shapes the tracklist exactly as a binding does, so the
-    /// table is re-read the same way.
+    /// the tracklist. Re-shapes the tracklist exactly as a binding does.
     @MainActor
     static func setSheetDisc(
         key: String,
@@ -286,7 +219,6 @@ enum ImportMappingFlow {
             }
             return
         }
-        await readMapping(key: key, services: services)
     }
 
     /// Write a file's role through to core. Returns whether the call landed.

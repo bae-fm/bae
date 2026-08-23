@@ -6,7 +6,10 @@ struct FieldRow {
     let label: String
     var hint: String?
     let placeholder: String
-    let text: Binding<String>
+    /// The stored value the row shows.
+    let text: String
+    /// Send what was typed to wherever the value lives.
+    let onCommit: (String) -> Void
     let width: FieldWidth
     var monospaced: Bool = false
 }

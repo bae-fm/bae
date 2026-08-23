@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>Uvezi {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Ipak uvezi</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Pokušaj ponovno</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>Čita se koliko traje</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>Sukob</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>pretraži ručno</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Nije uspjelo</value></data>

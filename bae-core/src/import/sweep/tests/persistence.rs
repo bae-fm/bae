@@ -465,12 +465,11 @@ async fn restating_a_file_decision_changes_nothing() {
     );
 }
 
-// ── 12. The pick command and the answer query serve one payload ─────────────
+// ── 12. A stored pick is what the pane reads back ──────────────────────────
 
-/// Deciding an identity persists it, the row carries it back, and reading it
-/// — the whole of "resume" — returns the same seeded answer with the
-/// provider gone. A settled single match wrote the same record, so a Ready
-/// candidate answers identically.
+/// Deciding an identity persists it and the pane reads it back — the whole of
+/// "resume" — with the provider gone. A settled single match wrote the same
+/// record, so a Ready candidate reads identically.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_pick_reads_back_as_the_same_answer() {
@@ -489,25 +488,15 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
         .await;
 
-    let resumed = fixture
-        .import
-        .candidate_answer(key.clone())
-        .await
-        .expect("the stored decision reads back")
-        .expect("a settled single match is a decision");
-    let crate::import::DecidedIdentity::Release {
-        release_id,
-        prefetch,
-        ..
-    } = &resumed
-    else {
-        panic!("expected the settled release back, got Unknown");
-    };
-    assert_eq!(release_id, "mb-answer-1");
-    assert_eq!(prefetch.detail.tracks.len(), 2);
-    // Identification settling on one match is a pick, so it claims the
-    // pressing exactly as a click on that release would.
-    assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Exact);
+    let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
+    let release = resumed.release.expect("a settled single match is a decision");
+    assert_eq!(release.release_id, "mb-answer-1");
+    assert_eq!(release.tracks.len(), 2);
+    assert_eq!(
+        resumed.evidence,
+        Some(crate::import::ClaimEvidence::DiscIdAlone),
+        "the badge says which signal turned the release up"
+    );
 
     // The row carries the same decision for the sidebar's resume trigger.
     let picked = queue_row(&fixture, &key)
@@ -523,27 +512,20 @@ async fn a_pick_reads_back_as_the_same_answer() {
         }
     );
 
-    // A person deciding Unknown replaces the record, and the query returns
-    // exactly what the command did.
-    let decided = fixture
+    // A person deciding Unknown replaces the record, and the pane reads the
+    // folder's own files instead of a release.
+    fixture
         .import
         .pick_candidate_identity(key.clone(), crate::import::IdentityPick::Unknown)
         .await
         .expect("deciding Unknown succeeds");
-    assert!(matches!(
-        decided,
-        crate::import::DecidedIdentity::Unknown { .. }
-    ));
-    let resumed = fixture
-        .import
-        .candidate_answer(key)
-        .await
-        .expect("the replaced decision reads back")
-        .expect("Unknown is a decision");
-    assert!(matches!(
-        resumed,
-        crate::import::DecidedIdentity::Unknown { .. }
-    ));
+    let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
+    assert!(resumed.release.is_none(), "Unknown names no release");
+    assert!(
+        resumed.edit.is_some(),
+        "and still draws a form, seeded from the folder's own tags"
+    );
+    assert_eq!(resumed.evidence, None, "there is no release to have found");
     assert!(
         fixture.provider.requests().is_empty(),
         "every answer came from the archive: {:?}",
@@ -665,33 +647,19 @@ async fn a_lowered_claim_reads_back_lowered() {
         release_id: "mb-answer-1".to_string(),
         claim: crate::import::ClaimLevel::Approximate,
     };
-    let decided = fixture
+    fixture
         .import
         .pick_candidate_identity(key.clone(), lowered.clone())
         .await
         .expect("lowering the claim succeeds");
-    let crate::import::DecidedIdentity::Release { prefetch, .. } = &decided else {
-        panic!("expected the picked release back, got Unknown");
-    };
-    assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Approximate);
+
     // The evidence is untouched: it says what identified the release, not what
     // the user claims about it.
+    let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
-        prefetch.claim.evidence,
-        crate::import::ClaimEvidence::DiscIdAlone
+        pane.evidence,
+        Some(crate::import::ClaimEvidence::DiscIdAlone)
     );
-
-    // The query serves what the command did, which is what a restart reads.
-    let resumed = fixture
-        .import
-        .candidate_answer(key.clone())
-        .await
-        .expect("the lowered decision reads back")
-        .expect("a lowered claim is still a decision");
-    let crate::import::DecidedIdentity::Release { prefetch, .. } = &resumed else {
-        panic!("expected the picked release back, got Unknown");
-    };
-    assert_eq!(prefetch.claim.level, crate::import::ClaimLevel::Approximate);
 
     // And the row carries it both ways: the pick the pane reopens on, and the
     // identity a bulk import of this row would commit.

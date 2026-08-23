@@ -1,8 +1,5 @@
 import BaeKit
 import SwiftUI
-import os.log
-
-private let mainPaneLogger = Logger.bae("ImportMainPane")
 
 // MARK: - Candidate list and main pane
 
@@ -34,10 +31,10 @@ extension ImportView {
             candidate: candidate,
             bindingOptions: sheetBindingOptions,
             previewingPath: importStore.previewState.active?.path,
-            libraryStatus: libraryStatus(for: candidate),
+            libraryStatus: candidate.pickedLibraryStatus,
             hasCoverOptions: hasCoverOptions(candidate),
-            coverContent: candidate.selectedCover?.thumbnailContent,
-            editor: editorBinding(for: candidate),
+            coverContent: candidate.cover?.thumbnailContent,
+            editActions: editActions(for: candidate),
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             mappingActions: mappingActions(for: candidate),
@@ -63,78 +60,43 @@ extension ImportView {
                 importer.toggleSignalForCandidate(candidate.key, signal)
             },
             onEditCover: { presentCoverPicker(for: candidate) },
-            onSetClaimLevel: { level in
-                setClaimLevel(level, for: candidate)
-            },
         )
         .animation(nil, value: uiStore.selectedFolderCandidates)
-        // Keyed on the folder's files, not on the candidate: what a sheet may
-        // be bound to changes when the folder's audio does, and the identify
-        // phase's table changes with it for the same reason. Neither changes
-        // when a binding or a role does — those commands return the updated
-        // table themselves, which is also what keeps this from overwriting a table
-        // the user has been editing.
+        // Keyed on the folder's files: what a sheet may be bound to changes
+        // when the folder's audio does, and nothing else moves it. The table
+        // itself needs no read — it rides the candidate's own value.
         .task(id: candidate.key + fileNames(candidate)) {
-            if candidate.identityChoice == nil {
-                await ImportMappingFlow.readCandidateMapping(
-                    key: candidate.key,
-                    services: mappingServices
-                )
-            }
             await loadSheetBindingOptions(for: candidate)
         }
     }
 
-    /// Claim the candidate's picked release at `level`. It re-picks the same
-    /// release, which is what stores the level: the claim is part of the
-    /// decision, not a second thing to persist. Nothing picked is nothing to
-    /// claim, and the claim line the control lives in is not drawn then.
-    private func setClaimLevel(
-        _ level: BridgeClaimLevel,
-        for candidate: Candidate
-    ) {
-        guard let pick = candidate.pick else {
-            mainPaneLogger.debug(
-                "no release picked for \(candidate.key); nothing to claim"
-            )
-            return
+    /// Where one album-level field's typed value goes: a row under this
+    /// candidate, written as the field is left.
+    private func editActions(for candidate: Candidate) -> ReleaseFieldWriter {
+        let key = candidate.key
+        return ReleaseFieldWriter { field, value in
+            Task { @MainActor in
+                do {
+                    try await importer.setCandidateEditField(key, field, value)
+                }
+                catch is CancellationError {}
+                catch {
+                    if let line = error.displayLine {
+                        uiStore.showError(
+                            String(
+                                localized: "Couldn't save that change: \(line)"
+                            )
+                        )
+                    }
+                }
+            }
         }
-        ImportSearchFlow.decideIdentity(
-            importer: importer,
-            importStore: importStore,
-            key: candidate.key,
-            pick: .release(
-                source: pick.source,
-                releaseId: pick.releaseId,
-                claim: level
-            )
-        )
-    }
-
-    /// The album-level editor, or `nil` while nothing has seeded one — the pane
-    /// leaves the release fields and the commit bar off until then.
-    private func editorBinding(
-        for candidate: Candidate
-    ) -> Binding<BridgeRawReleaseEdit>? {
-        guard candidate.editValues != nil else { return nil }
-        return ImportSearchFlow.makeEditValuesBinding(
-            importStore: importStore,
-            key: candidate.key,
-            candidate: candidate
-        )
-    }
-
-    private func libraryStatus(
-        for candidate: Candidate
-    ) -> BridgeLibraryStatus? {
-        candidate.releaseDetailBridge
-            .flatMap { candidate.libraryStatuses[$0.releaseId] }
     }
 
     /// Whether the cover is worth opening a picker for: the picked release's
     /// remote art, or artwork found in the folder.
     private func hasCoverOptions(_ candidate: Candidate) -> Bool {
-        !(candidate.releaseDetailBridge?.coverArt ?? []).isEmpty
+        !(candidate.release?.coverArt ?? []).isEmpty
             || !candidate.files.images.isEmpty
     }
 
@@ -156,12 +118,28 @@ extension ImportView {
         let key = candidate.key
         uiStore.presentModal {
             CoverPickerView(
-                remoteCoverArts: candidate.releaseDetailBridge?.coverArt ?? [],
+                remoteCoverArts: candidate.release?.coverArt ?? [],
                 localArtwork: candidate.files.images,
-                selectedCover: candidate.selectedCover,
+                selectedCover: candidate.cover,
                 onSelect: { selection in
-                    importStore.mutateCandidate(forKey: key) {
-                        $0.selectedCover = selection
+                    Task { @MainActor in
+                        do {
+                            try await importer.setCandidateCover(
+                                key,
+                                selection.selection
+                            )
+                        }
+                        catch is CancellationError {}
+                        catch {
+                            if let line = error.displayLine {
+                                uiStore.showError(
+                                    String(
+                                        localized:
+                                            "Couldn't change the cover: \(line)"
+                                    )
+                                )
+                            }
+                        }
                     }
                     uiStore.dismissModal()
                 },

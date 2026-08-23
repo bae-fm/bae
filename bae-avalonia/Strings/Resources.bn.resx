@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count}টি ইম্পোর্ট করুন</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>তবুও ইম্পোর্ট করুন</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>আবার চেষ্টা করুন</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>এটি কতক্ষণ চলে তা পড়া হচ্ছে</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>দ্বন্দ্ব</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>হাতে অনুসন্ধান করুন</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ব্যর্থ</value></data>

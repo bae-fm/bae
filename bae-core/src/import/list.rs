@@ -15,18 +15,23 @@
 //! against, the row the identify count is still waiting on — is computed in
 //! that same pass, so none of it can disagree with the rows.
 
+use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_registry::WatchedFolder;
 use super::folder_scanner::{
     FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey, InvalidCandidate,
 };
+use super::mapping::MappingTable;
+use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus, TriagePlacement,
     TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
-use super::types::{IdentityChoice, IdentityPick};
-use super::{ImportedRelease, WatchedFolderScanStatus};
+use super::types::{AudioFile, IdentityChoice, IdentityPick, RawReleaseEdit};
+use super::{ClaimEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
+use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
+use crate::signals::Signals;
 use std::collections::{BTreeMap, BTreeSet};
 
 mod flatten;
@@ -214,11 +219,43 @@ pub struct ImportCandidateDetailProjection {
     pub picked: Option<IdentityPick>,
     /// The library release this candidate's bytes were imported as.
     pub imported_release: Option<ImportedRelease>,
+    /// The picked release as its archived documents describe it. `None` with
+    /// no pick, and for a folder read as its own tags.
+    pub release: Option<ImportSearchReleaseDetail>,
+    /// Whether the picked release is already in the library.
+    pub picked_library_status: Option<LibraryStatus>,
+    /// The metadata form: the pick's seed with the stored per-field overlay
+    /// applied. `None` with no pick — there is nothing to edit yet.
+    pub edit: Option<RawReleaseEdit>,
+    /// Every source unit the folder offers, with the track committing makes of
+    /// it. Every audio row awaits a pick until there is one.
+    pub mapping: MappingTable,
+    /// Audio units nothing has measured. Non-empty means the pane owes a probe
+    /// — the duration cells for these rows have no number to show yet.
+    pub unprobed: Vec<AudioFile>,
+    /// The cover this candidate commits with: the one chosen, else the picked
+    /// release's default.
+    pub cover: Option<CoverChoice>,
+    /// Every cover the picker offers: the picked release's remote art.
+    pub remote_covers: Vec<RemoteCover>,
+    /// The signals identification settled on, or `None` before it has.
+    pub signals: Option<Signals>,
+    /// The last import of this candidate that failed.
+    pub failure: Option<ImportFailure>,
 }
 
 impl ImportCandidateDetailProjection {
-    /// The pane's value, with this key's runtime facts applied.
-    pub fn resolve(self, facts: &TriageRuntimeFacts) -> ImportCandidateDetail {
+    /// The pane's value, with this key's runtime applied.
+    ///
+    /// `live_identify` is the run in flight for this key, `Idle` when none is.
+    /// It decides the evidence badge: a run that just found the release by
+    /// disc ID says so before its verdict is stored, and after a restart the
+    /// resumed verdict says the same thing.
+    pub fn resolve(
+        self,
+        facts: &TriageRuntimeFacts,
+        live_identify: &IdentifyState,
+    ) -> ImportCandidateDetail {
         let Self {
             candidate,
             actionable,
@@ -229,7 +266,31 @@ impl ImportCandidateDetailProjection {
             matched,
             picked,
             imported_release,
+            release,
+            picked_library_status,
+            edit,
+            mapping,
+            unprobed,
+            cover,
+            remote_covers,
+            signals,
+            failure,
         } = self;
+        let evidence = picked.as_ref().and_then(|pick| match pick {
+            IdentityPick::Release {
+                source, release_id, ..
+            } => {
+                let state = match live_identify {
+                    IdentifyState::Idle => &resumed_identify_state,
+                    live => live,
+                };
+                Some(crate::import::claim::evidence_for(
+                    state,
+                    &crate::import::MetadataRef::new(release_id.clone(), *source),
+                ))
+            }
+            IdentityPick::Unknown => None,
+        });
         let import_status = facts.import_status.clone().or_else(|| {
             imported_release
                 .clone()
@@ -266,6 +327,16 @@ impl ImportCandidateDetailProjection {
             is_added,
             resumed_identify_state,
             row,
+            release,
+            picked_library_status,
+            evidence,
+            edit,
+            mapping,
+            unprobed,
+            cover,
+            remote_covers,
+            signals,
+            failure,
         }
     }
 }
@@ -280,6 +351,18 @@ pub struct ImportCandidateDetail {
     pub is_added: bool,
     pub resumed_identify_state: IdentifyState,
     pub row: TriageRow,
+    pub release: Option<ImportSearchReleaseDetail>,
+    pub picked_library_status: Option<LibraryStatus>,
+    /// What identified the picked release — the badge the header draws.
+    /// `None` with no pick, and for a folder read as its own tags.
+    pub evidence: Option<ClaimEvidence>,
+    pub edit: Option<RawReleaseEdit>,
+    pub mapping: MappingTable,
+    pub unprobed: Vec<AudioFile>,
+    pub cover: Option<CoverChoice>,
+    pub remote_covers: Vec<RemoteCover>,
+    pub signals: Option<Signals>,
+    pub failure: Option<ImportFailure>,
 }
 
 /// The item references one window asks for, clamped to what the list holds.

@@ -405,6 +405,28 @@ impl ImportServiceHandle {
         (self.runtime.all(), changes)
     }
 
+    /// One candidate's pane as it reads back from the tables, with this
+    /// process's runtime for it folded in.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn candidate_pane(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::library::LibraryError> {
+        let runtime = self.runtime.get(key);
+        let facts = runtime
+            .as_ref()
+            .map(crate::import::triage::TriageRuntimeFacts::of)
+            .unwrap_or_default();
+        let identify = runtime
+            .map(|runtime| runtime.identify_state)
+            .unwrap_or(crate::identify::IdentifyState::Idle);
+        Ok(self
+            .library_manager
+            .load_import_candidate(key)
+            .await?
+            .map(|projection| projection.resolve(&facts, &identify)))
+    }
+
     /// The first import list `accept` admits, waiting through the query's
     /// values until one does. The list lands after the commit it reflects, so
     /// a test that just observed a scan event waits here for the read.
@@ -688,35 +710,6 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
         },
         tracks,
     }
-}
-
-/// Shape the prefetched editor seed for the user's identity claim:
-///
-/// - **Exact**: `pressing` stays as the picked release has it.
-/// - **Approximate** / **Unknown**: `pressing` is `PressingEdit::blank()` — the
-///   user didn't claim a specific pressing, so showing them the source's
-///   pressing data would imply a claim they never made. They can still fill in
-///   fields they know, and the overlay carries those edits to commit.
-///
-/// Everything else in the seed comes from the release itself (see
-/// [`crate::import::search::ImportReleasePrefetch`]) and is the same under every
-/// choice, so flipping the claim re-runs this over the kept seed instead of
-/// re-fetching.
-///
-/// The UI calls this rather than branching on `IdentityChoice` itself — the
-/// bridge stays thin.
-pub fn shape_user_edit_for_choice(
-    seed: &super::ReleaseUserEdit,
-    choice: &super::IdentityChoice,
-) -> super::ReleaseUserEdit {
-    let mut edit = seed.clone();
-    match choice {
-        super::IdentityChoice::Exact { .. } => {}
-        super::IdentityChoice::Approximate { .. } | super::IdentityChoice::Unknown => {
-            edit.pressing = super::PressingEdit::blank();
-        }
-    }
-    edit
 }
 
 /// The files the import pipeline writes rows for and accounts bytes against, in

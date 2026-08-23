@@ -22,7 +22,7 @@ use tracing::warn;
 
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<MappingImage>,
@@ -46,7 +46,7 @@ impl MappingTable {
 }
 
 /// One row of the mapping table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MappingRow {
     /// One source unit and what it becomes.
     Unit(MappingUnit),
@@ -81,7 +81,7 @@ impl MappingRow {
 }
 
 /// One of the folder's images, as the gallery shows it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MappingImage {
     /// The file's identity within the release (its relative path).
     pub file_id: String,
@@ -95,14 +95,14 @@ pub struct MappingImage {
 }
 
 /// One source unit, and the track committing makes of it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MappingUnit {
     pub source: MappingSource,
     pub becomes: MappingBecomes,
 }
 
 /// The left half of a row: what the folder offers for it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MappingSource {
     /// A file the folder holds, whole.
     File(MappingFile),
@@ -129,7 +129,7 @@ pub enum MappingRole {
 }
 
 /// A file of the folder, as the mapping table's left half shows it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MappingFile {
     pub file_id: String,
     pub name: String,
@@ -149,7 +149,7 @@ pub struct MappingFile {
 }
 
 /// One entry of a track sheet, as the mapping table's left half shows it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MappingEntry {
     pub sheet_id: String,
     /// Counts this sheet's playable entries from zero — the index the audio
@@ -167,7 +167,7 @@ pub struct MappingEntry {
 }
 
 /// The right half of a row: what committing makes of the source unit.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MappingBecomes {
     /// A track of the release being committed. The row edits it in place.
     Track {
@@ -184,7 +184,7 @@ pub enum MappingBecomes {
 }
 
 /// A track sheet, as the header of the group of rows it carves.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SheetGroup {
     pub sheet_id: String,
     pub name: String,
@@ -670,24 +670,6 @@ pub fn mapping_without_track(table: MappingTable, track_id: &str) -> MappingTabl
         table,
         &|unit| matches!(&unit.becomes, MappingBecomes::Track { track, .. } if track.id == track_id),
     )
-}
-
-/// Drop every row the file `file_id` backs.
-///
-/// One container backs every entry of the sheet bound to it, so that sheet's
-/// whole group leaves with it — the group *is* the container's rows. Excluding a
-/// file the tracklist does not draw on leaves the table as it was.
-pub fn mapping_without_file(table: MappingTable, file_id: &str) -> MappingTable {
-    let mut table = table;
-    table.rows.retain(|row| match row {
-        MappingRow::Sheet { sheet, .. } => sheet.bound.container_id() != Some(file_id),
-        MappingRow::Unit(_) | MappingRow::Directory(_) => true,
-    });
-    remove(table, &|unit| match &unit.source {
-        MappingSource::File(file) => file.file_id == file_id,
-        MappingSource::SheetEntry(entry) => entry.container_id == file_id,
-        MappingSource::Missing => false,
-    })
 }
 
 /// Drop every unit the predicate names, wherever it sits, and restate the tally

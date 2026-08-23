@@ -97,8 +97,13 @@ pub struct BridgeImportListSnapshot {
     pub cause: BridgeLiveQueryCause,
 }
 
-/// One candidate as the pane reads it: the folder with its files, what the
-/// queue makes of it, and the identify state it resumes.
+/// One candidate as the pane reads it, whole: the folder with its files, what
+/// the queue makes of it, the identify state it resumes, and everything the
+/// pane draws — the picked release, the metadata form, the mapping table, the
+/// cover, and the failure its last import left.
+///
+/// The pane holds no copy of any of it. Every control writes, and the next
+/// value of this record is what redraws.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidateDetail {
     pub candidate: BridgeFolderCandidate,
@@ -108,4 +113,35 @@ pub struct BridgeImportCandidateDetail {
     /// is stored for the candidate's current files.
     pub resumed_identify_state: BridgeIdentifyState,
     pub row: BridgeTriageRow,
+    /// The picked release as its archived documents describe it. `None` with
+    /// no pick, and for a folder read as its own tags.
+    pub release: Option<BridgeReleaseDetail>,
+    /// Whether the picked release is already in the library.
+    pub picked_library_status: Option<BridgeLibraryStatus>,
+    /// What identified the picked release — the badge the header draws.
+    pub evidence: Option<BridgeClaimEvidence>,
+    /// The metadata form, seeded from the pick with the stored edits applied.
+    /// `None` with no pick.
+    pub edit: Option<BridgeRawReleaseEdit>,
+    /// Every source unit the folder offers, with the track committing makes of
+    /// it. Every audio row awaits a pick until there is one.
+    pub mapping: BridgeMappingTable,
+    /// Audio units nothing has measured yet: their duration cells have no
+    /// number to show and render as still being read.
+    pub unprobed: Vec<BridgeAudioFile>,
+    /// The cover this candidate commits with.
+    pub cover: Option<BridgeCoverChoice>,
+    /// The signals identification settled on, or `None` before it has.
+    pub signals: Option<BridgeSignals>,
+    /// The last import of this candidate that failed.
+    pub failure: Option<BridgeImportFailure>,
+}
+
+/// An import that failed, as the pane still shows it after a relaunch.
+///
+/// `failed_at` is RFC 3339; the UI formats it in its own locale.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportFailure {
+    pub error: String,
+    pub failed_at: String,
 }

@@ -59,6 +59,19 @@ pub enum AutomationCandidate {
         /// candidate. Every scanned folder carries one — idle until something
         /// runs — because the import service keeps it alongside the candidate.
         runtime: AutomationCandidateRuntime,
+        /// The release this candidate is picked as, described by the documents
+        /// the pick archived. `None` while nothing is picked, and for a folder
+        /// read as its own tags.
+        picked_release: Option<AutomationReleaseDetail>,
+        /// What identified the picked release — the same evidence the pane's
+        /// badge names.
+        evidence: Option<AutomationClaimEvidence>,
+        /// The metadata this candidate will commit with: the pick's own values
+        /// with whatever has been typed over them. `None` while nothing is
+        /// picked.
+        edit: Option<AutomationReleaseUserEdit>,
+        /// The last import of this candidate that failed.
+        failure: Option<AutomationImportFailure>,
     },
     Invalid {
         #[serde(flatten)]
@@ -100,6 +113,14 @@ pub struct AutomationCandidateRuntime {
     pub toolbar: Vec<AutomationToolbarSignal>,
     pub signals: Option<AutomationSignals>,
     pub import_status: Option<AutomationImportStatus>,
+}
+
+/// An import that failed, as the candidate still records it after a relaunch.
+/// `failed_at` is RFC 3339.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationImportFailure {
+    pub error: String,
+    pub failed_at: String,
 }
 
 /// Mirrors bae-core's `signals::LookupFailure`.
@@ -414,27 +435,6 @@ pub struct AutomationRemoteCover {
     pub source: AutomationMetadataSource,
 }
 
-/// What picking a release gives the confirmation step: the display `detail`,
-/// the metadata editor's seed, and the identity `claim` a pick records. The
-/// seed is projected from the release exactly as the commit worker maps it, so
-/// it — never the detail — is what an import's `user_edit` overlay is built
-/// from.
-///
-/// The field is `unmasked_seed`, not `seed`, because it is the projection
-/// *before* a claim is applied to it — an album-level claim blanks the pressing
-/// block, and this still carries it. The desktop surfaces receive the masked
-/// form under `seed` and bind it directly; an automation caller has to decide,
-/// because it is the one caller that can commit a claim other than `claim`.
-/// Pass this through `import_release_edit_shape` with whichever claim is being
-/// committed, and use its output as the overlay. Binding this value directly
-/// writes pressing fields the claim says are not known.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationReleasePrefetch {
-    pub detail: AutomationReleaseDetail,
-    pub unmasked_seed: AutomationReleaseUserEdit,
-    pub claim: AutomationClaimLine,
-}
-
 /// What identified the picked release. It explains the pick and decides
 /// nothing: a pick claims the pressing whatever turned it up.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -513,14 +513,14 @@ pub struct AutomationTrackUserEdit {
     pub artist_names: Vec<String>,
 }
 
+/// Start an import of a candidate. Nothing about the release rides in: the
+/// pick, the metadata edits, the track rows and the cover are all stored under
+/// the candidate, so the commit reads the very values it would show.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationStartImport {
     pub candidate_key: String,
-    pub selected_cover: Option<AutomationCoverSelection>,
     pub storage_mode: AutomationStorageMode,
     pub pin: bool,
-    pub identity_choice: AutomationIdentityChoice,
-    pub user_edit: Option<AutomationReleaseUserEdit>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -800,22 +800,50 @@ pub struct CandidateSkipSetInput {
     pub skipped: bool,
 }
 
-/// Picking a release for a candidate. The candidate is part of the input
-/// because the claim line reads that candidate's identify evidence for the
-/// clause explaining what turned the release up — a key with no evidence reads
-/// as "found by searching".
+/// The identity a candidate is being decided as.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ReleasePrefetchInput {
-    pub candidate_key: String,
-    pub source: AutomationMetadataSource,
-    pub release_id: String,
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationIdentityPick {
+    Release {
+        source: AutomationMetadataSource,
+        release_id: String,
+    },
+    /// The folder read as its own files describe it.
+    Unknown,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ShapeReleaseEditInput {
-    /// The editor seed from `import_release_prefetch`'s `unmasked_seed`.
-    pub seed: AutomationReleaseUserEdit,
-    pub choice: AutomationIdentityChoice,
+pub struct CandidateIdentityPickInput {
+    pub candidate_key: String,
+    pub pick: AutomationIdentityPick,
+}
+
+/// One album-level field of a candidate's metadata form. `year` is text
+/// because the form is text; the commit parses it.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationCandidateEditField {
+    AlbumTitle,
+    AlbumArtistText,
+    Year,
+    Format,
+    Label,
+    CatalogNumber,
+    Country,
+    Barcode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateEditFieldInput {
+    pub candidate_key: String,
+    pub field: AutomationCandidateEditField,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateCoverInput {
+    pub candidate_key: String,
+    pub cover: AutomationCoverSelection,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

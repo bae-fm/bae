@@ -24,7 +24,6 @@
         @MainActor
         static func make(
             candidate: Candidate,
-            editor: Binding<BridgeRawReleaseEdit>?,
             storageCloud: Binding<Bool>,
             storagePinned: Binding<Bool>,
             previewingPath: String? = nil
@@ -36,7 +35,7 @@
                 libraryStatus: nil,
                 hasCoverOptions: true,
                 coverContent: nil,
-                editor: editor,
+                editActions: ReleaseFieldWriter { _, _ in },
                 storageCloud: storageCloud,
                 storagePinned: storagePinned,
                 mappingActions: inertMappingActions(),
@@ -49,7 +48,6 @@
                 onPickRelease: { _ in },
                 onToggleSignal: { _ in },
                 onEditCover: {},
-                onSetClaimLevel: { _ in },
             )
         }
     }
@@ -75,16 +73,12 @@
     #Preview("Mapping pane — a release picked") {
         @Previewable
         @State
-        var values = PreviewData.confirmEditValues
-        @Previewable
-        @State
         var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.mappingCandidate,
-            editor: $values,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             previewingPath: "/tmp/fake/Track 3.flac"
@@ -102,7 +96,6 @@
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.unidentifiedMappingCandidate,
-            editor: nil,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
@@ -119,7 +112,6 @@
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.severalMatchesMappingCandidate,
-            editor: nil,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
@@ -130,16 +122,12 @@
     #Preview("Mapping pane — a cue carving one container") {
         @Previewable
         @State
-        var values = PreviewData.confirmEditValues
-        @Previewable
-        @State
         var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.sheetMappingCandidate,
-            editor: $values,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
@@ -159,7 +147,6 @@
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
-            editor: $values,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
@@ -179,7 +166,6 @@
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
-            editor: $values,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
@@ -190,16 +176,12 @@
     #Preview("Mapping pane — read as Unknown") {
         @Previewable
         @State
-        var values = PreviewData.confirmEditValues
-        @Previewable
-        @State
         var storageCloud = true
         @Previewable
         @State
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.unknownMappingCandidate,
-            editor: $values,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )

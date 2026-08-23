@@ -11,9 +11,10 @@ pub enum AutomationTool {
     ImportCandidateGet,
     ImportCandidateSkipSet,
     ImportSearch,
-    ImportReleasePrefetch,
+    ImportCandidateIdentityPick,
+    ImportCandidateEditFieldSet,
+    ImportCandidateCoverSet,
     ImportFileTagsPreview,
-    ImportReleaseEditShape,
     ImportStart,
     ReleaseDetailGet,
     ReleaseExport,
@@ -26,7 +27,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 21] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 22] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -82,10 +83,22 @@ impl AutomationTool {
             input: AutomationToolInput::SearchQuery,
         },
         AutomationToolDescriptor {
-            tool: AutomationTool::ImportReleasePrefetch,
-            name: "import_release_prefetch",
-            description: "Prefetch a release for a candidate: display detail, the identity claim the pick implies, and the editor seed before that claim masks it",
-            input: AutomationToolInput::ReleasePrefetch,
+            tool: AutomationTool::ImportCandidateIdentityPick,
+            name: "import_candidate_identity_pick",
+            description: "Decide a candidate's identity: a release from a metadata source, or the folder's own tags. Stores the release's documents first, so the candidate reads back whole",
+            input: AutomationToolInput::CandidateIdentityPick,
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ImportCandidateEditFieldSet,
+            name: "import_candidate_edit_field_set",
+            description: "Type one album-level metadata field over what the candidate's pick seeds",
+            input: AutomationToolInput::CandidateEditField,
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ImportCandidateCoverSet,
+            name: "import_candidate_cover_set",
+            description: "Choose the cover a candidate commits with",
+            input: AutomationToolInput::CandidateCover,
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportFileTagsPreview,
@@ -94,15 +107,9 @@ impl AutomationTool {
             input: AutomationToolInput::Folder,
         },
         AutomationToolDescriptor {
-            tool: AutomationTool::ImportReleaseEditShape,
-            name: "import_release_edit_shape",
-            description: "Shape a prefetched editor seed for an identity choice",
-            input: AutomationToolInput::ShapeReleaseEdit,
-        },
-        AutomationToolDescriptor {
             tool: AutomationTool::ImportStart,
             name: "import_start",
-            description: "Start an import through the core import service",
+            description: "Start an import of a candidate from what it stores: its pick, its metadata edits, its track rows and its cover",
             input: AutomationToolInput::StartImport,
         },
         AutomationToolDescriptor {
@@ -206,9 +213,10 @@ enum AutomationToolInput {
     CandidateKey,
     CandidateSkipSet,
     SearchQuery,
-    ReleasePrefetch,
+    CandidateIdentityPick,
+    CandidateEditField,
+    CandidateCover,
     Folder,
-    ShapeReleaseEdit,
     StartImport,
     ReleaseId,
     ReleaseExport,
@@ -227,9 +235,10 @@ impl AutomationToolInput {
             Self::CandidateKey => schema_object::<CandidateKeyInput>(),
             Self::CandidateSkipSet => schema_object::<CandidateSkipSetInput>(),
             Self::SearchQuery => schema_object::<AutomationSearchQuery>(),
-            Self::ReleasePrefetch => schema_object::<ReleasePrefetchInput>(),
+            Self::CandidateIdentityPick => schema_object::<CandidateIdentityPickInput>(),
+            Self::CandidateEditField => schema_object::<CandidateEditFieldInput>(),
+            Self::CandidateCover => schema_object::<CandidateCoverInput>(),
             Self::Folder => schema_object::<FolderInput>(),
-            Self::ShapeReleaseEdit => schema_object::<ShapeReleaseEditInput>(),
             Self::StartImport => schema_object::<AutomationStartImport>(),
             Self::ReleaseId => schema_object::<ReleaseIdInput>(),
             Self::ReleaseExport => schema_object::<ReleaseExportInput>(),

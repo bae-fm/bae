@@ -105,17 +105,20 @@ impl AppServices {
         &self,
         key: &str,
     ) -> Result<Option<ImportCandidateDetail>, crate::library::LibraryError> {
-        let facts = self
-            .candidate_runtimes()
-            .get(key)
+        let runtime = self.candidate_runtimes().remove(key);
+        let facts = runtime
+            .as_ref()
             .map(TriageRuntimeFacts::of)
             .unwrap_or_default();
+        let identify = runtime
+            .map(|runtime| runtime.identify_state)
+            .unwrap_or(crate::identify::IdentifyState::Idle);
         Ok(self
             .inner
             .manager
             .load_import_candidate(key)
             .await?
-            .map(|projection| projection.resolve(&facts)))
+            .map(|projection| projection.resolve(&facts, &identify)))
     }
 
     /// One candidate as the pane reads it, and every later read of it. `None`
@@ -132,23 +135,52 @@ impl AppServices {
         let mut query = self.inner.manager.subscribe_import_candidate(&key);
         let import = self.inner.import.clone();
         runtime_handle.spawn(async move {
-            let mut facts = initial_runtime
-                .get(&key)
-                .map(TriageRuntimeFacts::of)
-                .unwrap_or_default();
+            let initial = initial_runtime.get(&key);
+            let mut facts = initial.map(TriageRuntimeFacts::of).unwrap_or_default();
+            // The whole identify state, not only the facts a row's placement
+            // reads: the header's evidence badge names which signal turned the
+            // picked release up, and a run in flight knows that before its
+            // verdict is stored.
+            let mut identify = initial
+                .map(|runtime| runtime.identify_state.clone())
+                .unwrap_or(crate::identify::IdentifyState::Idle);
             let mut projection: Option<ImportCandidateDetailProjection> = None;
+            // The units this pane has already asked to be measured. The query
+            // cannot open a file, so a projection that shows unmeasured rows
+            // asks once and redraws when the write lands.
+            let mut probing: Vec<crate::import::AudioFile> = Vec::new();
             let deliver = |projection: &Option<ImportCandidateDetailProjection>,
-                           facts: &TriageRuntimeFacts| {
+                           facts: &TriageRuntimeFacts,
+                           identify: &crate::identify::IdentifyState| {
                 projection
                     .clone()
-                    .map(|projection| projection.resolve(facts))
+                    .map(|projection| projection.resolve(facts, identify))
             };
             loop {
                 tokio::select! {
                     value = query.next() => match value {
                         Ok(value) => {
                             projection = value;
-                            if tx.send(Ok(deliver(&projection, &facts))).is_err() {
+                            if let Some(unprobed) = projection
+                                .as_ref()
+                                .map(|projection| &projection.unprobed)
+                                .filter(|unprobed| !unprobed.is_empty() && **unprobed != probing)
+                            {
+                                probing = unprobed.clone();
+                                let import = import.clone();
+                                let key = key.clone();
+                                let units = probing.clone();
+                                tokio::spawn(async move {
+                                    if let Err(error) =
+                                        import.probe_candidate_durations(&key, units).await
+                                    {
+                                        tracing::warn!(
+                                            "could not measure {key}'s audio: {error}"
+                                        );
+                                    }
+                                });
+                            }
+                            if tx.send(Ok(deliver(&projection, &facts, &identify))).is_err() {
                                 return;
                             }
                         }
@@ -174,33 +206,37 @@ impl AppServices {
                                 if changed != key {
                                     continue;
                                 }
-                                TriageRuntimeFacts::of(&runtime)
+                                Some(runtime)
                             }
                             Ok(crate::import::CandidateRuntimeChange::Removed { key: changed }) => {
                                 if changed != key {
                                     continue;
                                 }
-                                TriageRuntimeFacts::default()
+                                None
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
                                 tracing::warn!(
                                     "the selected candidate dropped {count} runtime changes; \
                                      re-reading its runtime"
                                 );
-                                import
-                                    .candidate_runtimes()
-                                    .get(&key)
-                                    .map(TriageRuntimeFacts::of)
-                                    .unwrap_or_default()
+                                import.candidate_runtimes().remove(&key)
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                         };
-                        if next == facts {
+                        let next_facts = next
+                            .as_ref()
+                            .map(TriageRuntimeFacts::of)
+                            .unwrap_or_default();
+                        let next_identify = next
+                            .map(|runtime| runtime.identify_state)
+                            .unwrap_or(crate::identify::IdentifyState::Idle);
+                        if next_facts == facts && next_identify == identify {
                             continue;
                         }
-                        facts = next;
+                        facts = next_facts;
+                        identify = next_identify;
                         if projection.is_some()
-                            && tx.send(Ok(deliver(&projection, &facts))).is_err()
+                            && tx.send(Ok(deliver(&projection, &facts, &identify))).is_err()
                         {
                             return;
                         }

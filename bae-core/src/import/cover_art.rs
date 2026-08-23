@@ -130,6 +130,54 @@ pub fn musicbrainz_covers(response: &crate::musicbrainz::MbReleaseResponse) -> V
     covers
 }
 
+/// Where a cover's bytes are read from — a remote address, or a file the
+/// folder holds.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CoverImageSource {
+    Remote { url: String },
+    Local { path: std::path::PathBuf },
+}
+
+/// The cover a candidate will be committed with, and where to draw it from.
+///
+/// The selection is what the commit records; the two addresses are what the
+/// picker and the sidebar render, at the two sizes each wants.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoverChoice {
+    pub selection: crate::import::CoverSelection,
+    pub preview: CoverImageSource,
+    pub thumbnail: CoverImageSource,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl CoverChoice {
+    /// One of the release's remote covers. Its thumbnail address is the
+    /// archive's own, so a picker row costs no full-size fetch.
+    pub fn remote(cover: &RemoteCover) -> Self {
+        Self {
+            selection: crate::import::CoverSelection::Remote(cover.url.clone(), cover.source),
+            preview: CoverImageSource::Remote {
+                url: cover.url.clone(),
+            },
+            thumbnail: CoverImageSource::Remote {
+                url: cover.thumbnail_url.clone(),
+            },
+        }
+    }
+
+    /// One of the folder's own images, named by its relative path and drawn
+    /// from where it sits on disk.
+    pub fn local(file_id: String, path: std::path::PathBuf) -> Self {
+        Self {
+            selection: crate::import::CoverSelection::Local(file_id),
+            preview: CoverImageSource::Local { path: path.clone() },
+            thumbnail: CoverImageSource::Local { path },
+        }
+    }
+}
+
 /// Append `cover` unless the list already offers the same image. Two identity
 /// rows on one release can name the same archive entity, and the picker should
 /// show that image once.

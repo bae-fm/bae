@@ -476,82 +476,6 @@ fn without_track_drops_the_row_and_restates_the_tally() {
     );
 }
 
-/// Excluding the audio a sheet describes takes the whole group with it:
-/// twelve entries are one file's rows, and the file is leaving.
-#[test]
-fn without_file_takes_a_sheet_s_whole_group_with_its_container() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 3),
-    )
-    .expect("write cue");
-    write_flac(&tmp.path().join("bonus.flac"));
-    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
-
-    let files = scan(tmp.path());
-    let durations = probe_durations(&files);
-    let slots = slot_table(&source_tracks(3), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::Release,
-        }),
-        &durations,
-    );
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::MoreFiles {
-            files: 4,
-            tracks: 3,
-        }),
-    );
-
-    let table = mapping_without_file(table, "CDImage.flac");
-
-    assert_eq!(table.rows.len(), 1, "only the bonus file is left");
-    assert_eq!(mapping_tracks(&table).len(), 1);
-    assert_eq!(table.images[0].file_id, "cover.jpg");
-    // The bonus file sorts first, so it held the first slot all along; with
-    // the sheet's rows gone it is one file on one track.
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::Agrees { count: 1 }),
-        "the three tracks the release names left with the audio backing them",
-    );
-}
-
-/// Excluding a file the table holds no rows for changes nothing — the same
-/// table, the same tally.
-#[test]
-fn without_file_for_something_the_table_does_not_hold_changes_nothing() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    write_flac(&tmp.path().join("02.flac"));
-
-    let files = scan(tmp.path());
-    let durations = probe_durations(&files);
-    let slots = slot_table(&source_tracks(2), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::Release,
-        }),
-        &durations,
-    );
-
-    let after = mapping_without_file(table.clone(), "nothing-here.flac");
-
-    assert_eq!(after.rows.len(), table.rows.len());
-    assert_eq!(mapping_tracks(&after), mapping_tracks(&table));
-    assert_eq!(after.reconciliation, table.reconciliation);
-}
-
 /// A table with no tally keeps none through an edit: the folder's own tags
 /// cannot disagree with the folder, however many rows are left.
 #[test]
@@ -574,9 +498,9 @@ fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
     );
     assert!(table.reconciliation.is_none());
 
-    let table = mapping_without_file(table, "01.flac");
+    let table = mapping_without_track(table, "unknown-track-0");
 
-    assert_eq!(table.rows.len(), 1);
+    assert_eq!(mapping_tracks(&table).len(), 1);
     assert!(table.reconciliation.is_none());
 }
 

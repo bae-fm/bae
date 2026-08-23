@@ -139,6 +139,17 @@ internal static class MappingTableReading
     /// different facts, and only one of them is real.</summary>
     internal static string DurationText(ulong? milliseconds) =>
         milliseconds is { } value ? BridgeDisplay.Clock(value) : "—";
+
+    /// <summary>The audio unit a row's samples come from — the identity core
+    /// keys a measurement by. Null for a track the release names that the
+    /// folder has nothing for.</summary>
+    internal static BridgeAudioFile? Audio(this BridgeMappingSource source) => source switch
+    {
+        BridgeMappingSource.File file => new BridgeAudioFile.Standalone(file.FileValue.FileId),
+        BridgeMappingSource.SheetEntry entry => new BridgeAudioFile.SheetSlice(
+            entry.Entry.ContainerId, entry.Entry.SheetId, entry.Entry.Index),
+        _ => null,
+    };
 }
 
 /// <summary>One of the folder's audio units as the "choose file" menu offers it:

@@ -48,6 +48,8 @@ pub mod musicbrainz_mapper;
 // The payload store's projections build the picker detail and the commit's
 // `ParsedAlbum` from archived documents — both desktop-only import shapes.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod pane;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod payloads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod probe;
@@ -117,6 +119,8 @@ pub use candidates::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use cover_art::{CoverChoice, CoverImageSource};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use edits::{
     apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
     TrackEditState,
@@ -132,8 +136,8 @@ pub use folder_scanner::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
-    parsed_album_to_user_edit, shape_user_edit_for_choice, DiscogsSaveOutcome,
-    GroupedSearchResults, ImportEvent, ImportServiceHandle, ScanEvent, SearchQuery,
+    parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
+    ImportServiceHandle, ScanEvent, SearchQuery,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use list::{
@@ -143,9 +147,9 @@ pub use list::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use mapping::{
-    mapping_table, mapping_tracks, mapping_with_track, mapping_without_file, mapping_without_track,
-    MappingBecomes, MappingContainer, MappingEntry, MappingFile, MappingImage, MappingRole,
-    MappingRow, MappingSource, MappingTable, MappingUnit, PickedTracklist, SheetBound, SheetGroup,
+    mapping_table, mapping_tracks, mapping_with_track, mapping_without_track, MappingBecomes,
+    MappingContainer, MappingEntry, MappingFile, MappingImage, MappingRole, MappingRow,
+    MappingSource, MappingTable, MappingUnit, PickedTracklist, SheetBound, SheetGroup,
     TracklistSource,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -162,8 +166,6 @@ pub use triage::{
     NeedsYouGroup, NeedsYouReason, TriageGroup, TriageImportStatus, TriagePlacement, TriageRow,
     TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use types::DecidedIdentity;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::ImportCommand;
 pub use types::{

@@ -2,23 +2,6 @@ use super::*;
 use crate::discogs::DiscogsClient;
 use crate::util::rate_limiter::CallPriority;
 
-/// The row identity the mapping table's tracks carry when the folder's own
-/// files name them.
-const UNKNOWN_TRACK_ID_PREFIX: &str = "unknown-track";
-
-/// `stored` where identification measured this folder, and a read of the disk
-/// where it has not. Blocking — every caller runs it off the async executor.
-pub(super) fn measured(
-    files: &crate::import::folder_scanner::CategorizedFiles,
-    stored: crate::import::probe::ProbedDurations,
-) -> crate::import::probe::ProbedDurations {
-    if stored.is_empty() {
-        crate::import::probe::probe_durations(files)
-    } else {
-        stored
-    }
-}
-
 impl ImportServiceHandle {
     /// Project an Unknown import candidate into a `ReleaseUserEdit` so the
     /// edit-metadata form can seed itself from what's on disk: the parsed CUE
@@ -34,107 +17,6 @@ impl ImportServiceHandle {
         candidate_key: String,
     ) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError> {
         Ok(self.unknown_seed(&candidate_key).await?.0)
-    }
-
-    /// The Unknown seed and the mapping table it produces: what the folder's
-    /// own files say the release is, and how each of the folder's audio units
-    /// lands on one of those tracks.
-    ///
-    /// The table carries no tally. Unknown is not a release picked from
-    /// anywhere — the tracklist was read off this very folder, so there is no
-    /// second account of it to reconcile against.
-    pub async fn unknown_mapping(
-        &self,
-        candidate_key: String,
-    ) -> Result<
-        (
-            crate::import::ReleaseUserEdit,
-            crate::import::mapping::MappingTable,
-        ),
-        crate::import::ImportError,
-    > {
-        let (seed, categorized) = self.unknown_seed(&candidate_key).await?;
-        let durations = self.stored_durations(&categorized.content_hash()).await?;
-
-        // The folder's own tracklist knows no position string beyond the track
-        // number it printed, and states no length: a length here would be the
-        // folder's own audio compared against itself.
-        let source_tracks: Vec<crate::import::track_slots::SourceTrack> = seed
-            .tracks
-            .iter()
-            .map(|edit| crate::import::track_slots::SourceTrack {
-                edit: edit.clone(),
-                position: edit.track_number.map(|n| n.to_string()).unwrap_or_default(),
-                duration_ms: None,
-            })
-            .collect();
-
-        // Reading the folder's audio goes off the async executor rather than
-        // holding it for the length of a folder — and it happens at all only
-        // where identification has not measured this candidate yet.
-        let mapping = tokio::task::spawn_blocking(move || {
-            let durations = measured(&categorized, durations);
-            let slots =
-                crate::import::track_slots::slot_table(&source_tracks, &categorized, &durations);
-            crate::import::mapping::mapping_table(
-                &categorized,
-                Some(crate::import::mapping::PickedTracklist {
-                    slots: &slots,
-                    track_id_prefix: UNKNOWN_TRACK_ID_PREFIX,
-                    source: crate::import::mapping::TracklistSource::FileTags,
-                }),
-                &durations,
-            )
-        })
-        .await
-        .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("unknown mapping task failed: {e}"),
-        })?;
-
-        Ok((seed, mapping))
-    }
-
-    /// The mapping table for a candidate nobody has picked a release for: every
-    /// source unit the folder offers, with what it becomes left open.
-    ///
-    /// Costs no disk read — which is what lets the pane render the same table
-    /// through the identify phase as it does after a pick.
-    pub async fn candidate_mapping(
-        &self,
-        candidate_key: &str,
-    ) -> Result<crate::import::mapping::MappingTable, crate::import::ImportError> {
-        let Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        }) = self.get_candidate(candidate_key).await?
-        else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
-        let durations = self
-            .stored_durations(&candidate.files.content_hash())
-            .await?;
-        Ok(crate::import::mapping::mapping_table(
-            &candidate.files,
-            None,
-            &durations,
-        ))
-    }
-
-    /// What identification measured this candidate's audio at, or nothing when
-    /// it has not reached it.
-    pub(super) async fn stored_durations(
-        &self,
-        content_hash: &str,
-    ) -> Result<crate::import::probe::ProbedDurations, crate::import::ImportError> {
-        Ok(self
-            .library_manager
-            .load_import_candidate_state(content_hash)
-            .await?
-            .map(|state| state.durations)
-            .unwrap_or_default())
     }
 
     /// The release the folder's own files describe: the parsed CUE track layout
@@ -180,25 +62,21 @@ impl ImportServiceHandle {
         })?
     }
 
-    /// Build an import command and enqueue it. The worker sources the release
-    /// itself: `prepare_release` for Exact / Approximate (reading the same LRU
-    /// caches the UI's prefetch warmed), the candidate's local evidence for
-    /// Unknown. Remote cover bytes don't ride the command either —
-    /// the remote-image cache answers the worker's download when it writes the
-    /// cover.
+    /// Build an import command from what the candidate stores and enqueue it.
     ///
-    /// `identity_choice` carries the user's claim: Exact preserves the mapper's
-    /// `source_release_id`, Approximate NULLs it, Unknown writes zero
-    /// `release_identities` rows. `user_edit` is the confirmation page's optional
-    /// overlay, whose fields override the seeded metadata.
+    /// Nothing about the release rides in: the pick, the metadata the user
+    /// typed, the rows they corrected and the cover they chose are all rows
+    /// under this candidate's content hash, so the commit reads the very
+    /// values the pane drew. The caller says only where the files should live.
+    ///
+    /// The worker sources the release itself — `prepare_release` for a picked
+    /// release, reading the documents the pick archived; the folder's own
+    /// files for Unknown.
     pub async fn start_import(
         &self,
         candidate_key: &str,
-        selected_cover: Option<crate::import::types::CoverSelection>,
         storage_mode: StorageMode,
         pin: bool,
-        identity_choice: crate::import::types::IdentityChoice,
-        user_edit: Option<crate::import::types::ReleaseUserEdit>,
     ) -> Result<String, crate::import::ImportError> {
         let Some(ImportCandidateSnapshot::Folder {
             candidate,
@@ -210,6 +88,78 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
+        let content_hash = candidate.files.content_hash();
+        let state = self
+            .library_manager
+            .load_import_candidate_state(&content_hash)
+            .await?
+            .filter(|state| state.file_edits.revision == candidate.file_edit_revision);
+        let Some(pick) = state.as_ref().and_then(|state| state.identity_pick.clone()) else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("nothing is picked for {candidate_key}"),
+            });
+        };
+        let durations = state.map(|state| state.durations).unwrap_or_default();
+        let rows = self
+            .library_manager
+            .load_import_candidate_pane_rows(&content_hash)
+            .await?;
+
+        let pick_for_pane = pick.clone();
+        let files = candidate.files.clone();
+        let folder_name = candidate.name.clone();
+        let clock = self.clock.clone();
+        let ids = self.ids.clone();
+        // Reading the archived documents and the folder's own tags is the same
+        // work the pane's query does, off the async executor because the
+        // Unknown path opens every audio file's tags.
+        let payloads = match &pick_for_pane {
+            crate::import::IdentityPick::Release {
+                source, release_id, ..
+            } => Some(
+                self.payloads_for_pick(
+                    candidate_key,
+                    &crate::import::MetadataRef::new(release_id.clone(), *source),
+                )
+                .await?,
+            ),
+            crate::import::IdentityPick::Unknown => None,
+        };
+        let pane = tokio::task::spawn_blocking(move || match payloads {
+            Some(payloads) => crate::import::pane::release_pane(
+                &payloads,
+                &files,
+                &durations,
+                &rows.edit,
+                &rows.track_edits,
+                clock.as_ref(),
+                ids.as_ref(),
+            ),
+            None => crate::import::pane::unknown_pane(
+                &files,
+                Some(&folder_name),
+                &durations,
+                &rows.edit,
+                &rows.track_edits,
+                clock.as_ref(),
+                ids.as_ref(),
+            ),
+        })
+        .await
+        .map_err(|e| crate::import::ImportError::Internal {
+            detail: format!("commit projection task failed: {e}"),
+        })??;
+
+        let mut raw = pane.edit;
+        raw.tracks = crate::import::mapping_tracks(&pane.mapping);
+        let user_edit = raw.shape()?;
+        let selected_cover = rows.cover.clone().or_else(|| {
+            pane.release
+                .as_ref()
+                .and_then(|release| release.default_cover())
+                .map(|cover| crate::import::CoverSelection::Remote(cover.url.clone(), cover.source))
+        });
+
         let import_id = self.library_manager.new_id();
         let command = ImportCommand {
             import_id: import_id.clone(),
@@ -219,14 +169,14 @@ impl ImportServiceHandle {
             selected_cover,
             storage_mode,
             pin,
-            identity_choice,
-            user_edit,
+            identity_choice: pick.choice(),
+            user_edit: Some(user_edit),
         };
 
         self.send_command_with_expectation(
             command,
             crate::import::service::ImportExpectation {
-                content_hash: candidate.files.content_hash(),
+                content_hash,
                 edit_revision: candidate.file_edit_revision,
             },
         )

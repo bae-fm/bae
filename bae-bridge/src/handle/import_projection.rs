@@ -605,6 +605,18 @@ impl crate::types::BridgeImportCandidateDetail {
             is_added,
             resumed_identify_state,
             row,
+            release,
+            picked_library_status,
+            evidence,
+            edit,
+            mapping,
+            unprobed,
+            cover,
+            // Every cover the picker offers is already inside `release`, whose
+            // `cover_art` is the same list.
+            remote_covers: _,
+            signals,
+            failure,
         } = detail;
         Self {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
@@ -613,6 +625,22 @@ impl crate::types::BridgeImportCandidateDetail {
                 resumed_identify_state,
             ),
             row: crate::types::BridgeTriageRow::from_core(row),
+            release: release.map(crate::types::BridgeReleaseDetail::from_core),
+            picked_library_status: picked_library_status
+                .map(crate::types::BridgeLibraryStatus::from_core),
+            evidence: evidence.map(crate::types::BridgeClaimEvidence::from_core),
+            edit: edit.map(crate::types::BridgeRawReleaseEdit::from_core),
+            mapping: crate::types::BridgeMappingTable::from_core(mapping),
+            unprobed: unprobed
+                .into_iter()
+                .map(crate::types::BridgeAudioFile::from_core)
+                .collect(),
+            cover: cover.map(crate::types::BridgeCoverChoice::from_core),
+            signals: signals.map(crate::types::BridgeSignals::from_core),
+            failure: failure.map(|failure| crate::types::BridgeImportFailure {
+                error: failure.error,
+                failed_at: failure.failed_at.to_rfc3339(),
+            }),
         }
     }
 }

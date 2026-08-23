@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} ഇറക്കുമതി ചെയ്യുക</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>എന്നാലും ഇറക്കുമതി ചെയ്യുക</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുക</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>ഇത് എത്ര നേരം ഓടുന്നു എന്ന് വായിക്കുന്നു</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>സംഘർഷം</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>നേരിട്ട് തിരയുക</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>പരാജയപ്പെട്ടു</value></data>

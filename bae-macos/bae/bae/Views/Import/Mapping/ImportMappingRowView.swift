@@ -17,6 +17,8 @@ struct ImportMappingRowView: View {
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
     let previewingPath: String?
+    /// Whether this row's audio has not been read yet.
+    var isMeasuring: Bool = false
     let actions: ImportMappingActions
 
     /// Whether the folder and the release disagree about how long this row
@@ -36,6 +38,7 @@ struct ImportMappingRowView: View {
                 source: unit.source,
                 previewingPath: previewingPath,
                 lengthsDiverge: lengthsDiverge,
+                isMeasuring: isMeasuring,
                 actions: actions,
             )
             .sourceColumn(columns)
@@ -59,16 +62,18 @@ struct ImportMappingRowView: View {
                     width: ImportMappingColumns.position,
                     alignment: .leading
                 )
-            MetadataField(
+            CommittedTextField(
                 placeholder: coreString("ui.import.slots.untitled"),
-                text: field(of: track, \.title),
+                value: track.title,
                 boxed: false,
+                onCommit: { commit(track, \.title, $0) },
             )
             .frame(width: columns.title)
-            MetadataField(
+            CommittedTextField(
                 placeholder: String(localized: "Artist"),
-                text: field(of: track, \.artistText),
+                value: track.artistText,
                 boxed: false,
+                onCommit: { commit(track, \.artistText, $0) },
             )
             .frame(width: columns.artist)
             Text(importDurationText(sourceMs))
@@ -162,19 +167,15 @@ struct ImportMappingRowView: View {
         }
     }
 
-    /// One field of this row's track, writing the edited track back onto the
-    /// row that commits it.
-    private func field(
-        of track: BridgeRawTrackEdit,
-        _ path: WritableKeyPath<BridgeRawTrackEdit, String>
-    ) -> Binding<String> {
-        Binding(
-            get: { track[keyPath: path] },
-            set: { newValue in
-                var edited = track
-                edited[keyPath: path] = newValue
-                actions.editTrack(edited)
-            },
-        )
+    /// Store one field of this row's track. A row is edited as a unit, so the
+    /// whole row goes — the field the user left is the one that changed.
+    private func commit(
+        _ track: BridgeRawTrackEdit,
+        _ path: WritableKeyPath<BridgeRawTrackEdit, String>,
+        _ value: String
+    ) {
+        var edited = track
+        edited[keyPath: path] = value
+        actions.editTrack(edited)
     }
 }

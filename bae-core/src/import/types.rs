@@ -227,27 +227,6 @@ impl IdentityPick {
     }
 }
 
-/// A candidate's decided identity with everything the pane seeds from it —
-/// the one payload the pick command and the selection query both return, so
-/// a fresh launch renders exactly what the click rendered. Not persisted:
-/// derived from the stored [`IdentityPick`] and the archived documents on
-/// every read. Desktop-only like the prefetch and mapping it carries: the
-/// import pane is where a decided identity is read.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone)]
-pub enum DecidedIdentity {
-    Release {
-        source: MetadataSource,
-        release_id: String,
-        prefetch: crate::import::search::ImportReleasePrefetch,
-    },
-    /// The folder read as its own files describe it.
-    Unknown {
-        seed: ReleaseUserEdit,
-        mapping: crate::import::mapping::MappingTable,
-    },
-}
-
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl MetadataRef {
     pub fn new(id: impl Into<String>, source: MetadataSource) -> Self {

@@ -608,34 +608,16 @@ internal sealed partial class ImportSectionView : UserControl
             // faster sibling call, or reclassified) — the foot bar already
             // intersects the selection against the current Ready set, so a miss
             // here is defensive, not expected.
-            if (ready.FirstOrDefault(row => row.CandidateKey == key) is not { } readyRow)
+            if (ready.FirstOrDefault(row => row.CandidateKey == key) is null)
             {
-                continue;
-            }
-            var claim = readyRow.Claim;
-
-            // A Ready row's decision is already stored — its settled single
-            // match — so the commit reads the same answer opening the pane
-            // would, from the archive.
-            if (await _import.ReadCandidate(key) is not { } candidate)
-            {
-                failureCount++;
-                continue;
-            }
-            var (decidedCurrent, decidedResult) = await _app.Import.CandidateDecidedIdentity(
-                key, candidate.LocalArtwork);
-            if (!decidedCurrent)
-            {
-                return;
-            }
-            if (decidedResult.Decided is not { Release: not null } decided)
-            {
-                failureCount++;
                 continue;
             }
 
+            // A Ready row's decision is already stored — its settled single
+            // match — along with everything else the pane would have shown, so
+            // committing without opening it writes exactly the same release.
             var (importCurrent, error) = await _app.Import.CommitImport(
-                key, key, claim, storageMode, pinned, decided.Edit.Edit, null);
+                key, storageMode, pinned);
             if (!importCurrent)
             {
                 return;

@@ -545,6 +545,20 @@ impl Fixture {
         self.stored().await.remove(&hash)
     }
 
+    /// One candidate's pane as it reads back from the tables.
+    async fn pane(&self, dir: &Path) -> Option<crate::import::ImportCandidateDetail> {
+        self.manager
+            .load_import_candidate(&dir.to_string_lossy())
+            .await
+            .unwrap()
+            .map(|projection| {
+                projection.resolve(
+                    &crate::import::triage::TriageRuntimeFacts::default(),
+                    &IdentifyState::Idle,
+                )
+            })
+    }
+
     /// The archived MusicBrainz document for a release, if one was written.
     async fn archived(&self, release_id: &str) -> Option<String> {
         self.manager

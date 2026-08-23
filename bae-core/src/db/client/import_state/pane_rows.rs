@@ -207,7 +207,7 @@ impl<'a> TrackEditColumns<'a> {
 
 /// Everything one candidate's pane settled: its cover, its album fields, its
 /// row edits and the failure its last import left.
-pub(super) fn load_pane_rows_on(
+pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
 ) -> Result<DbCandidatePaneRows, DbError> {

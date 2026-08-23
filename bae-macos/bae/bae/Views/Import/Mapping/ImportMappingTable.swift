@@ -17,6 +17,9 @@ struct ImportMappingTable: View {
     let bindingOptions: [String: [BridgeSheetBindingOption]]
     /// The path currently auditioning, if any — the row playing it is accented.
     let previewingPath: String?
+    /// The audio units nothing has read yet. Their rows say so while the read
+    /// runs; every other length on the pane is already stored.
+    var unprobed: Set<BridgeAudioFile> = []
     let actions: ImportMappingActions
 
     /// The width the pane leaves the table. The columns are resolved against
@@ -96,6 +99,7 @@ struct ImportMappingTable: View {
             columns: columns,
             audioChoices: table.audioChoices,
             previewingPath: previewingPath,
+            isMeasuring: unit.source.audio.map(unprobed.contains) ?? false,
             actions: actions,
         )
         .rowChrome(

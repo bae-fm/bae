@@ -177,33 +177,42 @@ pub(super) fn identity_choice(choice: AutomationIdentityChoice) -> IdentityChoic
     }
 }
 
-pub(super) fn automation_claim_line(claim: bae_core::import::ClaimLine) -> AutomationClaimLine {
-    AutomationClaimLine {
-        choice: automation_identity_choice(claim.choice),
-        evidence: match claim.evidence {
-            bae_core::import::ClaimEvidence::DiscIdAlone => AutomationClaimEvidence::DiscIdAlone,
-            bae_core::import::ClaimEvidence::DiscIdShared { match_count } => {
-                AutomationClaimEvidence::DiscIdShared { match_count }
-            }
-            bae_core::import::ClaimEvidence::Barcode => AutomationClaimEvidence::Barcode,
-            bae_core::import::ClaimEvidence::Search => AutomationClaimEvidence::Search,
+/// The identity a caller is deciding. A pick claims the pressing whatever
+/// turned the release up, which is what a click on that release does too.
+pub(super) fn identity_pick(pick: AutomationIdentityPick) -> IdentityPick {
+    match pick {
+        AutomationIdentityPick::Release { source, release_id } => IdentityPick::Release {
+            source: source.into(),
+            release_id,
+            claim: bae_core::import::ClaimLevel::Exact,
         },
-        release: claim.release,
-        track_count: claim.track_count,
+        AutomationIdentityPick::Unknown => IdentityPick::Unknown,
     }
 }
 
-pub(super) fn automation_identity_choice(choice: IdentityChoice) -> AutomationIdentityChoice {
-    match choice {
-        IdentityChoice::Exact { release_ref } => AutomationIdentityChoice::Exact {
-            source: release_ref.source.into(),
-            release_id: release_ref.id,
-        },
-        IdentityChoice::Approximate { release_ref } => AutomationIdentityChoice::Approximate {
-            source: release_ref.source.into(),
-            release_id: release_ref.id,
-        },
-        IdentityChoice::Unknown => AutomationIdentityChoice::Unknown,
+pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> CandidateEditField {
+    match field {
+        AutomationCandidateEditField::AlbumTitle => CandidateEditField::AlbumTitle,
+        AutomationCandidateEditField::AlbumArtistText => CandidateEditField::AlbumArtistText,
+        AutomationCandidateEditField::Year => CandidateEditField::Year,
+        AutomationCandidateEditField::Format => CandidateEditField::Format,
+        AutomationCandidateEditField::Label => CandidateEditField::Label,
+        AutomationCandidateEditField::CatalogNumber => CandidateEditField::CatalogNumber,
+        AutomationCandidateEditField::Country => CandidateEditField::Country,
+        AutomationCandidateEditField::Barcode => CandidateEditField::Barcode,
+    }
+}
+
+pub(super) fn automation_claim_evidence(
+    evidence: bae_core::import::ClaimEvidence,
+) -> AutomationClaimEvidence {
+    match evidence {
+        bae_core::import::ClaimEvidence::DiscIdAlone => AutomationClaimEvidence::DiscIdAlone,
+        bae_core::import::ClaimEvidence::DiscIdShared { match_count } => {
+            AutomationClaimEvidence::DiscIdShared { match_count }
+        }
+        bae_core::import::ClaimEvidence::Barcode => AutomationClaimEvidence::Barcode,
+        bae_core::import::ClaimEvidence::Search => AutomationClaimEvidence::Search,
     }
 }
 

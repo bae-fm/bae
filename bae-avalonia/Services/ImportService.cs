@@ -90,13 +90,6 @@ internal sealed class ImportService
     /// sheet is a different tracklist.</summary>
     public Func<string, string, BridgeSheetDisc, Task<(bool Current, string? Error)>> SetSheetDisc { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetDisc not wired");
-
-    /// <summary>The mapping table for a candidate nobody has picked a release
-    /// for: every source unit the folder offers, with what it becomes left
-    /// open. Async — it reads the folder by key.</summary>
-    public Func<string, Task<(bool Current, (BridgeMappingTable? Mapping, string? Error) Result)>> CandidateMapping { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: CandidateMapping not wired");
-
     /// <summary>Put one of a candidate's files in a role, or put it back in the
     /// one the scan proposed — what the roles table's control and a slot's
     /// Exclude action both call. Core persists it and clears the candidate's
@@ -140,20 +133,27 @@ internal sealed class ImportService
     public Func<string, string, string, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
 
-    /// <summary>Seed the import confirm form from a picked source release: the
-    /// editor edit (already masked for the claim), the claim the pick implies,
-    /// the source's remote covers, and the folder's local artwork. The candidate
-    /// key is what lets bae-core derive the claim from that candidate's identify
-    /// evidence.</summary>
-    /// <summary>Decide the candidate's identity: persist the choice and come
-    /// back with the seeded edit the pane renders.</summary>
-    public Func<string, BridgeIdentityPick, IReadOnlyList<LocalArtwork>, Task<(bool Current, (DecidedEdit? Decided, string? Error) Result)>> PickCandidateIdentity { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("ImportService stub: PickCandidateIdentity not wired");
+    /// <summary>Decide the candidate's identity — a release, or the folder's
+    /// own tags. Nothing comes back: the per-candidate read delivers the pane's
+    /// next value.</summary>
+    public Func<string, BridgeIdentityPick, Task<(bool Current, string? Error)>> PickCandidateIdentity { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: PickCandidateIdentity not wired");
 
-    /// <summary>The candidate's decided identity read back; `Undecided` when
-    /// nothing is decided, which is a result rather than an error.</summary>
-    public Func<string, IReadOnlyList<LocalArtwork>, Task<(bool Current, (DecidedEdit? Decided, bool Undecided, string? Error) Result)>> CandidateDecidedIdentity { get; init; }
-        = (_, _) => throw new InvalidOperationException("ImportService stub: CandidateDecidedIdentity not wired");
+    /// <summary>Record the cover this candidate commits with.</summary>
+    public Func<string, BridgeCoverSelection, Task<(bool Current, string? Error)>> SetCandidateCover { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateCover not wired");
+
+    /// <summary>Record one album-level metadata field as the user left it.</summary>
+    public Func<string, BridgeCandidateEditField, string, Task<(bool Current, string? Error)>> SetCandidateEditField { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetCandidateEditField not wired");
+
+    /// <summary>Record one mapping-table row as the user left it.</summary>
+    public Func<string, BridgeRawTrackEdit, Task<(bool Current, string? Error)>> SetCandidateTrackEdit { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateTrackEdit not wired");
+
+    /// <summary>Take one mapping-table row out of the import.</summary>
+    public Func<string, string, Task<(bool Current, string? Error)>> DropCandidateTrack { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: DropCandidateTrack not wired");
 
     /// <summary>Seed the import confirm form for a skip-identify import: the folder's
     /// embedded file tags projected into the edit form, with only the folder's local
@@ -163,12 +163,13 @@ internal sealed class ImportService
     public Func<BridgeMetadataSource, string, string?, Action<BridgeLibraryStatus>, Action<Exception>, IDisposable?> SubscribeReleaseLibraryStatus { get; init; }
         = (_, _, _, _, _) => throw new InvalidOperationException("ImportService stub: SubscribeReleaseLibraryStatus not wired");
 
-    /// <summary>Commit the import of a candidate with the confirm dialog's edits,
-    /// storage mode, pin, chosen identity, and cover overlaid. The import runs in the
-    /// background; its result updates the candidate row and catalog subscriptions.
-    /// Returns the validation error line, or null on accept.</summary>
-    public Func<string, string, BridgeIdentityChoice, string, bool, BridgeRawReleaseEdit, BridgeCoverSelection?, Task<(bool Current, string? Error)>> CommitImport { get; init; }
-        = (_, _, _, _, _, _, _) => throw new InvalidOperationException("ImportService stub: CommitImport not wired");
+    /// <summary>Commit the import of a candidate at the storage the pane chose.
+    /// Everything about the release is stored under the candidate, so the
+    /// commit reads the very values the pane drew. The import runs in the
+    /// background; its result updates the candidate row and catalog
+    /// subscriptions. Returns the error line, or null on accept.</summary>
+    public Func<string, string, bool, Task<(bool Current, string? Error)>> CommitImport { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: CommitImport not wired");
 
     /// <summary>Decode a candidate's evidence file (CUE sheet, rip log, info text) to
     /// its text for the document viewer, or its read error. A handle-less file read.</summary>
@@ -214,8 +215,6 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, audioFileId)),
         SetSheetDisc = (candidateKey, sheetFileId, disc) =>
             session.RunForCurrentHandle(handle => NativeBae.SetSheetDisc(handle, candidateKey, sheetFileId, disc)),
-        CandidateMapping = candidateKey =>
-            session.RunForCurrentHandle(handle => NativeBae.CandidateMapping(handle, candidateKey)),
         SetFileRole = (candidateKey, fileId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
         AutoIdentifyFolder = candidateKey =>
@@ -232,12 +231,21 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
         ClaimForPick = (candidateKey, result, level) =>
             session.WithCurrentHandle(handle => NativeBae.ClaimForPick(handle, candidateKey, result, level)),
-        PickCandidateIdentity = (candidateKey, pick, localArtwork) =>
-            session.RunForCurrentHandle(handle => NativeBae.PickCandidateIdentity(
-                handle, candidateKey, pick, localArtwork)),
-        CandidateDecidedIdentity = (candidateKey, localArtwork) =>
-            session.RunForCurrentHandle(handle => NativeBae.CandidateDecidedIdentity(
-                handle, candidateKey, localArtwork)),
+        PickCandidateIdentity = (candidateKey, pick) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.PickCandidateIdentity(handle, candidateKey, pick)),
+        SetCandidateCover = (candidateKey, cover) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetCandidateCover(handle, candidateKey, cover)),
+        SetCandidateEditField = (candidateKey, field, value) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetCandidateEditField(handle, candidateKey, field, value)),
+        SetCandidateTrackEdit = (candidateKey, track) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetCandidateTrackEdit(handle, candidateKey, track)),
+        DropCandidateTrack = (candidateKey, trackId) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.DropCandidateTrack(handle, candidateKey, trackId)),
         SubscribeReleaseLibraryStatus = (source, releaseId, sourceGroupId, onValue, onError) =>
         {
             var (current, subscription) = session.WithCurrentHandle(handle =>
@@ -245,8 +253,8 @@ internal sealed class ImportService
                     handle, source, releaseId, sourceGroupId, onValue, onError));
             return current ? subscription : null;
         },
-        CommitImport = (candidateKey, folderPath, identity, storageMode, pin, userEdit, cover) =>
-            session.RunForCurrentHandle(handle => NativeBae.ImportCandidate(
-                handle, candidateKey, identity, storageMode, pin, userEdit, cover)),
+        CommitImport = (candidateKey, storageMode, pin) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.ImportCandidate(handle, candidateKey, storageMode, pin)),
     };
 }

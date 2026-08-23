@@ -350,55 +350,108 @@
         private static func mappingFolder(
             name: String,
             files: BridgeCandidateFiles
+        ) -> BridgeFolderCandidate {
+            BridgeFolderCandidate(
+                folderPath: "/Music/Downloads/\(name)",
+                sourceFolderName: name,
+                watchedFolderPath: importWatchedFolder.path,
+                files: files,
+                trackCount: 9,
+                skipped: false,
+                isAdded: false
+            )
+        }
+
+        /// A candidate as the per-candidate read answers for it: the folder,
+        /// the row the list places it as, and everything the pane draws. The
+        /// pane holds none of it — this is the one value it renders from.
+        @MainActor
+        static func paneCandidate(
+            folder: BridgeFolderCandidate,
+            picked: BridgeIdentityPick? = nil,
+            release: BridgeReleaseDetail? = nil,
+            edit: BridgeRawReleaseEdit? = nil,
+            mapping: BridgeMappingTable,
+            cover: BridgeCoverChoice? = nil,
+            evidence: BridgeClaimEvidence? = nil,
+            failure: BridgeImportFailure? = nil,
+            unprobed: [BridgeAudioFile] = []
         ) -> Candidate {
             Candidate(
-                bridge: BridgeFolderCandidate(
-                    folderPath: "/Music/Downloads/\(name)",
-                    sourceFolderName: name,
-                    watchedFolderPath: importWatchedFolder.path,
-                    files: files,
-                    trackCount: 9,
-                    skipped: false,
-                    isAdded: false
+                detail: BridgeImportCandidateDetail(
+                    candidate: folder,
+                    actionable: true,
+                    resumedIdentifyState: .idle,
+                    row: BridgeTriageRow(
+                        candidateKey: folder.folderPath,
+                        folderName: folder.sourceFolderName,
+                        watchedFolderPath: folder.watchedFolderPath,
+                        displayPath: folder.sourceFolderName,
+                        resolvedBoundaries: [],
+                        combineAncestorKey: nil,
+                        actionable: true,
+                        placement: picked == nil
+                            ? .needsYou(
+                                group: .noMatch,
+                                reason: .disagreement(disagreement: .noMatch)
+                            )
+                            : .ready,
+                        skipAction: .skip,
+                        matched: nil,
+                        selectable: picked != nil,
+                        importStatus: nil,
+                        picked: picked,
+                        claim: nil
+                    ),
+                    release: release,
+                    pickedLibraryStatus: nil,
+                    evidence: evidence,
+                    edit: edit,
+                    mapping: mapping,
+                    unprobed: unprobed,
+                    cover: cover,
+                    signals: nil,
+                    failure: failure
                 )
             )
         }
 
-        /// A candidate with a release picked: the identity card states the
-        /// claim, the mapping table pairs nine files with nine tracks, and the
-        /// commit bar counts them.
-        static let mappingCandidate: Candidate = {
-            var candidate = mappingFolder(
+        /// A candidate with a release picked: the identity card states what
+        /// identified it, the mapping table pairs nine files with nine tracks,
+        /// and the commit bar counts them.
+        @MainActor
+        static let mappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
                 name: "Album Title One",
                 files: candidateFilesTracks
-            )
-            candidate.claim = claimBridge
-            candidate.identityChoice = claimBridge.choice
-            candidate.pick = CandidatePick(
-                releaseId: releaseDetailBridge.releaseId,
+            ),
+            picked: .release(
                 source: releaseDetailBridge.source,
-                claim: claimBridge.level
-            )
-            candidate.setReleaseDetail(releaseDetailBridge)
-            candidate.editValues = confirmEditValues
-            candidate.mapping = mappingTable
-            return candidate
-        }()
+                releaseId: releaseDetailBridge.releaseId,
+                claim: .exact
+            ),
+            release: releaseDetailBridge,
+            edit: confirmEditValues,
+            mapping: mappingTable,
+            cover: releaseDetailBridge.defaultCover,
+            evidence: .discIdAlone,
+        )
 
         /// Nothing picked yet: the identity card offers to find the release,
         /// the table says what each file is with its BECOMES half open, and
         /// there is nothing to commit.
-        static let unidentifiedMappingCandidate: Candidate = {
-            var candidate = mappingFolder(
+        @MainActor
+        static let unidentifiedMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
                 name: "Album Title One",
                 files: bridgeCandidateFiles
-            )
-            candidate.mapping = awaitingPickTable
-            return candidate
-        }()
+            ),
+            mapping: awaitingPickTable,
+        )
 
         /// The same unpicked folder with identification settled on several
         /// pressings — the identity section offers them inline.
+        @MainActor
         static let severalMatchesMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
             candidate.identifyState = .found(
@@ -412,70 +465,82 @@
 
         /// The CUE+FLAC shape of the same release: one group row over the
         /// entries its sheet carves.
-        static let sheetMappingCandidate: Candidate = {
-            var candidate = mappingCandidate
-            candidate.mapping = sheetMappingTable
-            return candidate
-        }()
+        @MainActor
+        static let sheetMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            ),
+            picked: .release(
+                source: releaseDetailBridge.source,
+                releaseId: releaseDetailBridge.releaseId,
+                claim: .exact
+            ),
+            release: releaseDetailBridge,
+            edit: confirmEditValues,
+            mapping: sheetMappingTable,
+            cover: releaseDetailBridge.defaultCover,
+            evidence: .discIdAlone,
+        )
 
         /// A settled ten-track release against a folder containing one audio
         /// file: the first row is backed and the remaining nine are missing.
-        static let moreTracksMappingCandidate: Candidate = {
-            var candidate = Candidate(
-                bridge: BridgeFolderCandidate(
-                    folderPath: "/Music/Downloads/Partial Album",
-                    sourceFolderName: "Partial Album",
-                    watchedFolderPath: importWatchedFolder.path,
-                    files: moreTracksCandidateFiles,
-                    trackCount: 1,
-                    skipped: false,
-                    isAdded: false
-                )
-            )
-            candidate.claim = BridgeClaimLine(
-                choice: .exact(
-                    releaseId: moreTracksReleaseDetail.releaseId,
-                    source: moreTracksReleaseDetail.source
-                ),
-                level: .exact,
-                evidence: .discIdAlone,
-                release: "CD \u{00b7} 1997 \u{00b7} US \u{00b7} CAT-0001",
-                trackCount: moreTracksReleaseDetail.trackCount
-            )
-            candidate.identityChoice = candidate.claim?.choice
-            candidate.pick = CandidatePick(
-                releaseId: moreTracksReleaseDetail.releaseId,
+        @MainActor
+        static let moreTracksMappingCandidate: Candidate = paneCandidate(
+            folder: BridgeFolderCandidate(
+                folderPath: "/Music/Downloads/Partial Album",
+                sourceFolderName: "Partial Album",
+                watchedFolderPath: importWatchedFolder.path,
+                files: moreTracksCandidateFiles,
+                trackCount: 1,
+                skipped: false,
+                isAdded: false
+            ),
+            picked: .release(
                 source: moreTracksReleaseDetail.source,
+                releaseId: moreTracksReleaseDetail.releaseId,
                 claim: .exact
-            )
-            candidate.setReleaseDetail(moreTracksReleaseDetail)
-            candidate.editValues = moreTracksEditValues
-            candidate.mapping = moreTracksMappingTable
-            return candidate
-        }()
+            ),
+            release: moreTracksReleaseDetail,
+            edit: moreTracksEditValues,
+            mapping: moreTracksMappingTable,
+            cover: moreTracksReleaseDetail.defaultCover,
+            evidence: .discIdAlone,
+        )
 
         /// The candidate the Import-tab preview selects: the settled release
         /// read off the CUE+FLAC folder it came from, with every row kind in
         /// its table. Keyed to `folderCandidates`' first, so the row the
         /// sidebar selects and the pane behind it are the same folder.
-        static let importTabCandidate: Candidate = {
-            var candidate = mappingCandidate
-            candidate.files = bridgeCandidateFiles
-            candidate.mapping = everyRowKindMappingTable
-            return candidate
-        }()
+        @MainActor
+        static let importTabCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: bridgeCandidateFiles
+            ),
+            picked: .release(
+                source: releaseDetailBridge.source,
+                releaseId: releaseDetailBridge.releaseId,
+                claim: .exact
+            ),
+            release: releaseDetailBridge,
+            edit: confirmEditValues,
+            mapping: everyRowKindMappingTable,
+            cover: releaseDetailBridge.defaultCover,
+            evidence: .discIdAlone,
+        )
 
-        /// The folder read as its own file tags: no claim, no release detail,
-        /// and a table with no tally to state.
-        static let unknownMappingCandidate: Candidate = {
-            var candidate = mappingCandidate
-            candidate.identity = .unknown
-            candidate.identityChoice = .unknown
-            candidate.claim = nil
-            candidate.setReleaseDetail(nil)
-            candidate.mapping = unknownMappingTable
-            return candidate
-        }()
-
+        /// The folder read as its own file tags: no release, and a table with
+        /// no tally to state.
+        @MainActor
+        static let unknownMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            ),
+            picked: .unknown,
+            edit: confirmEditValues,
+            mapping: unknownMappingTable,
+        )
     }
 #endif

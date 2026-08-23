@@ -16,7 +16,6 @@ use super::*;
 ///
 /// It carries no file decisions: those are the user's half of the row and the
 /// verdict write leaves them alone.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct NewImportCandidateVerdict {
     /// `CategorizedFiles::content_hash` — the row's identity. Adding,
@@ -49,7 +48,6 @@ pub struct NewImportCandidateVerdict {
 /// absent as a whole: the identify columns and the match rows below them are
 /// written together and cleared together, so no reader has to reason about a
 /// half-filled result.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     pub verdict: crate::identify::TerminalVerdict,
@@ -60,7 +58,6 @@ pub struct DbCandidateIdentifyResult {
 /// One loaded `import_candidate_state` row, as
 /// [`crate::db::Database::load_import_candidate_states`] returns it. Mirrors
 /// the table: one key, and the two independent things derived under it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbImportCandidateState {
     pub content_hash: String,
@@ -92,7 +89,6 @@ pub struct DbImportCandidateState {
 /// cover and the mapping table from them at once. Kept off
 /// [`DbImportCandidateState`] because that one is read for the whole queue and
 /// none of these are.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DbCandidatePaneRows {
     /// The cover the user chose. `None` leaves the picked release's default

@@ -592,7 +592,6 @@
                     isAdded: false
                 )
             )
-            candidate.mapping = awaitingPickTable
             return candidate
         }
 

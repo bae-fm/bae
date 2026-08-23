@@ -16,8 +16,8 @@ struct ImportCommitControls {
     let actions: ImportCommitActions
 }
 
-/// The identity section's card: the cover, what the release is, the claim
-/// this import records, and the commit itself.
+/// The identity section's card: the cover, what the release is, what
+/// identified it, and the commit itself.
 ///
 /// Search is this card's editor rather than a pane mounted beside it — the
 /// change control opens it, and picking a release fills the mapping table's
@@ -29,10 +29,11 @@ struct ImportReleaseHeader: View {
     /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
     /// fetched.
     let metaLine: String
-    /// What this import claims to hold and where its metadata came from, as
-    /// core reads it back off the stored pick. `nil` before a pick, and for an
-    /// Unknown import, which claims nothing.
-    let claim: BridgeClaimLine?
+    /// What identified the picked release, drawn as the badge the pressing
+    /// rows carry. `nil` before a pick, for a folder read as its own tags, and
+    /// for a release nothing about the disc turned up — a search found it, and
+    /// a badge saying so would claim evidence there is none of.
+    let evidence: BridgeClaimEvidence?
     /// Whether a release has been picked.
     let hasPick: Bool
     /// Whether a read is in flight — the change control says so and stays put
@@ -44,16 +45,15 @@ struct ImportReleaseHeader: View {
     /// states what they add up to, and this is where a wrong year or a missing
     /// catalog number gets fixed before it is written. `nil` when there is no
     /// release to edit.
-    let editor: Binding<BridgeRawReleaseEdit>?
+    let editValues: BridgeRawReleaseEdit?
+    /// Where a typed field's value goes.
+    let editActions: ReleaseFieldWriter
     /// The commit row at the card's foot. `nil` while there is nothing to
     /// commit — a failed re-pick leaves the fields in place but nothing
     /// settled to commit them under.
     let commit: ImportCommitControls?
     let onEditCover: () -> Void
     let onFindRelease: () -> Void
-    /// Set how far the claim reaches. Re-picks the same release at the level
-    /// given, which is what stores it.
-    let onSetClaimLevel: (BridgeClaimLevel) -> Void
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -67,11 +67,11 @@ struct ImportReleaseHeader: View {
                 summary
                 changeControl
             }
-            if let claim {
-                ImportClaimLine(claim: claim)
+            if let evidence {
+                evidenceBadge(evidence)
             }
-            if let editor {
-                details(editor)
+            if let editValues {
+                details(editValues)
             }
             if let commit {
                 commitRow(commit)
@@ -84,8 +84,39 @@ struct ImportReleaseHeader: View {
     /// The card's own fold: the release's fields, under a row that is the
     /// control end to end — a caret is a target the width of a glyph, and the
     /// line beside it says what opens.
+    /// What turned this release up, in the same chip the pressing rows use.
+    /// A search is not evidence about the disc, so it draws nothing.
+    @ViewBuilder
+    private func evidenceBadge(
+        _ evidence: BridgeClaimEvidence
+    ) -> some View {
+        switch evidence {
+        case .discIdAlone, .discIdShared:
+            badge("Disc ID", icon: "opticaldiscdrive")
+        case .barcode:
+            badge("Barcode", icon: "barcode")
+        case .search:
+            EmptyView()
+        }
+    }
+
+    private func badge(
+        _ label: LocalizedStringKey,
+        icon: String
+    ) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon)
+            Text(label)
+        }
+        .font(.caption2.weight(.medium))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Color.accentColor.opacity(0.15), in: Capsule())
+        .foregroundStyle(Color.accentColor)
+    }
+
     private func details(
-        _ editor: Binding<BridgeRawReleaseEdit>
+        _ values: BridgeRawReleaseEdit
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Button {
@@ -105,7 +136,7 @@ struct ImportReleaseHeader: View {
             }
             .buttonStyle(.plain)
             if detailsExpanded {
-                ReleaseFieldsForm(form: editor)
+                ReleaseFieldsForm(values: values, writer: editActions)
             }
         }
     }
@@ -125,14 +156,6 @@ struct ImportReleaseHeader: View {
                 .foregroundStyle(.orange)
             }
             Spacer(minLength: 12)
-            // What the import claims, next to the action that commits it.
-            if let claim, !commitSettled(commit) {
-                ImportClaimExactToggle(
-                    level: claim.level,
-                    isReading: isReading,
-                    onSetLevel: onSetClaimLevel,
-                )
-            }
             if !commitSettled(commit), configStore.config.hasCloudHome {
                 HStack(spacing: 10) {
                     ImportCheckboxToggle(

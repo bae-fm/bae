@@ -70,7 +70,7 @@ struct ImportSearchSheet: View {
             input: ImportSearchFlow.SearchPaneInput(
                 candidate: candidate,
                 key: candidateKey,
-                selectedReleaseId: candidate.pick?.releaseId
+                selectedReleaseId: candidate.pickedRelease?.releaseId
             ),
             openSettings: { openSettings() },
             // Reading the folder as Unknown is the mapping pane's own identity

@@ -785,11 +785,9 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(import, import_prefetch_release => prefetch_release(candidate_key: &str, release_id: &str, source: crate::import::MetadataSource, level: crate::import::ClaimLevel) -> Result<crate::import::search::ImportReleasePrefetch, crate::import::ImportError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_preview_file_tags_for_folder => preview_file_tags_for_folder(candidate_key: String) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(import, import_start_import => start_import(candidate_key: &str, selected_cover: Option<crate::import::CoverSelection>, storage_mode: crate::import::StorageMode, pin: bool, identity_choice: crate::import::IdentityChoice, user_edit: Option<crate::import::ReleaseUserEdit>) -> Result<String, crate::import::ImportError>);
+    delegate_async!(import, import_start_import => start_import(candidate_key: &str, storage_mode: crate::import::StorageMode, pin: bool) -> Result<String, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -797,9 +795,7 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(import, import_pick_candidate_identity => pick_candidate_identity(candidate_key: String, pick: crate::import::IdentityPick) -> Result<crate::import::DecidedIdentity, crate::import::ImportError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(import, import_candidate_answer => candidate_answer(candidate_key: String) -> Result<Option<crate::import::DecidedIdentity>, crate::import::ImportError>);
+    delegate_async!(import, import_pick_candidate_identity => pick_candidate_identity(candidate_key: String, pick: crate::import::IdentityPick) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -819,8 +815,6 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_claim_for_pick => claim_for_pick(candidate_key: &str, release: &crate::import::ClaimRelease, level: crate::import::ClaimLevel) -> crate::import::ClaimLine);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(import, import_candidate_mapping => candidate_mapping(candidate_key: &str) -> Result<crate::import::MappingTable, crate::import::ImportError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &str, field: crate::import::CandidateEditField, value: String) -> Result<(), crate::import::ImportError>);
@@ -828,6 +822,8 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(import, import_probe_candidate_durations => probe_candidate_durations(candidate_key: &str, units: Vec<crate::import::AudioFile>) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

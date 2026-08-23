@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Bae.Desktop;
@@ -69,9 +71,7 @@ public sealed class ImportIdentitySectionTests
     {
         Assert.Empty(Build(ImportIdentity.Release).GetLogicalDescendants().OfType<Expander>());
 
-        var settled = Build(
-            ImportIdentity.Release,
-            pressing: new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"));
+        var settled = Build(ImportIdentity.Release, edit: Edit());
 
         var expander = Assert.Single(settled.GetLogicalDescendants().OfType<Expander>());
         var card = settled
@@ -82,61 +82,61 @@ public sealed class ImportIdentitySectionTests
         Assert.Contains(expander, card.GetLogicalDescendants());
     }
 
-    // The card states the claim; it does not set it. The one control that does
-    // sits beside the action that commits it, and says the claim in a word.
+    // The card says what identified the release, as a badge — a statement, not
+    // a control. A release a typed search turned up has no evidence about the
+    // disc, so it draws no badge rather than an empty one.
     [AvaloniaFact]
-    public void TheCardStatesTheClaimAndTheCheckboxIsWhatSetsIt()
+    public void TheCardBadgesWhatIdentifiedTheRelease()
     {
+        var discId = Build(
+            ImportIdentity.Release,
+            edit: Edit(),
+            evidence: new BridgeClaimEvidence.DiscIdAlone());
+        Assert.Contains(Texts(discId), text => text == Loc.Chrome("signal.kind.disc_id"));
+
+        var barcode = Build(
+            ImportIdentity.Release,
+            edit: Edit(),
+            evidence: new BridgeClaimEvidence.Barcode());
+        Assert.Contains(Texts(barcode), text => text == Loc.Chrome("signal.kind.barcode"));
+
+        var searched = Build(
+            ImportIdentity.Release,
+            edit: Edit(),
+            evidence: new BridgeClaimEvidence.Search());
+        Assert.DoesNotContain(Texts(searched), text => text == Loc.Chrome("signal.kind.disc_id"));
+        Assert.DoesNotContain(Texts(searched), text => text == Loc.Chrome("signal.kind.barcode"));
+
+        // Nothing in the card sets what identified the release: it is a fact
+        // about the lookup, not a choice.
+        Assert.Empty(discId.GetLogicalDescendants().OfType<CheckBox>());
+    }
+
+    // Leaving a release field writes that one field, once, with what was typed.
+    [AvaloniaFact]
+    public void LeavingAReleaseFieldWritesThatField()
+    {
+        var written = new List<(BridgeCandidateEditField Field, string Value)>();
         var section = Build(
             ImportIdentity.Release,
-            pressing: new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
-            claim: Claim(BridgeClaimLevel.Exact));
+            edit: Edit(),
+            onEditField: (field, value) => written.Add((field, value)));
 
-        Assert.Contains(Texts(section), text => text == Loc.Core("ui.import.claim.pressing", "release", "CD · 1996"));
-        Assert.Empty(section.GetLogicalDescendants().OfType<CheckBox>());
+        var boxes = section.GetLogicalDescendants().OfType<TextBox>().ToList();
+        var year = boxes.First(box => box.Text == "1996");
+        year.Text = "2011";
+        year.RaiseEvent(new RoutedEventArgs(InputElement.LostFocusEvent));
 
-        var exact = ClaimLineView.ExactCheckbox(BridgeClaimLevel.Exact, isReading: false);
-        Assert.Equal(Loc.Core("ui.import.claim.level.exact"), exact.Content);
-        Assert.True(exact.IsChecked);
-        Assert.Equal(BridgeClaimLevel.Exact, ClaimLineView.LevelOf(exact));
-
-        exact.IsChecked = false;
-        Assert.Equal(BridgeClaimLevel.Approximate, ClaimLineView.LevelOf(exact));
-
-        // An album-level claim opens unchecked, so the box always states the
-        // claim the card is stating in words.
-        Assert.False(ClaimLineView.ExactCheckbox(BridgeClaimLevel.Approximate, isReading: false).IsChecked);
+        Assert.Equal(
+            new[] { (BridgeCandidateEditField.Year, "2011") },
+            written);
     }
 
-    // A pressing claim names the release inside its own sentence; only the
-    // album claim leaves it unsaid, so only that one draws the second line.
-    [AvaloniaFact]
-    public void OnlyTheAlbumClaimNamesWhereTheMetadataCameFrom()
-    {
-        var pressing = new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012");
-        var exact = Build(ImportIdentity.Release, pressing: pressing, claim: Claim(BridgeClaimLevel.Exact));
-        var album = Build(ImportIdentity.Release, pressing: pressing, claim: Claim(BridgeClaimLevel.Approximate));
-
-        Assert.Contains(Texts(exact), text => text == Loc.Core("ui.import.claim.pressing", "release", "CD · 1996"));
-        Assert.DoesNotContain(Texts(exact), text => text.StartsWith(MetadataFromPrefix()));
-
-        Assert.Contains(Texts(album), text => text == Loc.Core("ui.import.claim.album"));
-        Assert.Contains(Texts(album), text => text.StartsWith(MetadataFromPrefix()));
-    }
-
-    /// <summary>The metadata-from sentence with its release slot emptied, so the
-    /// assertion matches the sentence rather than restating a translation.</summary>
-    private static string MetadataFromPrefix() =>
-        Loc.Core("ui.import.claim.metadata_from", "release", string.Empty).TrimEnd();
-
-    private static BridgeClaimLine Claim(BridgeClaimLevel level) => new(
-        Choice: level is BridgeClaimLevel.Exact
-            ? new BridgeIdentityChoice.Exact("rel-1", BridgeMetadataSource.MusicBrainz)
-            : new BridgeIdentityChoice.Approximate("rel-1", BridgeMetadataSource.MusicBrainz),
-        Level: level,
-        Evidence: new BridgeClaimEvidence.DiscIdAlone(),
-        Release: "CD · 1996",
-        TrackCount: 12);
+    private static BridgeRawReleaseEdit Edit() => new(
+        "Album Title",
+        "Artist Name",
+        new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
+        Array.Empty<BridgeRawTrackEdit>());
 
     private static IReadOnlyList<string> Texts(Control section) =>
         section.GetLogicalDescendants().OfType<TextBlock>()
@@ -145,33 +145,29 @@ public sealed class ImportIdentitySectionTests
     private static Control Build(
         ImportIdentity identity,
         bool isReading = false,
-        BridgeRawPressingEdit? pressing = null,
-        BridgeClaimLine? claim = null,
-        System.Action<ImportIdentity>? onSetIdentity = null) =>
+        BridgeRawReleaseEdit? edit = null,
+        BridgeClaimEvidence? evidence = null,
+        System.Action<ImportIdentity>? onSetIdentity = null,
+        System.Action<BridgeCandidateEditField, string>? onEditField = null) =>
         new ImportIdentitySection
         {
             Identity = identity,
             FolderName = "Folder Name",
             FormatLabel = "FLAC",
-            HasSettled = pressing is not null,
+            HasSettled = edit is not null,
             CommitRow = null,
             Title = "Album Title",
-            AlbumTitle = pressing is null ? string.Empty : "Album Title",
-            AlbumArtistText = pressing is null ? string.Empty : "Artist Name",
+            Edit = edit,
             MetaLine = "CD · 1996",
-            Claim = claim,
-            HasPick = claim is not null,
+            Evidence = evidence,
+            HasPick = evidence is not null,
             IsReading = isReading,
             LoadCover = null,
             HasCoverOptions = false,
-            Pressing = pressing,
             OnSetIdentity = onSetIdentity ?? (_ => { }),
-            OnSetClaimLevel = _ => { },
             OnFindRelease = () => { },
             OnEditCover = () => { },
-            OnAlbumTitle = _ => { },
-            OnAlbumArtist = _ => { },
-            OnPressing = _ => { },
+            OnEditField = onEditField ?? ((_, _) => { }),
         }.Build();
 
     private static IReadOnlyList<Button> Buttons(Control section) =>

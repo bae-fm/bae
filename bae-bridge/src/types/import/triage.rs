@@ -487,44 +487,6 @@ impl BridgeIdentityPick {
     }
 }
 
-/// A candidate's decided identity with everything the pane seeds from it —
-/// what the pick command and the selection query both return, so a fresh
-/// launch renders exactly what the click rendered. Mirror of
-/// `bae_core::import::DecidedIdentity`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeDecidedIdentity {
-    Release {
-        source: BridgeMetadataSource,
-        release_id: String,
-        prefetch: BridgeReleasePrefetch,
-    },
-    Unknown {
-        seed: BridgeReleaseUserEdit,
-        mapping: BridgeMappingTable,
-    },
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeDecidedIdentity {
-    pub(crate) fn from_core(answer: bae_core::import::DecidedIdentity) -> Self {
-        match answer {
-            bae_core::import::DecidedIdentity::Release {
-                source,
-                release_id,
-                prefetch,
-            } => Self::Release {
-                source: BridgeMetadataSource::from_core(source),
-                release_id,
-                prefetch: BridgeReleasePrefetch::from_core(prefetch),
-            },
-            bae_core::import::DecidedIdentity::Unknown { seed, mapping } => Self::Unknown {
-                seed: BridgeReleaseUserEdit::from_core(seed),
-                mapping: BridgeMappingTable::from_core(mapping),
-            },
-        }
-    }
-}
-
 /// One candidate's sidebar row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageRow {

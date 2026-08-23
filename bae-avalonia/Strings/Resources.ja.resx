@@ -381,6 +381,7 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} 件を取り込む</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>このまま取り込む</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>再試行</value></data>
+  <data name="import.measuring_length" xml:space="preserve"><value>再生時間を読み取り中</value></data>
   <data name="import.row.conflict" xml:space="preserve"><value>競合</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>手動で検索</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失敗</value></data>

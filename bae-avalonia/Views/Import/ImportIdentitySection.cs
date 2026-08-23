@@ -52,20 +52,19 @@ internal sealed class ImportIdentitySection
     /// there is something, and the folder's own name before that.</summary>
     internal required string Title { get; init; }
 
-    /// <summary>The album title as the field holds it — blank until something is
-    /// settled, where <see cref="Title"/> stands the folder's name in.</summary>
-    internal required string AlbumTitle { get; init; }
-
-    internal required string AlbumArtistText { get; init; }
+    /// <summary>The metadata form: the pick's own values with whatever has been
+    /// typed over them. Null while nothing is picked.</summary>
+    internal required BridgeRawReleaseEdit? Edit { get; init; }
 
     /// <summary>"CD · 1996 · 9 tracks", from what is being edited rather than
     /// what was fetched.</summary>
     internal required string MetaLine { get; init; }
 
-    /// <summary>What this import claims to hold and where its metadata came
-    /// from, as core reads it back off the stored pick. Null before a pick, and
-    /// for Unknown, which claims nothing.</summary>
-    internal required BridgeClaimLine? Claim { get; init; }
+    /// <summary>What identified the picked release, drawn as the badge the
+    /// pressing rows carry. Null before a pick, for a folder read as its own
+    /// tags, and for a release a typed search found — a badge there would claim
+    /// evidence about the disc there is none of.</summary>
+    internal required BridgeClaimEvidence? Evidence { get; init; }
 
     /// <summary>Whether a release has been picked — what the change control
     /// reads as.</summary>
@@ -81,35 +80,18 @@ internal sealed class ImportIdentitySection
 
     internal required bool HasCoverOptions { get; init; }
 
-    /// <summary>The pressing this import records, edited behind the card's own
-    /// disclosure alongside the album fields. Null until something has been
-    /// settled for this folder and there is a release to edit at all.</summary>
-    internal required BridgeRawPressingEdit? Pressing { get; init; }
-
     /// <summary>The card's commit row — what is unanswered, storage, and the
     /// Import action. Null while there is nothing to commit.</summary>
     internal required Control? CommitRow { get; init; }
 
     internal required Action<ImportIdentity> OnSetIdentity { get; init; }
 
-    /// <summary>Set how far the claim on the picked release reaches. Re-picks
-    /// the same release at that level, which is what stores it.</summary>
-    internal required Action<BridgeClaimLevel> OnSetClaimLevel { get; init; }
-
     internal required Action OnFindRelease { get; init; }
 
     internal required Action OnEditCover { get; init; }
 
-    internal required Action<string> OnAlbumTitle { get; init; }
-
-    internal required Action<string> OnAlbumArtist { get; init; }
-
-    internal required Action<BridgeRawPressingEdit> OnPressing { get; init; }
-
-    /// <summary>Where the card states the claim. The pane replaces its content
-    /// when an edit lowers the claim, because a keystroke must not rebuild the
-    /// field it was typed into.</summary>
-    internal ContentControl? ClaimHost { get; private set; }
+    /// <summary>Store one album-level field as the user left it.</summary>
+    internal required Action<BridgeCandidateEditField, string> OnEditField { get; init; }
 
     internal Control Build()
     {
@@ -196,18 +178,11 @@ internal sealed class ImportIdentitySection
         };
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
         summary.Children.Add(title);
-        summary.Children.Add(ImportPaneUi.Cell(AlbumArtistText, secondary: true));
+        summary.Children.Add(ImportPaneUi.Cell(Edit?.AlbumArtistText ?? string.Empty, secondary: true));
         summary.Children.Add(ImportPaneUi.Cell(MetaLine, secondary: true));
-        // What this import claims, with the control that lowers it to the album.
-        // An import that claims nothing has no source release to name.
-        if (Claim is { } claim)
+        if (EvidenceBadge() is { } badge)
         {
-            ClaimHost = new ContentControl
-            {
-                Content = ClaimLineView.Build(claim),
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            };
-            summary.Children.Add(ClaimHost);
+            summary.Children.Add(badge);
         }
         Grid.SetColumn(summary, 1);
         grid.Children.Add(summary);
@@ -226,7 +201,7 @@ internal sealed class ImportIdentitySection
         // fields add up to, and this is where a wrong year or a missing catalog
         // number gets fixed before it is written. The whole header line is the
         // control — a caret is a target the width of a glyph.
-        if (Pressing is not null)
+        if (Edit is not null)
         {
             body.Children.Add(new Expander
             {
@@ -283,18 +258,31 @@ internal sealed class ImportIdentitySection
         return button;
     }
 
+    /// <summary>What turned this release up, in the same chip the pressing rows
+    /// carry. A typed search is not evidence about the disc, so it draws
+    /// nothing.</summary>
+    private Control? EvidenceBadge() => Evidence switch
+    {
+        BridgeClaimEvidence.DiscIdAlone or BridgeClaimEvidence.DiscIdShared =>
+            SignalBadgeRow.Chip(Loc.Chrome("signal.kind.disc_id")),
+        BridgeClaimEvidence.Barcode => SignalBadgeRow.Chip(Loc.Chrome("signal.kind.barcode")),
+        _ => null,
+    };
+
     // The release's own fields: the album line the card states, and the pressing
-    // this import records.
+    // this import records. Each field is a row under the candidate, so leaving
+    // one writes it and the pane's next value redraws.
     private Control ReleaseFields()
     {
+        var edit = Edit!;
         var column = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
 
         var album = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 8 };
-        Add(album, 0, 0, "edit.field.album_title", AlbumTitle, OnAlbumTitle);
-        Add(album, 1, 0, "edit.field.album_artists", AlbumArtistText, OnAlbumArtist);
+        Add(album, 0, 0, "edit.field.album_title", edit.AlbumTitle, BridgeCandidateEditField.AlbumTitle);
+        Add(album, 1, 0, "edit.field.album_artists", edit.AlbumArtistText, BridgeCandidateEditField.AlbumArtistText);
         column.Children.Add(album);
 
-        var pressing = Pressing!;
+        var pressing = edit.Pressing;
         var grid = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("*,*,*"),
@@ -302,30 +290,24 @@ internal sealed class ImportIdentitySection
             ColumnSpacing = 8,
             RowSpacing = 6,
         };
-        Add(grid, 0, 0, "edit.field.year", pressing.Year,
-            value => OnPressing(pressing with { Year = value }));
-        Add(grid, 1, 0, "edit.field.format", pressing.Format,
-            value => OnPressing(pressing with { Format = value }));
-        Add(grid, 2, 0, "edit.field.label", pressing.Label,
-            value => OnPressing(pressing with { Label = value }));
-        Add(grid, 0, 1, "edit.field.catalog_number", pressing.CatalogNumber,
-            value => OnPressing(pressing with { CatalogNumber = value }));
-        Add(grid, 1, 1, "edit.field.country", pressing.Country,
-            value => OnPressing(pressing with { Country = value }));
-        Add(grid, 2, 1, "edit.field.barcode", pressing.Barcode,
-            value => OnPressing(pressing with { Barcode = value }));
+        Add(grid, 0, 0, "edit.field.year", pressing.Year, BridgeCandidateEditField.Year);
+        Add(grid, 1, 0, "edit.field.format", pressing.Format, BridgeCandidateEditField.Format);
+        Add(grid, 2, 0, "edit.field.label", pressing.Label, BridgeCandidateEditField.Label);
+        Add(grid, 0, 1, "edit.field.catalog_number", pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber);
+        Add(grid, 1, 1, "edit.field.country", pressing.Country, BridgeCandidateEditField.Country);
+        Add(grid, 2, 1, "edit.field.barcode", pressing.Barcode, BridgeCandidateEditField.Barcode);
         column.Children.Add(grid);
         return column;
     }
 
-    private static void Add(Grid grid, int column, int row, string labelKey, string value, Action<string> write)
+    private void Add(
+        Grid grid, int column, int row, string labelKey, string value, BridgeCandidateEditField field)
     {
-        var field = DialogUi.Field(Loc.Chrome(labelKey), out var box);
-        box.Text = value;
+        var control = DialogUi.Field(Loc.Chrome(labelKey), out var box);
         box.FontSize = 12;
-        box.TextChanged += (_, _) => write(box.Text ?? string.Empty);
-        Grid.SetColumn(field, column);
-        Grid.SetRow(field, row);
-        grid.Children.Add(field);
+        box.Commits(value, typed => OnEditField(field, typed));
+        Grid.SetColumn(control, column);
+        Grid.SetRow(control, row);
+        grid.Children.Add(control);
     }
 }

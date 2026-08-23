@@ -62,16 +62,6 @@ struct ImportView: View {
             .onChange(of: uiStore.selectedFolderCandidates) { _, _ in
                 uiStore.lightbox = nil
             }
-            // Fires on both paths to a seedable pane: selecting a row whose
-            // identity is already decided — a settled single match, or a
-            // choice made before a restart — and the decision landing while
-            // its row is selected. `initial` covers a selection that predates
-            // this view — the Import tab re-entered with the row selected.
-            .onChange(of: pickedResume, initial: true) { _, picked in
-                if let picked {
-                    applyPickedResume(picked)
-                }
-            }
         }
     }
 

@@ -616,31 +616,43 @@ internal sealed class ImportStore : IDisposable
         return true;
     }
 
-    // The mapping table for a folder nobody has picked a release for. Null when
-    // the session moved on, and null with the reason on the import banner when
-    // the read failed.
-    public async Task<BridgeMappingTable?> CandidateMapping(string key)
+    // Record the cover this candidate commits with. Returns whether it landed.
+    public async Task<bool> SetCandidateCover(string key, BridgeCoverSelection cover) =>
+        await Write(() => _import.SetCandidateCover(key, cover));
+
+    // Record one album-level metadata field as the user left it.
+    public async Task<bool> SetCandidateEditField(
+        string key, BridgeCandidateEditField field, string value) =>
+        await Write(() => _import.SetCandidateEditField(key, field, value));
+
+    // Record one mapping-table row as the user left it.
+    public async Task<bool> SetCandidateTrackEdit(string key, BridgeRawTrackEdit track) =>
+        await Write(() => _import.SetCandidateTrackEdit(key, track));
+
+    // Take one mapping-table row out of the import.
+    public async Task<bool> DropCandidateTrack(string key, string trackId) =>
+        await Write(() => _import.DropCandidateTrack(key, trackId));
+
+    // Run one write and put its failure on the import banner. Returns whether
+    // it landed; a session that moved on lands nothing and says nothing.
+    private async Task<bool> Write(Func<Task<(bool Current, string? Error)>> operation)
     {
-        var (current, result) = await _import.CandidateMapping(key);
+        var (current, error) = await operation();
         if (!current)
         {
-            return null;
+            return false;
         }
-        var (mapping, error) = result;
-        if (error is not null || mapping is null)
+        if (error is not null)
         {
-            _showError(Loc.Chrome("import.error_title"), error ?? Loc.Chrome("import.failed"));
-            return null;
+            _showError(Loc.Chrome("import.error_title"), error);
+            return false;
         }
-        return mapping;
+        return true;
     }
 
     // Put one of a candidate's files in a role, or put it back. Core persists
-    // the decision and clears the stored identify verdict; the triage queue is
-    // re-read so the row's counts follow the shape the folder now has. Returns
-    // whether the change landed — the mapping pane drops the excluded file's
-    // slot rows itself rather than re-prefetching over the user's edits, so it
-    // has to know the write succeeded before it does.
+    // the decision and clears the stored identify verdict; the folder is a
+    // different set of rows afterwards, and the per-candidate read draws them.
     public async Task<bool> SetFileRole(string key, string fileId, BridgeFileRoleChoice choice)
     {
         var (current, error) = await _import.SetFileRole(key, fileId, choice);
