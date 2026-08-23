@@ -66,14 +66,17 @@ internal sealed class ImportMappingPane : UserControl
     private bool _storagePinned = true;
 
     private ImportMappingTable? _table;
-    private readonly TextBlock _commitError;
+
+    // What the last commit refused with. A string and not the control that
+    // shows it: the pane rebuilds its tree on every render, and a control held
+    // across renders would be added to a second parent on the next one.
+    private string _commitError = string.Empty;
 
     internal ImportMappingPane(AppService app, ImportDialogs dialogs)
     {
         _app = app;
         _import = app.ImportStore;
         _dialogs = dialogs;
-        _commitError = DialogUi.Danger();
 
         Content = _content;
         _import.PreviewElapsedChanged += OnPreviewChanged;
@@ -194,7 +197,7 @@ internal sealed class ImportMappingPane : UserControl
         _searchAlbum = _candidate?.Name ?? string.Empty;
         _searchSource = 0;
         _searchError = string.Empty;
-        _commitError.IsVisible = false;
+        _commitError = string.Empty;
     }
 
     // ── Deciding the identity ────────────────────────────────────────────────
@@ -672,7 +675,12 @@ internal sealed class ImportMappingPane : UserControl
 
         var column = new StackPanel { Spacing = 6 };
         column.Children.Add(row);
-        column.Children.Add(_commitError);
+        if (_commitError.Length > 0)
+        {
+            var refusal = DialogUi.Danger();
+            refusal.Text = _commitError;
+            column.Children.Add(refusal);
+        }
         return column;
     }
 
@@ -712,8 +720,8 @@ internal sealed class ImportMappingPane : UserControl
         }
         if (error is not null)
         {
-            _commitError.Text = error;
-            _commitError.IsVisible = true;
+            _commitError = error;
+            Render();
             return;
         }
         Clear();
