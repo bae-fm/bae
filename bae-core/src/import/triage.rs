@@ -5,8 +5,9 @@
 //! it takes a bulk-import checkbox — and every one of them is a rule rather
 //! than a rendering. [`crate::identify::view`] is the precedent: shape the
 //! state for the surfaces once, here, so both desktop UIs render the same
-//! decisions instead of each re-deriving them from a [`FolderCandidate`] and a
-//! [`TerminalVerdict`].
+//! decisions instead of each re-deriving them from a
+//! [`FolderCandidate`](crate::import::FolderCandidate) and a
+//! [`TerminalVerdict`](crate::identify::TerminalVerdict).
 //!
 //! **Nothing here formats text.** Years, counts, durations and byte sizes cross
 //! as numbers, and a disagreement crosses as its own [`NeedsYou`] variant

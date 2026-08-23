@@ -602,12 +602,16 @@
             entryCount: 2
         )
 
+        /// The boundary card of the release-queue fixture as a list item — the
+        /// one row a queue narrowed to that folder holds.
+        static let releaseQueueBoundaryItem = boundaryItem(releaseQueueBoundary)
+
         private static let releaseQueueItems =
             [releaseQueueGroupHeader]
             + releaseQueueRows[0...1].map(candidateItem)
             + [
                 candidateItem(releaseQueueRows[2]),
-                boundaryItem(releaseQueueBoundary),
+                releaseQueueBoundaryItem,
             ]
 
         private static let releaseQueueSummary = importQueueSummary(

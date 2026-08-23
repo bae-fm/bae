@@ -60,7 +60,6 @@ struct ImportReleaseBoundaryViewTests {
     func decisionClearsSelectionBeforeCoreCompletes() async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
-        uiStore.setImportCandidateFilterText("Box")
         uiStore.setFolderCandidateSelection([
             "candidate:selected-before-decision"
         ])
@@ -69,15 +68,25 @@ struct ImportReleaseBoundaryViewTests {
                 try await Task.sleep(for: .seconds(30))
             }
         )
+        // The boundary card is the tab's only row, so the click below lands on
+        // its decision. Which rows a tab holds is core's answer now, so that is
+        // stated as a narrower fixture rather than as a filter the view applies.
+        let scene = PreviewData.releaseQueueScene()
+        let slot = ImportListSlot.preview(
+            importStore: scene.store,
+            uiStore: uiStore,
+            items: [PreviewData.releaseQueueBoundaryItem]
+        )
         let size = NSSize(width: 1200, height: 760)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportView()
                 .environment(uiStore)
                 .importPreviewEnvironment()
                 .environment(uiStore)
+                .environment(slot)
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
-                .environment(PreviewData.releaseQueueScene().store)
+                .environment(scene.store)
                 .environment(importer),
             size: size
         )

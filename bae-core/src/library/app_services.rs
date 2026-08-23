@@ -769,9 +769,14 @@ impl AppServices {
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_watched_folders => watched_folders() -> Vec<crate::import::WatchedFolder>);
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(all(
+        any(test, feature = "test-utils"),
+        not(any(target_os = "ios", target_os = "android"))
+    ))]
     delegate_sync!(import, import_emit_event_for_test => emit_event_for_test(event: crate::import::ImportEvent) -> ());
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);

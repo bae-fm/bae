@@ -134,10 +134,11 @@ pub enum NeedsYouReason {
 /// Without this the row cannot tell three different things apart, and the
 /// design's dimmed group is supposed to show which: a candidate the sweep has
 /// not reached, one being worked on right now, and one whose run *finished* but
-/// produced nothing storable. The third is not rare —
-/// [`TerminalVerdict::try_from`] refuses any terminal state carrying a recorded
-/// lookup failure, so every network blip lands there — and rendering it as
-/// "working on it" would promise progress that nothing is making.
+/// produced nothing storable. The third is not rare — the conversion into
+/// [`TerminalVerdict`](crate::identify::TerminalVerdict) refuses any terminal
+/// state carrying a recorded lookup failure, so every network blip lands there
+/// — and rendering it as "working on it" would promise progress that nothing is
+/// making.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdentifyPhase {
     /// Nothing has run yet: the sweep has not reached this candidate.

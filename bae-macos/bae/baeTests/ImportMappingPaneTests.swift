@@ -115,7 +115,8 @@ struct ImportMappingPaneTests {
         "restored and arriving conflicts appear inline until identity settles"
     )
     func conflictsAppearInlineUntilIdentitySettles() async throws {
-        let store = PreviewData.importTabScene().store
+        let scene = PreviewData.importTabScene()
+        let store = scene.store
         let key = PreviewData.importTabConflictCandidate.key
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
@@ -126,6 +127,7 @@ struct ImportMappingPaneTests {
                 .environment(uiStore)
                 .importPreviewEnvironment()
                 .environment(uiStore)
+                .environment(scene.slot(uiStore: uiStore))
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
                 .environment(store)

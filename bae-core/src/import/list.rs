@@ -6,7 +6,7 @@
 //! every commit and carried across the bridge twice. What the list actually
 //! shows is a placement per row and a handful of columns, so that is what the
 //! read gathers: [`crate::db::ImportQueueRows`] is placement columns and
-//! nothing else, [`flatten`] turns them plus the requested view into an
+//! nothing else, `flatten` turns them plus the requested view into an
 //! ordered vector of item references, and only the references inside the
 //! requested windows are turned into items.
 //!
