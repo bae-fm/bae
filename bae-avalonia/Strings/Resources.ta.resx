@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>வெளியீட்டு விவரங்கள்</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% இறக்குமதி செய்யப்படுகிறது</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>அடையாளம் காணலை மீண்டும் இயக்கு</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>வருடப்படுகிறது…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>நிலைநிறுத்தப்பட்டது</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>மேகம்</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>நூலகத்தில் பார்</value></data>

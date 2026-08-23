@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>détails de la sortie</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>import {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>relancer l'identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>analyse…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Épinglé</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>voir dans la bibliothèque</value></data>

@@ -72,6 +72,17 @@ struct ImportCandidateListContent: View {
         (listSlot.list?.totalCount ?? 0) == 0
     }
 
+    /// Where each watched root's scan stands, by path — what the folder menu
+    /// marks its entries with.
+    private var scanStatuses: [String: BridgeFolderScanStatus] {
+        Dictionary(
+            summary.folderScanStatuses.map {
+                ($0.watchedFolderPath, $0.status)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
     /// Go to the first row the identify count is still waiting on. `nil` when
     /// there is none to go to.
     private var goToFirstUnidentified: (() -> Void)? {
@@ -123,6 +134,7 @@ struct ImportCandidateListContent: View {
                     CandidateListMenu(
                         watchedFolders: importStore.watchedFolders,
                         refreshingFolders: uiStore.refreshingWatchedFolders,
+                        scanStatuses: scanStatuses,
                         onAddFolder: onAddFolder,
                         onRefreshFolder: onRefreshFolder,
                         onRemoveFolder: onRemoveFolder
@@ -131,8 +143,6 @@ struct ImportCandidateListContent: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 10)
-
-                folderScanStatuses
             }
         } content: {
             if activeTabIsEmpty {
@@ -302,73 +312,8 @@ struct FolderReleaseBoundaryRow: View {
     }
 }
 
-/// The watched-folder scan lines under the header: one per root that is
-/// being walked or failed to walk, each with its own retry.
-extension ImportCandidateListContent {
-    private var folderScanStatuses: some View {
-        ForEach(
-            summary.folderScanStatuses,
-            id: \.watchedFolderPath
-        ) { scan in
-            switch scan.status {
-            case .scanning:
-                folderScanStatus(
-                    scan,
-                    icon: "arrow.clockwise",
-                    text: String(localized: "Scanning\u{2026}"),
-                    tint: .secondary
-                )
-            case .failed(let error):
-                folderScanStatus(
-                    scan,
-                    icon: "exclamationmark.triangle.fill",
-                    text: error,
-                    tint: .red
-                )
-            case .complete:
-                EmptyView()
-            }
-        }
-    }
-
-    private func folderScanStatus(
-        _ scan: BridgeWatchedFolderScanStatus,
-        icon: String,
-        text: String,
-        tint: Color
-    ) -> some View {
-        let refreshing = uiStore.refreshingWatchedFolders
-            .contains(scan.watchedFolderPath)
-        return HStack(alignment: .firstTextBaseline, spacing: 7) {
-            Image(systemName: icon)
-            Text(
-                verbatim:
-                    "\(scan.watchedFolderName) (\(scan.watchedFolderPath)): \(text)"
-            )
-            .lineLimit(2)
-            .truncationMode(.middle)
-            Spacer(minLength: 4)
-            Button(refreshing ? "Refreshing\u{2026}" : "Refresh") {
-                onRefreshFolder(
-                    BridgeWatchedFolder(
-                        path: scan.watchedFolderPath,
-                        name: scan.watchedFolderName
-                    )
-                )
-            }
-            .disabled(refreshing)
-            .controlSize(.small)
-        }
-        .font(.system(size: 11.5))
-        .foregroundStyle(tint)
-        .padding(.horizontal, 14)
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 /// The list itself. In an extension so the view's body and the chrome it
-/// builds — tabs, filter, progress — read as one piece above them.
+/// builds — tabs, filter, folders — read as one piece above them.
 extension ImportCandidateListContent {
     private var selectedReadyKeys: Set<String> {
         let currentReady = Set(summary.ready.map(\.candidateKey))

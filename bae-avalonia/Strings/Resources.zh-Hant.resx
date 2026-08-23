@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>發行版本詳情</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>正在匯入 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>重新執行識別</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>正在掃描…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>已釘選</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>雲端</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>在資料庫中檢視</value></data>

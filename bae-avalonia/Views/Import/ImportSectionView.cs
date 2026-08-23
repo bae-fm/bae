@@ -66,7 +66,10 @@ internal sealed partial class ImportSectionView : UserControl
     private readonly TextBox _filterBox = new() { BorderThickness = new Thickness(0), Background = Brushes.Transparent };
     private readonly Button _clearFilterButton;
     private readonly Button _listMenuButton;
-    private readonly Panel _progressHost = new();
+
+    // The mark on the menu's trigger when a watched root's scan failed, so
+    // the failure is findable without opening the menu.
+    private readonly PathIcon _listMenuWarning = Icons.Glyph(Icons.Warning, 10, "BaeDangerBrush");
 
     // The sweep's progress, in the filter row: a ring and how many candidates
     // it still has to reach, opening the line itself. Built once and updated
@@ -124,7 +127,7 @@ internal sealed partial class ImportSectionView : UserControl
         _progressLine = BuildProgressLine();
         _progressButton = BuildProgressButton();
 
-        _listMenuButton = ChromeButton("⋯", 15);
+        _listMenuButton = ChromeButton("⋯", 15, _listMenuWarning);
         _listMenuButton.Click += (_, _) => { _listMenuButton.Flyout = BuildListMenuFlyout(); _listMenuButton.Flyout.ShowAt(_listMenuButton); };
         Avalonia.Automation.AutomationProperties.SetName(_listMenuButton, Loc.Chrome("import.list_menu"));
 
@@ -162,7 +165,6 @@ internal sealed partial class ImportSectionView : UserControl
         var header = new StackPanel { Spacing = 0 };
         header.Children.Add(BuildTabBarRow());
         header.Children.Add(BuildFilterRow());
-        header.Children.Add(_progressHost);
         var headerHost = new Border { Child = header };
         headerHost[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSurfaceBrush");
 
@@ -307,12 +309,24 @@ internal sealed partial class ImportSectionView : UserControl
     }
 
     // A borderless text button for the filter row's sort/add-folder controls —
-    // a symbol at `fontSize`, secondary-colored, no background until pressed.
-    private static Button ChromeButton(string symbol, double fontSize)
+    // a symbol at `fontSize`, secondary-colored, no background until pressed,
+    // with an optional mark beside the symbol.
+    private static Button ChromeButton(string symbol, double fontSize, Control? mark = null)
     {
+        var symbolText = new TextBlock { Text = symbol, FontSize = fontSize, VerticalAlignment = VerticalAlignment.Center };
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 2,
+            Children = { symbolText },
+        };
+        if (mark is not null)
+        {
+            content.Children.Add(mark);
+        }
         var button = new Button
         {
-            Content = new TextBlock { Text = symbol, FontSize = fontSize, VerticalAlignment = VerticalAlignment.Center },
+            Content = content,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             Padding = new Thickness(4),
@@ -345,10 +359,25 @@ internal sealed partial class ImportSectionView : UserControl
         add.Click += async (_, _) => await AddFolder();
         items.Add(add);
 
+        var scans = _import.Summary.FolderScanStatuses
+            .ToDictionary(scan => scan.WatchedFolderPath, scan => scan.Status);
         foreach (var folder in _import.WatchedFolders)
         {
             var path = folder.Path;
             var folderItem = new MenuItem { Header = folder.Name };
+            // A root being walked, or one whose walk failed, says so on its
+            // own entry — a failure carries what went wrong as its tooltip,
+            // which is where the header used to spell it out.
+            switch (scans.GetValueOrDefault(path))
+            {
+                case BridgeFolderScanStatus.Scanning:
+                    folderItem.Icon = new Spinner { Width = 12, Height = 12 };
+                    break;
+                case BridgeFolderScanStatus.Failed failed:
+                    folderItem.Icon = Icons.Glyph(Icons.Warning, 12, "BaeDangerBrush");
+                    ToolTip.SetTip(folderItem, failed.Error);
+                    break;
+            }
             var refreshing = _import.Interaction.IsRefreshing(path);
             var refresh = new MenuItem
             {
@@ -405,7 +434,8 @@ internal sealed partial class ImportSectionView : UserControl
         RenderTabBar();
         _clearFilterButton.IsVisible = _import.FilterText.Length > 0;
         RenderProgressIndicator();
-        RenderFolderScanStatuses();
+        _listMenuWarning.IsVisible = _import.Summary.FolderScanStatuses
+            .Any(scan => scan.Status is BridgeFolderScanStatus.Failed);
         RenderFootBar();
         ShowPendingSelection();
         _listView.Refresh();
@@ -492,69 +522,6 @@ internal sealed partial class ImportSectionView : UserControl
         button.Click += (_, _) => _import.SetActiveTab(tab);
         Grid.SetColumn(button, column);
         row.Children.Add(button);
-    }
-
-    private void RenderFolderScanStatuses()
-    {
-        _progressHost.Children.Clear();
-        var column = new StackPanel
-        {
-            Spacing = 7,
-            Margin = new Thickness(14, 0, 14, 12),
-        };
-        foreach (var scan in _import.Summary.FolderScanStatuses)
-        {
-            var prefix = $"{scan.WatchedFolderName} ({scan.WatchedFolderPath})";
-            var text = scan.Status switch
-            {
-                BridgeFolderScanStatus.Scanning =>
-                    $"{prefix}: {Loc.Chrome("import.scanning")}",
-                BridgeFolderScanStatus.Failed failed =>
-                    $"{prefix}: {failed.Error}",
-                _ => null,
-            };
-            if (text is null)
-            {
-                continue;
-            }
-            var status = new TextBlock
-            {
-                Text = text,
-                FontSize = 11.5,
-                MaxLines = 2,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-            };
-            status[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
-                scan.Status is BridgeFolderScanStatus.Failed
-                    ? "BaeDangerBrush"
-                    : "BaeTextSecondaryBrush");
-            var refreshing = _import.Interaction.IsRefreshing(scan.WatchedFolderPath);
-            var refresh = new Button
-            {
-                Content = Loc.Chrome(
-                    refreshing
-                        ? "import.folder.refreshing"
-                        : "import.folder.refresh"),
-                IsEnabled = !refreshing,
-                Padding = new Thickness(8, 3),
-            };
-            refresh.Click += (_, _) =>
-                _import.RefreshWatchedFolder(scan.WatchedFolderPath);
-            var statusRow = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-                ColumnSpacing = 8,
-            };
-            Grid.SetColumn(status, 0);
-            Grid.SetColumn(refresh, 1);
-            statusRow.Children.Add(status);
-            statusRow.Children.Add(refresh);
-            column.Children.Add(statusRow);
-        }
-        if (column.Children.Count > 0)
-        {
-            _progressHost.Children.Add(column);
-        }
     }
 
     // The sweep's progress, updated in place: the indicator leaves the filter

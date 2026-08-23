@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>릴리스 정보</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>가져오는 중 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>식별 다시 실행</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>스캔 중…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>고정됨</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>클라우드</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>라이브러리에서 보기</value></data>

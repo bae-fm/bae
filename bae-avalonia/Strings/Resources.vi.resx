@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>chi tiết bản phát hành</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>đang nhập {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>chạy lại nhận dạng</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>đang quét…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Đã ghim</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>Đám mây</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>xem trong thư viện</value></data>

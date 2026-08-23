@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>റിലീസ് വിവരങ്ങൾ</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ഇറക്കുമതി ചെയ്യുന്നു</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>തിരിച്ചറിയൽ വീണ്ടും പ്രവർത്തിപ്പിക്കുക</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>സ്കാൻ ചെയ്യുന്നു…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>പിൻ ചെയ്തു</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>ക്ലൗഡ്</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ലൈബ്രറിയിൽ കാണുക</value></data>

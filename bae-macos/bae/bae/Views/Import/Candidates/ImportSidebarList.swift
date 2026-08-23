@@ -3,9 +3,9 @@ import SwiftUI
 
 /// Shared sidebar layout: a surface-backed header above a divider, then the
 /// scrollable content below. Unlike a plain toolbar, this header holds
-/// several differently-padded sections (tab bar, filter row, scan progress)
-/// stacked vertically, so each owns its own padding rather than the shell
-/// applying one uniform inset.
+/// two differently-padded sections (tab bar, filter row) stacked vertically,
+/// so each owns its own padding rather than the shell applying one uniform
+/// inset.
 struct ImportSidebarList<Header: View, Content: View>: View {
     @ViewBuilder
     let header: () -> Header

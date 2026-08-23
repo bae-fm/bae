@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>podaci o izdanju</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>uvoz {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ponovno pokreni identifikaciju</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>skeniranje…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Prikvačeno</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>Oblak</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>prikaži u fonoteci</value></data>

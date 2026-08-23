@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>ಬಿಡುಗಡೆ ವಿವರಗಳು</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಯನ್ನು ಮತ್ತೆ ನಡೆಸಿ</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಲಾಗಿದೆ</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದಲ್ಲಿ ನೋಡಿ</value></data>

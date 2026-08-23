@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>リリース情報</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>取り込み中 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>識別を再実行</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>スキャン中…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>ピン留め済み</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>クラウド</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ライブラリで表示</value></data>

@@ -76,7 +76,6 @@
   <data name="import.pane.release_details" xml:space="preserve"><value>ریلیز کی تفصیلات</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% درآمد ہو رہا ہے</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>شناخت دوبارہ چلائیں</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>اسکین ہو رہا ہے…</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>پن شدہ</value></data>
   <data name="import.storage.cloud" xml:space="preserve"><value>کلاؤڈ</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>لائبریری میں دیکھیں</value></data>
