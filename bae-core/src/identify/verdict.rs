@@ -19,7 +19,7 @@
 //! `IdentifyState` calling a state "terminal" only means nothing is in
 //! flight — it says nothing about whether a lookup that fed it actually
 //! answered. `TryFrom` checks that separately, over every variant: a `Found`
-//! or `Conflict` can be reached with one signal's lookup having failed just
+//! can be reached with one signal's lookup having failed just
 //! as easily as `NotFoundAnywhere` can, and in every case what failed is
 //! evidence half-missing, not evidence against. Only a state whose context
 //! carries no recorded failure on either signal converts; everything else —
@@ -30,38 +30,26 @@
 //! this gate narrows *which* terminal states are storable, it doesn't make
 //! the terminal states themselves rarer.
 
-use super::combine::{GroupKey, ResultProvenance};
+use super::combine::ResultProvenance;
 use super::state::{IdentifyState, SignalsContext};
 use crate::import::search::MetadataResult;
 
 /// The identify pipeline's outcome once it can no longer change without new
-/// input from the user or a re-run. Built from [`IdentifyState`]'s four
-/// terminal variants (`Found`, `Conflict`, `NotFoundAnywhere`, `ManualOnly`);
+/// input from the user or a re-run. Built from [`IdentifyState`]'s three
+/// terminal variants (`Found`, `NotFoundAnywhere`, `ManualOnly`);
 /// `Idle` and `Triangulating` have no terminal verdict, hence the fallible
 /// conversion below.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TerminalVerdict {
-    /// One or more results, all in one release group — what `combine` produced
-    /// and the sidebar and Ready rule both work from directly.
+    /// One or more results — what `combine` produced, and what the sidebar and
+    /// the Ready rule both work from directly.
     Found {
         matches: Vec<MetadataResult>,
         track_count: u32,
-        group: GroupKey,
         /// Index-aligned with `matches`: which signal(s) produced or confirmed
         /// each one, for the sidebar's "matched on disc ID / barcode / text"
         /// evidence line.
         provenance: Vec<ResultProvenance>,
-    },
-    /// The signals disagreed: an empty intersection, or results spanning
-    /// several groups. Both signals' own result sets are kept so a reader can
-    /// show both sections without re-fetching.
-    Conflict {
-        discid_results: Vec<MetadataResult>,
-        barcode_results: Vec<MetadataResult>,
-        /// Which barcode produced `barcode_results`; `None` when nothing
-        /// matched.
-        matched_barcode: Option<String>,
-        track_count: u32,
     },
     /// Both signals ran and settled on zero results. Distinct from a transport
     /// failure — nothing about this candidate's row goes unwritten; "we looked
@@ -90,10 +78,10 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
         //   `Skipped` does. A single result reached this way passes the
         //   queue's Ready rule ("exactly one result") on evidence where half
         //   the cross-check never ran.
-        // - `Conflict` from a missing intersection partner. Two disc-ID
-        //   results and one barcode result that would have intersected to one
-        //   release instead reads as an unresolved multi-group disagreement
-        //   because the disc-ID lookup that would have narrowed it failed.
+        // - `Found` over a union from a missing intersection partner. Two
+        //   disc-ID results and one barcode result that would have intersected
+        //   to one release instead reads as three to pick between, because the
+        //   lookup that would have narrowed them failed.
         // - `NotFoundAnywhere` from both sides settling empty — a genuine
         //   double-empty search and a failed lookup are indistinguishable
         //   once `combine_results` sees two empty sets (see
@@ -113,7 +101,6 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
             IdentifyState::Found {
                 matches,
                 track_count,
-                group,
                 provenance,
                 // A live per-release check at read time, not a stored copy —
                 // see the module doc.
@@ -122,35 +109,8 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
             } => Ok(Self::Found {
                 matches,
                 track_count,
-                group,
                 provenance,
             }),
-
-            IdentifyState::Conflict { context } => {
-                let SignalsContext {
-                    discid_results,
-                    barcode_results,
-                    matched_barcode,
-                    track_count,
-                    // The raw signal inputs, the user's exclusions, and the
-                    // settled lookup failures (already consulted above) drive
-                    // re-triangulation in the reducer; a stored verdict
-                    // carries neither.
-                    disc_id: _,
-                    barcode_codes: _,
-                    had_barcode_source: _,
-                    catalogs: _,
-                    excluded: _,
-                    discid_failure: _,
-                    barcode_failure: _,
-                } = context;
-                Ok(Self::Conflict {
-                    discid_results: drop_library_status(discid_results),
-                    barcode_results: drop_library_status(barcode_results),
-                    matched_barcode,
-                    track_count,
-                })
-            }
 
             IdentifyState::NotFoundAnywhere { context: _ } => Ok(Self::NotFoundAnywhere),
 
@@ -164,26 +124,12 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
     }
 }
 
-fn drop_library_status(
-    pairs: Vec<(MetadataResult, crate::db::LibraryStatus)>,
-) -> Vec<MetadataResult> {
-    pairs.into_iter().map(|(result, _)| result).collect()
-}
-
 impl TerminalVerdict {
     /// Every release this verdict names — what a resumer checks live library
     /// status for before standing the state back up.
     pub fn named_releases(&self) -> Vec<&MetadataResult> {
         match self {
             Self::Found { matches, .. } => matches.iter().collect(),
-            Self::Conflict {
-                discid_results,
-                barcode_results,
-                ..
-            } => discid_results
-                .iter()
-                .chain(barcode_results.iter())
-                .collect(),
             Self::NotFoundAnywhere | Self::ManualOnly { .. } => Vec::new(),
         }
     }
@@ -191,8 +137,7 @@ impl TerminalVerdict {
     /// The identify state this stored verdict stands back up as — what opening
     /// an answered candidate shows without running anything.
     ///
-    /// The matches, provenance, and per-signal result sections are the stored
-    /// ones. The raw signal inputs (the disc ID value, barcode codes, catalog
+    /// The matches and their provenance are the stored ones. The raw signal inputs (the disc ID value, barcode codes, catalog
     /// candidates) are deliberately not: they are local, recomputable facts a
     /// re-run re-extracts, and the verdict never stored them — so the context
     /// carries none, and a resumed state has no signals toolbar. `status_of`
@@ -223,7 +168,6 @@ impl TerminalVerdict {
             Self::Found {
                 matches,
                 track_count,
-                group,
                 provenance,
             } => {
                 let library_statuses = matches.iter().map(status_of).collect();
@@ -231,39 +175,8 @@ impl TerminalVerdict {
                     matches,
                     library_statuses,
                     track_count,
-                    group,
                     provenance,
                     context: empty_context(track_count),
-                }
-            }
-            Self::Conflict {
-                discid_results,
-                barcode_results,
-                matched_barcode,
-                track_count,
-            } => {
-                let with_status = |results: Vec<MetadataResult>| {
-                    results
-                        .into_iter()
-                        .map(|result| {
-                            let status = status_of(&result);
-                            (result, status)
-                        })
-                        .collect::<Vec<_>>()
-                };
-                let barcode_results = with_status(barcode_results);
-                IdentifyState::Conflict {
-                    context: SignalsContext {
-                        // The stored disagreement is the two result sections;
-                        // `had_barcode_source` is re-derived from them because
-                        // barcode results can only have come from a barcode.
-                        had_barcode_source: !barcode_results.is_empty()
-                            || matched_barcode.is_some(),
-                        discid_results: with_status(discid_results),
-                        barcode_results,
-                        matched_barcode,
-                        ..empty_context(track_count)
-                    },
                 }
             }
             Self::NotFoundAnywhere => IdentifyState::NotFoundAnywhere {
@@ -284,7 +197,6 @@ impl TerminalVerdict {
 fn has_lookup_failure(state: &IdentifyState) -> bool {
     let context = match state {
         IdentifyState::Found { context, .. }
-        | IdentifyState::Conflict { context }
         | IdentifyState::NotFoundAnywhere { context }
         | IdentifyState::ManualOnly { context, .. } => context,
         IdentifyState::Idle | IdentifyState::Triangulating { .. } => return false,
@@ -363,10 +275,6 @@ mod tests {
             matches: vec![mk_result("rel-1")],
             library_statuses: vec![mk_status("rel-1")],
             track_count: 11,
-            group: GroupKey {
-                source: MetadataSource::MusicBrainz,
-                source_group_id: "group-1".to_string(),
-            },
             provenance: vec![ResultProvenance {
                 by_disc_id: true,
                 by_barcode: false,
@@ -376,7 +284,7 @@ mod tests {
         }
     }
 
-    /// `Found` keeps its matches, group, and provenance, and drops
+    /// `Found` keeps its matches and provenance, and drops
     /// `library_statuses` — that's re-checked live, not stored. `mk_context`
     /// carries no recorded failure, so this also stands as the positive case:
     /// a `Found` reached with both lookups completing converts and is what
@@ -391,10 +299,6 @@ mod tests {
             TerminalVerdict::Found {
                 matches: vec![mk_result("rel-1")],
                 track_count: 11,
-                group: GroupKey {
-                    source: MetadataSource::MusicBrainz,
-                    source_group_id: "group-1".to_string(),
-                },
                 provenance: vec![ResultProvenance {
                     by_disc_id: true,
                     by_barcode: false,
@@ -427,13 +331,12 @@ mod tests {
         );
     }
 
-    /// `Conflict` keeps both signals' result sets (minus library status) and
-    /// the matched barcode, dropping the raw inputs the reducer needs to
-    /// re-triangulate but a stored verdict does not. Both `discid_failure` and
-    /// `barcode_failure` are `None` here, so this also stands as the positive
-    /// case for `Conflict`.
+    /// Signals that share no result settle as one `Found` over their union, so
+    /// what stores is a single match list — not two sections. Both
+    /// `discid_failure` and `barcode_failure` are `None` here, so this also
+    /// stands as the positive case for a union-shaped `Found`.
     #[test]
-    fn conflict_drops_library_status_and_raw_inputs() {
+    fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
         let context = SignalsContext {
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
             barcode_codes: vec![],
@@ -447,27 +350,36 @@ mod tests {
             matched_barcode: Some("012345".to_string()),
             track_count: 9,
         };
-        let verdict = TerminalVerdict::try_from(IdentifyState::Conflict { context }).unwrap();
+        let state = crate::identify::state::re_derive_for_tests(context);
+        let verdict = TerminalVerdict::try_from(state).unwrap();
         assert_eq!(
             verdict,
-            TerminalVerdict::Conflict {
-                discid_results: vec![mk_result("rel-a")],
-                barcode_results: vec![mk_result("rel-b")],
-                matched_barcode: Some("012345".to_string()),
+            TerminalVerdict::Found {
+                matches: vec![mk_result("rel-a"), mk_result("rel-b")],
                 track_count: 9,
+                provenance: vec![
+                    ResultProvenance {
+                        by_disc_id: true,
+                        by_barcode: false,
+                        matches_catalog: false,
+                    },
+                    ResultProvenance {
+                        by_disc_id: false,
+                        by_barcode: true,
+                        matches_catalog: false,
+                    },
+                ],
             }
         );
     }
 
-    /// A `Conflict` reached where the disc-ID lookup failed rather than
-    /// genuinely disagreeing: had it succeeded with a release the barcode
-    /// side also returned, the intersection would have narrowed to one
-    /// release and this would have been `Found`, not `Conflict`. A missing
-    /// intersection partner is exactly what can manufacture a conflict, so
-    /// this must not convert either — this is the regression the deleted "a
-    /// `Failed` signal never causes the conflict" reasoning would slip past.
+    /// A union reached where the disc-ID lookup failed rather than genuinely
+    /// disagreeing: had it succeeded with a release the barcode side also
+    /// returned, the intersection would have narrowed to one release. A
+    /// missing intersection partner is exactly what can manufacture a longer
+    /// match list, so this must not convert either.
     #[test]
-    fn conflict_reached_with_a_recorded_discid_failure_is_rejected() {
+    fn a_union_reached_with_a_recorded_discid_failure_is_rejected() {
         let context = SignalsContext {
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
             barcode_codes: vec![],
@@ -484,10 +396,11 @@ mod tests {
             matched_barcode: None,
             track_count: 9,
         };
-        let verdict = TerminalVerdict::try_from(IdentifyState::Conflict { context });
+        let state = crate::identify::state::re_derive_for_tests(context);
+        let verdict = TerminalVerdict::try_from(state);
         assert!(
             verdict.is_err(),
-            "a Conflict shaped by a failed lookup on the other signal must not store"
+            "a match list shaped by a failed lookup on the other signal must not store"
         );
     }
 

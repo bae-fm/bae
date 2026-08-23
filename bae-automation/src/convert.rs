@@ -626,26 +626,10 @@ pub(super) fn automation_result_provenance(
     }
 }
 
-/// Unzip core's paired rows into the two parallel lists the JSON surface carries,
-/// each record keeping its own `release_id`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_results_and_statuses(
-    rows: Vec<bae_core::identify::ResultRow>,
-) -> (Vec<AutomationMetadataResult>, Vec<AutomationLibraryStatus>) {
-    rows.into_iter()
-        .map(|bae_core::identify::ResultRow { result, status }| {
-            (
-                automation_metadata_result(result),
-                automation_library_status(status),
-            )
-        })
-        .unzip()
-}
-
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum. Core has
-/// already folded the matches into their group, keyed the provenance, reduced the
-/// in-flight payloads to counts, and dropped what must not cross — this is a field
-/// copy per variant and nothing else.
+/// already folded the matches into their group cards, keyed the provenance,
+/// reduced the in-flight payloads to counts, and dropped what must not cross —
+/// this is a field copy per variant and nothing else.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn automation_identify_state(
     state: bae_core::identify::IdentifyState,
@@ -660,12 +644,12 @@ pub(super) fn automation_identify_state(
             }
         }
         IdentifyStateView::Found {
-            group,
+            groups,
             library_statuses,
             track_count,
             provenance,
         } => AutomationIdentifyState::Found {
-            group: automation_release_group(group),
+            groups: groups.into_iter().map(automation_release_group).collect(),
             library_statuses: library_statuses
                 .into_iter()
                 .map(automation_library_status)
@@ -676,28 +660,6 @@ pub(super) fn automation_identify_state(
                 .map(|(release_id, p)| automation_result_provenance(release_id, p))
                 .collect(),
         },
-        IdentifyStateView::Conflict {
-            discid_results,
-            barcode_results,
-            // The disc-id section header names its source on the desktop UI. The
-            // JSON surface doesn't carry a header, and each result already states
-            // its own `source`, so a client that wants the label reads it there.
-            matched_barcode,
-            track_count,
-        } => {
-            let (discid_results, discid_library_statuses) =
-                automation_results_and_statuses(discid_results);
-            let (barcode_results, barcode_library_statuses) =
-                automation_results_and_statuses(barcode_results);
-            AutomationIdentifyState::Conflict {
-                discid_results,
-                discid_library_statuses,
-                barcode_results,
-                barcode_library_statuses,
-                matched_barcode,
-                track_count,
-            }
-        }
         IdentifyStateView::NotFoundAnywhere => AutomationIdentifyState::NotFoundAnywhere,
         IdentifyStateView::ManualOnly { track_count } => {
             AutomationIdentifyState::ManualOnly { track_count }

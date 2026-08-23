@@ -323,12 +323,22 @@ fn empty_intersection_is_conflict() {
         },
     );
     match state {
-        IdentifyState::Conflict { context } => {
-            // The conflict retains each signal's results for the surface.
+        IdentifyState::Found {
+            matches,
+            provenance,
+            context,
+            ..
+        } => {
+            // Neither signal is wrong about having seen a release, so both are
+            // offered — and each signal's own results stay in the context, so
+            // toggling one off re-combines over the rest.
+            assert_eq!(matches.len(), 2);
+            assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
+            assert!(!provenance[1].by_disc_id && provenance[1].by_barcode);
             assert_eq!(context.discid_results.len(), 1);
             assert_eq!(context.barcode_results.len(), 1);
         }
-        other => panic!("expected Conflict, got {other:?}"),
+        other => panic!("expected Found, got {other:?}"),
     }
 }
 

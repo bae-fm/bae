@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>erreur de lecture</value></data>
   <data name="error.title" xml:space="preserve"><value>erreur</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>impossible de charger la galerie</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflit</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {trouvée (#)} other {trouvées (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identification…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>recherche manuelle uniquement</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>En attente</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Terminés</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Choisir un pressage</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signaux divergents</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Nombre ou durées divergents</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Déjà dans la bibliothèque</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Sans correspondance</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>Importer quand même</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Réessayer</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Lecture de la durée</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>Conflit</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>rechercher manuellement</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Échec</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>ID de disque</value></data>

@@ -454,7 +454,7 @@
         static let severalMatchesMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
             candidate.resumedIdentifyState = .found(
-                group: searchGroupExact,
+                groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,
                 provenance: searchProvenanceExact

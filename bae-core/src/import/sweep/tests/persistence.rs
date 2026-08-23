@@ -155,10 +155,6 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
             })
             .collect(),
         track_count: 2,
-        group: crate::identify::GroupKey {
-            source: crate::import::MetadataSource::MusicBrainz,
-            source_group_id: group_id.to_string(),
-        },
         provenance: release_ids
             .iter()
             .map(|_| crate::identify::ResultProvenance {

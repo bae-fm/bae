@@ -301,8 +301,7 @@ internal static partial class NativeBae
         {
             BridgeIdentifyState.Idle => new ImportCandidateRowStatus { Kind = string.Empty },
             BridgeIdentifyState.Triangulating => new ImportCandidateRowStatus { Kind = "identifying" },
-            BridgeIdentifyState.Found found => new ImportCandidateRowStatus { Kind = "found", Count = checked((int)found.Group.Pressings.Length) },
-            BridgeIdentifyState.Conflict => new ImportCandidateRowStatus { Kind = "conflict" },
+            BridgeIdentifyState.Found found => new ImportCandidateRowStatus { Kind = "found", Count = found.Groups.Sum(group => group.Pressings.Length) },
             BridgeIdentifyState.NotFoundAnywhere => new ImportCandidateRowStatus { Kind = "not_found" },
             BridgeIdentifyState.ManualOnly => new ImportCandidateRowStatus { Kind = "manual" },
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown identify state"),
@@ -310,7 +309,9 @@ internal static partial class NativeBae
 
     private static List<ReleaseCandidateChoice> ImportMatches(BridgeIdentifyState state) =>
         state is BridgeIdentifyState.Found found
-            ? found.Group.Pressings.Select(pressing => new ReleaseCandidateChoice(found.Group, pressing)).ToList()
+            ? found.Groups
+                .SelectMany(group => group.Pressings.Select(pressing => new ReleaseCandidateChoice(group, pressing)))
+                .ToList()
             : [];
 
     private static SignalBadge SignalBadge(BridgeToolbarSignal signal) =>

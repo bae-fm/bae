@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The shared "what is DiscID" info tip shown beside the identify banners and the
-/// conflict surface — explains that disc-id lookup uses track layout to find
+/// match list — explains that disc-id lookup uses track layout to find
 /// exact MusicBrainz matches.
 struct DiscIdInfoTip: View {
     var body: some View {

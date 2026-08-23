@@ -6,7 +6,7 @@
     /// Preview fixtures for the Import flow: watched folders and folder
     /// candidates, the seeded import store, candidate file listings (CUE+FLAC
     /// and per-track), the picked-release detail/seed and its confirm edit, and
-    /// the identify/search states (exact, manual, conflict, triangulating,
+    /// the identify/search states (exact, manual, disagreement, triangulating,
     /// not-found) with their signal toolbars. Generic placeholder names
     /// throughout.
     extension PreviewData {

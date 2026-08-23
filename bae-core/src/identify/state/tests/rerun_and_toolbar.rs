@@ -1,7 +1,7 @@
-/// Drive the reducer through triangulation into a conflict: disc-id and
-/// barcode each match a single release, but on different groups. Returns
-/// the `Conflict` state.
-fn driven_conflict() -> IdentifyState {
+/// Drive the reducer through triangulation into a disagreement: the disc ID
+/// matches one release and the barcode two others, so nothing intersects and
+/// the settled `Found` holds all three.
+fn driven_disagreement() -> IdentifyState {
     let (state, _) = update(
         started(),
         signals(
@@ -32,21 +32,23 @@ fn driven_conflict() -> IdentifyState {
             ],
         },
     );
-    assert!(
-        matches!(state, IdentifyState::Conflict { .. }),
-        "expected Conflict, got {state:?}",
-    );
+    // Nothing intersects, so the set is the union: one disc-ID result and two
+    // barcode ones.
+    let IdentifyState::Found { matches, .. } = &state else {
+        panic!("expected Found, got {state:?}");
+    };
+    assert_eq!(matches.len(), 3);
     state
 }
 
-/// Excluding the disc-ID signal from a conflict collapses to the barcode
-/// side's single coherent group; re-including it restores the conflict.
+/// Excluding the disc-ID signal leaves the barcode side's two results alone;
+/// re-including it puts the disc-ID result back in the set.
 #[test]
 fn toggle_excludes_discid_then_re_includes() {
-    let conflict = driven_conflict();
+    let disagreeing = driven_disagreement();
 
     let (state, effects) = step(
-        conflict,
+        disagreeing,
         IdentifyEvent::SignalToggled {
             signal: ExcludedSignal::Disc,
         },
@@ -74,18 +76,17 @@ fn toggle_excludes_discid_then_re_includes() {
         .expect("disc badge");
     assert!(disc.excluded);
 
-    // Re-including the disc-ID signal restores the empty-intersection
-    // conflict.
+    // Re-including the disc-ID signal puts its result back in the set.
     let (restored, _) = step(
         state,
         IdentifyEvent::SignalToggled {
             signal: ExcludedSignal::Disc,
         },
     );
-    assert!(
-        matches!(restored, IdentifyState::Conflict { .. }),
-        "expected Conflict after re-include, got {restored:?}",
-    );
+    let IdentifyState::Found { matches, .. } = &restored else {
+        panic!("expected Found after re-include, got {restored:?}");
+    };
+    assert_eq!(matches.len(), 3);
 }
 
 /// Toggling mid-triangulation records the exclusion without collapsing the
@@ -280,21 +281,21 @@ fn rerun_of_scanned_but_empty_barcode_settles_the_same_as_the_first_pass() {
 
 /// A re-run replays both lookups regardless of exclusions, but the re-derive that
 /// follows still masks the excluded side: exclude the disc, re-run, and the state
-/// settles back to barcode-only `Found` rather than to the original conflict.
+/// settles back to the barcode's two results rather than all three.
 #[test]
 fn rerun_preserves_exclusions() {
-    let conflict = driven_conflict();
-    // Exclude the disc-ID signal: lands on barcode-only Found.
+    let disagreeing = driven_disagreement();
+    // Exclude the disc-ID signal: leaves the barcode's own results.
     let (excluded, _) = step(
-        conflict,
+        disagreeing,
         IdentifyEvent::SignalToggled {
             signal: ExcludedSignal::Disc,
         },
     );
     assert!(matches!(excluded, IdentifyState::Found { .. }));
 
-    // Re-run, then re-settle both lookups. The disc exclusion survives,
-    // so the re-derived state is barcode-only Found again, not a conflict.
+    // Re-run, then re-settle both lookups. The disc exclusion survives, so the
+    // re-derived set is the barcode's two results again, not all three.
     let (state, _) = step(excluded, IdentifyEvent::ReRun);
     let (state, _) = step(
         state,

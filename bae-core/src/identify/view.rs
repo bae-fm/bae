@@ -1,13 +1,13 @@
 //! The identify state, shaped for the surfaces that render it.
 //!
 //! [`IdentifyState`] is the reducer's working shape. It carries the whole
-//! [`SignalsContext`] through every state so a toggle or a re-run can re-combine
-//! without re-fetching, and it keeps `matches`, `library_statuses` and
-//! `provenance` as three index-aligned vectors because that is what `combine`
-//! hands it.
+//! [`SignalsContext`](super::state::SignalsContext) through every state so a
+//! toggle or a re-run can re-combine without re-fetching, and it keeps
+//! `matches`, `library_statuses` and `provenance` as three index-aligned
+//! vectors because that is what `combine` hands it.
 //!
 //! No surface wants that shape, and every surface wants the same *other* shape:
-//! the matches folded into their release-group card, each result paired with its
+//! the matches folded into their release-group cards, each result paired with its
 //! library status, provenance keyed by release id, an in-flight lookup's result
 //! payload reduced to a count, and the context's raw inputs — the signal values,
 //! the user's exclusions — left behind. Those are domain decisions, so they are
@@ -18,21 +18,10 @@
 //! this view into their own wire types field by field and decide nothing.
 
 use super::combine::ResultProvenance;
-use super::state::{BarcodeProgress, DiscidProgress, IdentifyState, SignalsContext};
+use super::state::{BarcodeProgress, DiscidProgress, IdentifyState};
 use crate::db::LibraryStatus;
 use crate::import::release_group::ReleaseGroup;
-use crate::import::search::MetadataResult;
 use crate::signals::LookupFailure;
-
-/// One release a signal turned up, together with whether the library already
-/// holds it. The two travel as a pair from the lookup onwards; pairing them in
-/// the type is what stops a surface from re-associating them by index and
-/// getting it wrong.
-#[derive(Debug, Clone)]
-pub struct ResultRow {
-    pub result: MetadataResult,
-    pub status: LibraryStatus,
-}
 
 /// The disc-ID lookup's progress while triangulating. The results themselves are
 /// not here: mid-flight, a surface shows only how many came back ("Disc ID: 3
@@ -77,31 +66,21 @@ pub enum IdentifyStateView {
         barcode: BarcodeProgressView,
     },
 
-    /// Every match shares one release group, so they render as one card with the
-    /// pressings beneath it.
+    /// The matches, bucketed into their release groups — one card per group,
+    /// with its pressings beneath. Usually one card; signals that named
+    /// different releases give several, which is the same list of things to
+    /// pick from either way.
     Found {
-        /// The matches, folded into their group card. `group.pressings` is the
-        /// match list, in match order.
-        group: ReleaseGroup,
+        /// The match list, folded into group cards in match order.
+        groups: Vec<ReleaseGroup>,
         /// One per pressing; each carries its own `release_id`.
         library_statuses: Vec<LibraryStatus>,
         track_count: u32,
         /// Per-pressing provenance, keyed by release id. `combine` produces it
-        /// index-aligned with the matches, and the matches are now inside
-        /// `group`, so the alignment is re-expressed as a key here rather than
-        /// left for a surface to reconstruct.
+        /// index-aligned with the matches, and the matches are now inside the
+        /// group cards, so the alignment is re-expressed as a key here rather
+        /// than left for a surface to reconstruct.
         provenance: Vec<(String, ResultProvenance)>,
-    },
-
-    /// The signals disagreed. Each one's own results are shown side by side so
-    /// the user can pick a side, drop a signal, or search manually.
-    Conflict {
-        discid_results: Vec<ResultRow>,
-        barcode_results: Vec<ResultRow>,
-        /// The barcode value that produced `barcode_results`, for the barcode
-        /// section's header. `None` when nothing matched.
-        matched_barcode: Option<String>,
-        track_count: u32,
     },
 
     NotFoundAnywhere,
@@ -133,51 +112,22 @@ impl From<IdentifyState> for IdentifyStateView {
                 matches,
                 library_statuses,
                 track_count,
-                group,
                 provenance,
                 context: _,
             } => {
-                // `matches` all share `group` and `provenance` is index-aligned
-                // with them. Key the provenance by release id before the matches
-                // disappear into the group card — after the fold, index alignment
-                // is no longer expressible.
+                // `provenance` is index-aligned with `matches`. Key it by
+                // release id before the matches disappear into the group cards
+                // — after the fold, index alignment is no longer expressible.
                 let provenance = matches
                     .iter()
                     .map(|m| m.release_id.clone())
                     .zip(provenance)
                     .collect();
                 IdentifyStateView::Found {
-                    group: ReleaseGroup::from_group(group, matches),
+                    groups: crate::import::release_group::group_results(matches),
                     library_statuses,
                     track_count,
                     provenance,
-                }
-            }
-
-            IdentifyState::Conflict { context } => {
-                let SignalsContext {
-                    discid_results,
-                    barcode_results,
-                    matched_barcode,
-                    track_count,
-                    // The raw signal inputs (`disc_id`, `barcode_codes`,
-                    // `catalogs`), the user's `excluded` toggles, and the settled
-                    // `discid_failure`/`barcode_failure` drive triangulation in
-                    // the reducer. A surface renders the two settled result sets
-                    // and the matched barcode; none of the rest reaches it.
-                    disc_id: _,
-                    barcode_codes: _,
-                    had_barcode_source: _,
-                    catalogs: _,
-                    excluded: _,
-                    discid_failure: _,
-                    barcode_failure: _,
-                } = context;
-                IdentifyStateView::Conflict {
-                    discid_results: result_rows(discid_results),
-                    barcode_results: result_rows(barcode_results),
-                    matched_barcode,
-                    track_count,
                 }
             }
 
@@ -241,11 +191,4 @@ impl From<BarcodeProgress> for BarcodeProgressView {
             BarcodeProgress::Skipped => BarcodeProgressView::Skipped,
         }
     }
-}
-
-fn result_rows(pairs: Vec<(MetadataResult, LibraryStatus)>) -> Vec<ResultRow> {
-    pairs
-        .into_iter()
-        .map(|(result, status)| ResultRow { result, status })
-        .collect()
 }

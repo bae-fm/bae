@@ -336,7 +336,6 @@ impl crate::types::BridgeNeedsYouGroup {
         use bae_core::import::NeedsYouGroup as G;
         match group {
             G::PickAPressing => Self::PickAPressing,
-            G::SignalsDisagree => Self::SignalsDisagree,
             G::CountsOrLengthsDisagree => Self::CountsOrLengthsDisagree,
             G::AlreadyInLibrary => Self::AlreadyInLibrary,
             G::NoMatch => Self::NoMatch,
@@ -379,7 +378,6 @@ impl crate::types::BridgeNeedsYou {
         match needs_you {
             N::AlreadyInLibrary => Self::AlreadyInLibrary,
             N::SeveralMatches { count } => Self::SeveralMatches { count },
-            N::SignalsConflict => Self::SignalsConflict,
             N::NoMatch => Self::NoMatch,
             N::NothingToLookUp => Self::NothingToLookUp,
             N::TrackCountDisagrees { local, source } => Self::TrackCountDisagrees { local, source },

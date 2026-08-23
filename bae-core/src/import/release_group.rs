@@ -7,7 +7,6 @@
 //! labels (source name, editorial URL, year span + pressing count) so the UI
 //! just iterates and renders.
 
-use crate::identify::GroupKey;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataSource;
@@ -42,14 +41,6 @@ pub struct ReleaseGroup {
 }
 
 impl ReleaseGroup {
-    /// Build the single release group of an auto-identify `Found` result. Every
-    /// match shares `group` by construction, so the card's id and editorial URL
-    /// come straight from the authoritative `GroupKey` rather than being
-    /// re-derived from a pressing.
-    pub fn from_group(group: GroupKey, pressings: Vec<MetadataResult>) -> Self {
-        Self::build(Some(group.source_group_id), group.source, pressings)
-    }
-
     /// Assemble a group from its (non-empty) pressings, deriving the card's
     /// title, artist, representative cover, and meta label.
     fn build(
@@ -138,6 +129,19 @@ mod tests {
             cover_art: None,
             source_group_id: group_id.map(str::to_string),
             source_tracks: None,
+        }
+    }
+
+    /// The same result on Discogs, whose group is a master and whose card URL
+    /// therefore differs from MusicBrainz's.
+    fn discogs_result(
+        release_id: &str,
+        group_id: Option<&str>,
+        year: Option<i32>,
+    ) -> MetadataResult {
+        MetadataResult {
+            source: MetadataSource::Discogs,
+            ..result(release_id, group_id, year)
         }
     }
 
@@ -278,19 +282,13 @@ mod tests {
     }
 
     #[test]
-    fn from_group_uses_group_key_for_id_and_url() {
-        let group = GroupKey {
-            source: MetadataSource::Discogs,
-            source_group_id: "master-7".to_string(),
-        };
-        let rg = ReleaseGroup::from_group(
-            group,
-            vec![result(
-                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-                Some("master-7"),
-                Some(2001),
-            )],
-        );
+    fn a_grouped_result_takes_its_group_id_and_url() {
+        let groups = group_results(vec![discogs_result(
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            Some("master-7"),
+            Some(2001),
+        )]);
+        let rg = &groups[0];
         assert_eq!(rg.id, "master-7");
         assert_eq!(rg.source_label, "Discogs");
         assert_eq!(

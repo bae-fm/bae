@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ప్లేబ్యాక్ లోపం</value></data>
   <data name="error.title" xml:space="preserve"><value>లోపం</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>గ్యాలరీని లోడ్ చేయలేకపోయింది</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {కనబడింది (#)} other {కనబడ్డాయి (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>గుర్తిస్తోంది…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>చేతి శోధన మాత్రమే</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>పెండింగ్‌లో</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>పూర్తయింది</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ఒక ముద్రణను ఎంచుకో</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>సంకేతాలు సరిపోలడం లేదు</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>సంఖ్య లేదా నిడివి సరిపోలడం లేదు</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ఇప్పటికే లైబ్రరీలో</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>సరిపోలిక దొరకలేదు</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>అయినా దిగుమతి చేయి</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>మళ్లీ ప్రయత్నించు</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>ఇది ఎంతసేపు నడుస్తుందో చదువుతోంది</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>చేతితో శోధించు</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>విఫలమైంది</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>డిస్క్ ID</value></data>

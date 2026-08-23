@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>помилка відтворення</value></data>
   <data name="error.title" xml:space="preserve"><value>помилка</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>не вдалося завантажити галерею</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>конфлікт</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {знайдено (#)} few {знайдено (#)} many {знайдено (#)} other {знайдено (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ідентифікація…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>лише ручний пошук</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Очікують</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Завершені</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Виберіть видання</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Сигнали не збігаються</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Кількість або тривалість не збігаються</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Уже в бібліотеці</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Немає збігу</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>Усе одно імпортувати</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Повторити</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Зчитується тривалість</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>Конфлікт</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>шукати вручну</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Помилка</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>ID диска</value></data>

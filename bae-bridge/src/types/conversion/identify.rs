@@ -381,9 +381,9 @@ impl BridgeResultProvenance {
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum. Core has
-/// already folded the matches into their group, keyed the provenance, reduced the
-/// in-flight payloads to counts, and dropped what must not cross — this is a field
-/// copy per variant and nothing else.
+/// already folded the matches into their group cards, keyed the provenance,
+/// reduced the in-flight payloads to counts, and dropped what must not cross —
+/// this is a field copy per variant and nothing else.
 #[cfg(feature = "desktop")]
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
@@ -397,12 +397,15 @@ impl BridgeIdentifyState {
                 }
             }
             IdentifyStateView::Found {
-                group,
+                groups,
                 library_statuses,
                 track_count,
                 provenance,
             } => BridgeIdentifyState::Found {
-                group: BridgeReleaseGroup::from_core(group),
+                groups: groups
+                    .into_iter()
+                    .map(BridgeReleaseGroup::from_core)
+                    .collect(),
                 library_statuses: status_map(library_statuses),
                 track_count,
                 provenance: provenance
@@ -410,25 +413,6 @@ impl BridgeIdentifyState {
                     .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
                     .collect(),
             },
-            IdentifyStateView::Conflict {
-                discid_results,
-                barcode_results,
-                matched_barcode,
-                track_count,
-            } => {
-                let (discid_results, discid_library_statuses) =
-                    results_and_status_map(discid_results);
-                let (barcode_results, barcode_library_statuses) =
-                    results_and_status_map(barcode_results);
-                BridgeIdentifyState::Conflict {
-                    discid_results,
-                    discid_library_statuses,
-                    barcode_results,
-                    barcode_library_statuses,
-                    matched_barcode,
-                    track_count,
-                }
-            }
             IdentifyStateView::NotFoundAnywhere => BridgeIdentifyState::NotFoundAnywhere,
             IdentifyStateView::ManualOnly { track_count } => {
                 BridgeIdentifyState::ManualOnly { track_count }
@@ -448,24 +432,6 @@ fn status_map(
         .into_iter()
         .map(|s| (s.release_id.clone(), BridgeLibraryStatus::from_core(s)))
         .collect()
-}
-
-/// Unzip core's paired rows into the two containers the UI reads: the ordered
-/// results list (display order matters) and their statuses keyed by release id.
-#[cfg(feature = "desktop")]
-fn results_and_status_map(
-    rows: Vec<bae_core::identify::ResultRow>,
-) -> (
-    Vec<BridgeMetadataResult>,
-    std::collections::HashMap<String, BridgeLibraryStatus>,
-) {
-    let (results, statuses): (Vec<_>, Vec<_>) = rows
-        .into_iter()
-        .map(|bae_core::identify::ResultRow { result, status }| {
-            (BridgeMetadataResult::from_core(result), status)
-        })
-        .unzip();
-    (results, status_map(statuses))
 }
 
 #[cfg(test)]

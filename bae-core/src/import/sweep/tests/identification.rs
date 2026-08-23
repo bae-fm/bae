@@ -323,10 +323,6 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             source_tracks: source,
         }],
         track_count,
-        group: crate::identify::GroupKey {
-            source: crate::import::MetadataSource::MusicBrainz,
-            source_group_id: "rg-1".to_string(),
-        },
         provenance: vec![crate::identify::ResultProvenance {
             by_disc_id: true,
             by_barcode: false,

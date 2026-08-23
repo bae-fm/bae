@@ -73,8 +73,6 @@ pub enum TriageSkipAction {
 pub enum NeedsYouGroup {
     /// Several pressings matched.
     PickAPressing,
-    /// The disc ID and the barcode point at different releases.
-    SignalsDisagree,
     /// The folder and the source disagree about what is here. Four
     /// classification variants share this group because they are one question
     /// to the user; the row's `reason` still names which.
@@ -87,9 +85,8 @@ pub enum NeedsYouGroup {
 }
 
 impl NeedsYouGroup {
-    pub const IN_ORDER: [Self; 6] = [
+    pub const IN_ORDER: [Self; 5] = [
         Self::PickAPressing,
-        Self::SignalsDisagree,
         Self::CountsOrLengthsDisagree,
         Self::AlreadyInLibrary,
         Self::NoMatch,
@@ -104,7 +101,6 @@ impl NeedsYouGroup {
         };
         match needs_you {
             NeedsYou::SeveralMatches { .. } => Self::PickAPressing,
-            NeedsYou::SignalsConflict => Self::SignalsDisagree,
             NeedsYou::TrackCountDisagrees { .. }
             | NeedsYou::DurationsDisagree { .. }
             | NeedsYou::SourceLengthsUnknown
@@ -164,7 +160,6 @@ impl IdentifyPhase {
             IdentifyState::Idle => Self::Queued,
             IdentifyState::Triangulating { .. } => Self::Running,
             IdentifyState::Found { .. }
-            | IdentifyState::Conflict { .. }
             | IdentifyState::NotFoundAnywhere { .. }
             | IdentifyState::ManualOnly { .. } => Self::NoAnswer,
         }

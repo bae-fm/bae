@@ -119,8 +119,9 @@
             ),
         ]
 
-        /// disc-id vs barcode candidate lists — the conflict results state.
-        static let conflictDiscidResults: [BridgeMetadataResult] = [
+        /// The releases the disc ID and the barcode each named when they share
+        /// none — one card per release group.
+        static let discidOnlyResults: [BridgeMetadataResult] = [
             BridgeMetadataResult(
                 source: .musicBrainz,
                 releaseId: "rel-disc-1",
@@ -132,7 +133,7 @@
             )
         ]
 
-        static let conflictBarcodeResults: [BridgeMetadataResult] = [
+        static let barcodeOnlyResults: [BridgeMetadataResult] = [
             BridgeMetadataResult(
                 source: .musicBrainz,
                 releaseId: "rel-bar-1",
@@ -142,6 +143,47 @@
                 catalogNumber: "BBB-002",
                 country: "JP"
             )
+        ]
+
+        static let discidOnlyGroup = BridgeReleaseGroup(
+            id: "group-disc",
+            sourceGroupId: "group-disc",
+            title: "Album Title",
+            artist: "Artist Name",
+            coverArt: nil,
+            sourceLabel: "MusicBrainz",
+            groupUrl: "https://musicbrainz.org/release-group/group-disc",
+            yearMin: 1996,
+            yearMax: 1996,
+            pressings: discidOnlyResults
+        )
+
+        static let barcodeOnlyGroup = BridgeReleaseGroup(
+            id: "group-bar",
+            sourceGroupId: "group-bar",
+            title: "Other Album Title",
+            artist: "Artist Name",
+            coverArt: nil,
+            sourceLabel: "MusicBrainz",
+            groupUrl: "https://musicbrainz.org/release-group/group-bar",
+            yearMin: 2001,
+            yearMax: 2001,
+            pressings: barcodeOnlyResults
+        )
+
+        /// Each row says which signal produced it — the whole of what tells
+        /// the two apart once they are one list.
+        static let disagreementProvenance: [String: BridgeResultProvenance] = [
+            "rel-disc-1": BridgeResultProvenance(
+                byDiscId: true,
+                byBarcode: false,
+                matchesCatalog: false
+            ),
+            "rel-bar-1": BridgeResultProvenance(
+                byDiscId: false,
+                byBarcode: true,
+                matchesCatalog: false
+            ),
         ]
 
         /// Settled OCR/text signals — catalogs plus cover free-text.
@@ -253,8 +295,8 @@
             ),
         ])
 
-        /// Both identity signals matched but disagree — the conflict toolbar.
-        static let toolbarConflictBothMatched = BridgeSignalsToolbar(signals: [
+        /// Both identity signals matched, on different releases.
+        static let toolbarBothMatched = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
@@ -296,7 +338,7 @@
         /// Exact-match display state: disc-id found one group, catalog confirms it.
         static let searchStateFoundExact = ImportSearchState(
             identifyState: .found(
-                group: searchGroupExact,
+                groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 0,
                 provenance: searchProvenanceExact
@@ -334,7 +376,7 @@
         /// Manual-search display state: results listed, the form open.
         static let searchStateManual = ImportSearchState(
             identifyState: .found(
-                group: searchGroupsManual[0],
+                groups: [searchGroupsManual[0]],
                 libraryStatuses: [:],
                 trackCount: 0,
                 provenance: [:]
@@ -369,20 +411,21 @@
             ])
         )
 
-        /// The bridge shape of the conflict below — what a run in flight
-        /// carries across, for a surface driven by the runtime signal.
-        static let bridgeConflictState = BridgeIdentifyState.conflict(
-            discidResults: conflictDiscidResults,
-            discidLibraryStatuses: [:],
-            barcodeResults: conflictBarcodeResults,
-            barcodeLibraryStatuses: [:],
-            matchedBarcode: "5051961234567",
-            trackCount: 11
+        /// The bridge shape of the disagreement below — what a run in flight
+        /// carries across, for a surface driven by the runtime signal. The two
+        /// signals named different releases, so the set is their union and the
+        /// cards are one per release group.
+        static let bridgeDisagreementState = BridgeIdentifyState.found(
+            groups: [discidOnlyGroup, barcodeOnlyGroup],
+            libraryStatuses: [:],
+            trackCount: 11,
+            provenance: disagreementProvenance
         )
 
-        /// Conflict display state: disc-id and barcode disagree on identity.
-        static let searchStateConflict = ImportSearchState(
-            identifyState: IdentifyState(bridge: bridgeConflictState),
+        /// Display state where the disc ID and the barcode named different
+        /// releases: every one of them is offered.
+        static let searchStateDisagreement = ImportSearchState(
+            identifyState: IdentifyState(bridge: bridgeDisagreementState),
             showManualSearch: false,
             error: nil,
             searchGroups: [],

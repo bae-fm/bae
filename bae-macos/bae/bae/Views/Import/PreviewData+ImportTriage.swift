@@ -95,18 +95,18 @@
             name: "Album Title Five",
             trackCount: 12,
             identifyState: .found(
-                group: searchGroupExact,
+                groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,
                 provenance: searchProvenanceExact
             )
         )
 
-        static let importTabConflictCandidate = importTabFolder(
+        static let importTabDisagreementCandidate = importTabFolder(
             path: "Album Title Six - Remaster",
             name: "Album Title Six - Remaster",
             trackCount: 11,
-            identifyState: searchStateConflict.identifyState
+            identifyState: searchStateDisagreement.identifyState
         )
 
         private static let trackMismatchGroup = ReleaseGroup(
@@ -130,7 +130,7 @@
             name: "Album Title Seven - Partial",
             trackCount: 1,
             identifyState: .found(
-                group: trackMismatchGroup,
+                groups: [trackMismatchGroup],
                 libraryStatuses: [:],
                 trackCount: 1,
                 provenance: [:]
@@ -151,7 +151,7 @@
             name: "Album Title Eight - Reissue",
             trackCount: 14,
             identifyState: .found(
-                group: searchGroupExact,
+                groups: [searchGroupExact],
                 libraryStatuses: [
                     releaseDetailBridge.releaseId:
                         importTabAlreadyInLibraryStatus
@@ -237,11 +237,13 @@
             importStatus: nil
         )
 
-        static let triageRowSignalsConflict = triageRow(
-            for: importTabConflictCandidate,
+        /// Two signals that named different releases: the row asks the same
+        /// question any multi-match does.
+        static let triageRowSeveralMatchesFromSignals = triageRow(
+            for: importTabDisagreementCandidate,
             placement: .needsYou(
-                group: .signalsDisagree,
-                reason: .disagreement(disagreement: .signalsConflict)
+                group: .pickAPressing,
+                reason: .disagreement(disagreement: .severalMatches(count: 2))
             ),
             skipAction: .skip,
             matched: nil,
@@ -391,7 +393,7 @@
             [
                 importTabCandidate,
                 importTabSeveralMatchesCandidate,
-                importTabConflictCandidate,
+                importTabDisagreementCandidate,
                 importTabTrackMismatchCandidate,
                 importTabAlreadyInLibraryCandidate,
                 importTabNoMatchCandidate,
@@ -411,7 +413,7 @@
         private static let importTabPendingRows = [
             triageRowReady,
             triageRowPickAPressing,
-            triageRowSignalsConflict,
+            triageRowSeveralMatchesFromSignals,
             triageRowTrackMismatch,
             triageRowAlreadyInLibrary,
             triageRowNoMatch,

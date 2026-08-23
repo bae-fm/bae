@@ -408,8 +408,6 @@ extension TriageRowView {
             switch group {
             case .pickAPressing:
                 chip(needsYou.localizedText, tint: .orange)
-            case .signalsDisagree:
-                chip(String(localized: "Conflict"), tint: .red)
             case .alreadyInLibrary:
                 chip(needsYou.localizedText, tint: .blue)
             case .countsOrLengthsDisagree:
@@ -555,9 +553,9 @@ extension BridgeMatchedSignal {
                 onSkip: { _ in }
             )
             TriageRowView(
-                row: PreviewData.triageRowSignalsConflict,
+                row: PreviewData.triageRowSeveralMatchesFromSignals,
                 coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowSignalsConflict
+                    for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
                 selection: nil,
                 onSelect: {},

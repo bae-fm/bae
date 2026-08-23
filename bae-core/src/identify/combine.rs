@@ -2,12 +2,13 @@
 //!
 //! Once both signals settle, the reducer hands their results and the candidate's
 //! catalog candidates to `combine_results`, which intersects them (or falls through
-//! to whichever signal had results), narrows by catalog match, and branches on
-//! cardinality and group agreement. Pure: no I/O, no state.
+//! to whichever signal had results) and narrows by catalog match. Pure: no I/O,
+//! no state.
 //!
-//! A result's group is `(source, source_group_id)`, so releases from different
-//! sources always land in different groups — a set spanning MB-X and Discogs-Y is
-//! multi-group, which is a genuine disagreement between the two signals.
+//! Every checked signal is a claim about the same disc, so an intersection is
+//! what agreement looks like. Signals that do not intersect are not a failure
+//! to identify: both saw something, and the union of what they saw is the set
+//! the user picks from, each row carrying which signal produced it.
 
 use crate::db::LibraryStatus;
 use crate::import::search::MetadataResult;
@@ -30,50 +31,30 @@ pub struct ResultProvenance {
 /// What combine decided; the reducer lifts it into a terminal `IdentifyState`.
 #[derive(Debug, Clone)]
 pub enum CombineOutcome {
-    /// One or more results, all in one group. `group` lets the UI say "N pressings
-    /// of one release group"; `provenance` is index-aligned with `matches`.
+    /// One or more results. `provenance` is index-aligned with `matches` and
+    /// says which signal produced each one.
     Found {
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
-        group: GroupKey,
         provenance: Vec<ResultProvenance>,
-    },
-    /// The set spans several groups, or both signals had results and didn't
-    /// intersect. Carries each signal's own results so the UI can show both
-    /// sections and let the user pick.
-    Conflict {
-        discid_results: Vec<(MetadataResult, LibraryStatus)>,
-        barcode_results: Vec<(MetadataResult, LibraryStatus)>,
     },
     /// Both signals settled with zero results.
     NotFoundAnywhere,
 }
 
-/// Two results agree exactly when they share `(source, source_group_id)`. A result
-/// with no `source_group_id` can't share a group with anyone, so any set holding
-/// one plus anything else is a `Conflict`.
-///
-/// `Serialize`/`Deserialize`: carried on `identify::TerminalVerdict::Found`,
-/// which `import_candidate_state` persists.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct GroupKey {
-    pub source: MetadataSource,
-    pub source_group_id: String,
-}
-
-/// Settle both signals' results into a `CombineOutcome`, in four steps:
+/// Settle both signals' results into a `CombineOutcome`, in three steps:
 ///
 /// 1. **Combine.** Both non-empty: intersect by `(source, release_id)`, keeping
 ///    disc-ID order. One non-empty: that one is the set. Both empty:
 ///    `NotFoundAnywhere`.
-/// 2. **Empty intersection.** Only an intersection can empty the set, so an empty
-///    set here means both signals had results and disagreed — a `Conflict`, and it
-///    carries their original results so the UI can show both.
+/// 2. **Empty intersection.** Only an intersection can empty the set, so an
+///    empty set here means both signals had results and shared none. Neither is
+///    wrong about having seen something, so the set becomes their union —
+///    disc-ID order first, then the barcode-only ones — and each row says which
+///    signal produced it.
 /// 3. **Catalog filter.** Narrow to the results a catalog candidate confirms, but
 ///    only if that leaves at least one — a filter that empties the set would lose
 ///    real signal.
-/// 4. **Grouping.** One group → `Found`. Several groups, or any result with no
-///    group id → `Conflict`.
 pub fn combine_results(
     discid_results: Vec<(MetadataResult, LibraryStatus)>,
     barcode_results: Vec<(MetadataResult, LibraryStatus)>,
@@ -109,44 +90,53 @@ pub fn combine_results(
         barcode_results.clone()
     };
 
-    // Both signals found something but nothing in common: a disagreement, not an
-    // absence. The UI has to show what each one saw.
-    if combined.is_empty() {
-        return CombineOutcome::Conflict {
-            discid_results,
-            barcode_results,
-        };
-    }
+    // Both signals found something but nothing in common. Each still saw a real
+    // release, so the set is their union and the user picks from it.
+    let combined = if combined.is_empty() {
+        union_by_release(discid_results, barcode_results)
+    } else {
+        combined
+    };
 
     let filtered = apply_catalog_filter(combined, catalog_candidates);
 
-    let group = single_group(&filtered);
-    match group {
-        Some(group) => {
-            let provenance: Vec<ResultProvenance> = filtered
-                .iter()
-                .map(|(r, _)| ResultProvenance {
-                    by_disc_id: discid_keys.contains(&(r.source, r.release_id.clone())),
-                    by_barcode: barcode_keys.contains(&(r.source, r.release_id.clone())),
-                    matches_catalog: catalog_matches(
-                        r.catalog_number.as_deref(),
-                        catalog_candidates,
-                    ),
-                })
-                .collect();
-            let (matches, library_statuses) = unzip_results(filtered);
-            CombineOutcome::Found {
-                matches,
-                library_statuses,
-                group,
-                provenance,
-            }
-        }
-        None => CombineOutcome::Conflict {
-            discid_results,
-            barcode_results,
-        },
+    let provenance: Vec<ResultProvenance> = filtered
+        .iter()
+        .map(|(r, _)| ResultProvenance {
+            by_disc_id: discid_keys.contains(&(r.source, r.release_id.clone())),
+            by_barcode: barcode_keys.contains(&(r.source, r.release_id.clone())),
+            matches_catalog: catalog_matches(r.catalog_number.as_deref(), catalog_candidates),
+        })
+        .collect();
+    let (matches, library_statuses) = unzip_results(filtered);
+    CombineOutcome::Found {
+        matches,
+        library_statuses,
+        provenance,
     }
+}
+
+/// Both sets, disc-ID order first, then the barcode results the disc ID did not
+/// already name. Only reached when the two share nothing, so in practice the
+/// second half is all of it — the de-duplication is what keeps that a property
+/// of the data rather than a thing the caller has to have checked.
+fn union_by_release(
+    discid_results: Vec<(MetadataResult, LibraryStatus)>,
+    barcode_results: Vec<(MetadataResult, LibraryStatus)>,
+) -> Vec<(MetadataResult, LibraryStatus)> {
+    use std::collections::HashSet;
+    let seen: HashSet<(MetadataSource, String)> = discid_results
+        .iter()
+        .map(|(r, _)| (r.source, r.release_id.clone()))
+        .collect();
+    discid_results
+        .into_iter()
+        .chain(
+            barcode_results
+                .into_iter()
+                .filter(|(r, _)| !seen.contains(&(r.source, r.release_id.clone()))),
+        )
+        .collect()
 }
 
 /// Intersect by `(source, release_id)`. Order follows the first vec.
@@ -210,25 +200,6 @@ pub(crate) fn catalog_matches_candidate(
     candidate.origin.can_confirm_catalog()
         && catalog_number
             .is_some_and(|c| normalize_catalog(c) == normalize_catalog(&candidate.value))
-}
-
-/// `Some(group)` when every result shares one `(source, source_group_id)`; `None`
-/// when they span several, or when any of them has no group id at all.
-fn single_group(results: &[(MetadataResult, LibraryStatus)]) -> Option<GroupKey> {
-    let mut iter = results.iter();
-    let (first, _) = iter.next()?;
-    let group_id = first.source_group_id.clone()?;
-    let key = GroupKey {
-        source: first.source,
-        source_group_id: group_id,
-    };
-    for (r, _) in iter {
-        let g = r.source_group_id.as_deref()?;
-        if r.source != key.source || g != key.source_group_id {
-            return None;
-        }
-    }
-    Some(key)
 }
 
 fn unzip_results(
@@ -358,29 +329,27 @@ mod tests {
         for (name, discid, barcode, expected) in cases {
             let outcome = combine_results(discid, barcode, &[]);
             match outcome {
-                CombineOutcome::Found { matches, group, .. } => {
+                CombineOutcome::Found { matches, .. } => {
                     assert_eq!(matches.len(), expected, "{name}");
-                    assert_eq!(group.source_group_id, "group-1", "{name}");
                 }
                 other => panic!("{name}: expected Found, got {other:?}"),
             }
         }
     }
 
-    /// The group key is `(source, source_group_id)`, so two results carrying the
-    /// *same* group-id string from different sources are still two groups — a
-    /// Conflict, never one Found group.
+    /// Results that share nothing but a group-id string across two sources are
+    /// two different releases, and both stay in the set for the user to pick
+    /// between — the grouping the surface draws is what tells them apart.
     #[test]
-    fn same_group_id_string_across_sources_stays_two_groups() {
+    fn results_from_two_sources_both_stay_in_the_set() {
         let results = vec![
             pair_src(MetadataSource::MusicBrainz, "rel-mb", Some("shared-id")),
             pair_src(MetadataSource::Discogs, "rel-dg", Some("shared-id")),
         ];
-        let outcome = combine_results(results, vec![], &[]);
-        assert!(
-            matches!(outcome, CombineOutcome::Conflict { .. }),
-            "same group_id across sources must not collapse into one group"
-        );
+        let CombineOutcome::Found { matches, .. } = combine_results(results, vec![], &[]) else {
+            panic!("expected Found");
+        };
+        assert_eq!(matches.len(), 2);
     }
 
     #[test]
@@ -416,7 +385,10 @@ mod tests {
     }
 
     #[test]
-    fn empty_intersection_with_both_having_results_is_conflict() {
+    /// Signals that share no result are not a failure to identify: each saw a
+    /// real release, so the set is their union, disc-ID order first, and each
+    /// row says which signal produced it.
+    fn empty_intersection_with_both_having_results_is_their_union() {
         let discid = vec![pair(
             "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
             Some("group-1"),
@@ -427,23 +399,32 @@ mod tests {
             Some("group-2"),
             None,
         )];
-        let outcome = combine_results(discid, barcode, &[]);
-        match outcome {
-            CombineOutcome::Conflict {
-                discid_results,
-                barcode_results,
-            } => {
-                assert_eq!(discid_results.len(), 1);
-                assert_eq!(barcode_results.len(), 1);
-            }
-            other => panic!("expected Conflict, got {other:?}"),
-        }
+        let CombineOutcome::Found {
+            matches,
+            provenance,
+            ..
+        } = combine_results(discid, barcode, &[])
+        else {
+            panic!("expected Found");
+        };
+        assert_eq!(
+            matches
+                .iter()
+                .map(|m| m.release_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
+            ]
+        );
+        assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
+        assert!(!provenance[1].by_disc_id && provenance[1].by_barcode);
     }
 
     #[test]
-    fn multi_group_in_intersection_is_conflict() {
-        // Both signals agree on two releases, but in two groups — no single
-        // identity to commit.
+    fn multi_group_in_intersection_stays_one_match_list() {
+        // Both signals agree on two releases, in two groups. Which of the two
+        // is on disk is the user's call, so both are offered.
         let discid = vec![
             pair(
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
@@ -468,27 +449,31 @@ mod tests {
                 None,
             ),
         ];
-        let outcome = combine_results(discid, barcode, &[]);
-        assert!(matches!(outcome, CombineOutcome::Conflict { .. }));
+        let CombineOutcome::Found { matches, .. } = combine_results(discid, barcode, &[]) else {
+            panic!("expected Found");
+        };
+        assert_eq!(matches.len(), 2);
     }
 
+    /// A result the source returned without a group id is still a release the
+    /// user can pick; it stands as its own single-pressing card.
     #[test]
-    fn missing_group_id_is_conflict_when_alongside_others() {
+    fn a_result_with_no_group_id_stays_in_the_set() {
         let results = vec![
             pair("rel-a", Some("group-x"), None),
             pair("rel-b", None, None),
         ];
-        let outcome = combine_results(results, vec![], &[]);
-        assert!(matches!(outcome, CombineOutcome::Conflict { .. }));
-    }
+        let CombineOutcome::Found { matches, .. } = combine_results(results, vec![], &[]) else {
+            panic!("expected Found");
+        };
+        assert_eq!(matches.len(), 2);
 
-    #[test]
-    fn single_result_with_missing_group_is_conflict() {
-        // A groupless result can't be shown as "1 pressing of group X", so it goes
-        // to Conflict and the user picks it deliberately.
-        let results = vec![pair("rel-a", None, None)];
-        let outcome = combine_results(results, vec![], &[]);
-        assert!(matches!(outcome, CombineOutcome::Conflict { .. }));
+        let CombineOutcome::Found { matches, .. } =
+            combine_results(vec![pair("rel-a", None, None)], vec![], &[])
+        else {
+            panic!("expected Found");
+        };
+        assert_eq!(matches.len(), 1);
     }
 
     #[test]
@@ -523,9 +508,9 @@ mod tests {
         let candidates = vec![catalog("LBL-001", SignalOrigin::CueSheet)];
         let outcome = combine_results(results, vec![], &candidates);
         match outcome {
-            CombineOutcome::Found { matches, group, .. } => {
+            CombineOutcome::Found { matches, .. } => {
                 assert_eq!(matches.len(), 1);
-                assert_eq!(group.source_group_id, "group-x");
+                assert_eq!(matches[0].release_id, "rel-a");
             }
             other => panic!("expected Found, got {other:?}"),
         }

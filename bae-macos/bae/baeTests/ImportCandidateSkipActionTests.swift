@@ -21,7 +21,7 @@ struct ImportCandidateSkipActionTests {
         let recorder = SkippedCandidateRecorder()
         let selected: Set<String> = [
             PreviewData.importTabCandidate.key,
-            PreviewData.importTabConflictCandidate.key,
+            PreviewData.importTabDisagreementCandidate.key,
             PreviewData.triageRowSkipped.candidateKey,
             "candidate:stale",
         ]
@@ -44,7 +44,7 @@ struct ImportCandidateSkipActionTests {
             await recorder.keys
                 == [
                     PreviewData.importTabCandidate.key,
-                    PreviewData.importTabConflictCandidate.key,
+                    PreviewData.importTabDisagreementCandidate.key,
                 ].sorted()
         )
         #expect(uiStore.selectedFolderCandidates.isEmpty)

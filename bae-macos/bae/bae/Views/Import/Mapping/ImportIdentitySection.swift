@@ -5,7 +5,8 @@ import SwiftUI
 /// picked — the question the section is asking, so the answer choices render
 /// right under it rather than behind the search sheet.
 struct ImportMatchOptions {
-    let group: ReleaseGroup
+    /// One card per release group the matches fall into, in match order.
+    let groups: [ReleaseGroup]
     let libraryStatuses: [String: BridgeLibraryStatus]
     let provenance: [String: BridgeResultProvenance]
     let isImporting: Bool
@@ -71,18 +72,20 @@ struct ImportIdentitySection: View {
                 folderLine
                 identityPicker
                 if let matchOptions {
-                    // One card: the matched release group with its pressing
-                    // rows — the release header would only repeat the folder
-                    // name over it. Manual search stays a step away.
-                    ReleaseGroupSection(
-                        group: matchOptions.group,
-                        isImporting: matchOptions.isImporting,
-                        libraryStatuses: matchOptions.libraryStatuses,
-                        provenance: matchOptions.provenance,
-                        selectedReleaseId: nil,
-                        loadingReleaseId: matchOptions.loadingReleaseId,
-                        onSelect: matchOptions.onSelect,
-                    )
+                    // The matched release groups with their pressing rows —
+                    // the release header would only repeat the folder name
+                    // over them. Manual search stays a step away.
+                    ForEach(matchOptions.groups) { group in
+                        ReleaseGroupSection(
+                            group: group,
+                            isImporting: matchOptions.isImporting,
+                            libraryStatuses: matchOptions.libraryStatuses,
+                            provenance: matchOptions.provenance,
+                            selectedReleaseId: nil,
+                            loadingReleaseId: matchOptions.loadingReleaseId,
+                            onSelect: matchOptions.onSelect,
+                        )
+                    }
                     Button(coreString("ui.import.header.find_release")) {
                         onFindRelease()
                     }

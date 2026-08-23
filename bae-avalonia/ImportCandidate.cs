@@ -152,7 +152,6 @@ public sealed class ImportCandidateRowStatus
             {
                 "identifying" => Loc.Chrome("identify.identifying"),
                 "found" => Loc.Chrome("identify.found", "count", Count),
-                "conflict" => Loc.Chrome("identify.conflict"),
                 "not_found" => Loc.Chrome("identify.not_found"),
                 "manual" => Loc.Chrome("identify.manual"),
                 "importing" => ImportingLine,

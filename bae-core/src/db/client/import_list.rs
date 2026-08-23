@@ -368,7 +368,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut match_counts: HashMap<String, u32> = HashMap::new();
     for (content_hash, count) in sql.query(
         "SELECT content_hash, COUNT(*) FROM import_candidate_match \
-         WHERE list = 'found' GROUP BY content_hash",
+         GROUP BY content_hash",
         [],
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
     )? {
@@ -379,7 +379,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         "SELECT content_hash, source, release_id, source_group_id, title, artist, year, \
                 format, cover_thumbnail_url, source_tracks_kind, source_tracks_count, \
                 source_tracks_total_ms, by_disc_id, by_barcode \
-         FROM import_candidate_match WHERE list = 'found' AND position = 0",
+         FROM import_candidate_match WHERE position = 0",
         [],
         |row| Ok((row.get::<_, String>(0)?, read_lead(row))),
     )? {
@@ -409,7 +409,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 Ok(VerdictSummary {
                     kind: match kind.as_str() {
                         "found" => VerdictKind::Found,
-                        "conflict" => VerdictKind::Conflict,
                         "not_found" => VerdictKind::NotFound,
                         "manual_only" => VerdictKind::ManualOnly,
                         other => return Err(unreadable("verdict_kind", other)),

@@ -2,9 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The search/identify surface: the signals toolbar, an identify-state banner,
-/// and either the auto-identified matches, the manual-search form + its
-/// results, or the per-signal conflict surface. Renders from `ImportSearchState`
-/// plus the form bindings and action callbacks.
+/// and either the auto-identified matches or the manual-search form and its
+/// results. Renders from `ImportSearchState` plus the form bindings and action
+/// callbacks.
 struct ImportSearchPane: View {
     let state: ImportSearchState
     @Binding
@@ -30,7 +30,6 @@ struct ImportSearchPane: View {
     /// Toggle a signal in the toolbar — include / exclude it from
     /// triangulation. Drops the signal from the in-memory combine step (no
     /// re-fetch) and re-derives the state delivered by the import projection.
-    /// The conflict surface's per-signal "Ignore" links route through here too.
     let onToggleSignal: (BridgeExcludedSignal) -> Void
     /// Re-run the lookups from the toolbar's `Re-run` action.
     let onRerun: () -> Void
@@ -38,23 +37,27 @@ struct ImportSearchPane: View {
     let onSelect: (BridgeMetadataResult) -> Void
 
     private struct FoundResult {
-        let group: ReleaseGroup
+        let groups: [ReleaseGroup]
         let statuses: [String: BridgeLibraryStatus]
         let provenance: [String: BridgeResultProvenance]
+
+        /// Every pressing offered, across the groups.
+        var matchCount: Int {
+            groups.reduce(0) { $0 + $1.pressings.count }
+        }
     }
 
-    /// The auto-identified release group, its library statuses, and per-row
-    /// provenance, extracted from the identify state. A `Found` state always
-    /// carries exactly one group.
+    /// The auto-identified release groups, their library statuses, and per-row
+    /// provenance, extracted from the identify state.
     private var foundResult: FoundResult? {
         guard
-            case .found(let group, let statuses, _, let provenance) =
+            case .found(let groups, let statuses, _, let provenance) =
                 state.identifyState
         else {
             return nil
         }
         return FoundResult(
-            group: group,
+            groups: groups,
             statuses: statuses,
             provenance: provenance
         )
@@ -79,7 +82,7 @@ struct ImportSearchPane: View {
             return true
         }
         switch state.identifyState {
-        case .found, .conflict, .notFoundAnywhere, .manualOnly:
+        case .found, .notFoundAnywhere, .manualOnly:
             return true
         case .idle, .triangulating:
             return false
@@ -102,28 +105,6 @@ struct ImportSearchPane: View {
     }
 
     var body: some View {
-        // Conflict replaces the standard banner + results layout entirely:
-        // it stacks per-signal sections so the user can pick a row or
-        // toggle a signal. `showManualSearch` skips it — the user
-        // explicitly asked for the manual form. `notFoundAnywhere` keeps
-        // the flat banner for the truly-empty case.
-        if case .conflict = state.identifyState, !state.showManualSearch {
-            ImportConflictView(
-                state: state,
-                onToggle: onToggleSignal,
-                onRerun: onRerun,
-                onSearchManually: onSearchManually,
-                onAddAsUnknown: onAddAsUnknown,
-                onSelect: onSelect,
-            )
-        }
-        else {
-            normalBody
-        }
-    }
-
-    @ViewBuilder
-    private var normalBody: some View {
         let found = foundResult
         let showingAutoMatches = found != nil && !state.showManualSearch
 
@@ -145,7 +126,7 @@ struct ImportSearchPane: View {
 
             if showingAutoMatches, let found {
                 ReleaseGroupListView(
-                    groups: [found.group],
+                    groups: found.groups,
                     isImporting: state.isImporting,
                     libraryStatuses: found.statuses,
                     provenance: found.provenance,
@@ -172,7 +153,7 @@ struct ImportSearchPane: View {
                         onViewMatches()
                     } label: {
                         Label(
-                            "View automatic matches (\(found.group.pressings.count))",
+                            "View automatic matches (\(found.matchCount))",
                             systemImage: "chevron.left",
                         )
                     }
@@ -275,23 +256,6 @@ struct ImportSearchPane: View {
             .overlay(alignment: .bottom) {
                 Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
             }
-        case .conflict:
-            // The full per-signal surface renders from `body` when not in
-            // manual-search mode. This banner is the manual-search-mode
-            // status line; the toolbar carries the escapes.
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.octagon.fill")
-                    .foregroundStyle(Theme.accent)
-                Text("Signals disagree on identity")
-                    .font(.callout)
-                discIdInfoIcon
-                Spacer()
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
-            }
         }
     }
 
@@ -348,8 +312,8 @@ struct ImportSearchPane: View {
         .importPreviewEnvironment()
     }
 
-    #Preview("Main Pane - Conflict") {
-        ImportSearchPane.preview(state: PreviewData.searchStateConflict)
+    #Preview("Main Pane - Signals named different releases") {
+        ImportSearchPane.preview(state: PreviewData.searchStateDisagreement)
             .frame(width: 1212, height: 982)
             .importPreviewEnvironment()
     }

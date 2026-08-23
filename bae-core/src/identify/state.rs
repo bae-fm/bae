@@ -3,13 +3,13 @@
 //! Triangulation: the disc-ID and barcode signals run in parallel, each reporting
 //! progress live so the UI can render both side by side ("Computing disc-id ✓ ·
 //! Looking up barcode 2 of 3…"). Once both settle, the reducer hands their results
-//! to `combine` and lands on `Found`, `Conflict`, or `NotFoundAnywhere`.
+//! to `combine` and lands on `Found` or `NotFoundAnywhere`.
 //!
 //! `step` takes a state and an event and returns the next state plus the side
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
 use super::combine::{
-    catalog_matches_candidate, combine_results, CombineOutcome, GroupKey, ResultProvenance,
+    catalog_matches_candidate, combine_results, CombineOutcome, ResultProvenance,
 };
 use super::toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
@@ -271,20 +271,10 @@ pub enum IdentifyState {
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
         track_count: u32,
-        /// All matches share this group — UI can render
-        /// "N pressings of one release group" copy.
-        group: GroupKey,
         /// Per-match provenance (which signals produced/confirmed each row),
         /// index-aligned with `matches` — drives the per-row signal badges, and
         /// says which signal produced any given match.
         provenance: Vec<ResultProvenance>,
-        context: SignalsContext,
-    },
-
-    /// The signals disagree: an empty intersection, or a combined set spanning
-    /// several groups. The UI renders each signal's section from `context`'s
-    /// settled results; toggling one off re-combines over the rest.
-    Conflict {
         context: SignalsContext,
     },
 
@@ -308,7 +298,6 @@ impl IdentifyState {
         match self {
             IdentifyState::Triangulating { context, .. }
             | IdentifyState::Found { context, .. }
-            | IdentifyState::Conflict { context, .. }
             | IdentifyState::NotFoundAnywhere { context }
             | IdentifyState::ManualOnly { context, .. } => Some(context),
             IdentifyState::Idle => None,
@@ -326,7 +315,6 @@ impl IdentifyState {
     pub fn is_terminal(&self) -> bool {
         match self {
             IdentifyState::Found { .. }
-            | IdentifyState::Conflict { .. }
             | IdentifyState::NotFoundAnywhere { .. }
             | IdentifyState::ManualOnly { .. } => true,
             IdentifyState::Idle | IdentifyState::Triangulating { .. } => false,
@@ -351,7 +339,6 @@ impl IdentifyState {
                 }
             }
             IdentifyState::Found { mut context, .. }
-            | IdentifyState::Conflict { mut context }
             | IdentifyState::NotFoundAnywhere { mut context }
             | IdentifyState::ManualOnly { mut context, .. } => {
                 context.toggle(signal);
@@ -928,18 +915,14 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
         CombineOutcome::Found {
             matches,
             library_statuses,
-            group,
             provenance,
-            ..
         } => IdentifyState::Found {
             matches,
             library_statuses,
             track_count,
-            group,
             provenance,
             context,
         },
-        CombineOutcome::Conflict { .. } => IdentifyState::Conflict { context },
         CombineOutcome::NotFoundAnywhere => IdentifyState::NotFoundAnywhere { context },
     }
 }
@@ -990,3 +973,11 @@ fn settled_track_count(discid: &DiscidProgress) -> u32 {
 
 #[cfg(test)]
 mod tests;
+
+/// `re_derive` for tests in sibling modules: the one path that turns a settled
+/// context into a terminal state, so a test can build the state a real run
+/// would reach rather than hand-assembling one.
+#[cfg(test)]
+pub(crate) fn re_derive_for_tests(context: SignalsContext) -> IdentifyState {
+    re_derive(context)
+}

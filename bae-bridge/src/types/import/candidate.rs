@@ -805,9 +805,10 @@ pub enum BridgeIdentifyState {
         barcode: BridgeBarcodeProgress,
     },
     Found {
-        /// The single release group every match shares, with its pressings —
-        /// the UI renders it as one card with the pressings beneath.
-        group: BridgeReleaseGroup,
+        /// The matches as group cards, in match order — the UI renders one card
+        /// per group with its pressings beneath. Usually one; signals that
+        /// named different releases give several.
+        groups: Vec<BridgeReleaseGroup>,
         /// Library status per matched release, keyed by release id, so the
         /// UI looks up a row's status directly without re-indexing a flat
         /// list.
@@ -816,23 +817,6 @@ pub enum BridgeIdentifyState {
         /// Per-pressing provenance keyed by release id — the per-row signal
         /// badges, and which signal produced each match.
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
-    },
-    /// Signals disagreed: empty intersection or multi-group result. The UI
-    /// presents the per-signal sections so the user can pick a section,
-    /// ignore a signal, or fall back to manual search.
-    Conflict {
-        discid_results: Vec<BridgeMetadataResult>,
-        /// Disc-id library statuses keyed by release id (see `Found`).
-        discid_library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-        barcode_results: Vec<BridgeMetadataResult>,
-        /// Barcode library statuses keyed by release id (see `Found`).
-        barcode_library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-        /// The barcode value that produced `barcode_results`. `None` when
-        /// the barcode side is empty. The conflict surface uses this in
-        /// the section header so the user can correlate against the
-        /// artwork.
-        matched_barcode: Option<String>,
-        track_count: u32,
     },
     NotFoundAnywhere,
     /// Nothing to look up — no disc-ID artifact and no barcode source. The UI

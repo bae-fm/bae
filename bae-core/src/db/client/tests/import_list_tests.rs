@@ -6,7 +6,7 @@
 //! tables it deliberately never touches.
 
 use super::super::*;
-use crate::identify::{GroupKey, ResultProvenance, TerminalVerdict};
+use crate::identify::{ResultProvenance, TerminalVerdict};
 
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
@@ -95,10 +95,6 @@ fn verdict(release_id: &str) -> TerminalVerdict {
             }),
         }],
         track_count: 1,
-        group: GroupKey {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "group-1".to_string(),
-        },
         provenance: vec![ResultProvenance {
             by_disc_id: true,
             by_barcode: false,

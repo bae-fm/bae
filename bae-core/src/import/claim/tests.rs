@@ -4,7 +4,7 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::SignalsContext;
-use crate::identify::{GroupKey, ResultProvenance};
+use crate::identify::ResultProvenance;
 use crate::import::MetadataSource;
 use crate::signals::DiscIdSignal;
 use std::collections::HashSet;
@@ -57,21 +57,18 @@ fn found(entries: &[(&str, ResultProvenance)]) -> IdentifyState {
         matches: entries.iter().map(|(id, _)| result(id)).collect(),
         library_statuses: entries.iter().map(|(id, _)| status(id)).collect(),
         track_count: 14,
-        group: GroupKey {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "group-1".to_string(),
-        },
         provenance: entries.iter().map(|(_, p)| p.clone()).collect(),
         context: empty_context(),
     }
 }
 
-/// A settled `Conflict` carrying each signal's own results.
-fn conflict(discid: &[&str], barcode: &[&str]) -> IdentifyState {
+/// A settled state over signals that share no result: the reducer combines
+/// them into one `Found` over their union.
+fn disagreeing(discid: &[&str], barcode: &[&str]) -> IdentifyState {
     let mut context = empty_context();
     context.discid_results = discid.iter().map(|id| (result(id), status(id))).collect();
     context.barcode_results = barcode.iter().map(|id| (result(id), status(id))).collect();
-    IdentifyState::Conflict { context }
+    crate::identify::state::re_derive_for_tests(context)
 }
 
 fn empty_context() -> SignalsContext {
@@ -125,13 +122,13 @@ fn evidence_comes_from_the_identify_state() {
             ClaimEvidence::Search,
         ),
         (
-            "picked the disc-ID side of a conflict",
-            conflict(&[REL_A, REL_B], &[]),
+            "one of two releases the disc ID alone turned up",
+            disagreeing(&[REL_A, REL_B], &[]),
             ClaimEvidence::DiscIdShared { match_count: 2 },
         ),
         (
-            "picked the barcode side of a conflict",
-            conflict(&[REL_B], &[REL_A]),
+            "the barcode's release, alongside a disc-ID one it shares nothing with",
+            disagreeing(&[REL_B], &[REL_A]),
             ClaimEvidence::Barcode,
         ),
         (

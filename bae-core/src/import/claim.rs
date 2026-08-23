@@ -60,25 +60,6 @@ pub fn evidence_for(state: &IdentifyState, release_ref: &MetadataRef) -> ClaimEv
                 ClaimEvidence::Search
             }
         }
-        // The signals disagreed and the user picked a side. Which side names
-        // this release is what its evidence is; the disc ID wins when both do.
-        IdentifyState::Conflict { context } => {
-            if context
-                .discid_results
-                .iter()
-                .any(|(result, _)| names(result, release_ref))
-            {
-                disc_id_evidence(context.discid_results.len())
-            } else if context
-                .barcode_results
-                .iter()
-                .any(|(result, _)| names(result, release_ref))
-            {
-                ClaimEvidence::Barcode
-            } else {
-                ClaimEvidence::Search
-            }
-        }
         // Nothing matched, or nothing ran yet — whatever the user picked, they
         // found it themselves.
         IdentifyState::Idle

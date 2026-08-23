@@ -249,7 +249,6 @@ pub enum BridgeTriageSkipAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNeedsYouGroup {
     PickAPressing,
-    SignalsDisagree,
     CountsOrLengthsDisagree,
     AlreadyInLibrary,
     NoMatch,
@@ -292,7 +291,6 @@ pub enum BridgeNeedsYou {
     SeveralMatches {
         count: u32,
     },
-    SignalsConflict,
     NoMatch,
     NothingToLookUp,
     TrackCountDisagrees {
@@ -316,7 +314,6 @@ impl BridgeNeedsYou {
         match self {
             Self::AlreadyInLibrary => "core.import.triage.already_in_library",
             Self::SeveralMatches { .. } => "core.import.triage.several_matches",
-            Self::SignalsConflict => "core.import.triage.signals_conflict",
             Self::NoMatch => "core.import.triage.no_match",
             Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",
             Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
@@ -343,7 +340,6 @@ pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
 pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
     vec![
         BridgeNeedsYouGroup::PickAPressing,
-        BridgeNeedsYouGroup::SignalsDisagree,
         BridgeNeedsYouGroup::CountsOrLengthsDisagree,
         BridgeNeedsYouGroup::AlreadyInLibrary,
         BridgeNeedsYouGroup::NoMatch,

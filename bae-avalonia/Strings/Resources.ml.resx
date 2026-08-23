@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>പ്ലേബാക്ക് പിശക്</value></data>
   <data name="error.title" xml:space="preserve"><value>പിശക്</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ഗാലറി ലോഡ് ചെയ്യാനായില്ല</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>സംഘർഷം</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {കണ്ടെത്തി (#)} other {കണ്ടെത്തി (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>തിരിച്ചറിയുന്നു…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>നേരിട്ടുള്ള തിരയൽ മാത്രം</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>തീർപ്പാക്കാത്തവ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>പൂർത്തിയായി</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ഒരു പ്രസ്സിംഗ് തിരഞ്ഞെടുക്കുക</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>സൂചനകൾ യോജിക്കുന്നില്ല</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>എണ്ണമോ ദൈർഘ്യമോ യോജിക്കുന്നില്ല</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ഇതിനകം ലൈബ്രറിയിൽ</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>പൊരുത്തം കണ്ടെത്തിയില്ല</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>എന്നാലും ഇറക്കുമതി ചെയ്യുക</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുക</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>ഇത് എത്ര നേരം ഓടുന്നു എന്ന് വായിക്കുന്നു</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>സംഘർഷം</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>നേരിട്ട് തിരയുക</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>പരാജയപ്പെട്ടു</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>ഡിസ്‌ക് ID</value></data>

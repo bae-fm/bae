@@ -32,7 +32,7 @@ extension BridgeNeedsYou {
                 DurationClock.text(Int64(probedMs)),
                 DurationClock.text(Int64(sourceMs))
             )
-        case .alreadyInLibrary, .signalsConflict, .noMatch, .nothingToLookUp,
+        case .alreadyInLibrary, .noMatch, .nothingToLookUp,
             .sourceLengthsUnknown, .localDurationUnknown:
             return template
         }

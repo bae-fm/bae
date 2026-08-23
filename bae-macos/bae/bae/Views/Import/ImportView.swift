@@ -283,7 +283,7 @@ struct ImportView: View {
     #Preview("Import tab — identity signals disagree") {
         let uiStore = ImportTabPreview.uiStore(
             tab: .pending,
-            selected: PreviewData.importTabConflictCandidate.key
+            selected: PreviewData.importTabDisagreementCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView()

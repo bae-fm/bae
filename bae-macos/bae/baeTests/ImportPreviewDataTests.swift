@@ -190,7 +190,6 @@ struct ImportPreviewDataTests {
         #expect(rows.contains { $0.placement == .done })
         #expect(rows.contains { $0.placement == .skipped })
         #expect(needsYouGroups.contains(.pickAPressing))
-        #expect(needsYouGroups.contains(.signalsDisagree))
         #expect(needsYouGroups.contains(.countsOrLengthsDisagree))
         #expect(needsYouGroups.contains(.alreadyInLibrary))
         #expect(needsYouGroups.contains(.noMatch))

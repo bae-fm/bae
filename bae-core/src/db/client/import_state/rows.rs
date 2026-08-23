@@ -59,9 +59,6 @@ struct StateRow {
     folder_path: String,
     verdict_kind: Option<String>,
     verdict_track_count: Option<i64>,
-    verdict_group_source: Option<String>,
-    verdict_group_id: Option<String>,
-    verdict_matched_barcode: Option<String>,
     probed_total_duration_ms: Option<i64>,
     identified_at: Option<DateTime<Utc>>,
     pick: Option<IdentityPick>,
@@ -75,9 +72,6 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         folder_path: row.get("folder_path")?,
         verdict_kind: row.get("verdict_kind")?,
         verdict_track_count: row.get("verdict_track_count")?,
-        verdict_group_source: row.get("verdict_group_source")?,
-        verdict_group_id: row.get("verdict_group_id")?,
-        verdict_matched_barcode: row.get("verdict_matched_barcode")?,
         probed_total_duration_ms: row.get("probed_total_duration_ms")?,
         identified_at: identified_at
             .map(|_| rfc3339_column(row, "identified_at"))
@@ -92,11 +86,10 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 }
 
 const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_track_count, \
-     verdict_group_source, verdict_group_id, verdict_matched_barcode, \
      probed_total_duration_ms, identified_at, pick_kind, pick_source, pick_release_id, \
      edit_revision";
 
-const MATCH_COLUMNS: &str = "content_hash, list, source, release_id, title, artist, year, \
+const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
      cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
      source_tracks_total_ms, by_disc_id, by_barcode, matches_catalog";
@@ -122,7 +115,7 @@ pub(crate) fn load_states_on(
         &format!(
             "SELECT {MATCH_COLUMNS} FROM import_candidate_match \
              WHERE :only IS NULL OR content_hash = :only \
-             ORDER BY content_hash, list, position"
+             ORDER BY content_hash, position"
         ),
         named_params! { ":only": only },
         |row| Ok(read_match_row(row)),
@@ -130,10 +123,7 @@ pub(crate) fn load_states_on(
     let mut lists: HashMap<String, MatchLists> = HashMap::new();
     for row in matches {
         let row = row?;
-        lists
-            .entry(row.content_hash.clone())
-            .or_default()
-            .push(row)?;
+        lists.entry(row.content_hash.clone()).or_default().push(row);
     }
     let mut edits = load_edits_on(sql, only)?;
     let mut durations = load_durations_on(sql, only)?;
@@ -152,9 +142,6 @@ pub(crate) fn load_states_on(
                     &state.content_hash,
                     &kind,
                     state.verdict_track_count,
-                    state.verdict_group_source,
-                    state.verdict_group_id,
-                    state.verdict_matched_barcode,
                     lists.remove(&state.content_hash).unwrap_or_default(),
                 )?,
                 probed_total_duration_ms: u64::try_from(probed).map_err(|_| {

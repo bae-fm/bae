@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>播放错误</value></data>
   <data name="error.title" xml:space="preserve"><value>错误</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>无法加载图库</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>冲突</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {找到 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>识别中…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>仅手动搜索</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>待处理</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>已完成</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>选择压制版</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>信号不一致</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>曲目数或时长不一致</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>已在库中</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>未找到匹配</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>仍然导入</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>重试</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>正在读取时长</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>冲突</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>手动搜索</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失败</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>碟片 ID</value></data>

@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>שגיאת ניגון</value></data>
   <data name="error.title" xml:space="preserve"><value>שגיאה</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>לא ניתן לטעון את הגלריה</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>התנגשות</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {נמצאה (#)} two {נמצאו (#)} many {נמצאו (#)} other {נמצאו (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>מזהה…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>חיפוש ידני בלבד</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>ממתינים</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>הושלמו</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>בחרו תקליט</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>האותות סותרים</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>הכמות או האורכים אינם תואמים</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>כבר בספרייה</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>אין התאמה</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>ייבא בכל זאת</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>נסה שוב</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>קורא כמה זמן זה נמשך</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>התנגשות</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>חפש ידנית</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>נכשל</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>מזהה תקליטור</value></data>

@@ -57,9 +57,6 @@ pub enum NeedsYou {
     AlreadyInLibrary,
     /// Several pressings matched; which one is on disk is the user's call.
     SeveralMatches { count: u32 },
-    /// The signals disagreed — an empty intersection, or results spanning
-    /// several release groups.
-    SignalsConflict,
     /// Signals ran and matched nothing anywhere.
     NoMatch,
     /// Nothing to look up: no disc-ID artifact and no barcode source. Manual
@@ -82,12 +79,11 @@ pub enum NeedsYou {
     LocalDurationUnknown,
 }
 
-/// Which of the four shapes a stored verdict has. The `verdict_kind` column's
-/// four values, read as a type.
+/// Which of the three shapes a stored verdict has. The `verdict_kind` column's
+/// three values, read as a type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerdictKind {
     Found,
-    Conflict,
     NotFound,
     ManualOnly,
 }
@@ -171,12 +167,6 @@ impl VerdictSummary {
                     .first()
                     .map(|result| LeadMatch::of(result, provenance.first())),
             },
-            TerminalVerdict::Conflict { track_count, .. } => Self {
-                kind: VerdictKind::Conflict,
-                track_count: Some(*track_count),
-                match_count: 0,
-                lead: None,
-            },
             TerminalVerdict::NotFoundAnywhere => Self {
                 kind: VerdictKind::NotFound,
                 track_count: None,
@@ -229,7 +219,6 @@ pub fn classify_summary(
 ) -> QueueClassification {
     let track_count = match summary.kind {
         VerdictKind::Found => summary.track_count.unwrap_or_default(),
-        VerdictKind::Conflict => return QueueClassification::NeedsYou(NeedsYou::SignalsConflict),
         VerdictKind::NotFound => return QueueClassification::NeedsYou(NeedsYou::NoMatch),
         VerdictKind::ManualOnly => return QueueClassification::NeedsYou(NeedsYou::NothingToLookUp),
     };

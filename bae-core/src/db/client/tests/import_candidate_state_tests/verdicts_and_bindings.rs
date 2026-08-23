@@ -1,5 +1,5 @@
 use super::super::*;
-use crate::identify::{GroupKey, ResultProvenance, TerminalVerdict};
+use crate::identify::{ResultProvenance, TerminalVerdict};
 use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::import::search::MetadataResult;
@@ -62,10 +62,6 @@ fn sample_verdict() -> TerminalVerdict {
             source_tracks: None,
         }],
         track_count: 11,
-        group: GroupKey {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "group-1".to_string(),
-        },
         provenance: vec![ResultProvenance {
             by_disc_id: true,
             by_barcode: false,

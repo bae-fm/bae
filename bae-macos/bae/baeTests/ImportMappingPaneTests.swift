@@ -97,12 +97,12 @@ private final class Recorder {
 struct ImportMappingPaneTests {
     @MainActor
     @Test(
-        "restored and arriving conflicts appear inline until identity settles"
+        "restored and arriving match lists appear inline until identity settles"
     )
-    func conflictsAppearInlineUntilIdentitySettles() async throws {
+    func matchListsAppearInlineUntilIdentitySettles() async throws {
         let scene = PreviewData.importTabScene()
         let store = scene.store
-        let key = PreviewData.importTabConflictCandidate.key
+        let key = PreviewData.importTabDisagreementCandidate.key
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         uiStore.setFolderCandidateSelection([key])
@@ -126,7 +126,7 @@ struct ImportMappingPaneTests {
         host.layoutSubtreeIfNeeded()
         await Task.yield()
         host.layoutSubtreeIfNeeded()
-        let restoredConflict = try await SnapshotTestSupport.capturePNG(
+        let restoredMatches = try await SnapshotTestSupport.capturePNG(
             host,
             size: size
         )
@@ -145,13 +145,13 @@ struct ImportMappingPaneTests {
         host.layoutSubtreeIfNeeded()
         let before = try await SnapshotTestSupport.capturePNG(host, size: size)
 
-        #expect(restoredConflict != before)
+        #expect(restoredMatches != before)
 
         store.candidateRuntimeSubject.send(
             .updated(
                 key: key,
                 runtime: BridgeCandidateRuntimeSnapshot(
-                    identifyState: PreviewData.bridgeConflictState,
+                    identifyState: PreviewData.bridgeDisagreementState,
                     signalsToolbar: BridgeSignalsToolbar(signals: []),
                     import: nil
                 )
@@ -159,15 +159,15 @@ struct ImportMappingPaneTests {
         )
         await Task.yield()
         host.layoutSubtreeIfNeeded()
-        let conflict = try await SnapshotTestSupport.capturePNG(
+        let matches = try await SnapshotTestSupport.capturePNG(
             host,
             size: size
         )
 
-        #expect(conflict != before)
+        #expect(matches != before)
 
-        // A stored pick settles the identity: the conflict offer gives way to
-        // the release card, whatever the run left behind.
+        // A stored pick settles the identity: the match list gives way to the
+        // release card, whatever the run left behind.
         store.applyCandidateDetail(
             key: key,
             detail: MappingFixtures.detail(

@@ -56,7 +56,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
   <data name="error.title" xml:space="preserve"><value>error</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
@@ -394,7 +393,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Pending</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Done</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Pick a Pressing</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signals Disagree</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Counts or Lengths Disagree</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Already in Library</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>No Match</value></data>
@@ -407,7 +405,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>Import Anyway</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Retry</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Reading how long this runs</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>Conflict</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>Search manually</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Failed</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>

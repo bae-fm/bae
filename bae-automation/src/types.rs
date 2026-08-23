@@ -310,18 +310,10 @@ pub enum AutomationIdentifyState {
         barcode: AutomationBarcodeProgress,
     },
     Found {
-        group: AutomationReleaseGroup,
+        groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         track_count: u32,
         provenance: Vec<AutomationResultProvenance>,
-    },
-    Conflict {
-        discid_results: Vec<AutomationMetadataResult>,
-        discid_library_statuses: Vec<AutomationLibraryStatus>,
-        barcode_results: Vec<AutomationMetadataResult>,
-        barcode_library_statuses: Vec<AutomationLibraryStatus>,
-        matched_barcode: Option<String>,
-        track_count: u32,
     },
     NotFoundAnywhere,
     ManualOnly {

@@ -330,7 +330,6 @@ mod loc_key_coverage {
         for needs_you in [
             BridgeNeedsYou::AlreadyInLibrary,
             BridgeNeedsYou::SeveralMatches { count: 0 },
-            BridgeNeedsYou::SignalsConflict,
             BridgeNeedsYou::NoMatch,
             BridgeNeedsYou::NothingToLookUp,
             BridgeNeedsYou::TrackCountDisagrees {
@@ -348,7 +347,6 @@ mod loc_key_coverage {
             let expected = match needs_you {
                 BridgeNeedsYou::AlreadyInLibrary => "core.import.triage.already_in_library",
                 BridgeNeedsYou::SeveralMatches { .. } => "core.import.triage.several_matches",
-                BridgeNeedsYou::SignalsConflict => "core.import.triage.signals_conflict",
                 BridgeNeedsYou::NoMatch => "core.import.triage.no_match",
                 BridgeNeedsYou::NothingToLookUp => "core.import.triage.nothing_to_look_up",
                 BridgeNeedsYou::TrackCountDisagrees { .. } => {

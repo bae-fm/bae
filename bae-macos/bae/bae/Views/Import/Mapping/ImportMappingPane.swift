@@ -59,7 +59,6 @@ struct ImportMappingPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 identitySection
-                conflictResolution
                 banners
                 if !mapping.images.isEmpty {
                     ImportMappingGallery(
@@ -76,21 +75,6 @@ struct ImportMappingPane: View {
                 )
             }
             .padding(20)
-        }
-    }
-
-    @ViewBuilder
-    private var conflictResolution: some View {
-        if !candidate.hasSettled, case .conflict = identifyState {
-            ImportConflictResolutionView(
-                identifyState: identifyState,
-                isImporting: ImportSearchFlow.isImporting(candidate),
-                selectedReleaseId: nil,
-                error: nil,
-                scrollsResults: false,
-                onToggle: onToggleSignal,
-                onSelect: onPickRelease,
-            )
         }
     }
 
@@ -145,13 +129,13 @@ struct ImportMappingPane: View {
     private var matchOptions: ImportMatchOptions? {
         guard candidate.identity == .release,
             !candidate.hasSettled,
-            case .found(let group, let libraryStatuses, _, let provenance) =
+            case .found(let groups, let libraryStatuses, _, let provenance) =
                 identifyState
         else {
             return nil
         }
         return ImportMatchOptions(
-            group: group,
+            groups: groups,
             libraryStatuses: libraryStatuses,
             provenance: provenance,
             isImporting: ImportSearchFlow.isImporting(candidate),

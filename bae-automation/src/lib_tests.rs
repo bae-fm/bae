@@ -206,7 +206,7 @@ fn import_step_and_phase_serialize_snake_case() {
 mod identify_mirrors {
     use super::*;
     use bae_core::db::LibraryStatus;
-    use bae_core::identify::combine::{GroupKey, ResultProvenance};
+    use bae_core::identify::combine::ResultProvenance;
     use bae_core::identify::state::SignalsContext;
     use bae_core::identify::{
         BarcodeProgress, DiscidProgress, IdentifyState, SignalKind, SignalRole, SignalState,
@@ -274,10 +274,6 @@ mod identify_mirrors {
             matches: matches.clone(),
             library_statuses: vec![library_status("rel-1"), library_status("rel-2")],
             track_count: 12,
-            group: GroupKey {
-                source: MetadataSource::MusicBrainz,
-                source_group_id: "group-1".to_string(),
-            },
             provenance: vec![
                 ResultProvenance {
                     by_disc_id: true,
@@ -295,7 +291,9 @@ mod identify_mirrors {
 
         let json = serde_json::to_value(automation_identify_state(state)).unwrap();
         assert_eq!(json["kind"], "found");
-        let pressings = json["group"]["pressings"].as_array().unwrap();
+        let groups = json["groups"].as_array().unwrap();
+        assert_eq!(groups.len(), 1, "both matches share one release group");
+        let pressings = groups[0]["pressings"].as_array().unwrap();
         assert_eq!(pressings[0]["release_id"], "rel-1");
         assert_eq!(pressings[1]["release_id"], "rel-2");
         let provenance = json["provenance"].as_array().unwrap();
@@ -309,26 +307,42 @@ mod identify_mirrors {
         assert_eq!(statuses[1]["release_id"], "rel-2");
     }
 
+    /// Signals that share no result still settle as one `Found`; the releases
+    /// they each named land in their own group cards, and every row keeps the
+    /// provenance saying which signal produced it.
     #[test]
-    fn conflict_state_splits_results_and_statuses_per_signal() {
-        let mut context = empty_context();
-        context.discid_results = vec![(
-            metadata_result("rel-disc", "g-d"),
-            library_status("rel-disc"),
-        )];
-        context.barcode_results =
-            vec![(metadata_result("rel-bar", "g-b"), library_status("rel-bar"))];
-        context.matched_barcode = Some("0123456789012".to_string());
-        context.track_count = 9;
-        let state = IdentifyState::Conflict { context };
+    fn disagreeing_signals_become_one_found_over_several_groups() {
+        let state = IdentifyState::Found {
+            matches: vec![
+                metadata_result("rel-disc", "g-d"),
+                metadata_result("rel-bar", "g-b"),
+            ],
+            library_statuses: vec![library_status("rel-disc"), library_status("rel-bar")],
+            track_count: 9,
+            provenance: vec![
+                ResultProvenance {
+                    by_disc_id: true,
+                    by_barcode: false,
+                    matches_catalog: false,
+                },
+                ResultProvenance {
+                    by_disc_id: false,
+                    by_barcode: true,
+                    matches_catalog: false,
+                },
+            ],
+            context: empty_context(),
+        };
 
         let json = serde_json::to_value(automation_identify_state(state)).unwrap();
-        assert_eq!(json["kind"], "conflict");
-        assert_eq!(json["discid_results"][0]["release_id"], "rel-disc");
-        assert_eq!(json["discid_library_statuses"][0]["release_id"], "rel-disc");
-        assert_eq!(json["barcode_results"][0]["release_id"], "rel-bar");
-        assert_eq!(json["barcode_library_statuses"][0]["release_id"], "rel-bar");
-        assert_eq!(json["matched_barcode"], "0123456789012");
+        assert_eq!(json["kind"], "found");
+        let groups = json["groups"].as_array().unwrap();
+        assert_eq!(groups.len(), 2, "the two releases are two release groups");
+        assert_eq!(groups[0]["pressings"][0]["release_id"], "rel-disc");
+        assert_eq!(groups[1]["pressings"][0]["release_id"], "rel-bar");
+        let provenance = json["provenance"].as_array().unwrap();
+        assert_eq!(provenance[0]["by_disc_id"], true);
+        assert_eq!(provenance[1]["by_barcode"], true);
         assert_eq!(json["track_count"], 9);
     }
 

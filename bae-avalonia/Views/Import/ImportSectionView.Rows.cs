@@ -618,7 +618,6 @@ internal sealed partial class ImportSectionView
                 return group switch
                 {
                     BridgeNeedsYouGroup.PickAPressing => Chip(BridgeDisplay.LocalizedLine(disagreement.DisagreementValue), "BaeWarningBrush"),
-                    BridgeNeedsYouGroup.SignalsDisagree => Chip(Loc.Chrome("import.row.conflict"), "BaeDangerBrush"),
                     BridgeNeedsYouGroup.AlreadyInLibrary => Chip(BridgeDisplay.LocalizedLine(disagreement.DisagreementValue), "BaeInfoBrush"),
                     BridgeNeedsYouGroup.CountsOrLengthsDisagree => DotIcon("BaeWarningBrush"),
                     BridgeNeedsYouGroup.NoMatch => SearchManuallyChip(row),

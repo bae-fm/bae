@@ -2,7 +2,7 @@
 //! service produces for a candidate and drives a state machine that matches it
 //! against external metadata. The disc-ID and barcode signals are looked up in
 //! parallel — triangulation — and once both settle, `combine` reconciles their
-//! results into a terminal `Found`, `Conflict`, or `NotFoundAnywhere` carrying
+//! results into a terminal `Found` or `NotFoundAnywhere` carrying
 //! per-result provenance.
 //!
 //! The state machine is a pure reducer (`state::step`). The service
@@ -19,7 +19,7 @@
 //! same decisions instead of re-making them.
 //!
 //! [`verdict::TerminalVerdict`] is the third projection: what a *terminal*
-//! state (`Found`, `Conflict`, `NotFoundAnywhere`, `ManualOnly`) persists to
+//! state (`Found`, `NotFoundAnywhere`, `ManualOnly`) persists to
 //! `import_candidate_state` so it need not be re-fetched on the next launch.
 //! [`ready`] reads that stored verdict back and says what the queue needs from
 //! the user for that candidate — derived on every read, never stored.
@@ -34,7 +34,7 @@ pub mod toolbar;
 pub mod verdict;
 pub mod view;
 
-pub use combine::{GroupKey, ResultProvenance};
+pub use combine::ResultProvenance;
 pub use ready::{
     classify, classify_summary, LeadMatch, NeedsYou, QueueClassification, VerdictKind,
     VerdictSummary,
@@ -43,7 +43,7 @@ pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifyState};
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
 pub use verdict::TerminalVerdict;
-pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView, ResultRow};
+pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView};
 
 use crate::db::{LibraryCheck, LibraryStatus};
 use crate::import::search::MetadataResult;

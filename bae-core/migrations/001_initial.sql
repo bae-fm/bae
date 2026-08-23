@@ -459,11 +459,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- The identify result. Set and cleared as one group: all NULL together or
     -- all set together. Set only once identification reached a terminal
     -- verdict; cleared when a file decision changes what the folder is.
-    verdict_kind             TEXT CHECK (verdict_kind IN ('found', 'conflict', 'not_found', 'manual_only')),
+    verdict_kind             TEXT CHECK (verdict_kind IN ('found', 'not_found', 'manual_only')),
     verdict_track_count      INTEGER CHECK (verdict_track_count IS NULL OR verdict_track_count >= 0),
-    verdict_group_source     TEXT CHECK (verdict_group_source IS NULL OR verdict_group_source IN ('musicbrainz', 'discogs')),
-    verdict_group_id         TEXT,
-    verdict_matched_barcode  TEXT,
     probed_total_duration_ms INTEGER,
     identified_at            TEXT,
     -- The identity decided for this candidate: a pressing, or the folder's own
@@ -476,26 +473,21 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- shape is refused.
     edit_revision            INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0),
     CHECK (
-        (verdict_kind IS NULL AND verdict_track_count IS NULL AND verdict_group_source IS NULL
-            AND verdict_group_id IS NULL AND verdict_matched_barcode IS NULL
+        (verdict_kind IS NULL AND verdict_track_count IS NULL
             AND probed_total_duration_ms IS NULL AND identified_at IS NULL)
         OR
         (verdict_kind IS NOT NULL AND probed_total_duration_ms IS NOT NULL
             AND probed_total_duration_ms >= 0 AND identified_at IS NOT NULL)
     ),
-    CHECK ((verdict_kind = 'found') = (verdict_group_source IS NOT NULL AND verdict_group_id IS NOT NULL)),
-    CHECK (verdict_kind IN ('found', 'conflict', 'manual_only') = (verdict_track_count IS NOT NULL)),
-    CHECK (verdict_matched_barcode IS NULL OR verdict_kind = 'conflict'),
+    CHECK (verdict_kind IN ('found', 'manual_only') = (verdict_track_count IS NOT NULL)),
     CHECK ((pick_kind IS NULL) = (identity_pick_author IS NULL)),
     CHECK ((pick_kind = 'release') = (pick_source IS NOT NULL AND pick_release_id IS NOT NULL))
 ) STRICT;
 
--- One matched release of a verdict. `list` is which result set it belongs
--- to: a found verdict's matches, or a conflict's disc-ID / barcode sets.
--- Provenance (which signal produced it) is set for found matches only.
+-- One matched release of a found verdict, in match order, with the provenance
+-- saying which signal produced it.
 CREATE TABLE IF NOT EXISTS import_candidate_match (
     content_hash           TEXT NOT NULL,
-    list                   TEXT NOT NULL CHECK (list IN ('found', 'discid', 'barcode')),
     position               INTEGER NOT NULL CHECK (position >= 0),
     source                 TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     release_id             TEXT NOT NULL,
@@ -516,15 +508,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     source_tracks_kind     TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
     source_tracks_count    INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
     source_tracks_total_ms INTEGER CHECK (source_tracks_total_ms IS NULL OR source_tracks_total_ms >= 0),
-    by_disc_id             INTEGER CHECK (by_disc_id IS NULL OR by_disc_id IN (0, 1)),
-    by_barcode             INTEGER CHECK (by_barcode IS NULL OR by_barcode IN (0, 1)),
-    matches_catalog        INTEGER CHECK (matches_catalog IS NULL OR matches_catalog IN (0, 1)),
-    PRIMARY KEY (content_hash, list, position),
+    by_disc_id             INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
+    by_barcode             INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
+    matches_catalog        INTEGER NOT NULL CHECK (matches_catalog IN (0, 1)),
+    PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
-    CHECK (source_tracks_total_ms IS NULL OR source_tracks_kind = 'listed'),
-    CHECK ((list = 'found') = (by_disc_id IS NOT NULL AND by_barcode IS NOT NULL AND matches_catalog IS NOT NULL))
+    CHECK (source_tracks_total_ms IS NULL OR source_tracks_kind = 'listed')
 ) STRICT;
 
 -- One file's user decisions: its role, which audio a sheet describes, which

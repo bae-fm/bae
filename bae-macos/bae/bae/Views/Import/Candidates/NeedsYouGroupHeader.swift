@@ -30,7 +30,6 @@ struct NeedsYouGroupHeader: View {
     private var title: LocalizedStringKey {
         switch group {
         case .pickAPressing: "Pick a Pressing"
-        case .signalsDisagree: "Signals Disagree"
         case .countsOrLengthsDisagree: "Counts or Lengths Disagree"
         case .alreadyInLibrary: "Already in Library"
         case .noMatch: "No Match"
@@ -45,7 +44,6 @@ struct NeedsYouGroupHeader: View {
     #Preview("Needs-you group headers") {
         VStack(alignment: .leading, spacing: 12) {
             NeedsYouGroupHeader(group: .pickAPressing, count: 31)
-            NeedsYouGroupHeader(group: .signalsDisagree, count: 6)
             NeedsYouGroupHeader(group: .countsOrLengthsDisagree, count: 10)
             NeedsYouGroupHeader(group: .alreadyInLibrary, count: 15)
             NeedsYouGroupHeader(group: .noMatch, count: 48)

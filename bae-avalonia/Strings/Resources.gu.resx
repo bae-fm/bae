@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>વગાડવાની ભૂલ</value></data>
   <data name="error.title" xml:space="preserve"><value>ભૂલ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ગેલેરી લોડ કરી શકાયી નહીં</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>વિરોધ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {મળ્યું (#)} other {મળ્યાં (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ઓળખાઈ રહ્યું છે…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>માત્ર હાથેથી શોધ</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>બાકી</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>પૂર્ણ</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>પ્રેસિંગ પસંદ કરો</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>સંકેતો મેળ ખાતા નથી</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>સંખ્યા કે લંબાઈ મેળ ખાતી નથી</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>પહેલેથી લાઇબ્રેરીમાં</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>કોઈ મેળ મળ્યો નથી</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>તો પણ આયાત કરો</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>ફરી પ્રયાસ કરો</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>આ કેટલું ચાલે છે તે વાંચી રહ્યા છીએ</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>વિરોધ</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>હાથેથી શોધો</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>નિષ્ફળ</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>ડિસ્ક ID</value></data>

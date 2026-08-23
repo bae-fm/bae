@@ -55,7 +55,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>chyba přehrávání</value></data>
   <data name="error.title" xml:space="preserve"><value>chyba</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>nelze načíst galerii</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>konflikt</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {nalezeno (#)} few {nalezeno (#)} many {nalezeno (#)} other {nalezeno (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifikace…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>pouze ruční vyhledávání</value></data>
@@ -369,7 +368,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Čekající</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Hotové</value></data>
   <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Vyberte lis</value></data>
-  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signály se neshodují</value></data>
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Počty nebo délky se neshodují</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Už v knihovně</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Bez shody</value></data>
@@ -382,7 +380,6 @@
   <data name="import.row.import_anyway" xml:space="preserve"><value>Přesto importovat</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Zkusit znovu</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Zjišťuje se, jak dlouho hraje</value></data>
-  <data name="import.row.conflict" xml:space="preserve"><value>Konflikt</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>hledat ručně</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Selhalo</value></data>
   <data name="import.row.disc_id" xml:space="preserve"><value>ID disku</value></data>

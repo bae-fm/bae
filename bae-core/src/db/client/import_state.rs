@@ -415,8 +415,6 @@ impl Database {
                     "UPDATE import_candidate_state SET \
                          folder_path = :folder_path, \
                          verdict_kind = :kind, verdict_track_count = :track_count, \
-                         verdict_group_source = :group_source, verdict_group_id = :group_id, \
-                         verdict_matched_barcode = :matched_barcode, \
                          probed_total_duration_ms = :probed, identified_at = :now, \
                          pick_kind = CASE WHEN identity_pick_author = 'user' \
                              THEN pick_kind ELSE :pick_kind END, \
@@ -433,9 +431,6 @@ impl Database {
                         ":folder_path": verdict.folder_path,
                         ":kind": columns.kind,
                         ":track_count": columns.track_count,
-                        ":group_source": columns.group_source,
-                        ":group_id": columns.group_id,
-                        ":matched_barcode": columns.matched_barcode,
                         ":probed": probed,
                         ":now": now,
                         ":pick_kind": pick.as_ref().map(|pick| pick.kind),
@@ -449,18 +444,14 @@ impl Database {
                 sql.execute(
                     "INSERT INTO import_candidate_state \
                          (content_hash, folder_path, verdict_kind, verdict_track_count, \
-                          verdict_group_source, verdict_group_id, verdict_matched_barcode, \
                           probed_total_duration_ms, identified_at, pick_kind, pick_source, \
                           pick_release_id, identity_pick_author, edit_revision) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                     params![
                         verdict.content_hash,
                         verdict.folder_path,
                         columns.kind,
                         columns.track_count,
-                        columns.group_source,
-                        columns.group_id,
-                        columns.matched_barcode,
                         probed,
                         now,
                         pick.as_ref().map(|pick| pick.kind),
@@ -568,8 +559,6 @@ impl Database {
                     "UPDATE import_candidate_state SET \
                          folder_path = ?, \
                          verdict_kind = NULL, verdict_track_count = NULL, \
-                         verdict_group_source = NULL, verdict_group_id = NULL, \
-                         verdict_matched_barcode = NULL, \
                          probed_total_duration_ms = NULL, identified_at = NULL, \
                          pick_kind = CASE WHEN identity_pick_author = 'user' \
                              THEN pick_kind ELSE NULL END, \

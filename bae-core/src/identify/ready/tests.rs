@@ -2,7 +2,7 @@
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
-use crate::identify::{GroupKey, ResultProvenance};
+use crate::identify::ResultProvenance;
 use crate::import::search::SourceTracks;
 use crate::import::MetadataSource;
 
@@ -35,10 +35,6 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
     TerminalVerdict::Found {
         matches,
         track_count,
-        group: GroupKey {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: "rg-1".to_string(),
-        },
         provenance,
     }
 }
@@ -140,23 +136,10 @@ fn an_unverifiable_match_is_never_admitted() {
     );
 }
 
-/// The other three terminal verdicts each ask their own question; none of them
-/// can be Ready, and none collapses into another.
+/// The other two terminal verdicts each ask their own question; neither can be
+/// Ready, and neither collapses into the other.
 #[test]
 fn every_other_verdict_names_its_own_question() {
-    assert_eq!(
-        classify(
-            &TerminalVerdict::Conflict {
-                discid_results: vec![result("mb-1", None)],
-                barcode_results: vec![result("mb-2", None)],
-                matched_barcode: None,
-                track_count: 11,
-            },
-            2_400_000,
-            &[]
-        ),
-        QueueClassification::NeedsYou(NeedsYou::SignalsConflict)
-    );
     assert_eq!(
         classify(&TerminalVerdict::NotFoundAnywhere, 2_400_000, &[]),
         QueueClassification::NeedsYou(NeedsYou::NoMatch)
@@ -204,12 +187,6 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
             ],
             11,
         ),
-        TerminalVerdict::Conflict {
-            discid_results: vec![result("rel-a", None)],
-            barcode_results: vec![result("rel-b", None)],
-            matched_barcode: Some("1234567890123".to_string()),
-            track_count: 11,
-        },
         TerminalVerdict::NotFoundAnywhere,
         TerminalVerdict::ManualOnly { track_count: 11 },
     ];
@@ -229,12 +206,6 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
                 assert_eq!(lead.release_id, matches[0].release_id);
                 assert_eq!(lead.source_tracks, matches[0].source_tracks);
                 assert!(lead.by_disc_id, "the lead carries its own provenance");
-            }
-            TerminalVerdict::Conflict { track_count, .. } => {
-                assert_eq!(summary.kind, VerdictKind::Conflict);
-                assert_eq!(summary.track_count, Some(*track_count));
-                assert_eq!(summary.match_count, 0);
-                assert!(summary.lead.is_none(), "a conflict leads with nothing");
             }
             TerminalVerdict::NotFoundAnywhere => {
                 assert_eq!(summary.kind, VerdictKind::NotFound);

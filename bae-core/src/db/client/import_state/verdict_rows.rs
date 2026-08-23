@@ -1,11 +1,10 @@
 //! The identify verdict as columns and match rows, and the read back.
 //!
 //! A verdict is one row of `import_candidate_state`'s identify columns plus
-//! the `import_candidate_match` rows of whichever result lists it carries: a
-//! `found` list, or a conflict's `discid` and `barcode` lists.
+//! the `import_candidate_match` rows of the releases it matched, in order.
 
 use super::*;
-use crate::identify::{GroupKey, ResultProvenance, TerminalVerdict};
+use crate::identify::{ResultProvenance, TerminalVerdict};
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataSource;
@@ -20,51 +19,26 @@ fn source_of(stored: &str) -> Result<MetadataSource, DbError> {
     MetadataSource::from_str(stored).map_err(DbError::Message)
 }
 
-/// The identify columns of one verdict. `group_*` is set for `found` alone and
-/// `matched_barcode` for `conflict` alone, mirroring the table's CHECKs.
-pub(super) struct VerdictColumns<'a> {
+/// The identify columns of one verdict. `track_count` is absent for
+/// `not_found`, which counts nothing, mirroring the table's CHECKs.
+pub(super) struct VerdictColumns {
     pub(super) kind: &'static str,
     pub(super) track_count: Option<u32>,
-    pub(super) group_source: Option<&'static str>,
-    pub(super) group_id: Option<&'a str>,
-    pub(super) matched_barcode: Option<&'a str>,
 }
 
-pub(super) fn verdict_columns(verdict: &TerminalVerdict) -> VerdictColumns<'_> {
+pub(super) fn verdict_columns(verdict: &TerminalVerdict) -> VerdictColumns {
     match verdict {
-        TerminalVerdict::Found {
-            track_count, group, ..
-        } => VerdictColumns {
+        TerminalVerdict::Found { track_count, .. } => VerdictColumns {
             kind: "found",
             track_count: Some(*track_count),
-            group_source: Some(group.source.as_str()),
-            group_id: Some(group.source_group_id.as_str()),
-            matched_barcode: None,
-        },
-        TerminalVerdict::Conflict {
-            matched_barcode,
-            track_count,
-            ..
-        } => VerdictColumns {
-            kind: "conflict",
-            track_count: Some(*track_count),
-            group_source: None,
-            group_id: None,
-            matched_barcode: matched_barcode.as_deref(),
         },
         TerminalVerdict::NotFoundAnywhere => VerdictColumns {
             kind: "not_found",
             track_count: None,
-            group_source: None,
-            group_id: None,
-            matched_barcode: None,
         },
         TerminalVerdict::ManualOnly { track_count } => VerdictColumns {
             kind: "manual_only",
             track_count: Some(*track_count),
-            group_source: None,
-            group_id: None,
-            matched_barcode: None,
         },
     }
 }
@@ -77,8 +51,8 @@ pub(super) fn delete_matches(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
     Ok(())
 }
 
-/// Write the result lists of one verdict. The caller has already cleared
-/// whatever stood under this hash.
+/// Write the matches of one verdict. The caller has already cleared whatever
+/// stood under this hash.
 pub(super) fn insert_matches(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -101,26 +75,7 @@ pub(super) fn insert_matches(
             for (position, (result, provenance)) in
                 matches.iter().zip(provenance.iter()).enumerate()
             {
-                insert_match(
-                    sql,
-                    content_hash,
-                    "found",
-                    position,
-                    result,
-                    Some(provenance),
-                )?;
-            }
-        }
-        TerminalVerdict::Conflict {
-            discid_results,
-            barcode_results,
-            ..
-        } => {
-            for (position, result) in discid_results.iter().enumerate() {
-                insert_match(sql, content_hash, "discid", position, result, None)?;
-            }
-            for (position, result) in barcode_results.iter().enumerate() {
-                insert_match(sql, content_hash, "barcode", position, result, None)?;
+                insert_match(sql, content_hash, position, result, provenance)?;
             }
         }
         TerminalVerdict::NotFoundAnywhere | TerminalVerdict::ManualOnly { .. } => {}
@@ -131,10 +86,9 @@ pub(super) fn insert_matches(
 fn insert_match(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    list: &str,
     position: usize,
     result: &MetadataResult,
-    provenance: Option<&ResultProvenance>,
+    provenance: &ResultProvenance,
 ) -> Result<(), DbError> {
     let position = i64::try_from(position)
         .map_err(|_| DbError::Message("a match list is longer than SQLite counts".to_string()))?;
@@ -161,14 +115,13 @@ fn insert_match(
     };
     sql.execute(
         "INSERT INTO import_candidate_match \
-             (content_hash, list, position, source, release_id, title, artist, year, format, \
+             (content_hash, position, source, release_id, title, artist, year, format, \
               label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
               cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
               source_tracks_total_ms, by_disc_id, by_barcode, matches_catalog) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
-            list,
             position,
             result.source.as_str(),
             result.release_id,
@@ -187,9 +140,9 @@ fn insert_match(
             tracks_kind,
             tracks_count,
             tracks_total_ms,
-            provenance.map(|provenance| provenance.by_disc_id),
-            provenance.map(|provenance| provenance.by_barcode),
-            provenance.map(|provenance| provenance.matches_catalog),
+            provenance.by_disc_id,
+            provenance.by_barcode,
+            provenance.matches_catalog,
         ],
     )?;
     Ok(())
@@ -197,43 +150,19 @@ fn insert_match(
 
 pub(super) struct MatchRow {
     pub(super) content_hash: String,
-    pub(super) list: String,
     result: MetadataResult,
-    by_disc_id: Option<bool>,
-    by_barcode: Option<bool>,
-    matches_catalog: Option<bool>,
+    provenance: ResultProvenance,
 }
 
-/// One candidate's result lists, in the order they were written.
+/// One candidate's matches, in the order they were written.
 #[derive(Default)]
 pub(super) struct MatchLists {
     found: Vec<(MetadataResult, ResultProvenance)>,
-    discid: Vec<MetadataResult>,
-    barcode: Vec<MetadataResult>,
 }
 
 impl MatchLists {
-    pub(super) fn push(&mut self, row: MatchRow) -> Result<(), DbError> {
-        match row.list.as_str() {
-            "found" => {
-                let missing = || {
-                    DbError::Message(format!(
-                        "found match {} of {} states no provenance",
-                        row.result.release_id, row.content_hash
-                    ))
-                };
-                let provenance = ResultProvenance {
-                    by_disc_id: row.by_disc_id.ok_or_else(missing)?,
-                    by_barcode: row.by_barcode.ok_or_else(missing)?,
-                    matches_catalog: row.matches_catalog.ok_or_else(missing)?,
-                };
-                self.found.push((row.result, provenance));
-            }
-            "discid" => self.discid.push(row.result),
-            "barcode" => self.barcode.push(row.result),
-            other => return Err(unreadable("list", other)),
-        }
-        Ok(())
+    pub(super) fn push(&mut self, row: MatchRow) {
+        self.found.push((row.result, row.provenance));
     }
 }
 
@@ -279,7 +208,6 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
     let source: String = row.get("source")?;
     Ok(MatchRow {
         content_hash: row.get("content_hash")?,
-        list: row.get("list")?,
         result: MetadataResult {
             source: source_of(&source)?,
             release_id: row.get("release_id")?,
@@ -294,20 +222,19 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
             source_group_id: row.get("source_group_id")?,
             source_tracks,
         },
-        by_disc_id: row.get("by_disc_id")?,
-        by_barcode: row.get("by_barcode")?,
-        matches_catalog: row.get("matches_catalog")?,
+        provenance: ResultProvenance {
+            by_disc_id: row.get("by_disc_id")?,
+            by_barcode: row.get("by_barcode")?,
+            matches_catalog: row.get("matches_catalog")?,
+        },
     })
 }
 
-/// Rebuild one verdict from its columns and its result lists.
+/// Rebuild one verdict from its columns and its matches.
 pub(super) fn verdict_of(
     content_hash: &str,
     kind: &str,
     track_count: Option<i64>,
-    group_source: Option<String>,
-    group_id: Option<String>,
-    matched_barcode: Option<String>,
     lists: MatchLists,
 ) -> Result<TerminalVerdict, DbError> {
     let count_of = || {
@@ -328,25 +255,12 @@ pub(super) fn verdict_of(
     match kind {
         "found" => {
             let (matches, provenance) = lists.found.into_iter().unzip();
-            let missing = |what: &str| {
-                DbError::Message(format!("found verdict for {content_hash} names no {what}"))
-            };
             Ok(TerminalVerdict::Found {
                 matches,
                 track_count: count_of()?,
-                group: GroupKey {
-                    source: source_of(&group_source.ok_or_else(|| missing("group source"))?)?,
-                    source_group_id: group_id.ok_or_else(|| missing("group"))?,
-                },
                 provenance,
             })
         }
-        "conflict" => Ok(TerminalVerdict::Conflict {
-            discid_results: lists.discid,
-            barcode_results: lists.barcode,
-            matched_barcode,
-            track_count: count_of()?,
-        }),
         "not_found" => Ok(TerminalVerdict::NotFoundAnywhere),
         "manual_only" => Ok(TerminalVerdict::ManualOnly {
             track_count: count_of()?,

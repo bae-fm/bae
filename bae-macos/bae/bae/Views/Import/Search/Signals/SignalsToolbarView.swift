@@ -169,9 +169,9 @@ struct SignalsToolbarView: View {
         .windowBackground()
     }
 
-    #Preview("Conflict — both matched") {
+    #Preview("Both signals matched") {
         SignalsToolbarView(
-            toolbar: PreviewData.toolbarConflictBothMatched,
+            toolbar: PreviewData.toolbarBothMatched,
             onToggle: { _ in },
             onRerun: {},
             onSearchManually: {},
