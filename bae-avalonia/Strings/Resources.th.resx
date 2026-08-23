@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>กำลังอ่านความยาว</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ค้นหาด้วยตนเอง</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ไม่สำเร็จ</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>รหัสดิสก์</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>บาร์โค้ด</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>พร้อม</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>รอการระบุ</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>กำลังระบุ…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>ทำไม่สำเร็จ — จะลองใหม่</value></data>

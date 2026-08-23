@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>Čita se koliko traje</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>pretraži ručno</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Nije uspjelo</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>ID diska</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>Crtični kod</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Spremno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeka identifikaciju</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifikacija…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>Nije se moglo dovršiti — pokušat ćemo ponovno</value></data>

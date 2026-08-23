@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>دورانیہ پڑھا جا رہا ہے</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ہاتھ سے تلاش کریں</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ناکام</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>ڈسک ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>بارکوڈ</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>تیار</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>شناخت کے انتظار میں</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>شناخت ہو رہی ہے…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>مکمل نہیں ہو سکا — دوبارہ کوشش ہوگی</value></data>

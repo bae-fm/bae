@@ -407,8 +407,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>Reading how long this runs</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>Search manually</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Failed</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>Barcode</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Ready</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Waiting to be identified</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifying…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>Couldn’t complete — will retry</value></data>

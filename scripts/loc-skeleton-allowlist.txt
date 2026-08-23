@@ -186,7 +186,6 @@ it	search.field.album
 it	settings.discogs.label
 it	settings.discogs.token_placeholder
 it	signal.kind.disc_id
-it	import.row.disc_id
 it	settings.automation.status.running
 it	settings.formats.preset_pregap
 it	settings.formats.bit_depth.bits16
@@ -201,7 +200,6 @@ tr	action.ok
 tr	cloud.provider.s3
 tr	s3.field.bucket
 tr	signal.kind.disc_id
-tr	import.row.disc_id
 tr	settings.formats.preset_pregap
 tr	settings.formats.bit_depth.bits16
 tr	settings.formats.bit_depth.bits24
@@ -214,7 +212,6 @@ vi	search.field.album
 vi	settings.discogs.label
 vi	settings.discogs.token_placeholder
 vi	signal.kind.disc_id
-vi	import.row.disc_id
 vi	settings.formats.preset_pregap
 vi	settings.formats.bit_depth.bits16
 vi	settings.formats.bit_depth.bits24
@@ -234,9 +231,6 @@ nl	settings.updates.title
 nl	settings.updates.up_to_date
 nl	signal.kind.barcode
 nl	signal.kind.disc_id
-nl	import.row.barcode
-nl	import.row.conflict
-nl	import.row.disc_id
 nl	download.title
 nl	settings.automation.status.running
 nl	library.mode.albums

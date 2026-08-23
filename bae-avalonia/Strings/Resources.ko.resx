@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>재생 시간을 읽는 중</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>직접 검색</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>실패</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>디스크 ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>바코드</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>준비됨</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>식별 대기 중</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>식별 중…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>완료하지 못했습니다 — 다시 시도합니다</value></data>

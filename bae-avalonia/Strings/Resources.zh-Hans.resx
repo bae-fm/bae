@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>正在读取时长</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>手动搜索</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失败</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>碟片 ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>条形码</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>就绪</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>等待识别</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>识别中…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>无法完成 — 将重试</value></data>

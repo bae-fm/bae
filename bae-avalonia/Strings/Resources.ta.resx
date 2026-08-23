@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>இது எவ்வளவு நேரம் இயங்குகிறது என வாசிக்கிறது</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>கைமுறையாகத் தேடு</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>தோல்வியடைந்தது</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>பட்டைக் குறியீடு</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>தயார்</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>அடையாளம் காண காத்திருக்கிறது</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>முடிக்க முடியவில்லை — மீண்டும் முயற்சிக்கப்படும்</value></data>

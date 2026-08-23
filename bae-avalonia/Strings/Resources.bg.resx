@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>Прочита се колко трае</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ръчно търсене</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Неуспешно</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>ID на диска</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>Баркод</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Готово</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Чака идентифициране</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Идентифициране…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>Не успя да завърши — ще опита отново</value></data>

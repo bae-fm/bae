@@ -326,6 +326,20 @@ internal sealed partial class ImportSectionView
         {
             column.Children.Add(BuildImportProgressLine(row.CandidateKey));
         }
+        else if (row.Placement is BridgeTriagePlacement.Ready)
+        {
+            // A Ready row says the same three things the pane header does —
+            // the title above, then who it is by, then the pressing — rather
+            // than packing all of it into one line.
+            if (row.Matched?.Artist is { Length: > 0 } artist)
+            {
+                column.Children.Add(ReadyLine(artist, 12.5, opacity: 1));
+            }
+            if (PressingLine(row) is { Length: > 0 } pressing)
+            {
+                column.Children.Add(ReadyLine(pressing, 11.5, opacity: 0.7));
+            }
+        }
         else
         {
             if (RowSubLine(row, upload) is { Length: > 0 } subLine)
@@ -360,14 +374,31 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
+    // One of the Ready row's own lines. This app has no third text brush, so
+    // the pressing line reads as one step quieter through opacity.
+    private static Control ReadyLine(string text, double fontSize, double opacity)
+    {
+        var line = new TextBlock
+        {
+            Text = text,
+            FontSize = fontSize,
+            Opacity = opacity,
+            MaxLines = 1,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(0, 1, 0, 0),
+        };
+        line[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        return line;
+    }
+
     // The second line: the matched release's metadata, a disagreement sentence,
     // the still-identifying phase, or an import failure — whichever `row` is
-    // actually saying.
+    // actually saying. A Ready row draws its own lines and is not asked.
     private string? RowSubLine(
         BridgeTriageRow row,
         ImportUploadObservation? upload) => row.Placement switch
         {
-            BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped => MetadataLine(row),
+            BridgeTriagePlacement.Skipped => MetadataLine(row),
             BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
                 BridgeDisplay.LocalizedLine(phase.Phase),
             BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
@@ -406,6 +437,30 @@ internal sealed partial class ImportSectionView
             {
                 parts.Add(Loc.Chrome("import.candidate.tracks", "count", (long)trackCount));
             }
+        }
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
+
+    // The pressing on its own: `CD · 1991 · 10 tracks`, with whatever the
+    // source did not say left out.
+    private static string? PressingLine(BridgeTriageRow row)
+    {
+        if (row.Matched?.Pressing is not { } pressing)
+        {
+            return null;
+        }
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(pressing.Format))
+        {
+            parts.Add(pressing.Format!);
+        }
+        if (pressing.Year is { } year)
+        {
+            parts.Add(year.ToString(CultureInfo.CurrentCulture));
+        }
+        if (pressing.TrackCount is { } trackCount)
+        {
+            parts.Add(Loc.Chrome("import.candidate.tracks", "count", (long)trackCount));
         }
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
@@ -567,7 +622,7 @@ internal sealed partial class ImportSectionView
         switch (row.Placement)
         {
             case BridgeTriagePlacement.Ready:
-                return row.Matched is { } matched ? ReadyTrailing(matched.Evidence) : new Panel();
+                return Chip(Loc.Chrome("import.row.ready"), "BaeSuccessBrush");
             case BridgeTriagePlacement.NeedsYou(var group, var reason):
                 return NeedsYouTrailing(row, group, reason);
             case BridgeTriagePlacement.Importing:
@@ -577,29 +632,6 @@ internal sealed partial class ImportSectionView
             default:
                 return new Panel();
         }
-    }
-
-    private static Control ReadyTrailing(BridgeMatchEvidence evidence)
-    {
-        var chip = new Border
-        {
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(5, 2),
-            Child = new TextBlock
-            {
-                Text = ProviderShortCode(evidence.Source),
-                FontFamily = new FontFamily("monospace"),
-                FontSize = 10,
-                FontWeight = FontWeight.Medium,
-            },
-        };
-        chip[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
-        ((TextBlock)chip.Child!)[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var tip = evidence.Signal is { } signal
-            ? $"{SignalLabel(signal)} · {ProviderDisplayName(evidence.Source)}"
-            : ProviderDisplayName(evidence.Source);
-        ToolTip.SetTip(chip, tip);
-        return new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, Children = { chip } };
     }
 
     private Control NeedsYouTrailing(BridgeTriageRow row, BridgeNeedsYouGroup group, BridgeNeedsYouReason reason)
@@ -860,30 +892,4 @@ internal sealed partial class ImportSectionView
         _ = _pane.ShowCandidate(row);
     }
 
-    // ── Evidence labels ──────────────────────────────────────────────────────
-
-    // Brand names stay literal — never translated, matching every other
-    // provider name in this app's chrome.
-    private static string ProviderDisplayName(BridgeMetadataSource source) => source switch
-    {
-        BridgeMetadataSource.MusicBrainz => "MusicBrainz",
-        BridgeMetadataSource.Discogs => "Discogs",
-        _ => string.Empty,
-    };
-
-    // The row's compact trailing badge. Not a catalog key — an abbreviation of
-    // a literal brand name is still the brand's name, not prose.
-    private static string ProviderShortCode(BridgeMetadataSource source) => source switch
-    {
-        BridgeMetadataSource.MusicBrainz => "MB",
-        BridgeMetadataSource.Discogs => "DC",
-        _ => string.Empty,
-    };
-
-    private static string SignalLabel(BridgeMatchedSignal signal) => signal switch
-    {
-        BridgeMatchedSignal.DiscId => Loc.Chrome("import.row.disc_id"),
-        BridgeMatchedSignal.Barcode => Loc.Chrome("import.row.barcode"),
-        _ => string.Empty,
-    };
 }

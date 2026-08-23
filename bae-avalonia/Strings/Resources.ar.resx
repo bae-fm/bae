@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>جارٍ قراءة مدة التشغيل</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>البحث يدويًا</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>فشل</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>معرّف القرص</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>الرمز الشريطي</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>جاهز</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>في انتظار التحديد</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>جارٍ التحديد…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>تعذّر الإكمال — ستُعاد المحاولة</value></data>

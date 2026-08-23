@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>Зчитується тривалість</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>шукати вручну</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Помилка</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>ID диска</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>Штрихкод</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Готово</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Очікує ідентифікації</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Ідентифікація…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>Не вдалося завершити — спробуємо ще раз</value></data>

@@ -2,13 +2,13 @@ import BaeKit
 import SwiftUI
 
 /// One triage row: an optional bulk-select checkbox, the matched release's
-/// cover, its title/metadata, and trailing evidence or status. Every decision
+/// cover, its title/metadata, and a trailing tag or status. Every decision
 /// about what the row shows — which tab, which group, whether it takes a
 /// checkbox — is `row`'s, read off `BridgeTriageRow`; this only renders it.
 ///
-/// Every row is the same two lines and the same height whether or not it is
-/// the selected one: the folder it came from is the main pane's to state, and
-/// a row that grows on selection shifts every row under it.
+/// A row does not change height on selection: the folder it came from is the
+/// main pane's to state, and a row that grows on selection shifts every row
+/// under it.
 struct TriageRowView: View {
     /// The cover's edge, in points. Named because it is also the size the
     /// sidebar warms Ready covers at — a decode cached at another size is a
@@ -181,6 +181,9 @@ struct TriageRowView: View {
             if case .importing = row.importStatus {
                 ImportProgressLine(key: row.candidateKey)
             }
+            else if case .ready = row.placement {
+                readyLines
+            }
             else {
                 if let subLine {
                     Text(subLine)
@@ -201,6 +204,27 @@ struct TriageRowView: View {
         }
     }
 
+    /// A Ready row says the same three things the pane header does — the
+    /// title above, then who it is by, then the pressing — rather than
+    /// packing all of it into one line.
+    @ViewBuilder
+    private var readyLines: some View {
+        if let artist = row.matched?.artist {
+            Text(artist)
+                .font(.system(size: 12.5))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.top, 1)
+        }
+        if let pressingLine {
+            Text(pressingLine)
+                .font(.system(size: 11.5))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .padding(.top, 1)
+        }
+    }
 }
 
 /// The row's actions and its trailing column. In an extension so the view's
@@ -211,7 +235,11 @@ extension TriageRowView {
     /// whichever `row` is actually saying.
     private var subLine: String? {
         switch row.placement {
-        case .ready, .skipped:
+        // A Ready row draws its own artist and pressing lines; `subLine` is
+        // not asked for it.
+        case .ready:
+            return nil
+        case .skipped:
             return metadataLine
         case .needsYou(let group, let reason):
             switch reason {
@@ -258,6 +286,25 @@ extension TriageRowView {
             if let trackCount = pressing.trackCount {
                 parts.append(String(localized: "\(Int(trackCount)) tracks"))
             }
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
+    }
+
+    /// The pressing on its own: `CD \u{b7} 1991 \u{b7} 10 tracks`, with
+    /// whatever the source did not say left out.
+    private var pressingLine: String? {
+        guard let pressing = row.matched?.pressing else {
+            return nil
+        }
+        var parts: [String] = []
+        if let format = pressing.format {
+            parts.append(format)
+        }
+        if let year = pressing.year {
+            parts.append(Int(year).formatted(.number.grouping(.never)))
+        }
+        if let trackCount = pressing.trackCount {
+            parts.append(String(localized: "\(Int(trackCount)) tracks"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
     }
@@ -346,9 +393,7 @@ extension TriageRowView {
     private var trailing: some View {
         switch row.placement {
         case .ready:
-            if let matched = row.matched {
-                readyTrailing(matched.evidence)
-            }
+            chip(String(localized: "Ready"), tint: .green)
         case .needsYou(let group, let reason):
             needsYouTrailing(group: group, reason: reason)
         case .importing:
@@ -358,37 +403,6 @@ extension TriageRowView {
         case .skipped:
             EmptyView()
         }
-    }
-
-    private func readyTrailing(_ evidence: BridgeMatchEvidence) -> some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            Text(verbatim: evidence.source.shortCode)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.secondary.opacity(0.12))
-                )
-            if let signal = evidence.signal {
-                signalIcon(signal)
-                    .help(
-                        "\(signal.localizedLabel) \u{b7} \(evidence.source.displayName)"
-                    )
-            }
-        }
-    }
-
-    private func signalIcon(_ signal: BridgeMatchedSignal) -> some View {
-        let systemName =
-            switch signal {
-            case .discId: "opticaldiscdrive"
-            case .barcode: "barcode"
-            }
-        return Image(systemName: systemName)
-            .font(.caption)
-            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder
@@ -495,35 +509,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     )
             )
             .opacity(configuration.isPressed ? 0.7 : 1)
-    }
-}
-
-extension BridgeMetadataSource {
-    /// Brand names stay literal — never translated, matching every other
-    /// provider name in this app's chrome.
-    fileprivate var displayName: String {
-        switch self {
-        case .musicBrainz: "MusicBrainz"
-        case .discogs: "Discogs"
-        }
-    }
-
-    /// The row's compact trailing badge. Not a catalog key — an abbreviation
-    /// of a literal brand name is still the brand's name, not prose.
-    fileprivate var shortCode: String {
-        switch self {
-        case .musicBrainz: "MB"
-        case .discogs: "DC"
-        }
-    }
-}
-
-extension BridgeMatchedSignal {
-    fileprivate var localizedLabel: String {
-        switch self {
-        case .discId: String(localized: "Disc ID")
-        case .barcode: String(localized: "Barcode")
-        }
     }
 }
 

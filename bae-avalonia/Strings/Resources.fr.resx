@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>Lecture de la durée</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>rechercher manuellement</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Échec</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>ID de disque</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>Code-barres</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Prêt</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>En attente d'identification</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identification…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>Impossible de terminer — nouvelle tentative prévue</value></data>

@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>Speelduur wordt gelezen</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>handmatig zoeken</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Mislukt</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>Barcode</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Gereed</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Wacht op identificatie</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identificeren…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>Kon niet worden voltooid — wordt opnieuw geprobeerd</value></data>

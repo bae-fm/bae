@@ -382,8 +382,7 @@
   <data name="import.measuring_length" xml:space="preserve"><value>यह कितना लंबा है, पढ़ा जा रहा है</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>हाथ से खोजें</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>विफल</value></data>
-  <data name="import.row.disc_id" xml:space="preserve"><value>डिस्क ID</value></data>
-  <data name="import.row.barcode" xml:space="preserve"><value>बारकोड</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>तैयार</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>पहचान की प्रतीक्षा में</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>पहचान हो रही है…</value></data>
   <data name="import.phase.no_answer" xml:space="preserve"><value>पूरा नहीं हो सका — फिर कोशिश होगी</value></data>
