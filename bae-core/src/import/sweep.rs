@@ -38,7 +38,6 @@ use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::ImportCandidateSnapshot;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
-use crate::identify::verdict::decode_stored as decode;
 use crate::identify::{IdentifyRunId, IdentifyServiceHandle, IdentifyState, TerminalVerdict};
 use crate::import::MetadataRef;
 use crate::library::LibraryManager;
@@ -416,13 +415,6 @@ async fn run_pass(
             return;
         }
     };
-    for row in stored.values() {
-        if let Err(error) = decode(row) {
-            warn!("sweep: {error}; skipping this pass");
-            return;
-        }
-    }
-
     let mut answered_keys: HashSet<String> = candidates
         .iter()
         .filter(|candidate| usable_stored_row(&stored, candidate).is_some())

@@ -194,8 +194,8 @@ pub struct MetadataRef {
 
 /// The identity the user chose for a folder candidate — the pressing they
 /// picked and how far they claim it reaches, or the decision to read the
-/// folder's own tags. Persisted on `import_candidate_state` (JSON,
-/// `identity_pick`) so an answered pane reopens answered after a restart; the
+/// folder's own tags. Persisted in `import_candidate_state`'s pick columns so
+/// an answered pane reopens answered after a restart; the
 /// claim line, the seed, and the mapping are all re-derived from it against the
 /// archived documents, never stored.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

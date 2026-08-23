@@ -1,8 +1,13 @@
 use super::*;
 
+mod edit_rows;
 mod rows;
-use super::folder_scans::validate_scan_item_ownership;
-use rows::*;
+mod verdict_rows;
+
+use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
+use edit_rows::{delete_file_edits, insert_file_edits};
+use rows::{load_candidate_file_edits_on, load_states_on, pick_columns};
+use verdict_rows::{delete_matches, insert_matches, verdict_columns};
 
 /// Who decided a candidate's stored identity pick. The two outlive different
 /// things — identification's goes with the verdict that concluded it, a
@@ -135,12 +140,10 @@ impl Database {
             return Ok(None);
         }
         self.call(move |sql| {
-            let entry_keys = sql.query(
-                "SELECT entry_key FROM folder_scan_entries \
-                 WHERE watched_folder_path = ? ORDER BY entry_key",
-                [&path],
-                |row| row.get::<_, String>(0),
-            )?;
+            let entry_keys = stored_entries(sql, &path)?
+                .into_iter()
+                .map(|(key, _)| key)
+                .collect();
             let removed =
                 sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;
             if removed != 1 {
@@ -242,35 +245,17 @@ impl Database {
         }
         let decisions = decisions.to_vec();
         self.call(move |sql| {
-            let stored_items = sql.query(
-                "SELECT entry_key, item FROM folder_scan_entries \
-                 WHERE watched_folder_path = ? ORDER BY entry_key",
-                [&watched_folder_path],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )?;
-            let persisted_items = stored_items
-                .into_iter()
-                .map(|(entry_key, stored)| {
-                    let item: crate::import::folder_scanner::ScanItem =
-                        serde_json::from_str(&stored).map_err(|error| {
-                            DbError::Message(format!(
-                                "folder scan entry {entry_key} under \
-                                 {watched_folder_path} is unreadable: {error}"
-                            ))
-                        })?;
-                    validate_scan_item_ownership(&watched_folder_path, &entry_key, &item)?;
-                    Ok(item)
-                })
-                .collect::<Result<Vec<_>, DbError>>()?;
-            let persisted_keys = persisted_items
-                .iter()
-                .map(crate::import::folder_scanner::ScanItem::persisted_key)
-                .collect();
+            let stored = stored_entries(sql, &watched_folder_path)?;
+            let persisted_keys = stored.iter().map(|(key, _)| key.clone()).collect();
             let removed_scan_entry_keys =
                 crate::import::folder_scanner::release_decision_removed_keys(
                     &persisted_keys,
                     &decisions,
                 );
+            let stored: HashMap<&str, &StoredEntry> = stored
+                .iter()
+                .map(|(key, entry)| (key.as_str(), entry))
+                .collect();
 
             for (key, decision) in &decisions {
                 let decision = match decision {
@@ -286,11 +271,9 @@ impl Database {
                 )?;
             }
             for entry_key in &removed_scan_entry_keys {
-                sql.execute(
-                    "DELETE FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? AND entry_key = ?",
-                    params![watched_folder_path, entry_key],
-                )?;
+                if let Some(entry) = stored.get(entry_key.as_str()) {
+                    delete_entry(sql, &watched_folder_path, entry)?;
+                }
             }
             let generation = next_folder_scan_generation(sql)?;
             sql.execute(
@@ -372,6 +355,9 @@ impl Database {
                 verdict.expected_edit_revision
             ))
         })?;
+        let probed = i64::try_from(verdict.probed_total_duration_ms).map_err(|_| {
+            DbError::Message("a probed total exceeds SQLite's integer range".to_string())
+        })?;
         let now = self.inner.clock.now().to_rfc3339();
         // Which of the two writes applies — and whether either does — is a
         // question about the stored revision, so it is asked on the read
@@ -402,6 +388,8 @@ impl Database {
             Some(_) | None => return Ok(false),
         };
         self.call(move |sql| {
+            let columns = verdict_columns(&verdict.verdict);
+            let pick = verdict.identity_pick.as_ref().map(pick_columns);
             // A pick identification made belongs to the verdict that made it,
             // so this write replaces it — with the new verdict's own
             // conclusion, or with nothing when it concluded none. A pick a
@@ -410,22 +398,37 @@ impl Database {
             let wrote = if update_existing {
                 sql.execute(
                     "UPDATE import_candidate_state SET \
-                         folder_path = :folder_path, verdict = :verdict, \
+                         folder_path = :folder_path, \
+                         verdict_kind = :kind, verdict_track_count = :track_count, \
+                         verdict_group_source = :group_source, verdict_group_id = :group_id, \
+                         verdict_matched_barcode = :matched_barcode, \
                          probed_total_duration_ms = :probed, identified_at = :now, \
-                         identity_pick = CASE \
-                             WHEN identity_pick_author = 'user' THEN identity_pick \
-                             ELSE :pick END, \
+                         pick_kind = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_kind ELSE :pick_kind END, \
+                         pick_source = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_source ELSE :pick_source END, \
+                         pick_release_id = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_release_id ELSE :pick_release_id END, \
+                         pick_claim = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_claim ELSE :pick_claim END, \
                          identity_pick_author = CASE \
                              WHEN identity_pick_author = 'user' THEN 'user' \
-                             WHEN :pick IS NULL THEN NULL \
+                             WHEN :pick_kind IS NULL THEN NULL \
                              ELSE 'identification' END \
                      WHERE content_hash = :content_hash AND edit_revision = :expected",
                     named_params! {
                         ":folder_path": verdict.folder_path,
-                        ":verdict": verdict.verdict,
-                        ":probed": verdict.probed_total_duration_ms,
+                        ":kind": columns.kind,
+                        ":track_count": columns.track_count,
+                        ":group_source": columns.group_source,
+                        ":group_id": columns.group_id,
+                        ":matched_barcode": columns.matched_barcode,
+                        ":probed": probed,
                         ":now": now,
-                        ":pick": verdict.identity_pick,
+                        ":pick_kind": pick.as_ref().map(|pick| pick.kind),
+                        ":pick_source": pick.as_ref().and_then(|pick| pick.source),
+                        ":pick_release_id": pick.as_ref().and_then(|pick| pick.release_id),
+                        ":pick_claim": pick.as_ref().and_then(|pick| pick.claim),
                         ":content_hash": verdict.content_hash,
                         ":expected": expected,
                     },
@@ -433,29 +436,42 @@ impl Database {
             } else {
                 sql.execute(
                     "INSERT INTO import_candidate_state \
-                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, identity_pick, identity_pick_author, sheet_bindings, file_roles, sheet_discs, edit_revision) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, '{}', '{}', '{}', 0)",
+                         (content_hash, folder_path, verdict_kind, verdict_track_count, \
+                          verdict_group_source, verdict_group_id, verdict_matched_barcode, \
+                          probed_total_duration_ms, identified_at, pick_kind, pick_source, \
+                          pick_release_id, pick_claim, identity_pick_author, edit_revision) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                     params![
                         verdict.content_hash,
                         verdict.folder_path,
-                        verdict.verdict,
-                        verdict.probed_total_duration_ms,
+                        columns.kind,
+                        columns.track_count,
+                        columns.group_source,
+                        columns.group_id,
+                        columns.matched_barcode,
+                        probed,
                         now,
-                        verdict.identity_pick,
-                        verdict
-                            .identity_pick
-                            .as_ref()
-                            .map(|_| PickAuthor::Identification.as_str()),
+                        pick.as_ref().map(|pick| pick.kind),
+                        pick.as_ref().and_then(|pick| pick.source),
+                        pick.as_ref().and_then(|pick| pick.release_id),
+                        pick.as_ref().and_then(|pick| pick.claim),
+                        pick.as_ref().map(|_| PickAuthor::Identification.as_str()),
                     ],
                 )? == 1
             };
+            if wrote {
+                // The result lists belong to the verdict that named them: the
+                // superseded ones go in the same transaction that replaces it.
+                delete_matches(sql, &verdict.content_hash)?;
+                insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
+            }
             Ok(wrote)
         })
         .await
     }
 
     /// Record one candidate's user-set file decisions, **and clear whatever
-    /// identification had concluded about it**, in one statement.
+    /// identification had concluded about it**, in one transaction.
     ///
     /// The two are one operation, not two: binding a sheet or taking a file out
     /// of the tracklist changes what the folder is — a one-track image becomes
@@ -469,7 +485,9 @@ impl Database {
     /// not a shape, and the mapping re-derives against the reshaped folder.
     ///
     /// The content hash covers files, never role decisions, so this addresses
-    /// the same row the verdict lived in rather than orphaning it.
+    /// the same row the verdict lived in rather than orphaning it — and the
+    /// scanned candidates that share the hash have their file rows rewritten
+    /// to the settled shape in the same transaction.
     pub async fn save_import_candidate_file_edits(
         &self,
         content_hash: &str,
@@ -480,12 +498,7 @@ impl Database {
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
-        let bindings = serde_json::to_string(&edits.sheet_bindings)
-            .map_err(|e| DbError::Message(format!("encoding candidate sheet bindings: {e}")))?;
-        let roles = serde_json::to_string(&edits.file_roles)
-            .map_err(|e| DbError::Message(format!("encoding candidate file roles: {e}")))?;
-        let discs = serde_json::to_string(&edits.sheet_discs)
-            .map_err(|e| DbError::Message(format!("encoding candidate sheet discs: {e}")))?;
+        let edits = edits.clone();
         let settled_candidates = settled_candidates.to_vec();
         let next_revision = expected_revision.checked_add(1).ok_or_else(|| {
             DbError::Message("candidate edit revision exhausted the u64 range".to_string())
@@ -533,11 +546,19 @@ impl Database {
             let changed = if current_revision.is_some() {
                 sql.execute(
                     "UPDATE import_candidate_state SET \
-                         folder_path = ?, sheet_bindings = ?, file_roles = ?, sheet_discs = ?, \
-                         verdict = NULL, probed_total_duration_ms = NULL, identified_at = NULL, \
-                         identity_pick = CASE \
-                             WHEN identity_pick_author = 'user' THEN identity_pick \
-                             ELSE NULL END, \
+                         folder_path = ?, \
+                         verdict_kind = NULL, verdict_track_count = NULL, \
+                         verdict_group_source = NULL, verdict_group_id = NULL, \
+                         verdict_matched_barcode = NULL, \
+                         probed_total_duration_ms = NULL, identified_at = NULL, \
+                         pick_kind = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_kind ELSE NULL END, \
+                         pick_source = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_source ELSE NULL END, \
+                         pick_release_id = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_release_id ELSE NULL END, \
+                         pick_claim = CASE WHEN identity_pick_author = 'user' \
+                             THEN pick_claim ELSE NULL END, \
                          identity_pick_author = CASE \
                              WHEN identity_pick_author = 'user' THEN 'user' \
                              ELSE NULL END, \
@@ -545,9 +566,6 @@ impl Database {
                      WHERE content_hash = ? AND edit_revision = ?",
                     params![
                         folder_path,
-                        bindings,
-                        roles,
-                        discs,
                         next_revision_i64,
                         content_hash,
                         expected_revision_i64,
@@ -556,16 +574,8 @@ impl Database {
             } else {
                 sql.execute(
                     "INSERT INTO import_candidate_state \
-                         (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, edit_revision) \
-                     VALUES (?, ?, NULL, NULL, NULL, ?, ?, ?, ?)",
-                    params![
-                        content_hash,
-                        folder_path,
-                        bindings,
-                        roles,
-                        discs,
-                        next_revision_i64
-                    ],
+                         (content_hash, folder_path, edit_revision) VALUES (?, ?, ?)",
+                    params![content_hash, folder_path, next_revision_i64],
                 )?
             };
             if changed != 1 {
@@ -573,76 +583,16 @@ impl Database {
                     "candidate file decision write changed {changed} rows; expected exactly one"
                 )));
             }
-            let stored_items = sql.query(
-                "SELECT watched_folder_path, entry_key, generation, item \
-                 FROM folder_scan_entries ORDER BY watched_folder_path, entry_key",
-                [],
-                |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, i64>(2)?,
-                        row.get::<_, String>(3)?,
-                    ))
-                },
+            delete_matches(sql, &content_hash)?;
+            delete_file_edits(sql, &content_hash)?;
+            insert_file_edits(sql, &content_hash, &edits)?;
+            let updated_candidates = settle_scanned_candidates(
+                sql,
+                &content_hash,
+                expected_revision_i64,
+                next_revision_i64,
+                &settled_by_key,
             )?;
-            let mut updated_keys = HashSet::new();
-            let mut updated_candidates = Vec::with_capacity(settled_by_key.len());
-            for (watched_folder_path, entry_key, generation, stored) in stored_items {
-                let mut item: crate::import::folder_scanner::ScanItem =
-                    serde_json::from_str(&stored).map_err(|error| {
-                        DbError::Message(format!(
-                            "folder scan entry {entry_key} under {watched_folder_path} \
-                             is unreadable: {error}"
-                        ))
-                    })?;
-                validate_scan_item_ownership(&watched_folder_path, &entry_key, &item)?;
-                let candidate = match &mut item {
-                    crate::import::folder_scanner::ScanItem::Discovered(candidate)
-                    | crate::import::folder_scanner::ScanItem::Valid(candidate) => candidate,
-                    crate::import::folder_scanner::ScanItem::Invalid(_)
-                    | crate::import::folder_scanner::ScanItem::Boundary(_) => continue,
-                };
-                if candidate.files.content_hash() != content_hash
-                    || candidate.file_edit_revision != expected_revision
-                {
-                    continue;
-                }
-                let settled = settled_by_key.get(&entry_key).ok_or_else(|| {
-                    DbError::Message(format!(
-                        "persisted candidate {entry_key} was missing from the settled file edit"
-                    ))
-                })?;
-                candidate.files = settled.clone();
-                candidate.file_edit_revision = next_revision;
-                updated_candidates.push(candidate.clone());
-                let encoded = serde_json::to_string(&item).map_err(|error| {
-                    DbError::Message(format!("encoding folder scan entry {entry_key}: {error}"))
-                })?;
-                let updated = sql.execute(
-                    "UPDATE folder_scan_entries SET item = ? \
-                     WHERE watched_folder_path = ? AND entry_key = ? AND generation = ?",
-                    params![encoded, watched_folder_path, entry_key, generation],
-                )?;
-                if updated != 1 {
-                    return Err(DbError::Message(format!(
-                        "candidate file decision changed {updated} persisted scan entries for \
-                         {entry_key}; expected exactly one"
-                    )));
-                }
-                updated_keys.insert(entry_key);
-            }
-            if updated_keys.len() != settled_by_key.len() {
-                let missing: Vec<_> = settled_by_key
-                    .keys()
-                    .filter(|key| !updated_keys.contains(*key))
-                    .cloned()
-                    .collect();
-                return Err(DbError::Message(format!(
-                    "candidate file decision could not update persisted scan entries: {}",
-                    missing.join(", ")
-                )));
-            }
             Ok((next_revision, updated_candidates))
         })
         .await
@@ -677,24 +627,32 @@ impl Database {
         &self,
         content_hash: &str,
         folder_path: &str,
-        pick_json: &str,
+        pick: &crate::import::IdentityPick,
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
-        let pick_json = pick_json.to_string();
+        let pick = pick.clone();
         self.call(move |sql| {
+            let columns = pick_columns(&pick);
             let changed = sql.execute(
                 "INSERT INTO import_candidate_state \
-                     (content_hash, folder_path, identity_pick, identity_pick_author) \
-                 VALUES (?, ?, ?, ?) \
+                     (content_hash, folder_path, pick_kind, pick_source, pick_release_id, \
+                      pick_claim, identity_pick_author) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?) \
                  ON CONFLICT (content_hash) DO UPDATE SET \
                      folder_path = excluded.folder_path, \
-                     identity_pick = excluded.identity_pick, \
+                     pick_kind = excluded.pick_kind, \
+                     pick_source = excluded.pick_source, \
+                     pick_release_id = excluded.pick_release_id, \
+                     pick_claim = excluded.pick_claim, \
                      identity_pick_author = excluded.identity_pick_author",
                 params![
                     content_hash,
                     folder_path,
-                    pick_json,
+                    columns.kind,
+                    columns.source,
+                    columns.release_id,
+                    columns.claim,
                     PickAuthor::User.as_str()
                 ],
             )?;
@@ -716,26 +674,17 @@ impl Database {
         content_hash: &str,
     ) -> Result<CandidateFileEdits, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |sql| {
-            sql.query_row(
-                "SELECT sheet_bindings, file_roles, sheet_discs, edit_revision \
-                 FROM import_candidate_state WHERE content_hash = ?",
-                [&content_hash],
-                |row| Ok(decode_candidate_file_edits_row(row, &content_hash)),
-            )
-            .optional()?
-            .unwrap_or_else(|| Ok(CandidateFileEdits::default()))
-        })
-        .await
+        self.read(move |sql| load_candidate_file_edits_on(&sql, &content_hash))
+            .await
     }
 
     /// Every stored `import_candidate_state` row, keyed by `content_hash`. The
     /// queue is small enough to read whole; callers classify in memory rather
     /// than filtering in SQL.
     ///
-    /// A row whose identify columns are half-set, whose decisions do not decode,
-    /// or whose revision is negative cannot come from either write path above.
-    /// Loading fails rather than substituting a plausible candidate shape.
+    /// A row whose columns hold a spelling no writer here produces cannot come
+    /// from either write path above. Loading fails rather than substituting a
+    /// plausible candidate shape.
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
@@ -748,33 +697,89 @@ impl Database {
         content_hash: &str,
     ) -> Result<Option<DbImportCandidateState>, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |sql| {
-            sql.query_row(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, identity_pick, edit_revision \
-                 FROM import_candidate_state WHERE content_hash = ?",
-                [content_hash],
-                |row| Ok(decode_import_candidate_state_row(row)),
-            )
-            .optional()?
-            .transpose()
-        })
-        .await
+        self.read(move |sql| Ok(load_states_on(&sql, Some(&content_hash))?.remove(&content_hash)))
+            .await
     }
+}
+
+/// Rewrite the file rows of every scanned candidate at `content_hash` and
+/// `expected_revision` to the shape the caller settled, and hand the settled
+/// candidates back.
+///
+/// The caller's set must cover exactly those candidates: it computed the
+/// settled files from the same read, so a candidate it did not settle is a
+/// scan that moved under it, and writing half the set would leave two rows of
+/// one release disagreeing about what its files are.
+fn settle_scanned_candidates(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    expected_revision: i64,
+    next_revision: i64,
+    settled_by_key: &HashMap<String, crate::import::folder_scanner::CategorizedFiles>,
+) -> Result<Vec<crate::import::folder_scanner::FolderCandidate>, DbError> {
+    let scanned = sql.query(
+        "SELECT watched_folder_path, path FROM scan_candidate \
+         WHERE content_hash = ? AND file_edit_revision = ? ORDER BY watched_folder_path, path",
+        params![content_hash, expected_revision],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    )?;
+    let mut updated_keys = HashSet::new();
+    let mut updated_candidates = Vec::with_capacity(scanned.len());
+    for (watched_folder_path, path) in scanned {
+        let settled = settled_by_key.get(&path).ok_or_else(|| {
+            DbError::Message(format!(
+                "persisted candidate {path} was missing from the settled file edit"
+            ))
+        })?;
+        sql.execute(
+            "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
+            params![watched_folder_path, path],
+        )?;
+        folder_scans::insert_candidate_files(sql, &watched_folder_path, &path, settled)?;
+        let changed = sql.execute(
+            "UPDATE scan_candidate SET file_edit_revision = ?, format_label = ? \
+             WHERE watched_folder_path = ? AND path = ? AND file_edit_revision = ?",
+            params![
+                next_revision,
+                settled.format_label,
+                watched_folder_path,
+                path,
+                expected_revision
+            ],
+        )?;
+        if changed != 1 {
+            return Err(DbError::Message(format!(
+                "candidate file decision changed {changed} persisted scan entries for {path}; \
+                 expected exactly one"
+            )));
+        }
+        let (Some(crate::import::folder_scanner::ScanItem::Discovered(candidate))
+        | Some(crate::import::folder_scanner::ScanItem::Valid(candidate))) =
+            load_scan_item_on(sql, &path)?
+        else {
+            return Err(DbError::Message(format!(
+                "the candidate at {path} is not a folder candidate after its file decision"
+            )));
+        };
+        updated_candidates.push(candidate);
+        updated_keys.insert(path);
+    }
+    if updated_keys.len() != settled_by_key.len() {
+        let missing: Vec<_> = settled_by_key
+            .keys()
+            .filter(|key| !updated_keys.contains(*key))
+            .cloned()
+            .collect();
+        return Err(DbError::Message(format!(
+            "candidate file decision could not update persisted scan entries: {}",
+            missing.join(", ")
+        )));
+    }
+    Ok(updated_candidates)
 }
 
 pub(super) fn load_import_candidate_states_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-    let states = sql.query(
-        "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, sheet_discs, identity_pick, edit_revision \
-             FROM import_candidate_state",
-        [],
-        |row| Ok(decode_import_candidate_state_row(row)),
-    )?;
-    let mut out = HashMap::with_capacity(states.len());
-    for state in states {
-        let state = state?;
-        out.insert(state.content_hash.clone(), state);
-    }
-    Ok(out)
+    load_states_on(sql, None)
 }

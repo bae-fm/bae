@@ -311,11 +311,11 @@ impl LibraryManager {
         &self,
         content_hash: &str,
         folder_path: &str,
-        pick_json: &str,
+        pick: &crate::import::IdentityPick,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .save_candidate_identity_pick(content_hash, folder_path, pick_json)
+            .save_candidate_identity_pick(content_hash, folder_path, pick)
             .await?)
     }
 

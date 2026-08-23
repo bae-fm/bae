@@ -9,7 +9,7 @@ fn stored_row(
         content_hash: candidate.candidate.files.content_hash(),
         folder_path: candidate.candidate.path.to_string_lossy().into_owned(),
         identify: Some(crate::db::DbCandidateIdentifyResult {
-            verdict: serde_json::to_string(verdict).unwrap(),
+            verdict: verdict.clone(),
             probed_total_duration_ms: 2_400_000,
             identified_at: chrono::Utc::now(),
         }),

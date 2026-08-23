@@ -249,23 +249,23 @@ mod load {
         }
 
         /// Seed the row a sweep would have written for this folder.
-        async fn store(&self, dir: &Path, verdict: &str, probed_total_duration_ms: i64) {
+        async fn store_verdict(
+            &self,
+            dir: &Path,
+            verdict: &TerminalVerdict,
+            probed_total_duration_ms: u64,
+        ) {
             self.manager
                 .save_import_candidate_verdict(&NewImportCandidateVerdict {
                     content_hash: self.content_hash(dir),
                     folder_path: dir.to_string_lossy().into_owned(),
-                    verdict: verdict.to_string(),
+                    verdict: verdict.clone(),
                     probed_total_duration_ms,
                     expected_edit_revision: 0,
                     identity_pick: None,
                 })
                 .await
                 .unwrap();
-        }
-
-        async fn store_verdict(&self, dir: &Path, verdict: &TerminalVerdict, probed: i64) {
-            self.store(dir, &serde_json::to_string(verdict).unwrap(), probed)
-                .await;
         }
 
         /// Put a release into the library under `mb_release_id`, so a live
@@ -393,7 +393,7 @@ mod load {
             .store_verdict(
                 &dir,
                 &agreeing_verdict(probed, "mb-rel-1", "group-1"),
-                probed as i64,
+                probed,
             )
             .await;
 
@@ -417,7 +417,7 @@ mod load {
             .store_verdict(
                 &dir,
                 &agreeing_verdict(probed, "mb-rel-1", "group-1"),
-                probed as i64,
+                probed,
             )
             .await;
         fixture.own_release("group-1", "mb-rel-1").await;
@@ -435,52 +435,6 @@ mod load {
         assert!(!candidate_rows(&queue)[0].selectable);
     }
 
-    /// A stored row this build can no longer parse is corruption, not an absent
-    /// answer. The queue read must fail instead of inventing a usable state.
-    #[tokio::test]
-    async fn an_undecodable_row_fails_the_read() {
-        let fixture = Fixture::new().await;
-        let dir = fixture.candidate_dir("album");
-        fixture.scan(1).await;
-        fixture
-            .store(&dir, r#"{"Found":{"shape":"from a future build"}}"#, 0)
-            .await;
-
-        let error = fixture
-            .load()
-            .await
-            .expect_err("an undecodable verdict cannot be treated as absent");
-        assert!(error.to_string().contains("does not decode"));
-    }
-
-    /// A negative probed total cannot come from anything that writes the
-    /// column. Clamping it to zero would classify the candidate
-    /// `LocalDurationUnknown` — a believable answer standing in for a corrupt
-    /// row — so the read fails instead.
-    #[tokio::test]
-    async fn a_negative_probed_total_is_rejected_by_the_write() {
-        let fixture = Fixture::new().await;
-        let dir = fixture.candidate_dir("album");
-        fixture.scan(1).await;
-        let verdict = agreeing_verdict(2_400_000, "mb-rel-1", "group-1");
-        let error = fixture
-            .manager
-            .save_import_candidate_verdict(&NewImportCandidateVerdict {
-                content_hash: fixture.content_hash(&dir),
-                folder_path: dir.to_string_lossy().into_owned(),
-                verdict: serde_json::to_string(&verdict).unwrap(),
-                probed_total_duration_ms: -1,
-                expected_edit_revision: 0,
-                identity_pick: None,
-            })
-            .await
-            .expect_err("a negative probed total cannot enter durable state");
-        assert!(
-            error.to_string().contains("CHECK constraint failed"),
-            "unexpected error: {error}"
-        );
-    }
-
     /// Two candidates, one verdict each, one batched library check — and the
     /// statuses land on the right candidates rather than being transposed by
     /// the dedup that batches them.
@@ -496,7 +450,7 @@ mod load {
             .store_verdict(
                 &owned,
                 &agreeing_verdict(owned_probed, "mb-rel-owned", "group-owned"),
-                owned_probed as i64,
+                owned_probed,
             )
             .await;
         let fresh_probed = probed_total_ms(&fresh);
@@ -504,7 +458,7 @@ mod load {
             .store_verdict(
                 &fresh,
                 &agreeing_verdict(fresh_probed, "mb-rel-fresh", "group-fresh"),
-                fresh_probed as i64,
+                fresh_probed,
             )
             .await;
         fixture.own_release("group-owned", "mb-rel-owned").await;

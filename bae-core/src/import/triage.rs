@@ -29,7 +29,6 @@ use super::{
     ImportCandidatesSnapshot, ImportedRelease, WatchedFolderScanStatus,
 };
 use crate::db::{DbImportCandidateState, ImportCandidatesProjection, LibraryCheck, LibraryStatus};
-use crate::identify::verdict::decode_stored;
 use crate::identify::{
     classify, IdentifyState, NeedsYou, QueueClassification, ResultProvenance, TerminalVerdict,
 };
@@ -562,8 +561,7 @@ fn named_matches(verdict: &TerminalVerdict) -> impl Iterator<Item = &MetadataRes
 }
 
 /// The stored verdict and probed total for every scanned candidate that has
-/// one, keyed by content hash. A row this build cannot decode fails the read
-/// through [`decode_stored`]; persisted state is never silently omitted.
+/// one, keyed by content hash.
 struct StoredCandidateVerdict {
     verdict: TerminalVerdict,
     probed_total_duration_ms: u64,
@@ -586,31 +584,14 @@ fn stored_verdicts(
         if row.file_edits.revision != candidate.candidate.file_edit_revision {
             continue;
         }
-        let Some(verdict) = decode_stored(row).map_err(LibraryError::Internal)? else {
+        let Some(identify) = row.identify.as_ref() else {
             continue;
         };
-        // `decode_stored` returning a verdict means the row carries an identify
-        // result, so this is present for the same reason.
-        let identify = row
-            .identify
-            .as_ref()
-            .expect("a decoded verdict came from an identify result");
-        // Nothing that writes this column can produce a negative total.
-        // Clamping one to zero would classify the candidate
-        // `LocalDurationUnknown` — a plausible-looking answer standing in for a
-        // corrupt row — so it is refused instead.
-        let probed_total_duration_ms =
-            u64::try_from(identify.probed_total_duration_ms).map_err(|_| {
-                LibraryError::Internal(format!(
-                "import_candidate_state row {content_hash} holds a negative probed total ({}ms)",
-                identify.probed_total_duration_ms
-            ))
-            })?;
         out.insert(
             candidate_identity,
             StoredCandidateVerdict {
-                verdict,
-                probed_total_duration_ms,
+                verdict: identify.verdict.clone(),
+                probed_total_duration_ms: identify.probed_total_duration_ms,
             },
         );
     }
@@ -635,15 +616,9 @@ fn stored_picks_from_payloads(
         if row.file_edits.revision != candidate.candidate.file_edit_revision {
             continue;
         }
-        let Some(pick_json) = row.identity_pick.as_ref() else {
+        let Some(pick) = row.identity_pick.clone() else {
             continue;
         };
-        let pick: crate::import::IdentityPick =
-            serde_json::from_str(pick_json).map_err(|error| {
-                LibraryError::Internal(format!(
-                    "stored identity pick for {content_hash} does not decode: {error}"
-                ))
-            })?;
         let release = picked_release_from_payloads(&pick, payloads)?;
         out.insert(candidate_identity, Picked { pick, release });
     }

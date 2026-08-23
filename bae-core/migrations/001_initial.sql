@@ -453,101 +453,102 @@ CREATE TABLE IF NOT EXISTS playback_state (
 --
 -- Two independent things share the row, because both are derived state about
 -- one set of bytes: what identification concluded, and what the user decided.
--- Either can be present without the other — a binding can be set before
--- anything has identified the candidate, and identification writes rows for
--- candidates nobody has touched.
+-- Either can be present without the other.
 CREATE TABLE IF NOT EXISTS import_candidate_state (
     content_hash             TEXT PRIMARY KEY,
-    -- Where the candidate was last seen. Not identity (the hash is), and not
-    -- authoritative for anything; retained so diagnostics can name the folder
-    -- whose derived state failed to decode or match its revision.
+    -- Where the candidate was last seen. Not identity, not authoritative.
     folder_path              TEXT NOT NULL,
-    -- The identify result: `verdict` / `probed_total_duration_ms` /
-    -- `identified_at` are written and cleared as one group, so they are all
-    -- NULL together or all set together.
-    --
-    -- They are set only once identification reached a terminal verdict; a
-    -- transport failure (network down, a provider error, cancellation) writes
-    -- nothing, so the candidate is retried on the next sweep rather than
-    -- remembered as failed. They are cleared when the user changes a sheet
-    -- binding or takes a file out of the tracklist: either changes what the
-    -- folder is — a one-track image becomes a twelve-track disc, and its disc
-    -- ID becomes computable — so the stored verdict describes a shape that no
-    -- longer applies, and clearing it is what makes the queue identify the
-    -- candidate again.
-    --
-    -- `verdict` is `identify::TerminalVerdict`, JSON-encoded by the identify
-    -- module that owns the type. Not normalized into columns: the whole set is
-    -- a few hundred rows, read in full and classified in Rust.
-    --
-    -- A verdict naming a single match whose `source_tracks` is set is one whose
-    -- lead was settled: the writer buys that release's documents into
-    -- `source_release_payloads` and reads the tracklist out of them before it
-    -- writes this row, so the two land in that order or neither lands. That is
-    -- what lets the confirmation pane open such a candidate with no network.
-    verdict                  TEXT CHECK (verdict IS NULL OR json_valid(verdict)),
-    -- Sum of the probed durations of the candidate's audio files, in
-    -- milliseconds. Per-file durations are not kept here — the Ready gate
-    -- only ever compares totals.
+    -- The identify result. Set and cleared as one group: all NULL together or
+    -- all set together. Set only once identification reached a terminal
+    -- verdict; cleared when a file decision changes what the folder is.
+    verdict_kind             TEXT CHECK (verdict_kind IN ('found', 'conflict', 'not_found', 'manual_only')),
+    verdict_track_count      INTEGER CHECK (verdict_track_count IS NULL OR verdict_track_count >= 0),
+    verdict_group_source     TEXT CHECK (verdict_group_source IS NULL OR verdict_group_source IN ('musicbrainz', 'discogs')),
+    verdict_group_id         TEXT,
+    verdict_matched_barcode  TEXT,
     probed_total_duration_ms INTEGER,
     identified_at            TEXT,
-    -- `folder_scanner::SheetBindingEdits`, JSON-encoded: which audio file the
-    -- user bound each track sheet to, and which sheets they cleared. `{}` when
-    -- they have decided nothing, which is not the same as clearing — a sheet
-    -- absent from the map keeps the scan's proposal.
-    sheet_bindings           TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(sheet_bindings)),
-    -- `folder_scanner::FileRoleEdits`, JSON-encoded: which of the candidate's
-    -- audio files the user took out of the tracklist, and which they put back.
-    -- `{}` when they have decided nothing — a file absent from the map keeps
-    -- the scan's proposal. Only files the scan read as audio can appear, so a
-    -- decision never survives the file it names ceasing to be audio.
-    file_roles               TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(file_roles)),
-    -- `folder_scanner::SheetDiscEdits`, JSON-encoded: which disc of the release
-    -- each track sheet's entries become, and which sheets the user took out of
-    -- the tracklist entirely. `{}` when they have decided nothing — a sheet
-    -- absent from the map takes its position among the folder's bound sheets.
-    -- Cue filenames are arbitrary, so this is the only thing that says which
-    -- cue is which disc.
-    sheet_discs              TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(sheet_discs)),
-    -- `import::IdentityPick`, JSON-encoded: the identity decided for this
-    -- candidate — the pressing picked, the decision to read the folder's own
-    -- tags, or the single match identification settled. What lets an answered
-    -- pane reopen answered after a restart.
-    identity_pick            TEXT CHECK (identity_pick IS NULL OR json_valid(identity_pick)),
-    -- Who decided it: 'user' or 'identification'. The two outlive different
-    -- things, which is the only reason this is recorded.
-    --
-    -- Identification's pick is its verdict's own conclusion — a single settled
-    -- match IS the pick — so it belongs to that verdict: a re-run replaces it
-    -- with whatever the new verdict concludes, and a verdict concluding nothing
-    -- leaves none. A person's pick is theirs, and a later run's signals turning
-    -- up nothing says nothing about a release they chose by hand, so no verdict
-    -- overwrites or clears it, and it survives the file decisions that clear
-    -- one: their choice names a release, not a shape, and the mapping
-    -- re-derives against the reshaped folder.
-    --
-    -- NULL exactly when `identity_pick` is: nothing decided has no decider.
-    identity_pick_author     TEXT CHECK (identity_pick_author IN ('user', 'identification')),
-    -- Monotonic compare-and-set revision for file decisions. Identification
-    -- writes carry the revision they observed and cannot overwrite a verdict
-    -- cleared by a later edit.
+    -- The identity decided for this candidate: a pressing at a claim level,
+    -- or the folder's own tags. `identity_pick_author` says who decided it.
+    pick_kind                TEXT CHECK (pick_kind IS NULL OR pick_kind IN ('release', 'unknown')),
+    pick_source              TEXT CHECK (pick_source IS NULL OR pick_source IN ('musicbrainz', 'discogs')),
+    pick_release_id          TEXT,
+    pick_claim               TEXT CHECK (pick_claim IS NULL OR pick_claim IN ('exact', 'approximate')),
+    identity_pick_author     TEXT CHECK (identity_pick_author IS NULL OR identity_pick_author IN ('user', 'identification')),
+    -- Advances with every file decision, so a verdict derived from an older
+    -- shape is refused.
     edit_revision            INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0),
     CHECK (
-        (
-            verdict IS NULL
-            AND probed_total_duration_ms IS NULL
-            AND identified_at IS NULL
-        )
+        (verdict_kind IS NULL AND verdict_track_count IS NULL AND verdict_group_source IS NULL
+            AND verdict_group_id IS NULL AND verdict_matched_barcode IS NULL
+            AND probed_total_duration_ms IS NULL AND identified_at IS NULL)
         OR
-        (
-            verdict IS NOT NULL
-            AND probed_total_duration_ms IS NOT NULL
-            AND probed_total_duration_ms >= 0
-            AND identified_at IS NOT NULL
-        )
+        (verdict_kind IS NOT NULL AND probed_total_duration_ms IS NOT NULL
+            AND probed_total_duration_ms >= 0 AND identified_at IS NOT NULL)
     ),
-    CHECK ((identity_pick IS NULL) = (identity_pick_author IS NULL))
-);
+    CHECK ((verdict_kind = 'found') = (verdict_group_source IS NOT NULL AND verdict_group_id IS NOT NULL)),
+    CHECK (verdict_kind IN ('found', 'conflict', 'manual_only') = (verdict_track_count IS NOT NULL)),
+    CHECK (verdict_matched_barcode IS NULL OR verdict_kind = 'conflict'),
+    CHECK ((pick_kind IS NULL) = (identity_pick_author IS NULL)),
+    CHECK ((pick_kind = 'release') = (pick_source IS NOT NULL AND pick_release_id IS NOT NULL AND pick_claim IS NOT NULL))
+) STRICT;
+
+-- One matched release of a verdict. `list` is which result set it belongs
+-- to: a found verdict's matches, or a conflict's disc-ID / barcode sets.
+-- Provenance (which signal produced it) is set for found matches only.
+CREATE TABLE IF NOT EXISTS import_candidate_match (
+    content_hash           TEXT NOT NULL,
+    list                   TEXT NOT NULL CHECK (list IN ('found', 'discid', 'barcode')),
+    position               INTEGER NOT NULL CHECK (position >= 0),
+    source                 TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    release_id             TEXT NOT NULL,
+    title                  TEXT NOT NULL,
+    artist                 TEXT,
+    year                   INTEGER,
+    format                 TEXT,
+    label                  TEXT,
+    catalog_number         TEXT,
+    country                TEXT,
+    cover_url              TEXT,
+    cover_thumbnail_url    TEXT,
+    cover_label            TEXT,
+    cover_source           TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
+    source_group_id        TEXT,
+    -- NULL: nobody asked the source for its tracklist yet. 'listed' /
+    -- 'nothing': asked. The total is NULL when any listed track has no length.
+    source_tracks_kind     TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
+    source_tracks_count    INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
+    source_tracks_total_ms INTEGER CHECK (source_tracks_total_ms IS NULL OR source_tracks_total_ms >= 0),
+    by_disc_id             INTEGER CHECK (by_disc_id IS NULL OR by_disc_id IN (0, 1)),
+    by_barcode             INTEGER CHECK (by_barcode IS NULL OR by_barcode IN (0, 1)),
+    matches_catalog        INTEGER CHECK (matches_catalog IS NULL OR matches_catalog IN (0, 1)),
+    PRIMARY KEY (content_hash, list, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
+    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
+    CHECK (source_tracks_total_ms IS NULL OR source_tracks_kind = 'listed'),
+    CHECK ((list = 'found') = (by_disc_id IS NOT NULL AND by_barcode IS NOT NULL AND matches_catalog IS NOT NULL))
+) STRICT;
+
+-- One file's user decisions: its role, which audio a sheet describes, which
+-- disc a sheet is. A column is NULL where the user decided nothing about
+-- that aspect; an absent row is no decision at all. A cleared sheet binding
+-- is stored ('cleared'), not removed: the scan's proposal is not restored.
+CREATE TABLE IF NOT EXISTS import_candidate_file_edit (
+    content_hash          TEXT NOT NULL,
+    relative_path         TEXT NOT NULL,
+    role_choice           TEXT CHECK (role_choice IS NULL OR role_choice IN ('audio', 'not_a_track')),
+    sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('describes', 'cleared')),
+    sheet_binding_file_id TEXT,
+    sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
+    sheet_disc_number     INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
+    PRIMARY KEY (content_hash, relative_path),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((sheet_binding = 'describes') = (sheet_binding_file_id IS NOT NULL)),
+    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
+    CHECK (role_choice IS NOT NULL OR sheet_binding IS NOT NULL OR sheet_disc IS NOT NULL)
+) STRICT;
+
 
 -- Device-local watched-root intent. These tables deliberately have no
 -- `_updated_at` and are absent from `synced_tables()`.
@@ -607,13 +608,188 @@ CREATE TABLE IF NOT EXISTS folder_scan_roots (
         ON DELETE CASCADE
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS folder_scan_entries (
-    watched_folder_path TEXT NOT NULL,
-    entry_key           TEXT NOT NULL,
-    generation          INTEGER NOT NULL CHECK (generation >= 0),
-    item                TEXT NOT NULL CHECK (json_valid(item)),
-    PRIMARY KEY (watched_folder_path, entry_key),
-    FOREIGN KEY (watched_folder_path)
-        REFERENCES folder_scan_roots (watched_folder_path)
-        ON DELETE CASCADE
+
+-- One scanned folder under a watched root. `kind` is what the scan made of
+-- it: a release approximation seen before its enclosing boundary was known
+-- (tentative), a release (valid), or a folder that failed validation
+-- (invalid — carries the reason, no files). Entries are written as they are
+-- discovered; successful completion removes entries not seen in that
+-- generation in the same transaction that marks the root complete.
+CREATE TABLE IF NOT EXISTS scan_candidate (
+    watched_folder_path            TEXT NOT NULL,
+    path                           TEXT NOT NULL,
+    generation                     INTEGER NOT NULL CHECK (generation >= 0),
+    kind                           TEXT NOT NULL CHECK (kind IN ('tentative', 'valid', 'invalid')),
+    name                           TEXT NOT NULL,
+    display_path                   TEXT NOT NULL,
+    file_root                      TEXT,
+    scope                          TEXT CHECK (scope IS NULL OR scope IN ('direct', 'recursive')),
+    content_hash                   TEXT,
+    file_edit_revision             INTEGER NOT NULL DEFAULT 0 CHECK (file_edit_revision >= 0),
+    format_label                   TEXT,
+    combine_ancestor_relative_path TEXT,
+    invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
+    invalid_reason_path            TEXT,
+    PRIMARY KEY (watched_folder_path, path),
+    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
+    CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
+    CHECK ((kind = 'invalid') = (file_root IS NULL AND scope IS NULL AND content_hash IS NULL AND format_label IS NULL)),
+    CHECK ((invalid_reason IN ('corrupt_audio', 'corrupt_image')) = (invalid_reason_path IS NOT NULL))
 ) STRICT;
+
+-- Every file under a candidate's root, in relative_path order, with the
+-- role the scan proposed (and the user's decisions applied). A track sheet
+-- carries what its FILE directive resolved to and which disc it is.
+CREATE TABLE IF NOT EXISTS scan_candidate_file (
+    watched_folder_path   TEXT NOT NULL,
+    candidate_path        TEXT NOT NULL,
+    relative_path         TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    absolute_path         TEXT NOT NULL,
+    size                  INTEGER NOT NULL CHECK (size >= 0),
+    file_name             TEXT NOT NULL,
+    dir_prefix            TEXT,
+    proposed_audio        INTEGER NOT NULL CHECK (proposed_audio IN (0, 1)),
+    role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'cover', 'artwork', 'document', 'other')),
+    sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('describes', 'unresolved', 'refused_codec')),
+    sheet_binding_file_id TEXT,
+    sheet_binding_codec   TEXT,
+    sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
+    sheet_disc_number     INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
+    PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
+    FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+    CHECK ((role = 'track_sheet') = (sheet_binding IS NOT NULL AND sheet_disc IS NOT NULL)),
+    CHECK ((sheet_binding IN ('describes', 'refused_codec')) = (sheet_binding_file_id IS NOT NULL)),
+    CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
+    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL))
+) STRICT;
+
+-- The parsed sheet behind a track-sheet file.
+CREATE TABLE IF NOT EXISTS scan_cue_sheet (
+    watched_folder_path TEXT NOT NULL,
+    candidate_path      TEXT NOT NULL,
+    sheet_relative_path TEXT NOT NULL,
+    title               TEXT,
+    performer           TEXT,
+    catalog             TEXT,
+    date                TEXT,
+    PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path),
+    FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS scan_cue_track (
+    watched_folder_path         TEXT NOT NULL,
+    candidate_path              TEXT NOT NULL,
+    sheet_relative_path         TEXT NOT NULL,
+    position                    INTEGER NOT NULL CHECK (position >= 0),
+    number                      INTEGER NOT NULL,
+    mode                        TEXT NOT NULL CHECK (mode IN ('audio', 'other')),
+    mode_other                  TEXT,
+    title                       TEXT,
+    performer                   TEXT,
+    file_reference              TEXT NOT NULL,
+    start_cue_frames            INTEGER NOT NULL CHECK (start_cue_frames >= 0),
+    end_cue_frames              INTEGER CHECK (end_cue_frames IS NULL OR end_cue_frames >= 0),
+    pregap_kind                 TEXT NOT NULL CHECK (pregap_kind IN ('none', 'audio', 'silence')),
+    pregap_frames               INTEGER CHECK (pregap_frames IS NULL OR pregap_frames >= 0),
+    pregap_index_number         INTEGER,
+    pregap_index_file_reference TEXT,
+    PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, position),
+    FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
+        REFERENCES scan_cue_sheet (watched_folder_path, candidate_path, sheet_relative_path) ON DELETE CASCADE,
+    CHECK ((mode = 'other') = (mode_other IS NOT NULL)),
+    CHECK ((pregap_kind = 'none') = (pregap_frames IS NULL)),
+    CHECK ((pregap_kind = 'audio') = (pregap_index_number IS NOT NULL AND pregap_index_file_reference IS NOT NULL))
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS scan_cue_index (
+    watched_folder_path TEXT NOT NULL,
+    candidate_path      TEXT NOT NULL,
+    sheet_relative_path TEXT NOT NULL,
+    track_position      INTEGER NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    number              INTEGER NOT NULL,
+    frames              INTEGER NOT NULL CHECK (frames >= 0),
+    file_reference      TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, track_position, position),
+    FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path, track_position)
+        REFERENCES scan_cue_track (watched_folder_path, candidate_path, sheet_relative_path, position) ON DELETE CASCADE
+) STRICT;
+
+-- The explicit boundary decisions that exposed a candidate, retained so its
+-- context menu can set the opposite interpretation.
+CREATE TABLE IF NOT EXISTS scan_candidate_resolved_boundary (
+    watched_folder_path  TEXT NOT NULL,
+    candidate_path       TEXT NOT NULL,
+    position             INTEGER NOT NULL CHECK (position >= 0),
+    relative_folder_path TEXT NOT NULL,
+    decision             TEXT NOT NULL CHECK (decision IN ('combine_as_one_release', 'keep_as_separate_releases')),
+    name                 TEXT NOT NULL,
+    display_path         TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, candidate_path, position),
+    FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
+) STRICT;
+
+-- A folder whose structure admits both one recursive release and several
+-- direct ones: a question for the user, with the compact tree the pane shows
+-- and the tentative candidates it hides.
+CREATE TABLE IF NOT EXISTS scan_boundary (
+    watched_folder_path  TEXT NOT NULL,
+    relative_folder_path TEXT NOT NULL,
+    generation           INTEGER NOT NULL CHECK (generation >= 0),
+    name                 TEXT NOT NULL,
+    display_path         TEXT NOT NULL,
+    shared_file_count    INTEGER NOT NULL CHECK (shared_file_count >= 0),
+    PRIMARY KEY (watched_folder_path, relative_folder_path),
+    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS scan_boundary_tree_row (
+    watched_folder_path           TEXT NOT NULL,
+    boundary_relative_folder_path TEXT NOT NULL,
+    position                      INTEGER NOT NULL CHECK (position >= 0),
+    name                          TEXT NOT NULL,
+    display_path                  TEXT NOT NULL,
+    depth                         INTEGER NOT NULL CHECK (depth >= 0),
+    kind                          TEXT NOT NULL CHECK (kind IN ('folder', 'candidate', 'invalid')),
+    track_count                   INTEGER CHECK (track_count IS NULL OR track_count >= 0),
+    format_label                  TEXT,
+    invalid_reason                TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
+    invalid_reason_path           TEXT,
+    decision_relative_folder_path TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, boundary_relative_folder_path, position),
+    FOREIGN KEY (watched_folder_path, boundary_relative_folder_path)
+        REFERENCES scan_boundary (watched_folder_path, relative_folder_path) ON DELETE CASCADE,
+    CHECK ((kind = 'candidate') = (track_count IS NOT NULL AND format_label IS NOT NULL)),
+    CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
+    CHECK ((invalid_reason IN ('corrupt_audio', 'corrupt_image')) = (invalid_reason_path IS NOT NULL))
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS scan_boundary_tree_row_ancestor (
+    watched_folder_path           TEXT NOT NULL,
+    boundary_relative_folder_path TEXT NOT NULL,
+    row_position                  INTEGER NOT NULL,
+    position                      INTEGER NOT NULL CHECK (position >= 0),
+    ancestor_relative_folder_path TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, boundary_relative_folder_path, row_position, position),
+    FOREIGN KEY (watched_folder_path, boundary_relative_folder_path, row_position)
+        REFERENCES scan_boundary_tree_row (watched_folder_path, boundary_relative_folder_path, position) ON DELETE CASCADE
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS scan_boundary_hidden_candidate (
+    watched_folder_path           TEXT NOT NULL,
+    boundary_relative_folder_path TEXT NOT NULL,
+    position                      INTEGER NOT NULL CHECK (position >= 0),
+    candidate_path                TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, boundary_relative_folder_path, position),
+    FOREIGN KEY (watched_folder_path, boundary_relative_folder_path)
+        REFERENCES scan_boundary (watched_folder_path, relative_folder_path) ON DELETE CASCADE
+) STRICT;
+
+-- A candidate is addressed by its path alone (the key a selection carries)
+-- and gathered by its content hash (the file decision that reshapes every
+-- copy of one release). Neither is the leading column of the primary key.
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_content_hash
+    ON scan_candidate (content_hash) WHERE content_hash IS NOT NULL;

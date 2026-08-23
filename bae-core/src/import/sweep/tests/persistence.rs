@@ -1,17 +1,10 @@
-#[test]
-fn a_verdict_that_no_longer_decodes_is_rejected() {
-    let stale = synthetic_candidate("/b", 222);
-    let row = row_with_verdict(
-        &stale,
-        r#"{"ShapeFromAnOlderBuild":{"whatever":1}}"#.to_string(),
-    );
-    assert!(decode(&row).is_err());
-}
-
+/// A candidate that appears after the pass has started and already holds a
+/// verdict joins it as answered: the pass counts it and finishes, and nothing
+/// re-buys the answer it has.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
-    let fixture = Fixture::new("malformed-late-row").await;
+async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
+    let fixture = Fixture::new("answered-late-row").await;
     let running = fixture.disc_id_candidate("Running");
     let probed = fixture.probed_total_ms(&running);
     fixture.provider.route(
@@ -39,7 +32,7 @@ async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
         .save_import_candidate_verdict(&NewImportCandidateVerdict {
             content_hash: fixture.content_hash(&late),
             folder_path: late.to_string_lossy().into_owned(),
-            verdict: r#"{"ShapeFromAnOlderBuild":{"whatever":1}}"#.to_string(),
+            verdict: TerminalVerdict::NotFoundAnywhere,
             probed_total_duration_ms: 0,
             expected_edit_revision: 0,
             identity_pick: None,
@@ -54,11 +47,20 @@ async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
-        .expect("malformed late row aborts the pass")
-        .expect("malformed late row is handled without panic");
+        .expect("the pass finishes with the late candidate counted")
+        .expect("the late candidate is handled without panic");
     assert!(!fixture
         .identify
         .is_running(running.to_string_lossy().as_ref()));
+    let late_row = fixture
+        .stored_for(&late)
+        .await
+        .expect("the late candidate keeps its row");
+    assert_eq!(
+        late_row.identify.map(|identify| identify.verdict),
+        Some(TerminalVerdict::NotFoundAnywhere),
+        "an answered candidate is not identified again"
+    );
 }
 
 #[test]
@@ -74,10 +76,7 @@ fn duplicate_content_hashes_share_one_identify_job() {
 
     let stored = HashMap::from([(
         first.files.content_hash(),
-        row_with_verdict(
-            &first,
-            serde_json::to_string(&TerminalVerdict::NotFoundAnywhere).unwrap(),
-        ),
+        row_with_verdict(&first, TerminalVerdict::NotFoundAnywhere),
     )]);
     let planned = plan(vec![first, second], &stored, 2);
     assert!(planned.identify.is_empty());
@@ -113,7 +112,10 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
     }
 }
 
-fn row_with_verdict(candidate: &FolderCandidate, verdict: String) -> DbImportCandidateState {
+fn row_with_verdict(
+    candidate: &FolderCandidate,
+    verdict: TerminalVerdict,
+) -> DbImportCandidateState {
     DbImportCandidateState {
         content_hash: candidate.files.content_hash(),
         folder_path: candidate.path.to_string_lossy().into_owned(),
@@ -186,8 +188,8 @@ async fn selecting_an_answered_candidate_starts_nothing() {
             &NewImportCandidateVerdict {
                 content_hash: fixture.content_hash(&dir),
                 folder_path: dir.to_string_lossy().into_owned(),
-                verdict: serde_json::to_string(&verdict).unwrap(),
-                probed_total_duration_ms: fixture.probed_total_ms(&dir) as i64,
+                verdict,
+                probed_total_duration_ms: fixture.probed_total_ms(&dir),
                 expected_edit_revision: 0,
                 identity_pick: None,
             },

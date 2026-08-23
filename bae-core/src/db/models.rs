@@ -379,35 +379,31 @@ pub struct NewImportCandidateVerdict {
     /// Where the candidate was last seen on disk. Not identity — the hash is —
     /// so a moved folder keeps reading the same row under its unchanged hash.
     pub folder_path: String,
-    /// `identify::TerminalVerdict`, JSON-encoded.
-    pub verdict: String,
+    pub verdict: crate::identify::TerminalVerdict,
     /// Sum of the probed durations of the candidate's audio files, in
     /// milliseconds.
-    pub probed_total_duration_ms: i64,
+    pub probed_total_duration_ms: u64,
     /// File-decision revision used to derive this verdict.
     pub expected_edit_revision: u64,
-    /// `import::IdentityPick` JSON, written with the verdict when the verdict
-    /// itself decides the identity — a single settled match IS the pick, made
-    /// by identification instead of by a click. `None` decides nothing (several
-    /// matches, a conflict, nothing found).
+    /// The identity the verdict itself decides — a single settled match IS the
+    /// pick, made by identification instead of by a click. `None` decides
+    /// nothing (several matches, a conflict, nothing found).
     ///
     /// Either way it replaces whatever identification concluded last time: the
     /// pick belongs to the verdict that made it. A pick a person made outranks
     /// both and is left alone.
-    pub identity_pick: Option<String>,
+    pub identity_pick: Option<crate::import::IdentityPick>,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
-/// absent as a whole: the three columns are written together and cleared
-/// together, so no reader has to reason about a half-filled result.
+/// absent as a whole: the identify columns and the match rows below them are
+/// written together and cleared together, so no reader has to reason about a
+/// half-filled result.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
-    /// `identify::TerminalVerdict`, JSON-encoded. This layer stores and
-    /// returns opaque bytes; the identify module that owns the type decodes
-    /// it.
-    pub verdict: String,
-    pub probed_total_duration_ms: i64,
+    pub verdict: crate::identify::TerminalVerdict,
+    pub probed_total_duration_ms: u64,
     pub identified_at: DateTime<Utc>,
 }
 
@@ -426,12 +422,11 @@ pub struct DbImportCandidateState {
     /// The user's decisions about this candidate's files: which audio each
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
-    /// The identity decided for this candidate, `import::IdentityPick`
-    /// JSON-encoded, or `None` while nothing is decided. A person's choice
-    /// survives file decisions and later verdicts alike — it names a release,
-    /// not a shape; one identification concluded lives exactly as long as the
-    /// verdict that concluded it.
-    pub identity_pick: Option<String>,
+    /// The identity decided for this candidate, or `None` while nothing is
+    /// decided. A person's choice survives file decisions and later verdicts
+    /// alike — it names a release, not a shape; one identification concluded
+    /// lives exactly as long as the verdict that concluded it.
+    pub identity_pick: Option<crate::import::IdentityPick>,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

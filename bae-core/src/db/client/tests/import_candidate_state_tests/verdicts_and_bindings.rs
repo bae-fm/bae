@@ -78,12 +78,12 @@ fn new_candidate_row(
     content_hash: &str,
     folder_path: &str,
     verdict: &TerminalVerdict,
-    probed_total_duration_ms: i64,
+    probed_total_duration_ms: u64,
 ) -> NewImportCandidateVerdict {
     NewImportCandidateVerdict {
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
-        verdict: serde_json::to_string(verdict).unwrap(),
+        verdict: verdict.clone(),
         probed_total_duration_ms,
         expected_edit_revision: 0,
         identity_pick: None,
@@ -117,9 +117,8 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     // Stamped by the write path from the injected clock, not something
     // `new_candidate_row` had any way to supply.
     assert_eq!(identify.identified_at, fixed_identified_at());
-    let loaded_verdict: TerminalVerdict = serde_json::from_str(&identify.verdict).unwrap();
     assert_eq!(
-        loaded_verdict, verdict,
+        identify.verdict, verdict,
         "the verdict must round-trip exactly, provenance included"
     );
 }
@@ -159,13 +158,12 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     );
 }
 
-fn release_pick(release_id: &str) -> String {
-    serde_json::to_string(&crate::import::IdentityPick::Release {
+fn release_pick(release_id: &str) -> crate::import::IdentityPick {
+    crate::import::IdentityPick::Release {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
         claim: crate::import::ClaimLevel::Exact,
-    })
-    .expect("the pick encodes")
+    }
 }
 
 fn found_nothing() -> TerminalVerdict {

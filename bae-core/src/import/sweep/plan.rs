@@ -94,11 +94,7 @@ pub(super) fn usable_stored_row<'a>(
     stored
         .get(&candidate.files.content_hash())
         .filter(|row| row.file_edits.revision == candidate.file_edit_revision)
-        .filter(|row| {
-            decode(row)
-                .expect("stored verdicts are validated before sweep planning")
-                .is_some()
-        })
+        .filter(|row| row.identify.is_some())
 }
 
 pub(super) async fn usable_current_candidate(
@@ -128,7 +124,7 @@ pub(super) async fn current_stored_verdict(
     if row.file_edits.revision != candidate.file_edit_revision {
         return Ok(false);
     }
-    Ok(decode(&row).map_err(|error| error.to_string())?.is_some())
+    Ok(row.identify.is_some())
 }
 
 /// Split the queue against what is already stored.
@@ -156,9 +152,6 @@ pub(super) fn plan(
         // A row with no identify result is a candidate nobody has answered —
         // either never, or not since a sheet binding changed what the folder is
         // and cleared the answer it had.
-        //
-        // Stored rows are decoded and validated before planning. A malformed
-        // row fails the pass rather than being treated as no answer.
         if usable_stored_row(stored, candidate).is_none() {
             identify.push_back(job);
             continue;

@@ -1,14 +1,105 @@
-//! The durable folder-scan tables: `folder_scan_roots` and
-//! `folder_scan_entries`. A scan generation is durable before traversal
-//! begins; entries are written as they are discovered, each deleting what it
-//! supersedes; successful completion prunes entries not seen in that
+//! The durable folder-scan tables: `folder_scan_roots`, the `scan_candidate`
+//! family, and the `scan_boundary` family. A scan generation is durable before
+//! traversal begins; items are written as they are discovered, each deleting
+//! what it supersedes; successful completion prunes rows not written in that
 //! generation in the same transaction that marks the root complete.
+//!
+//! One [`ScanItem`](crate::import::folder_scanner::ScanItem) is a candidate row
+//! with its files, their parsed track sheets and the decisions that exposed it
+//! — or a boundary row with its tree and the candidates it hides. [`write`]
+//! lays those rows down and [`read`] assembles them back.
+
+mod columns;
+mod read;
+mod write;
 
 use super::import_state::next_folder_scan_generation;
+use super::query::{QueryOne, QueryRows};
 use super::*;
-use crate::import::folder_scanner::FolderReleaseDecisionKey;
+use crate::import::candidates::StoredEntryKey;
+use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
+use read::StoredScanItem;
+use std::path::{Path, PathBuf};
+
+pub(super) use read::stored_entries;
+pub(super) use write::{delete_entry, insert_candidate_files, StoredEntry};
+
+/// The entry at `entry_key`, on whichever connection the caller holds — the
+/// read connection for a query, the write transaction for a decision that has
+/// just reshaped it.
+pub(super) fn load_scan_item_on(
+    sql: &(impl QueryOne + QueryRows),
+    entry_key: &str,
+) -> Result<Option<ScanItem>, DbError> {
+    let Some((watched_folder_path, stored)) = read::load_item_by_key(sql, entry_key)? else {
+        return Ok(None);
+    };
+    validate_scan_item_ownership(&watched_folder_path, &stored.key, &stored.item)?;
+    Ok(Some(stored.item))
+}
+
+/// The key a boundary is addressed by — its watched root joined with the
+/// folder it asks about, which is what
+/// [`ScanItem::persisted_key`](crate::import::folder_scanner::ScanItem) builds
+/// from the same two fields.
+pub(super) fn boundary_key(watched_folder_path: &str, relative_folder_path: &str) -> String {
+    Path::new(watched_folder_path)
+        .join(relative_folder_path)
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// Refuse to write under a generation the root has moved past. Read inside the
+/// write transaction, so a scan that lost the root between the caller's check
+/// and this write is refused rather than writing over its successor.
+fn ensure_generation(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    generation: i64,
+) -> Result<(), DbError> {
+    let current: Option<i64> = sql
+        .query_row(
+            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
+            [watched_folder_path],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if current != Some(generation) {
+        return Err(DbError::Message(format!(
+            "folder scan generation {generation} is no longer {watched_folder_path}'s: \
+             a newer scan took the root between the check and the write"
+        )));
+    }
+    Ok(())
+}
+
+fn generation_column(generation: u64) -> Result<i64, DbError> {
+    i64::try_from(generation).map_err(|_| {
+        DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
+    })
+}
 
 impl Database {
+    /// The root's generation as the read connection sees it. A scan that is no
+    /// longer the root's writes nothing, and finding that out is a read — the
+    /// writes below open only once this generation is the one in force.
+    async fn current_scan_generation(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<Option<i64>, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        self.read(move |sql| {
+            Ok(sql
+                .query_row(
+                    "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
+                    [&watched_folder_path],
+                    |row| row.get(0),
+                )
+                .optional()?)
+        })
+        .await
+    }
+
     /// Start a durable scan generation for one watched root.
     pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
@@ -40,93 +131,39 @@ impl Database {
         &self,
         watched_folder_path: &str,
         generation: u64,
-        item: &crate::import::folder_scanner::ScanItem,
+        item: &ScanItem,
     ) -> Result<Option<Vec<String>>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
-        let generation = i64::try_from(generation).map_err(|_| {
-            DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
-        })?;
+        let generation = generation_column(generation)?;
         let entry_key = item.persisted_key();
         validate_scan_item_ownership(&watched_folder_path, &entry_key, item)?;
-        let encoded = serde_json::to_string(item)
-            .map_err(|error| DbError::Message(format!("encoding folder scan item: {error}")))?;
         let item = item.clone();
-        // A generation that is no longer the root's writes nothing, and
-        // finding that out is a read — the write below opens only once this
-        // generation is the one in force. Its statements still carry the
-        // generation, so a later one taking over between the two writes
-        // nothing rather than writing over it.
-        let current: Option<i64> = {
-            let watched_folder_path = watched_folder_path.clone();
-            self.read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                        [&watched_folder_path],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
-            })
-            .await?
-        };
-        if current != Some(generation) {
+        if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
         self.call(move |sql| {
-            let existing = sql.query(
-                "SELECT entry_key, json_type(item, '$.Boundary') IS NOT NULL \
-                 FROM folder_scan_entries WHERE watched_folder_path = ?",
-                [&watched_folder_path],
-                |row| {
-                    Ok(crate::import::candidates::StoredEntryKey {
-                        key: row.get(0)?,
-                        is_boundary: row.get(1)?,
-                    })
-                },
-            )?;
-            let removed_keys = crate::import::candidates::superseded_entry_keys(&existing, &item);
-            for removed_key in &removed_keys {
-                sql.execute(
-                    "DELETE FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? AND entry_key = ? \
-                       AND EXISTS (\
-                           SELECT 1 FROM folder_scan_roots \
-                           WHERE watched_folder_path = ? AND generation = ?\
-                       )",
-                    params![
-                        watched_folder_path,
-                        removed_key,
-                        watched_folder_path,
-                        generation
-                    ],
-                )?;
+            ensure_generation(sql, &watched_folder_path, generation)?;
+            let stored = stored_entries(sql, &watched_folder_path)?;
+            let keys: Vec<StoredEntryKey> = stored
+                .iter()
+                .map(|(key, entry)| StoredEntryKey {
+                    key: key.clone(),
+                    is_boundary: matches!(entry, StoredEntry::Boundary { .. }),
+                })
+                .collect();
+            let removed_keys = crate::import::candidates::superseded_entry_keys(&keys, &item);
+            let stored: HashMap<&str, &StoredEntry> = stored
+                .iter()
+                .map(|(key, entry)| (key.as_str(), entry))
+                .collect();
+            // The item's own prior row goes first: an item is written whole,
+            // so what stood under its key is replaced rather than merged with.
+            for key in std::iter::once(&entry_key).chain(removed_keys.iter()) {
+                if let Some(entry) = stored.get(key.as_str()) {
+                    delete_entry(sql, &watched_folder_path, entry)?;
+                }
             }
-            let changed = sql.execute(
-                "INSERT INTO folder_scan_entries \
-                     (watched_folder_path, entry_key, generation, item) \
-                 SELECT ?, ?, ?, ? \
-                 WHERE EXISTS (\
-                     SELECT 1 FROM folder_scan_roots \
-                     WHERE watched_folder_path = ? AND generation = ?\
-                 ) \
-                 ON CONFLICT(watched_folder_path, entry_key) DO UPDATE SET \
-                     generation = excluded.generation, item = excluded.item",
-                params![
-                    watched_folder_path,
-                    entry_key,
-                    generation,
-                    encoded,
-                    watched_folder_path,
-                    generation
-                ],
-            )?;
-            if changed != 1 {
-                return Err(DbError::Message(format!(
-                    "folder scan item write for {entry_key} under generation {generation} \
-                     changed {changed} rows: a newer scan took the root between the check \
-                     and the write"
-                )));
-            }
+            write::insert_item(sql, &watched_folder_path, generation, &item)?;
             Ok(Some(removed_keys))
         })
         .await
@@ -142,32 +179,13 @@ impl Database {
         error: Option<&str>,
     ) -> Result<Option<Vec<String>>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
-        let generation = i64::try_from(generation).map_err(|_| {
-            DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
-        })?;
+        let generation = generation_column(generation)?;
         let error = error.map(str::to_string);
-        // A generation that is no longer the root's finishes nothing, and
-        // finding that out is a read — the write below opens only once this
-        // generation is the one in force. Its statements still carry the
-        // generation, so a later one taking over between the two writes
-        // nothing rather than finishing the wrong scan.
-        let current: Option<i64> = {
-            let watched_folder_path = watched_folder_path.clone();
-            self.read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                        [&watched_folder_path],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
-            })
-            .await?
-        };
-        if current != Some(generation) {
+        if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
         self.call(move |sql| {
+            ensure_generation(sql, &watched_folder_path, generation)?;
             if let Some(error) = error {
                 sql.execute(
                     "UPDATE folder_scan_roots SET status = 'failed', error = ? \
@@ -176,17 +194,7 @@ impl Database {
                 )?;
                 return Ok(Some(Vec::new()));
             }
-            let pruned = sql.query(
-                "SELECT entry_key FROM folder_scan_entries \
-                 WHERE watched_folder_path = ? AND generation != ? ORDER BY entry_key",
-                params![watched_folder_path, generation],
-                |row| row.get::<_, String>(0),
-            )?;
-            sql.execute(
-                "DELETE FROM folder_scan_entries \
-                 WHERE watched_folder_path = ? AND generation != ?",
-                params![watched_folder_path, generation],
-            )?;
+            let pruned = write::prune_other_generations(sql, &watched_folder_path, generation)?;
             sql.execute(
                 "UPDATE folder_scan_roots SET status = 'complete', error = NULL \
                  WHERE watched_folder_path = ? AND generation = ?",
@@ -206,16 +214,14 @@ impl Database {
     pub async fn load_folder_scan_items(
         &self,
         watched_folder_path: &str,
-    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, DbError> {
+    ) -> Result<Vec<ScanItem>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| load_folder_scan_items_on(&sql, &watched_folder_path))
             .await
     }
 
     /// Every stored entry under every watched root.
-    pub async fn load_all_folder_scan_items(
-        &self,
-    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, DbError> {
+    pub async fn load_all_folder_scan_items(&self) -> Result<Vec<ScanItem>, DbError> {
         self.read(move |sql| {
             let roots = sql.query(
                 "SELECT watched_folder_path FROM folder_scan_roots ORDER BY watched_folder_path",
@@ -237,148 +243,92 @@ impl Database {
     pub async fn load_folder_scan_item(
         &self,
         entry_key: &str,
-    ) -> Result<Option<crate::import::folder_scanner::ScanItem>, DbError> {
+    ) -> Result<Option<ScanItem>, DbError> {
         let entry_key = entry_key.to_string();
-        self.read(move |sql| {
-            let rows = sql.query(
-                "SELECT watched_folder_path, item FROM folder_scan_entries WHERE entry_key = ?",
-                [&entry_key],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )?;
-            if rows.len() > 1 {
-                return Err(DbError::Message(format!(
-                    "folder scan entry {entry_key} is stored under {} roots",
-                    rows.len()
-                )));
-            }
-            rows.into_iter()
-                .map(|(watched_folder_path, stored)| {
-                    decode_scan_entry(&watched_folder_path, &entry_key, &stored)
-                })
-                .next()
-                .transpose()
-        })
-        .await
+        self.read(move |sql| load_scan_item_on(&sql, &entry_key))
+            .await
     }
-}
-
-fn decode_scan_entry(
-    watched_folder_path: &str,
-    entry_key: &str,
-    stored: &str,
-) -> Result<crate::import::folder_scanner::ScanItem, DbError> {
-    let item: crate::import::folder_scanner::ScanItem =
-        serde_json::from_str(stored).map_err(|error| {
-            DbError::Message(format!(
-                "folder scan entry {entry_key} under {watched_folder_path} is unreadable: {error}"
-            ))
-        })?;
-    validate_scan_item_ownership(watched_folder_path, entry_key, &item)?;
-    Ok(item)
 }
 
 pub(super) fn load_folder_scan_items_on(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &str,
-) -> Result<Vec<crate::import::folder_scanner::ScanItem>, DbError> {
-    sql.query(
-        "SELECT entry_key, item FROM folder_scan_entries \
-         WHERE watched_folder_path = ? ORDER BY entry_key",
-        [watched_folder_path],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?
-    .into_iter()
-    .map(|(entry_key, stored)| decode_scan_entry(watched_folder_path, &entry_key, &stored))
-    .collect()
+) -> Result<Vec<ScanItem>, DbError> {
+    read::load_items(sql, watched_folder_path)?
+        .into_iter()
+        .map(|stored| {
+            validate_scan_item_ownership(watched_folder_path, &stored.key, &stored.item)?;
+            Ok(stored.item)
+        })
+        .collect()
 }
 
 pub(super) fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
-    {
-        {
-            let roots = sql.query(
-                "SELECT watched_folder_path, generation, status, error \
-                     FROM folder_scan_roots ORDER BY watched_folder_path",
-                [],
-                |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, i64>(1)?,
-                        row.get::<_, String>(2)?,
-                        row.get::<_, Option<String>>(3)?,
-                    ))
-                },
-            )?;
+    let roots = sql.query(
+        "SELECT watched_folder_path, generation, status, error \
+         FROM folder_scan_roots ORDER BY watched_folder_path",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        },
+    )?;
 
-            let mut snapshots = Vec::with_capacity(roots.len());
-            for (watched_folder_path, generation, status, error) in roots {
-                let generation = u64::try_from(generation).map_err(|_| {
-                    DbError::Message(format!(
-                        "folder scan root {watched_folder_path} has a negative generation"
-                    ))
-                })?;
-                let status = match (status.as_str(), error) {
-                    ("scanning", None) => crate::import::FolderScanStatus::Scanning,
-                    ("complete", None) => crate::import::FolderScanStatus::Complete,
-                    ("failed", Some(error)) => {
-                        crate::import::FolderScanStatus::Failed { error }
-                    }
-                    (status, error) => {
-                        return Err(DbError::Message(format!(
-                            "folder scan root {watched_folder_path} has invalid status {status:?} and error {error:?}"
-                        )))
-                    }
-                };
-                let entries = sql.query(
-                    "SELECT entry_key, generation, item FROM folder_scan_entries \
-                     WHERE watched_folder_path = ? ORDER BY entry_key",
-                    [&watched_folder_path],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, i64>(1)?,
-                            row.get::<_, String>(2)?,
-                        ))
-                    },
-                )?;
-                let mut items = Vec::with_capacity(entries.len());
-                for (entry_key, entry_generation, stored) in entries {
-                    let entry_generation = u64::try_from(entry_generation).map_err(|_| {
-                        DbError::Message(format!(
-                            "folder scan entry {entry_key} has a negative generation"
-                        ))
-                    })?;
-                    if entry_generation > generation {
-                        return Err(DbError::Message(format!(
-                            "folder scan entry {entry_key} has generation {entry_generation} newer than root generation {generation}"
-                        )));
-                    }
-                    let item: crate::import::folder_scanner::ScanItem =
-                        serde_json::from_str(&stored).map_err(|error| {
-                        DbError::Message(format!(
-                            "folder scan entry {entry_key} under {watched_folder_path} is unreadable: {error}"
-                        ))
-                    })?;
-                    validate_scan_item_ownership(&watched_folder_path, &entry_key, &item)?;
-                    items.push(item);
-                }
-                snapshots.push(DbFolderScanSnapshot {
-                    watched_folder_path,
-                    generation,
-                    status,
-                    items,
-                });
+    let mut snapshots = Vec::with_capacity(roots.len());
+    for (watched_folder_path, generation, status, error) in roots {
+        let generation = u64::try_from(generation).map_err(|_| {
+            DbError::Message(format!(
+                "folder scan root {watched_folder_path} has a negative generation"
+            ))
+        })?;
+        let status = match (status.as_str(), error) {
+            ("scanning", None) => crate::import::FolderScanStatus::Scanning,
+            ("complete", None) => crate::import::FolderScanStatus::Complete,
+            ("failed", Some(error)) => crate::import::FolderScanStatus::Failed { error },
+            (status, error) => {
+                return Err(DbError::Message(format!(
+                    "folder scan root {watched_folder_path} has invalid status {status:?} \
+                     and error {error:?}"
+                )))
             }
-            Ok(snapshots)
+        };
+        let stored = read::load_items(sql, &watched_folder_path)?;
+        let mut items = Vec::with_capacity(stored.len());
+        for StoredScanItem {
+            key,
+            generation: entry_generation,
+            item,
+        } in stored
+        {
+            if entry_generation > generation {
+                return Err(DbError::Message(format!(
+                    "folder scan entry {key} has generation {entry_generation} newer than \
+                     root generation {generation}"
+                )));
+            }
+            validate_scan_item_ownership(&watched_folder_path, &key, &item)?;
+            items.push(item);
         }
+        snapshots.push(DbFolderScanSnapshot {
+            watched_folder_path,
+            generation,
+            status,
+            items,
+        });
     }
+    Ok(snapshots)
 }
 
 pub(super) fn validate_scan_item_ownership(
     watched_folder_path: &str,
     entry_key: &str,
-    item: &crate::import::folder_scanner::ScanItem,
+    item: &ScanItem,
 ) -> Result<(), DbError> {
     if item.persisted_key() != entry_key {
         return Err(DbError::Message(format!(
@@ -386,20 +336,19 @@ pub(super) fn validate_scan_item_ownership(
             item.persisted_key()
         )));
     }
-    let root = std::path::Path::new(watched_folder_path);
+    let root = Path::new(watched_folder_path);
     let (item_root, item_path) = match item {
-        crate::import::folder_scanner::ScanItem::Discovered(candidate)
-        | crate::import::folder_scanner::ScanItem::Valid(candidate) => (
+        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => (
             candidate.watched_folder_path.as_str(),
             candidate.path.as_path(),
         ),
-        crate::import::folder_scanner::ScanItem::Invalid(candidate) => (
+        ScanItem::Invalid(candidate) => (
             candidate.watched_folder_path.as_str(),
             candidate.path.as_path(),
         ),
-        crate::import::folder_scanner::ScanItem::Boundary(boundary) => (
+        ScanItem::Boundary(boundary) => (
             boundary.key.watched_folder_path.as_str(),
-            std::path::Path::new(entry_key),
+            Path::new(entry_key),
         ),
     };
     if item_root != watched_folder_path || !item_path.starts_with(root) {
@@ -408,8 +357,7 @@ pub(super) fn validate_scan_item_ownership(
         )));
     }
     match item {
-        crate::import::folder_scanner::ScanItem::Discovered(candidate)
-        | crate::import::folder_scanner::ScanItem::Valid(candidate) => {
+        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             if !candidate.file_root.starts_with(root) {
                 return Err(DbError::Message(format!(
                     "folder scan entry {entry_key} reads files outside its watched folder"
@@ -422,35 +370,35 @@ pub(super) fn validate_scan_item_ownership(
                 validate_decision_key_ownership(watched_folder_path, key)?;
             }
         }
-        crate::import::folder_scanner::ScanItem::Invalid(candidate) => {
+        ScanItem::Invalid(candidate) => {
             for resolved in &candidate.resolved_boundaries {
                 validate_decision_key_ownership(watched_folder_path, &resolved.key)?;
             }
         }
-        crate::import::folder_scanner::ScanItem::Boundary(_) => {}
-    }
-    if let crate::import::folder_scanner::ScanItem::Boundary(boundary) = item {
-        validate_decision_key_ownership(watched_folder_path, &boundary.key)?;
-        for row in &boundary.tree_rows {
-            validate_decision_key_ownership(watched_folder_path, &row.decision_key)?;
-            for ancestor in &row.ancestor_decision_keys {
-                validate_decision_key_ownership(watched_folder_path, ancestor)?;
+        ScanItem::Boundary(boundary) => {
+            validate_decision_key_ownership(watched_folder_path, &boundary.key)?;
+            for row in &boundary.tree_rows {
+                validate_decision_key_ownership(watched_folder_path, &row.decision_key)?;
+                for ancestor in &row.ancestor_decision_keys {
+                    validate_decision_key_ownership(watched_folder_path, ancestor)?;
+                }
             }
-        }
-        if boundary
-            .candidate_keys
-            .iter()
-            .any(|key| !std::path::Path::new(key).starts_with(root))
-        {
-            return Err(DbError::Message(format!(
-                "folder scan boundary {entry_key} contains a candidate outside its watched folder"
-            )));
+            if boundary
+                .candidate_keys
+                .iter()
+                .any(|key| !Path::new(key).starts_with(root))
+            {
+                return Err(DbError::Message(format!(
+                    "folder scan boundary {entry_key} contains a candidate outside \
+                     its watched folder"
+                )));
+            }
         }
     }
     Ok(())
 }
 
-fn validate_decision_key_ownership(
+pub(super) fn validate_decision_key_ownership(
     watched_folder_path: &str,
     key: &FolderReleaseDecisionKey,
 ) -> Result<(), DbError> {

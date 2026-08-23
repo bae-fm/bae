@@ -405,36 +405,24 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
     assert!(db.load_folder_release_decisions(&root).await.is_err());
 }
 
+/// A candidate's key is its own `path` column, so an entry can no longer
+/// name a folder it does not describe. Its generation is still a separate
+/// column, and one ahead of its root's is a store nothing here wrote.
 #[tokio::test]
-async fn corrupt_scan_entry_identity_and_generation_fail_when_loaded() {
+async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded() {
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
-    let item = scanned_candidate(root, "Release");
-    db.save_folder_scan_item(root, generation, &item)
+    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release"))
         .await
         .unwrap();
-    // A key naming a folder the stored item does not: the entry no longer
-    // identifies its own item.
-    let other_key = scanned_candidate(root, "Other").persisted_key();
-    db.call(move |conn| {
-        conn.execute(
-            "UPDATE folder_scan_entries SET entry_key = ?",
-            params![other_key],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
-    assert!(db.load_folder_scan_snapshots().await.is_err());
+    assert!(db.load_folder_scan_snapshots().await.is_ok());
 
-    // Key restored, so only the generation is now wrong.
-    let item_key = item.persisted_key();
     db.call(move |conn| {
         conn.execute(
-            "UPDATE folder_scan_entries SET entry_key = ?, generation = ?",
-            params![item_key, i64::try_from(generation + 1).unwrap()],
+            "UPDATE scan_candidate SET generation = ?",
+            params![i64::try_from(generation + 1).unwrap()],
         )?;
         Ok(())
     })

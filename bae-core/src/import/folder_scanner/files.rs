@@ -140,6 +140,11 @@ impl SheetDiscEdits {
         self.0.insert(sheet_file_id, disc);
     }
 
+    /// Every decision, in sheet-id order — what the store writes as rows.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, SheetDisc)> {
+        self.0.iter().map(|(id, disc)| (id.as_str(), *disc))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -186,6 +191,11 @@ impl FileRoleEdits {
         self.0.insert(file_id, choice);
     }
 
+    /// Every decision, in file-id order — what the store writes as rows.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, FileRoleChoice)> {
+        self.0.iter().map(|(id, choice)| (id.as_str(), *choice))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -229,6 +239,11 @@ impl SheetBindingEdits {
         self.0.insert(sheet_file_id, binding);
     }
 
+    /// Every decision, in sheet-id order — what the store writes as rows.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &UserSheetBinding)> {
+        self.0.iter().map(|(id, binding)| (id.as_str(), binding))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -238,9 +253,11 @@ impl SheetBindingEdits {
 /// each track sheet describes, which disc each sheet's entries become, and
 /// which files are the release's tracks.
 ///
-/// One value because it is one stored row — every part is keyed by the same
-/// content hash and read by the same scan, and splitting them would be several
-/// things to keep in step.
+/// One value because they settle together — every part is keyed by the same
+/// content hash and read by the same scan, and asking for them separately
+/// would be several things to keep in step. On disk they are one
+/// `import_candidate_file_edit` row per file, its three columns holding
+/// whichever of the three that file has a decision about.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateFileEdits {
     pub sheet_bindings: SheetBindingEdits,

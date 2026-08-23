@@ -1,6 +1,7 @@
 //! The identify pipeline's terminal outcome — what
-//! [`crate::db::DbImportCandidateState`] persists, JSON-encoded into its
-//! `verdict` column.
+//! [`crate::db::DbImportCandidateState`] persists, as the identify columns of
+//! `import_candidate_state` and the `import_candidate_match` rows that hang
+//! off them.
 //!
 //! [`IdentifyState`] is the reducer's own working shape: it carries a full
 //! [`SignalsContext`] (raw signal inputs, the user's exclusions) through every
@@ -31,7 +32,6 @@
 
 use super::combine::{GroupKey, ResultProvenance};
 use super::state::{IdentifyState, SignalsContext};
-use crate::db::DbImportCandidateState;
 use crate::import::search::MetadataResult;
 
 /// The identify pipeline's outcome once it can no longer change without new
@@ -162,30 +162,6 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
             other @ (IdentifyState::Idle | IdentifyState::Triangulating { .. }) => Err(other),
         }
     }
-}
-
-/// The verdict a stored `import_candidate_state` row holds, or `None` when this
-/// build can no longer read it.
-///
-/// One implementation because there is one rule — the sweep decides what to
-/// re-identify by it and the sidebar decides what to render by it, and the two
-/// disagreeing would leave a candidate the sweep considers answered rendering
-/// as unanswered forever.
-pub fn decode_stored(row: &DbImportCandidateState) -> Result<Option<TerminalVerdict>, String> {
-    // No identify result at all: a candidate nobody has answered, either never
-    // or not since a sheet binding changed what the folder is and cleared the
-    // answer it had.
-    let Some(identify) = row.identify.as_ref() else {
-        return Ok(None);
-    };
-    serde_json::from_str::<TerminalVerdict>(&identify.verdict)
-        .map(Some)
-        .map_err(|error| {
-            format!(
-                "stored verdict for {} does not decode: {error}",
-                row.content_hash
-            )
-        })
 }
 
 fn drop_library_status(

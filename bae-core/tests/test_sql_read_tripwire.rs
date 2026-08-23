@@ -77,7 +77,7 @@ async fn pure_reads_use_the_read_connection() {
         .save_import_candidate_verdict(&bae_core::db::NewImportCandidateVerdict {
             content_hash: "hash-with-no-row".to_string(),
             folder_path: format!("{root}/Album"),
-            verdict: "{}".to_string(),
+            verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere,
             probed_total_duration_ms: 0,
             expected_edit_revision: 7,
             identity_pick: None,

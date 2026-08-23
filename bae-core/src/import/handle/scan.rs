@@ -219,12 +219,8 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let pick_json =
-            serde_json::to_string(&pick).map_err(|e| crate::import::ImportError::Internal {
-                detail: format!("encoding identity pick: {e}"),
-            })?;
         self.library_manager
-            .save_candidate_identity_pick(&files.content_hash(), &candidate_key, &pick_json)
+            .save_candidate_identity_pick(&files.content_hash(), &candidate_key, &pick)
             .await?;
         Ok(())
     }

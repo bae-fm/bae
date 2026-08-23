@@ -29,7 +29,7 @@ pub(super) async fn finish_candidate(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
         &verdict,
-        entry.probed_total_duration_ms as i64,
+        entry.probed_total_duration_ms,
         candidate.file_edit_revision,
     )
     .await
@@ -47,7 +47,7 @@ pub(super) async fn save(
     content_hash: &str,
     folder_path: &str,
     verdict: &TerminalVerdict,
-    probed_total_duration_ms: i64,
+    probed_total_duration_ms: u64,
     expected_edit_revision: u64,
 ) -> bool {
     if token.is_cancelled() {
@@ -62,31 +62,18 @@ pub(super) async fn save(
     let identity_pick = match verdict {
         TerminalVerdict::Found { matches, .. } if matches.len() == 1 => {
             let only = &matches[0];
-            match serde_json::to_string(&crate::import::IdentityPick::Release {
+            Some(crate::import::IdentityPick::Release {
                 source: only.source,
                 release_id: only.release_id.clone(),
                 claim: crate::import::ClaimLevel::Exact,
-            }) {
-                Ok(json) => Some(json),
-                Err(e) => {
-                    warn!("sweep: could not encode an identity pick ({e}); writing no row");
-                    return false;
-                }
-            }
+            })
         }
         _ => None,
-    };
-    let verdict = match serde_json::to_string(verdict) {
-        Ok(json) => json,
-        Err(e) => {
-            warn!("sweep: could not encode a verdict ({e}); writing no row");
-            return false;
-        }
     };
     let row = NewImportCandidateVerdict {
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
-        verdict,
+        verdict: verdict.clone(),
         probed_total_duration_ms,
         expected_edit_revision,
         identity_pick,
@@ -280,7 +267,7 @@ pub(super) async fn record_selection_verdict(
                     &entry.candidate.files.content_hash(),
                     &entry.candidate.path.to_string_lossy(),
                     &verdict,
-                    entry.probed_total_duration_ms as i64,
+                    entry.probed_total_duration_ms,
                     entry.candidate.file_edit_revision,
                 )
                 .await

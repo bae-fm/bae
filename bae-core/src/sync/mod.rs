@@ -392,7 +392,13 @@ mod tests {
             "skipped_import_candidates",
             "folder_release_decisions",
             "folder_scan_roots",
-            "folder_scan_entries",
+            "scan_candidate",
+            "scan_candidate_file",
+            "scan_cue_sheet",
+            "scan_candidate_resolved_boundary",
+            "scan_boundary",
+            "scan_boundary_tree_row",
+            "scan_boundary_hidden_candidate",
         ] {
             assert!(
                 !registered.contains(table),

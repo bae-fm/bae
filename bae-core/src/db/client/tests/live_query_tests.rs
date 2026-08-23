@@ -769,6 +769,75 @@ async fn import_candidates_subscription_rejoins_an_imported_release_by_content_h
     assert!(removed.triage.imported_releases.is_empty());
 }
 
+/// The candidate list is a live query over the scan tables, so a scan item
+/// written while someone is watching wakes it. A candidate's rows span
+/// several tables now; a dependency missed on any of them would leave the
+/// list showing the previous scan until something unrelated changed.
+#[tokio::test]
+async fn import_candidates_subscription_wakes_on_a_scan_item() {
+    use crate::import::folder_scanner::{
+        CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
+    };
+    use crate::import::FolderCandidate;
+
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::folder_registry::host_root("/music");
+    let candidate = |name: &str| {
+        ScanItem::Valid(FolderCandidate {
+            path: format!("{root}/{name}").into(),
+            file_root: format!("{root}/{name}").into(),
+            name: name.to_string(),
+            files: CategorizedFiles {
+                files: vec![CandidateFile {
+                    proposed_audio: true,
+                    file: ScannedFile::new(
+                        format!("{root}/{name}/01.flac").into(),
+                        "01.flac".to_string(),
+                        1_000,
+                    ),
+                    role: FileRole::Audio,
+                }],
+                format_label: "FLAC".to_string(),
+            },
+            watched_folder_path: root.to_string(),
+            scope: ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            display_path: name.to_string(),
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
+        })
+    };
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &candidate("first"))
+        .await
+        .unwrap();
+
+    let mut live = db.subscribe_import_candidates();
+    let initial = live.next().await.unwrap();
+    assert_eq!(initial.snapshot.folder_candidates.len(), 1);
+
+    db.save_folder_scan_item(root, generation, &candidate("second"))
+        .await
+        .unwrap();
+    let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("a scan item wakes the candidate list")
+        .unwrap();
+    let names: Vec<_> = grown
+        .snapshot
+        .folder_candidates
+        .iter()
+        .map(|candidate| candidate.candidate.name.clone())
+        .collect();
+    assert_eq!(names, vec!["first".to_string(), "second".to_string()]);
+    assert_eq!(
+        grown.snapshot.folder_candidates[0].candidate.track_count(),
+        1,
+        "the file rows come back with the candidate they hang off"
+    );
+}
+
 #[tokio::test]
 async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     let seed_dir = tempfile::TempDir::new().unwrap();

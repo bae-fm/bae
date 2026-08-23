@@ -376,9 +376,9 @@ impl ImportServiceHandle {
         else {
             return Ok(false);
         };
-        let verdict = crate::identify::verdict::decode_stored(&row)
-            .map_err(|detail| crate::import::ImportError::Internal { detail })?;
-        let Some(crate::identify::TerminalVerdict::Found { matches, .. }) = verdict else {
+        let Some(crate::identify::TerminalVerdict::Found { matches, .. }) =
+            row.identify.map(|identify| identify.verdict)
+        else {
             return Ok(false);
         };
         let [only] = matches.as_slice() else {
@@ -459,17 +459,9 @@ impl ImportServiceHandle {
             );
             return Ok(None);
         }
-        let Some(pick_json) = row.identity_pick.as_ref() else {
+        let Some(pick) = row.identity_pick else {
             return Ok(None);
         };
-        let pick: crate::import::IdentityPick =
-            serde_json::from_str(pick_json).map_err(|error| {
-                crate::import::ImportError::Internal {
-                    detail: format!(
-                        "stored identity pick for {candidate_key} does not decode: {error}"
-                    ),
-                }
-            })?;
         self.answer_for_pick(&candidate_key, pick).await.map(Some)
     }
 
@@ -549,8 +541,7 @@ impl ImportServiceHandle {
         if row.file_edits.revision != candidate.file_edit_revision {
             return Ok(None);
         }
-        crate::identify::verdict::decode_stored(&row)
-            .map_err(|detail| crate::import::ImportError::Internal { detail })
+        Ok(row.identify.map(|identify| identify.verdict))
     }
 
     /// The identify state a candidate's stored verdict stands back up as,

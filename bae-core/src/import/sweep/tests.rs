@@ -571,17 +571,14 @@ impl Fixture {
                 &NewImportCandidateVerdict {
                     content_hash: self.content_hash(dir),
                     folder_path: dir.to_string_lossy().into_owned(),
-                    verdict: serde_json::to_string(&verdict).unwrap(),
-                    probed_total_duration_ms: probed_total_ms as i64,
+                    verdict,
+                    probed_total_duration_ms: probed_total_ms,
                     expected_edit_revision: 0,
-                    identity_pick: Some(
-                        serde_json::to_string(&crate::import::IdentityPick::Release {
-                            source: crate::import::MetadataSource::MusicBrainz,
-                            release_id: release_id.to_string(),
-                            claim: crate::import::ClaimLevel::Exact,
-                        })
-                        .unwrap(),
-                    ),
+                    identity_pick: Some(crate::import::IdentityPick::Release {
+                        source: crate::import::MetadataSource::MusicBrainz,
+                        release_id: release_id.to_string(),
+                        claim: crate::import::ClaimLevel::Exact,
+                    }),
                 },
             )
             .await
@@ -594,8 +591,7 @@ impl Fixture {
     async fn classification_for(&self, dir: &Path) -> QueueClassification {
         let row = self.stored_for(dir).await.expect("a row was stored");
         let identify = identify_result(&row);
-        let verdict: TerminalVerdict =
-            serde_json::from_str(&identify.verdict).expect("verdict decodes");
+        let verdict = identify.verdict.clone();
         let matches: Vec<MetadataResult> = match &verdict {
             TerminalVerdict::Found { matches, .. } => matches.clone(),
             _ => Vec::new(),
@@ -607,11 +603,7 @@ impl Fixture {
             .check_releases_in_library(&checks)
             .await
             .unwrap();
-        classify(
-            &verdict,
-            identify.probed_total_duration_ms as u64,
-            &statuses,
-        )
+        classify(&verdict, identify.probed_total_duration_ms, &statuses)
     }
 }
 

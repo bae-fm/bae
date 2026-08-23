@@ -569,7 +569,7 @@ async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
         .await
         .expect("the selection recorder stores the verdict");
 
-    let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
+    let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found { matches, .. } = &verdict else {
         panic!("expected a single-match Found, got {verdict:?}");
     };
@@ -845,7 +845,7 @@ async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
         .stored_for(&stored)
         .await
         .expect("stored row remains");
-    let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
+    let verdict = identify_result(&row).verdict.clone();
     assert!(matches!(&verdict, TerminalVerdict::Found { matches, .. }
         if matches[0].source_tracks.is_some()));
     let progress: Vec<_> = drain_events(&mut events)
