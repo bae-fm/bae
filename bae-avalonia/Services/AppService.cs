@@ -188,62 +188,23 @@ internal sealed class AppService : IDisposable
     public static AppService Stubbed(
         SessionStore session,
         Dispatcher dispatcher,
-        LibraryService library) =>
-        CreateStubbed(
-            session,
-            dispatcher,
-            library,
-            new ImportService(),
-            new PlaybackService(),
-            new SettingsService());
-
-    public static AppService Stubbed(
-        SessionStore session,
-        Dispatcher dispatcher,
         LibraryService library,
-        SettingsService settings) =>
-        CreateStubbed(
-            session,
-            dispatcher,
-            library,
-            new ImportService(),
-            new PlaybackService(),
-            settings);
-
-    public static AppService Stubbed(
-        SessionStore session,
-        Dispatcher dispatcher,
-        LibraryService library,
-        ImportService import,
-        PlaybackService playback) =>
-        CreateStubbed(
-            session,
-            dispatcher,
-            library,
-            import,
-            playback,
-            new SettingsService());
-
-    private static AppService CreateStubbed(
-        SessionStore session,
-        Dispatcher dispatcher,
-        LibraryService library,
-        ImportService import,
-        PlaybackService playback,
-        SettingsService settings) =>
+        ImportService? import = null,
+        PlaybackService? playback = null,
+        SettingsService? settings = null) =>
         new(
             session,
             dispatcher,
             new NoopMediaControl(),
             library,
             new ImageStore(),
-            playback,
+            playback ?? new PlaybackService(),
             new QueueService(),
             new DownloadsService(),
             new SyncService(),
             new CastService(),
-            settings,
-            import,
+            settings ?? new SettingsService(),
+            import ?? new ImportService(),
             new ReleaseEditorService(),
             new DiscogsService(),
             new AutomationService(),

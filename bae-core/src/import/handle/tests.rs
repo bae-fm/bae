@@ -82,3 +82,4 @@ fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbA
 include!("tests/identity.rs");
 include!("tests/edit_shape.rs");
 include!("tests/candidate_state.rs");
+include!("tests/pane.rs");

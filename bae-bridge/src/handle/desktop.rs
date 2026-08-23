@@ -518,12 +518,11 @@ impl AppHandle {
         .await
     }
 
-    /// The claim line for holding `result` at `level` under `candidate_key`,
-    /// without a prefetch. Re-identify's path: it commits straight from the
+    /// The claim line for holding `result` at `level` under `candidate_key`.
+    /// Re-identify's path, and the only one left: it commits straight from the
     /// picked row, so the header states the claim from that row plus the
-    /// candidate's own identify evidence. The import confirm pane gets the same
-    /// line back from `prefetch_release` instead, since it is fetching the
-    /// release anyway.
+    /// candidate's own identify evidence. The import pane draws its header from
+    /// what the candidate stores instead.
     pub fn claim_for_pick(
         &self,
         candidate_key: String,

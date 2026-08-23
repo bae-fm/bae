@@ -47,6 +47,15 @@ async fn pure_reads_use_the_read_connection() {
     db.has_pending_cloud_upload("missing").await.unwrap();
     db.outbox_queue().await.unwrap();
 
+    // The seven device-local tables the pane writes read back the same way.
+    // `load_import_candidate_state` covers import_candidate_file_duration,
+    // import_candidate_signals and import_candidate_signal_value;
+    // `load_import_candidate_pane_rows` covers import_candidate_failure,
+    // import_candidate_cover, import_candidate_edit and
+    // import_candidate_track_edit.
+    db.load_import_candidate_state("missing").await.unwrap();
+    db.load_import_candidate_pane_rows("missing").await.unwrap();
+
     // Writers that already have the requested state decide before opening a
     // write transaction.
     let root = tmp.path().join("watched");
@@ -97,4 +106,10 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap()
         .is_none());
+
+    // Clearing a failure nothing stored still names a DELETE, so coven takes
+    // the write callback rather than rejecting it as a disguised read.
+    db.clear_import_candidate_failure("hash-that-never-failed")
+        .await
+        .unwrap();
 }

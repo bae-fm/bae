@@ -265,7 +265,7 @@ internal static class ShotCapture
             session,
             Dispatcher.UIThread,
             EmptyLibrary(),
-            settings);
+            settings: settings);
         var modalHost = new ModalHost();
         var lightbox = new LightboxOverlay();
         Func<Task> closeLibrary = () => Task.CompletedTask;
