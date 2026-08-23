@@ -11,7 +11,10 @@ import SwiftUI
 /// release is refused at commit and the reason is stated on the pane — a
 /// disabled button that says nothing is the thing that redesign removed.
 struct ImportConfirmationCardAction: View {
-    let importStatus: BridgeCandidateImportStatus?
+    /// Where the candidate's import stands, as its row places it.
+    let importStatus: BridgeTriageImportStatus?
+    /// How far the running import has got, when one is running.
+    let importInFlight: BridgeImportInFlight?
     /// Routes the high-frequency loudness ticks to the leaf bar during the
     /// measuring-loudness phase.
     let candidateKey: String
@@ -25,48 +28,24 @@ struct ImportConfirmationCardAction: View {
         if case .complete = importStatus {
             return true
         }
-        if case .cloudUploadQueued = importStatus {
-            return true
-        }
         return false
     }
 
     private var completedAlbumId: String? {
-        switch importStatus {
-        case .complete(releaseId: _, let albumId),
-            .cloudUploadQueued(
-                releaseId: _,
-                let albumId,
-                outboxRevision: _
-            ):
-            return albumId
-        default:
+        guard case .complete(releaseId: _, let albumId) = importStatus else {
             return nil
         }
+        return albumId
     }
 
-    /// The imported release's durable cloud-transition observation. This keeps
-    /// the import result truthful across bridge delivery ordering: awaiting the
-    /// first queue snapshot is still Queued, and Imported appears only after a
-    /// previously observed transition leaves the outbox.
+    /// The imported release's cloud transition, where the outbox holds one. A
+    /// release with nothing queued is absent from the outbox, which is what
+    /// "the import is done" reads as here.
     private var uploadObservation: UploadObservation? {
-        switch importStatus {
-        case .cloudUploadQueued(
-            let releaseId,
-            albumId: _,
-            let outboxRevision
-        ):
-            return outboxStore.uploadObservation(
-                forRelease: releaseId,
-                queuedAtRevision: outboxRevision
-            )
-        case .complete(let releaseId, albumId: _):
-            return outboxStore.persistedUploadObservation(
-                forRelease: releaseId
-            )
-        default:
+        guard case .complete(let releaseId, albumId: _) = importStatus else {
             return nil
         }
+        return outboxStore.persistedUploadObservation(forRelease: releaseId)
     }
 
     var body: some View {
@@ -86,11 +65,6 @@ struct ImportConfirmationCardAction: View {
                         }
                     }
                 }
-                else if case .awaiting = uploadObservation {
-                    Label("Queued", systemImage: "clock")
-                        .foregroundStyle(.secondary)
-                        .font(.callout)
-                }
                 else {
                     Label("Imported", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
@@ -105,8 +79,8 @@ struct ImportConfirmationCardAction: View {
         }
         else if let status = importStatus {
             switch status {
-            case .importing(_, let step):
-                if case .running(.measuringLoudness)? = step {
+            case .importing:
+                if case .running(.measuringLoudness)? = importInFlight?.step {
                     // The loudness pass is the long pole; show its live,
                     // determinate per-track bar (updated imperatively off the
                     // high-frequency signal) instead of an indeterminate spinner.
@@ -117,7 +91,7 @@ struct ImportConfirmationCardAction: View {
                     HStack(spacing: 6) {
                         ProgressView()
                             .controlSize(.small)
-                        if let step {
+                        if let step = importInFlight?.step {
                             Text(step.localizedText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -128,7 +102,7 @@ struct ImportConfirmationCardAction: View {
             case .error:
                 Button("Retry Import") { onConfirmImport() }
                     .buttonStyle(.borderedProminent)
-            case .complete, .cloudUploadQueued:
+            case .complete:
                 EmptyView()
             }
         }
@@ -143,6 +117,7 @@ struct ImportConfirmationCardAction: View {
     #Preview("Card action — ready") {
         ImportConfirmationCardAction(
             importStatus: nil,
+            importInFlight: nil,
             candidateKey: "preview-candidate",
             onConfirmImport: {},
             onViewInLibrary: { _ in },

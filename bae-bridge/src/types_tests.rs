@@ -684,6 +684,54 @@ mod triage_tests {
         assert_eq!(bridge_needs_you_groups_in_order(), core);
     }
 
+    /// The badge row is a projection of the identify state, so the two cross
+    /// as one value rather than side by side: a state with signals carries its
+    /// badges, and `Idle` carries none.
+    #[test]
+    fn the_toolbar_is_derived_from_the_state_it_crosses_with() {
+        use bae_core::identify::IdentifyState;
+
+        let context = bae_core::identify::state::SignalsContext {
+            disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
+            barcode_codes: Vec::new(),
+            had_barcode_source: false,
+            catalogs: Vec::new(),
+            excluded: Default::default(),
+            discid_results: Vec::new(),
+            barcode_results: Vec::new(),
+            discid_failure: None,
+            barcode_failure: None,
+            matched_barcode: None,
+            track_count: 9,
+        };
+        let live = IdentifyState::ManualOnly {
+            track_count: 9,
+            context,
+        };
+        let expected = live.toolbar().len();
+        assert!(expected > 0, "the sample state has badges to project");
+
+        let crossed =
+            BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
+                identify: Some(live),
+                import: None,
+            });
+        assert_eq!(crossed.signals_toolbar.signals.len(), expected);
+        assert!(crossed.import.is_none());
+
+        let idle =
+            BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
+                identify: None,
+                import: Some(bae_core::import::ImportInFlight {
+                    progress_percent: 40,
+                    step: None,
+                }),
+            });
+        assert!(matches!(idle.identify_state, BridgeIdentifyState::Idle));
+        assert!(idle.signals_toolbar.signals.is_empty());
+        assert_eq!(idle.import.map(|import| import.progress_percent), Some(40));
+    }
+
     /// A placement's tab is the one core's own projection gives it, for every
     /// variant — so `bridge_triage_tab` cannot become a second, divergent
     /// rule.

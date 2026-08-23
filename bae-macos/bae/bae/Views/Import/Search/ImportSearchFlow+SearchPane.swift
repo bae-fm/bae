@@ -20,6 +20,9 @@ extension ImportSearchFlow {
         let candidate: Candidate
         let key: String
         let selectedReleaseId: String?
+        /// What is in flight for this key: the run whose state and badge row
+        /// the pane shows. `nil` when nothing is running for it.
+        let runtime: BridgeCandidateRuntimeSnapshot?
     }
 
     /// `onSelect` defaults to the import flow's prefetch + docked-pane path
@@ -152,7 +155,10 @@ extension ImportSearchFlow {
     ) -> ImportSearchState {
         let tabResults = candidate.search.activeResults()
         return ImportSearchState(
-            identifyState: candidate.identifyState,
+            identifyState: shownIdentifyState(
+                resumed: candidate.resumedIdentifyState,
+                runtime: input.runtime
+            ),
             showManualSearch: candidate.search.showManualSearch,
             error: candidate.error,
             searchGroups: tabResults.groups,
@@ -163,7 +169,8 @@ extension ImportSearchFlow {
             libraryStatuses: candidate.libraryStatuses,
             discogsEnabled: services.configStore.config.discogsUsable,
             signals: candidate.settledSignals,
-            signalsToolbar: candidate.signalsToolbar,
+            signalsToolbar: input.runtime?.signalsToolbar
+                ?? BridgeSignalsToolbar(signals: []),
         )
     }
 

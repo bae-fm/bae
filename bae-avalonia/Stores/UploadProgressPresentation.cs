@@ -5,9 +5,10 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
+// An imported release's cloud transition: the outbox is holding work for it,
+// or it has none left.
 internal abstract record ImportUploadObservation
 {
-    internal sealed record Awaiting : ImportUploadObservation;
     internal sealed record Active(BridgeUploadProgress Progress) : ImportUploadObservation;
     internal sealed record Finished : ImportUploadObservation;
 }
@@ -16,33 +17,20 @@ internal abstract record ImportUploadObservation
 // Core owns phase selection and counters; this type only formats that projection.
 internal static class UploadProgressPresentation
 {
+    // The imported release's cloud transition, where the outbox holds one. A
+    // release with nothing queued is absent from the outbox, which is what
+    // "the import is done" reads as here.
     public static ImportUploadObservation? ResolveImport(
         BridgeTriageImportStatus? status,
         BridgeOutboxSnapshot? snapshot)
     {
-        var releaseId = status switch
-        {
-            BridgeTriageImportStatus.CloudUploadQueued queued =>
-                queued.ReleaseId,
-            BridgeTriageImportStatus.Complete complete =>
-                complete.ReleaseId,
-            _ => null,
-        };
-        if (releaseId is null)
+        if (status is not BridgeTriageImportStatus.Complete complete)
         {
             return null;
         }
-        if (snapshot?.PerRelease.TryGetValue(releaseId, out var progress) == true)
-        {
-            return new ImportUploadObservation.Active(progress);
-        }
-        return status switch
-        {
-            BridgeTriageImportStatus.CloudUploadQueued queued
-                when snapshot is null || snapshot.Revision < queued.OutboxRevision =>
-                new ImportUploadObservation.Awaiting(),
-            _ => new ImportUploadObservation.Finished(),
-        };
+        return snapshot?.PerRelease.TryGetValue(complete.ReleaseId, out var progress) == true
+            ? new ImportUploadObservation.Active(progress)
+            : new ImportUploadObservation.Finished();
     }
 
     public static string QueueSummary(

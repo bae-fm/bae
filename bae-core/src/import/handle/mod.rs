@@ -58,9 +58,8 @@ pub enum ImportEvent {
         fraction: Option<f32>,
     },
     /// Identify pipeline transitioned to a new state. Emitted by the
-    /// `identify` module; carries the full state payload plus the pre-shaped
-    /// signals toolbar (the interactive badge row) projected from the same
-    /// transition, so the UI renders both from one event.
+    /// `identify` module; carries the full state, which the signals toolbar
+    /// (the interactive badge row) is a projection of.
     IdentifyStateChanged {
         candidate_key: String,
         /// The run this state belongs to. A settled run's driver keeps
@@ -68,7 +67,6 @@ pub enum ImportEvent {
         /// same candidate matches on this, not on the key.
         run: crate::identify::IdentifyRunId,
         state: crate::identify::IdentifyState,
-        toolbar: Vec<crate::identify::ToolbarSignal>,
         /// The run's own priority, carried so a consumer can tell a candidate
         /// a person opened from one the background sweep picked up. The UI bus
         /// re-renders for the first and not the second.
@@ -387,14 +385,20 @@ impl ImportServiceHandle {
         send_event(&self.event_tx, event);
     }
 
-    /// Every candidate's runtime right now.
+    /// Every key with something in flight right now.
     pub fn candidate_runtimes(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
         self.runtime.all()
     }
 
-    /// Every candidate's runtime right now, and one change per key as runs
-    /// advance. The subscription is taken before the read, so no change lands
-    /// between the two.
+    /// What is in flight for one key — the read a view does once when it
+    /// appears, after it has subscribed to the changes.
+    pub fn candidate_runtime(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
+        self.runtime.get(key)
+    }
+
+    /// Every key with something in flight right now, and one change per key
+    /// as runs advance. The subscription is taken before the read, so no
+    /// change lands between the two.
     pub fn subscribe_candidate_runtime(
         &self,
     ) -> (
@@ -418,7 +422,7 @@ impl ImportServiceHandle {
             .map(crate::import::triage::TriageRuntimeFacts::of)
             .unwrap_or_default();
         let identify = runtime
-            .map(|runtime| runtime.identify_state)
+            .and_then(|runtime| runtime.identify)
             .unwrap_or(crate::identify::IdentifyState::Idle);
         Ok(self
             .library_manager
@@ -505,7 +509,7 @@ impl ImportServiceHandle {
                 .await?;
             return Ok(Some(ImportCandidateSnapshot::Folder {
                 candidate,
-                runtime: self.runtime.runtime_for(key),
+                runtime: self.runtime.get(key),
                 actionable,
                 skipped,
                 is_added,
@@ -612,7 +616,10 @@ impl ImportServiceHandle {
                 .library_manager
                 .is_content_hash_imported(&candidate.files.content_hash())
                 .await?
-            || self.runtime.runtime_for(key).import_status.is_some()
+            || self
+                .runtime
+                .get(key)
+                .is_some_and(|runtime| runtime.import.is_some())
         {
             return Ok(None);
         }

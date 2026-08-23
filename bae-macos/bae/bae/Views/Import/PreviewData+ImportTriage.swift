@@ -66,12 +66,14 @@
             )
         }
 
+        /// A preview candidate showing `identifyState`. Nothing is running in
+        /// a preview, so the state stands as the one its stored verdict would
+        /// resume — which is what every surface falls back to.
         private static func importTabFolder(
             path: String,
             name: String,
             trackCount: UInt32 = 9,
-            identifyState: IdentifyState,
-            signalsToolbar: BridgeSignalsToolbar
+            identifyState: IdentifyState
         ) -> Candidate {
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
@@ -84,8 +86,7 @@
                     isAdded: false
                 )
             )
-            candidate.identifyState = identifyState
-            candidate.signalsToolbar = signalsToolbar
+            candidate.resumedIdentifyState = identifyState
             return candidate
         }
 
@@ -98,16 +99,14 @@
                 libraryStatuses: [:],
                 trackCount: 12,
                 provenance: searchProvenanceExact
-            ),
-            signalsToolbar: searchStateFoundExact.signalsToolbar
+            )
         )
 
         static let importTabConflictCandidate = importTabFolder(
             path: "Album Title Six - Remaster",
             name: "Album Title Six - Remaster",
             trackCount: 11,
-            identifyState: searchStateConflict.identifyState,
-            signalsToolbar: searchStateConflict.signalsToolbar
+            identifyState: searchStateConflict.identifyState
         )
 
         private static let trackMismatchGroup = ReleaseGroup(
@@ -135,8 +134,7 @@
                 libraryStatuses: [:],
                 trackCount: 1,
                 provenance: [:]
-            ),
-            signalsToolbar: searchStateFoundExact.signalsToolbar
+            )
         )
 
         private static let importTabAlreadyInLibraryStatus =
@@ -160,36 +158,31 @@
                 ],
                 trackCount: 14,
                 provenance: searchProvenanceExact
-            ),
-            signalsToolbar: searchStateFoundExact.signalsToolbar
+            )
         )
 
         static let importTabNoMatchCandidate = importTabFolder(
             path: "Unmatched Folder",
             name: "Unmatched Folder",
-            identifyState: searchStateNotFound.identifyState,
-            signalsToolbar: searchStateNotFound.signalsToolbar
+            identifyState: searchStateNotFound.identifyState
         )
 
         static let importTabIdentifyingCandidate = importTabFolder(
             path: "Queued Folder",
             name: "Queued Folder",
-            identifyState: searchStateTriangulating.identifyState,
-            signalsToolbar: searchStateTriangulating.signalsToolbar
+            identifyState: searchStateTriangulating.identifyState
         )
 
         private static let importTabGroupedCandidates = [
             importTabFolder(
                 path: "Artist Collection/Album Title Nine",
                 name: "Album Title Nine",
-                identifyState: searchStateNotFound.identifyState,
-                signalsToolbar: searchStateNotFound.signalsToolbar
+                identifyState: searchStateNotFound.identifyState
             ),
             importTabFolder(
                 path: "Artist Collection/Album Title Ten",
                 name: "Album Title Ten",
-                identifyState: searchStateNotFound.identifyState,
-                signalsToolbar: searchStateNotFound.signalsToolbar
+                identifyState: searchStateNotFound.identifyState
             ),
         ]
 
@@ -310,63 +303,15 @@
             selectable: false
         )
 
-        private static func candidate(
-            _ candidate: Candidate,
-            withImportStatus importStatus: BridgeCandidateImportStatus
-        ) -> Candidate {
-            var candidate = candidate
-            candidate.importStatus = importStatus
-            return candidate
-        }
+        private static let importTabImportingCandidate = folderCandidates[2]
+        private static let importTabDoneCandidate = folderCandidates[3]
+        private static let importTabFailedCandidate = folderCandidates[4]
 
-        /// The row's placement-level view of a candidate's import run: the
-        /// same outcome, without the running import's progress.
-        static func triageImportStatus(
-            of status: BridgeCandidateImportStatus?
-        ) -> BridgeTriageImportStatus? {
-            switch status {
-            case nil: return nil
-            case .importing: return .importing
-            case .complete(let releaseId, let albumId):
-                return .complete(releaseId: releaseId, albumId: albumId)
-            case .cloudUploadQueued(
-                let releaseId,
-                let albumId,
-                let outboxRevision
-            ):
-                return .cloudUploadQueued(
-                    releaseId: releaseId,
-                    albumId: albumId,
-                    outboxRevision: outboxRevision
-                )
-            case .error(let error): return .error(error: error)
-            }
-        }
-
-        private static let importTabImportingCandidate = candidate(
-            folderCandidates[2],
-            withImportStatus: .importing(
-                progressPercent: 45,
-                step: .running(phase: .measuringLoudness)
-            )
-        )
-
-        private static let importTabDoneCandidate = candidate(
-            folderCandidates[3],
-            withImportStatus: .complete(
-                releaseId: "preview-release",
-                albumId: "preview-album"
-            )
-        )
-
-        private static let importTabFailedCandidate = candidate(
-            folderCandidates[4],
-            withImportStatus: .error(
-                error: .Diagnostic(
-                    category: .import,
-                    detail: "track 7 is truncated"
-                )
-            )
+        /// How far the preview's running import has got — what the row's
+        /// progress leaf reads off the candidate-runtime signal.
+        static let importTabImportInFlight = BridgeImportInFlight(
+            progressPercent: 45,
+            step: .running(phase: .measuringLoudness)
         )
 
         static let triageRowImporting = triageRow(
@@ -379,9 +324,7 @@
                 trackCount: 15
             ),
             selectable: false,
-            importStatus: triageImportStatus(
-                of: importTabImportingCandidate.importStatus
-            )
+            importStatus: .importing
         )
 
         static let triageRowSkipped = triageRow(
@@ -402,8 +345,9 @@
                 trackCount: 5
             ),
             selectable: false,
-            importStatus: triageImportStatus(
-                of: importTabDoneCandidate.importStatus
+            importStatus: .complete(
+                releaseId: "preview-release",
+                albumId: "preview-album"
             )
         )
 
@@ -419,8 +363,11 @@
                 signal: .barcode
             ),
             selectable: false,
-            importStatus: triageImportStatus(
-                of: importTabFailedCandidate.importStatus
+            importStatus: .error(
+                error: .Diagnostic(
+                    category: .import,
+                    detail: "track 7 is truncated"
+                )
             )
         )
 
@@ -558,12 +505,22 @@
 
         static func importTabImporter() -> Importer {
             let optionsBySheet = sheetBindingOptions
+            let importingKey = importTabImportingCandidate.key
+            let inFlight = importTabImportInFlight
             return Importer(
                 sheetBindingOptions: { _, sheetFileId in
                     guard let options = optionsBySheet[sheetFileId] else {
                         throw StubError.notImplemented
                     }
                     return options
+                },
+                candidateRuntime: { key in
+                    guard key == importingKey else { return nil }
+                    return BridgeCandidateRuntimeSnapshot(
+                        identifyState: .idle,
+                        signalsToolbar: BridgeSignalsToolbar(signals: []),
+                        import: inFlight
+                    )
                 }
             )
         }

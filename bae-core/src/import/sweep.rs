@@ -902,7 +902,7 @@ async fn new_candidates(
         .filter(|candidate| {
             runtime
                 .get(candidate.path.to_string_lossy().as_ref())
-                .is_none_or(|runtime| runtime.import_status.is_none())
+                .is_none_or(|runtime| runtime.import.is_none())
         })
         .collect())
 }

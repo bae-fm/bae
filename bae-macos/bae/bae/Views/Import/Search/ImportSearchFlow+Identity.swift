@@ -57,14 +57,14 @@ extension ImportSearchFlow {
 
     // MARK: - Import status helpers
 
+    /// Whether the candidate's import has been committed to — running, or
+    /// already done. Either way the search is spent: what it would change was
+    /// settled when the import started.
     @MainActor
     static func isImporting(_ candidate: Candidate) -> Bool {
-        guard let status = candidate.importStatus else {
-            return false
-        }
-        switch status {
-        case .importing, .complete, .cloudUploadQueued: return true
-        default: return false
+        switch candidate.row?.importStatus {
+        case .importing, .complete: return true
+        case .error, nil: return false
         }
     }
 

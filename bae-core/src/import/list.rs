@@ -292,7 +292,7 @@ impl ImportCandidateDetailProjection {
             IdentityPick::Unknown => None,
         });
         let import_status = import_status_of(
-            facts.import_status.as_ref(),
+            facts.importing,
             imported_release.as_ref(),
             failure.as_ref().map(|failure| failure.error.as_str()),
         );

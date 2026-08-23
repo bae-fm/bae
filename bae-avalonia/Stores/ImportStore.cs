@@ -41,16 +41,12 @@ internal sealed class ImportStore : IDisposable
     // a realized row resolves its position through.
     private readonly Dictionary<string, BridgeImportListItem> _items = new();
 
-    // Every key's runtime as the runtime stream last reported it, the candidate
-    // the pane is holding as its own query last read it, and the pipelines of
-    // the re-identify keys, which name releases rather than scanned folders.
-    private readonly Dictionary<string, BridgeCandidateRuntimeSnapshot> _runtime = new();
+    // The candidate the pane is holding as its own query last read it. What is
+    // running for a key is not kept here at all: it arrives on
+    // CandidateRuntimeChanged, and a control that draws one key subscribes and
+    // filters, so a progress tick redraws that control rather than the sidebar.
     private readonly Dictionary<string, BridgeImportCandidateDetail> _details = new();
     private readonly Dictionary<string, ImportCandidate> _candidates = new();
-    private readonly Dictionary<string, (
-        ImportCandidateRowStatus RowStatus,
-        List<ReleaseCandidateChoice> Matches,
-        List<SignalBadge> Signals)> _runtimeCandidates = new();
 
     private ImportListPageSource _source;
     private IDisposable? _observedCandidate;
@@ -304,37 +300,26 @@ internal sealed class ImportStore : IDisposable
         Changed?.Invoke();
     }
 
-    /// <summary>One key's runtime changed. A folder key re-projects its row
-    /// (or waits for the row, when the run started before the list re-read);
-    /// a re-identify key re-projects its pipeline.</summary>
-    public void ApplyCandidateRuntime(BridgeCandidateRuntimeChange change)
-    {
-        switch (change)
-        {
-            case BridgeCandidateRuntimeChange.Updated updated:
-                _runtime[updated.Key] = updated.Runtime;
-                if (_details.TryGetValue(updated.Key, out var detail))
-                {
-                    _candidates[updated.Key] = _import.ProjectFolderCandidate(detail, updated.Runtime);
-                }
-                else if (updated.Key.StartsWith("reidentify:", StringComparison.Ordinal))
-                {
-                    _runtimeCandidates[updated.Key] = _import.ProjectRuntimeCandidate(updated.Runtime);
-                }
-                break;
-            case BridgeCandidateRuntimeChange.Removed removed:
-                _runtime.Remove(removed.Key);
-                _runtimeCandidates.Remove(removed.Key);
-                if (_details.TryGetValue(removed.Key, out var kept))
-                {
-                    _candidates[removed.Key] = _import.ProjectFolderCandidate(kept, null);
-                }
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(change), change, "Unknown runtime change");
-        }
-        Changed?.Invoke();
-    }
+    /// <summary>What one key has in flight changed. Nothing is stored: the
+    /// change is handed to whichever controls are drawing that key.</summary>
+    public event Action<BridgeCandidateRuntimeChange>? CandidateRuntimeChanged;
+
+    public void ApplyCandidateRuntime(BridgeCandidateRuntimeChange change) =>
+        CandidateRuntimeChanged?.Invoke(change);
+
+    /// <summary>What is in flight for one key right now — the read a control
+    /// does once when it appears, after it has subscribed to the changes.
+    /// </summary>
+    public BridgeCandidateRuntimeSnapshot? CandidateRuntime(string key) =>
+        _import.CandidateRuntime(key);
+
+    /// <summary>What one key has in flight, as a control renders it.</summary>
+    public (
+        ImportCandidateRowStatus? RowStatus,
+        List<ReleaseCandidateChoice> Matches,
+        List<SignalBadge> Signals) ProjectRun(
+        BridgeCandidateRuntimeSnapshot? runtime) =>
+        _import.ProjectRun(runtime);
 
     /// <summary>Put one candidate under its own query: the pane reads its
     /// folder, its files and its resumed identify state from there, and a value
@@ -380,7 +365,7 @@ internal sealed class ImportStore : IDisposable
             return;
         }
         _details[key] = detail;
-        _candidates[key] = _import.ProjectFolderCandidate(detail, _runtime.GetValueOrDefault(key));
+        _candidates[key] = _import.ProjectFolderCandidate(detail);
         Changed?.Invoke();
     }
 
@@ -401,14 +386,6 @@ internal sealed class ImportStore : IDisposable
             .FirstOrDefault(item => item.Row.CandidateKey == key)?.Row;
     }
 
-    /// <summary>What a row's runtime is doing, projected: the row says that an
-    /// import is running, this says how far. Null for a key nothing has run
-    /// on.</summary>
-    public ImportCandidateRowStatus? RowStatus(string key) =>
-        _runtime.GetValueOrDefault(key) is { } runtime
-            ? _import.ProjectRuntimeCandidate(runtime).RowStatus
-            : null;
-
     /// <summary>One candidate read once from its own query, for a bulk import
     /// acting on rows nobody has opened. The query is closed as soon as it has
     /// answered.</summary>
@@ -422,9 +399,7 @@ internal sealed class ImportStore : IDisposable
             detail => _dispatch(() =>
             {
                 completion.TrySetResult(
-                    detail is null
-                        ? null
-                        : _import.ProjectFolderCandidate(detail, _runtime.GetValueOrDefault(key)));
+                    detail is null ? null : _import.ProjectFolderCandidate(detail));
                 subscription?.Dispose();
             }),
             _ => _dispatch(() =>
@@ -438,12 +413,6 @@ internal sealed class ImportStore : IDisposable
         }
         return completion.Task;
     }
-
-    public (
-        ImportCandidateRowStatus RowStatus,
-        List<ReleaseCandidateChoice> Matches,
-        List<SignalBadge> Signals)? ReidentifyPipeline(string key) =>
-        _runtimeCandidates.GetValueOrDefault(key);
 
     // Show a different tab (absolute set — the caller passes the tab its button
     // represents). Which rows the tab holds is core's answer, so the tab
@@ -760,8 +729,6 @@ internal sealed class ImportStore : IDisposable
         ActiveTab = BridgeTriageTab.Pending;
         FilterText = string.Empty;
         SelectedReady.Clear();
-        _runtime.Clear();
-        _runtimeCandidates.Clear();
         Interaction.RetainGroupDisclosureKeys(
             Array.Empty<ReleaseGroupDisclosureKey>());
         List.Cancel();

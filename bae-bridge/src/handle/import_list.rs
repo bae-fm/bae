@@ -50,8 +50,19 @@ impl AppHandle {
         std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
-    /// Every candidate's runtime: what a run in flight and an import in
-    /// progress are doing, keyed by candidate.
+    /// What is in flight for one key right now — the read a view does once
+    /// when it appears, after it has subscribed to the changes.
+    pub fn candidate_runtime(
+        &self,
+        candidate_key: String,
+    ) -> Option<crate::types::BridgeCandidateRuntimeSnapshot> {
+        self.services
+            .candidate_runtime(&candidate_key)
+            .map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
+    }
+
+    /// What every candidate has in flight: a run's identify state and a
+    /// running import's progress, keyed by candidate.
     pub fn subscribe_candidate_runtime(
         &self,
         callback: Box<dyn crate::types::CandidateRuntimeCallback>,
@@ -74,19 +85,11 @@ impl AppHandle {
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
                         tracing::warn!(
                             "candidate runtime subscription dropped {count} changes; \
-                             re-sending every key's runtime"
+                             re-stating every key in flight"
                         );
-                        for (key, runtime) in services.subscribe_candidate_runtime().0 {
-                            callback.on_change(
-                                crate::types::BridgeCandidateRuntimeChange::Updated {
-                                    key,
-                                    runtime:
-                                        crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-                                            runtime,
-                                        ),
-                                },
-                            );
-                        }
+                        callback.on_change(crate::types::BridgeCandidateRuntimeChange::reset(
+                            services.candidate_runtimes(),
+                        ));
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }

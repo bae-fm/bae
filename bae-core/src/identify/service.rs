@@ -307,14 +307,13 @@ async fn run_driver(
 
         // Every state `step` returns is broadcast, including one identical to the
         // last (a stale response the reducer's `for_barcode` guard dropped). The
-        // toolbar projection rides the same event, so the UI's badge row updates
-        // from the same transition.
+        // signals toolbar is a projection of the state, so a consumer that draws
+        // the badge row derives it from this same value.
         broadcast_state_change(
             &inner.event_tx,
             ImportEvent::IdentifyStateChanged {
                 candidate_key: key.clone(),
                 run,
-                toolbar: state.toolbar(),
                 state: state.clone(),
                 priority,
             },

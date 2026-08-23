@@ -217,6 +217,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             )
             .environment(\.previewProgressPublisher, previewProgressPublisher)
             .environment(\.importLoudnessPublisher, importLoudnessPublisher)
+            .environment(
+                \.candidateRuntimePublisher,
+                candidateRuntimePublisher
+            )
             #if BAE_OAUTH_PROVIDERS
                 .environment(cloudSyncSetup)
             #endif
@@ -232,6 +236,12 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         AnyPublisher<ImportLoudnessProgressEvent?, Never>
     {
         importStore.importLoudnessSubject.eraseToAnyPublisher()
+    }
+
+    private var candidateRuntimePublisher:
+        AnyPublisher<BridgeCandidateRuntimeChange, Never>
+    {
+        importStore.candidateRuntimeSubject.eraseToAnyPublisher()
     }
 
     func addWatchedFolder(path: String) async throws {

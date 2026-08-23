@@ -251,7 +251,6 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     let changed = |state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(0),
-        toolbar: Vec::new(),
         state,
         priority: CallPriority::Background,
     };
@@ -292,11 +291,8 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     else {
         panic!("the scanned candidate is readable");
     };
-    let IdentifyState::Found { matches, .. } = &runtime.identify_state else {
-        panic!(
-            "a terminal state survives its driver's teardown, got {:?}",
-            runtime.identify_state
-        );
+    let Some(IdentifyState::Found { matches, .. }) = &runtime.as_ref().and_then(|runtime| runtime.identify.clone()) else {
+        panic!("a terminal state survives its driver's teardown, got {runtime:?}");
     };
     assert_eq!(matches[0].release_id, "mb-teardown-1");
 
@@ -331,9 +327,8 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         panic!("the scanned candidate is readable");
     };
     assert!(
-        matches!(runtime.identify_state, IdentifyState::Idle),
-        "a cancelled mid-run state resets as before, got {:?}",
-        runtime.identify_state
+        runtime.is_none(),
+        "a cancelled mid-run state leaves nothing behind, got {runtime:?}"
     );
 }
 
@@ -710,7 +705,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
             if let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
                 fixture.import.get_candidate(&key).await
             {
-                if matches!(runtime.identify_state, IdentifyState::Idle) {
+                if runtime.is_none() {
                     return;
                 }
             }

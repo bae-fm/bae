@@ -32,8 +32,8 @@ pub enum TriagePlacement {
     /// An import claimed this candidate and has not finished. Its own variant
     /// rather than a Needs-you group: nothing is being asked of the user, and
     /// rather than Done, because the folder is not in the library until the
-    /// import says it is. The percentage rides on
-    /// [`TriageRow::import_status`].
+    /// import says it is. How far it has got is the candidate's runtime, read
+    /// by the leaf that draws the bar.
     Importing,
     Done,
     Skipped,
@@ -367,7 +367,7 @@ pub struct TriageRow {
     /// each UI so the rule is stated once.
     pub selectable: bool,
     /// Where the candidate's import stands, without its progress: the row
-    /// says *that* an import is running; how far along it is rides on the
+    /// says *that* an import is running; how far along it is is the
     /// candidate's runtime, which ticks far more often than rows re-project.
     pub import_status: Option<TriageImportStatus>,
     /// The identity the user already chose for this candidate, read back from
@@ -408,40 +408,11 @@ impl TriageTabCounts {
 }
 
 /// A candidate's import as the queue places it: claimed and running, or the
-/// outcome it finished with. Derived from [`CandidateImportStatusSnapshot`]
-/// by dropping the running import's progress.
+/// outcome it finished with, read off the release row an import wrote or the
+/// failure row one left behind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
     Importing,
-    Complete {
-        release: ImportedRelease,
-    },
-    CloudUploadQueued {
-        release: ImportedRelease,
-        outbox_revision: u64,
-    },
-    Error {
-        error: String,
-    },
-}
-
-impl TriageImportStatus {
-    pub fn of(status: &CandidateImportStatusSnapshot) -> Self {
-        match status {
-            CandidateImportStatusSnapshot::Importing { .. } => Self::Importing,
-            CandidateImportStatusSnapshot::Complete { release } => Self::Complete {
-                release: release.clone(),
-            },
-            CandidateImportStatusSnapshot::CloudUploadQueued {
-                release,
-                outbox_revision,
-            } => Self::CloudUploadQueued {
-                release: release.clone(),
-                outbox_revision: *outbox_revision,
-            },
-            CandidateImportStatusSnapshot::Error { error } => Self::Error {
-                error: error.clone(),
-            },
-        }
-    }
+    Complete { release: ImportedRelease },
+    Error { error: String },
 }

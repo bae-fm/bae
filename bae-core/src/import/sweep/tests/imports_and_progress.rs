@@ -42,15 +42,13 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
         change,
         crate::import::CandidateRuntimeChange::Updated { key, runtime }
             if key == candidate.to_string_lossy()
-                && matches!(
-                    runtime.import_status,
-                    Some(crate::import::CandidateImportStatusSnapshot::Importing {
+                && runtime.import
+                    == Some(crate::import::ImportInFlight {
                         progress_percent: 0,
                         step: Some(crate::import::ImportStep::Preparing(
                             crate::import::PrepareStep::Queued
                         )),
                     })
-                )
     ));
 }
 

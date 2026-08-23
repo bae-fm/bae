@@ -318,32 +318,36 @@ internal sealed partial class ImportSectionView
             column.Children.Add(title);
         }
 
-        if (RowSubLine(row, upload) is { Length: > 0 } subLine)
-        {
-            var sub = new TextBlock
-            {
-                Text = subLine,
-                FontSize = 12.5,
-                MaxLines = 1,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(0, 1, 0, 0),
-            };
-            sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            column.Children.Add(sub);
-        }
-
+        // A running import is the one line on a row that changes by the
+        // second, so it draws itself off the candidate-runtime signal rather
+        // than waiting for the queue to re-project. The row says only *that*
+        // an import is running, which is what the queue does answer.
         if (row.ImportStatus is BridgeTriageImportStatus.Importing)
         {
-            var bar = ThinProgressBar(ImportingProgress(row).Percent / 100.0);
-            bar.Margin = new Thickness(0, 7, 0, 0);
-            column.Children.Add(bar);
+            column.Children.Add(BuildImportProgressLine(row.CandidateKey));
         }
-        else if (upload is ImportUploadObservation.Awaiting
-                 or ImportUploadObservation.Active)
+        else
         {
-            var bar = CloudProgressBar(upload);
-            bar.Margin = new Thickness(0, 7, 0, 0);
-            column.Children.Add(bar);
+            if (RowSubLine(row, upload) is { Length: > 0 } subLine)
+            {
+                var sub = new TextBlock
+                {
+                    Text = subLine,
+                    FontSize = 12.5,
+                    MaxLines = 1,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Margin = new Thickness(0, 1, 0, 0),
+                };
+                sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+                column.Children.Add(sub);
+            }
+
+            if (upload is ImportUploadObservation.Active)
+            {
+                var bar = CloudProgressBar(upload);
+                bar.Margin = new Thickness(0, 7, 0, 0);
+                column.Children.Add(bar);
+            }
         }
 
         var actions = BuildRowActions(row);
@@ -406,35 +410,49 @@ internal sealed partial class ImportSectionView
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    /// <summary>The running import's percent and step, from the candidate's
-    /// runtime: the row says that an import is running, the runtime says how
-    /// far. A row placed as importing whose runtime has not reported yet is at
-    /// the start with no step named.</summary>
-    private (int Percent, ImportStep? Step) ImportingProgress(BridgeTriageRow row)
+    /// <summary>The running import's step, percent and bar, kept current from
+    /// the candidate-runtime signal for this one key.</summary>
+    private Control BuildImportProgressLine(string candidateKey)
     {
-        var status = _import.RowStatus(row.CandidateKey);
-        return status is { Kind: "importing" }
-            ? (status.ProgressPercent, status.Step)
-            : (0, null);
+        var text = new TextBlock
+        {
+            FontSize = 12.5,
+            MaxLines = 1,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(0, 1, 0, 0),
+        };
+        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var barHost = new Border { Margin = new Thickness(0, 7, 0, 0) };
+        var column = new StackPanel { Spacing = 0, Children = { text, barHost } };
+        CandidateRuntimeObserver.Attach(column, _import, candidateKey, runtime =>
+        {
+            // A row placed as importing whose run has not reported yet is at
+            // the start with no step named.
+            var percent = runtime?.Import?.ProgressPercent ?? 0;
+            var step = runtime?.Import?.Step;
+            text.Text = string.Join(
+                " · ",
+                new[]
+                {
+                    step is { } named
+                        ? BridgeDisplay.LocalizedLine(named)
+                        : Loc.Chrome("import.progress.identifying"),
+                    (percent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
+                }.Where(part => part.Length > 0));
+            barHost.Child = ThinProgressBar(percent / 100.0);
+        });
+        return column;
     }
 
     private string? ImportSubLine(
         BridgeTriageRow row,
         ImportUploadObservation? upload) => row.ImportStatus switch
         {
-            BridgeTriageImportStatus.Importing => string.Join(
-                " · ",
-                new[]
-                {
-                ImportingProgress(row).Step is { } step ? step.LocalizedLabel : Loc.Chrome("import.progress.identifying"),
-                (ImportingProgress(row).Percent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
-                }.Where(part => part.Length > 0)),
-            BridgeTriageImportStatus.Complete
-                or BridgeTriageImportStatus.CloudUploadQueued =>
+            // A running import draws its own line; this is not asked for it.
+            BridgeTriageImportStatus.Importing => null,
+            BridgeTriageImportStatus.Complete =>
                 upload switch
                 {
-                    ImportUploadObservation.Awaiting =>
-                        Loc.Core("core.queue.queued", "count", 1),
                     ImportUploadObservation.Active active => string.Join(
                         " · ",
                         new[]
@@ -456,7 +474,6 @@ internal sealed partial class ImportSectionView
     {
         var fraction = observation switch
         {
-            ImportUploadObservation.Awaiting => null,
             ImportUploadObservation.Active active =>
                 UploadProgressPresentation.BarFraction(active.Progress.Bar),
             _ => throw new InvalidOperationException(
@@ -622,14 +639,12 @@ internal sealed partial class ImportSectionView
     private Control DoneTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
         BridgeTriageImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
-        BridgeTriageImportStatus.Complete
-            or BridgeTriageImportStatus.CloudUploadQueued =>
+        BridgeTriageImportStatus.Complete =>
             UploadProgressPresentation.ResolveImport(
                 row.ImportStatus,
                 _storage.Outbox) switch
             {
-                ImportUploadObservation.Awaiting
-                    or ImportUploadObservation.Active =>
+                ImportUploadObservation.Active =>
                     Icons.Glyph(Icons.ArrowUp, 14, "BaeTextSecondaryBrush"),
                 ImportUploadObservation.Finished =>
                     DotIcon("BaeSuccessBrush", "✓"),

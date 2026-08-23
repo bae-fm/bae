@@ -16,11 +16,6 @@ struct TriageRowView: View {
     static let coverPointSize: CGFloat = 44
 
     let row: BridgeTriageRow
-    /// The candidate's import run as its runtime reports it, for the percent
-    /// and phase an `.importing` row shows. The row itself only says *that*
-    /// an import is running; progress ticks reach this view without the
-    /// queue re-projecting. `nil` when no run is live.
-    let importProgress: BridgeCandidateImportStatus?
     let coverContent: ImageContent?
     /// Non-nil exactly when `row.selectable`. Passed in rather than read off
     /// `row` again so the list content is the one place selection state
@@ -42,7 +37,6 @@ struct TriageRowView: View {
 
     init(
         row: BridgeTriageRow,
-        importProgress: BridgeCandidateImportStatus? = nil,
         coverContent: ImageContent?,
         selection: Binding<Bool>?,
         onSelect: @escaping () -> Void,
@@ -54,7 +48,6 @@ struct TriageRowView: View {
             ) -> Void = { _, _ in }
     ) {
         self.row = row
-        self.importProgress = importProgress
         self.coverContent = coverContent
         self.selection = selection
         self.onSelect = onSelect
@@ -182,27 +175,28 @@ struct TriageRowView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            if let subLine {
-                Text(subLine)
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .padding(.top, 1)
-            }
+            // A running import is the one line that changes by the second, so
+            // it is a leaf of its own: it subscribes to the candidate-runtime
+            // signal and redraws itself, leaving the rest of the row alone.
             if case .importing = row.importStatus {
-                ProgressTrackBar(
-                    progress: Double(importingProgress.percent) / 100,
-                    trackHeight: 3
-                )
-                .padding(.top, 7)
+                ImportProgressLine(key: row.candidateKey)
             }
-            else if let progress = cloudUploadObservation?.progressBar {
-                ProgressTrackBar(
-                    progress: progress.fraction,
-                    trackHeight: 3
-                )
-                .padding(.top, 7)
+            else {
+                if let subLine {
+                    Text(subLine)
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .padding(.top, 1)
+                }
+                if let progress = cloudUploadObservation?.progressBar {
+                    ProgressTrackBar(
+                        progress: progress.fraction,
+                        trackHeight: 3
+                    )
+                    .padding(.top, 7)
+                }
             }
         }
     }
@@ -268,29 +262,12 @@ extension TriageRowView {
         return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
     }
 
-    /// The running import's percent and phase, from the candidate's runtime.
-    /// A row placed as importing whose runtime has not reported yet is at the
-    /// start with no phase named.
-    private var importingProgress: (percent: UInt32, step: BridgeImportStep?) {
-        if case .importing(let percent, let step) = importProgress {
-            return (percent, step)
-        }
-        return (0, nil)
-    }
-
     private var importSubLine: String? {
         switch row.importStatus {
+        // A running import draws its own line; `subLine` is not asked for it.
         case .importing:
-            let (percent, step) = importingProgress
-            let phaseText =
-                step?.localizedText ?? String(localized: "Importing\u{2026}")
-            // The percent renders through `.formatted(.percent)` before it's
-            // interpolated, so the localized template only ever sees two
-            // string slots — a literal `%` next to a format specifier is
-            // ambiguous to hand-author as a catalog key.
-            let percentText = (Double(percent) / 100).formatted(.percent)
-            return String(localized: "\(phaseText) \u{b7} \(percentText)")
-        case .cloudUploadQueued, .complete:
+            return nil
+        case .complete:
             if let statusText = cloudUploadObservation?.statusText {
                 return statusText
             }
@@ -450,20 +427,6 @@ extension TriageRowView {
         switch row.importStatus {
         case .importing:
             ProgressView().controlSize(.small)
-        case .cloudUploadQueued:
-            switch cloudUploadObservation {
-            case .awaiting:
-                trailingIcon("icloud.and.arrow.up", tint: .secondary)
-            case .active(let progress):
-                UploadActivityLabel(progress: progress)
-                    .font(.caption)
-            case .finished:
-                trailingIcon("checkmark.circle.fill", tint: .green)
-            case nil:
-                preconditionFailure(
-                    "a queued cloud import has no upload observation"
-                )
-            }
         case .complete:
             if case .active(let progress) = cloudUploadObservation {
                 UploadActivityLabel(progress: progress)
@@ -482,20 +445,14 @@ extension TriageRowView {
         }
     }
 
+    /// The imported release's cloud transition, where the outbox holds one.
+    /// A release with nothing queued is absent from the outbox, which is what
+    /// "the import is done" reads as here.
     private var cloudUploadObservation: UploadObservation? {
-        switch row.importStatus {
-        case .cloudUploadQueued(let releaseId, _, let outboxRevision):
-            return outboxStore.uploadObservation(
-                forRelease: releaseId,
-                queuedAtRevision: outboxRevision
-            )
-        case .complete(let releaseId, _):
-            return outboxStore.persistedUploadObservation(
-                forRelease: releaseId
-            )
-        default:
+        guard case .complete(let releaseId, _) = row.importStatus else {
             return nil
         }
+        return outboxStore.persistedUploadObservation(forRelease: releaseId)
     }
 
     private func trailingIcon<S: ShapeStyle>(_ systemName: String, tint: S)

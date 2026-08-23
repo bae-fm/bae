@@ -106,7 +106,9 @@ pub struct AutomationCandidateCommon {
     pub is_added: bool,
 }
 
-/// Mirrors bae-core's `import::CandidateRuntimeSnapshot`.
+/// What the import tab shows for one candidate beyond its folder: the run in
+/// flight or the answer stored for it, that state's signals toolbar, the
+/// signals extraction settled on, and where its import stands.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCandidateRuntime {
     pub identify_state: AutomationIdentifyState,
@@ -568,8 +570,8 @@ pub enum AutomationImportPhase {
     Finalizing,
 }
 
-/// Where a candidate's own import run stands, mirroring bae-core's
-/// `import::CandidateImportStatusSnapshot`.
+/// Where a candidate's import stands, mirroring bae-core's
+/// `import::TriageImportStatus` with the running attempt's progress joined in.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStatus {
@@ -580,11 +582,6 @@ pub enum AutomationImportStatus {
     Complete {
         release_id: String,
         album_id: String,
-    },
-    CloudUploadQueued {
-        release_id: String,
-        album_id: String,
-        outbox_revision: u64,
     },
     Error {
         error: String,

@@ -129,25 +129,50 @@ pub struct BridgeInvalidCandidate {
     pub reason: BridgeInvalidReason,
 }
 
-/// One key's runtime after a change — the only thing a run advancing sends
-/// across — or its removal.
+/// What one key has in flight after a change, its removal, or — after a
+/// dropped delivery — every key in flight right now.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateRuntimeChange {
     Updated {
         key: String,
         runtime: BridgeCandidateRuntimeSnapshot,
     },
-    Removed {
-        key: String,
+    /// Nothing is running for the key any more.
+    Removed { key: String },
+    /// The subscription dropped changes; this is every key in flight right
+    /// now. A consumer holding a key this does not list treats it as removed.
+    Reset {
+        runtimes: Vec<BridgeKeyedCandidateRuntime>,
     },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeKeyedCandidateRuntime {
+    pub key: String,
+    pub runtime: BridgeCandidateRuntimeSnapshot,
+}
+
+/// What is happening for one candidate right now. Everything a finished run or
+/// import leaves behind — the stored verdict, the extracted signals, the
+/// release an import wrote, the error one failed with — is on the candidate's
+/// row instead.
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateRuntimeSnapshot {
+    /// The live driver's state. `Idle` when no driver is running for the key
+    /// and nothing terminal is being held.
     pub identify_state: BridgeIdentifyState,
+    /// The badge row projected from `identify_state`, so both come from one
+    /// value. Empty when `identify_state` is `Idle`.
     pub signals_toolbar: BridgeSignalsToolbar,
-    pub signals: Option<BridgeSignals>,
-    pub import_status: Option<BridgeCandidateImportStatus>,
+    /// The running import, or absent when none is.
+    pub import: Option<BridgeImportInFlight>,
+}
+
+/// How far a running import has got.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportInFlight {
+    pub progress_percent: u32,
+    pub step: Option<BridgeImportStep>,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -156,31 +181,6 @@ pub enum BridgeTriageImportStatus {
     Complete {
         release_id: String,
         album_id: String,
-    },
-    CloudUploadQueued {
-        release_id: String,
-        album_id: String,
-        outbox_revision: u64,
-    },
-    Error {
-        error: BridgeError,
-    },
-}
-
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeCandidateImportStatus {
-    Importing {
-        progress_percent: u32,
-        step: Option<BridgeImportStep>,
-    },
-    Complete {
-        release_id: String,
-        album_id: String,
-    },
-    CloudUploadQueued {
-        release_id: String,
-        album_id: String,
-        outbox_revision: u64,
     },
     Error {
         error: BridgeError,
@@ -229,8 +229,8 @@ pub enum BridgeTriagePlacement {
         reason: BridgeNeedsYouReason,
     },
     /// An import claimed this candidate and has not finished. Not Done: the
-    /// folder is not in the library until the import says it is. The
-    /// percentage rides on `BridgeTriageRow::import_status`.
+    /// folder is not in the library until the import says it is. How far it
+    /// has got is `BridgeCandidateRuntimeSnapshot::import`.
     Importing,
     Done,
     Skipped,

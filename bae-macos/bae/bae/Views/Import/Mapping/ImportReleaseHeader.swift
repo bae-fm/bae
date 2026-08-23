@@ -10,7 +10,10 @@ struct ImportCommitControls {
     /// Routes the loudness ticks to the leaf progress bar during the loudness
     /// pass.
     let candidateKey: String
-    let importStatus: BridgeCandidateImportStatus?
+    /// Where the candidate's import stands, as its row places it.
+    let importStatus: BridgeTriageImportStatus?
+    /// How far the running import has got, when one is running.
+    let importInFlight: BridgeImportInFlight?
     let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
     let actions: ImportCommitActions
@@ -173,6 +176,7 @@ struct ImportReleaseHeader: View {
             }
             ImportConfirmationCardAction(
                 importStatus: commit.importStatus,
+                importInFlight: commit.importInFlight,
                 candidateKey: commit.candidateKey,
                 onConfirmImport: commit.actions.confirmImport,
                 onViewInLibrary: commit.actions.viewInLibrary,
@@ -184,7 +188,7 @@ struct ImportReleaseHeader: View {
     /// spent then, so its toggles leave the row.
     private func commitSettled(_ commit: ImportCommitControls) -> Bool {
         switch commit.importStatus {
-        case .importing, .complete, .cloudUploadQueued: return true
+        case .importing, .complete: return true
         case .error, nil: return false
         }
     }

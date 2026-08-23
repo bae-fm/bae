@@ -345,7 +345,10 @@ impl ImportServiceHandle {
     /// error: a folder whose pipeline hasn't run and a re-identify key opened
     /// this instant both read as "nothing matched yet".
     fn identify_state(&self, candidate_key: &str) -> crate::identify::IdentifyState {
-        self.runtime.runtime_for(candidate_key).identify_state
+        self.runtime
+            .get(candidate_key)
+            .and_then(|runtime| runtime.identify)
+            .unwrap_or(crate::identify::IdentifyState::Idle)
     }
 
     /// The stored verdict describing `candidate_key`'s current file shape —

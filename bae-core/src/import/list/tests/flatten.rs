@@ -358,7 +358,7 @@ fn a_claimed_import_places_the_row_as_importing() {
         key("Release"),
         TriageRuntimeFacts {
             phase: IdentifyPhase::Queued,
-            import_status: Some(TriageImportStatus::Importing),
+            importing: true,
         },
     )]);
 
@@ -372,23 +372,77 @@ fn a_claimed_import_places_the_row_as_importing() {
     assert!(flat.summary.ready.is_empty());
 }
 
+/// The failure is a row, so it survives the session that produced it: a
+/// relaunched queue still places the candidate as Done and still says why.
 #[test]
-fn an_import_that_failed_places_the_row_as_done() {
+fn a_failed_import_reads_its_error_from_its_row() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
+    rows.failures
+        .insert("hash-Release".to_string(), "boom".to_string());
+
+    let flat = flattened(&rows, &view(TriageTab::Done));
+
+    let row = row_for(&flat, "Release");
+    assert_eq!(row.placement, TriagePlacement::Done);
+    assert_eq!(
+        row.import_status,
+        Some(TriageImportStatus::Error {
+            error: "boom".to_string()
+        })
+    );
+}
+
+/// A release for this content hash means an attempt already succeeded, so a
+/// leftover failure row is behind it.
+#[test]
+fn an_imported_release_outranks_a_leftover_failure() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.failures
+        .insert("hash-Release".to_string(), "boom".to_string());
+    rows.imported.insert(
+        "hash-Release".to_string(),
+        ImportedRelease {
+            release_id: "rel-1".to_string(),
+            album_id: "alb-1".to_string(),
+        },
+    );
+
+    let flat = flattened(&rows, &view(TriageTab::Done));
+
+    assert!(matches!(
+        row_for(&flat, "Release").import_status,
+        Some(TriageImportStatus::Complete { .. })
+    ));
+}
+
+/// A claimed import outranks both stored answers: the folder is not in the
+/// library until the running attempt says it is.
+#[test]
+fn a_running_import_outranks_the_release_it_has_not_finished_writing() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.imported.insert(
+        "hash-Release".to_string(),
+        ImportedRelease {
+            release_id: "rel-1".to_string(),
+            album_id: "alb-1".to_string(),
+        },
+    );
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
             phase: IdentifyPhase::Queued,
-            import_status: Some(TriageImportStatus::Error {
-                error: "boom".to_string(),
-            }),
+            importing: true,
         },
     )]);
 
-    let flat = flatten(&rows, &view(TriageTab::Done), &facts).expect("the queue flattens");
+    let flat = flatten(&rows, &view(TriageTab::Pending), &facts).expect("the queue flattens");
 
-    assert_eq!(row_for(&flat, "Release").placement, TriagePlacement::Done);
+    let row = row_for(&flat, "Release");
+    assert_eq!(row.placement, TriagePlacement::Importing);
+    assert_eq!(row.import_status, Some(TriageImportStatus::Importing));
 }
 
 #[test]
@@ -399,7 +453,7 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
         key("Release"),
         TriageRuntimeFacts {
             phase: IdentifyPhase::Running,
-            import_status: None,
+            importing: false,
         },
     )]);
 

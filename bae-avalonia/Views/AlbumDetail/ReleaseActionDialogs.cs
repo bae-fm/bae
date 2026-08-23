@@ -127,7 +127,7 @@ internal sealed class ReleaseActionDialogs
     {
         var key = "reidentify:" + releaseId;
         var confirmed = false;
-        Action? refreshFromPipeline = null;
+        Action<BridgeCandidateRuntimeChange>? onRuntimeChanged = null;
 
         await _host.Show(close =>
         {
@@ -206,26 +206,44 @@ internal sealed class ReleaseActionDialogs
                 _ = _app.Import.RerunIdentifyForCandidate(key);
             }
 
-            void RefreshFromPipeline()
+            // The re-identify run has no candidate row anywhere — the release
+            // is already in the library — so its state comes from the
+            // candidate-runtime signal under this dialog's key.
+            void ShowRun(BridgeCandidateRuntimeSnapshot? runtime)
             {
-                if (_app.ImportStore.ReidentifyPipeline(key) is not { } snap)
-                {
-                    return;
-                }
-                pipelineStatus.Text = snap.RowStatus.LocalizedLine;
-                pipelineStatus.IsVisible = !string.IsNullOrEmpty(snap.RowStatus.LocalizedLine);
+                var (status, matches, badges) = _app.Import.ProjectRun(runtime);
+                var line = status?.LocalizedLine ?? string.Empty;
+                pipelineStatus.Text = line;
+                pipelineStatus.IsVisible = line.Length > 0;
                 badgeHost.Children.Clear();
-                if (snap.Signals.Count > 0)
+                if (badges.Count > 0)
                 {
-                    badgeHost.Children.Add(SignalBadgeRow.Build(snap.Signals, ToggleSignal, Rerun));
+                    badgeHost.Children.Add(SignalBadgeRow.Build(badges, ToggleSignal, Rerun));
                 }
-                if (results.ApplyPipelineMatches(snap.Matches.Select(match => match.ReleaseId).ToList()))
+                if (results.ApplyPipelineMatches(matches.Select(match => match.ReleaseId).ToList()))
                 {
-                    candidates = snap.Matches;
+                    candidates = matches;
                     resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
                 }
             }
-            refreshFromPipeline = RefreshFromPipeline;
+
+            void OnRuntimeChanged(BridgeCandidateRuntimeChange change)
+            {
+                switch (change)
+                {
+                    case BridgeCandidateRuntimeChange.Updated updated when updated.Key == key:
+                        ShowRun(updated.Runtime);
+                        break;
+                    case BridgeCandidateRuntimeChange.Removed removed when removed.Key == key:
+                        ShowRun(null);
+                        break;
+                    case BridgeCandidateRuntimeChange.Reset reset:
+                        ShowRun(reset.Runtimes
+                            .FirstOrDefault(entry => entry.Key == key)?.Runtime);
+                        break;
+                }
+            }
+            onRuntimeChanged = OnRuntimeChanged;
 
             searchButton.Click += async (_, _) =>
             {
@@ -315,14 +333,16 @@ internal sealed class ReleaseActionDialogs
 
             // Start the pipeline against the release's own files; candidate values
             // update the import store while it runs.
+            // Subscribe before starting the run, so nothing it reports is
+            // missed between the two.
+            _app.ImportStore.CandidateRuntimeChanged += OnRuntimeChanged;
             _app.Import.AutoIdentifyRelease(key, releaseId);
-            _app.ImportStore.Changed += RefreshFromPipeline;
             return new ScrollViewer { Content = column, MaxHeight = 560 };
         });
 
-        if (refreshFromPipeline is not null)
+        if (onRuntimeChanged is not null)
         {
-            _app.ImportStore.Changed -= refreshFromPipeline;
+            _app.ImportStore.CandidateRuntimeChanged -= onRuntimeChanged;
         }
         _app.Import.CancelAutoIdentify(key);
         if (confirmed)

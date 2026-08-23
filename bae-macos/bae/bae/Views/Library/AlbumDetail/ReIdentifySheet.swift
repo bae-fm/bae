@@ -115,42 +115,8 @@ struct ReIdentifySheet: View {
         switch phase {
         case .identifying:
             if let candidate = importStore.reIdentifyCandidates[key] {
-                VStack(spacing: 0) {
-                    ImportSearchFlow.buildSearchPane(
-                        services: ImportSearchFlow.ImportServices(
-                            importer: importer,
-                            importStore: importStore,
-                            configStore: configStore
-                        ),
-                        input: ImportSearchFlow.SearchPaneInput(
-                            candidate: candidate,
-                            key: key,
-                            selectedReleaseId: selectedResult?.releaseId
-                        ),
-                        openSettings: { openSettings() },
-                        // Re-identify "Skip identifying" diverges from the
-                        // import flow: it commits Unknown in one click (no
-                        // editable seed page). The identity flips to FileTags
-                        // and the rows are reseeded from the rip's file tags as
-                        // part of the commit (graceful seeding), so the release
-                        // immediately reflects its own tags rather than the
-                        // prior source's metadata — there's no post-commit
-                        // refresh prompt for Unknown.
-                        onAddAsUnknown: { commit(.unknown) },
-                        // Re-identify has no editable confirm page (the release
-                        // already has metadata; "Edit metadata..." covers
-                        // post-commit edits). Picking a pressing claims it; the
-                        // footer states that, offers the album-level claim
-                        // instead, and commits via `re_identify_release`.
-                        onSelect: { result in
-                            selectedResult = result
-                            claim = importer.claimForPick(key, result, .exact)
-                        },
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if let claim {
-                        selectionFooter(for: claim)
-                    }
+                CandidateRuntimeReader(key: key) { runtime in
+                    identifyPane(candidate: candidate, runtime: runtime)
                 }
             }
             else {
@@ -167,6 +133,54 @@ struct ReIdentifySheet: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .error(let message):
             errorBanner(message: message)
+        }
+    }
+
+    /// The identify pane while the sheet is running its own re-identification.
+    /// Its run has no candidate row anywhere — the release is already in the
+    /// library — so its state comes from the candidate-runtime signal under
+    /// this sheet's key, the same signal the import pane reads.
+    private func identifyPane(
+        candidate: Candidate,
+        runtime: BridgeCandidateRuntimeSnapshot?
+    ) -> some View {
+        VStack(spacing: 0) {
+            ImportSearchFlow.buildSearchPane(
+                services: ImportSearchFlow.ImportServices(
+                    importer: importer,
+                    importStore: importStore,
+                    configStore: configStore
+                ),
+                input: ImportSearchFlow.SearchPaneInput(
+                    candidate: candidate,
+                    key: key,
+                    selectedReleaseId: selectedResult?.releaseId,
+                    runtime: runtime
+                ),
+                openSettings: { openSettings() },
+                // Re-identify "Skip identifying" diverges from the
+                // import flow: it commits Unknown in one click (no
+                // editable seed page). The identity flips to FileTags
+                // and the rows are reseeded from the rip's file tags as
+                // part of the commit (graceful seeding), so the release
+                // immediately reflects its own tags rather than the
+                // prior source's metadata — there's no post-commit
+                // refresh prompt for Unknown.
+                onAddAsUnknown: { commit(.unknown) },
+                // Re-identify has no editable confirm page (the release
+                // already has metadata; "Edit metadata..." covers
+                // post-commit edits). Picking a pressing claims it; the
+                // footer states that, offers the album-level claim
+                // instead, and commits via `re_identify_release`.
+                onSelect: { result in
+                    selectedResult = result
+                    claim = importer.claimForPick(key, result, .exact)
+                },
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if let claim {
+                selectionFooter(for: claim)
+            }
         }
     }
 
@@ -271,9 +285,9 @@ struct ReIdentifySheet: View {
 extension ReIdentifySheet {
     fileprivate func startReIdentify() async {
         // Seed the candidate so `ImportSearchFlow.buildSearchPane` has
-        // something to read. The import-candidate projection overwrites
-        // `identifyState` as refreshes arrive; mode/error stay at their
-        // defaults.
+        // something to read. It carries only this session's own work — the
+        // pick and the search state; the run's identify state comes from the
+        // candidate-runtime signal under the same key.
         if importStore.reIdentifyCandidates[key] == nil {
             importStore.reIdentifyCandidates[key] = Candidate(
                 reIdentifyKey: key,

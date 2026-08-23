@@ -1,12 +1,25 @@
-//! Per-candidate state that lives only as long as the process: a run in
-//! flight, its toolbar, extracted signals, an import's claim and progress.
+//! What is happening right now for each candidate: the live identify driver's
+//! state, and a running import's progress.
 //!
-//! Nothing here has a row. It is accumulated from the import event bus and
-//! published per key — one [`CandidateRuntimeChange`] for the one candidate
-//! an event concerned — so a consumer holding the list never receives the
-//! list again because one row's run advanced.
+//! One entry per key that has either, and no entry at all otherwise — a
+//! finished import leaves, and so does a settled run once its verdict is
+//! stored. Everything an entry used to outlive itself carrying has a table
+//! now: the verdict the run settled on, the signals extraction found, the
+//! release an import wrote, the error one failed with. Whoever wants those
+//! reads the rows.
+//!
+//! One exception, and it is deliberate: a run that settles without an answer
+//! worth storing — a lookup that never responded — has nothing to write, so
+//! its terminal state is held here for the rest of the session. It is the one
+//! thing in the map that is not strictly in flight, and it is here because
+//! [`IdentifyPhase::NoAnswer`](crate::import::IdentifyPhase) has no row to be
+//! read from.
+//!
+//! Changes are published per key — one [`CandidateRuntimeChange`] for the one
+//! candidate an event concerned — so a consumer holding the list never
+//! receives the list again because one row's run advanced.
 
-use super::candidates::{CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, ImportedRelease};
+use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::types::{ImportProgress, ImportStep, PrepareStep};
@@ -25,15 +38,15 @@ pub enum CandidateRuntimeChange {
         key: String,
         runtime: CandidateRuntimeSnapshot,
     },
-    /// The key has no runtime any more: its folder left the scan, or its
-    /// files changed shape so what was recorded described a folder that no
-    /// longer exists.
+    /// Nothing is running for the key any more: its import ended, its run
+    /// settled and stored, its folder left the scan, or its files changed
+    /// shape so what was recorded described a folder that no longer exists.
     Removed { key: String },
 }
 
 /// The file shape a candidate's runtime was recorded against. A scan that
 /// reports the same key with a different shape invalidates the runtime: the
-/// verdict, signals, and progress described the old files.
+/// state and progress described the old files.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CandidateShape {
     content_hash: String,
@@ -55,9 +68,8 @@ impl CandidateShape {
 
 #[derive(Default)]
 struct Inner {
-    /// A key without an entry has had no events; reads treat absence as the
-    /// idle runtime. Also holds `reidentify:`-prefixed keys, which have no
-    /// scanned folder.
+    /// A key without an entry has nothing running. Also holds
+    /// `reidentify:`-prefixed keys, which have no scanned folder.
     runtime: HashMap<String, CandidateRuntimeSnapshot>,
     /// The shape last reported for each scanned key, whether or not the key
     /// has runtime, so a reshape can be told from a repeat.
@@ -81,21 +93,15 @@ impl Default for CandidateRuntime {
 }
 
 impl CandidateRuntime {
-    /// Every key's runtime right now, for a subscriber that joins after runs
-    /// have started.
+    /// Every key with something in flight right now, for a subscriber that
+    /// joins after runs have started.
     pub fn all(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
         self.inner.lock().unwrap().runtime.clone()
     }
 
-    /// A key's runtime, or `None` for a key nothing has been recorded against.
+    /// What is in flight for a key, or `None` when nothing is.
     pub fn get(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
         self.inner.lock().unwrap().runtime.get(key).cloned()
-    }
-
-    /// A key's runtime, idle when nothing has been recorded against it — the
-    /// designed initial state, not an error.
-    pub fn runtime_for(&self, key: &str) -> CandidateRuntimeSnapshot {
-        self.get(key).unwrap_or_else(CandidateRuntimeSnapshot::idle)
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<CandidateRuntimeChange> {
@@ -108,20 +114,39 @@ impl CandidateRuntime {
         let _ = self.changes.send(change);
     }
 
-    fn update(&self, key: &str, mutate: impl FnOnce(&mut CandidateRuntimeSnapshot)) {
-        let runtime = {
+    /// Apply `mutate` to the key's entry, creating one if it has none, and
+    /// publish what it left behind. An entry `mutate` empties is removed
+    /// rather than kept as a value meaning "nothing is running" — absence
+    /// already means that, and two spellings of it would need reconciling
+    /// everywhere the map is read. A mutation that changes nothing publishes
+    /// nothing.
+    fn set(&self, key: &str, mutate: impl FnOnce(&mut CandidateRuntimeSnapshot)) {
+        let change = {
             let mut inner = self.inner.lock().unwrap();
-            let runtime = inner
-                .runtime
-                .entry(key.to_string())
-                .or_insert_with(CandidateRuntimeSnapshot::idle);
-            mutate(runtime);
-            runtime.clone()
+            let previous = inner.runtime.get(key).cloned();
+            let mut next = previous.clone().unwrap_or(CandidateRuntimeSnapshot {
+                identify: None,
+                import: None,
+            });
+            mutate(&mut next);
+            if Some(&next) == previous.as_ref() {
+                None
+            } else if next.identify.is_none() && next.import.is_none() {
+                inner.runtime.remove(key);
+                Some(CandidateRuntimeChange::Removed {
+                    key: key.to_string(),
+                })
+            } else {
+                inner.runtime.insert(key.to_string(), next.clone());
+                Some(CandidateRuntimeChange::Updated {
+                    key: key.to_string(),
+                    runtime: next,
+                })
+            }
         };
-        self.publish(CandidateRuntimeChange::Updated {
-            key: key.to_string(),
-            runtime,
-        });
+        if let Some(change) = change {
+            self.publish(change);
+        }
     }
 
     fn remove(&self, key: &str) {
@@ -144,8 +169,8 @@ impl CandidateRuntime {
     /// wants a verdict, and "the user has committed to importing it" has to be
     /// true here from the moment they commit.
     pub(super) fn claim_for_import(&self, candidate_key: &str) {
-        self.update(candidate_key, |runtime| {
-            runtime.import_status = Some(CandidateImportStatusSnapshot::Importing {
+        self.set(candidate_key, |runtime| {
+            runtime.import = Some(ImportInFlight {
                 progress_percent: 0,
                 step: Some(ImportStep::Preparing(PrepareStep::Queued)),
             });
@@ -155,7 +180,7 @@ impl CandidateRuntime {
     /// Undo [`Self::claim_for_import`] for a command that never made it onto
     /// the worker's queue.
     pub(super) fn release_import_claim(&self, candidate_key: &str) {
-        self.update(candidate_key, |runtime| runtime.import_status = None);
+        self.set(candidate_key, |runtime| runtime.import = None);
     }
 
     /// A scan reported `candidate`. A first report or a repeat of the recorded
@@ -185,52 +210,30 @@ impl CandidateRuntime {
                 candidate_key,
                 progress,
             } => {
-                let status = match progress {
-                    ImportProgress::Preparing { step, .. } => {
-                        CandidateImportStatusSnapshot::Importing {
-                            progress_percent: 0,
-                            step: Some(ImportStep::Preparing(*step)),
-                        }
-                    }
-                    ImportProgress::Progress { percent, phase, .. } => {
-                        CandidateImportStatusSnapshot::Importing {
-                            progress_percent: *percent as u32,
-                            step: Some(ImportStep::Running(*phase)),
-                        }
-                    }
-                    ImportProgress::Complete { id, album_id, .. } => {
-                        CandidateImportStatusSnapshot::Complete {
-                            release: ImportedRelease {
-                                release_id: id.clone(),
-                                album_id: album_id.clone(),
-                            },
-                        }
-                    }
-                    ImportProgress::RemoteUploadQueued {
-                        id,
-                        album_id,
-                        outbox_revision,
-                        ..
-                    } => CandidateImportStatusSnapshot::CloudUploadQueued {
-                        release: ImportedRelease {
-                            release_id: id.clone(),
-                            album_id: album_id.clone(),
-                        },
-                        outbox_revision: *outbox_revision,
-                    },
-                    ImportProgress::Failed { error, .. } => CandidateImportStatusSnapshot::Error {
-                        error: error.clone(),
-                    },
+                // Every way an import ends leaves the map, because every one
+                // of them has already written its row: the worker commits the
+                // release before `Complete` and `RemoteUploadQueued`, and the
+                // failure row before `Failed`. What the row says is what the
+                // candidate is once nothing is running.
+                let in_flight = match progress {
+                    ImportProgress::Preparing { step, .. } => Some(ImportInFlight {
+                        progress_percent: 0,
+                        step: Some(ImportStep::Preparing(*step)),
+                    }),
+                    ImportProgress::Progress { percent, phase, .. } => Some(ImportInFlight {
+                        progress_percent: *percent as u32,
+                        step: Some(ImportStep::Running(*phase)),
+                    }),
+                    ImportProgress::Complete { .. }
+                    | ImportProgress::RemoteUploadQueued { .. }
+                    | ImportProgress::Failed { .. } => None,
                 };
-                self.update(candidate_key, |runtime| {
-                    runtime.import_status = Some(status)
-                });
+                self.set(candidate_key, |runtime| runtime.import = in_flight);
             }
             ImportEvent::IdentifyStateChanged {
                 candidate_key,
                 run: _,
                 state,
-                toolbar,
                 priority: _,
             } => {
                 // A terminal state followed by `Idle` is a driver being torn
@@ -239,7 +242,7 @@ impl CandidateRuntime {
                 // out. The candidate's answer doesn't stop being its answer
                 // because the machinery that produced it exited, so the
                 // terminal state stays. A genuine mid-run cancel goes
-                // `Triangulating` → `Idle` and resets as before.
+                // `Triangulating` → `Idle` and clears as before.
                 //
                 // What the retained terminal state covers is bounded: the
                 // interval before the verdict's durable write lands (cleared
@@ -247,43 +250,35 @@ impl CandidateRuntime {
                 // that never store — a settle shaped by a lookup that never
                 // answered — which are session-only by design.
                 let torn_down = matches!(state, crate::identify::IdentifyState::Idle)
-                    && self
-                        .get(candidate_key)
-                        .is_some_and(|runtime| runtime.identify_state.is_terminal());
-                if !torn_down {
-                    self.update(candidate_key, |runtime| {
-                        runtime.identify_state = state.clone();
-                        runtime.toolbar = toolbar.clone();
+                    && self.get(candidate_key).is_some_and(|runtime| {
+                        runtime
+                            .identify
+                            .is_some_and(|identify| identify.is_terminal())
                     });
+                if !torn_down {
+                    let identify = match state {
+                        crate::identify::IdentifyState::Idle => None,
+                        live => Some(live.clone()),
+                    };
+                    self.set(candidate_key, |runtime| runtime.identify = identify);
                 }
-            }
-            ImportEvent::SignalsUpdated {
-                candidate_key,
-                signals,
-                priority: _,
-            } => {
-                self.update(candidate_key, |runtime| {
-                    runtime.signals = Some(signals.clone())
-                });
             }
             // The candidate's answer now lives in its stored verdict row, and
             // the candidate list serves it from there as the resumed state.
             // The recorded terminal state has done its job — carrying the
             // answer across the interval between settling and the durable
-            // write — so it clears, leaving the runtime to hold only what has
-            // no row: runs in flight, and extraction's signals, which are
-            // facts about the files rather than about this run. Only a
-            // terminal state clears: a newer run's in-flight state must not
-            // be blanked by the previous run's write landing.
+            // write — so it clears, leaving the runtime holding only what is
+            // still happening. Only a terminal state clears: a newer run's
+            // in-flight state must not be blanked by the previous run's write
+            // landing.
             ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }) => {
-                let terminal = self
-                    .get(candidate_key)
-                    .is_some_and(|runtime| runtime.identify_state.is_terminal());
+                let terminal = self.get(candidate_key).is_some_and(|runtime| {
+                    runtime
+                        .identify
+                        .is_some_and(|identify| identify.is_terminal())
+                });
                 if terminal {
-                    self.update(candidate_key, |runtime| {
-                        runtime.identify_state = crate::identify::IdentifyState::Idle;
-                        runtime.toolbar = Vec::new();
-                    });
+                    self.set(candidate_key, |runtime| runtime.identify = None);
                 }
             }
             ImportEvent::Scan(
@@ -300,10 +295,12 @@ impl CandidateRuntime {
                 self.inner.lock().unwrap().shapes.remove(candidate_key);
                 self.remove(candidate_key);
             }
-            // Queue progress is a queue-wide number with no candidate to record
-            // it against, loudness ticks go straight to their leaf view, and
-            // the remaining scan events change rows, not runtime.
-            ImportEvent::Scan(
+            // Extracted signals are a fact about the files and are stored as
+            // one; queue progress is a queue-wide number with no candidate to
+            // record it against; loudness ticks go straight to their leaf
+            // view; and the remaining scan events change rows, not runtime.
+            ImportEvent::SignalsUpdated { .. }
+            | ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::FolderReleaseBoundary(_)
                 | ScanEvent::CandidateSkipChanged { .. }

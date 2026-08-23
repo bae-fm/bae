@@ -36,8 +36,16 @@ internal static partial class NativeBae
         public void OnError(BridgeException error) => onError(error);
     }
 
-    /// <summary>Every candidate's runtime: one change per key on subscribe,
-    /// then one per change as runs advance.</summary>
+    /// <summary>What is in flight for one key right now — the read a control
+    /// does once when it appears, after it has subscribed to the changes.
+    /// </summary>
+    internal static BridgeCandidateRuntimeSnapshot? CandidateRuntime(
+        AppHandle handle,
+        string candidateKey) =>
+        handle.CandidateRuntime(candidateKey);
+
+    /// <summary>What every candidate has in flight: one change per running key
+    /// on subscribe, then one per change as runs advance.</summary>
     internal static LiveSubscription SubscribeCandidateRuntime(
         AppHandle handle,
         Action<BridgeCandidateRuntimeChange> onChange) =>

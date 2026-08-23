@@ -165,26 +165,28 @@ public sealed class ImportSectionViewTests
         Assert.Equal(new[] { "4", "2", "3" }, badges);
     }
 
+    // An imported release reads its cloud work off the outbox: while the
+    // outbox holds it the row draws the transfer, and once it is gone the row
+    // is done.
     [AvaloniaFact]
-    public void CloudImportReactsToOutboxProgressAndTerminalRevision()
+    public void CloudImportReactsToOutboxProgress()
     {
-        var status = new BridgeTriageImportStatus.CloudUploadQueued(
+        var status = new BridgeTriageImportStatus.Complete(
             "release-a",
-            "album-a",
-            7);
+            "album-a");
         var done = new BridgeTriagePlacement.Done();
         var (view, app) = BuildSection(
             MatchedItems(done, null, status),
             MatchedSummary(done, BridgeTriageTab.Done),
             BridgeTriageTab.Done);
 
-        var queuedRow = CandidateRow(view);
+        var restingRow = CandidateRow(view);
+        Assert.DoesNotContain(
+            restingRow.GetLogicalDescendants(),
+            control => control is ProgressBar);
         Assert.Contains(
-            queuedRow.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == Loc.Core("core.queue.queued", "count", 1));
-        Assert.True(
-            queuedRow.GetLogicalDescendants().OfType<ProgressBar>().Single()
-                .IsIndeterminate);
+            restingRow.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "✓");
 
         var progress = new BridgeUploadProgress(
             0, 1, 0, 0, 0, 0, 0, 0,
@@ -216,16 +218,38 @@ public sealed class ImportSectionViewTests
         Assert.Contains(
             finishedRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == "✓");
+    }
 
-        app.StorageStore.ApplyOutbox(Outbox(6, progress));
+    // A running import draws its own line off the candidate-runtime signal,
+    // and a Reset that does not name its key says nothing is running for it.
+    [AvaloniaFact]
+    public void AnImportingRowDrawsTheRunItIsToldAbout()
+    {
+        var importing = new BridgeTriagePlacement.Importing();
+        var (view, app) = BuildSection(
+            MatchedItems(importing, null, new BridgeTriageImportStatus.Importing()),
+            MatchedSummary(importing, BridgeTriageTab.Pending));
 
-        var afterOlderSnapshot = CandidateRow(view);
-        Assert.DoesNotContain(
-            afterOlderSnapshot.GetLogicalDescendants(),
-            control => control is ProgressBar);
+        app.ImportStore.ApplyCandidateRuntime(
+            new BridgeCandidateRuntimeChange.Updated(
+                CandidateKey,
+                new BridgeCandidateRuntimeSnapshot(
+                    new BridgeIdentifyState.Idle(),
+                    new BridgeSignalsToolbar([]),
+                    new BridgeImportInFlight(40, null))));
+
         Assert.Contains(
-            afterOlderSnapshot.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == "✓");
+            CandidateRow(view).GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text is { } line
+                && line.Contains("40", StringComparison.Ordinal));
+
+        app.ImportStore.ApplyCandidateRuntime(
+            new BridgeCandidateRuntimeChange.Reset([]));
+
+        Assert.Contains(
+            CandidateRow(view).GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text is { } line
+                && line.Contains("0", StringComparison.Ordinal));
     }
 
     private static ImportSectionView BuildView(

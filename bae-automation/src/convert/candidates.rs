@@ -8,24 +8,19 @@
 use super::*;
 use std::collections::HashMap;
 
-/// A folder candidate with its runtime joined. The identify state is the run
-/// in flight when there is one, else the state its stored verdict stands back
-/// up as — the same answer the import tab shows.
+/// A folder candidate with what is happening to it right now joined onto what
+/// the tables say: the identify state is the run in flight where there is one,
+/// else the state its stored verdict stands back up as, and the import status
+/// is the row's with the running attempt's progress filled in.
 pub(crate) fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
 ) -> AutomationCandidate {
     let candidate = &folder.candidate;
-    let mut joined = runtime
-        .get(&candidate_path(&candidate.path))
-        .cloned()
-        .unwrap_or_else(CandidateRuntimeSnapshot::idle);
-    if matches!(
-        joined.identify_state,
-        bae_core::identify::IdentifyState::Idle
-    ) {
-        joined.identify_state = folder.resumed_identify_state.clone();
-    }
+    let live = runtime.get(&candidate_path(&candidate.path));
+    let identify = live
+        .and_then(|live| live.identify.clone())
+        .unwrap_or_else(|| folder.resumed_identify_state.clone());
     AutomationCandidate::Valid {
         common: automation_candidate_common(
             &candidate.path,
@@ -37,7 +32,19 @@ pub(crate) fn automation_candidate_from_folder(
         track_count: candidate.files.track_count(),
         format_label: candidate.files.format_label.clone(),
         content_hash: candidate.files.content_hash(),
-        runtime: automation_candidate_runtime(&joined),
+        runtime: AutomationCandidateRuntime {
+            toolbar: identify
+                .toolbar()
+                .into_iter()
+                .map(automation_toolbar_signal)
+                .collect(),
+            identify_state: automation_identify_state(identify),
+            signals: folder.signals.clone().map(automation_signals),
+            import_status: automation_import_status(
+                folder.row.import_status.as_ref(),
+                live.and_then(|live| live.import.as_ref()),
+            ),
+        },
         picked_release: folder.release.clone().map(automation_release_detail),
         evidence: folder.evidence.map(automation_claim_evidence),
         edit: folder
@@ -114,47 +121,28 @@ fn candidate_path(path: &Path) -> String {
     path.to_string_lossy().to_string()
 }
 
-pub(crate) fn automation_candidate_runtime(
-    runtime: &CandidateRuntimeSnapshot,
-) -> AutomationCandidateRuntime {
-    AutomationCandidateRuntime {
-        identify_state: automation_identify_state(runtime.identify_state.clone()),
-        toolbar: runtime
-            .toolbar
-            .iter()
-            .cloned()
-            .map(automation_toolbar_signal)
-            .collect(),
-        signals: runtime.signals.clone().map(automation_signals),
-        import_status: runtime.import_status.clone().map(automation_import_status),
-    }
-}
-
+/// The row's import status with the running attempt's progress joined in. Only
+/// `Importing` has any: the other two are what an import left in a table on its
+/// way out.
 pub(crate) fn automation_import_status(
-    status: CandidateImportStatusSnapshot,
-) -> AutomationImportStatus {
-    match status {
-        CandidateImportStatusSnapshot::Importing {
-            progress_percent,
-            step,
-        } => AutomationImportStatus::Importing {
-            progress_percent,
-            step: step.map(automation_import_step),
+    status: Option<&TriageImportStatus>,
+    in_flight: Option<&ImportInFlight>,
+) -> Option<AutomationImportStatus> {
+    Some(match status? {
+        TriageImportStatus::Importing => AutomationImportStatus::Importing {
+            progress_percent: in_flight.map_or(0, |in_flight| in_flight.progress_percent),
+            step: in_flight
+                .and_then(|in_flight| in_flight.step)
+                .map(automation_import_step),
         },
-        CandidateImportStatusSnapshot::Complete { release } => AutomationImportStatus::Complete {
-            release_id: release.release_id,
-            album_id: release.album_id,
+        TriageImportStatus::Complete { release } => AutomationImportStatus::Complete {
+            release_id: release.release_id.clone(),
+            album_id: release.album_id.clone(),
         },
-        CandidateImportStatusSnapshot::CloudUploadQueued {
-            release,
-            outbox_revision,
-        } => AutomationImportStatus::CloudUploadQueued {
-            release_id: release.release_id,
-            album_id: release.album_id,
-            outbox_revision,
+        TriageImportStatus::Error { error } => AutomationImportStatus::Error {
+            error: error.clone(),
         },
-        CandidateImportStatusSnapshot::Error { error } => AutomationImportStatus::Error { error },
-    }
+    })
 }
 
 pub(crate) fn automation_import_step(step: ImportStep) -> AutomationImportStep {

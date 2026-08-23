@@ -18,10 +18,8 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
-    public Func<BridgeImportCandidateDetail, BridgeCandidateRuntimeSnapshot?, ImportCandidate>
-        ProjectFolderCandidate
-    { get; init; }
-        = (_, _) => throw new InvalidOperationException(
+    public Func<BridgeImportCandidateDetail, ImportCandidate> ProjectFolderCandidate { get; init; }
+        = _ => throw new InvalidOperationException(
             "ImportService stub: ProjectFolderCandidate not wired");
 
     /// <summary>The import tab's list, as one reconfigurable subscription: the
@@ -37,18 +35,26 @@ internal sealed class ImportService
     public Func<string, Action<BridgeImportCandidateDetail?>, Action<Exception>, IDisposable?> SubscribeImportCandidate { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SubscribeImportCandidate not wired");
 
-    /// <summary>Every candidate's runtime, keyed by candidate: what a run in
-    /// flight and an import in progress are doing.</summary>
+    /// <summary>What every candidate has in flight, keyed by candidate: a
+    /// run's identify state and a running import's progress.</summary>
     public Func<Action<BridgeCandidateRuntimeChange>, IDisposable?> SubscribeCandidateRuntime { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: SubscribeCandidateRuntime not wired");
 
-    public Func<BridgeCandidateRuntimeSnapshot, (
-        ImportCandidateRowStatus RowStatus,
+    /// <summary>What is in flight for one key right now — the read a control
+    /// does once when it appears, after it has subscribed to the changes.
+    /// </summary>
+    public Func<string, BridgeCandidateRuntimeSnapshot?> CandidateRuntime { get; init; }
+        = _ => null;
+
+    /// <summary>What one key has in flight, as a control renders it: its
+    /// status, the pressings the run is offering, and its badge row. A pure
+    /// projection over what the stream already delivered — it needs no handle,
+    /// so it stands whether or not a session is open.</summary>
+    public Func<BridgeCandidateRuntimeSnapshot?, (
+        ImportCandidateRowStatus? RowStatus,
         List<ReleaseCandidateChoice> Matches,
-        List<SignalBadge> Signals)> ProjectRuntimeCandidate
-    { get; init; }
-        = _ => throw new InvalidOperationException(
-            "ImportService stub: ProjectRuntimeCandidate not wired");
+        List<SignalBadge> Signals)> ProjectRun
+    { get; init; } = NativeBae.ImportRun;
 
     /// <summary>Scan a folder into the watched set (clearing the prior scan);
     /// candidates and watched folders arrive through the import-candidate stream.
@@ -180,7 +186,12 @@ internal sealed class ImportService
     public static ImportService FromSession(SessionStore session) => new()
     {
         ProjectFolderCandidate = NativeBae.ImportCandidateRow,
-        ProjectRuntimeCandidate = NativeBae.ImportPipeline,
+        CandidateRuntime = candidateKey =>
+        {
+            var (current, runtime) = session.WithCurrentHandle(handle =>
+                NativeBae.CandidateRuntime(handle, candidateKey));
+            return current ? runtime : null;
+        },
         SubscribeImportList = view =>
         {
             var (current, subscription) = session.WithCurrentHandle(handle =>

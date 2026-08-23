@@ -12,10 +12,11 @@ use bae_core::import::folder_scanner::InvalidCandidate;
 use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use bae_core::import::{
-    CandidateEditField, CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, CoverSelection,
-    GroupedSearchResults, IdentityChoice, IdentityPick, ImportCandidateDetail, ImportError,
+    CandidateEditField, CandidateRuntimeSnapshot, CoverSelection, GroupedSearchResults,
+    IdentityChoice, IdentityPick, ImportCandidateDetail, ImportError, ImportInFlight,
     ImportListItem, ImportListView, ImportPhase, ImportStep, MetadataRef, MetadataSource,
-    PrepareStep, PressingEdit, ScanEvent, SearchQuery, StorageMode, TrackUserEdit, TriageTab,
+    PrepareStep, PressingEdit, ScanEvent, SearchQuery, StorageMode, TrackUserEdit,
+    TriageImportStatus, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;

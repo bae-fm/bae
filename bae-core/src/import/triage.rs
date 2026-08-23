@@ -22,7 +22,7 @@
 use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{IdentityChoice, MetadataSource};
-use super::{CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, ImportedRelease};
+use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{IdentifyState, LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
 mod model;
@@ -68,11 +68,7 @@ pub fn place(
     // here on purpose rather than inherited by an `_`.
     let import_finished = match import_status {
         Some(TriageImportStatus::Importing) => return TriagePlacement::Importing,
-        Some(
-            TriageImportStatus::Complete { .. }
-            | TriageImportStatus::CloudUploadQueued { .. }
-            | TriageImportStatus::Error { .. },
-        ) => true,
+        Some(TriageImportStatus::Complete { .. } | TriageImportStatus::Error { .. }) => true,
         None => false,
     };
     if is_added || import_finished {
@@ -106,12 +102,12 @@ pub fn place(
 /// candidate back as an ordinary pending row, and the only way to find out it
 /// failed is to open it.
 pub fn import_status_of(
-    runtime: Option<&TriageImportStatus>,
+    importing: bool,
     imported: Option<&ImportedRelease>,
     failure: Option<&str>,
 ) -> Option<TriageImportStatus> {
-    if let Some(runtime) = runtime {
-        return Some(runtime.clone());
+    if importing {
+        return Some(TriageImportStatus::Importing);
     }
     if let Some(release) = imported {
         return Some(TriageImportStatus::Complete {
@@ -124,12 +120,14 @@ pub fn import_status_of(
 }
 
 /// The runtime facts a row's placement reads: a change to any other part of
-/// a candidate's runtime (a progress tick, a signals update) leaves the queue
-/// as projected.
+/// a candidate's runtime — a progress tick within a running import — leaves
+/// the queue as projected.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageRuntimeFacts {
     pub phase: IdentifyPhase,
-    pub import_status: Option<TriageImportStatus>,
+    /// Whether an import owns this candidate right now. How far it has got is
+    /// the runtime's, read by the leaf that draws the bar.
+    pub importing: bool,
 }
 
 impl Default for TriageRuntimeFacts {
@@ -138,7 +136,7 @@ impl Default for TriageRuntimeFacts {
     fn default() -> Self {
         Self {
             phase: IdentifyPhase::Queued,
-            import_status: None,
+            importing: false,
         }
     }
 }
@@ -146,8 +144,11 @@ impl Default for TriageRuntimeFacts {
 impl TriageRuntimeFacts {
     pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
         Self {
-            phase: IdentifyPhase::of(&runtime.identify_state),
-            import_status: runtime.import_status.as_ref().map(TriageImportStatus::of),
+            phase: match &runtime.identify {
+                Some(state) => IdentifyPhase::of(state),
+                None => IdentifyPhase::Queued,
+            },
+            importing: runtime.import.is_some(),
         }
     }
 }

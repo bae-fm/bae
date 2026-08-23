@@ -118,25 +118,9 @@ public class OutboxStore {
         }
     }
 
-    /// A cloud import's relationship to the durable outbox. Its import result
-    /// carries the revision that represented the durable enqueue. A lower local
-    /// revision is still awaiting that value; the same-or-newer revision either
-    /// contains active progress or proves the transition already completed.
-    public func uploadObservation(
-        forRelease releaseId: String,
-        queuedAtRevision: UInt64
-    )
-        -> UploadObservation
-    {
-        if let progress = snapshot.perRelease[releaseId] {
-            return .active(progress)
-        }
-        return snapshot.revision >= queuedAtRevision ? .finished : .awaiting
-    }
-
-    /// A restored import has no in-process enqueue revision. Its release ID
-    /// rejoins the durable queue directly: presence means active work, while
-    /// absence means the imported row is resting.
+    /// An imported release's cloud transition. The outbox is the authority on
+    /// it: it holds the release while there is work, and drops it when there
+    /// is none — so absence is the imported row resting.
     public func persistedUploadObservation(forRelease releaseId: String)
         -> UploadObservation?
     {
@@ -181,15 +165,17 @@ public class OutboxStore {
     }
 }
 
+/// A release's cloud transition while it has one. A release with nothing left
+/// to ship has none at all, which every surface reads as absence rather than
+/// as a value.
 public enum UploadObservation: Equatable {
     case awaiting
     case active(BridgeUploadProgress)
-    case finished
 
-    /// The retained queue state rendered by Import after its local commit has
-    /// finished. Active work names the dominant phase and, while a phase is
-    /// counting bytes, that phase's own numerator and denominator.
-    public var statusText: String? {
+    /// What the transition is doing. Active work names the dominant phase and,
+    /// while a phase is counting bytes, that phase's own numerator and
+    /// denominator.
+    public var statusText: String {
         switch self {
         case .awaiting:
             return QueueSummary.countLabel("core.queue.queued", 1)
@@ -202,33 +188,18 @@ public enum UploadObservation: Equatable {
             return [phase, progress.bar?.text]
                 .compactMap { $0 }
                 .joined(separator: " \u{00B7} ")
-        case .finished:
-            return nil
         }
     }
 
-    /// Status text for every non-terminal observation. Storage surfaces never
-    /// receive `.finished`; calling this for it is a broken state transition.
-    public var transitionStatusText: String {
-        guard let statusText else {
-            preconditionFailure(
-                "a terminal cloud upload has no transition text"
-            )
-        }
-        return statusText
-    }
-
-    /// Whether the row has no cloud transition, has work with no phase counting
-    /// bytes for it yet, or has exact progress through the phase it is in.
-    public var progressBar: CloudTransitionProgress? {
+    /// Whether the transition has work with no phase counting bytes for it
+    /// yet, or exact progress through the phase it is in.
+    public var progressBar: CloudTransitionProgress {
         switch self {
         case .awaiting:
             return .indeterminate
         case .active(let progress):
             return progress.bar.map { .determinate($0.fraction) }
                 ?? .indeterminate
-        case .finished:
-            return nil
         }
     }
 }
@@ -260,9 +231,9 @@ public enum StorageUploadObservation: Equatable {
                 comment: ""
             )
         case .awaiting:
-            return UploadObservation.awaiting.transitionStatusText
+            return UploadObservation.awaiting.statusText
         case .active(let progress):
-            return UploadObservation.active(progress).transitionStatusText
+            return UploadObservation.active(progress).statusText
         }
     }
 

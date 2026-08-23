@@ -202,92 +202,102 @@ internal static partial class NativeBae
         };
     }
 
-    /// <summary>One candidate joined with its runtime: the run in flight when
-    /// there is one, else the state the stored verdict stands back up as.
-    /// <paramref name="runtime"/> is null for a key nothing has run on.</summary>
+    /// <summary>One candidate as its tables describe it: the folder, where its
+    /// import stands, and the identity its stored verdict stands back up as.
+    /// What is running for it right now is not here — a control that draws that
+    /// reads it off the candidate-runtime signal for its own key.</summary>
     internal static ImportCandidate ImportCandidateRow(
-        BridgeImportCandidateDetail detail,
-        BridgeCandidateRuntimeSnapshot? runtime)
+        BridgeImportCandidateDetail detail)
     {
         var candidate = detail.Candidate;
-        var effective = EffectiveRuntime(detail, runtime);
-        var row = ImportCandidateRow(candidate, effective);
-        row.Detail = detail;
-        return row;
-    }
-
-    /// <summary>The runtime a row renders: a live run's own, or an idle runtime
-    /// carrying the row's resumed identify state.</summary>
-    internal static BridgeCandidateRuntimeSnapshot EffectiveRuntime(
-        BridgeImportCandidateDetail detail,
-        BridgeCandidateRuntimeSnapshot? runtime) =>
-        runtime switch
-        {
-            null => new BridgeCandidateRuntimeSnapshot(
-                detail.ResumedIdentifyState,
-                new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
-                null,
-                null),
-            { IdentifyState: BridgeIdentifyState.Idle } =>
-                runtime with { IdentifyState = detail.ResumedIdentifyState },
-            _ => runtime,
-        };
-
-    private static ImportCandidate ImportCandidateRow(
-        BridgeFolderCandidate candidate,
-        BridgeCandidateRuntimeSnapshot runtime) =>
-        new()
+        var row = new ImportCandidate
         {
             Key = candidate.FolderPath,
             Name = candidate.SourceFolderName,
             TrackCount = checked((int)candidate.TrackCount),
             Format = candidate.Files.FormatLabel,
-            RowStatus = ImportRowStatus(runtime),
-            Matches = ImportMatches(runtime.IdentifyState),
-            Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
+            RowStatus = StoredRowStatus(detail),
+            Matches = ImportMatches(detail.ResumedIdentifyState),
             Files = candidate.Files,
             LocalArtwork = LocalArtwork(candidate.Files),
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
             IsAdded = candidate.IsAdded,
+            Detail = detail,
+        };
+        return row;
+    }
+
+    /// <summary>What the tables say about a candidate: where its import stands
+    /// first — a running import outranks any answer — then the identity its
+    /// stored verdict resumes.</summary>
+    private static ImportCandidateRowStatus StoredRowStatus(
+        BridgeImportCandidateDetail detail) => detail.Row.ImportStatus switch
+        {
+            BridgeTriageImportStatus.Importing => new ImportCandidateRowStatus
+            {
+                Kind = "importing",
+            },
+            BridgeTriageImportStatus.Complete => new ImportCandidateRowStatus { Kind = "complete" },
+            BridgeTriageImportStatus.Error error => new ImportCandidateRowStatus
+            {
+                Kind = "error",
+                Error = error.ErrorValue,
+            },
+            _ => IdentifyRowStatus(detail.ResumedIdentifyState),
         };
 
+    /// <summary>What is happening for one key right now: its status, the
+    /// pressings the run is offering, and the badge row it carries. A control
+    /// watching one key renders this over what the candidate's tables say.
+    /// </summary>
     internal static (
-        ImportCandidateRowStatus RowStatus,
+        ImportCandidateRowStatus? RowStatus,
         List<ReleaseCandidateChoice> Matches,
-        List<SignalBadge> Signals) ImportPipeline(BridgeCandidateRuntimeSnapshot runtime) =>
-        (
-            ImportRowStatus(runtime),
-            ImportMatches(runtime.IdentifyState),
-            runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList()
-        );
+        List<SignalBadge> Signals) ImportRun(
+        BridgeCandidateRuntimeSnapshot? runtime) =>
+        (RuntimeRowStatus(runtime), RuntimeMatches(runtime), RuntimeSignals(runtime));
 
-    private static ImportCandidateRowStatus ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)
+    /// <summary>The running import with how far it has got, else the live
+    /// run's state. Null when neither — what the candidate's tables say stands.
+    /// </summary>
+    private static ImportCandidateRowStatus? RuntimeRowStatus(
+        BridgeCandidateRuntimeSnapshot? runtime)
     {
-        if (runtime.ImportStatus is BridgeCandidateImportStatus.Importing importing)
+        if (runtime is null)
+        {
+            return null;
+        }
+        if (runtime.Import is { } running)
         {
             return new ImportCandidateRowStatus
             {
                 Kind = "importing",
-                ProgressPercent = checked((int)importing.ProgressPercent),
-                Step = importing.Step is null ? null : ImportStep(importing.Step),
+                ProgressPercent = checked((int)running.ProgressPercent),
+                Step = running.Step is null ? null : ImportStep(running.Step),
             };
         }
-        if (runtime.ImportStatus is BridgeCandidateImportStatus.Complete
-            or BridgeCandidateImportStatus.CloudUploadQueued)
-        {
-            return new ImportCandidateRowStatus { Kind = "complete" };
-        }
-        if (runtime.ImportStatus is BridgeCandidateImportStatus.Error error)
-        {
-            return new ImportCandidateRowStatus
-            {
-                Kind = "error",
-                Error = error.ErrorValue,
-            };
-        }
+        return runtime.IdentifyState is BridgeIdentifyState.Idle
+            ? null
+            : IdentifyRowStatus(runtime.IdentifyState);
+    }
 
-        return runtime.IdentifyState switch
+    /// <summary>The matches a run in flight is offering, or an empty list.
+    /// </summary>
+    private static List<ReleaseCandidateChoice> RuntimeMatches(
+        BridgeCandidateRuntimeSnapshot? runtime) =>
+        runtime is null ? [] : ImportMatches(runtime.IdentifyState);
+
+    /// <summary>The badge row a run in flight carries, or an empty list.
+    /// </summary>
+    private static List<SignalBadge> RuntimeSignals(
+        BridgeCandidateRuntimeSnapshot? runtime) =>
+        runtime is null
+            ? []
+            : runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList();
+
+    private static ImportCandidateRowStatus IdentifyRowStatus(BridgeIdentifyState state) =>
+        state switch
         {
             BridgeIdentifyState.Idle => new ImportCandidateRowStatus { Kind = string.Empty },
             BridgeIdentifyState.Triangulating => new ImportCandidateRowStatus { Kind = "identifying" },
@@ -295,9 +305,8 @@ internal static partial class NativeBae
             BridgeIdentifyState.Conflict => new ImportCandidateRowStatus { Kind = "conflict" },
             BridgeIdentifyState.NotFoundAnywhere => new ImportCandidateRowStatus { Kind = "not_found" },
             BridgeIdentifyState.ManualOnly => new ImportCandidateRowStatus { Kind = "manual" },
-            _ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime.IdentifyState, "Unknown identify state"),
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown identify state"),
         };
-    }
 
     private static List<ReleaseCandidateChoice> ImportMatches(BridgeIdentifyState state) =>
         state is BridgeIdentifyState.Found found

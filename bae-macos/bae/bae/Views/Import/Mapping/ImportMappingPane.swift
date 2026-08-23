@@ -11,6 +11,10 @@ import SwiftUI
 /// folder's own tags without emptying it.
 struct ImportMappingPane: View {
     let candidate: Candidate
+    /// What is in flight for this candidate: the run whose state the pane
+    /// shows while one is live, and how far a running import has got. `nil`
+    /// when nothing is running for it.
+    let runtime: BridgeCandidateRuntimeSnapshot?
     /// What each track sheet may be bound to, by the sheet's file id.
     let bindingOptions: [String: [BridgeSheetBindingOption]]
     /// The path currently auditioning, if any.
@@ -42,6 +46,15 @@ struct ImportMappingPane: View {
         candidate.mapping
     }
 
+    /// The run in flight while there is one, else the state the stored verdict
+    /// stands back up as.
+    private var identifyState: IdentifyState {
+        shownIdentifyState(
+            resumed: candidate.resumedIdentifyState,
+            runtime: runtime
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -68,9 +81,9 @@ struct ImportMappingPane: View {
 
     @ViewBuilder
     private var conflictResolution: some View {
-        if !candidate.hasSettled, case .conflict = candidate.identifyState {
+        if !candidate.hasSettled, case .conflict = identifyState {
             ImportConflictResolutionView(
-                identifyState: candidate.identifyState,
+                identifyState: identifyState,
                 isImporting: ImportSearchFlow.isImporting(candidate),
                 selectedReleaseId: nil,
                 error: nil,
@@ -92,7 +105,8 @@ struct ImportMappingPane: View {
         return ImportCommitControls(
             unansweredCount: mapping.unansweredCount,
             candidateKey: candidate.key,
-            importStatus: candidate.importStatus,
+            importStatus: candidate.row?.importStatus,
+            importInFlight: runtime?.import,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,
@@ -132,7 +146,7 @@ struct ImportMappingPane: View {
         guard candidate.identity == .release,
             !candidate.hasSettled,
             case .found(let group, let libraryStatuses, _, let provenance) =
-                candidate.identifyState
+                identifyState
         else {
             return nil
         }
@@ -175,7 +189,7 @@ struct ImportMappingPane: View {
     private var banners: some View {
         ImportConfirmationBanners(
             libraryStatus: libraryStatus,
-            importStatus: candidate.importStatus,
+            importStatus: candidate.row?.importStatus,
             error: candidate.error,
             failure: candidate.failure,
             onRetry: commitActions.confirmImport,

@@ -190,8 +190,11 @@ pub trait ImportCandidateCallback: Send + Sync {
     fn on_error(&self, error: BridgeError);
 }
 
-/// Every candidate's runtime: one call per key already holding runtime on
-/// subscribe, then one per change.
+/// What every candidate has in flight: one `Updated` per key already running
+/// when the subscription opens, then one call per change — `Updated` as a key
+/// advances, `Removed` once nothing is running for it, and `Reset` carrying
+/// every running key after a dropped delivery, which a consumer holding a key
+/// the reset does not list reads as that key's removal.
 #[cfg(feature = "desktop")]
 #[uniffi::export(callback_interface)]
 pub trait CandidateRuntimeCallback: Send + Sync {

@@ -39,15 +39,21 @@ impl AppServices {
         }
     }
 
-    /// Every candidate's runtime right now.
+    /// Every key with something in flight right now.
     pub fn candidate_runtimes(
         &self,
     ) -> std::collections::HashMap<String, crate::import::CandidateRuntimeSnapshot> {
         self.inner.import.candidate_runtimes()
     }
 
-    /// Every candidate's runtime right now, and one change per key as runs
-    /// advance.
+    /// What is in flight for one key — the read a view does once when it
+    /// appears, after it has subscribed to the changes.
+    pub fn candidate_runtime(&self, key: &str) -> Option<crate::import::CandidateRuntimeSnapshot> {
+        self.inner.import.candidate_runtime(key)
+    }
+
+    /// Every key with something in flight right now, and one change per key as
+    /// runs advance.
     pub fn subscribe_candidate_runtime(
         &self,
     ) -> (
@@ -111,7 +117,7 @@ impl AppServices {
             .map(TriageRuntimeFacts::of)
             .unwrap_or_default();
         let identify = runtime
-            .map(|runtime| runtime.identify_state)
+            .and_then(|runtime| runtime.identify)
             .unwrap_or(crate::identify::IdentifyState::Idle);
         Ok(self
             .inner
@@ -142,7 +148,7 @@ impl AppServices {
             // picked release up, and a run in flight knows that before its
             // verdict is stored.
             let mut identify = initial
-                .map(|runtime| runtime.identify_state.clone())
+                .and_then(|runtime| runtime.identify.clone())
                 .unwrap_or(crate::identify::IdentifyState::Idle);
             let mut projection: Option<ImportCandidateDetailProjection> = None;
             // The units this pane has already asked to be measured. The query
@@ -228,7 +234,7 @@ impl AppServices {
                             .map(TriageRuntimeFacts::of)
                             .unwrap_or_default();
                         let next_identify = next
-                            .map(|runtime| runtime.identify_state)
+                            .and_then(|runtime| runtime.identify)
                             .unwrap_or(crate::identify::IdentifyState::Idle);
                         if next_facts == facts && next_identify == identify {
                             continue;

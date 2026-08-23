@@ -55,57 +55,6 @@ struct OutboxStoreHasPendingCloudWorkTests {
         #expect(store.hasPendingCloudWork)
     }
 
-    @Test(
-        "an imported cloud release distinguishes awaiting, active, and finished"
-    )
-    func importedCloudReleaseLifecycle() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        #expect(
-            store.uploadObservation(
-                forRelease: "release-a",
-                queuedAtRevision: 1
-            ) == .awaiting
-        )
-
-        var active = OutboxStore.emptySnapshot
-        active.revision = 1
-        active.perRelease["release-a"] = active.total
-        store.applySnapshot(active)
-        guard
-            case .active = store.uploadObservation(
-                forRelease: "release-a",
-                queuedAtRevision: 1
-            )
-        else {
-            Issue.record("the durable outbox row is active")
-            return
-        }
-
-        var finished = OutboxStore.emptySnapshot
-        finished.revision = 2
-        store.applySnapshot(finished)
-        #expect(
-            store.uploadObservation(
-                forRelease: "release-a",
-                queuedAtRevision: 1
-            ) == .finished
-        )
-    }
-
-    @Test("a coalesced fast upload cannot leave an import queued forever")
-    func fastUploadWhoseActiveValueWasCoalesced() {
-        var terminal = OutboxStore.emptySnapshot
-        terminal.revision = 2
-        let store = OutboxStore(snapshot: terminal)
-
-        #expect(
-            store.uploadObservation(
-                forRelease: "release-a",
-                queuedAtRevision: 1
-            ) == .finished
-        )
-    }
-
     @Test("an older delivery cannot replace newer queue state")
     func staleSnapshotCannotRegressTheStore() {
         var current = OutboxStore.emptySnapshot
@@ -254,11 +203,10 @@ struct CloudImportQueuePresentationTests {
         let total = Int64(1016).formatted(.byteCount(style: .file))
 
         #expect(
-            line?.contains(QueueSummary.countLabel("core.queue.uploading", 1))
-                == true
+            line.contains(QueueSummary.countLabel("core.queue.uploading", 1))
         )
-        #expect(line?.contains(done) == true)
-        #expect(line?.contains(total) == true)
+        #expect(line.contains(done))
+        #expect(line.contains(total))
     }
 
     @Test("the byte label counts the phase the bar fills with, not the badge")
@@ -279,10 +227,9 @@ struct CloudImportQueuePresentationTests {
         let line = UploadObservation.active(progress).statusText
 
         #expect(
-            line?.contains(QueueSummary.countLabel("core.queue.uploading", 1))
-                == true
+            line.contains(QueueSummary.countLabel("core.queue.uploading", 1))
         )
-        #expect(line?.contains(bar.text) == true)
+        #expect(line.contains(bar.text))
         #expect(
             bar.text
                 != BridgeUploadBar(
@@ -314,11 +261,6 @@ struct CloudImportQueuePresentationTests {
         )
     }
 
-    @Test("a finished upload contributes no queue status")
-    func finishedUploadHasNoQueueStatus() {
-        #expect(UploadObservation.finished.statusText == nil)
-    }
-
     @Test("the import row keeps a progress bar through the cloud transition")
     func cloudTransitionProgressBar() {
         var progress = OutboxStore.emptySnapshot.total
@@ -333,7 +275,6 @@ struct CloudImportQueuePresentationTests {
             UploadObservation.active(progress).progressBar
                 == .determinate(0.25)
         )
-        #expect(UploadObservation.finished.progressBar == nil)
     }
 }
 

@@ -67,7 +67,6 @@ fn identify(key: &str, state: crate::identify::IdentifyState) -> ImportEvent {
         candidate_key: key.to_string(),
         run: crate::identify::IdentifyRunId::for_test(0),
         state,
-        toolbar: Vec::new(),
         priority: CallPriority::Background,
     }
 }
@@ -80,6 +79,18 @@ fn drain(changes: &mut broadcast::Receiver<CandidateRuntimeChange>) -> Vec<Candi
     out
 }
 
+fn extracted_signals() -> crate::signals::Signals {
+    crate::signals::Signals {
+        disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+        barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
+        text: crate::signals::TextSignal::Settled {
+            catalogs: Vec::new(),
+            free_text: Vec::new(),
+        },
+        durations: crate::import::probe::ProbedDurations::totalling(1_000),
+    }
+}
+
 #[test]
 fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
     let runtime = CandidateRuntime::default();
@@ -88,13 +99,13 @@ fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
 
     runtime.record_event(&progress(key, 42));
 
-    let status = runtime
+    let in_flight = runtime
         .get(key)
-        .and_then(|runtime| runtime.import_status)
-        .expect("import status recorded");
+        .and_then(|runtime| runtime.import)
+        .expect("the running import is recorded");
     assert_eq!(
-        status,
-        CandidateImportStatusSnapshot::Importing {
+        in_flight,
+        ImportInFlight {
             progress_percent: 42,
             step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
         }
@@ -104,40 +115,150 @@ fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
     assert!(matches!(
         &published[0],
         CandidateRuntimeChange::Updated { key: changed, runtime }
-            if changed == key && runtime.import_status == Some(status.clone())
+            if changed == key && runtime.import == Some(in_flight.clone())
     ));
 
-    runtime.record_event(&ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
-        progress: ImportProgress::RemoteUploadQueued {
-            id: "rel1".to_string(),
-            import_id: "imp-1".to_string(),
-            album_id: "alb".to_string(),
-            outbox_revision: 7,
-        },
-    });
+    runtime.record_event(&progress("/watch/a/rel2", 3));
     assert!(matches!(
-        runtime.get(key).and_then(|runtime| runtime.import_status),
-        Some(CandidateImportStatusSnapshot::CloudUploadQueued {
-            ref release,
-            outbox_revision: 7,
-        }) if release.release_id == "rel1" && release.album_id == "alb"
+        drain(&mut changes).as_slice(),
+        [CandidateRuntimeChange::Updated { key: changed, .. }] if changed == "/watch/a/rel2"
     ));
 }
 
 #[test]
 fn a_claim_is_the_queued_step_until_the_worker_reports() {
     let runtime = CandidateRuntime::default();
-    runtime.claim_for_import("/watch/a/rel1");
+    let mut changes = runtime.subscribe();
+    let key = "/watch/a/rel1";
+
+    runtime.claim_for_import(key);
     assert_eq!(
-        runtime.runtime_for("/watch/a/rel1").import_status,
-        Some(CandidateImportStatusSnapshot::Importing {
+        runtime.get(key).and_then(|runtime| runtime.import),
+        Some(ImportInFlight {
             progress_percent: 0,
             step: Some(ImportStep::Preparing(PrepareStep::Queued)),
         })
     );
-    runtime.release_import_claim("/watch/a/rel1");
-    assert_eq!(runtime.runtime_for("/watch/a/rel1").import_status, None);
+    drain(&mut changes);
+
+    runtime.release_import_claim(key);
+    assert!(runtime.get(key).is_none());
+    assert_eq!(
+        drain(&mut changes),
+        vec![CandidateRuntimeChange::Removed {
+            key: key.to_string()
+        }],
+        "with nothing else running, releasing the claim empties the key"
+    );
+}
+
+/// Every way an import ends is a row by the time the event reaches here — the
+/// release the worker committed, or the failure it wrote — so the key stops
+/// being in flight.
+#[test]
+fn a_finished_import_leaves_the_map() {
+    let key = "/watch/a/rel1";
+    let endings = [
+        ImportProgress::Complete {
+            id: "rel1".to_string(),
+            import_id: "imp-1".to_string(),
+            album_id: "alb".to_string(),
+        },
+        ImportProgress::RemoteUploadQueued {
+            id: "rel1".to_string(),
+            import_id: "imp-1".to_string(),
+            album_id: "alb".to_string(),
+            outbox_revision: 7,
+        },
+        ImportProgress::Failed {
+            error: "no space left".to_string(),
+            import_id: "imp-1".to_string(),
+        },
+    ];
+    for ending in endings {
+        let runtime = CandidateRuntime::default();
+        let mut changes = runtime.subscribe();
+        runtime.record_event(&progress(key, 42));
+        drain(&mut changes);
+
+        runtime.record_event(&ImportEvent::ImportProgress {
+            candidate_key: key.to_string(),
+            progress: ending.clone(),
+        });
+        assert!(
+            runtime.get(key).is_none(),
+            "{ending:?} left an entry behind"
+        );
+        assert_eq!(
+            drain(&mut changes),
+            vec![CandidateRuntimeChange::Removed {
+                key: key.to_string()
+            }]
+        );
+    }
+}
+
+/// A held terminal state keeps the key: only the import half ends.
+#[test]
+fn a_finished_import_keeps_a_key_whose_run_is_still_held() {
+    let runtime = CandidateRuntime::default();
+    let mut changes = runtime.subscribe();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&identify(
+        key,
+        crate::identify::IdentifyState::ManualOnly {
+            track_count: 9,
+            context: signals_context(9),
+        },
+    ));
+    runtime.record_event(&progress(key, 42));
+    drain(&mut changes);
+
+    runtime.record_event(&ImportEvent::ImportProgress {
+        candidate_key: key.to_string(),
+        progress: ImportProgress::Complete {
+            id: "rel1".to_string(),
+            import_id: "imp-1".to_string(),
+            album_id: "alb".to_string(),
+        },
+    });
+    let recorded = runtime.get(key).expect("the held run keeps the key");
+    assert!(recorded.import.is_none());
+    assert!(matches!(
+        recorded.identify,
+        Some(crate::identify::IdentifyState::ManualOnly { .. })
+    ));
+    assert!(matches!(
+        drain(&mut changes).as_slice(),
+        [CandidateRuntimeChange::Updated { key: changed, .. }] if changed == key
+    ));
+}
+
+/// The late subscriber is the whole reason the map exists: a row that appears
+/// after an import started reads its state, and every later tick reaches it.
+#[test]
+fn a_late_subscriber_reads_every_running_key() {
+    let runtime = CandidateRuntime::default();
+    runtime.record_event(&progress("/watch/a/rel1", 10));
+    runtime.claim_for_import("/watch/a/rel2");
+
+    let mut changes = runtime.subscribe();
+    let running = runtime.all();
+    assert_eq!(running.len(), 2);
+    assert_eq!(
+        running["/watch/a/rel1"].import,
+        Some(ImportInFlight {
+            progress_percent: 10,
+            step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
+        })
+    );
+    assert!(running["/watch/a/rel2"].import.is_some());
+
+    runtime.record_event(&progress("/watch/a/rel3", 5));
+    assert!(matches!(
+        drain(&mut changes).as_slice(),
+        [CandidateRuntimeChange::Updated { key, .. }] if key == "/watch/a/rel3"
+    ));
 }
 
 #[test]
@@ -150,7 +271,7 @@ fn runtime_recorded_before_the_scan_survives_the_scan_reporting_the_key() {
 
     assert!(runtime
         .get(key)
-        .is_some_and(|runtime| runtime.import_status.is_some()));
+        .is_some_and(|runtime| runtime.import.is_some()));
 }
 
 #[test]
@@ -217,10 +338,17 @@ fn removal_and_invalidation_drop_the_runtime() {
     assert!(drain(&mut changes).is_empty());
 }
 
+/// Signals, loudness ticks and the queue's own count each have somewhere else
+/// to be — a table, a leaf view, a header — so none of them reaches here.
 #[test]
-fn loudness_and_queue_progress_never_touch_the_runtime() {
+fn signals_loudness_and_queue_progress_never_touch_the_runtime() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
+    runtime.record_event(&ImportEvent::SignalsUpdated {
+        candidate_key: "/watch/a/rel1".to_string(),
+        signals: extracted_signals(),
+        priority: CallPriority::Background,
+    });
     runtime.record_event(&ImportEvent::ImportLoudnessProgress {
         candidate_key: "/watch/a/rel1".to_string(),
         tracks_done: 1,
@@ -238,21 +366,9 @@ fn loudness_and_queue_progress_never_touch_the_runtime() {
 #[test]
 fn a_stored_verdict_clears_the_recorded_terminal_state() {
     let runtime = CandidateRuntime::default();
+    let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
-    runtime.record_event(&ImportEvent::SignalsUpdated {
-        candidate_key: key.to_string(),
-        signals: crate::signals::Signals {
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
-            barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
-            text: crate::signals::TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
-            durations: crate::import::probe::ProbedDurations::totalling(1_000),
-        },
-        priority: CallPriority::Background,
-    });
     runtime.record_event(&identify(
         key,
         crate::identify::IdentifyState::ManualOnly {
@@ -264,26 +380,23 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
     // A driver torn down after settling broadcasts `Idle`; the answer stays.
     runtime.record_event(&identify(key, crate::identify::IdentifyState::Idle));
     assert!(matches!(
-        runtime.runtime_for(key).identify_state,
-        crate::identify::IdentifyState::ManualOnly { .. }
+        runtime.get(key).and_then(|runtime| runtime.identify),
+        Some(crate::identify::IdentifyState::ManualOnly { .. })
     ));
+    drain(&mut changes);
 
     runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
         candidate_key: key.to_string(),
     }));
-    let recorded = runtime.runtime_for(key);
     assert!(
-        matches!(
-            recorded.identify_state,
-            crate::identify::IdentifyState::Idle
-        ),
-        "the stored verdict owns the answer now, got {:?}",
-        recorded.identify_state
+        runtime.get(key).is_none(),
+        "the stored verdict owns the answer now, and nothing else was running"
     );
-    assert!(recorded.toolbar.is_empty());
-    assert!(
-        recorded.signals.is_some(),
-        "extraction's signals outlive the run's write"
+    assert_eq!(
+        drain(&mut changes),
+        vec![CandidateRuntimeChange::Removed {
+            key: key.to_string()
+        }]
     );
 
     // A newer run is in flight when the previous run's write lands: its
@@ -300,14 +413,34 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
         candidate_key: key.to_string(),
     }));
     assert!(matches!(
-        runtime.runtime_for(key).identify_state,
-        crate::identify::IdentifyState::Triangulating { .. }
+        runtime.get(key).and_then(|runtime| runtime.identify),
+        Some(crate::identify::IdentifyState::Triangulating { .. })
     ));
 
-    // A genuine mid-run cancel resets.
+    // A genuine mid-run cancel empties the key.
     runtime.record_event(&identify(key, crate::identify::IdentifyState::Idle));
-    assert!(matches!(
-        runtime.runtime_for(key).identify_state,
-        crate::identify::IdentifyState::Idle
+    assert!(runtime.get(key).is_none());
+}
+
+/// A claimed import outlives the run's write: the key keeps the half that is
+/// still happening.
+#[test]
+fn a_stored_verdict_keeps_a_key_whose_import_is_running() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&identify(
+        key,
+        crate::identify::IdentifyState::ManualOnly {
+            track_count: 9,
+            context: signals_context(9),
+        },
     ));
+    runtime.claim_for_import(key);
+
+    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
+        candidate_key: key.to_string(),
+    }));
+    let recorded = runtime.get(key).expect("the claim keeps the key");
+    assert!(recorded.identify.is_none());
+    assert!(recorded.import.is_some());
 }

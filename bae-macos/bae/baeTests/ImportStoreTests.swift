@@ -30,17 +30,6 @@ private func emptyBridgeFiles() -> BridgeCandidateFiles {
     BridgeCandidateFiles(files: [], formatLabel: "", collapsedDirectories: [])
 }
 
-private func idleRuntime(
-    importStatus: BridgeCandidateImportStatus? = nil
-) -> BridgeCandidateRuntimeSnapshot {
-    BridgeCandidateRuntimeSnapshot(
-        identifyState: .idle,
-        signalsToolbar: BridgeSignalsToolbar(signals: []),
-        signals: nil,
-        importStatus: importStatus
-    )
-}
-
 private func bridgeFolder(
     folderPath: String,
     watchedFolderPath: String,
@@ -60,17 +49,16 @@ private func bridgeFolder(
     )
 }
 
-/// A folder-source `Candidate` with the given scan flags and (optional) session
-/// import status, for the batch/single-snapshot suites.
+/// A folder-source `Candidate` with the given scan flags, for the
+/// batch/single-snapshot suites.
 private func folderCandidate(
     folderPath: String,
     watchedFolderPath: String,
     name: String,
     skipped: Bool = false,
-    isAdded: Bool = false,
-    importStatus: BridgeCandidateImportStatus? = nil
+    isAdded: Bool = false
 ) -> Candidate {
-    var candidate = Candidate(
+    Candidate(
         bridge: bridgeFolder(
             folderPath: folderPath,
             watchedFolderPath: watchedFolderPath,
@@ -79,8 +67,6 @@ private func folderCandidate(
             isAdded: isAdded
         )
     )
-    candidate.importStatus = importStatus
-    return candidate
 }
 
 private func bridgeInvalid(
@@ -265,31 +251,24 @@ struct ImportStoreCandidateDetailTests {
         let read = try #require(store.selectedCandidates["/w1/a"])
         #expect(read.displayName == "A")
         // With no run live the resumed state is what the pane shows.
-        #expect(read.identifyState == .notFoundAnywhere)
+        #expect(read.resumedIdentifyState == .notFoundAnywhere)
         #expect(read.row?.candidateKey == "/w1/a")
-        #expect(read.importStatus == nil)
+        #expect(read.row?.importStatus == nil)
     }
 
     @MainActor
-    @Test("a re-read keeps the runtime and the editor state on its key")
-    func keepsRuntimeAndEditorState() throws {
+    @Test("a re-read keeps the editor state on its key")
+    func keepsEditorState() throws {
         let store = ImportStore()
         var existing = folderCandidate(
             folderPath: "/w1/a",
             watchedFolderPath: "/w1",
             name: "A"
         )
-        existing.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
-        existing.runtimeIdentifyState = .triangulating(
-            discid: .computing,
-            barcode: .scanning
-        )
-        existing.reconcileIdentifyState()
-        existing.signals = Signals(
-            text: .settled(catalogs: ["CAT-1"], freeText: [])
-        )
-        existing.signalsToolbar = PreviewData.toolbarBothRunning
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
+        existing.error = "the last command failed"
+        existing.pickInFlight = true
+        existing.search.showManualSearch = true
         store.selectedCandidates["/w1/a"] = existing
 
         // Same key, renamed + skip flipped.
@@ -304,133 +283,59 @@ struct ImportStoreCandidateDetailTests {
         )
 
         let merged = try #require(store.selectedCandidates["/w1/a"])
-        // Session state and the run in flight survive; the read only re-read
-        // the folder.
-        #expect(
-            merged.importStatus
-                == .complete(releaseId: "rel-1", albumId: "al-1")
-        )
-        #expect(
-            merged.identifyState
-                == .triangulating(discid: .computing, barcode: .scanning)
-        )
-        #expect(merged.signals != nil)
-        #expect(!merged.signalsToolbar.signals.isEmpty)
+        // The user's work on this pane survives; the read only re-read the
+        // folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
+        #expect(merged.error == "the last command failed")
+        #expect(merged.pickInFlight)
+        #expect(merged.search.showManualSearch)
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)
     }
-
-    @MainActor
-    @Test("a run recorded before the read joins the folder when it lands")
-    func runtimeAheadOfTheRead() throws {
-        let store = ImportStore()
-        store.applyCandidateRuntimeChange(
-            .updated(
-                key: "/w1/a",
-                runtime: idleRuntime(
-                    importStatus: .importing(progressPercent: 5, step: nil)
-                )
-            )
-        )
-        #expect(store.selectedCandidates["/w1/a"] == nil)
-
-        store.applyCandidateDetail(
-            key: "/w1/a",
-            detail: detail(
-                folderPath: "/w1/a",
-                watchedFolderPath: "/w1",
-                name: "A"
-            )
-        )
-
-        let landed = try #require(store.selectedCandidates["/w1/a"])
-        #expect(
-            landed.importStatus == .importing(progressPercent: 5, step: nil)
-        )
-    }
 }
 
-@Suite("ImportStore.applyCandidateRuntimeChange")
-struct ImportStoreRuntimeChangeTests {
-    @MainActor
-    @Test("a runtime change updates one selected candidate")
-    func updatesOneCandidate() throws {
-        let store = ImportStore()
-        for key in ["/w1/a", "/w1/b"] {
-            store.applyCandidateDetail(
-                key: key,
-                detail: detail(
-                    folderPath: key,
-                    watchedFolderPath: "/w1",
-                    name: key,
-                    resumedIdentifyState: key == "/w1/a"
-                        ? .notFoundAnywhere : .idle
-                )
-            )
-        }
-
-        store.applyCandidateRuntimeChange(
-            .updated(
-                key: "/w1/a",
-                runtime: BridgeCandidateRuntimeSnapshot(
-                    identifyState: .triangulating(
-                        discid: .computing,
-                        barcode: .scanning
-                    ),
-                    signalsToolbar: BridgeSignalsToolbar(signals: []),
-                    signals: nil,
-                    importStatus: .importing(progressPercent: 40, step: nil)
-                )
-            )
+/// The one rule about which identify state a surface shows. It used to live on
+/// `Candidate`, reconciling two stored fields; the run in flight is not stored
+/// any more, so the rule is a function of the two values a surface holds.
+@Suite("The identify state a candidate shows")
+struct ShownIdentifyStateTests {
+    private func runtime(
+        _ state: BridgeIdentifyState
+    ) -> BridgeCandidateRuntimeSnapshot {
+        BridgeCandidateRuntimeSnapshot(
+            identifyState: state,
+            signalsToolbar: BridgeSignalsToolbar(signals: []),
+            import: nil
         )
-
-        let running = try #require(store.selectedCandidates["/w1/a"])
-        // A live run outranks the resumed state.
-        #expect(
-            running.identifyState
-                == .triangulating(discid: .computing, barcode: .scanning)
-        )
-        #expect(
-            running.importStatus == .importing(progressPercent: 40, step: nil)
-        )
-        #expect(
-            store.importProgress(for: readyRow("/w1/a", title: "A"))
-                == .importing(progressPercent: 40, step: nil)
-        )
-        #expect(store.selectedCandidates["/w1/b"]?.importStatus == nil)
-
-        store.applyCandidateRuntimeChange(.removed(key: "/w1/a"))
-        let cleared = try #require(store.selectedCandidates["/w1/a"])
-        #expect(cleared.importStatus == nil)
-        #expect(store.importProgress(for: readyRow("/w1/a", title: "A")) == nil)
-        // With no run live the resumed state shows again.
-        #expect(cleared.identifyState == .notFoundAnywhere)
     }
 
-    @MainActor
-    @Test("a runtime change updates a re-identify session")
-    func updatesReIdentifySession() {
-        let store = ImportStore()
-        store.reIdentifyCandidates["reidentify:r1"] =
-            makeCandidate("reidentify:r1")
-
-        store.applyCandidateRuntimeChange(
-            .updated(
-                key: "reidentify:r1",
-                runtime: idleRuntime(
-                    importStatus: .complete(
-                        releaseId: "rel-1",
-                        albumId: "al-1"
-                    )
-                )
+    @Test("a live run outranks the stored verdict's resumed state")
+    func liveRunWins() {
+        let shown = shownIdentifyState(
+            resumed: .notFoundAnywhere,
+            runtime: runtime(
+                .triangulating(discid: .computing, barcode: .scanning)
             )
         )
+        #expect(shown == .triangulating(discid: .computing, barcode: .scanning))
+    }
 
+    @Test("nothing running leaves the resumed state")
+    func nothingRunning() {
         #expect(
-            store.reIdentifyCandidates["reidentify:r1"]?.importStatus
-                == .complete(releaseId: "rel-1", albumId: "al-1")
+            shownIdentifyState(resumed: .notFoundAnywhere, runtime: nil)
+                == .notFoundAnywhere
+        )
+    }
+
+    @Test("a run that is idle leaves the resumed state")
+    func idleRunDefersToTheVerdict() {
+        #expect(
+            shownIdentifyState(
+                resumed: .notFoundAnywhere,
+                runtime: runtime(.idle)
+            ) == .notFoundAnywhere
         )
     }
 }
@@ -562,9 +467,10 @@ struct ImportListPageSourceTests {
         private let lock = NSLock()
         private var windows: [[BridgeLibraryPageWindow]] = []
         private var pending: [BridgeImportListSnapshot] = []
-        private var waiter: CheckedContinuation<
-            BridgeImportListSnapshot, Never
-        >?
+        private var waiter:
+            CheckedContinuation<
+                BridgeImportListSnapshot, Never
+            >?
 
         var requestedWindows: [[BridgeLibraryPageWindow]] {
             lock.lock()

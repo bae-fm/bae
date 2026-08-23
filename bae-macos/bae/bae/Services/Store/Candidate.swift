@@ -125,17 +125,12 @@ struct Candidate: Equatable, Identifiable {
 
     /// Dynamic — mutated by the import-candidate projection or by views.
     var files: BridgeCandidateFiles
-    /// What the candidate shows: the run in flight when there is one, else
-    /// the state its stored verdict stands back up as. Set by
-    /// `reconcileIdentifyState()` from the two below.
-    var identifyState: IdentifyState = .idle
-    /// The identify state of the run in flight, from the candidate's runtime.
-    /// `.idle` when no run is live.
-    var runtimeIdentifyState: IdentifyState = .idle
     /// The state the candidate's stored verdict stands back up as, from the
     /// candidate list. `.idle` when nothing is stored for its current files.
+    /// What a surface shows is this or the run in flight — see
+    /// `shownIdentifyState(resumed:runtime:)`, which reads the run from the
+    /// candidate-runtime signal rather than from here.
     var resumedIdentifyState: IdentifyState = .idle
-    var importStatus: BridgeCandidateImportStatus?
     /// Everything the pane draws, as core reads it back for this key: the
     /// picked release, the metadata form, the mapping table, the cover, the
     /// evidence badge, the last failed import. `nil` until the per-candidate
@@ -160,14 +155,6 @@ struct Candidate: Equatable, Identifiable {
     /// pane behind it keeps showing whatever is stored until the pick lands.
     var pickInFlight: Bool = false
     var search: CandidateSearchState = .init()
-    /// Extracted signals (disc ID, barcodes, classified text), `nil` until the
-    /// first extraction snapshot. The search UI surfaces these and feeds the
-    /// `text` pools into the autocomplete fields.
-    var signals: Signals?
-    /// The interactive signals toolbar — the pre-shaped badge list core
-    /// broadcasts alongside each identify-state transition. Empty until the
-    /// first transition. The toolbar view iterates and renders it.
-    var signalsToolbar: BridgeSignalsToolbar = BridgeSignalsToolbar(signals: [])
     // periphery:ignore
     /// In-flight search task. Replacing it cancels the old one via the
     /// previous wrapper's `deinit`; clearing it after the task completes
@@ -189,8 +176,7 @@ struct Candidate: Equatable, Identifiable {
     }
 
     /// One read of a selected candidate: the folder, its resumed identify
-    /// state, and the row the sidebar places it as. Runtime joins it through
-    /// `applyRuntime`.
+    /// state, and the row the sidebar places it as.
     init(detail: BridgeImportCandidateDetail) {
         self.init(bridge: detail.candidate)
         resumedIdentifyState = IdentifyState(
@@ -198,50 +184,12 @@ struct Candidate: Equatable, Identifiable {
         )
         row = detail.row
         self.detail = detail
-        reconcileIdentifyState()
     }
 
-    /// Join one runtime value — a run in flight, its toolbar, extracted
-    /// signals, an import's progress.
-    mutating func applyRuntime(_ runtime: BridgeCandidateRuntimeSnapshot) {
-        runtimeIdentifyState = IdentifyState(bridge: runtime.identifyState)
-        signalsToolbar = runtime.signalsToolbar
-        signals = runtime.signals.map(Signals.init(bridge:))
-        importStatus = runtime.importStatus
-        reconcileIdentifyState()
-    }
-
-    /// The candidate has no runtime any more: its folder left the scan or
-    /// changed shape, so what was recorded described other files.
-    mutating func clearRuntime() {
-        runtimeIdentifyState = .idle
-        signalsToolbar = BridgeSignalsToolbar(signals: [])
-        signals = nil
-        importStatus = nil
-        reconcileIdentifyState()
-    }
-
-    /// A live run owns the shown state; the stored verdict's resumed state
-    /// stands in only while no run is live.
-    mutating func reconcileIdentifyState() {
-        if case .idle = runtimeIdentifyState {
-            identifyState = resumedIdentifyState
-        }
-        else {
-            identifyState = runtimeIdentifyState
-        }
-    }
-
-    /// This row over `existing`'s runtime and session state: the list
-    /// re-read the folder, and nothing about its run or the user's work on it
-    /// changed.
+    /// This row over `existing`'s session state: the list re-read the folder,
+    /// and nothing about the user's work on it changed.
     func withSessionState(from existing: Candidate) -> Candidate {
         var copy = self
-        copy.runtimeIdentifyState = existing.runtimeIdentifyState
-        copy.signalsToolbar = existing.signalsToolbar
-        copy.signals = existing.signals
-        copy.importStatus = existing.importStatus
-        copy.reconcileIdentifyState()
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.error = existing.error
@@ -251,10 +199,11 @@ struct Candidate: Equatable, Identifiable {
         return copy
     }
 
-    /// Construct a re-identify candidate. The release already lives in
-    /// the library; identify-pipeline events stream into this candidate the
-    /// same way folder events do, so the existing `ImportSearchPane` UI renders
-    /// unchanged.
+    /// Construct a re-identify candidate. The release already lives in the
+    /// library, so this carries only the session's own work — the pick, the
+    /// search state. Its run's identify state comes from the candidate-runtime
+    /// signal under the same key, which is how the existing `ImportSearchPane`
+    /// UI renders unchanged.
     init(
         reIdentifyKey: String,
         releaseId: String,
@@ -336,10 +285,10 @@ struct Candidate: Equatable, Identifiable {
         detail?.row.picked != nil
     }
 
-    /// The signals behind this candidate: the run in flight while there is
-    /// one, else the ones identification settled on and stored.
+    /// The signals identification settled on for this candidate's files, as
+    /// its stored row carries them.
     var settledSignals: Signals? {
-        signals ?? detail?.signals.map(Signals.init(bridge:))
+        detail?.signals.map(Signals.init(bridge:))
     }
 
     /// The watched folder this candidate was scanned from — the candidate-list

@@ -167,7 +167,7 @@ impl Drop for ImportListSubscription {
 
 /// Apply every runtime change that moves a placement to the standing request.
 ///
-/// A progress tick or a signals update changes nothing a row shows, so it
+/// A progress tick within a running import changes nothing a row shows, so it
 /// reconfigures nothing; a run reaching a phase, an import claimed, and an
 /// import finishing all do.
 async fn merge_runtime(

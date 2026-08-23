@@ -26,10 +26,12 @@
             candidate: Candidate,
             storageCloud: Binding<Bool>,
             storagePinned: Binding<Bool>,
-            previewingPath: String? = nil
+            previewingPath: String? = nil,
+            runtime: BridgeCandidateRuntimeSnapshot? = nil
         ) -> some View {
             ImportMappingPane(
                 candidate: candidate,
+                runtime: runtime,
                 bindingOptions: PreviewData.sheetBindingOptions,
                 previewingPath: previewingPath,
                 libraryStatus: nil,

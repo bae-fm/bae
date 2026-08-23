@@ -193,7 +193,7 @@ fn place_row(
     let verdict = state.and_then(|state| state.verdict.as_ref());
     let imported = rows.imported.get(content_hash);
     let import_status = import_status_of(
-        facts.import_status.as_ref(),
+        facts.importing,
         imported,
         rows.failures.get(content_hash).map(String::as_str),
     );

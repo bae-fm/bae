@@ -173,54 +173,29 @@ impl crate::types::BridgeInvalidCandidate {
 
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeCandidateRuntimeSnapshot {
-    pub(super) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
-        let bae_core::import::CandidateRuntimeSnapshot {
-            identify_state,
-            toolbar,
-            signals,
-            import_status,
-        } = runtime;
+    pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
+        let bae_core::import::CandidateRuntimeSnapshot { identify, import } = runtime;
         crate::types::BridgeCandidateRuntimeSnapshot {
-            identify_state: crate::types::BridgeIdentifyState::from_core(identify_state),
-            signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(toolbar),
-            signals: signals.map(crate::types::BridgeSignals::from_core),
-            import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+            signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(
+                identify
+                    .as_ref()
+                    .map(bae_core::identify::IdentifyState::toolbar)
+                    .unwrap_or_default(),
+            ),
+            identify_state: crate::types::BridgeIdentifyState::from_core(
+                identify.unwrap_or(bae_core::identify::IdentifyState::Idle),
+            ),
+            import: import.map(crate::types::BridgeImportInFlight::from_core),
         }
     }
 }
 
 #[cfg(feature = "desktop")]
-impl crate::types::BridgeCandidateImportStatus {
-    pub(super) fn from_core(status: bae_core::import::CandidateImportStatusSnapshot) -> Self {
-        match status {
-            bae_core::import::CandidateImportStatusSnapshot::Importing {
-                progress_percent,
-                step,
-            } => crate::types::BridgeCandidateImportStatus::Importing {
-                progress_percent,
-                step: step.map(crate::types::BridgeImportStep::from_core),
-            },
-            bae_core::import::CandidateImportStatusSnapshot::Complete { release } => {
-                crate::types::BridgeCandidateImportStatus::Complete {
-                    release_id: release.release_id,
-                    album_id: release.album_id,
-                }
-            }
-            bae_core::import::CandidateImportStatusSnapshot::CloudUploadQueued {
-                release,
-                outbox_revision,
-            } => crate::types::BridgeCandidateImportStatus::CloudUploadQueued {
-                release_id: release.release_id,
-                album_id: release.album_id,
-                outbox_revision,
-            },
-            bae_core::import::CandidateImportStatusSnapshot::Error { error } => {
-                crate::types::BridgeCandidateImportStatus::Error {
-                    error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(
-                        error,
-                    )),
-                }
-            }
+impl crate::types::BridgeImportInFlight {
+    fn from_core(import: bae_core::import::ImportInFlight) -> Self {
+        crate::types::BridgeImportInFlight {
+            progress_percent: import.progress_percent,
+            step: import.step.map(crate::types::BridgeImportStep::from_core),
         }
     }
 }
@@ -236,6 +211,22 @@ impl crate::types::BridgeCandidateRuntimeChange {
             bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed { key },
         }
     }
+
+    /// Every key in flight right now, as the one change a consumer that
+    /// dropped deliveries can rebuild itself from.
+    pub(crate) fn reset(
+        runtimes: std::collections::HashMap<String, bae_core::import::CandidateRuntimeSnapshot>,
+    ) -> Self {
+        Self::Reset {
+            runtimes: runtimes
+                .into_iter()
+                .map(|(key, runtime)| crate::types::BridgeKeyedCandidateRuntime {
+                    key,
+                    runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+                })
+                .collect(),
+        }
+    }
 }
 
 #[cfg(feature = "desktop")]
@@ -246,14 +237,6 @@ impl crate::types::BridgeTriageImportStatus {
             bae_core::import::triage::TriageImportStatus::Complete { release } => Self::Complete {
                 release_id: release.release_id,
                 album_id: release.album_id,
-            },
-            bae_core::import::triage::TriageImportStatus::CloudUploadQueued {
-                release,
-                outbox_revision,
-            } => Self::CloudUploadQueued {
-                release_id: release.release_id,
-                album_id: release.album_id,
-                outbox_revision,
             },
             bae_core::import::triage::TriageImportStatus::Error { error } => Self::Error {
                 error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),

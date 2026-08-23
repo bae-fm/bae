@@ -16,41 +16,32 @@ public sealed class UploadProgressPresentationTests
                 new List<BridgeCountLabel>()));
     }
 
+    // The outbox is the authority on a release's cloud work: it holds the
+    // release while there is any, and drops it when there is none.
     [Fact]
-    public void CloudImportWaitsForItsPublishedOutboxRevision()
+    public void AnImportedReleaseReadsItsCloudWorkOffTheOutbox()
     {
-        var status = new BridgeTriageImportStatus.CloudUploadQueued(
-            "release-a",
-            "album-a",
-            7);
+        var status = new BridgeTriageImportStatus.Complete("release-a", "album-a");
+        var progress = Progress();
 
-        Assert.IsType<ImportUploadObservation.Awaiting>(
-            UploadProgressPresentation.ResolveImport(status, Snapshot(6)));
+        var active = Assert.IsType<ImportUploadObservation.Active>(
+            UploadProgressPresentation.ResolveImport(status, Snapshot(7, progress)));
+        Assert.Same(progress, active.Progress);
         Assert.IsType<ImportUploadObservation.Finished>(
             UploadProgressPresentation.ResolveImport(status, Snapshot(7)));
     }
 
+    // A running import has no cloud state to read yet, and neither has a
+    // failed one.
     [Fact]
-    public void ActiveOutboxProgressWinsForQueuedAndCompletedImports()
+    public void AnUnfinishedImportHasNoCloudObservation()
     {
-        var progress = Progress();
-        var snapshot = Snapshot(7, progress);
-
-        var queued = Assert.IsType<ImportUploadObservation.Active>(
-            UploadProgressPresentation.ResolveImport(
-                new BridgeTriageImportStatus.CloudUploadQueued(
-                    "release-a",
-                    "album-a",
-                    7),
-                snapshot));
-        Assert.Same(progress, queued.Progress);
-
-        Assert.IsType<ImportUploadObservation.Active>(
-            UploadProgressPresentation.ResolveImport(
-                new BridgeTriageImportStatus.Complete(
-                    "release-a",
-                    "album-a"),
-                snapshot));
+        Assert.Null(UploadProgressPresentation.ResolveImport(
+            new BridgeTriageImportStatus.Importing(),
+            Snapshot(7, Progress())));
+        Assert.Null(UploadProgressPresentation.ResolveImport(
+            null,
+            Snapshot(7, Progress())));
     }
 
     // The bar and its label read the same two numbers off the same phase, so a

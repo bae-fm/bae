@@ -77,6 +77,7 @@ private struct ImportOperations: Sendable {
     let claimForPick:
         @Sendable (String, BridgeMetadataResult, BridgeClaimLevel)
             -> BridgeClaimLine?
+    let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
 
     // Flat forwarding from AppHandleProtocol into immutable operation values.
@@ -185,6 +186,9 @@ private struct ImportOperations: Sendable {
             claimForPick: {
                 handle.claimForPick(candidateKey: $0, result: $1, level: $2)
             },
+            candidateRuntime: {
+                handle.candidateRuntime(candidateKey: $0)
+            },
             startImport: { request in
                 try await handle.startImport(
                     candidateKey: request.candidateKey,
@@ -277,6 +281,10 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (
                 String, BridgeMetadataResult, BridgeClaimLevel
             ) -> BridgeClaimLine? = { _, _, _ in nil },
+        candidateRuntime:
+            @escaping @Sendable (String) -> BridgeCandidateRuntimeSnapshot? = {
+                _ in nil
+            },
         startImport:
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
@@ -305,6 +313,7 @@ final class Importer: Sendable, Observable {
             setCandidateTrackEdit: setCandidateTrackEdit,
             dropCandidateTrack: dropCandidateTrack,
             claimForPick: claimForPick,
+            candidateRuntime: candidateRuntime,
             startImport: startImport
         )
     }
@@ -462,6 +471,14 @@ final class Importer: Sendable, Observable {
         _ level: BridgeClaimLevel
     ) -> BridgeClaimLine? {
         operations.claimForPick(candidateKey, result, level)
+    }
+
+    /// What is in flight for one key right now — the read a view does once
+    /// when it appears, after it has subscribed to the changes.
+    func candidateRuntime(_ candidateKey: String)
+        -> BridgeCandidateRuntimeSnapshot?
+    {
+        operations.candidateRuntime(candidateKey)
     }
 
     func startImport(_ request: ImportCommitRequest) async throws {

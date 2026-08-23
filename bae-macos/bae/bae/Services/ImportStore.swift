@@ -36,11 +36,6 @@ class ImportStore {
         firstUnidentifiedKey: nil
     )
 
-    /// Every candidate's runtime — a run in flight, its toolbar, extracted
-    /// signals, an import's progress — by key. Delivered per key, independent
-    /// of the list.
-    var runtimes: [String: BridgeCandidateRuntimeSnapshot] = [:]
-
     /// The selected rows' folders, read by key. A selection opens one
     /// subscription per key; the key leaves when its read says the folder is
     /// gone.
@@ -73,6 +68,17 @@ class ImportStore {
     let previewProgressSubject = CurrentValueSubject<
         PreviewProgressEvent, Never
     >(.reset)
+
+    /// What every candidate has in flight — a run's identify state, a running
+    /// import's progress — as one signal. Not a stored dictionary: a leaf that
+    /// draws one key subscribes and filters, the way the loudness bar does, so
+    /// a progress tick redraws that leaf rather than the sidebar. The latest
+    /// value per key lives in core, and a subscriber reads its own key from
+    /// there when it appears.
+    @ObservationIgnored
+    let candidateRuntimeSubject = PassthroughSubject<
+        BridgeCandidateRuntimeChange, Never
+    >()
 
     /// Per-track loudness measurement progress during an import. High-frequency
     /// while each track decodes, published as a Combine signal so only the leaf
@@ -107,14 +113,6 @@ class ImportStore {
         items = items.filter { loaded.contains($0.key) }
     }
 
-    /// The running import behind a triage row, from the candidate's runtime:
-    /// the row says that an import is running, this says how far.
-    func importProgress(for row: BridgeTriageRow)
-        -> BridgeCandidateImportStatus?
-    {
-        runtimes[row.candidateKey]?.importStatus
-    }
-
     /// The candidate's selected/default cover, or the queue's match thumbnail
     /// before identification has supplied one.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
@@ -137,9 +135,8 @@ class ImportStore {
 
     // MARK: - Per-key reads
 
-    /// One selected candidate, as its own read describes it. The runtime this
-    /// key already carries joins it, so a run that started before the read
-    /// landed is not lost.
+    /// One selected candidate, as its own read describes it, keeping whatever
+    /// work the session has done on it.
     func applyCandidateDetail(
         key: String,
         detail: BridgeImportCandidateDetail
@@ -148,27 +145,7 @@ class ImportStore {
         if let existing = selectedCandidates[key] {
             incoming = incoming.withSessionState(from: existing)
         }
-        else if let runtime = runtimes[key] {
-            incoming.applyRuntime(runtime)
-        }
         selectedCandidates[key] = incoming
-    }
-
-    /// One candidate's runtime changed — a selected folder's or a re-identify
-    /// candidate's, by key.
-    func applyCandidateRuntimeChange(_ change: BridgeCandidateRuntimeChange) {
-        switch change {
-        case .updated(let key, let runtime):
-            runtimes[key] = runtime
-            mutateCandidate(forKey: key) { candidate in
-                candidate.applyRuntime(runtime)
-            }
-        case .removed(let key):
-            runtimes.removeValue(forKey: key)
-            mutateCandidate(forKey: key) { candidate in
-                candidate.clearRuntime()
-            }
-        }
     }
 
     private func mutateSelectedCandidate(

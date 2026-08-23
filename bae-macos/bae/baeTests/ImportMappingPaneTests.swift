@@ -116,7 +116,11 @@ struct ImportMappingPaneTests {
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
                 .environment(store)
-                .environment(PreviewData.importTabImporter()),
+                .environment(PreviewData.importTabImporter())
+                .environment(
+                    \.candidateRuntimePublisher,
+                    store.candidateRuntimeSubject.eraseToAnyPublisher()
+                ),
             size: size
         )
         host.layoutSubtreeIfNeeded()
@@ -127,18 +131,32 @@ struct ImportMappingPaneTests {
             size: size
         )
 
-        store.mutateCandidate(forKey: key) {
-            $0.identifyState = .manualOnly(trackCount: 11)
-        }
+        store.candidateRuntimeSubject.send(
+            .updated(
+                key: key,
+                runtime: BridgeCandidateRuntimeSnapshot(
+                    identifyState: .manualOnly(trackCount: 11),
+                    signalsToolbar: BridgeSignalsToolbar(signals: []),
+                    import: nil
+                )
+            )
+        )
         await Task.yield()
         host.layoutSubtreeIfNeeded()
         let before = try await SnapshotTestSupport.capturePNG(host, size: size)
 
         #expect(restoredConflict != before)
 
-        store.mutateCandidate(forKey: key) {
-            $0.identifyState = PreviewData.searchStateConflict.identifyState
-        }
+        store.candidateRuntimeSubject.send(
+            .updated(
+                key: key,
+                runtime: BridgeCandidateRuntimeSnapshot(
+                    identifyState: PreviewData.bridgeConflictState,
+                    signalsToolbar: BridgeSignalsToolbar(signals: []),
+                    import: nil
+                )
+            )
+        )
         await Task.yield()
         host.layoutSubtreeIfNeeded()
         let conflict = try await SnapshotTestSupport.capturePNG(
@@ -163,9 +181,16 @@ struct ImportMappingPaneTests {
             size: size
         )
 
-        store.mutateCandidate(forKey: key) {
-            $0.identifyState = .manualOnly(trackCount: 11)
-        }
+        store.candidateRuntimeSubject.send(
+            .updated(
+                key: key,
+                runtime: BridgeCandidateRuntimeSnapshot(
+                    identifyState: .manualOnly(trackCount: 11),
+                    signalsToolbar: BridgeSignalsToolbar(signals: []),
+                    import: nil
+                )
+            )
+        )
         await Task.yield()
         host.layoutSubtreeIfNeeded()
         let settledWithoutConflict = try await SnapshotTestSupport.capturePNG(

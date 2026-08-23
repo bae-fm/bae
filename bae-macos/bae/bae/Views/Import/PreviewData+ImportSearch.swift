@@ -369,16 +369,20 @@
             ])
         )
 
+        /// The bridge shape of the conflict below — what a run in flight
+        /// carries across, for a surface driven by the runtime signal.
+        static let bridgeConflictState = BridgeIdentifyState.conflict(
+            discidResults: conflictDiscidResults,
+            discidLibraryStatuses: [:],
+            barcodeResults: conflictBarcodeResults,
+            barcodeLibraryStatuses: [:],
+            matchedBarcode: "5051961234567",
+            trackCount: 11
+        )
+
         /// Conflict display state: disc-id and barcode disagree on identity.
         static let searchStateConflict = ImportSearchState(
-            identifyState: .conflict(
-                discidResults: conflictDiscidResults,
-                discidLibraryStatuses: [:],
-                barcodeResults: conflictBarcodeResults,
-                barcodeLibraryStatuses: [:],
-                matchedBarcode: "5051961234567",
-                trackCount: 11
-            ),
+            identifyState: IdentifyState(bridge: bridgeConflictState),
             showManualSearch: false,
             error: nil,
             searchGroups: [],

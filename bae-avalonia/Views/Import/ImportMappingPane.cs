@@ -42,9 +42,14 @@ internal sealed class ImportMappingPane : UserControl
         VerticalContentAlignment = VerticalAlignment.Stretch,
     };
 
-    // The candidate under the pane, and what the pane last read about it.
+    // The candidate under the pane, what the pane last read about it, and
+    // what is running for it right now — the run whose state the pane shows,
+    // and how far a running import has got. The last of those is not stored
+    // anywhere else: the pane subscribes to the candidate-runtime signal and
+    // filters it to its own key.
     private string? _key;
     private ImportCandidate? _candidate;
+    private BridgeCandidateRuntimeSnapshot? _runtime;
 
     // Whether a pick is in flight. The control that started it says so; the
     // pane behind it keeps showing whatever is stored until the pick lands.
@@ -79,6 +84,7 @@ internal sealed class ImportMappingPane : UserControl
         _dialogs = dialogs;
 
         Content = _content;
+        _import.CandidateRuntimeChanged += OnCandidateRuntimeChanged;
         _import.PreviewElapsedChanged += OnPreviewChanged;
         _import.Changed += OnQueueChanged;
         _import.ReleaseLibraryStatusChanged += Render;
@@ -94,6 +100,9 @@ internal sealed class ImportMappingPane : UserControl
         StopPreview();
         _key = row.CandidateKey;
         _candidate = _import.Candidate(row.CandidateKey);
+        // The subscription is already open, so this read cannot be undone by a
+        // change that was on its way.
+        _runtime = _import.CandidateRuntime(row.CandidateKey);
         ResetSession();
         ObserveRelease();
         // Nothing picked is the question the search editor answers, so a row
@@ -107,7 +116,7 @@ internal sealed class ImportMappingPane : UserControl
         // resumes that verdict instantly with no network (an unanswered folder
         // starts a real run), and the matches arrive on the queue tick the
         // broadcast causes. A folder that is already picked is not asking.
-        if (_candidate is { RowStatus.Kind: "", HasSettled: false })
+        if (_runtime is null && _candidate is { RowStatus.Kind: "", HasSettled: false })
         {
             _ = _import.AutoIdentify(row.CandidateKey);
         }
@@ -138,6 +147,60 @@ internal sealed class ImportMappingPane : UserControl
             _searchOpen = _candidate is { HasSettled: false };
         }
         Render();
+    }
+
+    // What one key has in flight changed. A progress tick within a running
+    // import moves nothing the pane draws, so it re-renders only when the run
+    // itself has moved.
+    private void OnCandidateRuntimeChanged(BridgeCandidateRuntimeChange change)
+    {
+        if (_key is not { } key)
+        {
+            return;
+        }
+        var next = change switch
+        {
+            BridgeCandidateRuntimeChange.Updated updated when updated.Key == key =>
+                updated.Runtime,
+            BridgeCandidateRuntimeChange.Removed removed when removed.Key == key =>
+                null,
+            BridgeCandidateRuntimeChange.Reset reset => reset.Runtimes
+                .FirstOrDefault(entry => entry.Key == key)?.Runtime,
+            _ => _runtime,
+        };
+        if (RuntimeFingerprint(next) == RuntimeFingerprint(_runtime))
+        {
+            _runtime = next;
+            return;
+        }
+        _runtime = next;
+        Render();
+    }
+
+    /// <summary>The run in flight for the open key, else what the candidate's
+    /// tables say.</summary>
+    private ImportCandidateRowStatus EffectiveRowStatus =>
+        _import.ProjectRun(_runtime).RowStatus
+            ?? _candidate?.RowStatus
+            ?? new ImportCandidateRowStatus();
+
+    /// <summary>The pressings the open key is being offered: the run in
+    /// flight's while it has any, else the stored verdict's.</summary>
+    private List<ReleaseCandidateChoice> EffectiveMatches =>
+        _import.ProjectRun(_runtime).Matches is { Count: > 0 } live
+            ? live
+            : _candidate?.Matches ?? new List<ReleaseCandidateChoice>();
+
+    private string RuntimeFingerprint(BridgeCandidateRuntimeSnapshot? runtime)
+    {
+        var (status, matches, signals) = _import.ProjectRun(runtime);
+        return (status?.Kind ?? string.Empty)
+            + "|"
+            + string.Join(",", matches.Select(choice => choice.ReleaseId))
+            + "|"
+            + string.Join(
+                ",",
+                signals.Select(badge => $"{badge.Kind}:{badge.State.Kind}:{badge.Excluded}"));
     }
 
     private static string IdentifyFingerprint(ImportCandidate? candidate) =>
@@ -277,7 +340,7 @@ internal sealed class ImportMappingPane : UserControl
         {
             sections.Children.Add(BuildLibraryStatusBanner(status));
         }
-        if (_candidate?.Failure is { } failure && _candidate.RowStatus.Kind.Length == 0)
+        if (_candidate?.Failure is { } failure && EffectiveRowStatus.Kind.Length == 0)
         {
             sections.Children.Add(BuildFailureBanner(failure));
         }
@@ -434,7 +497,7 @@ internal sealed class ImportMappingPane : UserControl
         column.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.header.find_release")));
 
         var results = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 190 };
-        var choices = _searchResults.Count > 0 ? _searchResults : _candidate?.Matches ?? new List<ReleaseCandidateChoice>();
+        var choices = _searchResults.Count > 0 ? _searchResults : EffectiveMatches;
         results.ItemsSource = choices.Select(choice => choice.Summary).ToList();
         results.SelectionChanged += async (_, _) =>
         {

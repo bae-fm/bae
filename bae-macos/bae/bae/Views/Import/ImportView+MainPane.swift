@@ -27,8 +27,18 @@ extension ImportView {
     /// The mapping pane for the selected candidate: identity, the mapping
     /// table, commit bar.
     func mainPane(for candidate: Candidate) -> some View {
+        CandidateRuntimeReader(key: candidate.key) { runtime in
+            mappingPane(for: candidate, runtime: runtime)
+        }
+    }
+
+    private func mappingPane(
+        for candidate: Candidate,
+        runtime: BridgeCandidateRuntimeSnapshot?
+    ) -> some View {
         ImportMappingPane(
             candidate: candidate,
+            runtime: runtime,
             bindingOptions: sheetBindingOptions,
             previewingPath: importStore.previewState.active?.path,
             libraryStatus: candidate.pickedLibraryStatus,

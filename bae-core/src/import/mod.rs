@@ -113,8 +113,8 @@ pub struct ParsedAlbum {
 pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidates::{
-    CandidateImportStatusSnapshot, CandidateRuntimeSnapshot, FolderScanStatus,
-    ImportCandidateSnapshot, ImportedRelease, WatchedFolderScanStatus,
+    CandidateRuntimeSnapshot, FolderScanStatus, ImportCandidateSnapshot, ImportInFlight,
+    ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use claim::{claim_for_edit, claim_line, ClaimEvidence, ClaimLine, ClaimRelease};

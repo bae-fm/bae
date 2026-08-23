@@ -134,7 +134,10 @@ private final class ImportSelectionObservations {
         importStore.applyCandidateDetail(key: key, detail: detail)
         guard isFirstRead,
             let candidate = importStore.selectedCandidates[key],
-            case .idle = candidate.identifyState
+            case .idle = shownIdentifyState(
+                resumed: candidate.resumedIdentifyState,
+                runtime: importer.candidateRuntime(key)
+            )
         else { return }
         // The first selection of a folder nothing has run for starts its
         // identification; a later selection finds a state that is no longer
@@ -203,7 +206,7 @@ final class DesktopSubscriptions {
             ),
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] change in
-                    importStore.applyCandidateRuntimeChange(change)
+                    importStore.candidateRuntimeSubject.send(change)
                 }
             ),
         ]

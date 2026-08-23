@@ -4,10 +4,11 @@
 //! Everything a row shows that outlives the process — the scanned folder and
 //! its files, whether it was skipped, whether its content is already in the
 //! library, which boundary decisions exposed it, the scan status of its root,
-//! the identify state its stored verdict stands back up as — is a fact in a
-//! table, read by [`crate::import::list`]. What a row shows that does not
-//! outlive the process (a run in flight, extracted signals, an import's
-//! progress) is [`CandidateRuntimeSnapshot`], held by
+//! the identify state its stored verdict stands back up as, the signals
+//! extraction settled on, the release an import wrote and the error one failed
+//! with — is a fact in a table, read by [`crate::import::list`]. What is left
+//! is what is happening *right now*: a run in flight and an import in
+//! progress. That is [`CandidateRuntimeSnapshot`], held by
 //! [`super::candidate_runtime::CandidateRuntime`] and delivered per key.
 
 use super::folder_scanner::{
@@ -38,7 +39,8 @@ pub enum FolderScanStatus {
 pub enum ImportCandidateSnapshot {
     Folder {
         candidate: FolderCandidate,
-        runtime: CandidateRuntimeSnapshot,
+        /// `None` when nothing is running for this key.
+        runtime: Option<CandidateRuntimeSnapshot>,
         actionable: bool,
         skipped: bool,
         is_added: bool,
@@ -52,54 +54,32 @@ pub enum ImportCandidateSnapshot {
     },
 }
 
+/// What is in flight for one key. An entry exists only while at least one
+/// field is `Some`; both `None` is the absence of an entry, not a value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateRuntimeSnapshot {
-    pub identify_state: crate::identify::IdentifyState,
-    pub toolbar: Vec<crate::identify::ToolbarSignal>,
-    pub signals: Option<crate::signals::Signals>,
-    pub import_status: Option<CandidateImportStatusSnapshot>,
+    /// The live driver's current state, never
+    /// [`IdentifyState::Idle`](crate::identify::IdentifyState::Idle). `None`
+    /// when no driver has reported and nothing terminal is being held.
+    pub identify: Option<crate::identify::IdentifyState>,
+    /// The running import: claimed, preparing, or partway through a phase.
+    pub import: Option<ImportInFlight>,
 }
 
-impl CandidateRuntimeSnapshot {
-    pub fn idle() -> Self {
-        Self {
-            identify_state: crate::identify::IdentifyState::Idle,
-            toolbar: Vec::new(),
-            signals: None,
-            import_status: None,
-        }
-    }
-
-    pub fn is_idle(&self) -> bool {
-        matches!(self.identify_state, crate::identify::IdentifyState::Idle)
-            && self.toolbar.is_empty()
-            && self.signals.is_none()
-            && self.import_status.is_none()
-    }
+/// How far a running import has got. It ends with the import: a finished one
+/// leaves the runtime and reads back off the release row it wrote, or the
+/// failure row it wrote.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportInFlight {
+    pub progress_percent: u32,
+    pub step: Option<ImportStep>,
 }
 
+/// The library release one candidate's bytes were imported as.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedRelease {
     pub release_id: String,
     pub album_id: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum CandidateImportStatusSnapshot {
-    Importing {
-        progress_percent: u32,
-        step: Option<ImportStep>,
-    },
-    Complete {
-        release: ImportedRelease,
-    },
-    CloudUploadQueued {
-        release: ImportedRelease,
-        outbox_revision: u64,
-    },
-    Error {
-        error: String,
-    },
 }
 
 /// One stored entry under a root, as much of it as supersession needs: its
