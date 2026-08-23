@@ -268,7 +268,7 @@ struct ImportStoreCandidateDetailTests {
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         existing.error = "the last command failed"
         existing.pickInFlight = true
-        existing.search.showManualSearch = true
+        existing.search.searchAlbum = "typed album"
         store.selectedCandidates["/w1/a"] = existing
 
         // Same key, renamed + skip flipped.
@@ -288,7 +288,7 @@ struct ImportStoreCandidateDetailTests {
         #expect(merged.libraryStatuses["rel-1"] != nil)
         #expect(merged.error == "the last command failed")
         #expect(merged.pickInFlight)
-        #expect(merged.search.showManualSearch)
+        #expect(merged.search.searchAlbum == "typed album")
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)

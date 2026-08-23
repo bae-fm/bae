@@ -1,11 +1,24 @@
 import BaeKit
 
+/// Which half of the find-release sheet is showing.
+///
+/// The two answer the same question in different ways — what identification
+/// turned up, and what a typed search turns up — and showing both at once made
+/// the sheet read as a form with some chips above it. One at a time, and the
+/// header row says how to get to the other.
+enum SearchMode {
+    /// What identification found: the signals toolbar over its matches, or the
+    /// line saying it found nothing.
+    case signals
+    /// The typed search: the source picker, the fields, and their results.
+    case manual
+}
+
 /// Everything `ImportSearchPane` renders from — the identify/results state and
-/// the surrounding flags. The editable form fields (search bindings) and the
-/// actions stay separate; this is the read-only display state.
+/// the surrounding flags. The editable form fields (search bindings), the mode
+/// and the actions stay separate; this is the read-only display state.
 struct ImportSearchState {
     let identifyState: IdentifyState
-    let showManualSearch: Bool
     let error: String?
     let searchGroups: [ReleaseGroup]
     /// Release id of the pressing whose confirm pane is open, so its row renders

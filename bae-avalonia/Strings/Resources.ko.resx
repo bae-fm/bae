@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>다시 시도</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>재생 시간을 읽는 중</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>직접 검색</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>자동으로 찾은 결과가 없습니다</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>신호</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>자동</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>실패</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>준비됨</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>식별 대기 중</value></data>

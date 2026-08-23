@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>ਇਹ ਕਿੰਨਾ ਚਿਰ ਚੱਲਦਾ ਹੈ, ਪੜ੍ਹਿਆ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ਹੱਥੀਂ ਖੋਜੋ</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>ਕੋਈ ਆਪੇ ਮੇਲ ਨਹੀਂ ਮਿਲਿਆ</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>ਸੰਕੇਤ</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>ਆਪੇ</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ਅਸਫਲ</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>ਤਿਆਰ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ਪਛਾਣ ਦੀ ਉਡੀਕ ਵਿੱਚ</value></data>

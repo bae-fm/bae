@@ -12,6 +12,12 @@ import SwiftUI
 struct ImportSearchSheet: View {
     let candidateKey: String
 
+    /// Which half of the pane is showing. The sheet owns it: it opens on what
+    /// identification found, and a session that ended in the typed search does
+    /// not decide where the next one starts.
+    @State
+    private var mode: SearchMode = .signals
+
     @Environment(Importer.self)
     private var importer
     @Environment(ImportStore.self)
@@ -86,6 +92,7 @@ struct ImportSearchSheet: View {
                 runtime: runtime,
                 liveSignals: signals
             ),
+            mode: $mode,
             openSettings: { openSettings() },
             // Reading the folder as Unknown is the mapping pane's own identity
             // control, always visible there — not a link inside the search.

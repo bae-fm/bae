@@ -50,6 +50,10 @@ struct ReIdentifySheet: View {
     /// footer. `nil` until a row is picked.
     @State
     private var selectedResult: BridgeMetadataResult?
+    /// Which half of the identify pane is showing. The sheet owns it, so it
+    /// opens on what identification found.
+    @State
+    private var searchMode: SearchMode = .signals
 
     private enum Phase: Equatable {
         case identifying
@@ -162,6 +166,7 @@ struct ReIdentifySheet: View {
                     runtime: runtime,
                     liveSignals: signals
                 ),
+                mode: $searchMode,
                 openSettings: { openSettings() },
                 // Re-identify "Skip identifying" diverges from the
                 // import flow: it commits Unknown in one click (no

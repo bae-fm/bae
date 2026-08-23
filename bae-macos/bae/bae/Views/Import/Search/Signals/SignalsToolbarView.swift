@@ -6,7 +6,7 @@ import SwiftUI
 /// zone on the left, then a `Refine` divider, then the catalog filter badges.
 /// A badge shows its value, spins while its lookup runs, shows a result count
 /// when settled, and toggles in/out of triangulation on click. The header
-/// carries the `Re-run` action (or an `Identifying…` spinner) and the
+/// carries the `Auto` action (or an `Identifying…` spinner) and the
 /// `Search manually` / `Skip identifying` escapes.
 ///
 /// Core pre-shapes the whole badge list (`BridgeSignalsToolbar`); this view iterates
@@ -21,7 +21,7 @@ struct SignalsToolbarView: View {
     let onAddAsUnknown: (() -> Void)?
 
     /// The pipeline is still identifying while any identity badge is looking
-    /// up. Drives the header spinner vs. the `Re-run` link.
+    /// up. Drives the header spinner vs. the `Auto` link.
     private var isIdentifying: Bool {
         toolbar.identity.contains { $0.state == .lookingUp }
     }
@@ -64,7 +64,7 @@ struct SignalsToolbarView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 11))
-                        Text("Re-run")
+                        Text("Auto")
                     }
                 }
                 .buttonStyle(.link)

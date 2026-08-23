@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>మళ్లీ ప్రయత్నించు</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>ఇది ఎంతసేపు నడుస్తుందో చదువుతోంది</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>చేతితో శోధించు</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>స్వయంచాలక సరిపోలికలు ఏవీ లేవు</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>సంకేతాలు</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>స్వయంచాలకం</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>విఫలమైంది</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>సిద్ధం</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>గుర్తింపు కోసం వేచి ఉంది</value></data>

@@ -82,7 +82,6 @@ struct CandidateSearchState: Equatable {
     var searchBarcode: String = ""
     var activeTab: SearchTab = .general
     var activeSource: BridgeMetadataSource = .musicBrainz
-    var showManualSearch: Bool = false
 
     func activeResults() -> TabResults {
         results(forTab: activeTab, source: activeSource)

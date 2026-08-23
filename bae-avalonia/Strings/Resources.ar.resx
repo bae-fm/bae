@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>جارٍ قراءة مدة التشغيل</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>البحث يدويًا</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>لم يُعثر على تطابقات تلقائية</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>الإشارات</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>تلقائي</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>فشل</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>جاهز</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>في انتظار التحديد</value></data>

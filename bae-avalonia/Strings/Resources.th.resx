@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>ลองใหม่</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>กำลังอ่านความยาว</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ค้นหาด้วยตนเอง</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>ไม่พบรายการที่ตรงกันอัตโนมัติ</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>สัญญาณ</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>อัตโนมัติ</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ไม่สำเร็จ</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>พร้อม</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>รอการระบุ</value></data>

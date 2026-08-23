@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>Riprova</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Lettura della durata</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>cerca manualmente</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Nessuna corrispondenza automatica trovata</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Segnali</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>Automatico</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Non riuscito</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Pronto</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>In attesa di identificazione</value></data>

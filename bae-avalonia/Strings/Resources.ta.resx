@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>மீண்டும் முயற்சி செய்</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>இது எவ்வளவு நேரம் இயங்குகிறது என வாசிக்கிறது</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>கைமுறையாகத் தேடு</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>தானியங்கி பொருத்தங்கள் எதுவும் இல்லை</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>சமிக்ஞைகள்</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>தானியங்கி</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>தோல்வியடைந்தது</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>தயார்</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>அடையாளம் காண காத்திருக்கிறது</value></data>

@@ -343,7 +343,6 @@
                 trackCount: 0,
                 provenance: searchProvenanceExact
             ),
-            showManualSearch: false,
             error: nil,
             searchGroups: [],
             selectedReleaseId: nil,
@@ -381,7 +380,6 @@
                 trackCount: 0,
                 provenance: [:]
             ),
-            showManualSearch: true,
             error: nil,
             searchGroups: searchGroupsManual,
             selectedReleaseId: nil,
@@ -426,7 +424,6 @@
         /// releases: every one of them is offered.
         static let searchStateDisagreement = ImportSearchState(
             identifyState: IdentifyState(bridge: bridgeDisagreementState),
-            showManualSearch: false,
             error: nil,
             searchGroups: [],
             selectedReleaseId: nil,
@@ -462,7 +459,6 @@
                 discid: .lookingUp,
                 barcode: .skipped
             ),
-            showManualSearch: false,
             error: nil,
             searchGroups: [],
             selectedReleaseId: nil,
@@ -495,7 +491,6 @@
         /// Manual search after both signals came up empty.
         static let searchStateNotFound = ImportSearchState(
             identifyState: .notFoundAnywhere,
-            showManualSearch: true,
             error: nil,
             searchGroups: [],
             selectedReleaseId: nil,

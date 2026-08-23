@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>ಮರುಪ್ರಯತ್ನಿಸಿ</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>ಇದು ಎಷ್ಟು ಹೊತ್ತು ನಡೆಯುತ್ತದೆ ಎಂದು ಓದಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ಕೈಯಾರೆ ಹುಡುಕಿ</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತ ಹೊಂದಾಣಿಕೆಗಳು ಸಿಗಲಿಲ್ಲ</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>ಸಂಕೇತಗಳು</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತ</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ವಿಫಲವಾಯಿತು</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಗೆ ಕಾಯುತ್ತಿದೆ</value></data>

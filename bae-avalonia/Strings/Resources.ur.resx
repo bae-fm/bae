@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>دوبارہ کوشش کریں</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>دورانیہ پڑھا جا رہا ہے</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ہاتھ سے تلاش کریں</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>کوئی خودکار مماثلت نہیں ملی</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>سگنلز</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>خودکار</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ناکام</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>تیار</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>شناخت کے انتظار میں</value></data>

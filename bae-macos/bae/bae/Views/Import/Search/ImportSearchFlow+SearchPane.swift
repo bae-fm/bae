@@ -40,6 +40,7 @@ extension ImportSearchFlow {
     static func buildSearchPane(
         services: ImportServices,
         input: SearchPaneInput,
+        mode: Binding<SearchMode>,
         openSettings: @escaping () -> Void,
         onAddAsUnknown: (() -> Void)?,
         onSelect: ((BridgeMetadataResult) -> Void)? = nil
@@ -56,6 +57,7 @@ extension ImportSearchFlow {
                 services: services,
                 input: input
             ),
+            mode: mode,
             activeTab: fields.activeTab,
             activeSource: fields.activeSource,
             searchArtist: fields.artist,
@@ -70,16 +72,6 @@ extension ImportSearchFlow {
                 )
             },
             onOpenSettings: openSettings,
-            onSearchManually: setManualSearch(
-                importStore: importStore,
-                key: key,
-                on: true
-            ),
-            onViewMatches: setManualSearch(
-                importStore: importStore,
-                key: key,
-                on: false
-            ),
             onAddAsUnknown: onAddAsUnknown,
             onToggleSignal: { signal in
                 services.importer.toggleSignalForCandidate(key, signal)
@@ -135,21 +127,6 @@ extension ImportSearchFlow {
         )
     }
 
-    /// Show (`on: true`) or hide (`on: false`) the manual-search fields by
-    /// flipping the candidate's `showManualSearch` flag.
-    @MainActor
-    private static func setManualSearch(
-        importStore: ImportStore,
-        key: String,
-        on: Bool
-    ) -> () -> Void {
-        {
-            importStore.mutateCandidate(forKey: key) {
-                $0.search.showManualSearch = on
-            }
-        }
-    }
-
     /// The pane's read-only state snapshot from the candidate, plus the
     /// open-confirm selection and Discogs availability the pane renders against.
     @MainActor
@@ -164,7 +141,6 @@ extension ImportSearchFlow {
                 resumed: candidate.resumedIdentifyState,
                 runtime: input.runtime
             ),
-            showManualSearch: candidate.search.showManualSearch,
             error: candidate.error,
             searchGroups: tabResults.groups,
             selectedReleaseId: input.selectedReleaseId,

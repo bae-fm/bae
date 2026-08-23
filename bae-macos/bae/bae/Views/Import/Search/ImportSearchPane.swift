@@ -1,12 +1,17 @@
 import BaeKit
 import SwiftUI
 
-/// The search/identify surface: the signals toolbar, an identify-state banner,
-/// and either the auto-identified matches or the manual-search form and its
-/// results. Renders from `ImportSearchState` plus the form bindings and action
+/// The search/identify surface, in one of two modes: what identification found
+/// (the signals toolbar over its matches, or the line saying it found
+/// nothing), or the typed search (the source picker, the fields, and their
+/// results). Renders from `ImportSearchState` plus the form bindings and action
 /// callbacks.
 struct ImportSearchPane: View {
     let state: ImportSearchState
+    /// Which of the two the sheet is showing. Held by whoever opened the
+    /// sheet, so closing it and opening it again starts on the signals.
+    @Binding
+    var mode: SearchMode
     @Binding
     var activeTab: SearchTab
     @Binding
@@ -21,9 +26,6 @@ struct ImportSearchPane: View {
     var searchBarcode: String
     let onSearch: () -> Void
     let onOpenSettings: () -> Void
-    let onSearchManually: () -> Void
-    /// Return from the manual-search form to the auto-identified matches.
-    let onViewMatches: () -> Void
     /// Set when the candidate can seed from local files (folder imports always
     /// can). `nil` suppresses the "Add as Unknown" link.
     let onAddAsUnknown: (() -> Void)?
@@ -31,7 +33,8 @@ struct ImportSearchPane: View {
     /// triangulation. Drops the signal from the in-memory combine step (no
     /// re-fetch) and re-derives the state delivered by the import projection.
     let onToggleSignal: (BridgeExcludedSignal) -> Void
-    /// Re-run the lookups from the toolbar's `Re-run` action.
+    /// Run the signal lookups again — the toolbar's `Auto` action, and what
+    /// `Auto` in the manual header row does on the way back.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (BridgeMetadataResult) -> Void
@@ -40,11 +43,6 @@ struct ImportSearchPane: View {
         let groups: [ReleaseGroup]
         let statuses: [String: BridgeLibraryStatus]
         let provenance: [String: BridgeResultProvenance]
-
-        /// Every pressing offered, across the groups.
-        var matchCount: Int {
-            groups.reduce(0) { $0 + $1.pressings.count }
-        }
     }
 
     /// The auto-identified release groups, their library statuses, and per-row
@@ -74,7 +72,7 @@ struct ImportSearchPane: View {
     }
 
     /// Whether the toolbar row renders: live badges when the signals are
-    /// known, or just its escapes (Re-run / Search manually) on a resumed
+    /// known, or just its escapes (Auto / Search manually) on a resumed
     /// verdict — a terminal state stood back up from the store, whose raw
     /// signals were never persisted and so has no badges to show.
     private var showsToolbar: Bool {
@@ -98,169 +96,180 @@ struct ImportSearchPane: View {
                 toolbar: state.signalsToolbar,
                 onToggle: onToggleSignal,
                 onRerun: onRerun,
-                onSearchManually: onSearchManually,
-                onAddAsUnknown: state.showManualSearch ? nil : onAddAsUnknown,
+                onSearchManually: { mode = .manual },
+                onAddAsUnknown: onAddAsUnknown,
             )
         }
     }
 
     var body: some View {
-        let found = foundResult
-        let showingAutoMatches = found != nil && !state.showManualSearch
-
         VStack(spacing: 0) {
-            toolbar
-
-            identifyBanner
-
-            if let error = state.error {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                    Text(error)
-                }
-                .font(.caption)
-                .foregroundStyle(.red)
-                .padding(.horizontal)
-                .padding(.vertical, 6)
-            }
-
-            if showingAutoMatches, let found {
-                ReleaseGroupListView(
-                    groups: found.groups,
-                    isImporting: state.isImporting,
-                    libraryStatuses: found.statuses,
-                    provenance: found.provenance,
-                    selectedReleaseId: state.selectedReleaseId,
-                    onSelect: onSelect,
-                )
-            }
-            else if isTriangulating, !state.showManualSearch {
-                // The toolbar's spinning badges carry the per-signal progress;
-                // the body just notes the pipeline is still working.
-                ContentUnavailableView(
-                    "Identifying\u{2026}",
-                    systemImage: "antenna.radiowaves.left.and.right",
-                    description: Text("Looking up the signals above."),
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            else {
-                // In manual search with an auto-identified match available,
-                // offer the way back to it — the toolbar's "Search manually"
-                // has no reciprocal otherwise.
-                if let found {
-                    Button {
-                        onViewMatches()
-                    } label: {
-                        Label(
-                            "View automatic matches (\(found.matchCount))",
-                            systemImage: "chevron.left",
-                        )
-                    }
-                    .buttonStyle(.link)
-                    .font(.callout)
-                    .padding(.horizontal, 18)
-                    .padding(.top, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                ImportSearchFormView(
-                    activeTab: $activeTab,
-                    activeSource: $activeSource,
-                    searchArtist: $searchArtist,
-                    searchAlbum: $searchAlbum,
-                    searchCatalog: $searchCatalog,
-                    searchBarcode: $searchBarcode,
-                    discogsEnabled: state.discogsEnabled,
-                    signals: state.signals,
-                    onSearch: onSearch,
-                    onOpenSettings: onOpenSettings,
-                )
-                Divider()
-
-                if state.isSearching {
-                    ProgressView("Searching...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                else if !state.hasSearched {
-                    ContentUnavailableView(
-                        "No results",
-                        systemImage: "magnifyingglass",
-                        description: Text(
-                            "Search MusicBrainz or Discogs to find metadata"
-                        ),
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                else if state.searchGroups.isEmpty {
-                    ContentUnavailableView(
-                        "No matches found",
-                        systemImage: "magnifyingglass",
-                        description: Text(
-                            "Try different search terms or another source"
-                        ),
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                else {
-                    ReleaseGroupListView(
-                        groups: state.searchGroups,
-                        isImporting: state.isImporting,
-                        libraryStatuses: state.libraryStatuses,
-                        selectedReleaseId: state.selectedReleaseId,
-                        onSelect: onSelect,
-                    )
-                }
+            switch mode {
+            case .signals:
+                toolbar
+                errorLine
+                signalsResult
+            case .manual:
+                manualHeader
+                errorLine
+                manualForm
             }
         }
         .padding(.top, 6)
     }
 
     @ViewBuilder
-    private var identifyBanner: some View {
-        // The toolbar above owns the global escapes (Search manually / Skip
-        // identifying / Re-run), so the banner carries only the status copy for
-        // the states that need it. Error has no toolbar, so it keeps its own
-        // escape.
-        switch state.identifyState {
-        case .triangulating, .found, .idle:
-            // Triangulation is covered by the toolbar's spinning badges and the
-            // body placeholder; a found match speaks for itself through the
-            // toolbar signals and the release-group card below. Neither needs a
-            // banner.
-            EmptyView()
-        case .notFoundAnywhere:
-            HStack(spacing: 8) {
+    private var errorLine: some View {
+        if let error = state.error {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                Text(error)
+            }
+            .font(.caption)
+            .foregroundStyle(.red)
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+        }
+    }
+
+    // MARK: - Signals
+
+    /// What identification made of the folder: its matches, the spinner while
+    /// it is still looking, or the one line saying it has nothing — with the
+    /// way over to the typed search on that same line.
+    @ViewBuilder
+    private var signalsResult: some View {
+        if let found = foundResult {
+            ReleaseGroupListView(
+                groups: found.groups,
+                isImporting: state.isImporting,
+                libraryStatuses: found.statuses,
+                provenance: found.provenance,
+                selectedReleaseId: state.selectedReleaseId,
+                onSelect: onSelect,
+            )
+        }
+        else if isTriangulating {
+            // The toolbar's spinning badges carry the per-signal progress;
+            // the body just notes the pipeline is still working.
+            ContentUnavailableView(
+                "Identifying\u{2026}",
+                systemImage: "antenna.radiowaves.left.and.right",
+                description: Text("Looking up the signals above."),
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        else {
+            nothingFoundLine
+        }
+    }
+
+    /// The result line when nothing was found: what happened, and the one
+    /// thing left to do beside it.
+    @ViewBuilder
+    private var nothingFoundLine: some View {
+        HStack(spacing: 8) {
+            switch state.identifyState {
+            case .notFoundAnywhere:
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.orange)
                 Text("No automatic matches found")
                     .font(.callout)
-                discIdInfoIcon
-                Spacer()
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
-            }
-        case .manualOnly:
-            HStack(spacing: 8) {
+            default:
                 Image(systemName: "magnifyingglass.circle.fill")
                     .foregroundStyle(.secondary)
                 Text("No identifying signals yet — search manually")
                     .font(.callout)
-                discIdInfoIcon
-                Spacer()
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            DiscIdInfoTip()
+            Button("Search manually") { mode = .manual }
+                .buttonStyle(.link)
+                .font(.callout)
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    // MARK: - Manual
+
+    /// The way back. `Signals` returns to what identification already found;
+    /// `Auto` returns and looks the signals up again.
+    private var manualHeader: some View {
+        HStack(spacing: 10) {
+            Button {
+                mode = .signals
+            } label: {
+                Label("Signals", systemImage: "chevron.left")
             }
+            .buttonStyle(.link)
+            Spacer()
+            Button {
+                mode = .signals
+                onRerun()
+            } label: {
+                Label("Auto", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.link)
+        }
+        .font(.system(size: 12.5))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
         }
     }
 
-    private var discIdInfoIcon: some View {
-        DiscIdInfoTip()
+    @ViewBuilder
+    private var manualForm: some View {
+        ImportSearchFormView(
+            activeTab: $activeTab,
+            activeSource: $activeSource,
+            searchArtist: $searchArtist,
+            searchAlbum: $searchAlbum,
+            searchCatalog: $searchCatalog,
+            searchBarcode: $searchBarcode,
+            discogsEnabled: state.discogsEnabled,
+            signals: state.signals,
+            onSearch: onSearch,
+            onOpenSettings: onOpenSettings,
+        )
+        Divider()
+
+        if state.isSearching {
+            ProgressView("Searching...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        else if !state.hasSearched {
+            ContentUnavailableView(
+                "No results",
+                systemImage: "magnifyingglass",
+                description: Text(
+                    "Search MusicBrainz or Discogs to find metadata"
+                ),
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        else if state.searchGroups.isEmpty {
+            ContentUnavailableView(
+                "No matches found",
+                systemImage: "magnifyingglass",
+                description: Text(
+                    "Try different search terms or another source"
+                ),
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        else {
+            ReleaseGroupListView(
+                groups: state.searchGroups,
+                isImporting: state.isImporting,
+                libraryStatuses: state.libraryStatuses,
+                selectedReleaseId: state.selectedReleaseId,
+                onSelect: onSelect,
+            )
+        }
     }
 }
 
@@ -273,11 +282,13 @@ struct ImportSearchPane: View {
         @MainActor
         static func preview(
             state: ImportSearchState,
+            mode: SearchMode = .signals,
             searchArtist: String = "",
             searchAlbum: String = "",
         ) -> ImportSearchPane {
             ImportSearchPane(
                 state: state,
+                mode: .constant(mode),
                 activeTab: .constant(.general),
                 activeSource: .constant(.musicBrainz),
                 searchArtist: .constant(searchArtist),
@@ -286,8 +297,6 @@ struct ImportSearchPane: View {
                 searchBarcode: .constant(""),
                 onSearch: {},
                 onOpenSettings: {},
-                onSearchManually: {},
-                onViewMatches: {},
                 onAddAsUnknown: {},
                 onToggleSignal: { _ in },
                 onRerun: {},
@@ -305,6 +314,7 @@ struct ImportSearchPane: View {
     #Preview("Main Pane - Manual Search") {
         ImportSearchPane.preview(
             state: PreviewData.searchStateManual,
+            mode: .manual,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
         )

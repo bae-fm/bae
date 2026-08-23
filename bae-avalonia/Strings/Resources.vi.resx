@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>Thử lại</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Đang đọc thời lượng</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>tìm thủ công</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Không tìm thấy kết quả khớp tự động</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Tín hiệu</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>Tự động</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Thất bại</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Sẵn sàng</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Đang chờ nhận dạng</value></data>

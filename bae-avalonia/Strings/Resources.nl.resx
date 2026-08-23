@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>Opnieuw proberen</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Speelduur wordt gelezen</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>handmatig zoeken</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Geen automatische overeenkomsten gevonden</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Signalen</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>Automatisch</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Mislukt</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Gereed</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Wacht op identificatie</value></data>

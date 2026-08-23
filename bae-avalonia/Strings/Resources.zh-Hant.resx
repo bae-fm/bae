@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>重試</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>正在讀取時長</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>手動搜尋</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>找不到自動比對結果</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>訊號</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>自動</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失敗</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>就緒</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>等待識別</value></data>

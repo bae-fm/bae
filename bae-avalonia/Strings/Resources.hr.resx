@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>Pokušaj ponovno</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Čita se koliko traje</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>pretraži ručno</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Nema automatskih podudaranja</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Signali</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>Automatski</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Nije uspjelo</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Spremno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeka identifikaciju</value></data>

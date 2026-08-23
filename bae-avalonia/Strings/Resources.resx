@@ -406,6 +406,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>Retry</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>Reading how long this runs</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>Search manually</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>No automatic matches found</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Signals</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>Auto</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Failed</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Ready</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Waiting to be identified</value></data>

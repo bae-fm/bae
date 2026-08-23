@@ -59,6 +59,10 @@ internal sealed class ImportMappingPane : UserControl
     // typed into it: the pane re-renders whenever a result lands, and a query
     // that reset itself each time would be unusable.
     private bool _searchOpen;
+    // Which half of the search editor is showing: what identification found,
+    // or the typed search. The editor owns it, so opening it again starts on
+    // the matches rather than wherever the last session left off.
+    private bool _searchManual;
     private List<ReleaseCandidateChoice> _searchResults = new();
     private string _searchArtist = string.Empty;
     private string _searchAlbum = string.Empty;
@@ -255,6 +259,7 @@ internal sealed class ImportMappingPane : UserControl
         _import.ClearReleaseLibraryStatus();
         _pickInFlight = false;
         _searchOpen = false;
+        _searchManual = false;
         _searchResults = new List<ReleaseCandidateChoice>();
         _searchArtist = string.Empty;
         _searchAlbum = _candidate?.Name ?? string.Empty;
@@ -314,6 +319,7 @@ internal sealed class ImportMappingPane : UserControl
             return;
         }
         _searchOpen = true;
+        _searchManual = false;
         Render();
     }
 
@@ -455,7 +461,7 @@ internal sealed class ImportMappingPane : UserControl
             : null,
         HasCoverOptions = _candidate is { HasSettled: true },
         OnSetIdentity = identity => _ = SetIdentity(identity),
-        OnFindRelease = () => { _searchOpen = true; Render(); },
+        OnFindRelease = () => { _searchOpen = true; _searchManual = false; Render(); },
         OnEditCover = () => _ = ChooseCover(),
         OnEditField = (field, value) => _ = SetEditField(field, value),
     };
@@ -539,28 +545,70 @@ internal sealed class ImportMappingPane : UserControl
         return banner;
     }
 
-    // Search is the identity section's editor, opened from its change control —
-    // not a pane mounted alongside it. It starts on whatever the identify
-    // pipeline already found for this folder, so the common case is one click.
+    // Search is the metadata section's editor, opened from its change control —
+    // not a pane mounted alongside it. It has two halves and shows one at a
+    // time: what identification already found for this folder (the common
+    // case, one click), and the typed search for when it found nothing.
     private Control BuildSearchEditor()
     {
         var column = new StackPanel { Spacing = 8 };
         column.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.header.find_release")));
-
-        var results = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 190 };
-        var choices = _searchResults.Count > 0 ? _searchResults : EffectiveMatches;
-        results.ItemsSource = choices.Select(choice => choice.Summary).ToList();
-        results.SelectionChanged += async (_, _) =>
+        column.Children.Add(_searchManual ? ManualHalf() : SignalsHalf());
+        if (_searchError.Length > 0)
         {
-            if (results.SelectedIndex < 0 || results.SelectedIndex >= choices.Count)
+            column.Children.Add(ImportPaneUi.Cell(_searchError, secondary: true));
+        }
+        return column;
+    }
+
+    // What identification made of the folder: its matches, or the one line
+    // saying it has none — with the way over to the typed search beside it.
+    private Control SignalsHalf()
+    {
+        var column = new StackPanel { Spacing = 8 };
+        var matches = EffectiveMatches;
+        if (matches.Count > 0)
+        {
+            column.Children.Add(ChoiceList(matches));
+        }
+        else
+        {
+            column.Children.Add(ImportPaneUi.Cell(
+                Loc.Chrome("import.search.no_automatic_matches"),
+                secondary: true));
+        }
+
+        var manual = ImportPaneUi.RowButton(Loc.Chrome("import.row.search_manually"));
+        manual.Click += (_, _) => { _searchManual = true; Render(); };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        actions.Children.Add(manual);
+        actions.Children.Add(CancelButton());
+        column.Children.Add(actions);
+        return column;
+    }
+
+    // The typed search. `Signals` goes back to what identification found;
+    // `Auto` goes back and looks the signals up again.
+    private Control ManualHalf()
+    {
+        var column = new StackPanel { Spacing = 8 };
+
+        var back = ImportPaneUi.RowButton(Loc.Chrome("import.search.signals"));
+        back.Click += (_, _) => { _searchManual = false; Render(); };
+        var auto = ImportPaneUi.RowButton(Loc.Chrome("import.search.auto"));
+        auto.Click += (_, _) =>
+        {
+            _searchManual = false;
+            if (_key is { } key)
             {
-                return;
+                _ = _import.AutoIdentify(key);
             }
-            var chosen = choices[results.SelectedIndex];
-            await DecideIdentity(
-                new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId));
+            Render();
         };
-        column.Children.Add(results);
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        header.Children.Add(back);
+        header.Children.Add(auto);
+        column.Children.Add(header);
 
         var artistField = DialogUi.Field(Loc.Chrome("import.field.artist_manual"), out var artistBox);
         artistBox.Text = _searchArtist;
@@ -610,20 +658,43 @@ internal sealed class ImportMappingPane : UserControl
             Render();
         };
 
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        actions.Children.Add(search);
+        actions.Children.Add(CancelButton());
+        column.Children.Add(actions);
+
+        if (_searchResults.Count > 0)
+        {
+            column.Children.Add(ChoiceList(_searchResults));
+        }
+        return column;
+    }
+
+    // The pressings on offer, whichever half produced them. Picking one
+    // decides the identity, which is what closes the editor.
+    private Control ChoiceList(List<ReleaseCandidateChoice> choices)
+    {
+        var results = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 190 };
+        results.ItemsSource = choices.Select(choice => choice.Summary).ToList();
+        results.SelectionChanged += async (_, _) =>
+        {
+            if (results.SelectedIndex < 0 || results.SelectedIndex >= choices.Count)
+            {
+                return;
+            }
+            var chosen = choices[results.SelectedIndex];
+            await DecideIdentity(
+                new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId));
+        };
+        return results;
+    }
+
+    private Button CancelButton()
+    {
         var cancel = ImportPaneUi.RowButton(Loc.Chrome("action.cancel"));
         cancel.IsEnabled = _candidate is { HasSettled: true };
         cancel.Click += (_, _) => { _searchOpen = false; Render(); };
-
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(search);
-        actions.Children.Add(cancel);
-        column.Children.Add(actions);
-
-        if (_searchError.Length > 0)
-        {
-            column.Children.Add(ImportPaneUi.Cell(_searchError, secondary: true));
-        }
-        return column;
+        return cancel;
     }
 
     // ── Section 2: what the table's controls do ──────────────────────────────

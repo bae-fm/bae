@@ -381,6 +381,9 @@
   <data name="import.row.retry" xml:space="preserve"><value>נסה שוב</value></data>
   <data name="import.measuring_length" xml:space="preserve"><value>קורא כמה זמן זה נמשך</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>חפש ידנית</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>לא נמצאו התאמות אוטומטיות</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>אותות</value></data>
+  <data name="import.search.auto" xml:space="preserve"><value>אוטומטי</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>נכשל</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>מוכן</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ממתין לזיהוי</value></data>
