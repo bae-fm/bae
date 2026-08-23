@@ -66,6 +66,7 @@ struct FakeScanStarter {
 }
 
 struct FakeStartedScan {
+    path: PathBuf,
     cancellation: crate::import::folder_scanner::ScanCancellation,
     completion: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
     abort: tokio::task::AbortHandle,
@@ -81,6 +82,7 @@ impl FakeScanStarter {
         let starter: RootScanStarter = Arc::new(move |id, path, completion| {
             let cancellation = crate::import::folder_scanner::ScanCancellation::new();
             let (finish, finished) = tokio::sync::oneshot::channel();
+            let started_path = path.clone();
             let task = tokio::spawn(async move {
                 let result = finished
                     .await
@@ -90,6 +92,7 @@ impl FakeScanStarter {
                     .expect("coordinator still receives completions");
             });
             captured.scans.lock().unwrap().push(FakeStartedScan {
+                path: started_path,
                 cancellation: cancellation.clone(),
                 completion: Some(finish),
                 abort: task.abort_handle(),
@@ -115,6 +118,11 @@ impl FakeScanStarter {
             .expect("fake scan has not completed")
             .send(result)
             .expect("coordinator still waits for the fake scan");
+    }
+
+    /// The root the scan at `index` was started for.
+    fn path(&self, index: usize) -> PathBuf {
+        self.scans.lock().unwrap()[index].path.clone()
     }
 
     fn cancellation(&self, index: usize) -> crate::import::folder_scanner::ScanCancellation {

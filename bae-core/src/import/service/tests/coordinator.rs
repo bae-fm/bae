@@ -377,6 +377,85 @@ async fn coordinator_completes_refresh_waiter_with_its_scan_result() {
     harness.shutdown().await;
 }
 
+/// A read is not a change. Linux's inotify backend reports every `open()`
+/// under a watched root, so the scan's own reads — the directory walk, the rip
+/// log, the CUE, the audio probe — arrive here as events about the folder the
+/// scan just finished. Scanning on them would make every scan schedule the
+/// next one for as long as the folder stays watched, and each of those scans
+/// republishes its candidates as tentative on the way to valid, so a queue
+/// sweep reading the list mid-rescan finds nothing to answer.
+#[tokio::test]
+async fn a_file_opened_under_a_watched_root_starts_no_scan() {
+    use notify::event::{AccessKind, AccessMode};
+
+    let harness = CoordinatorHarness::with_roots(&["/music", "/downloads"]).await;
+    harness
+        .fs_events
+        .send(Ok(vec![
+            debounced_event(
+                notify::EventKind::Access(AccessKind::Open(AccessMode::Any)),
+                root_path("/music").join("Album/01.flac"),
+            ),
+            debounced_event(
+                notify::EventKind::Access(AccessKind::Close(AccessMode::Read)),
+                root_path("/music").join("Album/01.flac"),
+            ),
+        ]))
+        .unwrap();
+    // A second batch the coordinator handles after the first, naming a root the
+    // reads did not touch: when its scan starts, the read batch is answered.
+    harness
+        .fs_events
+        .send(Ok(vec![debounced_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/downloads").join("Album/01.flac"),
+        )]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(
+        harness.scans.path(0),
+        root_path("/downloads"),
+        "the only scan is the created file's; the opened file started none"
+    );
+
+    harness.scans.complete(0, Ok(()));
+    harness.shutdown().await;
+}
+
+/// The other half of the rule above: the close that ended a write is how a
+/// finished copy announces itself on Linux, so it re-scans the root it landed
+/// under.
+#[tokio::test]
+async fn a_finished_write_under_a_watched_root_starts_a_scan() {
+    use notify::event::{AccessKind, AccessMode};
+
+    let harness = CoordinatorHarness::new().await;
+    harness
+        .fs_events
+        .send(Ok(vec![debounced_event(
+            notify::EventKind::Access(AccessKind::Close(AccessMode::Write)),
+            root_path("/music").join("Album/01.flac"),
+        )]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root_path("/music"));
+
+    harness.scans.complete(0, Ok(()));
+    harness.shutdown().await;
+}
+
+fn debounced_event(
+    kind: notify::EventKind,
+    path: PathBuf,
+) -> notify_debouncer_full::DebouncedEvent {
+    notify_debouncer_full::DebouncedEvent::new(
+        notify::Event::new(kind).add_path(path),
+        std::time::Instant::now(),
+    )
+}
+
 #[tokio::test]
 async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     let harness = CoordinatorHarness::new().await;

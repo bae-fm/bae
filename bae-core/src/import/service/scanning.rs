@@ -610,10 +610,7 @@ impl ImportService {
                                 continue;
                             }
                         };
-                        let changed: Vec<&Path> = events
-                            .iter()
-                            .flat_map(|e| e.paths.iter().map(PathBuf::as_path))
-                            .collect();
+                        let changed = changed_paths(&events);
                         let roots: Vec<PathBuf> = folder_registry
                             .lock()
                             .unwrap()

@@ -130,6 +130,33 @@ fn downloaded_cover(
     })
 }
 
+/// The paths in one debounced batch that report a *change* to the watched tree.
+///
+/// Not every event a backend sends is a change. Linux's inotify backend watches
+/// `IN_OPEN`, so every `open()` under a watched root arrives here — including
+/// the scan's own: walking a directory, reading a rip log, parsing a CUE,
+/// probing audio. Scheduling a scan for those would mean every scan schedules
+/// the next one, for as long as the folder stays watched. A close that ended a
+/// write says the file is now different; an open says only that something read
+/// it.
+fn changed_paths(events: &[notify_debouncer_full::DebouncedEvent]) -> Vec<&Path> {
+    events
+        .iter()
+        .filter(|event| reports_a_change(&event.kind))
+        .flat_map(|event| event.paths.iter().map(PathBuf::as_path))
+        .collect()
+}
+
+fn reports_a_change(kind: &notify::EventKind) -> bool {
+    use notify::event::{AccessKind, AccessMode};
+    match kind {
+        // The close that ended a write is how a finished copy announces itself.
+        notify::EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        notify::EventKind::Access(_) => false,
+        _ => true,
+    }
+}
+
 /// The watched roots that contain at least one of the `changed` paths, in
 /// `roots` order and without duplicates.
 fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
