@@ -386,13 +386,13 @@ internal sealed class ImportMappingTable
 
     private Control SourceCell(
         BridgeMappingSource source, bool lengthsDiverge, bool isMeasuring) => source switch
-    {
-        BridgeMappingSource.File file => FileCell(file.FileValue, isMeasuring),
-        BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge, isMeasuring),
-        BridgeMappingSource.Missing => ImportPaneUi.Cell(
-            $"╌ {Loc.Core("ui.import.slots.no_file")}", secondary: true),
-        _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown mapping source"),
-    };
+        {
+            BridgeMappingSource.File file => FileCell(file.FileValue, isMeasuring),
+            BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge, isMeasuring),
+            BridgeMappingSource.Missing => ImportPaneUi.Cell(
+                $"╌ {Loc.Core("ui.import.slots.no_file")}", secondary: true),
+            _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown mapping source"),
+        };
 
     // One of the folder's files, whole: its name in mono with its size after it,
     // the audition control where it is audio, and — where there is something to
