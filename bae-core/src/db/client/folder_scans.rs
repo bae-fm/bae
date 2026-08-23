@@ -137,7 +137,11 @@ impl Database {
     ) -> Result<Option<Vec<String>>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
-        let entry_key = item.persisted_key();
+        let Some(entry_key) = item.persisted_key() else {
+            return Err(DbError::Message(
+                "a folder reading is stored as a decision, not as a scan entry".to_string(),
+            ));
+        };
         validate_scan_item_ownership(&watched_folder_path, &entry_key, item)?;
         let item = item.clone();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
@@ -151,6 +155,14 @@ impl Database {
                 .map(|(key, entry)| StoredEntryKey {
                     key: key.clone(),
                     is_boundary: matches!(entry, StoredEntry::Boundary { .. }),
+                    covers_whole_folder: matches!(
+                        entry,
+                        StoredEntry::Boundary { .. }
+                            | StoredEntry::Candidate {
+                                whole_folder: true,
+                                ..
+                            }
+                    ),
                 })
                 .collect();
             let removed_keys = crate::import::candidates::superseded_entry_keys(&keys, &item);
@@ -318,9 +330,9 @@ pub(super) fn validate_scan_item_ownership(
     entry_key: &str,
     item: &ScanItem,
 ) -> Result<(), DbError> {
-    if item.persisted_key() != entry_key {
+    if item.persisted_key().as_deref() != Some(entry_key) {
         return Err(DbError::Message(format!(
-            "folder scan entry key {entry_key} does not match its item key {}",
+            "folder scan entry key {entry_key} does not match its item key {:?}",
             item.persisted_key()
         )));
     }
@@ -338,6 +350,7 @@ pub(super) fn validate_scan_item_ownership(
             boundary.key.watched_folder_path.as_str(),
             Path::new(entry_key),
         ),
+        ScanItem::Decided { key, .. } => (key.watched_folder_path.as_str(), Path::new(entry_key)),
     };
     if item_root != watched_folder_path || !item_path.starts_with(root) {
         return Err(DbError::Message(format!(
@@ -362,6 +375,9 @@ pub(super) fn validate_scan_item_ownership(
             for resolved in &candidate.resolved_boundaries {
                 validate_decision_key_ownership(watched_folder_path, &resolved.key)?;
             }
+        }
+        ScanItem::Decided { key, .. } => {
+            validate_decision_key_ownership(watched_folder_path, key)?;
         }
         ScanItem::Boundary(boundary) => {
             validate_decision_key_ownership(watched_folder_path, &boundary.key)?;

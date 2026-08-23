@@ -36,8 +36,8 @@ impl PickAuthor {
     }
 }
 use crate::import::folder_scanner::{
-    CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionKey, FolderReleaseDecisions,
-    StoredCandidateEdits,
+    CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
+    FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
 use std::collections::HashSet;
 
@@ -222,16 +222,21 @@ impl Database {
         &self,
         key: &FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
+        author: FolderReleaseDecisionAuthor,
     ) -> Result<u64, DbError> {
         let (generation, _) = self
-            .set_folder_release_decisions(&[(key.clone(), decision)])
+            .set_folder_release_decisions(&[(key.clone(), decision)], author)
             .await?;
         Ok(generation)
     }
 
+    /// Store readings for one watched folder. `author` says whose they are:
+    /// the user's answer replaces whatever a scan settled on, and a scan's own
+    /// reading never replaces the user's.
     pub async fn set_folder_release_decisions(
         &self,
         decisions: &[(FolderReleaseDecisionKey, FolderReleaseDecision)],
+        author: FolderReleaseDecisionAuthor,
     ) -> Result<(u64, Vec<String>), DbError> {
         let Some(first) = decisions.first() else {
             return Err(DbError::Message(
@@ -252,13 +257,30 @@ impl Database {
                 .map_err(|error| DbError::Message(error.to_string()))?;
         }
         let decisions = decisions.to_vec();
+        let author_column = match author {
+            FolderReleaseDecisionAuthor::User => "user",
+            FolderReleaseDecisionAuthor::Heuristic => "heuristic",
+        };
         self.call(move |sql| {
             let stored = stored_entries(sql, &watched_folder_path)?;
-            let persisted_keys = stored.iter().map(|(key, _)| key.clone()).collect();
+            let persisted: Vec<crate::import::candidates::StoredEntryKey> = stored
+                .iter()
+                .map(|(key, entry)| crate::import::candidates::StoredEntryKey {
+                    key: key.clone(),
+                    is_boundary: matches!(entry, StoredEntry::Boundary { .. }),
+                    covers_whole_folder: matches!(
+                        entry,
+                        StoredEntry::Boundary { .. }
+                            | StoredEntry::Candidate {
+                                whole_folder: true,
+                                ..
+                            }
+                    ),
+                })
+                .collect();
             let removed_scan_entry_keys =
                 crate::import::folder_scanner::release_decision_removed_keys(
-                    &persisted_keys,
-                    &decisions,
+                    &persisted, &decisions,
                 );
             let stored: HashMap<&str, &StoredEntry> = stored
                 .iter()
@@ -272,10 +294,18 @@ impl Database {
                 };
                 sql.execute(
                     "INSERT INTO folder_release_decisions \
-                         (watched_folder_path, relative_folder_path, decision) VALUES (?, ?, ?) \
+                         (watched_folder_path, relative_folder_path, decision, author) \
+                     VALUES (?, ?, ?, ?) \
                      ON CONFLICT(watched_folder_path, relative_folder_path) DO UPDATE SET \
-                         decision = excluded.decision",
-                    params![key.watched_folder_path, key.relative_folder_path, decision],
+                         decision = excluded.decision, author = excluded.author \
+                     WHERE excluded.author = 'user' \
+                         OR folder_release_decisions.author != 'user'",
+                    params![
+                        key.watched_folder_path,
+                        key.relative_folder_path,
+                        decision,
+                        author_column
+                    ],
                 )?;
             }
             for entry_key in &removed_scan_entry_keys {
@@ -299,6 +329,36 @@ impl Database {
         .await
     }
 
+    /// Store the reading a scan settled on for one folder, without disturbing
+    /// the scan that produced it: no generation bump, no re-scan. A folder the
+    /// user has already answered for keeps their answer.
+    pub async fn record_scanned_folder_release_decision(
+        &self,
+        key: &FolderReleaseDecisionKey,
+        decision: FolderReleaseDecision,
+    ) -> Result<(), DbError> {
+        crate::import::folder_registry::validate_relative_path(&key.relative_folder_path)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        let key = key.clone();
+        let decision = match decision {
+            FolderReleaseDecision::CombineAsOneRelease => "combine_as_one_release",
+            FolderReleaseDecision::KeepAsSeparateReleases => "keep_as_separate_releases",
+        };
+        self.call(move |sql| {
+            sql.execute(
+                "INSERT INTO folder_release_decisions \
+                     (watched_folder_path, relative_folder_path, decision, author) \
+                 VALUES (?, ?, ?, 'heuristic') \
+                 ON CONFLICT(watched_folder_path, relative_folder_path) DO UPDATE SET \
+                     decision = excluded.decision, author = 'heuristic' \
+                 WHERE folder_release_decisions.author != 'user'",
+                params![key.watched_folder_path, key.relative_folder_path, decision],
+            )?;
+            Ok(())
+        })
+        .await
+    }
+
     /// Every explicit interpretation below one watched root.
     pub async fn load_folder_release_decisions(
         &self,
@@ -307,7 +367,7 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| {
             let decisions = sql.query(
-                "SELECT relative_folder_path, decision \
+                "SELECT relative_folder_path, decision, author \
                  FROM folder_release_decisions WHERE watched_folder_path = ?",
                 [watched_folder_path],
                 |row| {
@@ -335,7 +395,19 @@ impl Database {
                             ))
                         }
                     };
-                    Ok((path, decision))
+                    let stored: String = row.get(2)?;
+                    let author = match stored.as_str() {
+                        "user" => FolderReleaseDecisionAuthor::User,
+                        "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
+                        other => {
+                            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                                2,
+                                coven::rusqlite::types::Type::Text,
+                                format!("unknown folder release decision author {other:?}").into(),
+                            ))
+                        }
+                    };
+                    Ok((path, (decision, author)))
                 },
             )?;
             Ok(FolderReleaseDecisions::new(decisions.into_iter().collect()))

@@ -10,9 +10,6 @@ use crate::cue_flac::{parse_cue_sheet, CueSheet};
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-// Only `release_decision_removed_keys` names this, and it is desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};

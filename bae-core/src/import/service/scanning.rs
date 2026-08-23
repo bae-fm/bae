@@ -810,7 +810,7 @@ impl ImportService {
                     let (candidate, actionable) = match item {
                         ScanItem::Discovered(candidate) => (candidate, false),
                         ScanItem::Valid(candidate) => (candidate, true),
-                        ScanItem::Invalid(_) | ScanItem::Boundary(_) => {
+                        ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
                             unreachable!("matched candidate scan item")
                         }
                     };
@@ -842,7 +842,7 @@ impl ImportService {
                     };
                     let candidate = match persisted_item {
                         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate,
-                        ScanItem::Invalid(_) | ScanItem::Boundary(_) => {
+                        ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
                             unreachable!("persisted candidate scan item changed variant")
                         }
                     };
@@ -948,6 +948,22 @@ impl ImportService {
                             boundary,
                         )),
                     );
+                }
+                // How the walk read a folder nothing was stored for. It is the
+                // folder's decision from here on, so the flip control on each
+                // candidate it produced has something to rewrite — and a later
+                // scan reads the folder the same way even if the naming rule
+                // changes under it.
+                ScanItem::Decided { key, decision } => {
+                    if let Err(e) = library_manager
+                        .record_scanned_folder_release_decision(&key, decision)
+                        .await
+                    {
+                        warn!(
+                            "folder reading for {} could not be stored: {e}",
+                            key.relative_folder_path
+                        );
+                    }
                 }
             }
         }

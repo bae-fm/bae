@@ -15,8 +15,15 @@ use crate::import::folder_scanner::{
 /// the row exactly rather than reconstructing a key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StoredEntry {
-    Candidate { path: String },
-    Boundary { relative_folder_path: String },
+    Candidate {
+        path: String,
+        /// Whether this candidate's files are the whole folder at `path` —
+        /// the shape a combined folder stores as.
+        whole_folder: bool,
+    },
+    Boundary {
+        relative_folder_path: String,
+    },
 }
 
 pub(crate) fn delete_entry(
@@ -25,7 +32,7 @@ pub(crate) fn delete_entry(
     entry: &StoredEntry,
 ) -> Result<(), DbError> {
     match entry {
-        StoredEntry::Candidate { path } => {
+        StoredEntry::Candidate { path, .. } => {
             sql.execute(
                 "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
                 params![watched_folder_path, path],
@@ -98,6 +105,9 @@ pub(super) fn insert_item(
         ScanItem::Boundary(boundary) => {
             insert_boundary(sql, watched_folder_path, generation, boundary)
         }
+        ScanItem::Decided { .. } => Err(DbError::Message(
+            "a folder reading is stored as a decision, not as a scan entry".to_string(),
+        )),
     }
 }
 

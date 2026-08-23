@@ -137,7 +137,7 @@ pub(super) fn load_candidate_detail_on(
     let (candidate, actionable) = match stored.item {
         ScanItem::Valid(candidate) => (candidate, true),
         ScanItem::Discovered(candidate) => (candidate, false),
-        ScanItem::Invalid(_) | ScanItem::Boundary(_) => return Ok(None),
+        ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => return Ok(None),
     };
     let content_hash = candidate.files.content_hash();
 

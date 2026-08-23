@@ -1,5 +1,27 @@
 fn scanned_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
-    use crate::import::folder_scanner::{FolderCandidate, ReleaseFileScope, ScanItem};
+    scanned_candidate_with_scope(
+        root,
+        name,
+        crate::import::folder_scanner::ReleaseFileScope::Direct,
+    )
+}
+
+/// The shape a folder read as one release stores as: one candidate at the
+/// folder's own key over everything below it.
+fn combined_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
+    scanned_candidate_with_scope(
+        root,
+        name,
+        crate::import::folder_scanner::ReleaseFileScope::Recursive,
+    )
+}
+
+fn scanned_candidate_with_scope(
+    root: &str,
+    name: &str,
+    scope: crate::import::folder_scanner::ReleaseFileScope,
+) -> crate::import::folder_scanner::ScanItem {
+    use crate::import::folder_scanner::{FolderCandidate, ScanItem};
 
     let path = PathBuf::from(root).join(name);
     ScanItem::Valid(FolderCandidate {
@@ -8,7 +30,7 @@ fn scanned_candidate(root: &str, name: &str) -> crate::import::folder_scanner::S
         name: name.to_string(),
         files: track_files_candidate(&[("01.flac", 123)]),
         watched_folder_path: root.to_string(),
-        scope: ReleaseFileScope::Direct,
+        scope,
         file_edit_revision: 0,
         display_path: name.to_string(),
         resolved_boundaries: Vec::new(),
@@ -114,14 +136,14 @@ async fn folder_decisions_remove_contradictory_scan_rows_before_failed_rescan() 
         relative_folder_path: "Box".to_string(),
     };
     let (combine_generation, combine_removals) = db
-        .set_folder_release_decisions(&[(key.clone(), FolderReleaseDecision::CombineAsOneRelease)])
+        .set_folder_release_decisions(&[(key.clone(), FolderReleaseDecision::CombineAsOneRelease)], crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
         .await
         .unwrap();
     assert_eq!(
         combine_removals,
         vec![
-            scanned_candidate(root, "Box/CD1").persisted_key(),
-            scanned_candidate(root, "Box/CD2").persisted_key(),
+            scanned_candidate(root, "Box/CD1").persisted_key().unwrap(),
+            scanned_candidate(root, "Box/CD2").persisted_key().unwrap(),
         ]
     );
     db.finish_folder_scan(root, combine_generation, Some("share disconnected"))
@@ -135,20 +157,26 @@ async fn folder_decisions_remove_contradictory_scan_rows_before_failed_rescan() 
             .await
             .unwrap()
             .get("Box"),
-        Some(FolderReleaseDecision::CombineAsOneRelease)
+        Some((
+
+            FolderReleaseDecision::CombineAsOneRelease,
+
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+
+        ))
     );
 
     let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box"))
+    db.save_folder_scan_item(root, generation, &combined_candidate(root, "Box"))
         .await
         .unwrap();
     let (separate_generation, separate_removals) = db
-        .set_folder_release_decisions(&[(key, FolderReleaseDecision::KeepAsSeparateReleases)])
+        .set_folder_release_decisions(&[(key, FolderReleaseDecision::KeepAsSeparateReleases)], crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
         .await
         .unwrap();
     assert_eq!(
         separate_removals,
-        vec![scanned_candidate(root, "Box").persisted_key()]
+        vec![combined_candidate(root, "Box").persisted_key().unwrap()]
     );
     db.finish_folder_scan(root, separate_generation, Some("share disconnected"))
         .await
@@ -161,7 +189,13 @@ async fn folder_decisions_remove_contradictory_scan_rows_before_failed_rescan() 
             .await
             .unwrap()
             .get("Box"),
-        Some(FolderReleaseDecision::KeepAsSeparateReleases)
+        Some((
+
+            FolderReleaseDecision::KeepAsSeparateReleases,
+
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+
+        ))
     );
 }
 
@@ -211,7 +245,7 @@ async fn folder_decision_failure_rolls_back_decision_entries_and_generation() {
                 relative_folder_path: "Box".to_string(),
             },
             FolderReleaseDecision::CombineAsOneRelease,
-        )])
+        )], crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
         .await;
     assert!(result.is_err());
 
@@ -244,6 +278,7 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
             relative_folder_path: "Collection".to_string(),
         },
         crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
+        crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
     )
     .await
     .unwrap();
@@ -384,6 +419,7 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
                 relative_folder_path: "a/./b".to_string(),
             },
             crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease,
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
         )
         .await
         .is_err());
@@ -394,7 +430,8 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
             params![stored_root],
         )?;
         conn.execute(
-            "INSERT INTO folder_release_decisions VALUES (?, 'a/./b', 'combine_as_one_release')",
+            "INSERT INTO folder_release_decisions \
+                 VALUES (?, 'a/./b', 'combine_as_one_release', 'user')",
             params![stored_root],
         )?;
         Ok(())

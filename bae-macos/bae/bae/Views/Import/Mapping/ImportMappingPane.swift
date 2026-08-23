@@ -33,6 +33,13 @@ struct ImportMappingPane: View {
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
     let onSetIdentity: (ImportIdentity) -> Void
+    /// Read the folder this candidate came out of the other way, which rewrites
+    /// the folder's decision as the user's and rescans.
+    let onReleaseDecision:
+        (
+            _ key: BridgeFolderReleaseDecisionKey,
+            _ decision: BridgeFolderReleaseDecision
+        ) -> Void
     let onFindRelease: () -> Void
     /// Pick one of identification's matched pressings from the inline options
     /// — the same pick a search-sheet row click runs.
@@ -61,6 +68,15 @@ struct ImportMappingPane: View {
                     folderPath: candidate.key,
                     formatLabel: candidate.files.formatLabel
                 )
+                ForEach(
+                    candidate.row?.resolvedBoundaries ?? [],
+                    id: \.key
+                ) { boundary in
+                    FolderReadingControl(
+                        boundary: boundary,
+                        onDecision: onReleaseDecision
+                    )
+                }
                 identitySection
                 banners
                 if !mapping.images.isEmpty {

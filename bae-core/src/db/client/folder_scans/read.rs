@@ -111,12 +111,17 @@ pub(crate) fn stored_entries(
 ) -> Result<Vec<(String, StoredEntry)>, DbError> {
     let mut entries: Vec<(String, StoredEntry)> = sql
         .query(
-            "SELECT path FROM scan_candidate WHERE watched_folder_path = ?",
+            "SELECT path, scope FROM scan_candidate WHERE watched_folder_path = ?",
             [watched_folder_path],
-            |row| row.get::<_, String>(0),
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?.as_deref() == Some("recursive"),
+                ))
+            },
         )?
         .into_iter()
-        .map(|path| (path.clone(), StoredEntry::Candidate { path }))
+        .map(|(path, whole_folder)| (path.clone(), StoredEntry::Candidate { path, whole_folder }))
         .collect();
     entries.extend(
         sql.query(

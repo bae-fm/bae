@@ -466,7 +466,25 @@ impl LibraryManager {
     ) -> Result<u64, LibraryError> {
         Ok(self
             .database
-            .set_folder_release_decision(key, decision)
+            .set_folder_release_decision(
+                key,
+                decision,
+                crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+            )
+            .await?)
+    }
+
+    /// Store the reading a scan settled on for one folder. Never disturbs the
+    /// scan that produced it, and never replaces the user's own answer.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn record_scanned_folder_release_decision(
+        &self,
+        key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
+        decision: crate::import::folder_scanner::FolderReleaseDecision,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .record_scanned_folder_release_decision(key, decision)
             .await?)
     }
 
@@ -480,7 +498,10 @@ impl LibraryManager {
     ) -> Result<(u64, Vec<String>), LibraryError> {
         Ok(self
             .database
-            .set_folder_release_decisions(decisions)
+            .set_folder_release_decisions(
+                decisions,
+                crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+            )
             .await?)
     }
 

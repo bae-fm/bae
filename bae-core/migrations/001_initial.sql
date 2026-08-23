@@ -713,6 +713,10 @@ CREATE TABLE IF NOT EXISTS folder_release_decisions (
     decision             TEXT NOT NULL CHECK (
         decision IN ('combine_as_one_release', 'keep_as_separate_releases')
     ),
+    -- Who decided. The scan reads a folder its own way when nothing is stored
+    -- and records that as 'heuristic'; the user's own answer replaces it as
+    -- 'user' and is never read over again.
+    author               TEXT NOT NULL CHECK (author IN ('user', 'heuristic')),
     PRIMARY KEY (watched_folder_path, relative_folder_path),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)

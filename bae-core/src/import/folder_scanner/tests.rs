@@ -37,7 +37,7 @@ fn scan_projected_items_with_decisions(
     // deleting what it supersedes, keyed by path.
     let mut stored: std::collections::BTreeMap<String, ScanItem> = Default::default();
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if matches!(item, ScanItem::Discovered(_)) {
+        if matches!(item, ScanItem::Discovered(_) | ScanItem::Decided { .. }) {
             return;
         }
         let existing: Vec<_> = stored
@@ -45,12 +45,19 @@ fn scan_projected_items_with_decisions(
             .map(|(key, item)| crate::import::candidates::StoredEntryKey {
                 key: key.clone(),
                 is_boundary: matches!(item, ScanItem::Boundary(_)),
+                covers_whole_folder: match item {
+                    ScanItem::Boundary(_) => true,
+                    ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+                        candidate.scope == ReleaseFileScope::Recursive
+                    }
+                    ScanItem::Invalid(_) | ScanItem::Decided { .. } => false,
+                },
             })
             .collect();
         for key in crate::import::candidates::superseded_entry_keys(&existing, &item) {
             stored.remove(&key);
         }
-        stored.insert(item.persisted_key(), item);
+        stored.insert(item.persisted_key().expect("a scan entry has a key"), item);
     })
     .unwrap();
     let _ = &watched_folder;
@@ -65,6 +72,7 @@ fn scan_projected_items_with_decisions(
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => valid.push(candidate),
             ScanItem::Invalid(candidate) => invalid.push(candidate),
             ScanItem::Boundary(boundary) => boundaries.push(boundary),
+            ScanItem::Decided { .. } => {}
         }
     }
     valid.sort_by(|left, right| {
@@ -94,7 +102,7 @@ fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),
             ScanItem::Invalid(_) => None,
-            ScanItem::Discovered(_) | ScanItem::Boundary(_) => None,
+            ScanItem::Discovered(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => None,
         })
         .collect()
 }

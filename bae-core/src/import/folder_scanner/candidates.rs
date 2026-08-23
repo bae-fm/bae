@@ -40,29 +40,46 @@ pub struct InvalidCandidate {
 /// candidate, or an invalid one (looked like a release but failed validation).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ScanItem {
-    /// A release approximation completed before its enclosing folder boundary
+    /// A release approximation completed before its enclosing folder's reading
     /// was known. It is visible scan progress, but identification must wait for
-    /// a later [`Self::Valid`] or [`Self::Boundary`] update.
+    /// a later [`Self::Valid`] update.
     Discovered(FolderCandidate),
     Valid(FolderCandidate),
     Invalid(InvalidCandidate),
+    /// A folder whose parts the scan could not read: it holds several
+    /// releases' worth of audio in a shape the naming does not settle, so the
+    /// user says how to read it. Reached only where a folder's own children
+    /// did not name its parts.
     Boundary(FolderReleaseBoundary),
+    /// The scan read a folder its own way, because nothing was stored for it.
+    /// The caller stores it, so the flip control on each resulting candidate
+    /// has a decision to rewrite.
+    Decided {
+        key: FolderReleaseDecisionKey,
+        decision: FolderReleaseDecision,
+    },
 }
 
 /// Only the durable folder-scan tables key items this way, and those are
 /// desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ScanItem {
-    pub(crate) fn persisted_key(&self) -> String {
+    /// The durable scan entry this item is, or `None` for an item that is not
+    /// one — the folder reading the scan decided, which is stored as a decision
+    /// rather than as a scan entry.
+    pub(crate) fn persisted_key(&self) -> Option<String> {
         match self {
             Self::Discovered(candidate) | Self::Valid(candidate) => {
-                candidate.path.to_string_lossy().into_owned()
+                Some(candidate.path.to_string_lossy().into_owned())
             }
-            Self::Invalid(candidate) => candidate.path.to_string_lossy().into_owned(),
-            Self::Boundary(boundary) => Path::new(&boundary.key.watched_folder_path)
-                .join(&boundary.key.relative_folder_path)
-                .to_string_lossy()
-                .into_owned(),
+            Self::Invalid(candidate) => Some(candidate.path.to_string_lossy().into_owned()),
+            Self::Boundary(boundary) => Some(
+                Path::new(&boundary.key.watched_folder_path)
+                    .join(&boundary.key.relative_folder_path)
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            Self::Decided { .. } => None,
         }
     }
 }
@@ -87,33 +104,104 @@ pub struct FolderReleaseDecisionKey {
     pub relative_folder_path: String,
 }
 
-/// The user's explicit interpretation of an ambiguous folder boundary.
+/// How a folder holding several releases' worth of audio is read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum FolderReleaseDecision {
     CombineAsOneRelease,
     KeepAsSeparateReleases,
 }
 
-/// Which persisted scan entries a set of boundary decisions supersedes. Reads
-/// the durable scan entries, so it exists only where scans persist — desktop.
+/// Who decided. The scan decides every such folder for itself so the queue has
+/// candidates to work on rather than a card to answer, and stores that as the
+/// folder's decision; the user's own answer replaces it and is never decided
+/// over again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum FolderReleaseDecisionAuthor {
+    User,
+    Heuristic,
+}
+
+/// How the scan reads a folder whose children hold the audio, with nothing
+/// stored for it.
+///
+/// A multi-disc release names its parts: `Disc 1`, `CD2`, `Vol. 3`. So when
+/// every child folder's name carries a number and those numbers are exactly
+/// `1..=N` for `N` children, the children are the parts of one release.
+/// Anything else — a child with no number, a gap, a run that doesn't start at
+/// one, audio sitting directly in the folder beside its children — is a folder
+/// that happens to hold several releases.
+pub fn heuristic_folder_release_decision(
+    holds_audio_directly: bool,
+    child_folder_names: &[String],
+) -> FolderReleaseDecision {
+    if holds_audio_directly || child_folder_names.len() < 2 {
+        return FolderReleaseDecision::KeepAsSeparateReleases;
+    }
+    let mut numbers: Vec<u32> = Vec::with_capacity(child_folder_names.len());
+    for name in child_folder_names {
+        match folder_part_number(name) {
+            Some(number) => numbers.push(number),
+            None => return FolderReleaseDecision::KeepAsSeparateReleases,
+        }
+    }
+    numbers.sort_unstable();
+    let expected: Vec<u32> = (1..=numbers.len() as u32).collect();
+    if numbers == expected {
+        FolderReleaseDecision::CombineAsOneRelease
+    } else {
+        FolderReleaseDecision::KeepAsSeparateReleases
+    }
+}
+
+/// The one number in a folder's name, or `None` when it holds none or several.
+/// Several is as unusable as none: `1994 CD2` names a year and a disc, and
+/// nothing in the name says which is which.
+fn folder_part_number(name: &str) -> Option<u32> {
+    let mut found: Option<u32> = None;
+    let mut digits = String::new();
+    for character in name.chars().chain(std::iter::once(' ')) {
+        if character.is_ascii_digit() {
+            digits.push(character);
+            continue;
+        }
+        if digits.is_empty() {
+            continue;
+        }
+        let number = digits.parse::<u32>().ok()?;
+        digits.clear();
+        if found.replace(number).is_some() {
+            return None;
+        }
+    }
+    found
+}
+
+/// Which persisted scan entries a set of folder readings supersedes. Reads the
+/// durable scan entries, so it exists only where scans persist — desktop.
+///
+/// Combining replaces everything below the folder. Keeping separate replaces
+/// whatever stood for the whole folder at its own key — the card asking how to
+/// read it, or the candidate that read it as one release. A folder that holds
+/// tracks of its own also has a candidate under that key, and that one stays:
+/// it is one of the separate releases, not something the reading removes.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn release_decision_removed_keys(
-    persisted_keys: &HashSet<String>,
+    persisted: &[crate::import::candidates::StoredEntryKey],
     decisions: &[(FolderReleaseDecisionKey, FolderReleaseDecision)],
 ) -> Vec<String> {
     let mut removed = Vec::new();
     for (key, decision) in decisions {
         let boundary_path = Path::new(&key.watched_folder_path).join(&key.relative_folder_path);
         let boundary_key = boundary_path.to_string_lossy();
-        removed.extend(persisted_keys.iter().filter_map(|candidate_key| {
-            let path = Path::new(candidate_key);
+        removed.extend(persisted.iter().filter_map(|entry| {
+            let path = Path::new(&entry.key);
             let superseded = match decision {
                 FolderReleaseDecision::CombineAsOneRelease => path.starts_with(&boundary_path),
                 FolderReleaseDecision::KeepAsSeparateReleases => {
-                    candidate_key == boundary_key.as_ref()
+                    entry.covers_whole_folder && entry.key == boundary_key.as_ref()
                 }
             };
-            superseded.then(|| candidate_key.clone())
+            superseded.then(|| entry.key.clone())
         }));
     }
     removed.sort();
@@ -123,14 +211,22 @@ pub(crate) fn release_decision_removed_keys(
 
 /// Decisions loaded for one watched root before its scan begins.
 #[derive(Debug, Clone, Default)]
-pub struct FolderReleaseDecisions(HashMap<String, FolderReleaseDecision>);
+pub struct FolderReleaseDecisions(
+    HashMap<String, (FolderReleaseDecision, FolderReleaseDecisionAuthor)>,
+);
 
 impl FolderReleaseDecisions {
-    pub fn new(decisions: HashMap<String, FolderReleaseDecision>) -> Self {
+    pub fn new(
+        decisions: HashMap<String, (FolderReleaseDecision, FolderReleaseDecisionAuthor)>,
+    ) -> Self {
         Self(decisions)
     }
 
-    pub(crate) fn get(&self, relative_folder_path: &str) -> Option<FolderReleaseDecision> {
+    /// The stored decision for a folder, and who made it.
+    pub(crate) fn get(
+        &self,
+        relative_folder_path: &str,
+    ) -> Option<(FolderReleaseDecision, FolderReleaseDecisionAuthor)> {
         self.0.get(relative_folder_path).copied()
     }
 }
@@ -221,5 +317,85 @@ pub struct FolderCandidate {
 impl FolderCandidate {
     pub fn track_count(&self) -> u32 {
         self.files.track_count()
+    }
+}
+
+#[cfg(test)]
+mod heuristic_tests {
+    use super::*;
+
+    fn decide(names: &[&str]) -> FolderReleaseDecision {
+        heuristic_folder_release_decision(
+            false,
+            &names
+                .iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    /// The children number themselves 1..=N, so they are the parts of one
+    /// release.
+    #[test]
+    fn a_continuous_run_from_one_is_one_release() {
+        for names in [
+            &["1", "2"][..],
+            &["Disc 1", "Disc 2", "Disc 3", "Disc 4"][..],
+            &["CD2", "CD1"][..],
+            &["Vol. 3", "Vol. 1", "Vol. 2"][..],
+        ] {
+            assert_eq!(
+                decide(names),
+                FolderReleaseDecision::CombineAsOneRelease,
+                "{names:?}"
+            );
+        }
+    }
+
+    /// A gap, a run that does not start at one, or a child with no number at
+    /// all: the folder holds several releases, not one release's parts.
+    #[test]
+    fn anything_else_is_several_releases() {
+        for names in [
+            &["1", "3"][..],
+            &["2", "3"][..],
+            &["CD1", "CD2", "Bonus"][..],
+            &["Live in Tokyo", "Live in Osaka"][..],
+            &["1", "1"][..],
+        ] {
+            assert_eq!(
+                decide(names),
+                FolderReleaseDecision::KeepAsSeparateReleases,
+                "{names:?}"
+            );
+        }
+    }
+
+    /// A name with two numbers says nothing about which is the part number.
+    #[test]
+    fn a_name_with_two_numbers_names_no_part() {
+        assert_eq!(
+            decide(&["1994 CD1", "1994 CD2"]),
+            FolderReleaseDecision::KeepAsSeparateReleases
+        );
+    }
+
+    /// Tracks sitting in the folder beside its child folders are their own
+    /// release, so the folder is not one release's parts.
+    #[test]
+    fn a_folder_with_its_own_tracks_holds_several_releases() {
+        assert_eq!(
+            heuristic_folder_release_decision(true, &["Disc 1".to_string(), "Disc 2".to_string()]),
+            FolderReleaseDecision::KeepAsSeparateReleases
+        );
+    }
+
+    /// One child is not a set.
+    #[test]
+    fn a_single_child_is_not_a_set() {
+        assert_eq!(
+            decide(&["Disc 1"]),
+            FolderReleaseDecision::KeepAsSeparateReleases
+        );
     }
 }

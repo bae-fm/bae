@@ -128,6 +128,20 @@ pub(super) struct ScannedDirectory {
     nodes_emitted: bool,
 }
 
+/// The child folders' own names, in listing order — what the scan reads a
+/// folder's parts from when nothing is stored for it.
+fn child_folder_names(directories: &[PathBuf]) -> Vec<String> {
+    directories
+        .iter()
+        .map(|path| {
+            path.file_name().map_or_else(
+                || path.to_string_lossy().into_owned(),
+                |name| name.to_string_lossy().into_owned(),
+            )
+        })
+        .collect()
+}
+
 pub(super) fn relative_path_string(path: &Path) -> String {
     path.components()
         .map(|component| component.as_os_str().to_string_lossy())
@@ -447,11 +461,43 @@ where
     let wrapper_has_files = !direct_audio && !listing.files.is_empty();
     let mut all_files = listing.files.clone();
     let mut direct_scope_files = listing.files;
+    let listing_dirs = listing.directories;
     let mut child_nodes = Vec::new();
     let mut child_nodes_emitted = false;
     let mut contains_audio = direct_audio;
     let relative_string = relative_path_string(relative);
-    let decision = decisions.get(&relative_string);
+    // Whether this folder is one that holds several releases' worth of audio:
+    // a wrapper over child folders, or a folder with its own tracks and child
+    // folders beside them. The watched root is never one — it is where the
+    // folders live, not a release.
+    let holds_several = allow_unresolved_boundary
+        && (listing_dirs.len() > 1 || (direct_audio && !listing_dirs.is_empty()));
+    // How this folder is read. A stored decision — the user's, or the one an
+    // earlier scan settled on — stands. With nothing stored, the scan decides
+    // for itself from the child folders' names and says so, so the queue gets
+    // candidates to work on rather than a card to answer.
+    let (decision, decided_here) = match decisions.get(&relative_string) {
+        Some((decision, _)) => (Some(decision), false),
+        None if holds_several => (
+            Some(heuristic_folder_release_decision(
+                direct_audio,
+                &child_folder_names(&listing_dirs),
+            )),
+            true,
+        ),
+        None => (None, false),
+    };
+    if decided_here {
+        if let Some(decision) = decision {
+            on_item(ScanItem::Decided {
+                key: FolderReleaseDecisionKey {
+                    watched_folder_path: watched_folder_path.to_string(),
+                    relative_folder_path: relative_string.clone(),
+                },
+                decision,
+            });
+        }
+    }
     let combine = matches!(decision, Some(FolderReleaseDecision::CombineAsOneRelease));
     let keep_separate = matches!(
         decision,
@@ -471,7 +517,7 @@ where
         display_path: relative_string.clone(),
     });
 
-    for child in listing.directories {
+    for child in listing_dirs.clone() {
         let child_can_be_actionable = can_stream_collection && collection_proven;
         let child_scan = scan_directory(
             reader,
@@ -565,6 +611,9 @@ where
     }
 
     let mut nodes = Vec::new();
+    // Whether this folder's own tracks are one of the nodes. Nothing below it
+    // announces that node, so a reading that settles here has to.
+    let mut holds_its_own_node = false;
     if direct_audio {
         if let Some(node) = candidate_from_files(
             direct_scope_files,
@@ -581,6 +630,7 @@ where
                 on_item(ScanItem::Discovered(candidate.clone()));
             }
             nodes.push(node);
+            holds_its_own_node = true;
         }
     }
     nodes.extend(child_nodes);
@@ -620,6 +670,12 @@ where
                 .as_ref()
                 .expect("keep-separate decision constructs its boundary"),
         );
+        // Children below this folder have already gone out, so the parent will
+        // not emit its nodes for it — and one of them is the folder's own
+        // tracks, which nothing else has announced.
+        if child_nodes_emitted && holds_its_own_node {
+            emit_projected_nodes(nodes[..1].to_vec(), on_item);
+        }
     } else if allow_unresolved_boundary && nodes.len() > 1 && (direct_audio || owns_wrapper_files) {
         let absolute = root.join(relative);
         let candidate_keys = candidate_keys(&nodes);
@@ -651,11 +707,7 @@ where
             }
         }
         if child_nodes_emitted {
-            for node in &nodes {
-                if let ProjectedScanNode::Candidate(candidate) = node {
-                    on_item(ScanItem::Valid(candidate.clone()));
-                }
-            }
+            emit_projected_nodes(nodes.clone(), on_item);
         }
     }
 

@@ -53,6 +53,9 @@ extension ImportView {
                 viewInLibrary: { uiStore.navigateToAlbum($0) },
             ),
             onSetIdentity: { setIdentity($0, for: candidate) },
+            onReleaseDecision: { key, decision in
+                setFolderReleaseDecision(key, decision)
+            },
             onFindRelease: { presentSearch(for: candidate) },
             onPickRelease: { result in
                 ImportSearchFlow.decideIdentity(

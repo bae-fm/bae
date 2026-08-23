@@ -104,9 +104,16 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
         )
     });
 
-    let first_item = item_rx
+    let mut first_item = item_rx
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("first release emits");
+    // The folder's own reading comes first — it is what says the releases
+    // below it are separate.
+    if matches!(first_item, ScanItem::Decided { .. }) {
+        first_item = item_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .expect("first release emits");
+    }
     assert!(matches!(
         first_item,
         ScanItem::Discovered(candidate) if candidate.path == first
@@ -128,7 +135,7 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
 }
 
 #[test]
-fn shared_group_files_keep_descendants_non_actionable_until_boundary_is_complete() {
+fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
     struct BlockingReader {
         entered: std::sync::mpsc::Sender<()>,
         gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
@@ -186,24 +193,34 @@ fn shared_group_files_keep_descendants_non_actionable_until_boundary_is_complete
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
     let available: Vec<_> = item_rx.try_iter().collect();
+    // `Release 01`, `Release 02`, `Release 99` are not the parts of one
+    // release, so the scan says so before it walks them and the ones it has
+    // reached are ready to identify.
+    assert!(available.iter().any(|item| matches!(
+        item,
+        ScanItem::Decided {
+            key,
+            decision: FolderReleaseDecision::KeepAsSeparateReleases,
+        } if key.relative_folder_path == "Group"
+    )));
     assert!(
-        !available
+        available
             .iter()
             .any(|item| matches!(item, ScanItem::Valid(_))),
-        "an unresolved wrapper must not start identification for provisional descendants"
+        "a wrapper the scan has read does not hold its descendants back"
     );
 
     let (lock, condition) = &*gate;
     *lock.lock().unwrap() = true;
     condition.notify_all();
     scan.join().unwrap().unwrap();
-    assert!(item_rx
+    assert!(!item_rx
         .try_iter()
-        .any(|item| matches!(item, ScanItem::Boundary(boundary) if boundary.name == "Group")));
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
 }
 
 #[test]
-fn direct_audio_parent_keeps_descendant_non_actionable_until_boundary_is_complete() {
+fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
     struct BlockingReader {
         entered: std::sync::mpsc::Sender<()>,
         gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
@@ -262,17 +279,21 @@ fn direct_audio_parent_keeps_descendant_non_actionable_until_boundary_is_complet
     entered_rx
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
-    assert!(!item_rx
-        .try_iter()
-        .any(|item| matches!(item, ScanItem::Valid(_))));
+    assert!(item_rx.try_iter().any(|item| matches!(
+        item,
+        ScanItem::Decided {
+            key,
+            decision: FolderReleaseDecision::KeepAsSeparateReleases,
+        } if key.relative_folder_path == "Group"
+    )));
 
     let (lock, condition) = &*gate;
     *lock.lock().unwrap() = true;
     condition.notify_all();
     scan.join().unwrap().unwrap();
-    assert!(item_rx
+    assert!(!item_rx
         .try_iter()
-        .any(|item| matches!(item, ScanItem::Boundary(boundary) if boundary.name == "Group")));
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
 }
 
 #[test]
@@ -298,44 +319,42 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
             candidates.insert(candidate.display_path.as_str(), candidate);
         }
     }
+    // Years are not disc numbers: an album folder per year is several
+    // releases, and each release keeps its own folder.
     assert!(candidates.contains_key("Solo Artist/1971 - Ordinary"));
     assert!(candidates.contains_key("Collective/Studio Albums/1990 - First"));
     assert!(candidates.contains_key("Collective/Studio Albums/1992 - Second"));
-    assert!(candidates.contains_key("Solo Artist/1973 - Box/CD1"));
-    assert!(candidates.contains_key("Solo Artist/1973 - Box/CD2"));
     assert!(!candidates.contains_key("Collective"));
     assert!(!candidates.contains_key("Collective/Studio Albums"));
 
+    // `CD1` and `CD2` are the parts of one release, so the box is one
+    // candidate over both of them and neither disc stands on its own.
+    assert!(candidates.contains_key("Solo Artist/1973 - Box"));
+    assert!(!candidates.contains_key("Solo Artist/1973 - Box/CD1"));
+    assert!(!candidates.contains_key("Solo Artist/1973 - Box/CD2"));
+    assert_eq!(
+        candidates["Solo Artist/1973 - Box"].scope,
+        ReleaseFileScope::Recursive
+    );
+
+    // Nothing is left for the user to answer.
     assert!(!items
         .iter()
         .any(|item| matches!(item, ScanItem::Boundary(_))));
-    for candidate in candidates.values() {
-        let expected = if candidate.display_path.starts_with("Collective/") {
-            "Collective/Studio Albums"
-        } else if candidate.display_path.contains("1973 - Box/") {
-            "Solo Artist/1973 - Box"
-        } else {
-            assert_eq!(candidate.display_path, "Solo Artist/1971 - Ordinary");
-            "Solo Artist"
-        };
-        assert_eq!(
-            candidate
-                .combine_ancestor_key
-                .as_ref()
-                .map(|key| key.relative_folder_path.as_str()),
-            Some(expected)
-        );
-    }
 
-    let combined = scan_for_candidates_with_decisions_collect(
+    // The user's own answer replaces the scan's.
+    let separate = scan_for_candidates_with_decisions_collect(
         root,
         FolderReleaseDecisions::new(HashMap::from([(
             "Solo Artist/1973 - Box".to_string(),
-            FolderReleaseDecision::CombineAsOneRelease,
+            (
+                FolderReleaseDecision::KeepAsSeparateReleases,
+                FolderReleaseDecisionAuthor::User,
+            ),
         )])),
     );
-    assert!(combined.iter().any(
-        |item| matches!(item, ScanItem::Valid(candidate) if candidate.display_path == "Solo Artist/1973 - Box")
+    assert!(separate.iter().any(
+        |item| matches!(item, ScanItem::Valid(candidate) if candidate.display_path == "Solo Artist/1973 - Box/CD1")
     ));
 }
 
@@ -435,7 +454,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
 }
 
 #[test]
-fn unresolved_boundary_combines_or_exposes_descendants_by_persisted_decision() {
+fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
@@ -450,29 +469,29 @@ fn unresolved_boundary_combines_or_exposes_descendants_by_persisted_decision() {
         scan_projected_items_with_decisions(root.clone(), decisions)
     };
 
-    let unresolved = scan(FolderReleaseDecisions::default());
-    let boundary = unresolved
+    // `Part 01` and `Part 02` number themselves 1 and 2, so with nothing
+    // stored the scan reads the wrapper as one release and says so.
+    let read_by_the_scan =
+        scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default());
+    assert!(!read_by_the_scan
         .iter()
-        .find_map(|item| match item {
-            ScanItem::Boundary(boundary) => Some(boundary),
-            ScanItem::Discovered(_) | ScanItem::Valid(_) | ScanItem::Invalid(_) => None,
-        })
-        .expect("structure remains unresolved");
-    assert_eq!(
-        boundary.key.relative_folder_path,
-        "Collection/Release Wrapper"
-    );
-    assert_eq!(boundary.shared_file_count, 1);
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    assert!(read_by_the_scan.iter().any(|item| matches!(
+        item,
+        ScanItem::Decided {
+            key,
+            decision: FolderReleaseDecision::CombineAsOneRelease,
+        } if key.relative_folder_path == "Collection/Release Wrapper"
+    )));
 
-    let combined = scan(FolderReleaseDecisions::new(HashMap::from([(
-        "Collection/Release Wrapper".to_string(),
-        FolderReleaseDecision::CombineAsOneRelease,
-    )])));
-    let combined = combined
+    let combined = read_by_the_scan
         .iter()
         .find_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Boundary(_) => None,
+            ScanItem::Discovered(_)
+            | ScanItem::Invalid(_)
+            | ScanItem::Boundary(_)
+            | ScanItem::Decided { .. } => None,
         })
         .expect("combined wrapper is actionable");
     assert_eq!(combined.path, wrapper);
@@ -481,13 +500,19 @@ fn unresolved_boundary_combines_or_exposes_descendants_by_persisted_decision() {
 
     let separate = scan(FolderReleaseDecisions::new(HashMap::from([(
         "Collection/Release Wrapper".to_string(),
-        FolderReleaseDecision::KeepAsSeparateReleases,
+        (
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            FolderReleaseDecisionAuthor::User,
+        ),
     )])));
     let separate: Vec<_> = separate
         .iter()
         .filter_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Boundary(_) => None,
+            ScanItem::Discovered(_)
+            | ScanItem::Invalid(_)
+            | ScanItem::Boundary(_)
+            | ScanItem::Decided { .. } => None,
         })
         .collect();
     assert_eq!(separate.len(), 2);
@@ -503,8 +528,11 @@ fn unresolved_boundary_combines_or_exposes_descendants_by_persisted_decision() {
     }));
 }
 
+/// A folder with tracks of its own and an album folder beside them is two
+/// releases, and each one is a candidate carrying the reading that made it
+/// one — which is what the flip control on the row rewrites.
 #[test]
-fn ambiguity_tree_keeps_a_direct_parent_release_and_its_child() {
+fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let parent = root.join("Group").join("Artist");
@@ -513,31 +541,31 @@ fn ambiguity_tree_keeps_a_direct_parent_release_and_its_child() {
     std::fs::write(parent.join("parent.flac"), fake_flac()).unwrap();
     std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
 
-    let boundary = scan_items(&root)
-        .into_iter()
-        .find_map(|item| match item {
-            ScanItem::Boundary(boundary) if boundary.key.relative_folder_path == "Group/Artist" => {
-                Some(boundary)
-            }
+    let items = scan_items(&root);
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    let candidates: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate),
             _ => None,
         })
-        .expect("the parent and child are ambiguous");
-
-    assert!(matches!(
-        boundary.tree_rows[0].kind,
-        FolderReleaseTreeRowKind::Candidate { .. }
-    ));
-    assert_eq!(boundary.tree_rows[0].name, "Artist");
-    assert_eq!(boundary.tree_rows[0].decision_key, boundary.key);
-    assert!(boundary.tree_rows.iter().any(|row| {
-        row.name == "Album"
-            && matches!(row.kind, FolderReleaseTreeRowKind::Candidate { .. })
-            && row.depth == 1
+        .collect();
+    assert_eq!(candidates.len(), 2);
+    assert!(candidates.iter().all(|candidate| {
+        candidate.resolved_boundaries.iter().any(|resolved| {
+            resolved.key.relative_folder_path == "Group/Artist"
+                && resolved.decision == FolderReleaseDecision::KeepAsSeparateReleases
+        })
     }));
 }
 
+/// The same when the folder's own tracks do not make a valid release: the
+/// invalid folder still carries the reading, so the row it draws offers the
+/// same flip.
 #[test]
-fn ambiguity_tree_keeps_an_invalid_direct_parent_and_valid_child() {
+fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let parent = root.join("Group").join("Artist");
@@ -547,23 +575,20 @@ fn ambiguity_tree_keeps_an_invalid_direct_parent_and_valid_child() {
     std::fs::write(parent.join("broken.jpg"), b"not an image").unwrap();
     std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
 
-    let boundary = scan_items(&root)
-        .into_iter()
+    let items = scan_items(&root);
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    let invalid = items
+        .iter()
         .find_map(|item| match item {
-            ScanItem::Boundary(boundary) if boundary.key.relative_folder_path == "Group/Artist" => {
-                Some(boundary)
-            }
+            ScanItem::Invalid(candidate) => Some(candidate),
             _ => None,
         })
-        .expect("the invalid parent and valid child are ambiguous");
-
-    assert!(matches!(
-        boundary.tree_rows[0].kind,
-        FolderReleaseTreeRowKind::Invalid { .. }
-    ));
-    assert_eq!(boundary.tree_rows[0].name, "Artist");
-    assert!(boundary.tree_rows.iter().any(|row| {
-        row.name == "Album" && matches!(row.kind, FolderReleaseTreeRowKind::Candidate { .. })
+        .expect("the folder's own files do not make a release");
+    assert!(invalid.resolved_boundaries.iter().any(|resolved| {
+        resolved.key.relative_folder_path == "Group/Artist"
+            && resolved.decision == FolderReleaseDecision::KeepAsSeparateReleases
     }));
 }
 
@@ -582,10 +607,13 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
         &StoredCandidateEdits::none(),
         &FolderReleaseDecisions::new(HashMap::from([(
             "Group".to_string(),
-            FolderReleaseDecision::KeepAsSeparateReleases,
+            (
+                FolderReleaseDecision::KeepAsSeparateReleases,
+                FolderReleaseDecisionAuthor::User,
+            ),
         )])),
         |item| {
-            if !matches!(item, ScanItem::Discovered(_)) {
+            if !matches!(item, ScanItem::Discovered(_) | ScanItem::Decided { .. }) {
                 items.push(item);
             }
         },
@@ -612,7 +640,7 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
 }
 
 #[test]
-fn unresolved_boundary_counts_shared_files_in_audio_free_subtrees() {
+fn a_child_folder_with_no_number_makes_it_several_releases() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
@@ -626,19 +654,35 @@ fn unresolved_boundary_counts_shared_files_in_audio_free_subtrees() {
     std::fs::write(scans.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(scans.join("Booklet").join("notes.txt"), "notes").unwrap();
 
-    let boundary = scan_items(root)
-        .into_iter()
-        .find_map(|item| match item {
-            ScanItem::Boundary(boundary) => Some(boundary),
-            ScanItem::Discovered(_) | ScanItem::Valid(_) | ScanItem::Invalid(_) => None,
+    // `Scans` carries no number, so the children are not the numbered parts
+    // of one release and each stays its own.
+    let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Decided {
+            key,
+            decision: FolderReleaseDecision::KeepAsSeparateReleases,
+        } if key.relative_folder_path == "Collection/Release Wrapper"
+    )));
+    let releases: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            _ => None,
         })
-        .expect("collection remains unresolved");
-
-    assert_eq!(boundary.shared_file_count, 2);
+        .collect();
+    assert!(releases.contains(&"Collection/Release Wrapper/Release 01"));
+    assert!(releases.contains(&"Collection/Release Wrapper/Release 02"));
 }
 
+/// A box of numbered parts inside a collection of albums: the box is one
+/// release, its sibling album is another, and the collection around them is
+/// not one release just because it holds both.
 #[test]
-fn nested_collection_candidates_carry_core_issued_combine_keys() {
+fn a_numbered_box_inside_a_collection_is_one_release() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     for release in [
@@ -655,21 +699,13 @@ fn nested_collection_candidates_carry_core_issued_combine_keys() {
     assert!(!items
         .iter()
         .any(|item| matches!(item, ScanItem::Boundary(_))));
-    let box_candidates: Vec<_> = items
-        .into_iter()
+    let mut paths: Vec<_> = items
+        .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) if candidate.display_path.starts_with("Collection/Box/") => {
-                Some(candidate)
-            }
+            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
             _ => None,
         })
         .collect();
-    assert_eq!(box_candidates.len(), 2);
-    assert!(box_candidates.iter().all(|candidate| candidate
-        .combine_ancestor_key
-        .as_ref()
-        .is_some_and(|key| {
-            key.watched_folder_path == root.to_string_lossy()
-                && key.relative_folder_path == "Collection/Box"
-        })));
+    paths.sort_unstable();
+    assert_eq!(paths, vec!["Collection/Box", "Collection/Release 03"]);
 }

@@ -637,10 +637,10 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         .unwrap();
     db.add_watched_import_folder(&other).await.unwrap();
 
-    db.set_folder_release_decision(&key, FolderReleaseDecision::CombineAsOneRelease)
+    db.set_folder_release_decision(&key, FolderReleaseDecision::CombineAsOneRelease, crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
         .await
         .unwrap();
-    db.set_folder_release_decision(&key, FolderReleaseDecision::CombineAsOneRelease)
+    db.set_folder_release_decision(&key, FolderReleaseDecision::CombineAsOneRelease, crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
         .await
         .unwrap();
     db.set_folder_release_decision(
@@ -649,6 +649,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
             relative_folder_path: key.relative_folder_path.clone(),
         },
         FolderReleaseDecision::KeepAsSeparateReleases,
+        crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
     )
     .await
     .unwrap();
@@ -659,6 +660,12 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         .unwrap();
     assert_eq!(
         decisions.get(&key.relative_folder_path),
-        Some(FolderReleaseDecision::CombineAsOneRelease)
+        Some((
+
+            FolderReleaseDecision::CombineAsOneRelease,
+
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+
+        ))
     );
 }

@@ -513,7 +513,11 @@ impl ImportServiceHandle {
             Some(crate::import::folder_scanner::ScanItem::Invalid(candidate)) => {
                 return Ok(Some(ImportCandidateSnapshot::Invalid(candidate)))
             }
-            Some(crate::import::folder_scanner::ScanItem::Boundary(_)) | None => None,
+            Some(
+                crate::import::folder_scanner::ScanItem::Boundary(_)
+                | crate::import::folder_scanner::ScanItem::Decided { .. },
+            )
+            | None => None,
         };
         if let Some((candidate, actionable)) = candidate {
             let skipped = self
@@ -556,7 +560,8 @@ impl ImportServiceHandle {
                 Some(
                     crate::import::folder_scanner::ScanItem::Discovered(_)
                     | crate::import::folder_scanner::ScanItem::Invalid(_)
-                    | crate::import::folder_scanner::ScanItem::Boundary(_),
+                    | crate::import::folder_scanner::ScanItem::Boundary(_)
+                    | crate::import::folder_scanner::ScanItem::Decided { .. },
                 )
                 | None => None,
             },

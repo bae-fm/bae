@@ -88,6 +88,12 @@ pub struct ImportedRelease {
 pub(crate) struct StoredEntryKey {
     pub key: String,
     pub is_boundary: bool,
+    /// Whether the entry at this key is the folder itself rather than
+    /// something inside it: the card asking how to read it, or the candidate
+    /// that reads the whole folder as one release. A folder that holds tracks
+    /// of its own has a candidate under the same key which is *not* this — it
+    /// is one of the releases inside the folder.
+    pub covers_whole_folder: bool,
 }
 
 /// The stored entries under `item`'s root that `item` replaces when it is
@@ -100,7 +106,7 @@ pub(crate) struct StoredEntryKey {
 /// entries its decisions resolved. A boundary replaces the tentative candidates
 /// it hides. A tentative (discovered) candidate replaces nothing.
 pub(crate) fn superseded_entry_keys(existing: &[StoredEntryKey], item: &ScanItem) -> Vec<String> {
-    let own_key = item.persisted_key();
+    let own_key = item.persisted_key().unwrap_or_default();
     let mut removed = match item {
         ScanItem::Discovered(_) => Vec::new(),
         ScanItem::Valid(candidate) => {
@@ -109,12 +115,12 @@ pub(crate) fn superseded_entry_keys(existing: &[StoredEntryKey], item: &ScanItem
                 .iter()
                 .map(|resolved| (resolved.key.clone(), resolved.decision))
                 .collect();
-            let keys: HashSet<String> = existing
+            let others: Vec<StoredEntryKey> = existing
                 .iter()
                 .filter(|entry| entry.key != own_key)
-                .map(|entry| entry.key.clone())
+                .cloned()
                 .collect();
-            super::folder_scanner::release_decision_removed_keys(&keys, &decisions)
+            super::folder_scanner::release_decision_removed_keys(&others, &decisions)
         }
         ScanItem::Invalid(candidate) => {
             let boundary_keys: HashSet<String> = candidate
@@ -134,6 +140,8 @@ pub(crate) fn superseded_entry_keys(existing: &[StoredEntryKey], item: &ScanItem
                 .collect()
         }
         ScanItem::Boundary(boundary) => boundary.candidate_keys.clone(),
+        // Not a scan entry: it stores as the folder's decision.
+        ScanItem::Decided { .. } => Vec::new(),
     };
     removed.retain(|key| key != &own_key);
     removed.sort();
@@ -166,7 +174,7 @@ pub(crate) fn release_boundary_ancestor_keys(
             .resolved_boundaries
             .iter()
             .any(|resolved| resolved.key == *key),
-        ScanItem::Boundary(_) => false,
+        ScanItem::Boundary(_) | ScanItem::Decided { .. } => false,
     });
     if resolved_on_row || boundaries.clone().any(|boundary| boundary.key == *key) {
         return Some(Vec::new());
@@ -187,7 +195,7 @@ pub(crate) fn release_boundary_ancestor_keys(
             ScanItem::Invalid(candidate) => {
                 first_component_matches(&candidate.watched_folder_path, &candidate.display_path)
             }
-            ScanItem::Boundary(_) => false,
+            ScanItem::Boundary(_) | ScanItem::Decided { .. } => false,
         })
         .count();
     let grouped_boundaries = boundaries.clone().any(|boundary| {
