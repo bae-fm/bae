@@ -490,7 +490,7 @@
         @MainActor
         static func importTabScene() -> ImportPreviewFixture {
             let store = ImportStore()
-            store.summary = importTabSummary
+            store.applySummary(importTabSummary)
             let rows = importTabRowsByKey()
             for var candidate in importTabCandidates {
                 candidate.row = rows[candidate.key]

@@ -641,7 +641,7 @@
             summary: BridgeImportQueueSummary
         ) -> ImportPreviewFixture {
             let store = ImportStore()
-            store.summary = summary
+            store.applySummary(summary)
             for candidate in releaseQueueCandidates {
                 store.selectedCandidates[candidate.key] = candidate
             }
@@ -717,17 +717,19 @@
             let scene = importTabScene()
             let boundaries = releaseBoundaryPreviewBoundaries.map(boundaryItem)
             let base = scene.store.summary
-            scene.store.summary = importQueueSummary(
-                pending: base.counts.pending
-                    + UInt32(releaseBoundaryPreviewBoundaries.count),
-                done: base.counts.done,
-                skipped: base.counts.skipped,
-                watchedFolders: base.watchedFolders
-                    + [releaseQueueWatchedFolder],
-                folderScanStatuses: base.folderScanStatuses,
-                groupKeys: base.groupKeys,
-                ready: base.ready,
-                firstUnidentifiedKey: base.firstUnidentifiedKey
+            scene.store.applySummary(
+                importQueueSummary(
+                    pending: base.counts.pending
+                        + UInt32(releaseBoundaryPreviewBoundaries.count),
+                    done: base.counts.done,
+                    skipped: base.counts.skipped,
+                    watchedFolders: base.watchedFolders
+                        + [releaseQueueWatchedFolder],
+                    folderScanStatuses: base.folderScanStatuses,
+                    groupKeys: base.groupKeys,
+                    ready: base.ready,
+                    firstUnidentifiedKey: base.firstUnidentifiedKey
+                )
             )
             scene.store.queueIdentifyProgress = (identified: 20, total: 21)
             var itemsByTab = scene.itemsByTab

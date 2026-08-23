@@ -106,6 +106,7 @@ struct ImportCandidateListContent: View {
                         onRefreshFolder: onRefreshFolder,
                         onRemoveFolder: onRemoveFolder
                     )
+                    .equatable()
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 10)

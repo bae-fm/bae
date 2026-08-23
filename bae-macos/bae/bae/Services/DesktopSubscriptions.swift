@@ -188,7 +188,7 @@ final class DesktopSubscriptions {
                 ImportListPageSource(
                     subscription: appHandle.subscribeImportList(view: view),
                     onSummary: { summary in
-                        importStore.summary = summary
+                        importStore.applySummary(summary)
                     }
                 )
                 .pages

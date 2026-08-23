@@ -27,7 +27,12 @@ class ImportStore {
     /// empty summary rather than `nil`: "not loaded yet" and "the queue is
     /// genuinely empty" render identically, so no surface needs to tell them
     /// apart.
-    var summary: BridgeImportQueueSummary = BridgeImportQueueSummary(
+    ///
+    /// Written through `applySummary`, which drops a delivery that says the
+    /// same thing as the one before it: every verdict the sweep commits
+    /// re-delivers this whole value, and an equal write would still invalidate
+    /// everything reading it.
+    private(set) var summary = BridgeImportQueueSummary(
         counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
         watchedFolders: [],
         folderScanStatuses: [],
@@ -35,6 +40,12 @@ class ImportStore {
         ready: [],
         firstUnidentifiedKey: nil
     )
+
+    /// Take a delivered summary, unless it is the one already held.
+    func applySummary(_ next: BridgeImportQueueSummary) {
+        guard next != summary else { return }
+        summary = next
+    }
 
     /// The selected rows' folders, read by key. A selection opens one
     /// subscription per key; the key leaves when its read says the folder is
