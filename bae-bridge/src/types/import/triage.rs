@@ -192,6 +192,28 @@ pub struct BridgeWatchedFolderScanStatus {
     pub watched_folder_path: String,
     pub watched_folder_name: String,
     pub status: BridgeFolderScanStatus,
+    /// Whether this folder lives on a volume served over the network. Such a
+    /// folder is checked on a schedule as well as watched, because a watch on
+    /// a network mount reports only what this machine does to it — and the
+    /// list says so, so a change made on the server that has not appeared yet
+    /// is explained rather than mysterious.
+    pub on_network_volume: bool,
+}
+
+/// The catalog key for what a network folder's indicator says on hover. Its
+/// one argument is how often the folder is checked, which
+/// [`bridge_network_folder_check_minutes`] answers — the two travel together so
+/// the line cannot state an interval nothing uses.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_network_folder_watch_key() -> String {
+    "core.import.folder.network_watch".to_string()
+}
+
+/// How often a watched folder is re-read, in whole minutes.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_network_folder_check_minutes() -> u32 {
+    bae_core::import::check_period_minutes()
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

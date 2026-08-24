@@ -12,10 +12,10 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ScanFailureAlertsTests
 {
     private static BridgeWatchedFolderScanStatus Failed(string path, string error) =>
-        new(path, "Rips", new BridgeFolderScanStatus.Failed(error));
+        new(path, "Rips", new BridgeFolderScanStatus.Failed(error), OnNetworkVolume: false);
 
     private static BridgeWatchedFolderScanStatus Complete(string path) =>
-        new(path, "Rips", new BridgeFolderScanStatus.Complete());
+        new(path, "Rips", new BridgeFolderScanStatus.Complete(), OnNetworkVolume: false);
 
     /// The launch case: the startup scan fails before the UI is up, so the
     /// failure is already standing in the first summary the UI is given.

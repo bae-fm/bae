@@ -121,6 +121,9 @@ fn produced_keys() -> Vec<String> {
         keys.push(expected.to_string());
     }
 
+    // bridge_network_folder_watch_key — one key, no variants to walk.
+    keys.push(bridge_network_folder_watch_key());
+
     // bridge_file_evidence_key — each signal that can name a file words its
     // own hover.
     for signal in [BridgeEvidenceSignal::Barcode, BridgeEvidenceSignal::DiscId] {

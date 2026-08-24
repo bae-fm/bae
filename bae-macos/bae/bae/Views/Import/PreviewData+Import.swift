@@ -672,7 +672,8 @@
                         BridgeWatchedFolderScanStatus(
                             watchedFolderPath: releaseQueueRoot,
                             watchedFolderName: releaseQueueWatchedFolder.name,
-                            status: .scanning
+                            status: .scanning,
+                            onNetworkVolume: false
                         )
                     ],
                     groupKeys: [releaseQueueGroupKey],

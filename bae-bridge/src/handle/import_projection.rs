@@ -103,6 +103,7 @@ impl crate::types::BridgeWatchedFolderScanStatus {
         Self {
             watched_folder_path: status.watched_folder_path,
             watched_folder_name: status.watched_folder_name,
+            on_network_volume: status.on_network_volume,
             status: match status.status {
                 bae_core::import::FolderScanStatus::Scanning => {
                     crate::types::BridgeFolderScanStatus::Scanning

@@ -96,7 +96,7 @@ impl ImportService {
             // already out.
             let (checked_tx, mut checked_rx) = mpsc::unbounded_channel::<PathBuf>();
             let mut checking: HashSet<PathBuf> = HashSet::new();
-            let period = std::time::Duration::from_secs(15 * 60);
+            let period = crate::import::volume::CHECK_PERIOD;
             let mut periodic = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
             periodic.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {

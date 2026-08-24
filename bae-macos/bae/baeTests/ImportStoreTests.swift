@@ -755,7 +755,8 @@ struct ImportStoreScanFailureTests {
         BridgeWatchedFolderScanStatus(
             watchedFolderPath: path,
             watchedFolderName: "Rips",
-            status: .failed(error: error)
+            status: .failed(error: error),
+            onNetworkVolume: false
         )
     }
 
@@ -765,7 +766,8 @@ struct ImportStoreScanFailureTests {
         BridgeWatchedFolderScanStatus(
             watchedFolderPath: path,
             watchedFolderName: "Rips",
-            status: .complete
+            status: .complete,
+            onNetworkVolume: false
         )
     }
 

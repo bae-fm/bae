@@ -35,6 +35,7 @@ fn queue() -> ImportQueueRows {
             watched_folder_path: root(),
             watched_folder_name: "music".to_string(),
             status: FolderScanStatus::Complete,
+            on_network_volume: false,
         }],
         ..ImportQueueRows::default()
     }

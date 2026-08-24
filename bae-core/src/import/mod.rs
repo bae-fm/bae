@@ -28,6 +28,10 @@ pub mod folder_registry;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod folder_scanner;
 mod image_response;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) mod volume;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use volume::check_period_minutes;
 // The import pipeline (scanning, transcoding, identify orchestration) is
 // desktop-only; mobile is a sync/playback client. Only the shared domain types
 // below (re-exported from `types`) compile on mobile.

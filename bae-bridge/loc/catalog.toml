@@ -3803,6 +3803,43 @@ th = "ต้องการ {names}"
 # roles table, the track slots table, the commit bar. Core's wording for what
 # a file's role makes of it, and the chrome both desktop surfaces share.
 
+[messages."core.import.folder.network_watch"]
+comment = "Import folder list, hover over a network folder's indicator: the folder is on a network volume, whose filesystem watch reports only this machine's own writes, so bae re-checks it on a schedule ({minutes} is how often, in whole minutes)."
+args = { minutes = "Int" }
+value = "Network folder — changes are checked every {minutes} minutes"
+
+[messages."core.import.folder.network_watch".translations]
+es = "Carpeta en red: los cambios se comprueban cada {minutes} minutos"
+fr = "Dossier réseau : les modifications sont vérifiées toutes les {minutes} minutes"
+de = "Netzwerkordner – Änderungen werden alle {minutes} Minuten geprüft"
+"pt-BR" = "Pasta em rede — as alterações são verificadas a cada {minutes} minutos"
+ja = "ネットワークフォルダ — 変更は {minutes} 分ごとに確認されます"
+ko = "네트워크 폴더 — 변경 사항을 {minutes}분마다 확인합니다"
+"zh-Hans" = "网络文件夹 — 每 {minutes} 分钟检查一次更改"
+ar = "مجلد على الشبكة — يجري التحقق من التغييرات كل {minutes} دقيقة"
+he = "תיקייה ברשת — שינויים נבדקים כל {minutes} דקות"
+uk = "Мережева тека — зміни перевіряються кожні {minutes} хв"
+bg = "Мрежова папка — промените се проверяват на всеки {minutes} минути"
+pl = "Folder sieciowy — zmiany są sprawdzane co {minutes} minut"
+cs = "Síťová složka — změny se kontrolují každých {minutes} minut"
+hr = "Mrežna mapa — promjene se provjeravaju svakih {minutes} minuta"
+"zh-Hant" = "網路資料夾 — 每 {minutes} 分鐘檢查一次變更"
+it = "Cartella di rete — le modifiche vengono controllate ogni {minutes} minuti"
+tr = "Ağ klasörü — değişiklikler {minutes} dakikada bir denetlenir"
+vi = "Thư mục mạng — thay đổi được kiểm tra mỗi {minutes} phút"
+nl = "Netwerkmap — wijzigingen worden elke {minutes} minuten gecontroleerd"
+hi = "नेटवर्क फ़ोल्डर — बदलाव हर {minutes} मिनट में जाँचे जाते हैं"
+bn = "নেটওয়ার্ক ফোল্ডার — প্রতি {minutes} মিনিটে পরিবর্তন যাচাই করা হয়"
+ta = "நெட்வொர்க் கோப்புறை — மாற்றங்கள் ஒவ்வொரு {minutes} நிமிடத்திற்கும் சரிபார்க்கப்படும்"
+te = "నెట్‌వర్క్ ఫోల్డర్ — మార్పులు ప్రతి {minutes} నిమిషాలకు తనిఖీ చేయబడతాయి"
+mr = "नेटवर्क फोल्डर — बदल दर {minutes} मिनिटांनी तपासले जातात"
+ur = "نیٹ ورک فولڈر — تبدیلیاں ہر {minutes} منٹ بعد جانچی جاتی ہیں"
+gu = "નેટવર્ક ફોલ્ડર — ફેરફારો દર {minutes} મિનિટે તપાસાય છે"
+kn = "ನೆಟ್‌ವರ್ಕ್ ಫೋಲ್ಡರ್ — ಬದಲಾವಣೆಗಳನ್ನು ಪ್ರತಿ {minutes} ನಿಮಿಷಗಳಿಗೊಮ್ಮೆ ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ"
+ml = "നെറ്റ്‌വർക്ക് ഫോൾഡർ — മാറ്റങ്ങൾ ഓരോ {minutes} മിനിറ്റിലും പരിശോധിക്കുന്നു"
+pa = "ਨੈੱਟਵਰਕ ਫੋਲਡਰ — ਤਬਦੀਲੀਆਂ ਹਰ {minutes} ਮਿੰਟ ਬਾਅਦ ਜਾਂਚੀਆਂ ਜਾਂਦੀਆਂ ਹਨ"
+th = "โฟลเดอร์บนเครือข่าย — ตรวจสอบการเปลี่ยนแปลงทุก {minutes} นาที"
+
 [messages."core.import.evidence.barcode_in_image"]
 comment = "Import pane, hover over an artwork thumbnail: identification matched the release on a barcode read off this image ({value} is the barcode digits)."
 args = { value = "Str" }

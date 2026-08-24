@@ -37,9 +37,8 @@ mod scanning;
 
 use folder_watcher::FolderWatchSnapshot;
 mod coordinator;
-mod volume;
+use crate::import::volume::{directories_changed, directory_modified_at, volume_kind, VolumeKind};
 pub(crate) use folder_watcher::FolderWatcher;
-pub(crate) use volume::{directories_changed, directory_modified_at, volume_kind, VolumeKind};
 
 use format_prep::resolve_file_content_type;
 

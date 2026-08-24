@@ -18,6 +18,11 @@ struct CandidateListMenu: View, Equatable {
     /// whose walk failed, says so on its own entry — and a failure also marks
     /// the trigger, so nobody has to open the menu to find out.
     let scanStatuses: [String: BridgeFolderScanStatus]
+    /// The roots on a volume served over the network. Their entry says so,
+    /// because such a folder is checked on a schedule rather than reported the
+    /// moment it changes — and an album added on the server that has not
+    /// appeared yet is otherwise a mystery.
+    let networkFolders: Set<String>
     let onAddFolder: () -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
     /// Stop watching `path`. Release grouping belongs to the queue below;
@@ -34,6 +39,7 @@ struct CandidateListMenu: View, Equatable {
         lhs.watchedFolders == rhs.watchedFolders
             && lhs.refreshingFolders == rhs.refreshingFolders
             && lhs.scanStatuses == rhs.scanStatuses
+            && lhs.networkFolders == rhs.networkFolders
     }
 
     private var hasFailedScan: Bool {
@@ -76,20 +82,46 @@ struct CandidateListMenu: View, Equatable {
     /// tooltip, which is where the header used to spell it out.
     @ViewBuilder
     private func folderMenu(_ folder: BridgeWatchedFolder) -> some View {
+        let onNetwork = networkFolders.contains(folder.path)
         switch scanStatuses[folder.path] {
         case .scanning:
             folderEntry(folder) {
                 ProgressView().controlSize(.small)
             }
+            .help(networkLine(onNetwork) ?? "")
         case .failed(let error):
             folderEntry(folder) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
             }
-            .help(error)
+            .help(
+                [error, networkLine(onNetwork)]
+                    .compactMap { $0 }
+                    .joined(separator: "\n")
+            )
         case .complete, nil:
-            folderEntry(folder) { EmptyView() }
+            folderEntry(folder) {
+                if onNetwork {
+                    Image(systemName: "network")
+                        .foregroundStyle(.secondary)
+                }
+                else {
+                    EmptyView()
+                }
+            }
+            .help(networkLine(onNetwork) ?? "")
         }
+    }
+
+    /// How a folder on a network volume is kept up to date, in the user's
+    /// language. `nil` for a folder on this machine's own disk, which its watch
+    /// reports the moment it changes and which has nothing to explain.
+    private func networkLine(_ onNetwork: Bool) -> String? {
+        guard onNetwork else { return nil }
+        return coreString(
+            bridgeNetworkFolderWatchKey(),
+            Int(bridgeNetworkFolderCheckMinutes())
+        )
     }
 
     private func folderEntry<Icon: View>(
@@ -139,6 +171,7 @@ struct CandidateListMenu: View, Equatable {
                     error: "The volume could not be reached."
                 ),
             ],
+            networkFolders: ["/Volumes/Vault"],
             onAddFolder: {},
             onRefreshFolder: { _ in },
             onRemoveFolder: { _ in }

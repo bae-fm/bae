@@ -250,10 +250,14 @@ fn scan_statuses(
                 )))
             }
         };
+        let on_network_volume =
+            crate::import::volume::volume_kind(std::path::Path::new(&watched_folder_path))
+                == crate::import::volume::VolumeKind::Network;
         statuses.push(WatchedFolderScanStatus {
             watched_folder_path,
             watched_folder_name: watched_folder.name.clone(),
             status,
+            on_network_volume,
         });
     }
     statuses.sort_by(|left, right| {

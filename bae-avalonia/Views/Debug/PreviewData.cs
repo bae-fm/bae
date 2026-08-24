@@ -118,7 +118,8 @@ internal static class PreviewData
                 new BridgeWatchedFolderScanStatus(
                     ImportRoot,
                     "Incoming",
-                    new BridgeFolderScanStatus.Scanning()),
+                    new BridgeFolderScanStatus.Scanning(),
+                    OnNetworkVolume: false),
             },
         };
 

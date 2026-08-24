@@ -9,6 +9,16 @@
 
 use std::path::Path;
 
+/// How often a watched folder is re-read, and so how long a change made on a
+/// network volume can go unnoticed. Named here because the list tells the user
+/// this number and it must be the one the coordinator actually uses.
+pub(crate) const CHECK_PERIOD: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
+/// The same interval in whole minutes, for the line the list shows.
+pub fn check_period_minutes() -> u32 {
+    (CHECK_PERIOD.as_secs() / 60) as u32
+}
+
 /// Where a watched folder's files actually are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum VolumeKind {

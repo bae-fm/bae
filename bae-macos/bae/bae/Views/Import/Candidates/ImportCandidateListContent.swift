@@ -83,6 +83,16 @@ struct ImportCandidateListContent: View {
         )
     }
 
+    /// The watched roots on a volume served over the network — what the folder
+    /// menu explains the checking schedule on.
+    private var networkFolders: Set<String> {
+        Set(
+            summary.folderScanStatuses
+                .filter(\.onNetworkVolume)
+                .map(\.watchedFolderPath)
+        )
+    }
+
     /// Go to the first row the identify count is still waiting on. `nil` when
     /// there is none to go to.
     private var goToFirstUnidentified: (() -> Void)? {
@@ -139,6 +149,7 @@ struct ImportCandidateListContent: View {
                         watchedFolders: importStore.watchedFolders,
                         refreshingFolders: uiStore.refreshingWatchedFolders,
                         scanStatuses: scanStatuses,
+                        networkFolders: networkFolders,
                         onAddFolder: onAddFolder,
                         onRefreshFolder: onRefreshFolder,
                         onRemoveFolder: onRemoveFolder

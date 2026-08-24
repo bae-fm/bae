@@ -45,6 +45,7 @@ impl ImportService {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Failed { error: message },
+                    on_network_volume: volume_kind(root) == VolumeKind::Network,
                 },
             }),
         );
@@ -211,6 +212,7 @@ impl ImportService {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Scanning,
+                    on_network_volume: volume_kind(root) == VolumeKind::Network,
                 },
             }),
         );
@@ -560,6 +562,7 @@ impl ImportService {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Complete,
+                    on_network_volume: volume_kind(root) == VolumeKind::Network,
                 },
             }),
         );

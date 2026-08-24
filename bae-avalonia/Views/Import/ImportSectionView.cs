@@ -370,6 +370,18 @@ internal sealed partial class ImportSectionView : UserControl
 
         var scans = _import.Summary.FolderScanStatuses
             .ToDictionary(scan => scan.WatchedFolderPath, scan => scan.Status);
+        // The roots on a volume served over the network. Such a folder is
+        // checked on a schedule rather than reported the moment it changes, so
+        // its entry says so — an album added on the server that has not
+        // appeared yet is otherwise a mystery.
+        var onNetwork = _import.Summary.FolderScanStatuses
+            .Where(scan => scan.OnNetworkVolume)
+            .Select(scan => scan.WatchedFolderPath)
+            .ToHashSet();
+        var networkLine = Loc.Core(
+            BaeBridgeMethods.BridgeNetworkFolderWatchKey(),
+            "minutes",
+            (long)BaeBridgeMethods.BridgeNetworkFolderCheckMinutes());
         foreach (var folder in _import.WatchedFolders)
         {
             var path = folder.Path;
@@ -377,6 +389,7 @@ internal sealed partial class ImportSectionView : UserControl
             // A root being walked, or one whose walk failed, says so on its
             // own entry — a failure carries what went wrong as its tooltip,
             // which is where the header used to spell it out.
+            var network = onNetwork.Contains(path);
             switch (scans.GetValueOrDefault(path))
             {
                 case BridgeFolderScanStatus.Scanning:
@@ -384,8 +397,21 @@ internal sealed partial class ImportSectionView : UserControl
                     break;
                 case BridgeFolderScanStatus.Failed failed:
                     folderItem.Icon = Icons.Glyph(Icons.Warning, 12, "BaeDangerBrush");
-                    ToolTip.SetTip(folderItem, failed.Error);
+                    ToolTip.SetTip(
+                        folderItem,
+                        network ? $"{failed.Error}\n{networkLine}" : failed.Error);
                     break;
+                default:
+                    if (network)
+                    {
+                        folderItem.Icon = Icons.Glyph(
+                            Icons.NetworkFolder, 12, "BaeTextSecondaryBrush");
+                    }
+                    break;
+            }
+            if (network && scans.GetValueOrDefault(path) is not BridgeFolderScanStatus.Failed)
+            {
+                ToolTip.SetTip(folderItem, networkLine);
             }
             var refreshing = _import.Interaction.IsRefreshing(path);
             var refresh = new MenuItem

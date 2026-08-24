@@ -24,6 +24,12 @@ pub struct WatchedFolderScanStatus {
     pub watched_folder_path: String,
     pub watched_folder_name: String,
     pub status: FolderScanStatus,
+    /// Whether this folder lives on a volume served over the network, which
+    /// changes how it is watched: a filesystem watch on such a volume reports
+    /// only what this machine does to it, so the folder is checked on a
+    /// schedule as well. The list says so, because "I added an album on the
+    /// server and bae has not noticed" is otherwise a mystery.
+    pub on_network_volume: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
