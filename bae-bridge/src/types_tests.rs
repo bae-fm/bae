@@ -214,17 +214,21 @@ mod loc_key_coverage {
                 tracks: 12,
             },
         ] {
-            let expected = match reconciliation {
-                BridgeSlotReconciliation::Agrees { .. } => "core.import.reconciliation.agrees",
+            // An agreement draws no line, so it names no key.
+            let expected: Option<&str> = match reconciliation {
+                BridgeSlotReconciliation::Agrees { .. } => None,
                 BridgeSlotReconciliation::MoreFiles { .. } => {
-                    "core.import.reconciliation.more_files"
+                    Some("core.import.reconciliation.more_files")
                 }
                 BridgeSlotReconciliation::MoreTracks { .. } => {
-                    "core.import.reconciliation.more_tracks"
+                    Some("core.import.reconciliation.more_tracks")
                 }
             };
-            assert_eq!(bridge_slot_reconciliation_key(reconciliation), expected);
-            keys.push(expected.to_string());
+            assert_eq!(
+                bridge_slot_reconciliation_key(reconciliation).as_deref(),
+                expected
+            );
+            keys.extend(expected.map(str::to_string));
         }
 
         // bridge_sheet_binding_offer_key — an offered file needs no reason.

@@ -16,8 +16,7 @@ import Foundation
 /// A message whose value names one argument twice needs that argument passed
 /// twice: Apple's plural variations carry one specifier number, so a repeated
 /// `%lld` inside a variation reads the next argument rather than repeating the
-/// count. `core.import.reconciliation.agrees` is the one such message — see
-/// `bridgeSlotReconciliationText`.
+/// count. The catalog holds no such message today.
 ///
 /// `String(format:locale:)` against `Locale.current` rather than the plain
 /// initializer, so a pluralized message picks its category from the locale's

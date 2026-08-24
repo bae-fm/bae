@@ -173,16 +173,25 @@ pub fn bridge_lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -
     bae_core::import::lengths_disagree(probed_ms, source_ms)
 }
 
-/// The catalog key naming the reconciliation line.
+/// The catalog key naming the reconciliation line, or `None` where there is no
+/// line to draw.
+///
+/// Two sides that account for the same rows say nothing the table is not
+/// already showing, so an agreement draws nothing. The tally itself stays whole
+/// in core — it is what a later edit re-derives a disagreement from — and this
+/// is where the decision not to state it lives, once, for both desktops.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) -> String {
+pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) -> Option<String> {
     match reconciliation {
-        BridgeSlotReconciliation::Agrees { .. } => "core.import.reconciliation.agrees",
-        BridgeSlotReconciliation::MoreFiles { .. } => "core.import.reconciliation.more_files",
-        BridgeSlotReconciliation::MoreTracks { .. } => "core.import.reconciliation.more_tracks",
+        BridgeSlotReconciliation::Agrees { .. } => None,
+        BridgeSlotReconciliation::MoreFiles { .. } => {
+            Some("core.import.reconciliation.more_files".to_string())
+        }
+        BridgeSlotReconciliation::MoreTracks { .. } => {
+            Some("core.import.reconciliation.more_tracks".to_string())
+        }
     }
-    .to_string()
 }
 
 /// Which disc of the release one track sheet's entries become. Mirror of

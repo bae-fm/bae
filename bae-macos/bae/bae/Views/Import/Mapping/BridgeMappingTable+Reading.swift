@@ -197,14 +197,17 @@ extension BridgeMappingRole {
     }
 }
 
-/// The tally above the mapping table, in the user's language. Each message
-/// takes its own numbers, in the order the English value names them — one when
-/// the two sides agree, since both have the same one.
-func bridgeSlotReconciliationText(_ value: BridgeSlotReconciliation) -> String {
-    let key = bridgeSlotReconciliationKey(reconciliation: value)
+/// The tally above the mapping table, in the user's language, or nothing where
+/// there is no line to draw — core says which by naming a key or not, and two
+/// sides that account for the same rows name none. Each message takes its own
+/// numbers, in the order the English value names them.
+func bridgeSlotReconciliationText(_ value: BridgeSlotReconciliation) -> String? {
+    guard let key = bridgeSlotReconciliationKey(reconciliation: value) else {
+        return nil
+    }
     switch value {
-    case .agrees(let count):
-        return coreString(key, Int(count))
+    case .agrees:
+        return nil
     case .moreFiles(let files, let tracks),
         .moreTracks(let files, let tracks):
         return coreString(key, Int(files), Int(tracks))

@@ -4165,43 +4165,6 @@ ml = "ട്രാക്ക് അല്ല"
 pa = "ਟਰੈਕ ਨਹੀਂ"
 th = "ไม่ใช่แทร็ก"
 
-[messages."core.import.reconciliation.agrees"]
-comment = "Import slot table, the line above it: the folder's audio and the release's tracklist account for the same number of rows. Only one number, because both sides have the same one."
-args = { count = "Int" }
-value = "{count, plural, one {# file, matching the release} other {# files, matching the release}}"
-
-[messages."core.import.reconciliation.agrees".translations]
-es = "{count, plural, one {# archivo, coincide con la edición} other {# archivos, coinciden con la edición}}"
-fr = "{count, plural, one {# fichier, correspond à l’édition} other {# fichiers, correspondent à l’édition}}"
-de = "{count, plural, one {# Datei, passt zur Veröffentlichung} other {# Dateien, passen zur Veröffentlichung}}"
-"pt-BR" = "{count, plural, one {# arquivo, corresponde à edição} other {# arquivos, correspondem à edição}}"
-ja = "{count, plural, other {#個のファイル、リリースと一致}}"
-ko = "{count, plural, other {파일 #개, 릴리스와 일치}}"
-"zh-Hans" = "{count, plural, other {# 个文件，与发行版一致}}"
-ar = "{count, plural, zero {لا ملفات، مطابقة للإصدار} one {ملف واحد، مطابق للإصدار} two {ملفان، مطابقان للإصدار} few {# ملفات، مطابقة للإصدار} many {# ملفًا، مطابقة للإصدار} other {# ملف، مطابق للإصدار}}"
-he = "{count, plural, one {קובץ אחד, תואם להוצאה} two {שני קבצים, תואמים להוצאה} many {# קבצים, תואמים להוצאה} other {# קבצים, תואמים להוצאה}}"
-uk = "{count, plural, one {# файл, відповідає виданню} few {# файли, відповідають виданню} many {# файлів, відповідають виданню} other {# файлу, відповідає виданню}}"
-bg = "{count, plural, one {# файл, съответства на изданието} other {# файла, съответстват на изданието}}"
-pl = "{count, plural, one {# plik, zgodny z wydaniem} few {# pliki, zgodne z wydaniem} many {# plików, zgodnych z wydaniem} other {# pliku, zgodnego z wydaniem}}"
-cs = "{count, plural, one {# soubor, odpovídá vydání} few {# soubory, odpovídají vydání} many {# souboru, odpovídá vydání} other {# souborů, odpovídá vydání}}"
-hr = "{count, plural, one {# datoteka, odgovara izdanju} few {# datoteke, odgovaraju izdanju} other {# datoteka, odgovara izdanju}}"
-"zh-Hant" = "{count, plural, other {# 個檔案，與發行版一致}}"
-it = "{count, plural, one {# file, corrisponde all’edizione} other {# file, corrispondono all’edizione}}"
-tr = "{count, plural, one {# dosya, sürümle eşleşiyor} other {# dosya, sürümle eşleşiyor}}"
-vi = "{count, plural, other {# tệp, khớp với bản phát hành}}"
-nl = "{count, plural, one {# bestand, komt overeen met de uitgave} other {# bestanden, komen overeen met de uitgave}}"
-hi = "{count, plural, one {# फ़ाइल, रिलीज़ से मेल खाती है} other {# फ़ाइलें, रिलीज़ से मेल खाती हैं}}"
-bn = "{count, plural, one {#টি ফাইল, রিলিজের সঙ্গে মেলে} other {#টি ফাইল, রিলিজের সঙ্গে মেলে}}"
-ta = "{count, plural, one {# கோப்பு, வெளியீட்டுடன் பொருந்துகிறது} other {# கோப்புகள், வெளியீட்டுடன் பொருந்துகின்றன}}"
-te = "{count, plural, one {# ఫైల్, విడుదలతో సరిపోతుంది} other {# ఫైల్‌లు, విడుదలతో సరిపోతాయి}}"
-mr = "{count, plural, one {# फाइल, प्रकाशनाशी जुळते} other {# फाइली, प्रकाशनाशी जुळतात}}"
-ur = "{count, plural, one {# فائل، ریلیز سے مطابقت رکھتی ہے} other {# فائلیں، ریلیز سے مطابقت رکھتی ہیں}}"
-gu = "{count, plural, one {# ફાઇલ, રિલીઝ સાથે મેળ ખાય છે} other {# ફાઇલો, રિલીઝ સાથે મેળ ખાય છે}}"
-kn = "{count, plural, one {# ಫೈಲ್, ಬಿಡುಗಡೆಗೆ ಹೊಂದುತ್ತದೆ} other {# ಫೈಲ್‌ಗಳು, ಬಿಡುಗಡೆಗೆ ಹೊಂದುತ್ತವೆ}}"
-ml = "{count, plural, one {# ഫയൽ, റിലീസുമായി യോജിക്കുന്നു} other {# ഫയലുകൾ, റിലീസുമായി യോജിക്കുന്നു}}"
-pa = "{count, plural, one {# ਫਾਈਲ, ਰਿਲੀਜ਼ ਨਾਲ ਮੇਲ ਖਾਂਦੀ ਹੈ} other {# ਫਾਈਲਾਂ, ਰਿਲੀਜ਼ ਨਾਲ ਮੇਲ ਖਾਂਦੀਆਂ ਹਨ}}"
-th = "{count, plural, other {# ไฟล์ ตรงกับรุ่นนี้}}"
-
 [messages."core.import.reconciliation.more_files"]
 comment = "Import slot table, the line above it: the folder holds more audio than the release's tracklist names, so some rows have no track behind them. Stated, never blocking."
 args = { files = "Int", tracks = "Int" }

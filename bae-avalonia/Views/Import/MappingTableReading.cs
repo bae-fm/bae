@@ -104,13 +104,14 @@ internal static class MappingTableReading
         _ => null,
     };
 
-    /// <summary>The tally above the table, in the user's language. Each message
-    /// takes its own numbers, in the order the English value names them — one
-    /// when the two sides agree, since both have the same one.</summary>
-    internal static string ReconciliationLine(BridgeSlotReconciliation reconciliation) =>
-        Loc.Core(
-            BaeBridgeMethods.BridgeSlotReconciliationKey(reconciliation),
-            ReconciliationArgs(reconciliation));
+    /// <summary>The tally above the table, in the user's language, or null where
+    /// there is no line to draw — core says which by naming a key or not, and
+    /// two sides that account for the same rows name none. Each message takes
+    /// its own numbers, in the order the English value names them.</summary>
+    internal static string? ReconciliationLine(BridgeSlotReconciliation reconciliation) =>
+        BaeBridgeMethods.BridgeSlotReconciliationKey(reconciliation) is { } key
+            ? Loc.Core(key, ReconciliationArgs(reconciliation))
+            : null;
 
     /// <summary>The arguments the reconciliation message interpolates. The key
     /// itself is core's; only which numbers ride with it differs per
@@ -118,8 +119,8 @@ internal static class MappingTableReading
     internal static IReadOnlyDictionary<string, object?> ReconciliationArgs(
         BridgeSlotReconciliation reconciliation) => reconciliation switch
         {
-            BridgeSlotReconciliation.Agrees agrees =>
-                new Dictionary<string, object?> { ["count"] = (long)agrees.Count },
+            // An agreement draws no line, so it interpolates nothing.
+            BridgeSlotReconciliation.Agrees => new Dictionary<string, object?>(),
             BridgeSlotReconciliation.MoreFiles more => new Dictionary<string, object?>
             {
                 ["files"] = (long)more.Files,

@@ -237,14 +237,20 @@ public sealed class ImportMappingTableTests
     [Fact]
     public void TheReconciliationArgumentsMatchTheVariant()
     {
-        var agrees = MappingTableReading.ReconciliationArgs(new BridgeSlotReconciliation.Agrees(12));
-        Assert.Equal(12L, agrees["count"]);
-        Assert.Single(agrees);
-
         var more = MappingTableReading.ReconciliationArgs(new BridgeSlotReconciliation.MoreFiles(13, 12));
         Assert.Equal(13L, more["files"]);
         Assert.Equal(12L, more["tracks"]);
         Assert.False(more.ContainsKey("count"));
+    }
+
+    // Two sides that account for the same rows say nothing the table is not
+    // already showing, so they draw no line at all.
+    [Fact]
+    public void AnAgreementDrawsNoReconciliationLine()
+    {
+        Assert.Null(MappingTableReading.ReconciliationLine(new BridgeSlotReconciliation.Agrees(12)));
+        Assert.NotNull(
+            MappingTableReading.ReconciliationLine(new BridgeSlotReconciliation.MoreFiles(13, 12)));
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────

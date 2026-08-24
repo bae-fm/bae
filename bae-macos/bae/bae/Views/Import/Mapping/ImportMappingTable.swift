@@ -42,7 +42,7 @@ struct ImportMappingTable: View {
             FormSectionHeader(
                 title: coreString("ui.import.mapping.title"),
                 trailing: table.reconciliation
-                    .map(bridgeSlotReconciliationText)
+                    .flatMap(bridgeSlotReconciliationText)
             )
             // A pane too narrow for the columns scrolls the table sideways.
             // The alternative is squeezing a column past the point it says
