@@ -248,7 +248,7 @@ internal sealed partial class ImportSectionView
         }
         else
         {
-            if (RowSubLine(row, upload) is { Length: > 0 } subLine)
+            if (RowSubLine(row) is { Length: > 0 } subLine)
             {
                 var sub = new TextBlock
                 {
@@ -300,23 +300,21 @@ internal sealed partial class ImportSectionView
     // The second line: the matched release's metadata, a disagreement sentence,
     // the still-identifying phase, or an import failure — whichever `row` is
     // actually saying. A Ready row draws its own lines and is not asked.
-    private string? RowSubLine(
-        BridgeTriageRow row,
-        ImportUploadObservation? upload) => row.Placement switch
-        {
-            BridgeTriagePlacement.Skipped => MetadataLine(row),
-            BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
-                BridgeDisplay.LocalizedLine(phase.Phase),
-            BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
-                MetadataLine(row),
-            BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
-                row.Matched?.Artist,
-            BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
-                BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
-            BridgeTriagePlacement.Importing or BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
-                ImportSubLine(row, upload),
-            _ => null,
-        };
+    private string? RowSubLine(BridgeTriageRow row) => row.Placement switch
+    {
+        BridgeTriagePlacement.Skipped => MetadataLine(row),
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
+            BridgeDisplay.LocalizedLine(phase.Phase),
+        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
+            MetadataLine(row),
+        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
+            row.Matched?.Artist,
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
+            BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
+        BridgeTriagePlacement.Importing or BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
+            ImportSubLine(row),
+        _ => null,
+    };
 
     private static string? MetadataLine(BridgeTriageRow row)
     {
@@ -371,30 +369,18 @@ internal sealed partial class ImportSectionView
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    private string? ImportSubLine(
-        BridgeTriageRow row,
-        ImportUploadObservation? upload) => row.ImportStatus switch
-        {
-            // A running import draws its own line; this is not asked for it.
-            BridgeTriageImportStatus.Importing => null,
-            BridgeTriageImportStatus.Complete =>
-                upload switch
-                {
-                    ImportUploadObservation.Active active => string.Join(
-                        " · ",
-                        new[]
-                        {
-                        UploadProgressPresentation.ActivityLabel(active.Progress),
-                        UploadProgressPresentation.BarLabel(active.Progress.Bar),
-                        }.Where(part => part.Length > 0)),
-                    ImportUploadObservation.Finished => MetadataLine(row),
-                    _ => throw new InvalidOperationException(
-                        "a completed import has no upload observation"),
-                },
-            null => MetadataLine(row),
-            BridgeTriageImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
-            _ => null,
-        };
+    private static string? ImportSubLine(BridgeTriageRow row) => row.ImportStatus switch
+    {
+        // A running import draws its own line; this is not asked for it.
+        BridgeTriageImportStatus.Importing => null,
+        // The row says what the release is. That its files are still going up
+        // is the trailing glyph's to say, and how far they have come is the
+        // bar's — a count of the files queued behind it answers a question
+        // nobody asked of a row.
+        BridgeTriageImportStatus.Complete or null => MetadataLine(row),
+        BridgeTriageImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
+        _ => null,
+    };
 
     private static ProgressBar CloudProgressBar(
         ImportUploadObservation observation)

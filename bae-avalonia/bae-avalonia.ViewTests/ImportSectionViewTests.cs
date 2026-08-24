@@ -5,6 +5,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Bae.Desktop;
 using uniffi.bae_bridge;
@@ -201,8 +202,8 @@ public sealed class ImportSectionViewTests
     }
 
     // An imported release reads its cloud work off the outbox: while the
-    // outbox holds it the row draws the transfer, and once it is gone the row
-    // is done.
+    // outbox holds it the row draws the transfer with one indicator — the
+    // upload arrow and the bar — and once it is gone the row is done.
     [AvaloniaFact]
     public void CloudImportReactsToOutboxProgress()
     {
@@ -230,8 +231,13 @@ public sealed class ImportSectionViewTests
             true);
         app.StorageStore.ApplyOutbox(Outbox(7, progress));
 
+        // One indicator: the arrow, and the bar under the line. The row says
+        // what the release is, not how many of its files are still waiting.
         var activeRow = CandidateRow(view);
         Assert.Contains(
+            activeRow.GetLogicalDescendants().OfType<PathIcon>(),
+            icon => icon.Data?.ToString() == Geometry.Parse(Icons.ArrowUp).ToString());
+        Assert.DoesNotContain(
             activeRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text is { } line
                 && line.Contains(

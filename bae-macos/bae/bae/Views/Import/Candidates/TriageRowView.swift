@@ -303,12 +303,11 @@ extension TriageRowView {
         // A running import draws its own line; `subLine` is not asked for it.
         case .importing:
             return nil
-        case .complete:
-            if let statusText = cloudUploadObservation?.statusText {
-                return statusText
-            }
-            return metadataLine
-        case nil:
+        // The row says what the release is. That its files are still going up
+        // is the trailing glyph's to say, and how far they have come is the
+        // bar's — a count of the files queued behind it answers a question
+        // nobody asked of a row.
+        case .complete, nil:
             return metadataLine
         case .error(let error):
             return error.displayLine
@@ -390,9 +389,11 @@ extension TriageRowView {
         case .importing:
             ProgressView().controlSize(.small)
         case .complete:
-            if case .active(let progress) = cloudUploadObservation {
-                UploadActivityLabel(progress: progress)
-                    .font(.caption)
+            if case .active = cloudUploadObservation {
+                // Still going up to the cloud — the same arrow the storage
+                // queue marks an active upload with, and nothing else: the
+                // release is in the library either way.
+                trailingIcon("arrow.up.circle", tint: .secondary)
             }
             else {
                 trailingIcon("checkmark.circle.fill", tint: .green)
