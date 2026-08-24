@@ -218,6 +218,7 @@ nl	album.release_picker
 nl	album.shuffle
 nl	cloud.provider.s3
 nl	identify.conflict
+nl	import.pane.details
 nl	queue.shuffle.on
 nl	s3.field.bucket
 nl	search.field.album
