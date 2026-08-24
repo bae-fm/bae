@@ -793,7 +793,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     file_name             TEXT NOT NULL,
     dir_prefix            TEXT,
     proposed_audio        INTEGER NOT NULL CHECK (proposed_audio IN (0, 1)),
-    role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'cover', 'artwork', 'document', 'other')),
+    role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'document', 'other')),
     sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('describes', 'unresolved', 'refused_codec')),
     sheet_binding_file_id TEXT,
     sheet_binding_codec   TEXT,

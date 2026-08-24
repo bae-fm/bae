@@ -22,6 +22,20 @@ pub(super) struct CoverCandidate {
 }
 
 impl ImportService {
+    /// How a folder's images rank as the cover when nothing has chosen one —
+    /// no stored pick, and a source that offered no art of its own.
+    ///
+    /// A conventionally named image first, and among those the one at the
+    /// release root: the scan lists files by relative path, which puts
+    /// `Artwork/front.jpg` ahead of `cover.jpg`, so name alone would reach into
+    /// the subfolder for a cover sitting at the top.
+    pub(super) fn folder_cover_rank(file: &ScannedFile) -> (u8, u8) {
+        (
+            u8::from(!crate::import::folder_scanner::is_cover_name(&file.path)),
+            u8::from(file.dir_prefix.is_some()),
+        )
+    }
+
     /// Read the chosen cover file's bytes. Nothing is written here, and no row is
     /// built: the caller resizes the winning candidate and records the result.
     pub(super) fn pick_folder_cover(
@@ -53,7 +67,7 @@ impl ImportService {
         } else {
             image_files
                 .iter()
-                .min_by_key(|(_, relative_path)| Self::image_cover_priority(relative_path))
+                .min_by_key(|(file, _)| Self::folder_cover_rank(file))
         };
 
         let Some((cover_file, relative_path)) = selected_cover else {
@@ -72,13 +86,5 @@ impl ImportService {
             source: "local".to_string(),
             source_url: Some(format!("release://{}", relative_path)),
         }))
-    }
-
-    pub(super) fn image_cover_priority(filename: &str) -> u8 {
-        let lower = filename.to_lowercase();
-        if lower.contains("cover") || lower.contains("front") {
-            return 0;
-        }
-        1
     }
 }

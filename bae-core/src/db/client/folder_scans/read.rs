@@ -324,7 +324,6 @@ fn load_files(
     for row in rows {
         let role = match row.role.as_str() {
             "audio" => FileRole::Audio,
-            "cover" => FileRole::Cover,
             "artwork" => FileRole::Artwork,
             "document" => FileRole::Document,
             "other" => FileRole::Other,

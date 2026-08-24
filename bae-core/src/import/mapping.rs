@@ -369,7 +369,7 @@ pub fn mapping_table(
             // Nothing else the folder holds is in the tracklist, and no release
             // has to be picked to know it — the role says so on its own. The
             // folder is the release, so all of it is still carried.
-            FileRole::Cover | FileRole::Artwork => {
+            FileRole::Artwork => {
                 images.push(mapping_image(entry));
             }
             FileRole::Document => rows.push(carried(entry, MappingRole::Document)),

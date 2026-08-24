@@ -1,13 +1,3 @@
-/// File names of every image the scan proposed as the release's cover.
-fn cover_names(files: &CategorizedFiles) -> Vec<&str> {
-    files
-        .files
-        .iter()
-        .filter(|entry| matches!(entry.role, FileRole::Cover))
-        .map(|entry| entry.file.file_name.as_str())
-        .collect()
-}
-
 // ── The sheet↔audio binding is a user decision ──────────────────────────
 //
 // The scan proposes; these pin both its automatic choices and what happens
@@ -610,7 +600,7 @@ fn only_audio_carries_a_role_decision() {
         })
         .expect("a decision about a non-audio file changes nothing");
 
-    assert!(matches!(files.files[1].role, FileRole::Cover));
+    assert!(matches!(files.files[1].role, FileRole::Artwork));
     assert_eq!(files.track_count(), 1);
 }
 

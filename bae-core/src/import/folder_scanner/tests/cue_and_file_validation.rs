@@ -207,7 +207,7 @@ fn content_hash_is_independent_of_discovery_order() {
         files: vec![
             entry("01.flac", 1, FileRole::Audio),
             entry("02.flac", 2, FileRole::Audio),
-            entry("cover.jpg", 3, FileRole::Cover),
+            entry("cover.jpg", 3, FileRole::Artwork),
             entry("notes.txt", 4, FileRole::Document),
         ],
         format_label: "FLAC".to_string(),
@@ -216,7 +216,7 @@ fn content_hash_is_independent_of_discovery_order() {
         files: vec![
             entry("notes.txt", 4, FileRole::Document),
             entry("02.flac", 2, FileRole::Audio),
-            entry("cover.jpg", 3, FileRole::Cover),
+            entry("cover.jpg", 3, FileRole::Artwork),
             entry("01.flac", 1, FileRole::Audio),
         ],
         format_label: "FLAC".to_string(),

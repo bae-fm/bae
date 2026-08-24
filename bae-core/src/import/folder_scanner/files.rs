@@ -60,10 +60,9 @@ pub enum FileRole {
         binding: SheetBinding,
         disc: SheetDisc,
     },
-    /// The image that leads the release, proposed from the conventional cover
-    /// filenames. At most one per folder.
-    Cover,
-    /// Any other image.
+    /// An image the folder carries. Which one leads the release is not a
+    /// property of the file: it is the cover choice, answered by the stored
+    /// row, then the picked release's own art, then these ranked by name.
     Artwork,
     /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
     /// could not be parsed as a sheet.
@@ -481,7 +480,7 @@ impl CategorizedFiles {
     pub fn artwork(&self) -> impl Iterator<Item = &ScannedFile> {
         self.files
             .iter()
-            .filter(|entry| matches!(entry.role, FileRole::Cover | FileRole::Artwork))
+            .filter(|entry| matches!(entry.role, FileRole::Artwork))
             .map(|entry| &entry.file)
     }
 
@@ -747,10 +746,7 @@ impl CategorizedFiles {
             let kind = match entry.role {
                 FileRole::Document => Some(FileRowKind::Document),
                 FileRole::Other => Some(FileRowKind::Other),
-                FileRole::Audio
-                | FileRole::TrackSheet { .. }
-                | FileRole::Cover
-                | FileRole::Artwork => None,
+                FileRole::Audio | FileRole::TrackSheet { .. } | FileRole::Artwork => None,
             };
             // A directory holding anything that needs its own row, or holding
             // two different jobs, is not homogeneous — every one of its files

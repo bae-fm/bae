@@ -104,7 +104,6 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
     };
     match role {
         FileRole::Audio => plain("audio"),
-        FileRole::Cover => plain("cover"),
         FileRole::Artwork => plain("artwork"),
         FileRole::Document => plain("document"),
         FileRole::Other => plain("other"),

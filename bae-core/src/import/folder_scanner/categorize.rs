@@ -115,9 +115,9 @@ pub(super) enum ProposedRole {
     Other,
 }
 
-/// Filename stems that conventionally name a release's front cover. The scan
-/// proposes the first image matching one of these as the cover; every other
-/// image is artwork.
+/// Filename stems that conventionally name a release's front cover. They rank
+/// a folder's images where the effective cover is chosen; nothing classifies a
+/// file by them.
 pub(super) const COVER_STEMS: &[&str] = &[
     "cover",
     "front",
@@ -129,7 +129,11 @@ pub(super) const COVER_STEMS: &[&str] = &[
 ];
 
 /// Whether an image's filename stem conventionally names a front cover.
-pub(super) fn is_cover_name(path: &Path) -> bool {
+///
+/// The one filename heuristic about covers in the tree. It ranks a folder's
+/// images where the effective cover is chosen — after the stored choice and the
+/// picked release's own art — and nothing classifies a file by it.
+pub(crate) fn is_cover_name(path: &Path) -> bool {
     let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
         return false;
     };
@@ -509,22 +513,6 @@ pub(super) fn categorize_files_from_tree(
         bindings.insert(*index, binding);
     }
 
-    // One image leads the release: the first conventionally-named image at the
-    // release root, or — when the folder keeps its images in a subfolder — the
-    // first conventionally-named one anywhere. Sorting by relative path puts
-    // `Artwork/front.jpg` before `cover.jpg`, so taking the first match outright
-    // would let a nested image outrank the one sitting at the root.
-    let cover_index = proposed
-        .iter()
-        .position(|(file, role)| {
-            *role == ProposedRole::Image && is_cover_name(&file.path) && file.dir_prefix.is_none()
-        })
-        .or_else(|| {
-            proposed
-                .iter()
-                .position(|(file, role)| *role == ProposedRole::Image && is_cover_name(&file.path))
-        });
-
     let mut files: Vec<CandidateFile> = Vec::with_capacity(proposed.len());
     for (index, (file, proposed_role)) in proposed.into_iter().enumerate() {
         let proposed_audio = proposed_role == ProposedRole::Audio;
@@ -542,7 +530,6 @@ pub(super) fn categorize_files_from_tree(
                 // parsed sheet, against the bindings that end up in force.
                 disc: SheetDisc::Disc { number: 1 },
             },
-            ProposedRole::Image if Some(index) == cover_index => FileRole::Cover,
             ProposedRole::Image => FileRole::Artwork,
             ProposedRole::Document => FileRole::Document,
             ProposedRole::Other => FileRole::Other,

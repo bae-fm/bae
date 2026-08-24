@@ -43,7 +43,7 @@ async fn picked_candidate(
     files.push(CandidateFile {
         proposed_audio: false,
         file: ScannedFile::new(cover_path, "cover.jpg".to_string(), 5),
-        role: FileRole::Cover,
+        role: FileRole::Artwork,
     });
 
     let candidate = FolderCandidate {

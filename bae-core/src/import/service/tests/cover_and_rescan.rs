@@ -70,22 +70,65 @@ fn common_ancestor_cases() {
     );
 }
 
-/// image_cover_priority decides which folder image wins as the cover when
-/// the user makes no explicit pick: a name containing "cover" or "front"
-/// (case-insensitive, anywhere in the name) ranks first, everything else
-/// second. The fallback sort relies on this ordering.
+/// Which folder image wins as the cover when the user picked none and the
+/// source offered no art: a conventionally named one, by the same rule the
+/// scan used to reach for. It is the whole stem, not a substring — a name that
+/// merely mentions the front is a scan of the front, not the front.
 #[test]
-fn image_cover_priority_ranks_front_and_cover_first() {
-    assert_eq!(ImportService::image_cover_priority("Cover.jpg"), 0);
-    assert_eq!(ImportService::image_cover_priority("front.png"), 0);
-    assert_eq!(ImportService::image_cover_priority("FRONT.JPG"), 0);
-    assert_eq!(
-        ImportService::image_cover_priority("album-front-scan.jpg"),
-        0
+fn a_conventionally_named_image_outranks_the_rest() {
+    use crate::import::folder_scanner::is_cover_name;
+    use std::path::Path;
+
+    for named in ["Cover.jpg", "front.png", "FRONT.JPG", "folder.jpeg"] {
+        assert!(is_cover_name(Path::new(named)), "{named} names the cover");
+    }
+    for other in [
+        "album-front-scan.jpg",
+        "Back.jpg",
+        "inlay.png",
+        "disc1.jpg",
+    ] {
+        assert!(!is_cover_name(Path::new(other)), "{other} does not");
+    }
+}
+
+/// A conventionally named image at the release root outranks one in a
+/// subfolder. The scan lists files by relative path, which puts
+/// `Artwork/front.jpg` ahead of `cover.jpg`, so ranking on the name alone
+/// would reach into the subfolder for a cover sitting at the top — and with
+/// nothing at the root, the nested one still leads.
+#[test]
+fn a_root_level_cover_outranks_one_in_a_subfolder() {
+    use crate::import::folder_scanner::ScannedFile;
+
+    let nested = {
+        let mut file = ScannedFile::new(
+            std::path::PathBuf::from("/album/Artwork/front.jpg"),
+            "Artwork/front.jpg".to_string(),
+            4,
+        );
+        file.dir_prefix = Some("Artwork".to_string());
+        file
+    };
+    let root = ScannedFile::new(
+        std::path::PathBuf::from("/album/cover.jpg"),
+        "cover.jpg".to_string(),
+        4,
     );
-    assert_eq!(ImportService::image_cover_priority("Back.jpg"), 1);
-    assert_eq!(ImportService::image_cover_priority("inlay.png"), 1);
-    assert_eq!(ImportService::image_cover_priority("disc1.jpg"), 1);
+    let plain = ScannedFile::new(
+        std::path::PathBuf::from("/album/back.jpg"),
+        "back.jpg".to_string(),
+        4,
+    );
+
+    assert!(
+        ImportService::folder_cover_rank(&root) < ImportService::folder_cover_rank(&nested),
+        "the root's conventional name leads"
+    );
+    assert!(
+        ImportService::folder_cover_rank(&nested) < ImportService::folder_cover_rank(&plain),
+        "a nested conventional name still beats an unconventional one"
+    );
 }
 
 #[tokio::test]
