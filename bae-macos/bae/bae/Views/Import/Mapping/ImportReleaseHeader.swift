@@ -56,7 +56,7 @@ struct ImportReleaseHeader: View {
     /// The cover the card leads with. Big enough to read the artwork as
     /// artwork — at a thumbnail's size it was an icon beside the title, and
     /// the cover is the thing being confirmed.
-    private static let coverSize: CGFloat = 240
+    private static let coverSize: CGFloat = 160
 
     @Environment(ConfigStore.self)
     private var configStore

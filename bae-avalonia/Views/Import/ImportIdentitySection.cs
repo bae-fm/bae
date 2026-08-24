@@ -199,7 +199,7 @@ internal sealed class ImportIdentitySection
     /// <summary>The cover the card leads with. Big enough to read the artwork
     /// as artwork — at a thumbnail's size it was an icon beside the title, and
     /// the cover is the thing being confirmed.</summary>
-    internal const double CoverSize = 240;
+    internal const double CoverSize = 160;
 
     private Control CoverTile()
     {
