@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>yayın bulunamadı</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Dosyanın süresi sürümdekiyle uyuşmuyor.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Bir sürümle eşlemek için listeden bir klasör seç.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>yayın ayrıntıları</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Ayrıntılar</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>içe aktarılıyor {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>tanımlamayı yeniden çalıştır</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Sabitlendi</value></data>

@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>릴리스를 찾지 못했습니다</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>파일 길이가 릴리스의 길이와 일치하지 않습니다.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>릴리스에 연결할 폴더를 목록에서 선택하세요.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>릴리스 정보</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>세부 정보</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>가져오는 중 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>식별 다시 실행</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>고정됨</value></data>

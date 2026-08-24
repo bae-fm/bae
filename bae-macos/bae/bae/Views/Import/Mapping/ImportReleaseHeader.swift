@@ -130,7 +130,7 @@ struct ImportReleaseHeader: View {
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(detailsExpanded ? 90 : 0))
-                    Text("Release details")
+                    Text("Details")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)

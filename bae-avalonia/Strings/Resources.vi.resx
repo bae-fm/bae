@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>không tìm thấy bản phát hành</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Độ dài của tệp không khớp với độ dài trong bản phát hành.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Chọn một thư mục trong danh sách để ánh xạ nó với một bản phát hành.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>chi tiết bản phát hành</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Chi tiết</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>đang nhập {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>chạy lại nhận dạng</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Đã ghim</value></data>

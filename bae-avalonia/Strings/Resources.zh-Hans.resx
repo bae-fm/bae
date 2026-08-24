@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>未找到版本</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>文件时长与该版本的时长不一致。</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>从列表中选择一个文件夹，将其映射到某个版本。</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>发行版详情</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>详细信息</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>导入中 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>重新运行识别</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>已固定</value></data>

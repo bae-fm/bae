@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>nenhum lançamento encontrado</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>A duração do arquivo não corresponde à da edição.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Escolha uma pasta na lista para mapeá-la para uma edição.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>detalhes do lançamento</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Detalhes</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importando {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>executar identificação novamente</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Fixado</value></data>

@@ -74,7 +74,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>The file's length doesn't match the release's.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Pick a folder from the list to map it onto a release.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>release details</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Details</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Pinned</value></data>

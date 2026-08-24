@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>പതിപ്പുകൾ കണ്ടെത്തിയില്ല</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ഫയലിന്റെ ദൈർഘ്യം റിലീസിന്റേതുമായി യോജിക്കുന്നില്ല.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>ഒരു റിലീസുമായി ചേർക്കാൻ പട്ടികയിൽ നിന്ന് ഒരു ഫോൾഡർ തിരഞ്ഞെടുക്കുക.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>റിലീസ് വിവരങ്ങൾ</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>വിശദാംശങ്ങൾ</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ഇറക്കുമതി ചെയ്യുന്നു</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>തിരിച്ചറിയൽ വീണ്ടും പ്രവർത്തിപ്പിക്കുക</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>പിൻ ചെയ്തു</value></data>

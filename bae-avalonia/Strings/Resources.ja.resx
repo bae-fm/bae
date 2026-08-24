@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>リリースが見つかりませんでした</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ファイルの長さがリリースの長さと一致しません。</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>リリースに対応づけるフォルダを一覧から選んでください。</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>リリース情報</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>詳細</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>取り込み中 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>識別を再実行</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>ピン留め済み</value></data>

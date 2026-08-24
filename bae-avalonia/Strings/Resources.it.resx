@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>nessuna pubblicazione trovata</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>La durata del file non corrisponde a quella dell’edizione.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Scegli una cartella dall’elenco per associarla a un’edizione.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>dettagli della pubblicazione</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Dettagli</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importazione {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>riesegui identificazione</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Fissato</value></data>

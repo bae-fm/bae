@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>geen releases gevonden</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>De lengte van het bestand komt niet overeen met die van de uitgave.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Kies een map uit de lijst om die aan een uitgave te koppelen.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>uitgavedetails</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Details</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importeren {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>identificatie opnieuw uitvoeren</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Vastgezet</value></data>

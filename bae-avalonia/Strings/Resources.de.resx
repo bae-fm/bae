@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>keine Veröffentlichungen gefunden</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Die Länge der Datei stimmt nicht mit der der Veröffentlichung überein.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Wähle einen Ordner aus der Liste, um ihn einer Veröffentlichung zuzuordnen.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>Veröffentlichungsdetails</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Details</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>wird importiert {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>Identifizierung erneut ausführen</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Angeheftet</value></data>

@@ -166,7 +166,7 @@ internal sealed class ImportIdentitySection
         {
             body.Children.Add(new Expander
             {
-                Header = Loc.Chrome("import.pane.release_details"),
+                Header = Loc.Chrome("import.pane.details"),
                 FontSize = 12,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 Content = ReleaseFields(),
@@ -254,8 +254,8 @@ internal sealed class ImportIdentitySection
         Add(grid, 0, 0, "edit.field.year", pressing.Year, BridgeCandidateEditField.Year);
         Add(grid, 1, 0, "edit.field.format", pressing.Format, BridgeCandidateEditField.Format);
         Add(grid, 2, 0, "edit.field.label", pressing.Label, BridgeCandidateEditField.Label);
-        Add(grid, 0, 1, "edit.field.catalog_number", pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber);
-        Add(grid, 1, 1, "edit.field.country", pressing.Country, BridgeCandidateEditField.Country);
+        Add(grid, 0, 1, "edit.field.country", pressing.Country, BridgeCandidateEditField.Country);
+        Add(grid, 1, 1, "edit.field.catalog_number", pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber);
         Add(grid, 2, 1, "edit.field.barcode", pressing.Barcode, BridgeCandidateEditField.Barcode);
         column.Children.Add(grid);
         return column;

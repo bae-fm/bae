@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>не са намерени издания</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Дължината на файла не съвпада с тази в изданието.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Изберете папка от списъка, за да я съпоставите с издание.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>данни за изданието</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Подробности</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>внасяне {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>повторно изпълнение на идентификацията</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>Закачено</value></data>

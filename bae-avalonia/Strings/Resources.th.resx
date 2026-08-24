@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>ไม่พบรีลีส</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ความยาวของไฟล์ไม่ตรงกับของรีลีส</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>เลือกโฟลเดอร์จากรายการเพื่อจับคู่กับรีลีส</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>รายละเอียดรีลีส</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>รายละเอียด</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>กำลังนำเข้า {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>เรียกใช้การระบุใหม่</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>ปักหมุดแล้ว</value></data>

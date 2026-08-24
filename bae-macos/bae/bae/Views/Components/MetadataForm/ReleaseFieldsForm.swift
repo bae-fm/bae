@@ -123,18 +123,18 @@ struct ReleaseFieldsForm: View {
                     width: .long,
                 ),
                 row(
-                    .catalogNumber,
-                    label: String(localized: "Catalog number"),
-                    placeholder: String(localized: "Catalog number"),
-                    text: values.pressing.catalogNumber,
-                    width: .medium,
-                ),
-                row(
                     .country,
                     label: String(localized: "Country"),
                     placeholder: String(localized: "Country"),
                     text: values.pressing.country,
                     width: .short,
+                ),
+                row(
+                    .catalogNumber,
+                    label: String(localized: "Catalog number"),
+                    placeholder: String(localized: "Catalog number"),
+                    text: values.pressing.catalogNumber,
+                    width: .medium,
                 ),
                 row(
                     .barcode,

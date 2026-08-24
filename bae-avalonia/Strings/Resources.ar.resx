@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>لم يُعثَر على إصدارات</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>طول الملف لا يطابق طول الإصدار.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>اختر مجلدًا من القائمة لمطابقته بإصدار.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>تفاصيل الإصدار</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>التفاصيل</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>جارٍ الاستيراد {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>إعادة تشغيل التحديد</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>مثبّت</value></data>

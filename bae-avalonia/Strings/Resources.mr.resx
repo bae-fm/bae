@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>प्रकाशने सापडली नाहीत</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>फाइलचा कालावधी रिलीजच्या कालावधीशी जुळत नाही.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>एखाद्या रिलीजशी जोडण्यासाठी यादीतून फोल्डर निवडा.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>रिलीज तपशील</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>तपशील</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% आयात करत आहे</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ओळख पुन्हा चालवा</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>पिन केलेले</value></data>

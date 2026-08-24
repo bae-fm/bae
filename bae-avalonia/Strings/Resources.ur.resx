@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>کوئی اشاعت نہیں ملی</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>فائل کا دورانیہ ریلیز کے دورانیے سے میل نہیں کھاتا۔</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>کسی ریلیز سے منسلک کرنے کے لیے فہرست سے فولڈر منتخب کریں۔</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>ریلیز کی تفصیلات</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>تفصیلات</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% درآمد ہو رہا ہے</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>شناخت دوبارہ چلائیں</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>پن شدہ</value></data>

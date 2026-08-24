@@ -73,7 +73,7 @@
   <data name="import.no_releases" xml:space="preserve"><value>ಬಿಡುಗಡೆಗಳು ಸಿಕ್ಕಿಲ್ಲ</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ಕಡತದ ಅವಧಿ ಬಿಡುಗಡೆಯ ಅವಧಿಗೆ ಹೊಂದುತ್ತಿಲ್ಲ.</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>ಬಿಡುಗಡೆಗೆ ಹೊಂದಿಸಲು ಪಟ್ಟಿಯಿಂದ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ.</value></data>
-  <data name="import.pane.release_details" xml:space="preserve"><value>ಬಿಡುಗಡೆ ವಿವರಗಳು</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>ವಿವರಗಳು</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಯನ್ನು ಮತ್ತೆ ನಡೆಸಿ</value></data>
   <data name="import.storage.pinned" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಲಾಗಿದೆ</value></data>
