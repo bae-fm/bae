@@ -34,7 +34,6 @@ extension BridgeCandidateFile {
     /// The cover choice this file offers the picker; nil when it isn't an image.
     var coverChoice: BridgeCoverChoice? {
         switch role {
-        case .cover(let choice): return choice
         case .artwork(let choice): return choice
         default: return nil
         }

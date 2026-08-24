@@ -557,7 +557,6 @@
         private static func previewImage(
             name: String,
             size: UInt64,
-            isCover: Bool = false,
             dirPrefix: String? = nil
         ) -> BridgeCandidateFile {
             let path = previewArtPath(name)
@@ -569,8 +568,7 @@
             return previewFile(
                 name: name,
                 size: size,
-                role: isCover
-                    ? .cover(choice: choice) : .artwork(choice: choice),
+                role: .artwork(choice: choice),
                 dirPrefix: dirPrefix,
                 localPath: path
             )
@@ -602,8 +600,7 @@
 
         static let coverImage = previewImage(
             name: "Front.png",
-            size: 2_500_000,
-            isCover: true
+            size: 2_500_000
         )
 
         static let scanImage = previewImage(

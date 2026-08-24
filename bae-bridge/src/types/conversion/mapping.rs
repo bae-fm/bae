@@ -87,9 +87,6 @@ impl BridgeCandidateFile {
                 // parse product the bridge doesn't mirror.
                 track_count: sheet.playable_track_count() as u32,
             },
-            FileRole::Cover => BridgeFileRole::Cover {
-                choice: image_choice(),
-            },
             FileRole::Artwork => BridgeFileRole::Artwork {
                 choice: image_choice(),
             },

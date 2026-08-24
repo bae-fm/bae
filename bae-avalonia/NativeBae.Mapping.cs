@@ -185,7 +185,6 @@ internal static partial class NativeBae
     {
         var choice = file.Role switch
         {
-            BridgeFileRole.Cover cover => cover.Choice,
             BridgeFileRole.Artwork artwork => artwork.Choice,
             _ => null,
         };

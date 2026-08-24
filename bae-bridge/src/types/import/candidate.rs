@@ -129,10 +129,6 @@ pub enum BridgeFileRole {
         /// Playable tracks the sheet carves.
         track_count: u32,
     },
-    /// The image that leads the release.
-    Cover {
-        choice: BridgeCoverChoice,
-    },
     Artwork {
         choice: BridgeCoverChoice,
     },
@@ -150,7 +146,6 @@ pub fn bridge_file_role_key(role: &BridgeFileRole) -> String {
     match role {
         BridgeFileRole::Audio => "core.import.role.audio",
         BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
-        BridgeFileRole::Cover { .. } => "core.import.role.cover",
         BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
         BridgeFileRole::Document => "core.import.role.document",
         BridgeFileRole::Other => "core.import.role.other",

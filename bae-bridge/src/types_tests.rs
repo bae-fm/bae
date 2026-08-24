@@ -59,8 +59,11 @@ mod loc_key_coverage {
         // the command currently being awaited, not pairing progress.
         "core.pairing.cancelling",
         // Upload rows localize typed image kinds; original filenames render
-        // verbatim and covers reuse the file-role cover key.
+        // verbatim. The cover label is one of them: no file role names a cover
+        // any more — which image leads a release is the cover choice, not a
+        // property of a file — so both desktops reach for this key directly.
         "core.outbox.file.artist_image",
+        "core.import.role.cover",
         // Album total playing time: the UI switches on `BridgeDurationUnits` and
         // composes the hours and minutes words through the join pattern.
         "core.duration.hours",
@@ -140,9 +143,6 @@ mod loc_key_coverage {
                 },
                 track_count: 0,
             },
-            BridgeFileRole::Cover {
-                choice: loc_cover_choice(),
-            },
             BridgeFileRole::Artwork {
                 choice: loc_cover_choice(),
             },
@@ -152,7 +152,6 @@ mod loc_key_coverage {
             let expected = match role {
                 BridgeFileRole::Audio => "core.import.role.audio",
                 BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
-                BridgeFileRole::Cover { .. } => "core.import.role.cover",
                 BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
                 BridgeFileRole::Document => "core.import.role.document",
                 BridgeFileRole::Other => "core.import.role.other",
