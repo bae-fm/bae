@@ -73,6 +73,9 @@ const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271"; // was "work
 mod queue_ordering_tests;
 
 #[cfg(test)]
+mod store_file_helpers;
+
+#[cfg(test)]
 mod in_clause_chunking_tests;
 
 #[cfg(test)]
