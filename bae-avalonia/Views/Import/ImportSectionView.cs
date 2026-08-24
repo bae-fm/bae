@@ -164,12 +164,14 @@ internal sealed partial class ImportSectionView : UserControl
 
         var header = new StackPanel { Spacing = 0 };
         header.Children.Add(BuildTabBarRow());
+        // The tabs choose what the list holds; the filter narrows what it
+        // shows. Two jobs, so the header says where one ends.
+        header.Children.Add(HeaderDivider());
         header.Children.Add(BuildFilterRow());
         var headerHost = new Border { Child = header };
         headerHost[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSurfaceBrush");
 
-        var divider = new Border { Height = 1 };
-        divider[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeHairlineBrush");
+        var divider = HeaderDivider();
 
         var column = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         Grid.SetRow(headerHost, 0);
@@ -199,9 +201,16 @@ internal sealed partial class ImportSectionView : UserControl
         return split;
     }
 
+    private static Border HeaderDivider()
+    {
+        var divider = new Border { Height = 1 };
+        divider[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeHairlineBrush");
+        return divider;
+    }
+
     private Control BuildTabBarRow()
     {
-        _tabBarHost.Margin = new Thickness(10, 10, 10, 8);
+        _tabBarHost.Margin = new Thickness(10, 10, 10, 10);
         return _tabBarHost;
     }
 
@@ -225,7 +234,7 @@ internal sealed partial class ImportSectionView : UserControl
         row.Children.Add(_progressButton);
         row.Children.Add(_listMenuButton);
 
-        return new Border { Padding = new Thickness(14, 0, 10, 10), Child = row };
+        return new Border { Padding = new Thickness(14, 9, 10, 9), Child = row };
     }
 
     // The compact indicator: a ring at the sweep's fraction and how many

@@ -103,7 +103,11 @@ struct ImportCandidateListContent: View {
                 )
                 .padding(.horizontal, 10)
                 .padding(.top, 10)
-                .padding(.bottom, 8)
+                .padding(.bottom, 10)
+
+                // The tabs choose what the list holds; the filter narrows what
+                // it shows. Two jobs, so the header says where one ends.
+                Divider()
 
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
@@ -142,7 +146,7 @@ struct ImportCandidateListContent: View {
                     .equatable()
                 }
                 .padding(.horizontal, 14)
-                .padding(.bottom, 10)
+                .padding(.vertical, 9)
             }
         } content: {
             if activeTabIsEmpty {
