@@ -159,7 +159,13 @@ async fn every_settled_signal_shape_round_trips() {
             },
             BarcodeSignal::Settled {
                 codes: vec![
-                    SourcedValue::new("0123456789012".to_string(), SignalOrigin::Artwork),
+                    // The image OCR read it off rides with it, so a surface can
+                    // put the barcode on that image.
+                    SourcedValue::in_file(
+                        "0123456789012".to_string(),
+                        SignalOrigin::Artwork,
+                        "Scans/back.jpg".to_string(),
+                    ),
                     SourcedValue::new("9876543210987".to_string(), SignalOrigin::CueSheet),
                 ],
             },

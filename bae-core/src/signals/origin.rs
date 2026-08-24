@@ -24,7 +24,9 @@ pub enum SignalOrigin {
 
 impl SignalOrigin {
     /// The path payloads on `Artwork` / `FilenameGeneric` / `TextFile` are dropped
-    /// here: a badge names the kind of surface, not the file.
+    /// here: a badge names the kind of surface, not the file. A value that has to
+    /// point at the file it was read off carries it separately, on
+    /// [`SourcedValue::origin_path`].
     pub fn from_text_source(source: &Source) -> Self {
         match source {
             Source::Artwork(_) => SignalOrigin::Artwork,
@@ -46,10 +48,36 @@ impl SignalOrigin {
 pub struct SourcedValue {
     pub value: String,
     pub origin: SignalOrigin,
+    /// The file the value was read off, as the candidate-relative path that
+    /// addresses it — the same id a gallery tile and a file row are keyed by,
+    /// so a surface showing this value can put it on the file it came from.
+    ///
+    /// `None` where the origin is not a file (the folder's own name), and for a
+    /// re-identify pass over a library release, whose images are stored blobs
+    /// rather than files of a scanned folder.
+    ///
+    /// Relative, never absolute: these rows sync, and a path from one device's
+    /// disk means nothing on another's.
+    pub origin_path: Option<String>,
 }
 
 impl SourcedValue {
+    /// A value whose origin names no file to point at.
     pub fn new(value: String, origin: SignalOrigin) -> Self {
-        Self { value, origin }
+        Self {
+            value,
+            origin,
+            origin_path: None,
+        }
+    }
+
+    /// A value read off one of the candidate's files, addressed the way every
+    /// other surface addresses it.
+    pub fn in_file(value: String, origin: SignalOrigin, file_id: String) -> Self {
+        Self {
+            value,
+            origin,
+            origin_path: Some(file_id),
+        }
     }
 }

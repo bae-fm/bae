@@ -482,15 +482,24 @@ impl BridgeSignalOrigin {
 pub struct BridgeSourcedValue {
     pub value: String,
     pub origin: BridgeSignalOrigin,
+    /// The candidate-relative path of the file the value was read off — the id
+    /// a gallery tile and a file row are keyed by, so a surface can put the
+    /// value on the file it came from. `None` where the origin names no file.
+    pub origin_path: Option<String>,
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeSourcedValue {
     pub(crate) fn from_core(s: bae_core::signals::SourcedValue) -> Self {
-        let bae_core::signals::SourcedValue { value, origin } = s;
+        let bae_core::signals::SourcedValue {
+            value,
+            origin,
+            origin_path,
+        } = s;
         Self {
             value,
             origin: BridgeSignalOrigin::from_core(origin),
+            origin_path,
         }
     }
 }

@@ -53,10 +53,10 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
         disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled {
-            catalogs: vec![crate::signals::SourcedValue {
-                value: catalog.to_string(),
-                origin: crate::signals::SignalOrigin::Artwork,
-            }],
+            catalogs: vec![crate::signals::SourcedValue::new(
+                catalog.to_string(),
+                crate::signals::SignalOrigin::Artwork,
+            )],
             free_text: Vec::new(),
         },
         durations: crate::import::probe::ProbedDurations::totalling(1_000),

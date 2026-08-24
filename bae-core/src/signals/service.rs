@@ -21,7 +21,7 @@
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 use super::cancellation::CancellationRegistry;
 use super::candidate_text::{Source, SourcedLine};
-use super::fast_pass::{gather_non_ocr_sources, FastPass};
+use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::import::{ImportEvent, ScanEvent};
@@ -235,7 +235,7 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let artwork = ArtworkPass::new(inner.has_artwork_analyzer(), fast.artwork_paths);
+            let artwork = ArtworkPass::new(inner.has_artwork_analyzer(), fast.artwork);
             stream_extraction(
                 inner,
                 key,
@@ -281,7 +281,22 @@ async fn run_extraction(
             let (artwork, _cover_staging) = match inner.has_artwork_analyzer() {
                 true => {
                     match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
-                        Ok((paths, staging)) => (ArtworkPass::new(true, paths), staging),
+                        // A library release's images are stored blobs, not
+                        // files of a scanned folder, so nothing here has a
+                        // file id for a signal to point at.
+                        Ok((paths, staging)) => (
+                            ArtworkPass::new(
+                                true,
+                                paths
+                                    .into_iter()
+                                    .map(|path| ArtworkImage {
+                                        path,
+                                        file_id: None,
+                                    })
+                                    .collect(),
+                            ),
+                            staging,
+                        ),
                         Err(e) => {
                             error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
                             return;
@@ -349,12 +364,12 @@ struct ExtractionInputs {
 /// makes "images to scan, but nothing to scan them with" unrepresentable.
 struct ArtworkPass {
     /// Non-empty by construction.
-    paths: Vec<PathBuf>,
+    images: Vec<ArtworkImage>,
 }
 
 impl ArtworkPass {
-    fn new(analyzer_available: bool, paths: Vec<PathBuf>) -> Option<Self> {
-        (analyzer_available && !paths.is_empty()).then_some(ArtworkPass { paths })
+    fn new(analyzer_available: bool, images: Vec<ArtworkImage>) -> Option<Self> {
+        (analyzer_available && !images.is_empty()).then_some(ArtworkPass { images })
     }
 }
 
@@ -399,8 +414,8 @@ async fn stream_extraction(
     );
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
-    if let Some(ArtworkPass { paths }) = artwork {
-        for path in paths {
+    if let Some(ArtworkPass { images }) = artwork {
+        for ArtworkImage { path, file_id } in images {
             if token.is_cancelled() {
                 return;
             }
@@ -429,7 +444,14 @@ async fn stream_extraction(
                     continue;
                 }
                 if !barcodes.iter().any(|b| b.value == value) {
-                    barcodes.push(SourcedValue::new(value, SignalOrigin::Artwork));
+                    // The image it was read off, so a surface can put the
+                    // barcode on that image rather than beside the release.
+                    barcodes.push(match &file_id {
+                        Some(file_id) => {
+                            SourcedValue::in_file(value, SignalOrigin::Artwork, file_id.clone())
+                        }
+                        None => SourcedValue::new(value, SignalOrigin::Artwork),
+                    });
                     changed = true;
                 }
             }

@@ -18,10 +18,24 @@ use tracing::{debug, warn};
 /// 10 MB booklet transcription) without blowing memory.
 const MAX_TEXT_FILE_BYTES: u64 = 100 * 1024;
 
+/// One image the artwork pass will read, with the id the rest of the app
+/// addresses that file by.
+///
+/// Two forms of one file on purpose: the analyzer opens an absolute path, and
+/// anything a signal points at is named by its candidate-relative id, which is
+/// what a gallery tile and a file row are keyed by.
+#[derive(Debug, Clone)]
+pub(super) struct ArtworkImage {
+    pub(super) path: PathBuf,
+    /// `None` for an image that is not one of a scanned folder's files — a
+    /// library release's stored cover, resolved for a re-identify pass.
+    pub(super) file_id: Option<String>,
+}
+
 pub(super) struct FastPass {
     pub(super) lines: Vec<SourcedLine>,
     pub(super) bracket_catalogs: Vec<String>,
-    pub(super) artwork_paths: Vec<PathBuf>,
+    pub(super) artwork: Vec<ArtworkImage>,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
     /// What every one of the folder's audio units plays for, read off the same
@@ -35,7 +49,7 @@ impl FastPass {
         Self {
             lines: Vec::new(),
             bracket_catalogs: Vec::new(),
-            artwork_paths: Vec::new(),
+            artwork: Vec::new(),
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             cue_barcodes: Vec::new(),
             durations: ProbedDurations::default(),
@@ -149,7 +163,13 @@ pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFil
         }
     }
 
-    pass.artwork_paths = categorized.artwork().map(|f| f.path.clone()).collect();
+    pass.artwork = categorized
+        .artwork()
+        .map(|f| ArtworkImage {
+            path: f.path.clone(),
+            file_id: Some(f.relative_path.clone()),
+        })
+        .collect();
 
     pass
 }

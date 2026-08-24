@@ -377,10 +377,10 @@ fn extracted_signals_cross_the_bus_with_their_key() {
         disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
         barcode: bae_core::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: bae_core::signals::TextSignal::Settled {
-            catalogs: vec![bae_core::signals::SourcedValue {
-                value: "CAT-1".to_string(),
-                origin: bae_core::signals::SignalOrigin::Artwork,
-            }],
+            catalogs: vec![bae_core::signals::SourcedValue::new(
+                "CAT-1".to_string(),
+                bae_core::signals::SignalOrigin::Artwork,
+            )],
             free_text: vec!["Album Title".to_string()],
         },
         durations: bae_core::import::probe::ProbedDurations::totalling(1_000),

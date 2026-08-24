@@ -22,7 +22,7 @@ const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, track_count
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
      text_state, text_failure, text_failure_status, text_failure_detail";
 
-const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin";
+const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin, origin_path";
 
 /// One failure as its three columns.
 struct FailureColumns {
@@ -197,6 +197,7 @@ pub(super) fn insert_signals(
                     position as i64,
                     value.value.clone(),
                     Some(origin_str(value.origin)),
+                    value.origin_path.clone(),
                 )
             })
             .collect::<Vec<_>>()
@@ -207,15 +208,15 @@ pub(super) fn insert_signals(
         free_text(&signals.text)
             .iter()
             .enumerate()
-            .map(|(position, value)| ("free_text", position as i64, value.clone(), None)),
+            .map(|(position, value)| ("free_text", position as i64, value.clone(), None, None)),
     );
-    for (list, position, value, origin) in values {
+    for (list, position, value, origin, origin_path) in values {
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?)"
             ),
-            params![content_hash, list, position, value, origin],
+            params![content_hash, list, position, value, origin, origin_path],
         )?;
     }
     Ok(())
@@ -251,15 +252,20 @@ pub(super) fn load_signals_on(
                 row.get::<_, String>("list")?,
                 row.get::<_, String>("value")?,
                 row.get::<_, Option<String>>("origin")?,
+                row.get::<_, Option<String>>("origin_path")?,
             ))
         },
     )?;
     let mut lists: HashMap<String, SignalValues> = HashMap::new();
-    for (content_hash, list, value, origin) in values {
+    for (content_hash, list, value, origin, origin_path) in values {
         let entry = lists.entry(content_hash).or_default();
         match list.as_str() {
-            "barcode" => entry.barcodes.push(sourced_value(value, origin)?),
-            "catalog" => entry.catalogs.push(sourced_value(value, origin)?),
+            "barcode" => entry
+                .barcodes
+                .push(sourced_value(value, origin, origin_path)?),
+            "catalog" => entry
+                .catalogs
+                .push(sourced_value(value, origin, origin_path)?),
             "free_text" => entry.free_text.push(value),
             other => return Err(unreadable("list", other)),
         }
@@ -384,8 +390,16 @@ struct SignalValues {
     free_text: Vec<String>,
 }
 
-fn sourced_value(value: String, origin: Option<String>) -> Result<SourcedValue, DbError> {
+fn sourced_value(
+    value: String,
+    origin: Option<String>,
+    origin_path: Option<String>,
+) -> Result<SourcedValue, DbError> {
     let origin = origin
         .ok_or_else(|| DbError::Message(format!("the stored value {value:?} states no origin")))?;
-    Ok(SourcedValue::new(value, origin_of(&origin)?))
+    let origin = origin_of(&origin)?;
+    Ok(match origin_path {
+        Some(file_id) => SourcedValue::in_file(value, origin, file_id),
+        None => SourcedValue::new(value, origin),
+    })
 }

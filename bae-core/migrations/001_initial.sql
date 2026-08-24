@@ -611,9 +611,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
     origin       TEXT CHECK (origin IS NULL OR origin IN ('disc_toc', 'cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
+    -- The candidate-relative path of the file the value was read off, where the
+    -- origin is a file: the image OCR found a barcode on, the sheet a field came
+    -- from. NULL where the origin names no file (the folder's own name), and for
+    -- a re-identify pass over a library release, whose images are stored blobs.
+    -- Relative because these rows sync, and one device's absolute path means
+    -- nothing on another's.
+    origin_path  TEXT,
     PRIMARY KEY (content_hash, list, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
-    CHECK ((list = 'free_text') = (origin IS NULL))
+    CHECK ((list = 'free_text') = (origin IS NULL)),
+    -- A file with no origin behind it is not a provenance.
+    CHECK (origin_path IS NULL OR origin IS NOT NULL)
 ) STRICT;
 
 -- The last import of this candidate that failed, so the pane still offers
