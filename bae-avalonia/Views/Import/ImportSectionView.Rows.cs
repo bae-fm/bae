@@ -80,7 +80,6 @@ internal sealed partial class ImportSectionView
         // component the rows share has no such folder behind it.
         var combine = BuildActionPill(
             Loc.Chrome("import.release.one"),
-            isKey: false,
             () => ApplyFolderReleaseDecision(
                 group.Key,
                 BridgeFolderReleaseDecision.CombineAsOneRelease));
@@ -314,7 +313,7 @@ internal sealed partial class ImportSectionView
                 row.Matched?.Artist,
             BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
                 BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
-            BridgeTriagePlacement.Importing or BridgeTriagePlacement.Done =>
+            BridgeTriagePlacement.Importing or BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
                 ImportSubLine(row, upload),
             _ => null,
         };
@@ -417,43 +416,25 @@ internal sealed partial class ImportSectionView
         };
     }
 
-    // The pill row under the meta column — only the placements the design
-    // gives one: pick-a-pressing, already-in-library, and a failed import.
-    // Every other row's action is "activate it," which the whole row already
-    // does. How the folder around the row is read is not one of them: that
-    // lives on the group header, or in the row's own menu where the folder is
-    // this one row.
+    // The pill row under the meta column — only the placement the design gives
+    // one: already-in-library. Every other row's action is "activate it," which
+    // the whole row already does. How the folder around the row is read is not
+    // one of them: that lives on the group header, or in the row's own menu
+    // where the folder is this one row.
     private Control? BuildRowActions(BridgeTriageRow row)
     {
-        var pills = new List<(string Label, bool IsKey, Action Action)>();
-        pills.AddRange(row.Placement switch
-        {
-            BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
-                new[]
-                {
-                    (Loc.Chrome("import.row.import_anyway"), false, (Action)(() => OnRowActivated(row))),
-                },
-            BridgeTriagePlacement.Done when row.ImportStatus is BridgeTriageImportStatus.Error =>
-                new[]
-                {
-                    (Loc.Chrome("import.row.retry"), true, (Action)(() => OnRowActivated(row))),
-                    (Loc.Chrome("libraries.reveal"), false, (Action)(() => RevealInFileManager.Reveal(row.CandidateKey))),
-                },
-            _ => Array.Empty<(string, bool, Action)>(),
-        });
-        if (pills.Count == 0)
+        if (row.Placement is not BridgeTriagePlacement.NeedsYou(
+                BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement))
         {
             return null;
         }
-        var row2 = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        foreach (var (label, isKey, action) in pills)
-        {
-            row2.Children.Add(BuildActionPill(label, isKey, action));
-        }
-        return row2;
+        var pills = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        pills.Children.Add(BuildActionPill(
+            Loc.Chrome("import.row.import_anyway"), () => OnRowActivated(row)));
+        return pills;
     }
 
-    private static Button BuildActionPill(string label, bool isKey, Action onClick)
+    private static Button BuildActionPill(string label, Action onClick)
     {
         var button = new Button
         {
@@ -462,18 +443,11 @@ internal sealed partial class ImportSectionView
             FontWeight = FontWeight.Medium,
             Padding = new Thickness(12, 4),
             CornerRadius = new CornerRadius(999),
-            BorderThickness = new Thickness(isKey ? 0 : 1),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.Transparent,
         };
-        if (isKey)
-        {
-            button[!Button.BackgroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
-        }
-        else
-        {
-            button.Background = Brushes.Transparent;
-        }
         button[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        button[!Button.ForegroundProperty] = new DynamicResourceExtension(isKey ? "BaeOnAccentBrush" : "BaeTextSecondaryBrush");
+        button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         button.Click += (_, _) => onClick();
         button.Tapped += (_, eventArgs) => eventArgs.Handled = true;
         return button;
@@ -489,8 +463,9 @@ internal sealed partial class ImportSectionView
                 return NeedsYouTrailing(row, group, reason);
             case BridgeTriagePlacement.Importing:
                 return new Spinner { Width = 14, Height = 14 };
+            case BridgeTriagePlacement.Failed:
             case BridgeTriagePlacement.Done:
-                return DoneTrailing(row);
+                return ImportTrailing(row);
             default:
                 return new Panel();
         }
@@ -524,12 +499,15 @@ internal sealed partial class ImportSectionView
 
     private Control SearchManuallyChip(BridgeTriageRow row)
     {
-        var button = BuildActionPill(Loc.Chrome("import.row.search_manually"), isKey: false, () => OnRowActivated(row));
+        var button = BuildActionPill(Loc.Chrome("import.row.search_manually"), () => OnRowActivated(row));
         button.Padding = new Thickness(7, 3);
         return button;
     }
 
-    private Control DoneTrailing(BridgeTriageRow row) => row.ImportStatus switch
+    // What a row past the point of being asked anything shows: the running
+    // import's spinner, the failure's tag, or the completed import's mark and
+    // its cloud transition.
+    private Control ImportTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
         BridgeTriageImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
         BridgeTriageImportStatus.Complete =>

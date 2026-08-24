@@ -223,6 +223,11 @@ pub enum BridgeTriagePlacement {
     /// folder is not in the library until the import says it is. How far it
     /// has got is `BridgeCandidateRuntimeSnapshot::import`.
     Importing,
+    /// The last attempt failed and nothing has been attempted since. Pending,
+    /// not Done: the folder is not in the library and the work is waiting on
+    /// another attempt, which is the ordinary import the pane offers. What
+    /// went wrong is the row's `BridgeTriageImportStatus::Error`.
+    Failed,
     Done,
     Skipped,
 }
@@ -344,7 +349,8 @@ pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
     match placement {
         BridgeTriagePlacement::Ready
         | BridgeTriagePlacement::NeedsYou { .. }
-        | BridgeTriagePlacement::Importing => BridgeTriageTab::Pending,
+        | BridgeTriagePlacement::Importing
+        | BridgeTriagePlacement::Failed => BridgeTriageTab::Pending,
         BridgeTriagePlacement::Done => BridgeTriageTab::Done,
         BridgeTriagePlacement::Skipped => BridgeTriageTab::Skipped,
     }

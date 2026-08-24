@@ -280,6 +280,7 @@ impl crate::types::BridgeTriagePlacement {
                 reason: crate::types::BridgeNeedsYouReason::from_core(reason),
             },
             P::Importing => Self::Importing,
+            P::Failed => Self::Failed,
             P::Done => Self::Done,
             P::Skipped => Self::Skipped,
         }

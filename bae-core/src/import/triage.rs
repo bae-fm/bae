@@ -37,13 +37,19 @@ pub use model::*;
 ///    check: the release row lands partway through an import, so `is_added`
 ///    flips before the import is finished, and a row that reads Done then says
 ///    the folder is in the library while its files are still being copied.
-/// 2. **Then Done**, which is an import that finished — completed or failed —
-///    or a folder a previous session already imported. Not awaiting triage,
-///    whatever its verdict says and whether or not it was ever skipped.
+/// 2. **Then Done**, which is an import that completed, or a folder a previous
+///    session already imported. Not awaiting triage, whatever its verdict says
+///    and whether or not it was ever skipped.
 /// 3. **Then Skipped**, which is a decision the user already made.
-/// 4. **Then a stored pick**, which is the user answering whatever the verdict
+/// 4. **Then a failed attempt**, which is Pending work: the folder is not in
+///    the library and the only thing standing between it and being there is
+///    another attempt. It comes before the pick because a failed candidate
+///    always has one — read the pick first and the row would say Ready, and
+///    join the set a bulk import sweeps up, on the strength of the attempt
+///    that just failed.
+/// 5. **Then a stored pick**, which is the user answering whatever the verdict
 ///    was going to ask. Nothing is left to ask, so the row is Ready.
-/// 5. **Then what is known about it**, for a candidate nobody has answered.
+/// 6. **Then what is known about it**, for a candidate nobody has answered.
 ///
 /// **A candidate with no verdict yet is Needs you, not Ready** — the design
 /// mockup stacks the "still identifying" group under Ready, and that is the
@@ -65,19 +71,23 @@ pub fn place(
     picked: Option<&IdentityPick>,
     answer: &CandidateAnswer,
 ) -> TriagePlacement {
-    // Spelled out rather than `is_some()`: each variant answers "has this
-    // import finished" differently, and a new one should have to be placed
-    // here on purpose rather than inherited by an `_`.
-    let import_finished = match import_status {
+    // Spelled out rather than `is_some()`: each variant places the row
+    // somewhere different, and a new one should have to be placed here on
+    // purpose rather than inherited by an `_`.
+    let failed = match import_status {
         Some(TriageImportStatus::Importing) => return TriagePlacement::Importing,
-        Some(TriageImportStatus::Complete { .. } | TriageImportStatus::Error { .. }) => true,
+        Some(TriageImportStatus::Complete { .. }) => return TriagePlacement::Done,
+        Some(TriageImportStatus::Error { .. }) => true,
         None => false,
     };
-    if is_added || import_finished {
+    if is_added {
         return TriagePlacement::Done;
     }
     if skipped {
         return TriagePlacement::Skipped;
+    }
+    if failed {
+        return TriagePlacement::Failed;
     }
     // The pick is the answer. Whatever the verdict was going to ask — which of
     // three pressings, which of two signals, a release already in the library
@@ -110,7 +120,8 @@ pub fn place(
 /// The stored failure is here rather than only in the pane because a row has
 /// to say it too. Without it, quitting after a failed import brings the
 /// candidate back as an ordinary pending row, and the only way to find out it
-/// failed is to open it.
+/// failed is to open it. It stays in Pending either way — see
+/// [`TriagePlacement::Failed`] — but as a row that says what went wrong.
 pub fn import_status_of(
     importing: bool,
     imported: Option<&ImportedRelease>,

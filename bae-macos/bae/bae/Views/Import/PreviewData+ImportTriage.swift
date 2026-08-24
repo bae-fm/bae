@@ -355,9 +355,9 @@
             )
         )
 
-        static let triageRowDoneFailed = triageRow(
+        static let triageRowFailed = triageRow(
             for: importTabFailedCandidate,
-            placement: .done,
+            placement: .failed,
             skipAction: nil,
             matched: triageMatch(
                 releaseId: "rel-failed",
@@ -419,11 +419,11 @@
             triageRowNoMatch,
             triageRowStillIdentifying,
             triageRowImporting,
+            triageRowFailed,
         ]
 
         private static let importTabDoneRows = [
-            triageRowDoneImported,
-            triageRowDoneFailed,
+            triageRowDoneImported
         ]
 
         @MainActor
@@ -451,8 +451,8 @@
 
         @MainActor
         private static let importTabSummary = importQueueSummary(
-            pending: 10,
-            done: 2,
+            pending: 11,
+            done: 1,
             skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
             groupKeys: [importTabGroupKey],

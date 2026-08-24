@@ -21,9 +21,8 @@ struct TriageRowView: View {
     /// `row` again so the list content is the one place selection state
     /// (`UiStore`) meets the row.
     let selection: Binding<Bool>?
-    /// Select this row — what a click does, and what "Import Anyway" and
-    /// "Retry" alias: each opens the main pane exactly as selecting the row
-    /// would.
+    /// Select this row — what a click does, and what "Import Anyway" aliases:
+    /// it opens the main pane exactly as selecting the row would.
     let onSelect: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
     let onReleaseDecision:
@@ -66,9 +65,7 @@ struct TriageRowView: View {
                         ForEach(rowActions.indices, id: \.self) { index in
                             let action = rowActions[index]
                             Button(action.label, action: action.action)
-                                .buttonStyle(
-                                    RowActionPillStyle(isKey: action.isKey)
-                                )
+                                .buttonStyle(RowActionPillStyle())
                         }
                     }
                     .padding(.top, 7)
@@ -255,7 +252,7 @@ extension TriageRowView {
                     return needsYou.localizedText
                 }
             }
-        case .importing, .done:
+        case .importing, .failed, .done:
             return importSubLine
         }
     }
@@ -322,7 +319,6 @@ extension TriageRowView {
 
     private struct RowAction {
         let label: LocalizedStringKey
-        let isKey: Bool
         let action: () -> Void
     }
 
@@ -331,29 +327,11 @@ extension TriageRowView {
     /// on the group header, or in this row's own menu where the folder is
     /// this row.
     private var rowActions: [RowAction] {
-        var actions: [RowAction] = []
-        switch row.placement {
-        case .needsYou(.alreadyInLibrary, .disagreement):
-            actions = [
-                RowAction(
-                    label: "Import Anyway",
-                    isKey: false,
-                    action: onSelect
-                )
-            ]
-        case .done:
-            if case .error = row.importStatus {
-                actions = [
-                    RowAction(label: "Retry", isKey: true, action: onSelect),
-                    RowAction(label: "Reveal in Finder", isKey: false) {
-                        SystemActions.revealInFinder(path: row.candidateKey)
-                    },
-                ]
-            }
-        default:
-            break
+        guard case .needsYou(.alreadyInLibrary, .disagreement) = row.placement
+        else {
+            return []
         }
-        return actions
+        return [RowAction(label: "Import Anyway", action: onSelect)]
     }
 
     // MARK: - Trailing
@@ -367,8 +345,8 @@ extension TriageRowView {
             needsYouTrailing(group: group, reason: reason)
         case .importing:
             ProgressView().controlSize(.small)
-        case .done:
-            doneTrailing
+        case .failed, .done:
+            importTrailing
         case .skipped:
             EmptyView()
         }
@@ -403,8 +381,11 @@ extension TriageRowView {
         }
     }
 
+    /// What a row past the point of being asked anything shows: the running
+    /// import's spinner, the failure's tag, or the completed import's mark and
+    /// its cloud transition.
     @ViewBuilder
-    private var doneTrailing: some View {
+    private var importTrailing: some View {
         switch row.importStatus {
         case .importing:
             ProgressView().controlSize(.small)
@@ -456,26 +437,18 @@ extension TriageRowView {
     }
 }
 
-/// The row-action pill button style: a filled accent pill for the key action,
-/// an outlined one for the rest.
+/// The row-action pill button style: an outlined capsule beside the row's meta
+/// column, quiet enough that it reads as an offer rather than the row's point.
 private struct RowActionPillStyle: ButtonStyle {
-    let isKey: Bool
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
-            .foregroundStyle(isKey ? Theme.background : .secondary)
-            .background(
-                Capsule()
-                    .fill(isKey ? Theme.accent : Color.clear)
-            )
+            .foregroundStyle(.secondary)
             .overlay(
                 Capsule()
-                    .strokeBorder(
-                        isKey ? Color.clear : Color.secondary.opacity(0.4)
-                    )
+                    .strokeBorder(Color.secondary.opacity(0.4))
             )
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
@@ -552,9 +525,9 @@ private struct RowActionPillStyle: ButtonStyle {
                 onSkip: { _ in }
             )
             TriageRowView(
-                row: PreviewData.triageRowDoneFailed,
+                row: PreviewData.triageRowFailed,
                 coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowDoneFailed
+                    for: PreviewData.triageRowFailed
                 ),
                 selection: nil,
                 onSelect: {},

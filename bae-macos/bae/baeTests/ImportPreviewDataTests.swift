@@ -137,6 +137,7 @@ struct ImportPreviewDataTests {
 
         #expect(rows.contains { $0.placement == .ready })
         #expect(rows.contains { $0.placement == .importing })
+        #expect(rows.contains { $0.placement == .failed })
         #expect(rows.contains { $0.placement == .done })
         #expect(rows.contains { $0.placement == .skipped })
         #expect(needsYouGroups.contains(.pickAPressing))

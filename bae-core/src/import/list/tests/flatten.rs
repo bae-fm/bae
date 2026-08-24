@@ -306,24 +306,76 @@ fn a_claimed_import_places_the_row_as_importing() {
 }
 
 /// The failure is a row, so it survives the session that produced it: a
-/// relaunched queue still places the candidate as Done and still says why.
+/// relaunched queue still says why the attempt failed. It stays Pending —
+/// nothing was imported, and the folder is waiting on another attempt — and it
+/// is not Ready, so a bulk import does not sweep it back up.
 #[test]
-fn a_failed_import_reads_its_error_from_its_row() {
+fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
+    rows.states
+        .insert("hash-Release".to_string(), ready_state("mb-1"));
     rows.failures
         .insert("hash-Release".to_string(), "boom".to_string());
 
-    let flat = flattened(&rows, &view(TriageTab::Done));
+    let flat = flattened(&rows, &view(TriageTab::Pending));
 
     let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Done);
+    assert_eq!(row.placement, TriagePlacement::Failed);
     assert_eq!(
         row.import_status,
         Some(TriageImportStatus::Error {
             error: "boom".to_string()
         })
     );
+    assert_eq!(flat.summary.counts.pending, 1);
+    assert_eq!(flat.summary.counts.done, 0);
+    assert!(
+        !row.selectable,
+        "the attempt that just failed is not what makes a row safe to sweep up"
+    );
+    assert!(flat.summary.ready.is_empty());
+}
+
+/// Retrying is the ordinary import: the run claims the candidate, and the row
+/// leaves the failure for Importing without the failure row being cleared
+/// first. When it lands, the release outranks the leftover failure and the row
+/// is Done.
+#[test]
+fn retrying_a_failed_import_moves_it_through_importing_to_done() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states
+        .insert("hash-Release".to_string(), ready_state("mb-1"));
+    rows.failures
+        .insert("hash-Release".to_string(), "boom".to_string());
+    let running = BTreeMap::from([(
+        key("Release"),
+        TriageRuntimeFacts {
+            phase: IdentifyPhase::Queued,
+            importing: true,
+        },
+    )]);
+
+    let flat = flatten(&rows, &view(TriageTab::Pending), &running).expect("the queue flattens");
+    assert_eq!(
+        row_for(&flat, "Release").placement,
+        TriagePlacement::Importing
+    );
+    assert_eq!(flat.summary.counts.pending, 1);
+
+    rows.imported.insert(
+        "hash-Release".to_string(),
+        ImportedRelease {
+            release_id: "rel-1".to_string(),
+            album_id: "alb-1".to_string(),
+        },
+    );
+
+    let flat = flattened(&rows, &view(TriageTab::Done));
+    assert_eq!(row_for(&flat, "Release").placement, TriagePlacement::Done);
+    assert_eq!(flat.summary.counts.done, 1);
+    assert_eq!(flat.summary.counts.pending, 0);
 }
 
 /// A release for this content hash means an attempt already succeeded, so a

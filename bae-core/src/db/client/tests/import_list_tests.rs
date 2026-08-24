@@ -450,11 +450,12 @@ async fn the_list_reads_none_of_what_the_pane_stores() {
 }
 
 /// The failure the last attempt stored is a placement fact, so the list reads
-/// it: after a relaunch, with nothing running, the row that failed is on Done
-/// saying so rather than sitting in Pending looking untried. Queueing the next
-/// attempt clears the row and the candidate goes back where it was.
+/// it: after a relaunch, with nothing running, the row that failed is still on
+/// Pending — the folder is not in the library and the work is waiting on
+/// another attempt — but saying what went wrong rather than looking untried.
+/// Queueing the next attempt clears the row and it goes back to plain pending.
 #[tokio::test]
-async fn a_stored_failure_places_the_row_on_done_until_the_next_attempt() {
+async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     let (db, tmp) = empty_db().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir_all(&root).unwrap();
@@ -477,14 +478,14 @@ async fn a_stored_failure_places_the_row_on_done_until_the_next_attempt() {
         .unwrap();
 
     assert!(
-        tab(&db, TriageTab::Pending).await.is_empty(),
-        "a failed candidate has left Pending"
+        tab(&db, TriageTab::Done).await.is_empty(),
+        "a failed attempt imported nothing, so nothing is done"
     );
-    let done = tab(&db, TriageTab::Done).await;
-    assert_eq!(done.len(), 1);
-    assert_eq!(done[0].placement, crate::import::TriagePlacement::Done);
+    let failed = tab(&db, TriageTab::Pending).await;
+    assert_eq!(failed.len(), 1);
+    assert_eq!(failed[0].placement, crate::import::TriagePlacement::Failed);
     assert_eq!(
-        done[0].import_status,
+        failed[0].import_status,
         Some(crate::import::TriageImportStatus::Error {
             error: "the disk filled".to_string()
         }),

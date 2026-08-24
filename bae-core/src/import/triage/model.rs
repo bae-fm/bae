@@ -35,6 +35,13 @@ pub enum TriagePlacement {
     /// import says it is. How far it has got is the candidate's runtime, read
     /// by the leaf that draws the bar.
     Importing,
+    /// The last attempt to import this candidate failed and nothing has been
+    /// attempted since. Pending, not Done: the folder is not in the library
+    /// and the work is waiting on another attempt. Its own variant rather than
+    /// a Needs-you group because nothing about the release is in question —
+    /// the pick stands, the attempt did not. What went wrong is the row's
+    /// [`TriageImportStatus::Error`], the same place the pane reads it.
+    Failed,
     Done,
     Skipped,
 }
@@ -42,17 +49,21 @@ pub enum TriagePlacement {
 impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
-            Self::Ready | Self::NeedsYou { .. } | Self::Importing => TriageTab::Pending,
+            Self::Ready | Self::NeedsYou { .. } | Self::Importing | Self::Failed => {
+                TriageTab::Pending
+            }
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
     }
 
+    /// A candidate an import has claimed, finished or failed is past the point
+    /// where skipping it means anything: the attempt is what decides it now.
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
             Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
             Self::Skipped => Some(TriageSkipAction::Unskip),
-            Self::Importing | Self::Done => None,
+            Self::Importing | Self::Failed | Self::Done => None,
         }
     }
 }

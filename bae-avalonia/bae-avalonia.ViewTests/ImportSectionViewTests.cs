@@ -88,6 +88,31 @@ public sealed class ImportSectionViewTests
         Assert.Empty(asked);
     }
 
+    // A failed attempt is Pending work, and the row says what went wrong. It
+    // offers no buttons of its own: retrying is the ordinary import, from the
+    // pane the row opens like any other.
+    [AvaloniaFact]
+    public void AFailedRowSaysSoAndOffersNoButtons()
+    {
+        var placement = new BridgeTriagePlacement.Failed();
+        var failure = new BridgeException.Diagnostic(
+            new BridgeErrorCategory.Import(), "the disk filled");
+        var status = new BridgeTriageImportStatus.Error(failure);
+        var view = BuildView(
+            MatchedItems(placement, null, status),
+            MatchedSummary(placement, BridgeTriageTab.Pending),
+            BridgeTriageTab.Pending);
+
+        var row = CandidateRow(view);
+        Assert.Contains(
+            row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Chrome("import.row.failed"));
+        Assert.Contains(
+            row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == BridgeDisplay.LocalizedLine(failure));
+        Assert.Empty(row.GetLogicalDescendants().OfType<Button>());
+    }
+
     // A Done row holds a match as well, and re-showing an imported folder must
     // not decide anything about it again.
     [AvaloniaFact]
