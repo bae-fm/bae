@@ -68,7 +68,7 @@ struct FakeScanStarter {
 struct FakeStartedScan {
     path: PathBuf,
     cancellation: crate::import::folder_scanner::ScanCancellation,
-    completion: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
+    completion: Option<tokio::sync::oneshot::Sender<()>>,
     abort: tokio::task::AbortHandle,
 }
 
@@ -84,11 +84,11 @@ impl FakeScanStarter {
             let (finish, finished) = tokio::sync::oneshot::channel();
             let started_path = path.clone();
             let task = tokio::spawn(async move {
-                let result = finished
+                finished
                     .await
                     .expect("fake scan completion sender was retained");
                 completion
-                    .send(RootScanCompletion { id, path, result })
+                    .send(RootScanCompletion { id, path })
                     .expect("coordinator still receives completions");
             });
             captured.scans.lock().unwrap().push(FakeStartedScan {
@@ -111,12 +111,14 @@ impl FakeScanStarter {
         }
     }
 
-    fn complete(&self, index: usize, result: Result<(), String>) {
+    /// End the scan at `index`. A scan reports what it found on the event
+    /// stream, not here, so there is no outcome to hand back.
+    fn complete(&self, index: usize) {
         self.scans.lock().unwrap()[index]
             .completion
             .take()
             .expect("fake scan has not completed")
-            .send(result)
+            .send(())
             .expect("coordinator still waits for the fake scan");
     }
 

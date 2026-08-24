@@ -45,6 +45,16 @@ internal sealed class UiEventRouter
                     _showError(Loc.Chrome("error.title"), errorLine);
                 }
                 break;
+            case BridgeUiEvent.WatchedFolderScanFailed scanFailed:
+                // A folder the user is watching could not be read. Its entry in
+                // the import list's menu keeps the lasting mark; this is the
+                // moment it broke, and core sends it once per distinct failure
+                // rather than on every re-scan, so the dialog is news every
+                // time it appears.
+                _showError(
+                    Loc.Core("ui.import.folder.scan_failed", "folder", scanFailed.WatchedFolderPath),
+                    scanFailed.Detail);
+                break;
             case BridgeUiEvent.CandidateImportLoudnessProgress:
             case BridgeUiEvent.CandidateSignalsUpdated:
             case BridgeUiEvent.ImportQueueIdentifyProgress:

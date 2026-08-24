@@ -63,7 +63,12 @@ public struct DisplayError: Equatable, Sendable {
         self.detail = nil
     }
 
-    private init(line: String, detail: String?) {
+    /// A failure the UI writes the headline for but core wrote the fault text
+    /// of: an event carrying an untranslated diagnostic beside the thing it
+    /// happened to. The headline is localized at the call site; `detail` stays
+    /// verbatim for the disclosure and the copy button, like any other core
+    /// diagnostic.
+    public init(line: String, detail: String?) {
         self.line = line
         self.detail = detail
     }

@@ -160,6 +160,22 @@ pub enum UiBusEvent {
         identified: u32,
         total: u32,
     },
+    /// Reading a watched folder failed. The folder's entry in the import list's
+    /// menu carries a lasting mark for as long as the failure stands; this is
+    /// the moment it happened, which each desktop raises as an alert naming the
+    /// folder and what went wrong.
+    ///
+    /// One per distinct failure, not one per scan: a root that is unreachable
+    /// fails the same way on every re-scan the timer and the watcher start, and
+    /// the user is told once, not every fifteen minutes.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    WatchedFolderScanFailed {
+        watched_folder_path: String,
+        /// The failure as the scan reported it — the opaque Rust error chain,
+        /// shown beside the localized headline and never translated, the way a
+        /// [`UiError::Diagnostic`]'s detail is.
+        detail: String,
+    },
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {

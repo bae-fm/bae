@@ -144,3 +144,94 @@ async fn extracted_signals_reach_the_bus_by_key_and_read_back_for_that_key() {
         "OTHER-1"
     );
 }
+
+/// The scan status a folder just landed on. Failures reach the bus as their own
+/// event; everything else the relay forwards is skipped past.
+async fn next_scan_failure(
+    events: &mut tokio::sync::broadcast::Receiver<UiBusEvent>,
+) -> (String, String) {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match events.recv().await {
+                Ok(UiBusEvent::WatchedFolderScanFailed {
+                    watched_folder_path,
+                    detail,
+                }) => return (watched_folder_path, detail),
+                Ok(_) => continue,
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    panic!("the UI bus closed")
+                }
+            }
+        }
+    })
+    .await
+    .expect("a scan failure reaches the bus")
+}
+
+fn scan_status(path: &str, status: crate::import::FolderScanStatus) -> ImportEvent {
+    ImportEvent::Scan(crate::import::ScanEvent::FolderScanStatusChanged {
+        status: crate::import::WatchedFolderScanStatus {
+            watched_folder_path: path.to_string(),
+            watched_folder_name: "Watched".to_string(),
+            status,
+        },
+    })
+}
+
+/// A failed folder scan raises an alert on the bus carrying the folder and what
+/// went wrong. The timer re-scans every watched root, so an unreachable one
+/// fails the same way over and over: the same failure is announced once, and
+/// only a root that scanned cleanly in between is news again.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_folder_scan_is_announced_once_per_distinct_failure() {
+    let (services, _temp) = services().await;
+    let bus = UiEventBus::new();
+    bus.wire(&services, &tokio::runtime::Handle::current());
+    let mut events = bus.subscribe();
+
+    let failed = |error: &str| {
+        scan_status(
+            "/watch/rips",
+            crate::import::FolderScanStatus::Failed {
+                error: error.to_string(),
+            },
+        )
+    };
+
+    services.import_emit_event_for_test(failed("the volume could not be reached"));
+    // The same failure again, as the next periodic re-scan would report it.
+    services.import_emit_event_for_test(failed("the volume could not be reached"));
+    // A different fault on the same root is a different thing to say.
+    services.import_emit_event_for_test(failed("no such column: author"));
+
+    assert_eq!(
+        next_scan_failure(&mut events).await,
+        (
+            "/watch/rips".to_string(),
+            "the volume could not be reached".to_string()
+        )
+    );
+    assert_eq!(
+        next_scan_failure(&mut events).await,
+        (
+            "/watch/rips".to_string(),
+            "no such column: author".to_string()
+        )
+    );
+
+    // Reading the folder again cleanly ends the failure, so its next break is
+    // news even though it is the fault that was already announced.
+    services.import_emit_event_for_test(scan_status(
+        "/watch/rips",
+        crate::import::FolderScanStatus::Complete,
+    ));
+    services.import_emit_event_for_test(failed("no such column: author"));
+    assert_eq!(
+        next_scan_failure(&mut events).await,
+        (
+            "/watch/rips".to_string(),
+            "no such column: author".to_string()
+        )
+    );
+}

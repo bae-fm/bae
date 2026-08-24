@@ -4,13 +4,18 @@ import BaeKit
 final class DesktopEventHandler {
     private let importStore: ImportStore
     private let mediaControlService: MediaControlService
+    /// Where a background failure becomes something the user sees: the global
+    /// alert every other caught error is routed to.
+    private let uiStore: UiStore
 
     init(
         importStore: ImportStore,
-        mediaControlService: MediaControlService
+        mediaControlService: MediaControlService,
+        uiStore: UiStore
     ) {
         self.importStore = importStore
         self.mediaControlService = mediaControlService
+        self.uiStore = uiStore
     }
 
     func apply(_ event: BridgeUiEvent) {
@@ -41,6 +46,26 @@ final class DesktopEventHandler {
         case .importQueueIdentifyProgress(let identified, let total):
             importStore.queueIdentifyProgress = (
                 identified: identified, total: total
+            )
+
+        // A folder the user is watching could not be read. Its entry in the
+        // import list's menu keeps the lasting mark; this is the moment it
+        // broke, and core sends it once per distinct failure rather than on
+        // every re-scan, so the alert is news every time it appears.
+        case .watchedFolderScanFailed(let watchedFolderPath, let detail):
+            uiStore.showError(
+                DisplayError(
+                    line: String(
+                        format: NSLocalizedString(
+                            "ui.import.folder.scan_failed",
+                            tableName: "Core",
+                            bundle: .main,
+                            comment: ""
+                        ),
+                        watchedFolderPath
+                    ),
+                    detail: detail
+                )
             )
 
         case .playbackError, .queueItemsAdded, .error:

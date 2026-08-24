@@ -201,10 +201,13 @@ struct RootScanTask {
     task: tokio::task::JoinHandle<()>,
 }
 
+/// One scan pass has ended. It carries no result: a scan reports its own
+/// failure — it records the root's failed status and puts the alert on the
+/// event stream — so this only tells the coordinator that the root is free
+/// again and that whoever asked for the refresh can stop waiting.
 struct RootScanCompletion {
     id: u64,
     path: PathBuf,
-    result: Result<(), String>,
 }
 
 struct RootRemovalSchedule {
@@ -341,10 +344,12 @@ fn spawn_root_scan(
     let scan_cancellation = cancellation.clone();
     let completion_path = path.clone();
     let task = tokio::spawn(async move {
-        let result = if scan_cancellation.is_cancelled() {
-            Ok(())
-        } else {
-            ImportService::rescan_and_reconcile(
+        if !scan_cancellation.is_cancelled() {
+            // The error is dropped rather than passed on: `rescan_and_reconcile`
+            // has already recorded it as the root's status and announced it, and
+            // a refresh caller that reported it a second time would put two
+            // dialogs on screen for one broken folder.
+            let _ = ImportService::rescan_and_reconcile(
                 &path,
                 &event_tx,
                 &library_manager,
@@ -353,14 +358,12 @@ fn spawn_root_scan(
                 &folder_watcher,
                 &scan_cancellation,
             )
-            .await
-            .map_err(|error| error.to_string())
-        };
+            .await;
+        }
         if completion_tx
             .send(RootScanCompletion {
                 id,
                 path: completion_path,
-                result,
             })
             .is_err()
         {

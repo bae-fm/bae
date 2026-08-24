@@ -400,12 +400,13 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     );
 }
 
-/// A refresh is the awaited scan operation. If a watched root disappears, it
-/// reports the failure, records the failed status, and preserves the last
-/// candidate snapshot rather than turning an unavailable filesystem into
-/// removals.
+/// A refresh waits for its scan to be over. If a watched root disappears, the
+/// scan records the failed status and preserves the last candidate snapshot
+/// rather than turning an unavailable filesystem into removals — and the
+/// refresh returns having done what was asked, since what the scan found is
+/// the folder's status, not the refresh's outcome.
 #[tokio::test]
-async fn refresh_missing_watched_folder_fails_and_preserves_candidates() {
+async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     let root = f.temp_path().join("unplugged-drive");
@@ -421,11 +422,10 @@ async fn refresh_missing_watched_folder_fails_and_preserves_candidates() {
         .unwrap();
 
     fs::remove_dir_all(&root).unwrap();
-    let result = f.handle.refresh_watched_folder(root_key.clone()).await;
-    assert!(
-        result.is_err(),
-        "refreshing a missing watched folder must fail"
-    );
+    f.handle
+        .refresh_watched_folder(root_key.clone())
+        .await
+        .expect("the refresh ran; what it found is the folder's status");
     let projection = wait_for_candidates(&f, "the failed refresh leaves its status", |projection| {
         projection
             .summary

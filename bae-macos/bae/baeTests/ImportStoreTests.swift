@@ -348,7 +348,8 @@ struct ImportLoudnessProgressTests {
         let store = ImportStore()
         let handler = DesktopEventHandler(
             importStore: store,
-            mediaControlService: MediaControlService()
+            mediaControlService: MediaControlService(),
+            uiStore: UiStore()
         )
 
         handler.apply(

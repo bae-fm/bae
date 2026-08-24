@@ -27,11 +27,10 @@ impl ImportService {
         Ok(true)
     }
 
-    /// Say a scan of `root` failed, without a stored status behind it. Only
-    /// [`Self::begin_scan`] reaches this: the generation row is what a status
-    /// would be written against, so a root whose generation could not be
-    /// written has nowhere durable to record the failure — and the user still
-    /// has to hear that the folder they just added was not read.
+    /// Say a scan of `root` failed, without a stored status behind it — the
+    /// generation row could not be opened, or the status write on top of it
+    /// failed. The user still has to hear that the folder they just added was
+    /// not read, so the event goes out even when nothing durable can.
     fn announce_scan_failure(
         root: &Path,
         message: String,
@@ -540,19 +539,10 @@ impl ImportService {
                                 completion.path.display()
                             );
                         }
-                        // A scan nobody awaited — the startup scan, an add, a
-                        // watcher-triggered re-scan — reports its failure
-                        // here or nowhere.
-                        if let Err(error) = &completion.result {
-                            if schedule.current_waiters.is_empty() {
-                                error!(
-                                    "folder scan of {} failed: {error}",
-                                    completion.path.display()
-                                );
-                            }
-                        }
+                        // The scan itself is what said whether it worked. A
+                        // refresh caller is only waiting for it to be over.
                         for waiter in schedule.current_waiters.drain(..) {
-                            if waiter.send(completion.result.clone()).is_err() {
+                            if waiter.send(Ok(())).is_err() {
                                 debug!("folder refresh caller dropped before completion");
                             }
                         }
@@ -722,7 +712,11 @@ impl ImportService {
             "scan of {} failed ({error}); keeping previous candidates",
             root.display()
         );
-        Self::record_scan_failure(
+        // Reported whether or not it can be stored. The stored status is what
+        // the folder's mark reads back; the event is what raises the alert, and
+        // a database that will not take the status is one more reason the user
+        // needs to hear that their folder was not read.
+        if let Err(status_error) = Self::record_scan_failure(
             root,
             generation,
             error.to_string(),
@@ -730,7 +724,14 @@ impl ImportService {
             library_manager,
             folder_state_commit,
         )
-        .await?;
+        .await
+        {
+            error!(
+                "{}'s failed scan could not be stored: {status_error}",
+                root.display()
+            );
+            Self::announce_scan_failure(root, error.to_string(), event_tx);
+        }
         Err(error)
     }
 

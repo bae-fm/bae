@@ -12,9 +12,9 @@ async fn coordinator_coalesces_same_root_to_one_followup_scan() {
         .send(WatcherCommand::Rescan(root.clone()))
         .unwrap();
     harness.commands.send(WatcherCommand::Rescan(root)).unwrap();
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     tokio::task::yield_now().await;
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
     harness.shutdown().await;
@@ -48,7 +48,7 @@ async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
         "removal completed while the scan could still install a late watch"
     );
 
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     assert_eq!(result.await.unwrap(), Ok(()));
     harness.shutdown().await;
 }
@@ -81,7 +81,7 @@ async fn coordinator_coalesces_duplicate_removals_for_one_root() {
         })
         .unwrap();
 
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     assert_eq!(first_result.await.unwrap(), Ok(()));
     assert_eq!(second_result.await.unwrap(), Ok(()));
     assert_eq!(
@@ -119,7 +119,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
         })
         .unwrap();
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     assert_eq!(
         tokio::time::timeout(Duration::from_secs(2), refresh_result)
             .await
@@ -134,7 +134,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
             .is_err(),
         "removal completed before its blocked scan"
     );
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     harness.shutdown().await;
 }
 
@@ -162,7 +162,7 @@ async fn coordinator_removal_join_failure_restores_a_runnable_root_schedule() {
     let error = result.await.unwrap().unwrap_err();
     assert!(error.contains("folder scan task failed while removing"));
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     harness.shutdown().await;
 }
 
@@ -187,7 +187,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
         })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
 
     let error = result.await.unwrap().unwrap_err();
     assert!(error.contains("injected uninstall failure"));
@@ -196,7 +196,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
         ["uninstall"]
     );
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     harness.shutdown().await;
 }
 
@@ -221,7 +221,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
         })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
 
     let error = result.await.unwrap().unwrap_err();
     assert!(error.contains("injected database failure"));
@@ -234,7 +234,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
         vec![crate::import::WatchedFolder::from_path(host_root("/music"))]
     );
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     harness.shutdown().await;
 }
 
@@ -262,7 +262,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
         })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     tokio::time::timeout(
         Duration::from_secs(2),
         harness.removal_backend.reinstall_started.notified(),
@@ -288,7 +288,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     drop(other_root_commit);
 
     harness.removal_backend.release_reinstall.notify_one();
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     assert_eq!(
         tokio::time::timeout(Duration::from_secs(2), refresh_result)
             .await
@@ -301,7 +301,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
         "injected durable removal failure was not returned"
     );
     harness.scans.wait_for_count(3).await;
-    harness.scans.complete(2, Ok(()));
+    harness.scans.complete(2);
     harness.shutdown().await;
 
     assert!(
@@ -333,13 +333,13 @@ async fn coordinator_removal_database_and_restore_failures_return_both_errors() 
         })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
 
     let error = result.await.unwrap().unwrap_err();
     assert!(error.contains("injected database failure"));
     assert!(error.contains("injected restore failure"));
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     harness.shutdown().await;
 }
 
@@ -355,13 +355,17 @@ async fn coordinator_runs_different_roots_concurrently() {
     harness.scans.wait_for_count(2).await;
     assert!(!harness.scans.cancellation(0).is_cancelled());
     assert!(!harness.scans.cancellation(1).is_cancelled());
-    harness.scans.complete(0, Ok(()));
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(0);
+    harness.scans.complete(1);
     harness.shutdown().await;
 }
 
+/// A refresh waits for its scan to be over, not for it to have worked. What a
+/// scan made of the folder is the root's stored status and the failure event
+/// the desktops raise as an alert; a refresh caller that reported it a second
+/// time would put two dialogs on screen for one broken folder.
 #[tokio::test]
-async fn coordinator_completes_refresh_waiter_with_its_scan_result() {
+async fn coordinator_completes_refresh_waiter_once_its_scan_is_over() {
     let harness = CoordinatorHarness::new().await;
     let (completion, result) = tokio::sync::oneshot::channel();
     harness
@@ -372,8 +376,8 @@ async fn coordinator_completes_refresh_waiter_with_its_scan_result() {
         })
         .unwrap();
     harness.scans.wait_for_count(1).await;
-    harness.scans.complete(0, Err("offline".to_string()));
-    assert_eq!(result.await.unwrap(), Err("offline".to_string()));
+    harness.scans.complete(0);
+    assert_eq!(result.await.unwrap(), Ok(()));
     harness.shutdown().await;
 }
 
@@ -419,7 +423,7 @@ async fn a_file_opened_under_a_watched_root_starts_no_scan() {
         "the only scan is the created file's; the opened file started none"
     );
 
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     harness.shutdown().await;
 }
 
@@ -442,7 +446,7 @@ async fn a_finished_write_under_a_watched_root_starts_a_scan() {
     harness.scans.wait_for_count(1).await;
     assert_eq!(harness.scans.path(0), root_path("/music"));
 
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     harness.shutdown().await;
 }
 
@@ -471,7 +475,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     for _ in 0..10_000 {
         harness.fs_events.send(Ok(Vec::new())).unwrap();
     }
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     assert_eq!(
         tokio::time::timeout(Duration::from_secs(2), result)
             .await
@@ -555,10 +559,10 @@ async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replaceme
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
     assert!(!harness.scans.cancellation(1).is_cancelled());
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     assert_eq!(decision_result.await.unwrap(), Ok(()));
     harness.shutdown().await;
 }
@@ -601,9 +605,9 @@ async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_co
         decision_result.await.unwrap(),
         Err("Group is not a current release boundary".to_string())
     );
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1, Ok(()));
+    harness.scans.complete(1);
     harness.shutdown().await;
 }
 
@@ -627,7 +631,7 @@ async fn coordinator_shutdown_waits_for_active_scan() {
         shutdown_done.try_recv(),
         Err(std::sync::mpsc::TryRecvError::Empty)
     ));
-    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(0);
     tokio::task::spawn_blocking(move || shutdown_done.recv())
         .await
         .unwrap()
