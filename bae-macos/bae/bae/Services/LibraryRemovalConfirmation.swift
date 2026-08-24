@@ -17,7 +17,7 @@ enum LibraryRemovalConfirmation {
         }
         let base = String(
             localized:
-                "Your library in the cloud is untouched — you can restore it from the welcome screen later."
+                "Your library in the cloud is untouched. You can restore it from the welcome screen later."
         )
         guard hasPendingCloudWork else { return base }
         let extra = String(

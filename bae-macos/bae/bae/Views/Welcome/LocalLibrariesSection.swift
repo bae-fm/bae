@@ -60,7 +60,7 @@ private struct LibraryRow: View {
                 Text(library.name)
                     .font(.body.bold())
                 if let error = library.error {
-                    Text("Can't open — \(error)")
+                    Text("Can't open: \(error)")
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .lineLimit(2)

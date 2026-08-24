@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">પુનઃપ્રાપ્તિ કોડ બનાવી શકાયો નહીં.</string>
     <string name="settings_copy_recovery_code">કોડ નકલ કરો</string>
     <string name="settings_remove_library">આ ઉપકરણમાંથી આ લાઇબ્રેરી દૂર કરો</string>
-    <string name="settings_remove_library_explanation">આ ઉપકરણમાંથી આ લાઇબ્રેરી અને તેની ડાઉનલોડ કરેલી ફાઇલો દૂર કરે છે. ક્લાઉડમાં તમારી લાઇબ્રેરી અસ્પર્શિત રહેશે — તમે આ ઉપકરણને પછી ફરી જોડી શકો છો.</string>
+    <string name="settings_remove_library_explanation">આ ઉપકરણમાંથી આ લાઇબ્રેરી અને તેની ડાઉનલોડ કરેલી ફાઇલો દૂર કરે છે. ક્લાઉડમાં તમારી લાઇબ્રેરી અસ્પર્શિત રહેશે. તમે આ ઉપકરણને પછી ફરી જોડી શકો છો.</string>
     <string name="settings_remove_library_confirm_title">આ ઉપકરણમાંથી આ લાઇબ્રેરી દૂર કરવી છે?</string>
     <string name="settings_remove_library_confirm_body">ક્લાઉડમાં તમારી લાઇબ્રેરી અસ્પર્શિત છે. તમે આ ઉપકરણને પછી ફરી જોડી શકો છો.</string>
     <string name="settings_remove">દૂર કરો</string>

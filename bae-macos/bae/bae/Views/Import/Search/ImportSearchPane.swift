@@ -179,7 +179,7 @@ struct ImportSearchPane: View {
             default:
                 Image(systemName: "magnifyingglass.circle.fill")
                     .foregroundStyle(.secondary)
-                Text("No identifying signals yet — search manually")
+                Text("No identifying signals yet. Search manually")
                     .font(.callout)
             }
             DiscIdInfoTip()

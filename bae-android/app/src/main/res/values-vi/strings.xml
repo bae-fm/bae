@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Không thể tạo mã khôi phục.</string>
     <string name="settings_copy_recovery_code">Sao chép mã</string>
     <string name="settings_remove_library">Gỡ thư viện này khỏi thiết bị này</string>
-    <string name="settings_remove_library_explanation">Gỡ thư viện này và các tệp đã tải xuống của nó khỏi thiết bị này. Thư viện của bạn trên đám mây vẫn được giữ nguyên — bạn có thể ghép nối lại thiết bị này sau.</string>
+    <string name="settings_remove_library_explanation">Gỡ thư viện này và các tệp đã tải xuống của nó khỏi thiết bị này. Thư viện của bạn trên đám mây vẫn được giữ nguyên. Bạn có thể ghép nối lại thiết bị này sau.</string>
     <string name="settings_remove_library_confirm_title">Gỡ thư viện này khỏi thiết bị này?</string>
     <string name="settings_remove_library_confirm_body">Thư viện của bạn trên đám mây vẫn được giữ nguyên. Bạn có thể ghép nối lại thiết bị này sau.</string>
     <string name="settings_remove">Xóa</string>

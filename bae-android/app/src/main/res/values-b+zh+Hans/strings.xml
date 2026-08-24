@@ -35,7 +35,7 @@
     <string name="collapse">折叠</string>
     <string name="mute">静音</string>
     <string name="unmute">取消静音</string>
-    <string name="now_playing_track_by_artist">正在播放，%1$s — %2$s</string>
+    <string name="now_playing_track_by_artist">正在播放，%1$s, %2$s</string>
     <string name="queue_clear">清空</string>
     <string name="queue_clear_up_next">清空“接下来”</string>
     <string name="queue_clear_playing_from">清空当前播放来源</string>
@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">无法生成恢复代码。</string>
     <string name="settings_copy_recovery_code">复制代码</string>
     <string name="settings_remove_library">从此设备移除此库</string>
-    <string name="settings_remove_library_explanation">从此设备移除此库及其已下载文件。你在云端的库不受影响 — 你可以稍后重新配对此设备。</string>
+    <string name="settings_remove_library_explanation">从此设备移除此库及其已下载文件。你在云端的库不受影响。你可以稍后重新配对此设备。</string>
     <string name="settings_remove_library_confirm_title">从此设备移除此库？</string>
     <string name="settings_remove_library_confirm_body">你在云端的库不受影响。你可以稍后重新配对此设备。</string>
     <string name="settings_remove">移除</string>

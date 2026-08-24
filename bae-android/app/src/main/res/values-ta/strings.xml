@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">மீட்பு குறியீட்டை உருவாக்க முடியவில்லை.</string>
     <string name="settings_copy_recovery_code">குறியீட்டை நகலெடு</string>
     <string name="settings_remove_library">இந்த சாதனத்திலிருந்து இந்த நூலகத்தை அகற்று</string>
-    <string name="settings_remove_library_explanation">இந்தச் சாதனத்திலிருந்து இந்த நூலகத்தையும் அதன் பதிவிறக்கப்பட்ட கோப்புகளையும் அகற்றும். மேகத்தில் உள்ள உங்கள் நூலகம் மாற்றப்படாது — இந்தச் சாதனத்தை பின்னர் மீண்டும் இணைக்கலாம்.</string>
+    <string name="settings_remove_library_explanation">இந்தச் சாதனத்திலிருந்து இந்த நூலகத்தையும் அதன் பதிவிறக்கப்பட்ட கோப்புகளையும் அகற்றும். மேகத்தில் உள்ள உங்கள் நூலகம் மாற்றப்படாது. இந்தச் சாதனத்தை பின்னர் மீண்டும் இணைக்கலாம்.</string>
     <string name="settings_remove_library_confirm_title">இந்த சாதனத்திலிருந்து இந்த நூலகத்தை அகற்றவா?</string>
     <string name="settings_remove_library_confirm_body">மேகத்தில் உள்ள உங்கள் நூலகம் மாற்றப்படவில்லை. இந்தச் சாதனத்தை பின்னர் மீண்டும் இணைக்கலாம்.</string>
     <string name="settings_remove">நீக்கு</string>

@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Nepodařilo se vygenerovat kód pro obnovení.</string>
     <string name="settings_copy_recovery_code">Kopírovat kód</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>
-    <string name="settings_remove_library_explanation">Odebere tuto knihovnu a její stažené soubory z tohoto zařízení. Vaše knihovna v cloudu zůstane nedotčena — toto zařízení můžete později znovu spárovat.</string>
+    <string name="settings_remove_library_explanation">Odebere tuto knihovnu a její stažené soubory z tohoto zařízení. Vaše knihovna v cloudu zůstane nedotčena. Toto zařízení můžete později znovu spárovat.</string>
     <string name="settings_remove_library_confirm_title">Odebrat tuto knihovnu z tohoto zařízení?</string>
     <string name="settings_remove_library_confirm_body">Vaše knihovna v cloudu zůstane nedotčena. Toto zařízení můžete později znovu spárovat.</string>
     <string name="settings_remove">Odebrat</string>

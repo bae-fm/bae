@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>无法获取远程封面</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>获取封面中…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>无法加载此版本的图片</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>无可用封面 — 导入将使用其默认封面。</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>无可用封面。导入将使用其默认封面。</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>未找到远程封面</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>选择封面，或不选以使用默认封面。</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>版本文件</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>无匹配项</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs 令牌</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>重新校验</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs 拒绝了此密钥 — 请检查后重新保存。</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs 拒绝了此密钥。请检查后重新保存。</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>移除令牌</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>保存令牌</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>无法保存密钥 — 出现错误。</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>无法保存密钥。出现错误。</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API 令牌</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>校验中…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面之间暂停</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>正在检查…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>已是最新</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>正在下载… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>版本 {version} 已就绪 — 重启以更新</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>版本 {version} 已就绪。重启以更新</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>立即重启</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>无法检查更新</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>锁定库</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>恢复</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>当你没有其他可用于批准的设备时，你的恢复代码可在新设备上恢复此曲库。任何拥有它的人都能完全访问——请保密。</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>当你没有其他可用于批准的设备时，你的恢复代码可在新设备上恢复此曲库。任何拥有它的人都能完全访问 () 请保密。</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>恢复代码</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>显示恢复代码…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（不可用——同步已连接吗？）</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（不可用 () 同步已连接吗？）</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>连接 S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>正在连接 S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>可浏览 — 未加密存储</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>可浏览：未加密存储</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>存储</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明 — 端到端加密</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明：端到端加密</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>断开连接</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} 再次点击断开连接以确认。</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>立即同步</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>你的库</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>已连接</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>已保存 — 暂时无法校验（离线）。将重试。</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>已保存。暂时无法校验（离线）。将重试。</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>初始化中</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>同步：未连接</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>就绪</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>同步：{provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>同步：{provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>下载</value></data>
   <data name="download.paused" xml:space="preserve"><value>已暂停</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>已排队</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>就绪</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>等待识别</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>识别中…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>无法完成 — 将重试</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>无法完成。将重试</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>筛选…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>添加文件夹…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>这里还没有内容</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 个发行}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>总计：{size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>移除</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>从此电脑移除此库及其已下载的文件。云端的库保持不变——您以后可以从这里恢复它。</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此库未同步。移除它将永久删除其目录——专辑、元数据编辑和播放历史。您文件夹中的音频文件不会被删除。</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>从此电脑移除此库及其已下载的文件。云端的库保持不变 () 您以后可以从这里恢复它。</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此库未同步。移除它将永久删除其目录 () 专辑、元数据编辑和播放历史。您文件夹中的音频文件不会被删除。</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>从此电脑移除此库</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>云端的库保持不变——您以后可以从欢迎屏幕恢复它。</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>云端的库保持不变 () 您以后可以从欢迎屏幕恢复它。</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>此库从未同步过。其目录将被永久删除；您文件夹中的音频文件不会被删除。</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>部分更改尚未上传完成，将会丢失。</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>再次点击按钮以确认。</value></data>

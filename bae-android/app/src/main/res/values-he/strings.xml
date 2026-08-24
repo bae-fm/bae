@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">לא ניתן ליצור קוד שחזור.</string>
     <string name="settings_copy_recovery_code">העתק קוד</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
-    <string name="settings_remove_library_explanation">מסיר ספרייה זו ואת הקבצים שהורדו ממנה מהמכשיר הזה. הספרייה שלכם בענן לא תיפגע — תוכלו לצמד מחדש את המכשיר הזה מאוחר יותר.</string>
+    <string name="settings_remove_library_explanation">מסיר ספרייה זו ואת הקבצים שהורדו ממנה מהמכשיר הזה. הספרייה שלכם בענן לא תיפגע. תוכלו לצמד מחדש את המכשיר הזה מאוחר יותר.</string>
     <string name="settings_remove_library_confirm_title">להסיר ספרייה זו מהמכשיר הזה?</string>
     <string name="settings_remove_library_confirm_body">הספרייה שלכם בענן לא תיפגע. תוכלו לצמד מחדש את המכשיר הזה מאוחר יותר.</string>
     <string name="settings_remove">הסר</string>

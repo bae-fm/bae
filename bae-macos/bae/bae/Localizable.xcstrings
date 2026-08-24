@@ -2484,193 +2484,193 @@
         }
       }
     },
-    "Can't open — %@" : {
+    "Can't open: %@" : {
       "comment" : "Welcome screen: a library that can't be opened, with the reason",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّر الفتح — %@"
+            "value" : "تعذّر الفتح: %@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не може да се отвори — %@"
+            "value" : "Не може да се отвори: %@"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "খোলা যাচ্ছে না — %@"
+            "value" : "খোলা যাচ্ছে না: %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nelze otevřít — %@"
+            "value" : "Nelze otevřít: %@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen nicht möglich — %@"
+            "value" : "Öffnen nicht möglich: %@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Can't open — %@"
+            "value" : "Can't open: %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se puede abrir — %@"
+            "value" : "No se puede abrir: %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouverture impossible — %@"
+            "value" : "Ouverture impossible : %@"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ખોલી શકાતું નથી — %@"
+            "value" : "ખોલી શકાતું નથી: %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן לפתוח — %@"
+            "value" : "לא ניתן לפתוח: %@"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "खोल नहीं सकते — %@"
+            "value" : "खोल नहीं सकते: %@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije moguće otvoriti — %@"
+            "value" : "Nije moguće otvoriti: %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile aprire — %@"
+            "value" : "Impossibile aprire: %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開けません — %@"
+            "value" : "開けません：%@"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ತೆರೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ — %@"
+            "value" : "ತೆರೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ: %@"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "열 수 없음 — %@"
+            "value" : "열 수 없음: %@"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "തുറക്കാൻ കഴിയുന്നില്ല — %@"
+            "value" : "തുറക്കാൻ കഴിയുന്നില്ല: %@"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "उघडता येत नाही — %@"
+            "value" : "उघडता येत नाही: %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan niet openen — %@"
+            "value" : "Kan niet openen: %@"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਦਾ — %@"
+            "value" : "ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਦਾ: %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie można otworzyć — %@"
+            "value" : "Nie można otworzyć: %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível abrir — %@"
+            "value" : "Não foi possível abrir: %@"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "திறக்க முடியவில்லை — %@"
+            "value" : "திறக்க முடியவில்லை: %@"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "తెరవడం సాధ్యం కాదు — %@"
+            "value" : "తెరవడం సాధ్యం కాదు: %@"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "เปิดไม่ได้ — %@"
+            "value" : "เปิดไม่ได้: %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Açılamıyor — %@"
+            "value" : "Açılamıyor: %@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося відкрити — %@"
+            "value" : "Не вдалося відкрити: %@"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "کھولا نہیں جا سکتا — %@"
+            "value" : "کھولا نہیں جا سکتا: %@"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không thể mở — %@"
+            "value" : "Không thể mở: %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法打开 — %@"
+            "value" : "无法打开：%@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟 — %@"
+            "value" : "無法開啟：%@"
           }
         }
       }
@@ -3440,386 +3440,386 @@
         }
       }
     },
-    "%@ — %lld of %lld" : {
+    "%@: %lld of %lld" : {
       "comment" : "Cover picker: source label and position; args are the cover label, current index, total count",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld من %3$lld"
+            "value" : "%1$@: %2$lld من %3$lld"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld от %3$lld"
+            "value" : "%1$@: %2$lld от %3$lld"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lldটির মধ্যে %2$lld"
+            "value" : "%1$@: %3$lldটির মধ্যে %2$lld"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld z %3$lld"
+            "value" : "%1$@: %2$lld z %3$lld"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld von %3$lld"
+            "value" : "%1$@: %2$lld von %3$lld"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld of %3$lld"
+            "value" : "%1$@: %2$lld of %3$lld"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld de %3$lld"
+            "value" : "%1$@: %2$lld de %3$lld"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld sur %3$lld"
+            "value" : "%1$@ : %2$lld sur %3$lld"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lldમાંથી %2$lld"
+            "value" : "%1$@: %3$lldમાંથી %2$lld"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld מתוך %3$lld"
+            "value" : "%1$@: %2$lld מתוך %3$lld"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld में से %2$lld"
+            "value" : "%1$@: %3$lld में से %2$lld"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld od %3$lld"
+            "value" : "%1$@: %2$lld od %3$lld"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld di %3$lld"
+            "value" : "%1$@: %2$lld di %3$lld"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld件中%2$lld件"
+            "value" : "%1$@：%3$lld件中%2$lld件"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld ರಲ್ಲಿ %2$lld"
+            "value" : "%1$@: %3$lld ರಲ್ಲಿ %2$lld"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld개 중 %2$lld개"
+            "value" : "%1$@: %3$lld개 중 %2$lld개"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lldൽ %2$lld"
+            "value" : "%1$@: %3$lldൽ %2$lld"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld पैकी %2$lld"
+            "value" : "%1$@: %3$lld पैकी %2$lld"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld van %3$lld"
+            "value" : "%1$@: %2$lld van %3$lld"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld ਵਿੱਚੋਂ %2$lld"
+            "value" : "%1$@: %3$lld ਵਿੱਚੋਂ %2$lld"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld z %3$lld"
+            "value" : "%1$@: %2$lld z %3$lld"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld de %3$lld"
+            "value" : "%1$@: %2$lld de %3$lld"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld இல் %2$lld"
+            "value" : "%1$@: %3$lld இல் %2$lld"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lldలో %2$lld"
+            "value" : "%1$@: %3$lldలో %2$lld"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld จาก %3$lld"
+            "value" : "%1$@: %2$lld จาก %3$lld"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld / %3$lld"
+            "value" : "%1$@: %2$lld / %3$lld"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld із %3$lld"
+            "value" : "%1$@: %2$lld із %3$lld"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %3$lld میں سے %2$lld"
+            "value" : "%1$@: %3$lld میں سے %2$lld"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld trong %3$lld"
+            "value" : "%1$@: %2$lld trong %3$lld"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld/%3$lld"
+            "value" : "%1$@：%2$lld/%3$lld"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — %2$lld/%3$lld"
+            "value" : "%1$@：%2$lld/%3$lld"
           }
         }
       }
     },
-    "%@ — bae" : {
+    "%@ - bae" : {
       "comment" : "Main window title when a library is loaded; %@ is the library name, followed by the bae wordmark",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ — bae"
+            "value" : "%@ - bae"
           }
         }
       }
@@ -5803,85 +5803,85 @@
         }
       }
     },
-    "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more." : {
+    "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more." : {
       "comment" : "Import search: popover explaining the Discogs source (markdown link)",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) هو قاعدة بيانات موسيقية تحتوي على معلومات إصدار مفصّلة — الملصقات وأرقام الكتالوج وأشكال الطبعات والمزيد."
+            "value" : "[Discogs](https://www.discogs.com) هو قاعدة بيانات موسيقية تحتوي على معلومات إصدار مفصّلة: الملصقات وأرقام الكتالوج وأشكال الطبعات والمزيد."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията — лейбъли, каталожни номера, варианти на изданията и др."
+            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията: лейбъли, каталожни номера, варианти на изданията и др."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) একটি সঙ্গীত ডাটাবেস, যেখানে বিস্তারিত রিলিজ তথ্য থাকে — লেবেল, ক্যাটালগ নম্বর, প্রেসিং ভ্যারিয়েন্ট এবং আরও অনেক কিছু।"
+            "value" : "[Discogs](https://www.discogs.com) একটি সঙ্গীত ডাটাবেস, যেখানে বিস্তারিত রিলিজ তথ্য থাকে: লেবেল, ক্যাটালগ নম্বর, প্রেসিং ভ্যারিয়েন্ট এবং আরও অনেক কিছু।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních — vydavatelství, katalogová čísla, varianty lisů a další."
+            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních: vydavatelství, katalogová čísla, varianty lisů a další."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Veröffentlichungsinfos — Labels, Katalognummern, Pressungsvarianten und mehr."
+            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Veröffentlichungsinfos: Labels, Katalognummern, Pressungsvarianten und mehr."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more."
+            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) es una base de datos de música con información detallada de ediciones — sellos, números de catálogo, variantes de prensaje y más."
+            "value" : "[Discogs](https://www.discogs.com) es una base de datos de música con información detallada de ediciones: sellos, números de catálogo, variantes de prensaje y más."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions — labels, numéros de catalogue, variantes de pressage, et plus encore."
+            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions : labels, numéros de catalogue, variantes de pressage, et plus encore."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) વિગતવાર પ્રકાશન માહિતી ધરાવતો સંગીત ડેટાબેઝ છે — લેબલ્સ, કેટલોગ નંબરો, પ્રેસિંગ પ્રકારો અને વધુ."
+            "value" : "[Discogs](https://www.discogs.com) વિગતવાર પ્રકાશન માહિતી ધરાવતો સંગીત ડેટાબેઝ છે: લેબલ્સ, કેટલોગ નંબરો, પ્રેસિંગ પ્રકારો અને વધુ."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‏[Discogs](https://www.discogs.com) הוא מסד נתונים מוזיקלי עם מידע מפורט על מהדורות — לייבלים, מספרי קטלוג, וריאנטים של תקליטים ועוד."
+            "value" : "‏[Discogs](https://www.discogs.com) הוא מסד נתונים מוזיקלי עם מידע מפורט על מהדורות: לייבלים, מספרי קטלוג, וריאנטים של תקליטים ועוד."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) एक संगीत डेटाबेस है जिसमें विस्तृत रिलीज जानकारी होती है — लेबल, कैटलॉग संख्याएं, प्रेसिंग रूपांतर, और बहुत कुछ।"
+            "value" : "[Discogs](https://www.discogs.com) एक संगीत डेटाबेस है जिसमें विस्तृत रिलीज जानकारी होती है: लेबल, कैटलॉग संख्याएं, प्रेसिंग रूपांतर, और बहुत कुछ।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima — izdavačima, kataloškim brojevima, varijantama izdanja i drugim."
+            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima: izdavačima, kataloškim brojevima, varijantama izdanja i drugim."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle pubblicazioni — etichette, numeri di catalogo, varianti di stampa e altro."
+            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle pubblicazioni: etichette, numeri di catalogo, varianti di stampa e altro."
           }
         },
         "ja" : {
@@ -5905,174 +5905,174 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) വിശദമായ പതിപ്പ് വിവരങ്ങളുള്ള ഒരു സംഗീത ഡാറ്റാബേസാണ് — ലേബലുകൾ, കാറ്റലോഗ് നമ്പറുകൾ, പ്രസ്സിംഗ് വകഭേദങ്ങൾ തുടങ്ങിയവ."
+            "value" : "[Discogs](https://www.discogs.com) വിശദമായ പതിപ്പ് വിവരങ്ങളുള്ള ഒരു സംഗീത ഡാറ്റാബേസാണ്: ലേബലുകൾ, കാറ്റലോഗ് നമ്പറുകൾ, പ്രസ്സിംഗ് വകഭേദങ്ങൾ തുടങ്ങിയവ."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) हा तपशीलवार प्रकाशन माहिती असलेला संगीत डेटाबेस आहे — लेबले, कॅटलॉग क्रमांक, प्रेसिंग प्रकार आणि अधिक."
+            "value" : "[Discogs](https://www.discogs.com) हा तपशीलवार प्रकाशन माहिती असलेला संगीत डेटाबेस आहे: लेबले, कॅटलॉग क्रमांक, प्रेसिंग प्रकार आणि अधिक."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde release-info — labels, catalogusnummers, persingsvarianten en meer."
+            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde release-info: labels, catalogusnummers, persingsvarianten en meer."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ਵਿਸਥਾਰਪੂਰਣ ਰਿਲੀਜ਼ ਜਾਣਕਾਰੀ ਵਾਲਾ ਸੰਗੀਤ ਡਾਟਾਬੇਸ ਹੈ — ਲੇਬਲ, ਕੈਟਾਲਾਗ ਨੰਬਰ, ਛਪਾਈ ਰੂਪਾਂਤਰ ਅਤੇ ਹੋਰ।"
+            "value" : "[Discogs](https://www.discogs.com) ਵਿਸਥਾਰਪੂਰਣ ਰਿਲੀਜ਼ ਜਾਣਕਾਰੀ ਵਾਲਾ ਸੰਗੀਤ ਡਾਟਾਬੇਸ ਹੈ: ਲੇਬਲ, ਕੈਟਾਲਾਗ ਨੰਬਰ, ਛਪਾਈ ਰੂਪਾਂਤਰ ਅਤੇ ਹੋਰ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) to baza muzyczna ze szczegółowymi informacjami o wydaniach — wytwórnie, numery katalogowe, warianty tłoczeń i więcej."
+            "value" : "[Discogs](https://www.discogs.com) to baza muzyczna ze szczegółowymi informacjami o wydaniach: wytwórnie, numery katalogowe, warianty tłoczeń i więcej."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados de músicas com informações detalhadas de lançamentos — gravadoras, números de catálogo, variantes de prensagem e mais."
+            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados de músicas com informações detalhadas de lançamentos: gravadoras, números de catálogo, variantes de prensagem e mais."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) என்பது விரிவான வெளியீட்டு தகவல்களுடன் கூடிய இசை தரவுத்தளம் — லேபிள்கள், பட்டியல் எண்கள், அச்சு பதிப்பு மாறுபாடுகள், மேலும் பல."
+            "value" : "[Discogs](https://www.discogs.com) என்பது விரிவான வெளியீட்டு தகவல்களுடன் கூடிய இசை தரவுத்தளம்: லேபிள்கள், பட்டியல் எண்கள், அச்சு பதிப்பு மாறுபாடுகள், மேலும் பல."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) అనేది వివరమైన విడుదల సమాచారంతో ఉన్న సంగీత డేటాబేస్ — లేబుల్‌లు, కాటలాగ్ నంబర్‌లు, ముద్రణ రకాలు, ఇంకా మరెన్నో."
+            "value" : "[Discogs](https://www.discogs.com) అనేది వివరమైన విడుదల సమాచారంతో ఉన్న సంగీత డేటాబేస్: లేబుల్‌లు, కాటలాగ్ నంబర్‌లు, ముద్రణ రకాలు, ఇంకా మరెన్నో."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) คือฐานข้อมูลเพลงที่มีข้อมูลรีลีสโดยละเอียด — ค่ายเพลง หมายเลขแค็ตตาล็อก รุ่นการผลิตแผ่น และอื่นๆ"
+            "value" : "[Discogs](https://www.discogs.com) คือฐานข้อมูลเพลงที่มีข้อมูลรีลีสโดยละเอียด: ค่ายเพลง หมายเลขแค็ตตาล็อก รุ่นการผลิตแผ่น และอื่นๆ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com), ayrıntılı yayın bilgileri içeren bir müzik veritabanıdır — etiketler, katalog numaraları, baskı çeşitleri ve daha fazlası."
+            "value" : "[Discogs](https://www.discogs.com), ayrıntılı yayın bilgileri içeren bir müzik veritabanıdır: etiketler, katalog numaraları, baskı çeşitleri ve daha fazlası."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) — це музична база даних з детальною інформацією про релізи: лейбли, каталожні номери, варіанти видань тощо."
+            "value" : "[Discogs](https://www.discogs.com): це музична база даних з детальною інформацією про релізи: лейбли, каталожні номери, варіанти видань тощо."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ایک موسیقی ڈیٹابیس ہے جس میں اشاعت کی تفصیلی معلومات ہوتی ہیں — لیبل، کیٹلاگ نمبر، پریسنگ اقسام، اور مزید۔"
+            "value" : "[Discogs](https://www.discogs.com) ایک موسیقی ڈیٹابیس ہے جس میں اشاعت کی تفصیلی معلومات ہوتی ہیں: لیبل، کیٹلاگ نمبر، پریسنگ اقسام، اور مزید۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) là cơ sở dữ liệu âm nhạc có thông tin bản phát hành chi tiết — hãng phát hành, số danh mục, biến thể bản ép, v.v."
+            "value" : "[Discogs](https://www.discogs.com) là cơ sở dữ liệu âm nhạc có thông tin bản phát hành chi tiết: hãng phát hành, số danh mục, biến thể bản ép, v.v."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是一个音乐数据库，包含详细的版本信息 — 厂牌、目录号、压制版差异等。"
+            "value" : "[Discogs](https://www.discogs.com) 是一个音乐数据库，包含详细的版本信息：厂牌、目录号、压制版差异等。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是音樂資料庫，提供詳細發行資訊 — 廠牌、目錄編號、壓片版本等。"
+            "value" : "[Discogs](https://www.discogs.com) 是音樂資料庫，提供詳細發行資訊：廠牌、目錄編號、壓片版本等。"
           }
         }
       }
     },
-    "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums." : {
+    "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums." : {
       "comment" : "Discogs settings: description of the Discogs service (markdown link)",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) هو قاعدة بيانات موسيقية تحتوي على معلومات إصدار مفصّلة — الملصقات وأرقام الكتالوج وأشكال الطبعات والمزيد. يمكن لـ bae استخدامه كمصدر للبيانات الوصفية عند استيراد الألبومات."
+            "value" : "[Discogs](https://www.discogs.com) هو قاعدة بيانات موسيقية تحتوي على معلومات إصدار مفصّلة: الملصقات وأرقام الكتالوج وأشكال الطبعات والمزيد. يمكن لـ bae استخدامه كمصدر للبيانات الوصفية عند استيراد الألبومات."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията — лейбъли, каталожни номера, варианти на изданията и др. bae може да я използва като източник на метаданни при внасяне на албуми."
+            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията: лейбъли, каталожни номера, варианти на изданията и др. bae може да я използва като източник на метаданни при внасяне на албуми."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) বিস্তারিত রিলিজ তথ্যসহ একটি মিউজিক ডেটাবেস — লেবেল, ক্যাটালগ নম্বর, প্রেসিং ভ্যারিয়েন্ট এবং আরও অনেক কিছু। অ্যালবাম ইম্পোর্ট করার সময় bae এটিকে মেটাডেটা উৎস হিসেবে ব্যবহার করতে পারে।"
+            "value" : "[Discogs](https://www.discogs.com) বিস্তারিত রিলিজ তথ্যসহ একটি মিউজিক ডেটাবেস: লেবেল, ক্যাটালগ নম্বর, প্রেসিং ভ্যারিয়েন্ট এবং আরও অনেক কিছু। অ্যালবাম ইম্পোর্ট করার সময় bae এটিকে মেটাডেটা উৎস হিসেবে ব্যবহার করতে পারে।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních — vydavatelství, katalogová čísla, varianty lisů a další. bae ji může při importu alb použít jako zdroj metadat."
+            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních: vydavatelství, katalogová čísla, varianty lisů a další. bae ji může při importu alb použít jako zdroj metadat."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Veröffentlichungsinfos — Labels, Katalognummern, Pressungsvarianten und mehr. bae kann es beim Importieren von Alben als Metadatenquelle nutzen."
+            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Veröffentlichungsinfos: Labels, Katalognummern, Pressungsvarianten und mehr. bae kann es beim Importieren von Alben als Metadatenquelle nutzen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
+            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) es una base de datos de música con información detallada de ediciones — sellos, números de catálogo, variantes de prensaje y más. bae puede usarla como fuente de metadatos al importar álbumes."
+            "value" : "[Discogs](https://www.discogs.com) es una base de datos de música con información detallada de ediciones: sellos, números de catálogo, variantes de prensaje y más. bae puede usarla como fuente de metadatos al importar álbumes."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions — labels, numéros de catalogue, variantes de pressage, et plus encore. bae peut l'utiliser comme source de métadonnées lors de l'import d'albums."
+            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions : labels, numéros de catalogue, variantes de pressage, et plus encore. bae peut l'utiliser comme source de métadonnées lors de l'import d'albums."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) વિગતવાર રિલીઝ માહિતી ધરાવતો સંગીત ડેટાબેઝ છે — લેબલ્સ, કેટલોગ નંબરો, પ્રેસિંગ પ્રકારો અને વધુ. આલ્બમ આયાત કરતી વખતે bae તેનો મેટાડેટા સ્ત્રોત તરીકે ઉપયોગ કરી શકે છે."
+            "value" : "[Discogs](https://www.discogs.com) વિગતવાર રિલીઝ માહિતી ધરાવતો સંગીત ડેટાબેઝ છે: લેબલ્સ, કેટલોગ નંબરો, પ્રેસિંગ પ્રકારો અને વધુ. આલ્બમ આયાત કરતી વખતે bae તેનો મેટાડેટા સ્ત્રોત તરીકે ઉપયોગ કરી શકે છે."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‏[Discogs](https://www.discogs.com) הוא מסד נתונים מוזיקלי עם מידע מפורט על מהדורות — לייבלים, מספרי קטלוג, וריאנטים של תקליטים ועוד. bae יכול להשתמש בו כמקור מטא-נתונים בעת ייבוא אלבומים."
+            "value" : "‏[Discogs](https://www.discogs.com) הוא מסד נתונים מוזיקלי עם מידע מפורט על מהדורות: לייבלים, מספרי קטלוג, וריאנטים של תקליטים ועוד. bae יכול להשתמש בו כמקור מטא-נתונים בעת ייבוא אלבומים."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) विस्तृत रिलीज़ जानकारी वाला संगीत डेटाबेस है — लेबल, कैटलॉग नंबर, प्रेसिंग वेरिएंट, और बहुत कुछ। एल्बम आयात करते समय bae इसे मेटाडेटा स्रोत के रूप में उपयोग कर सकता है।"
+            "value" : "[Discogs](https://www.discogs.com) विस्तृत रिलीज़ जानकारी वाला संगीत डेटाबेस है: लेबल, कैटलॉग नंबर, प्रेसिंग वेरिएंट, और बहुत कुछ। एल्बम आयात करते समय bae इसे मेटाडेटा स्रोत के रूप में उपयोग कर सकता है।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima — izdavačima, kataloškim brojevima, varijantama izdanja i drugim. bae ga može koristiti kao izvor metapodataka pri uvozu albuma."
+            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima: izdavačima, kataloškim brojevima, varijantama izdanja i drugim. bae ga može koristiti kao izvor metapodataka pri uvozu albuma."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle pubblicazioni — etichette, numeri di catalogo, varianti di stampa e altro. bae può usarlo come sorgente di metadati durante l'importazione degli album."
+            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle pubblicazioni: etichette, numeri di catalogo, varianti di stampa e altro. bae può usarlo come sorgente di metadati durante l'importazione degli album."
           }
         },
         "ja" : {
@@ -6084,7 +6084,7 @@
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ವಿವರವಾದ ಬಿಡುಗಡೆ ಮಾಹಿತಿಯಿರುವ ಸಂಗೀತ ಡೇಟಾಬೇಸ್ — ಲೇಬಲ್‌ಗಳು, ಕ್ಯಾಟಲಾಗ್ ಸಂಖ್ಯೆಗಳು, ಪ್ರೆಸ್ಸಿಂಗ್ ರೂಪಾಂತರಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು. ಆಲ್ಬಮ್‌ಗಳನ್ನು ಆಮದುಮಾಡುವಾಗ bae ಇದನ್ನು ಮೆಟಾಡೇಟಾ ಮೂಲವಾಗಿ ಬಳಸಬಹುದು."
+            "value" : "[Discogs](https://www.discogs.com) ವಿವರವಾದ ಬಿಡುಗಡೆ ಮಾಹಿತಿಯಿರುವ ಸಂಗೀತ ಡೇಟಾಬೇಸ್: ಲೇಬಲ್‌ಗಳು, ಕ್ಯಾಟಲಾಗ್ ಸಂಖ್ಯೆಗಳು, ಪ್ರೆಸ್ಸಿಂಗ್ ರೂಪಾಂತರಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು. ಆಲ್ಬಮ್‌ಗಳನ್ನು ಆಮದುಮಾಡುವಾಗ bae ಇದನ್ನು ಮೆಟಾಡೇಟಾ ಮೂಲವಾಗಿ ಬಳಸಬಹುದು."
           }
         },
         "ko" : {
@@ -6096,91 +6096,91 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) വിശദമായ റിലീസ് വിവരങ്ങളുള്ള ഒരു സംഗീത ഡാറ്റാബേസാണ് — ലേബലുകൾ, കാറ്റലോഗ് നമ്പറുകൾ, പ്രസ്സിംഗ് വകഭേദങ്ങൾ എന്നിവയും മറ്റും. ആൽബങ്ങൾ ഇറക്കുമതി ചെയ്യുമ്പോൾ bae-ന് ഇതിനെ മെറ്റാഡാറ്റ ഉറവിടമായി ഉപയോഗിക്കാം."
+            "value" : "[Discogs](https://www.discogs.com) വിശദമായ റിലീസ് വിവരങ്ങളുള്ള ഒരു സംഗീത ഡാറ്റാബേസാണ്: ലേബലുകൾ, കാറ്റലോഗ് നമ്പറുകൾ, പ്രസ്സിംഗ് വകഭേദങ്ങൾ എന്നിവയും മറ്റും. ആൽബങ്ങൾ ഇറക്കുമതി ചെയ്യുമ്പോൾ bae-ന് ഇതിനെ മെറ്റാഡാറ്റ ഉറവിടമായി ഉപയോഗിക്കാം."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) हा सविस्तर आवृत्ती माहितीसह संगीत डेटाबेस आहे — लेबले, कॅटलॉग क्रमांक, प्रेसिंग प्रकार आणि आणखी बरेच. अल्बम आयात करताना bae तो मेटाडेटा स्रोत म्हणून वापरू शकते."
+            "value" : "[Discogs](https://www.discogs.com) हा सविस्तर आवृत्ती माहितीसह संगीत डेटाबेस आहे: लेबले, कॅटलॉग क्रमांक, प्रेसिंग प्रकार आणि आणखी बरेच. अल्बम आयात करताना bae तो मेटाडेटा स्रोत म्हणून वापरू शकते."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde release-info — labels, catalogusnummers, persingsvarianten en meer. bae kan dit gebruiken als metadatabron bij het importeren van albums."
+            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde release-info: labels, catalogusnummers, persingsvarianten en meer. bae kan dit gebruiken als metadatabron bij het importeren van albums."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ਵੇਰਵੇਦਾਰ ਰਿਲੀਜ਼ ਜਾਣਕਾਰੀ ਵਾਲਾ ਸੰਗੀਤ ਡਾਟਾਬੇਸ ਹੈ — ਲੇਬਲ, ਕੈਟਾਲਾਗ ਨੰਬਰ, ਪ੍ਰੈਸਿੰਗ ਰੂਪਾਂਤਰ, ਅਤੇ ਹੋਰ। ਐਲਬਮਾਂ ਆਯਾਤ ਕਰਦੇ ਸਮੇਂ bae ਇਸਨੂੰ ਮੈਟਾਡਾਟਾ ਸਰੋਤ ਵਜੋਂ ਵਰਤ ਸਕਦਾ ਹੈ।"
+            "value" : "[Discogs](https://www.discogs.com) ਵੇਰਵੇਦਾਰ ਰਿਲੀਜ਼ ਜਾਣਕਾਰੀ ਵਾਲਾ ਸੰਗੀਤ ਡਾਟਾਬੇਸ ਹੈ: ਲੇਬਲ, ਕੈਟਾਲਾਗ ਨੰਬਰ, ਪ੍ਰੈਸਿੰਗ ਰੂਪਾਂਤਰ, ਅਤੇ ਹੋਰ। ਐਲਬਮਾਂ ਆਯਾਤ ਕਰਦੇ ਸਮੇਂ bae ਇਸਨੂੰ ਮੈਟਾਡਾਟਾ ਸਰੋਤ ਵਜੋਂ ਵਰਤ ਸਕਦਾ ਹੈ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) to baza muzyczna ze szczegółowymi informacjami o wydaniach — wytwórnie, numery katalogowe, warianty tłoczeń i więcej. bae może korzystać z niej jako źródła metadanych przy importowaniu albumów."
+            "value" : "[Discogs](https://www.discogs.com) to baza muzyczna ze szczegółowymi informacjami o wydaniach: wytwórnie, numery katalogowe, warianty tłoczeń i więcej. bae może korzystać z niej jako źródła metadanych przy importowaniu albumów."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados de músicas com informações detalhadas de lançamentos — gravadoras, números de catálogo, variantes de prensagem e mais. O bae pode usá-lo como fonte de metadados ao importar álbuns."
+            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados de músicas com informações detalhadas de lançamentos: gravadoras, números de catálogo, variantes de prensagem e mais. O bae pode usá-lo como fonte de metadados ao importar álbuns."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) என்பது விரிவான வெளியீட்டு தகவல்களைக் கொண்ட இசை தரவுத்தளம் — லேபிள்கள், பட்டியல் எண்கள், பதிப்பு மாறுபாடுகள் மற்றும் பல. ஆல்பங்களை இறக்குமதி செய்யும்போது bae இதை மெட்டாடேட்டா மூலமாகப் பயன்படுத்தலாம்."
+            "value" : "[Discogs](https://www.discogs.com) என்பது விரிவான வெளியீட்டு தகவல்களைக் கொண்ட இசை தரவுத்தளம்: லேபிள்கள், பட்டியல் எண்கள், பதிப்பு மாறுபாடுகள் மற்றும் பல. ஆல்பங்களை இறக்குமதி செய்யும்போது bae இதை மெட்டாடேட்டா மூலமாகப் பயன்படுத்தலாம்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) అనేది వివరణాత్మక విడుదల సమాచారంతో ఉన్న సంగీత డేటాబేస్ — లేబుల్‌లు, క్యాటలాగ్ నంబర్లు, ప్రెస్సింగ్ వేరియంట్‌లు మరియు మరిన్ని. ఆల్బమ్‌లను దిగుమతి చేసేటప్పుడు bae దీన్ని మెటాడేటా మూలంగా ఉపయోగించగలదు."
+            "value" : "[Discogs](https://www.discogs.com) అనేది వివరణాత్మక విడుదల సమాచారంతో ఉన్న సంగీత డేటాబేస్: లేబుల్‌లు, క్యాటలాగ్ నంబర్లు, ప్రెస్సింగ్ వేరియంట్‌లు మరియు మరిన్ని. ఆల్బమ్‌లను దిగుమతి చేసేటప్పుడు bae దీన్ని మెటాడేటా మూలంగా ఉపయోగించగలదు."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) เป็นฐานข้อมูลเพลงที่มีข้อมูลรุ่นวางจำหน่ายอย่างละเอียด — ค่ายเพลง หมายเลขแคตตาล็อก รุ่นกดแผ่น และอื่นๆ bae สามารถใช้เป็นแหล่งเมทาดาทาเมื่อนำเข้าอัลบั้ม"
+            "value" : "[Discogs](https://www.discogs.com) เป็นฐานข้อมูลเพลงที่มีข้อมูลรุ่นวางจำหน่ายอย่างละเอียด: ค่ายเพลง หมายเลขแคตตาล็อก รุ่นกดแผ่น และอื่นๆ bae สามารถใช้เป็นแหล่งเมทาดาทาเมื่อนำเข้าอัลบั้ม"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com), ayrıntılı yayın bilgileri içeren bir müzik veritabanıdır — etiketler, katalog numaraları, baskı çeşitleri ve daha fazlası. bae, albüm içe aktarırken bunu bir üst veri kaynağı olarak kullanabilir."
+            "value" : "[Discogs](https://www.discogs.com), ayrıntılı yayın bilgileri içeren bir müzik veritabanıdır: etiketler, katalog numaraları, baskı çeşitleri ve daha fazlası. bae, albüm içe aktarırken bunu bir üst veri kaynağı olarak kullanabilir."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) — це музична база даних з детальною інформацією про релізи: лейбли, каталожні номери, варіанти видань тощо. bae може використовувати її як джерело метаданих під час імпорту альбомів."
+            "value" : "[Discogs](https://www.discogs.com): це музична база даних з детальною інформацією про релізи: лейбли, каталожні номери, варіанти видань тощо. bae може використовувати її як джерело метаданих під час імпорту альбомів."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) تفصیلی ریلیز معلومات والی موسیقی ڈیٹابیس ہے — لیبلز، کیٹلاگ نمبر، پریسنگ اقسام، اور مزید۔ البمز درآمد کرتے وقت bae اسے میٹا ڈیٹا ماخذ کے طور پر استعمال کر سکتا ہے۔"
+            "value" : "[Discogs](https://www.discogs.com) تفصیلی ریلیز معلومات والی موسیقی ڈیٹابیس ہے: لیبلز، کیٹلاگ نمبر، پریسنگ اقسام، اور مزید۔ البمز درآمد کرتے وقت bae اسے میٹا ڈیٹا ماخذ کے طور پر استعمال کر سکتا ہے۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) là cơ sở dữ liệu âm nhạc có thông tin bản phát hành chi tiết — hãng phát hành, số danh mục, biến thể bản ép, v.v. bae có thể dùng nó làm nguồn siêu dữ liệu khi nhập album."
+            "value" : "[Discogs](https://www.discogs.com) là cơ sở dữ liệu âm nhạc có thông tin bản phát hành chi tiết: hãng phát hành, số danh mục, biến thể bản ép, v.v. bae có thể dùng nó làm nguồn siêu dữ liệu khi nhập album."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是一个音乐数据库，包含详细的版本信息 — 厂牌、目录号、压制版差异等。bae 可在导入专辑时将其用作元数据来源。"
+            "value" : "[Discogs](https://www.discogs.com) 是一个音乐数据库，包含详细的版本信息：厂牌、目录号、压制版差异等。bae 可在导入专辑时将其用作元数据来源。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是音樂資料庫，包含詳細的發行資訊 — 廠牌、目錄編號、壓片版本等。bae 可在匯入專輯時將其作為中繼資料來源。"
+            "value" : "[Discogs](https://www.discogs.com) 是音樂資料庫，包含詳細的發行資訊：廠牌、目錄編號、壓片版本等。bae 可在匯入專輯時將其作為中繼資料來源。"
           }
         }
       }
@@ -14858,193 +14858,193 @@
         }
       }
     },
-    "Browsable — stored unencrypted" : {
+    "Browsable: stored unencrypted" : {
       "comment" : "Sync wizard: browsable (unencrypted) storage option",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "قابل للتصفّح — مخزّن بدون تشفير"
+            "value" : "قابل للتصفّح: مخزّن بدون تشفير"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "За преглед — съхранено нешифровано"
+            "value" : "За преглед: съхранено нешифровано"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ব্রাউজযোগ্য — এনক্রিপ্ট না করে সংরক্ষিত"
+            "value" : "ব্রাউজযোগ্য: এনক্রিপ্ট না করে সংরক্ষিত"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Procházitelné — uloženo nešifrovaně"
+            "value" : "Procházitelné: uloženo nešifrovaně"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Durchsuchbar — unverschlüsselt gespeichert"
+            "value" : "Durchsuchbar: unverschlüsselt gespeichert"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Browsable — stored unencrypted"
+            "value" : "Browsable: stored unencrypted"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Explorable — almacenado sin cifrar"
+            "value" : "Explorable: almacenado sin cifrar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Navigable — stocké sans chiffrement"
+            "value" : "Navigable : stocké sans chiffrement"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "બ્રાઉઝ કરી શકાય એવું — એન્ક્રિપ્ટ કર્યા વિના સંગ્રહિત"
+            "value" : "બ્રાઉઝ કરી શકાય એવું: એન્ક્રિપ્ટ કર્યા વિના સંગ્રહિત"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ניתן לעיון — מאוחסן ללא הצפנה"
+            "value" : "ניתן לעיון: מאוחסן ללא הצפנה"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ब्राउज करने योग्य — बिना एन्क्रिप्शन संग्रहित"
+            "value" : "ब्राउज करने योग्य: बिना एन्क्रिप्शन संग्रहित"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pregledivo — pohranjeno bez šifriranja"
+            "value" : "Pregledivo: pohranjeno bez šifriranja"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sfogliabile — archiviato non crittografato"
+            "value" : "Sfogliabile: archiviato non crittografato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "閲覧可能 — 暗号化せずに保存"
+            "value" : "閲覧可能：暗号化せずに保存"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಬ್ರೌಸ್ ಮಾಡಬಹುದಾದುದು — ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡದೆ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ"
+            "value" : "ಬ್ರೌಸ್ ಮಾಡಬಹುದಾದುದು: ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡದೆ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "탐색 가능 — 암호화하지 않고 저장"
+            "value" : "탐색 가능: 암호화하지 않고 저장"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ബ്രൗസ് ചെയ്യാം — എൻക്രിപ്റ്റ് ചെയ്യാതെ സൂക്ഷിച്ചിരിക്കുന്നു"
+            "value" : "ബ്രൗസ് ചെയ്യാം: എൻക്രിപ്റ്റ് ചെയ്യാതെ സൂക്ഷിച്ചിരിക്കുന്നു"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ब्राउझ करता येणारे — कूटबद्ध न करता साठवलेले"
+            "value" : "ब्राउझ करता येणारे: कूटबद्ध न करता साठवलेले"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Doorzoekbaar — onversleuteld opgeslagen"
+            "value" : "Doorzoekbaar: onversleuteld opgeslagen"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਬ੍ਰਾਊਜ਼ਯੋਗ — ਬਿਨਾਂ ਇਨਕ੍ਰਿਪਸ਼ਨ ਸਟੋਰ ਕੀਤਾ"
+            "value" : "ਬ੍ਰਾਊਜ਼ਯੋਗ: ਬਿਨਾਂ ਇਨਕ੍ਰਿਪਸ਼ਨ ਸਟੋਰ ਕੀਤਾ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przeglądalny — przechowywany bez szyfrowania"
+            "value" : "Przeglądalny: przechowywany bez szyfrowania"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Navegável — armazenado sem criptografia"
+            "value" : "Navegável: armazenado sem criptografia"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "உலாவக்கூடியது — குறியாக்கமின்றி சேமிக்கப்பட்டது"
+            "value" : "உலாவக்கூடியது: குறியாக்கமின்றி சேமிக்கப்பட்டது"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "బ్రౌజ్ చేయదగినది — ఎన్‌క్రిప్ట్ చేయకుండా నిల్వ చేయబడింది"
+            "value" : "బ్రౌజ్ చేయదగినది: ఎన్‌క్రిప్ట్ చేయకుండా నిల్వ చేయబడింది"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "เรียกดูได้ — จัดเก็บแบบไม่เข้ารหัส"
+            "value" : "เรียกดูได้: จัดเก็บแบบไม่เข้ารหัส"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Göz atılabilir — şifresiz saklanır"
+            "value" : "Göz atılabilir: şifresiz saklanır"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Доступне для перегляду — зберігається без шифрування"
+            "value" : "Доступне для перегляду: зберігається без шифрування"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "براؤز کے قابل — غیر مرموز محفوظ"
+            "value" : "براؤز کے قابل: غیر مرموز محفوظ"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Có thể duyệt — lưu không mã hóa"
+            "value" : "Có thể duyệt: lưu không mã hóa"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "可浏览 — 未加密存储"
+            "value" : "可浏览：未加密存储"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "可瀏覽 — 未加密儲存"
+            "value" : "可瀏覽：未加密儲存"
           }
         }
       }
@@ -29804,86 +29804,86 @@
         }
       }
     },
-    "Discogs rejected this key — check it and save again." : {
+    "Discogs rejected this key. Check it and save again." : {
       "comment" : "Discogs settings: 401 rejection of the typed key",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "رفض Discogs هذا المفتاح — تحقق منه واحفظه مجددًا."
+            "value" : "رفض Discogs هذا المفتاح. تحقق منه واحفظه مجددًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs отхвърли този ключ — проверете го и запазете отново."
+            "value" : "Discogs отхвърли този ключ. Проверете го и запазете отново."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs এই কী প্রত্যাখ্যান করেছে — এটি পরীক্ষা করে আবার সংরক্ষণ করুন।"
+            "value" : "Discogs এই কী প্রত্যাখ্যান করেছে। এটি পরীক্ষা করে আবার সংরক্ষণ করুন।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs tento klíč odmítl — zkontrolujte jej a uložte znovu."
+            "value" : "Discogs tento klíč odmítl. Zkontrolujte jej a uložte znovu."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs hat diesen Schlüssel abgelehnt — überprüfe ihn und speichere erneut."
+            "value" : "Discogs hat diesen Schlüssel abgelehnt. Überprüfe ihn und speichere erneut."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs rejected this key — check it and save again."
+            "value" : "Discogs rejected this key. Check it and save again."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs rechazó esta clave — compruébala y guárdala de nuevo."
+            "value" : "Discogs rechazó esta clave. Compruébala y guárdala de nuevo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs a rejeté cette clé — vérifiez-la et enregistrez à nouveau."
+            "value" : "Discogs a rejeté cette clé. Vérifiez-la et enregistrez à nouveau."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs એ આ કી નકારી — તેને તપાસો અને ફરી સાચવો."
+            "value" : "Discogs એ આ કી નકારી. તેને તપાસો અને ફરી સાચવો."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs דחה את המפתח הזה — בדקו אותו ושמרו שוב."
+            "value" : "Discogs דחה את המפתח הזה. בדקו אותו ושמרו שוב."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ने यह कुंजी अस्वीकार कर दी — इसे जांचें और फिर सहेजें।"
+            "value" : "Discogs ने यह कुंजी अस्वीकार कर दी। इसे जांचें और फिर सहेजें।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs je odbio ovaj ključ — provjerite ga i ponovno spremite."
+            "value" : "Discogs je odbio ovaj ključ. Provjerite ga i ponovno spremite."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ha rifiutato questa chiave — controllala e salva di nuovo."
+            "value" : "Discogs ha rifiutato questa chiave. Controllala e salva di nuovo."
           }
         },
         "ja" : {
@@ -29895,7 +29895,7 @@
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ಈ ಕೀ ತಿರಸ್ಕರಿಸಿದೆ — ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಉಳಿಸಿ."
+            "value" : "Discogs ಈ ಕೀ ತಿರಸ್ಕರಿಸಿದೆ. ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಉಳಿಸಿ."
           }
         },
         "ko" : {
@@ -29907,91 +29907,91 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ഈ കീ നിരസിച്ചു — അത് പരിശോധിച്ച് വീണ്ടും സംരക്ഷിക്കുക."
+            "value" : "Discogs ഈ കീ നിരസിച്ചു. അത് പരിശോധിച്ച് വീണ്ടും സംരക്ഷിക്കുക."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ने ही कळ नाकारली — ती तपासा आणि पुन्हा जतन करा."
+            "value" : "Discogs ने ही कळ नाकारली। ती तपासा आणि पुन्हा जतन करा."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs heeft deze sleutel geweigerd — controleer deze en bewaar opnieuw."
+            "value" : "Discogs heeft deze sleutel geweigerd. Controleer deze en bewaar opnieuw."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ਨੇ ਇਹ ਕੁੰਜੀ ਰੱਦ ਕੀਤੀ — ਇਸਦੀ ਜਾਂਚ ਕਰੋ ਅਤੇ ਮੁੜ ਸੰਭਾਲੋ।"
+            "value" : "Discogs ਨੇ ਇਹ ਕੁੰਜੀ ਰੱਦ ਕੀਤੀ। ਇਸਦੀ ਜਾਂਚ ਕਰੋ ਅਤੇ ਮੁੜ ਸੰਭਾਲੋ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs odrzucił ten klucz — sprawdź go i zapisz ponownie."
+            "value" : "Discogs odrzucił ten klucz. Sprawdź go i zapisz ponownie."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Discogs rejeitou esta chave — verifique-a e salve novamente."
+            "value" : "O Discogs rejeitou esta chave. Verifique-a e salve novamente."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs இந்த விசையை நிராகரித்தது — சரிபார்த்து மீண்டும் சேமிக்கவும்."
+            "value" : "Discogs இந்த விசையை நிராகரித்தது. சரிபார்த்து மீண்டும் சேமிக்கவும்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ఈ కీని తిరస్కరించింది — దాన్ని తనిఖీ చేసి మళ్లీ సేవ్ చేయండి."
+            "value" : "Discogs ఈ కీని తిరస్కరించింది. దాన్ని తనిఖీ చేసి మళ్లీ సేవ్ చేయండి."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs ปฏิเสธคีย์นี้ — ตรวจสอบแล้วบันทึกอีกครั้ง"
+            "value" : "Discogs ปฏิเสธคีย์นี้ ตรวจสอบแล้วบันทึกอีกครั้ง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs bu anahtarı reddetti — kontrol edip yeniden kaydedin."
+            "value" : "Discogs bu anahtarı reddetti. Kontrol edip yeniden kaydedin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs відхилив цей ключ — перевірте його та збережіть знову."
+            "value" : "Discogs відхилив цей ключ. Перевірте його та збережіть знову."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs نے یہ کلید مسترد کر دی — اسے جانچ کر دوبارہ محفوظ کریں۔"
+            "value" : "Discogs نے یہ کلید مسترد کر دی۔ اسے جانچ کر دوبارہ محفوظ کریں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs đã từ chối khóa này — hãy kiểm tra rồi lưu lại."
+            "value" : "Discogs đã từ chối khóa này. Hãy kiểm tra rồi lưu lại."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs 拒绝了此密钥 — 请检查后重新保存。"
+            "value" : "Discogs 拒绝了此密钥。请检查后重新保存。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs 拒絕此金鑰 — 請檢查後再次儲存。"
+            "value" : "Discogs 拒絕此金鑰。請檢查後再次儲存。"
           }
         }
       }
@@ -48011,193 +48011,193 @@
         }
       }
     },
-    "No identifying signals yet — search manually" : {
+    "No identifying signals yet. Search manually" : {
       "comment" : "Import search: banner when there are no signals to identify with",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا توجد إشارات تعريف بعد — ابحث يدويًا"
+            "value" : "لا توجد إشارات تعريف بعد. ابحث يدويًا"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Все още няма идентифициращи сигнали — търсете ръчно"
+            "value" : "Все още няма идентифициращи сигнали. Търсете ръчно"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "এখনও কোনো শনাক্তকারী সংকেত নেই — হাতে অনুসন্ধান করুন"
+            "value" : "এখনও কোনো শনাক্তকারী সংকেত নেই। হাতে অনুসন্ধান করুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zatím žádné identifikační signály — hledejte ručně"
+            "value" : "Zatím žádné identifikační signály. Hledejte ručně"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch keine Identifizierungssignale — manuell suchen"
+            "value" : "Noch keine Identifizierungssignale. Manuell suchen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No identifying signals yet — search manually"
+            "value" : "No identifying signals yet. Search manually"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aún no hay señales para identificar — busca manualmente"
+            "value" : "Aún no hay señales para identificar. Busca manualmente"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun signal d'identification — recherchez manuellement"
+            "value" : "Aucun signal d'identification. Recherchez manuellement"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "હજુ ઓળખતા સંકેતો નથી — હાથેથી શોધો"
+            "value" : "હજુ ઓળખતા સંકેતો નથી. હાથેથી શોધો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "עדיין אין אותות מזהים — חפשו ידנית"
+            "value" : "עדיין אין אותות מזהים. חפשו ידנית"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अभी कोई पहचान संकेत नहीं — हाथ से खोजें"
+            "value" : "अभी कोई पहचान संकेत नहीं। हाथ से खोजें"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Još nema signala za identifikaciju — pretražite ručno"
+            "value" : "Još nema signala za identifikaciju. Pretražite ručno"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessun segnale di identificazione — cerca manualmente"
+            "value" : "Nessun segnale di identificazione. Cerca manualmente"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "識別シグナルがまだありません — 手動で検索してください"
+            "value" : "識別シグナルがまだありません。手動で検索してください"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಇನ್ನೂ ಗುರುತಿಸುವ ಸಂಕೇತಗಳಿಲ್ಲ — ಕೈಯಾರೆ ಹುಡುಕಿ"
+            "value" : "ಇನ್ನೂ ಗುರುತಿಸುವ ಸಂಕೇತಗಳಿಲ್ಲ. ಕೈಯಾರೆ ಹುಡುಕಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 식별 신호 없음 — 수동으로 검색하세요"
+            "value" : "아직 식별 신호 없음. 수동으로 검색하세요"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "തിരിച്ചറിയൽ സൂചനകൾ ഇതുവരെ ഇല്ല — നേരിട്ട് തിരയുക"
+            "value" : "തിരിച്ചറിയൽ സൂചനകൾ ഇതുവരെ ഇല്ല. നേരിട്ട് തിരയുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अजून ओळखणारे संकेत नाहीत — हाताने शोधा"
+            "value" : "अजून ओळखणारे संकेत नाहीत। हाताने शोधा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nog geen identificerende signalen — zoek handmatig"
+            "value" : "Nog geen identificerende signalen. Zoek handmatig"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਹਾਲੇ ਕੋਈ ਪਛਾਣ ਸੰਕੇਤ ਨਹੀਂ — ਹੱਥੋਂ ਖੋਜੋ"
+            "value" : "ਹਾਲੇ ਕੋਈ ਪਛਾਣ ਸੰਕੇਤ ਨਹੀਂ। ਹੱਥੋਂ ਖੋਜੋ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brak sygnałów identyfikujących — wyszukaj ręcznie"
+            "value" : "Brak sygnałów identyfikujących. Wyszukaj ręcznie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ainda sem sinais de identificação — busque manualmente"
+            "value" : "Ainda sem sinais de identificação. Busque manualmente"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "அடையாளம் காணும் சைகைகள் இன்னும் இல்லை — கைமுறையாக தேடவும்"
+            "value" : "அடையாளம் காணும் சைகைகள் இன்னும் இல்லை. கைமுறையாக தேடவும்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఇంకా గుర్తింపు సంకేతాలు లేవు — చేతితో వెతకండి"
+            "value" : "ఇంకా గుర్తింపు సంకేతాలు లేవు. చేతితో వెతకండి"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ยังไม่มีสัญญาณระบุตัวตน — ค้นหาด้วยตนเอง"
+            "value" : "ยังไม่มีสัญญาณระบุตัวตน ค้นหาด้วยตนเอง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Henüz tanımlayıcı sinyal yok — elle arayın"
+            "value" : "Henüz tanımlayıcı sinyal yok. Elle arayın"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поки немає ідентифікаційних сигналів — шукайте вручну"
+            "value" : "Поки немає ідентифікаційних сигналів. Шукайте вручну"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ابھی شناختی اشارے نہیں — ہاتھ سے تلاش کریں"
+            "value" : "ابھی شناختی اشارے نہیں۔ ہاتھ سے تلاش کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chưa có tín hiệu nhận dạng — tìm thủ công"
+            "value" : "Chưa có tín hiệu nhận dạng. Tìm thủ công"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尚无识别信号 — 请手动搜索"
+            "value" : "尚无识别信号。请手动搜索"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尚無識別訊號 — 請手動搜尋"
+            "value" : "尚無識別訊號。請手動搜尋"
           }
         }
       }
@@ -51842,193 +51842,193 @@
         }
       }
     },
-    "Opaque — end-to-end encrypted" : {
+    "Opaque: end-to-end encrypted" : {
       "comment" : "Sync wizard: opaque (encrypted) storage option",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "غير مقروء — مشفّر من طرف إلى طرف"
+            "value" : "غير مقروء: مشفّر من طرف إلى طرف"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Непрозрачно — шифровано от край до край"
+            "value" : "Непрозрачно: шифровано от край до край"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "অস্বচ্ছ — প্রান্ত-থেকে-প্রান্ত এনক্রিপ্ট করা"
+            "value" : "অস্বচ্ছ: প্রান্ত-থেকে-প্রান্ত এনক্রিপ্ট করা"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neprůhledné — šifrované od konce ke konci"
+            "value" : "Neprůhledné: šifrované od konce ke konci"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Undurchsichtig — Ende-zu-Ende-verschlüsselt"
+            "value" : "Undurchsichtig: Ende-zu-Ende-verschlüsselt"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opaque — end-to-end encrypted"
+            "value" : "Opaque: end-to-end encrypted"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opaco — cifrado de extremo a extremo"
+            "value" : "Opaco: cifrado de extremo a extremo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opaque — chiffré de bout en bout"
+            "value" : "Opaque : chiffré de bout en bout"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "અસ્પષ્ટ — છેડેથી છેડે એન્ક્રિપ્ટ કરેલું"
+            "value" : "અસ્પષ્ટ: છેડેથી છેડે એન્ક્રિપ્ટ કરેલું"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אטום — מוצפן מקצה לקצה"
+            "value" : "אטום: מוצפן מקצה לקצה"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अपारदर्शी — शुरू से अंत तक एन्क्रिप्टेड"
+            "value" : "अपारदर्शी: शुरू से अंत तक एन्क्रिप्टेड"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nečitljivo — šifrirano s kraja na kraj"
+            "value" : "Nečitljivo: šifrirano s kraja na kraj"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opaco — crittografato end-to-end"
+            "value" : "Opaco: crittografato end-to-end"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不透明 — エンドツーエンド暗号化"
+            "value" : "不透明：エンドツーエンド暗号化"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಅಪಾರದರ್ಶಕ — ತುದಿಯಿಂದ ತುದಿಗೆ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಲಾಗಿದೆ"
+            "value" : "ಅಪಾರದರ್ಶಕ: ತುದಿಯಿಂದ ತುದಿಗೆ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಲಾಗಿದೆ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "불투명 — 종단 간 암호화"
+            "value" : "불투명: 종단 간 암호화"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "അസ്പഷ്ടം — അറ്റം മുതൽ അറ്റം വരെ എൻക്രിപ്റ്റ് ചെയ്തത്"
+            "value" : "അസ്പഷ്ടം: അറ്റം മുതൽ അറ്റം വരെ എൻക്രിപ്റ്റ് ചെയ്തത്"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अपारदर्शक — टोकापासून टोकापर्यंत कूटबद्ध"
+            "value" : "अपारदर्शक: टोकापासून टोकापर्यंत कूटबद्ध"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ondoorzichtig — end-to-end versleuteld"
+            "value" : "Ondoorzichtig: end-to-end versleuteld"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਅਸਪਸ਼ਟ — ਸਿਰੇ-ਤੋਂ-ਸਿਰੇ ਤੱਕ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ"
+            "value" : "ਅਸਪਸ਼ਟ: ਸਿਰੇ-ਤੋਂ-ਸਿਰੇ ਤੱਕ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nieczytelny — szyfrowany od końca do końca"
+            "value" : "Nieczytelny: szyfrowany od końca do końca"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opaco — criptografado de ponta a ponta"
+            "value" : "Opaco: criptografado de ponta a ponta"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "மறைநிலை — முனையிலிருந்து முனை வரை குறியாக்கப்பட்டது"
+            "value" : "மறைநிலை: முனையிலிருந்து முனை வரை குறியாக்கப்பட்டது"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "అపారదర్శకం — చివరి నుంచి చివరి వరకు గుప్తీకరించబడింది"
+            "value" : "అపారదర్శకం: చివరి నుంచి చివరి వరకు గుప్తీకరించబడింది"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ทึบ — เข้ารหัสตั้งแต่ต้นทางถึงปลายทาง"
+            "value" : "ทึบ: เข้ารหัสตั้งแต่ต้นทางถึงปลายทาง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opak — uçtan uca şifreli"
+            "value" : "Opak: uçtan uca şifreli"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Непрозоре — наскрізне шифрування"
+            "value" : "Непрозоре: наскрізне шифрування"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "غیر شفاف — سرے سے سرے تک مرموز"
+            "value" : "غیر شفاف: سرے سے سرے تک مرموز"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không thể duyệt — mã hóa đầu cuối"
+            "value" : "Không thể duyệt: mã hóa đầu cuối"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不透明 — 端到端加密"
+            "value" : "不透明：端到端加密"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不透明 — 端對端加密"
+            "value" : "不透明：端對端加密"
           }
         }
       }
@@ -65891,86 +65891,86 @@
         }
       }
     },
-    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched — you can restore it here later." : {
+    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched. You can restore it here later." : {
       "comment" : "Library settings: remove-library footer for a synced library whose cloud copy survives",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يزيل هذه المكتبة وملفاتها التي تم تنزيلها من هذا الـ Mac. تبقى مكتبتك في السحابة دون تغيير — يمكنك استعادتها هنا لاحقًا."
+            "value" : "يزيل هذه المكتبة وملفاتها التي تم تنزيلها من هذا الـ Mac. تبقى مكتبتك في السحابة دون تغيير. يمكنك استعادتها هنا لاحقًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Премахва тази библиотека и изтеглените ѝ файлове от този Mac. Библиотеката ви в облака остава непокътната — можете да я възстановите тук по-късно."
+            "value" : "Премахва тази библиотека и изтеглените ѝ файлове от този Mac. Библиотеката ви в облака остава непокътната. Можете да я възстановите тук по-късно."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলি এই Mac থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে এটি এখানে পুনরুদ্ধার করতে পারেন।"
+            "value" : "এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলি এই Mac থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে। আপনি পরে এটি এখানে পুনরুদ্ধার করতে পারেন।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odebere tuto knihovnu a její stažené soubory z tohoto Macu. Vaše knihovna v cloudu zůstane nedotčena — později ji zde můžete obnovit."
+            "value" : "Odebere tuto knihovnu a její stažené soubory z tohoto Macu. Vaše knihovna v cloudu zůstane nedotčena. Později ji zde můžete obnovit."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entfernt diese Bibliothek und ihre heruntergeladenen Dateien von diesem Mac. Deine Bibliothek in der Cloud bleibt unberührt — du kannst sie hier später wiederherstellen."
+            "value" : "Entfernt diese Bibliothek und ihre heruntergeladenen Dateien von diesem Mac. Deine Bibliothek in der Cloud bleibt unberührt. Du kannst sie hier später wiederherstellen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched — you can restore it here later."
+            "value" : "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched. You can restore it here later."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quita esta biblioteca y sus archivos descargados de este Mac. Tu biblioteca en la nube permanece intacta — puedes restaurarla aquí más tarde."
+            "value" : "Quita esta biblioteca y sus archivos descargados de este Mac. Tu biblioteca en la nube permanece intacta. Puedes restaurarla aquí más tarde."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retire cette bibliothèque et ses fichiers téléchargés de ce Mac. Votre bibliothèque dans le cloud reste intacte — vous pourrez la restaurer ici plus tard."
+            "value" : "Retire cette bibliothèque et ses fichiers téléchargés de ce Mac. Votre bibliothèque dans le cloud reste intacte. Vous pourrez la restaurer ici plus tard."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "આ લાઇબ્રેરી અને તેની ડાઉનલોડ કરેલી ફાઇલોને આ Mac માંથી દૂર કરે છે. ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે — તમે તેને પછીથી અહીં પુનઃસ્થાપિત કરી શકો છો."
+            "value" : "આ લાઇબ્રેરી અને તેની ડાઉનલોડ કરેલી ફાઇલોને આ Mac માંથી દૂર કરે છે. ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે. તમે તેને પછીથી અહીં પુનઃસ્થાપિત કરી શકો છો."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מסיר את הספרייה הזו ואת הקבצים שהורדו שלה מה‑Mac הזה. הספרייה שלך בענן נשארת ללא שינוי — תוכל לשחזר אותה כאן מאוחר יותר."
+            "value" : "מסיר את הספרייה הזו ואת הקבצים שהורדו שלה מה‑Mac הזה. הספרייה שלך בענן נשארת ללא שינוי. תוכל לשחזר אותה כאן מאוחר יותר."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "यह लाइब्रेरी और इसकी डाउनलोड की गई फ़ाइलें इस Mac से हटाती है। क्लाउड में आपकी लाइब्रेरी अछूती रहती है — आप इसे बाद में यहाँ पुनर्स्थापित कर सकते हैं।"
+            "value" : "यह लाइब्रेरी और इसकी डाउनलोड की गई फ़ाइलें इस Mac से हटाती है। क्लाउड में आपकी लाइब्रेरी अछूती रहती है। आप इसे बाद में यहाँ पुनर्स्थापित कर सकते हैं।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uklanja ovu fonoteku i njezine preuzete datoteke s ovog Maca. Vaša fonoteka u oblaku ostaje netaknuta — kasnije je ovdje možete vratiti."
+            "value" : "Uklanja ovu fonoteku i njezine preuzete datoteke s ovog Maca. Vaša fonoteka u oblaku ostaje netaknuta. Kasnije je ovdje možete vratiti."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuove questa libreria e i relativi file scaricati da questo Mac. La tua libreria nel cloud rimane intatta — potrai ripristinarla qui in seguito."
+            "value" : "Rimuove questa libreria e i relativi file scaricati da questo Mac. La tua libreria nel cloud rimane intatta. Potrai ripristinarla qui in seguito."
           }
         },
         "ja" : {
@@ -65982,7 +65982,7 @@
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಈ ಗ್ರಂಥಾಲಯ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ಈ Mac ನಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಹಾಗೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ಅದನ್ನು ನಂತರ ಇಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸಬಹುದು."
+            "value" : "ಈ ಗ್ರಂಥಾಲಯ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ಈ Mac ನಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಹಾಗೇ ಉಳಿಯುತ್ತದೆ. ನೀವು ಅದನ್ನು ನಂತರ ಇಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸಬಹುದು."
           }
         },
         "ko" : {
@@ -65994,91 +65994,91 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ Mac-ൽ നിന്ന് നീക്കംചെയ്യുന്നു. ക്ലൗഡിലുള്ള നിങ്ങളുടെ ലൈബ്രറി മാറ്റമില്ലാതെ തുടരും — നിങ്ങൾക്ക് പിന്നീട് ഇവിടെ അത് പുനഃസ്ഥാപിക്കാം."
+            "value" : "ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ Mac-ൽ നിന്ന് നീക്കംചെയ്യുന്നു. ക്ലൗഡിലുള്ള നിങ്ങളുടെ ലൈബ്രറി മാറ്റമില്ലാതെ തുടരും. നിങ്ങൾക്ക് പിന്നീട് ഇവിടെ അത് പുനഃസ്ഥാപിക്കാം."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ही लायब्ररी आणि तिच्या डाउनलोड केलेल्या फायली या Mac वरून काढते. क्लाउडमधील तुमची लायब्ररी अबाधित राहते — तुम्ही ती नंतर येथे पुनर्संचयित करू शकता."
+            "value" : "ही लायब्ररी आणि तिच्या डाउनलोड केलेल्या फायली या Mac वरून काढते. क्लाउडमधील तुमची लायब्ररी अबाधित राहते। तुम्ही ती नंतर येथे पुनर्संचयित करू शकता."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verwijdert deze bibliotheek en de gedownloade bestanden van deze Mac. Je bibliotheek in de cloud blijft ongewijzigd — je kunt deze hier later herstellen."
+            "value" : "Verwijdert deze bibliotheek en de gedownloade bestanden van deze Mac. Je bibliotheek in de cloud blijft ongewijzigd. Je kunt deze hier later herstellen."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫ਼ਾਈਲਾਂ ਨੂੰ ਇਸ Mac ਤੋਂ ਹਟਾ ਦਿੰਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਬਰਕਰਾਰ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਇਸਨੂੰ ਬਾਅਦ ਵਿੱਚ ਇੱਥੇ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।"
+            "value" : "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫ਼ਾਈਲਾਂ ਨੂੰ ਇਸ Mac ਤੋਂ ਹਟਾ ਦਿੰਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਬਰਕਰਾਰ ਰਹਿੰਦੀ ਹੈ। ਤੁਸੀਂ ਇਸਨੂੰ ਬਾਅਦ ਵਿੱਚ ਇੱਥੇ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usuwa tę bibliotekę i jej pobrane pliki z tego Maca. Twoja biblioteka w chmurze pozostaje nienaruszona — możesz ją później przywrócić tutaj."
+            "value" : "Usuwa tę bibliotekę i jej pobrane pliki z tego Maca. Twoja biblioteka w chmurze pozostaje nienaruszona. Możesz ją później przywrócić tutaj."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove esta biblioteca e seus arquivos baixados deste Mac. Sua biblioteca na nuvem permanece intacta — você pode restaurá-la aqui mais tarde."
+            "value" : "Remove esta biblioteca e seus arquivos baixados deste Mac. Sua biblioteca na nuvem permanece intacta. Você pode restaurá-la aqui mais tarde."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இந்த நூலகத்தையும் அதன் பதிவிறக்கிய கோப்புகளையும் இந்த Mac-இலிருந்து அகற்றுகிறது. மேகத்தில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — பின்னர் அதை இங்கே மீட்டெடுக்கலாம்."
+            "value" : "இந்த நூலகத்தையும் அதன் பதிவிறக்கிய கோப்புகளையும் இந்த Mac-இலிருந்து அகற்றுகிறது. மேகத்தில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும். பின்னர் அதை இங்கே மீட்டெடுக்கலாம்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ Mac నుండి తీసివేస్తుంది. క్లౌడ్‌లోని మీ లైబ్రరీ అలాగే ఉంటుంది — తర్వాత దీన్ని ఇక్కడ పునరుద్ధరించవచ్చు."
+            "value" : "ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ Mac నుండి తీసివేస్తుంది. క్లౌడ్‌లోని మీ లైబ్రరీ అలాగే ఉంటుంది. తర్వాత దీన్ని ఇక్కడ పునరుద్ధరించవచ్చు."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "นำคลังนี้และไฟล์ที่ดาวน์โหลดออกจาก Mac นี้ คลังของคุณในคลาวด์จะไม่ถูกแตะต้อง — คุณสามารถกู้คืนได้ที่นี่ในภายหลัง"
+            "value" : "นำคลังนี้และไฟล์ที่ดาวน์โหลดออกจาก Mac นี้ คลังของคุณในคลาวด์จะไม่ถูกแตะต้อง คุณสามารถกู้คืนได้ที่นี่ในภายหลัง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplığı ve indirilen dosyalarını bu Mac'ten kaldırır. Buluttaki kitaplığınıza dokunulmaz — daha sonra buradan geri yükleyebilirsiniz."
+            "value" : "Bu kitaplığı ve indirilen dosyalarını bu Mac'ten kaldırır. Buluttaki kitaplığınıza dokunulmaz. Daha sonra buradan geri yükleyebilirsiniz."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вилучає цю бібліотеку та її завантажені файли з цього Mac. Ваша бібліотека у хмарі залишається недоторканою — ви зможете відновити її тут пізніше."
+            "value" : "Вилучає цю бібліотеку та її завантажені файли з цього Mac. Ваша бібліотека у хмарі залишається недоторканою. Ви зможете відновити її тут пізніше."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "یہ لائبریری اور اس کی ڈاؤن لوڈ کردہ فائلیں اس Mac سے ہٹا دیتی ہے۔ کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے — آپ بعد میں اسے یہاں بحال کر سکتے ہیں۔"
+            "value" : "یہ لائبریری اور اس کی ڈاؤن لوڈ کردہ فائلیں اس Mac سے ہٹا دیتی ہے۔ کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے۔ آپ بعد میں اسے یہاں بحال کر سکتے ہیں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gỡ thư viện này và các tệp đã tải xuống của nó khỏi máy Mac này. Thư viện của bạn trên đám mây vẫn được giữ nguyên — bạn có thể khôi phục nó tại đây sau."
+            "value" : "Gỡ thư viện này và các tệp đã tải xuống của nó khỏi máy Mac này. Thư viện của bạn trên đám mây vẫn được giữ nguyên. Bạn có thể khôi phục nó tại đây sau."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将此库及其下载的文件从此 Mac 移除。云端的库不受影响——你可以稍后在此恢复。"
+            "value" : "将此库及其下载的文件从此 Mac 移除。云端的库不受影响 () 你可以稍后在此恢复。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將此資料庫及其已下載的檔案從這部 Mac 移除。雲端中的資料庫不受影響——你可以稍後在此還原。"
+            "value" : "將此資料庫及其已下載的檔案從這部 Mac 移除。雲端中的資料庫不受影響 () 你可以稍後在此還原。"
           }
         }
       }
@@ -71450,193 +71450,193 @@
         }
       }
     },
-    "Saved — couldn't validate yet (offline). Will retry." : {
+    "Saved. Couldn't validate yet (offline). Will retry." : {
       "comment" : "Discogs settings: unvalidated key status (offline)",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تم الحفظ — تعذّر التحقق بعد (دون اتصال). ستتم إعادة المحاولة."
+            "value" : "تم الحفظ. تعذّر التحقق بعد (دون اتصال). ستتم إعادة المحاولة."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запазено — все още не може да се потвърди (офлайн). Ще се опита отново."
+            "value" : "Запазено. Все още не може да се потвърди (офлайн). Ще се опита отново."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "সংরক্ষিত — এখনও যাচাই করা যায়নি (অফলাইন)। আবার চেষ্টা করা হবে।"
+            "value" : "সংরক্ষিত। এখনও যাচাই করা যায়নি (অফলাইন)। আবার চেষ্টা করা হবে।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uloženo — zatím nelze ověřit (offline). Zkusí se znovu."
+            "value" : "Uloženo. Zatím nelze ověřit (offline). Zkusí se znovu."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gespeichert — konnte noch nicht überprüft werden (offline). Wird erneut versucht."
+            "value" : "Gespeichert. Konnte noch nicht überprüft werden (offline). Wird erneut versucht."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saved — couldn't validate yet (offline). Will retry."
+            "value" : "Saved. Couldn't validate yet (offline). Will retry."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Guardada — aún no se pudo validar (sin conexión). Se reintentará."
+            "value" : "Guardada. Aún no se pudo validar (sin conexión). Se reintentará."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistré — validation impossible pour l'instant (hors ligne). Nouvelle tentative à venir."
+            "value" : "Enregistré. Validation impossible pour l'instant (hors ligne). Nouvelle tentative à venir."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "સાચવ્યું — હજી માન્ય કરી શકાયું નથી (ઑફલાઇન). ફરી પ્રયાસ થશે."
+            "value" : "સાચવ્યું. હજી માન્ય કરી શકાયું નથી (ઑફલાઇન). ફરી પ્રયાસ થશે."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נשמר — לא ניתן לאמת עדיין (לא מקוון). ינסה שוב."
+            "value" : "נשמר. לא ניתן לאמת עדיין (לא מקוון). ינסה שוב."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सहेजा गया — अभी सत्यापित नहीं हो सका (ऑफलाइन)। दोबारा कोशिश होगी।"
+            "value" : "सहेजा गया। अभी सत्यापित नहीं हो सका (ऑफलाइन)। दोबारा कोशिश होगी।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spremljeno — provjera još nije moguća (izvanmrežno). Pokušat će ponovno."
+            "value" : "Spremljeno. Provjera još nije moguća (izvanmrežno). Pokušat će ponovno."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvato — impossibile convalidare ora (offline). Riproverà."
+            "value" : "Salvato. Impossibile convalidare ora (offline). Riproverà."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保存しました — まだ検証できません（オフライン）。再試行します。"
+            "value" : "保存しました。まだ検証できません（オフライン）。再試行します。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಉಳಿಸಲಾಗಿದೆ — ಇನ್ನೂ ಮಾನ್ಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ (ಆಫ್‌ಲೈನ್). ಮರುಪ್ರಯತ್ನಿಸುತ್ತದೆ."
+            "value" : "ಉಳಿಸಲಾಗಿದೆ. ಇನ್ನೂ ಮಾನ್ಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ (ಆಫ್‌ಲೈನ್). ಮರುಪ್ರಯತ್ನಿಸುತ್ತದೆ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "저장됨 — 아직 검증할 수 없습니다(오프라인). 다시 시도합니다."
+            "value" : "저장됨. 아직 검증할 수 없습니다(오프라인). 다시 시도합니다."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "സംരക്ഷിച്ചു — ഇതുവരെ സാധൂകരിക്കാനായില്ല (ഓഫ്‌ലൈൻ). വീണ്ടും ശ്രമിക്കും."
+            "value" : "സംരക്ഷിച്ചു. ഇതുവരെ സാധൂകരിക്കാനായില്ല (ഓഫ്‌ലൈൻ). വീണ്ടും ശ്രമിക്കും."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "जतन झाले — अजून वैधता तपासता आली नाही (ऑफलाइन). पुन्हा प्रयत्न करेल."
+            "value" : "जतन झाले। अजून वैधता तपासता आली नाही (ऑफलाइन). पुन्हा प्रयत्न करेल."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bewaard — kon nog niet valideren (offline). Probeert opnieuw."
+            "value" : "Bewaard. Kon nog niet valideren (offline). Probeert opnieuw."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਸੰਭਾਲਿਆ — ਹਾਲੇ ਪਰਖਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ (ਆਫਲਾਈਨ)। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਜਾਵੇਗੀ।"
+            "value" : "ਸੰਭਾਲਿਆ। ਹਾਲੇ ਪਰਖਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ (ਆਫਲਾਈਨ)। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਜਾਵੇਗੀ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zapisano — nie udało się jeszcze zweryfikować (offline). Ponowi próbę."
+            "value" : "Zapisano. Nie udało się jeszcze zweryfikować (offline). Ponowi próbę."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvo — ainda não foi possível validar (offline). Tentaremos novamente."
+            "value" : "Salvo. Ainda não foi possível validar (offline). Tentaremos novamente."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "சேமிக்கப்பட்டது — இன்னும் சரிபார்க்க முடியவில்லை (இணையமில்லை). மீண்டும் முயற்சிக்கும்."
+            "value" : "சேமிக்கப்பட்டது. இன்னும் சரிபார்க்க முடியவில்லை (இணையமில்லை). மீண்டும் முயற்சிக்கும்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "సేవ్ అయింది — ఇంకా ధృవీకరించలేకపోయింది (ఆఫ్‌లైన్). మళ్లీ ప్రయత్నిస్తుంది."
+            "value" : "సేవ్ అయింది. ఇంకా ధృవీకరించలేకపోయింది (ఆఫ్‌లైన్). మళ్లీ ప్రయత్నిస్తుంది."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "บันทึกแล้ว — ยังตรวจสอบไม่ได้ (ออฟไลน์) จะลองอีกครั้ง"
+            "value" : "บันทึกแล้ว ยังตรวจสอบไม่ได้ (ออฟไลน์) จะลองอีกครั้ง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kaydedildi — henüz doğrulanamadı (çevrimdışı). Yeniden denenecek."
+            "value" : "Kaydedildi. Henüz doğrulanamadı (çevrimdışı). Yeniden denenecek."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Збережено — поки не вдалося підтвердити (офлайн). Буде повторено."
+            "value" : "Збережено. Поки не вдалося підтвердити (офлайн). Буде повторено."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "محفوظ ہو گیا — ابھی توثیق نہیں ہو سکی (آف لائن)۔ دوبارہ کوشش ہو گی۔"
+            "value" : "محفوظ ہو گیا۔ ابھی توثیق نہیں ہو سکی (آف لائن)۔ دوبارہ کوشش ہو گی۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã lưu — chưa thể xác thực (ngoại tuyến). Sẽ thử lại."
+            "value" : "Đã lưu. Chưa thể xác thực (ngoại tuyến). Sẽ thử lại."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已保存 — 暂时无法校验（离线）。将重试。"
+            "value" : "已保存。暂时无法校验（离线）。将重试。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已儲存 — 尚無法驗證（離線）。將重試。"
+            "value" : "已儲存。尚無法驗證（離線）。將重試。"
           }
         }
       }
@@ -83324,86 +83324,86 @@
         }
       }
     },
-    "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted." : {
+    "This library isn't synced. Removing it permanently deletes its catalog: albums, metadata edits, and play history. Audio files in your folders aren't deleted." : {
       "comment" : "Library settings: remove-library footer for a never-synced library whose catalog is deleted",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هذه المكتبة غير متزامنة. تؤدي إزالتها إلى حذف فهرسها نهائيًا — الألبومات وتعديلات البيانات الوصفية وسجل التشغيل. لا يتم حذف الملفات الصوتية الموجودة في مجلداتك."
+            "value" : "هذه المكتبة غير متزامنة. تؤدي إزالتها إلى حذف فهرسها نهائيًا: الألبومات وتعديلات البيانات الوصفية وسجل التشغيل. لا يتم حذف الملفات الصوتية الموجودة في مجلداتك."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тази библиотека не е синхронизирана. Премахването ѝ изтрива окончателно нейния каталог — албуми, редакции на метаданни и история на възпроизвеждане. Аудиофайловете във вашите папки не се изтриват."
+            "value" : "Тази библиотека не е синхронизирана. Премахването ѝ изтрива окончателно нейния каталог: албуми, редакции на метаданни и история на възпроизвеждане. Аудиофайловете във вашите папки не се изтриват."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "এই লাইব্রেরি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ — অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস — স্থায়ীভাবে মুছে যায়। আপনার ফোল্ডারের অডিও ফাইল মুছে ফেলা হয় না।"
+            "value" : "এই লাইব্রেরি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ (অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস) স্থায়ীভাবে মুছে যায়। আপনার ফোল্ডারের অডিও ফাইল মুছে ফেলা হয় না।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tato knihovna není synchronizovaná. Jejím odebráním se trvale odstraní její katalog — alba, úpravy metadat a historie přehrávání. Zvukové soubory ve vašich složkách se neodstraní."
+            "value" : "Tato knihovna není synchronizovaná. Jejím odebráním se trvale odstraní její katalog: alba, úpravy metadat a historie přehrávání. Zvukové soubory ve vašich složkách se neodstraní."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Bibliothek ist nicht synchronisiert. Beim Entfernen wird ihr Katalog dauerhaft gelöscht — Alben, Metadaten-Änderungen und Wiedergabeverlauf. Audiodateien in deinen Ordnern werden nicht gelöscht."
+            "value" : "Diese Bibliothek ist nicht synchronisiert. Beim Entfernen wird ihr Katalog dauerhaft gelöscht: Alben, Metadaten-Änderungen und Wiedergabeverlauf. Audiodateien in deinen Ordnern werden nicht gelöscht."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted."
+            "value" : "This library isn't synced. Removing it permanently deletes its catalog: albums, metadata edits, and play history. Audio files in your folders aren't deleted."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta biblioteca no está sincronizada. Al quitarla se elimina permanentemente su catálogo — álbumes, ediciones de metadatos e historial de reproducción. Los archivos de audio de tus carpetas no se eliminan."
+            "value" : "Esta biblioteca no está sincronizada. Al quitarla se elimina permanentemente su catálogo: álbumes, ediciones de metadatos e historial de reproducción. Los archivos de audio de tus carpetas no se eliminan."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette bibliothèque n'est pas synchronisée. La retirer supprime définitivement son catalogue — albums, modifications de métadonnées et historique d'écoute. Les fichiers audio de vos dossiers ne sont pas supprimés."
+            "value" : "Cette bibliothèque n'est pas synchronisée. La retirer supprime définitivement son catalogue : albums, modifications de métadonnées et historique d'écoute. Les fichiers audio de vos dossiers ne sont pas supprimés."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "આ લાઇબ્રેરી સિંક કરેલી નથી. તેને દૂર કરવાથી તેનું કૅટલૉગ — આલ્બમ, મેટાડેટા સંપાદનો અને પ્લે ઇતિહાસ — કાયમ માટે કાઢી નાખવામાં આવે છે. તમારા ફોલ્ડરની ઑડિયો ફાઇલો કાઢી નાખવામાં આવતી નથી."
+            "value" : "આ લાઇબ્રેરી સિંક કરેલી નથી. તેને દૂર કરવાથી તેનું કૅટલૉગ (આલ્બમ, મેટાડેટા સંપાદનો અને પ્લે ઇતિહાસ) કાયમ માટે કાઢી નાખવામાં આવે છે. તમારા ફોલ્ડરની ઑડિયો ફાઇલો કાઢી નાખવામાં આવતી નથી."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הספרייה הזו אינה מסונכרנת. הסרתה מוחקת לצמיתות את הקטלוג שלה — אלבומים, עריכות מטא‑נתונים והיסטוריית השמעה. קובצי האודיו בתיקיות שלך אינם נמחקים."
+            "value" : "הספרייה הזו אינה מסונכרנת. הסרתה מוחקת לצמיתות את הקטלוג שלה: אלבומים, עריכות מטא‑נתונים והיסטוריית השמעה. קובצי האודיו בתיקיות שלך אינם נמחקים."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "यह लाइब्रेरी सिंक नहीं है। इसे हटाने से इसका कैटलॉग — एल्बम, मेटाडेटा संपादन और प्ले इतिहास — स्थायी रूप से हट जाता है। आपके फ़ोल्डर की ऑडियो फ़ाइलें नहीं हटाई जातीं।"
+            "value" : "यह लाइब्रेरी सिंक नहीं है। इसे हटाने से इसका कैटलॉग (एल्बम, मेटाडेटा संपादन और प्ले इतिहास) स्थायी रूप से हट जाता है। आपके फ़ोल्डर की ऑडियो फ़ाइलें नहीं हटाई जातीं।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ova fonoteka nije sinkronizirana. Njezinim uklanjanjem trajno se briše njezin katalog — albumi, uređivanja metapodataka i povijest reprodukcije. Audiodatoteke u vašim mapama ne brišu se."
+            "value" : "Ova fonoteka nije sinkronizirana. Njezinim uklanjanjem trajno se briše njezin katalog: albumi, uređivanja metapodataka i povijest reprodukcije. Audiodatoteke u vašim mapama ne brišu se."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa libreria non è sincronizzata. Rimuovendola si elimina definitivamente il suo catalogo — album, modifiche ai metadati e cronologia di riproduzione. I file audio nelle tue cartelle non vengono eliminati."
+            "value" : "Questa libreria non è sincronizzata. Rimuovendola si elimina definitivamente il suo catalogo: album, modifiche ai metadati e cronologia di riproduzione. I file audio nelle tue cartelle non vengono eliminati."
           }
         },
         "ja" : {
@@ -83415,7 +83415,7 @@
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಈ ಗ್ರಂಥಾಲಯವನ್ನು ಸಿಂಕ್ ಮಾಡಲಾಗಿಲ್ಲ. ಇದನ್ನು ತೆಗೆದುಹಾಕಿದರೆ ಅದರ ಕ್ಯಾಟಲಾಗ್ — ಆಲ್ಬಮ್‌ಗಳು, ಮೆಟಾಡೇಟಾ ಸಂಪಾದನೆಗಳು ಮತ್ತು ಪ್ಲೇ ಇತಿಹಾಸ — ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲಾಗುವುದಿಲ್ಲ."
+            "value" : "ಈ ಗ್ರಂಥಾಲಯವನ್ನು ಸಿಂಕ್ ಮಾಡಲಾಗಿಲ್ಲ. ಇದನ್ನು ತೆಗೆದುಹಾಕಿದರೆ ಅದರ ಕ್ಯಾಟಲಾಗ್ (ಆಲ್ಬಮ್‌ಗಳು, ಮೆಟಾಡೇಟಾ ಸಂಪಾದನೆಗಳು ಮತ್ತು ಪ್ಲೇ ಇತಿಹಾಸ) ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲಾಗುವುದಿಲ್ಲ."
           }
         },
         "ko" : {
@@ -83427,91 +83427,91 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഈ ലൈബ്രറി സിങ്ക് ചെയ്തിട്ടില്ല. ഇത് നീക്കംചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് — ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം — ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാക്കില്ല."
+            "value" : "ഈ ലൈബ്രറി സിങ്ക് ചെയ്തിട്ടില്ല. ഇത് നീക്കംചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് (ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം) ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാക്കില്ല."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ही लायब्ररी समक्रमित केलेली नाही. ती काढल्याने तिचा कॅटलॉग — अल्बम, मेटाडेटा संपादने आणि प्ले इतिहास — कायमचा हटवला जातो. तुमच्या फोल्डरमधील ऑडिओ फायली हटवल्या जात नाहीत."
+            "value" : "ही लायब्ररी समक्रमित केलेली नाही. ती काढल्याने तिचा कॅटलॉग (अल्बम, मेटाडेटा संपादने आणि प्ले इतिहास) कायमचा हटवला जातो. तुमच्या फोल्डरमधील ऑडिओ फायली हटवल्या जात नाहीत."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deze bibliotheek is niet gesynchroniseerd. Als je deze verwijdert, wordt de catalogus — albums, metadatabewerkingen en afspeelgeschiedenis — definitief verwijderd. Audiobestanden in je mappen worden niet verwijderd."
+            "value" : "Deze bibliotheek is niet gesynchroniseerd. Als je deze verwijdert, wordt de catalogus (albums, metadatabewerkingen en afspeelgeschiedenis) definitief verwijderd. Audiobestanden in je mappen worden niet verwijderd."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਸਿੰਕ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਹਟਾਉਣ ਨਾਲ ਇਸਦਾ ਕੈਟਾਲਾਗ — ਐਲਬਮ, ਮੈਟਾਡਾਟਾ ਸੰਪਾਦਨ ਅਤੇ ਪਲੇ ਇਤਿਹਾਸ — ਪੱਕੇ ਤੌਰ 'ਤੇ ਮਿਟਾ ਦਿੱਤਾ ਜਾਂਦਾ ਹੈ। ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫ਼ਾਈਲਾਂ ਨਹੀਂ ਮਿਟਾਈਆਂ ਜਾਂਦੀਆਂ।"
+            "value" : "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਸਿੰਕ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਹਟਾਉਣ ਨਾਲ ਇਸਦਾ ਕੈਟਾਲਾਗ (ਐਲਬਮ, ਮੈਟਾਡਾਟਾ ਸੰਪਾਦਨ ਅਤੇ ਪਲੇ ਇਤਿਹਾਸ) ਪੱਕੇ ਤੌਰ 'ਤੇ ਮਿਟਾ ਦਿੱਤਾ ਜਾਂਦਾ ਹੈ। ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫ਼ਾਈਲਾਂ ਨਹੀਂ ਮਿਟਾਈਆਂ ਜਾਂਦੀਆਂ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ta biblioteka nie jest zsynchronizowana. Jej usunięcie trwale usuwa jej katalog — albumy, zmiany metadanych i historię odtwarzania. Pliki audio w Twoich folderach nie są usuwane."
+            "value" : "Ta biblioteka nie jest zsynchronizowana. Jej usunięcie trwale usuwa jej katalog: albumy, zmiany metadanych i historię odtwarzania. Pliki audio w Twoich folderach nie są usuwane."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta biblioteca não está sincronizada. Removê-la exclui permanentemente seu catálogo — álbuns, edições de metadados e histórico de reprodução. Os arquivos de áudio nas suas pastas não são excluídos."
+            "value" : "Esta biblioteca não está sincronizada. Removê-la exclui permanentemente seu catálogo: álbuns, edições de metadados e histórico de reprodução. Os arquivos de áudio nas suas pastas não são excluídos."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இந்த நூலகம் ஒத்திசைக்கப்படவில்லை. அதை அகற்றினால் அதன் அட்டவணை — ஆல்பங்கள், மெட்டாடேட்டா திருத்தங்கள் மற்றும் இயக்க வரலாறு — நிரந்தரமாக நீக்கப்படும். உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது."
+            "value" : "இந்த நூலகம் ஒத்திசைக்கப்படவில்லை. அதை அகற்றினால் அதன் அட்டவணை (ஆல்பங்கள், மெட்டாடேட்டா திருத்தங்கள் மற்றும் இயக்க வரலாறு) நிரந்தரமாக நீக்கப்படும். உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఈ లైబ్రరీ సింక్ కాలేదు. దీన్ని తీసివేస్తే దాని కేటలాగ్ — ఆల్బమ్‌లు, మెటాడేటా సవరణలు మరియు ప్లే చరిత్ర — శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు."
+            "value" : "ఈ లైబ్రరీ సింక్ కాలేదు. దీన్ని తీసివేస్తే దాని కేటలాగ్ (ఆల్బమ్‌లు, మెటాడేటా సవరణలు మరియు ప్లే చరిత్ర) శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "คลังนี้ยังไม่ได้ซิงค์ การนำออกจะลบแคตตาล็อกอย่างถาวร — อัลบั้ม การแก้ไขข้อมูลเมตา และประวัติการเล่น ไฟล์เสียงในโฟลเดอร์ของคุณจะไม่ถูกลบ"
+            "value" : "คลังนี้ยังไม่ได้ซิงค์ การนำออกจะลบแคตตาล็อกอย่างถาวร: อัลบั้ม การแก้ไขข้อมูลเมตา และประวัติการเล่น ไฟล์เสียงในโฟลเดอร์ของคุณจะไม่ถูกลบ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplık eşitlenmedi. Kaldırıldığında kataloğu — albümler, meta veri düzenlemeleri ve çalma geçmişi — kalıcı olarak silinir. Klasörlerinizdeki ses dosyaları silinmez."
+            "value" : "Bu kitaplık eşitlenmedi. Kaldırıldığında kataloğu (albümler, meta veri düzenlemeleri ve çalma geçmişi) kalıcı olarak silinir. Klasörlerinizdeki ses dosyaları silinmez."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ця бібліотека не синхронізована. Її вилучення назавжди видалить її каталог — альбоми, зміни метаданих та історію відтворення. Аудіофайли у ваших теках не видаляються."
+            "value" : "Ця бібліотека не синхронізована. Її вилучення назавжди видалить її каталог: альбоми, зміни метаданих та історію відтворення. Аудіофайли у ваших теках не видаляються."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "یہ لائبریری مطابقت پذیر نہیں ہے۔ اسے ہٹانے سے اس کا کیٹلاگ — البمز، میٹا ڈیٹا ترامیم اور پلے کی سرگزشت — مستقل طور پر حذف ہو جاتا ہے۔ آپ کے فولڈرز کی آڈیو فائلیں حذف نہیں ہوتیں۔"
+            "value" : "یہ لائبریری مطابقت پذیر نہیں ہے۔ اسے ہٹانے سے اس کا کیٹلاگ (البمز، میٹا ڈیٹا ترامیم اور پلے کی سرگزشت) مستقل طور پر حذف ہو جاتا ہے۔ آپ کے فولڈرز کی آڈیو فائلیں حذف نہیں ہوتیں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thư viện này chưa được đồng bộ. Việc gỡ nó sẽ xóa vĩnh viễn danh mục của nó — album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn không bị xóa."
+            "value" : "Thư viện này chưa được đồng bộ. Việc gỡ nó sẽ xóa vĩnh viễn danh mục của nó: album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn không bị xóa."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此库尚未同步。移除它将永久删除其目录——专辑、元数据编辑和播放历史。你文件夹中的音频文件不会被删除。"
+            "value" : "此库尚未同步。移除它将永久删除其目录 () 专辑、元数据编辑和播放历史。你文件夹中的音频文件不会被删除。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此資料庫尚未同步。移除它將永久刪除其目錄——專輯、中繼資料編輯與播放記錄。你資料夾中的音訊檔案不會被刪除。"
+            "value" : "此資料庫尚未同步。移除它將永久刪除其目錄 () 專輯、中繼資料編輯與播放記錄。你資料夾中的音訊檔案不會被刪除。"
           }
         }
       }
@@ -90413,86 +90413,86 @@
         }
       }
     },
-    "Your library in the cloud is untouched — you can restore it from the welcome screen later." : {
+    "Your library in the cloud is untouched. You can restore it from the welcome screen later." : {
       "comment" : "Library settings: remove-library confirmation body for a synced library; a pending-upload warning may be appended",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تبقى مكتبتك في السحابة دون تغيير — يمكنك استعادتها من شاشة الترحيب لاحقًا."
+            "value" : "تبقى مكتبتك في السحابة دون تغيير. يمكنك استعادتها من شاشة الترحيب لاحقًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Библиотеката ви в облака остава непокътната — можете да я възстановите от началния екран по-късно."
+            "value" : "Библиотеката ви в облака остава непокътната. Можете да я възстановите от началния екран по-късно."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে ওয়েলকাম স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারেন।"
+            "value" : "ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে। আপনি পরে ওয়েলকাম স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারেন।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaše knihovna v cloudu zůstane nedotčena — později ji můžete obnovit z úvodní obrazovky."
+            "value" : "Vaše knihovna v cloudu zůstane nedotčena. Později ji můžete obnovit z úvodní obrazovky."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deine Bibliothek in der Cloud bleibt unberührt — du kannst sie später über den Willkommensbildschirm wiederherstellen."
+            "value" : "Deine Bibliothek in der Cloud bleibt unberührt. Du kannst sie später über den Willkommensbildschirm wiederherstellen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your library in the cloud is untouched — you can restore it from the welcome screen later."
+            "value" : "Your library in the cloud is untouched. You can restore it from the welcome screen later."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tu biblioteca en la nube permanece intacta — puedes restaurarla desde la pantalla de bienvenida más tarde."
+            "value" : "Tu biblioteca en la nube permanece intacta. Puedes restaurarla desde la pantalla de bienvenida más tarde."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre bibliothèque dans le cloud reste intacte — vous pourrez la restaurer depuis l'écran d'accueil plus tard."
+            "value" : "Votre bibliothèque dans le cloud reste intacte. Vous pourrez la restaurer depuis l'écran d'accueil plus tard."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે — તમે તેને પછીથી સ્વાગત સ્ક્રીનમાંથી પુનઃસ્થાપિત કરી શકો છો."
+            "value" : "ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે. તમે તેને પછીથી સ્વાગત સ્ક્રીનમાંથી પુનઃસ્થાપિત કરી શકો છો."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הספרייה שלך בענן נשארת ללא שינוי — תוכל לשחזר אותה ממסך הפתיחה מאוחר יותר."
+            "value" : "הספרייה שלך בענן נשארת ללא שינוי. תוכל לשחזר אותה ממסך הפתיחה מאוחר יותר."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "क्लाउड में आपकी लाइब्रेरी अछूती रहती है — आप इसे बाद में वेलकम स्क्रीन से पुनर्स्थापित कर सकते हैं।"
+            "value" : "क्लाउड में आपकी लाइब्रेरी अछूती रहती है। आप इसे बाद में वेलकम स्क्रीन से पुनर्स्थापित कर सकते हैं।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaša fonoteka u oblaku ostaje netaknuta — kasnije je možete vratiti s početnog zaslona."
+            "value" : "Vaša fonoteka u oblaku ostaje netaknuta. Kasnije je možete vratiti s početnog zaslona."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La tua libreria nel cloud rimane intatta — potrai ripristinarla in seguito dalla schermata di benvenuto."
+            "value" : "La tua libreria nel cloud rimane intatta. Potrai ripristinarla in seguito dalla schermata di benvenuto."
           }
         },
         "ja" : {
@@ -90504,7 +90504,7 @@
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಹಾಗೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ಅದನ್ನು ನಂತರ ಸ್ವಾಗತ ಪರದೆಯಿಂದ ಮರುಸ್ಥಾಪಿಸಬಹುದು."
+            "value" : "ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಹಾಗೇ ಉಳಿಯುತ್ತದೆ. ನೀವು ಅದನ್ನು ನಂತರ ಸ್ವಾಗತ ಪರದೆಯಿಂದ ಮರುಸ್ಥಾಪಿಸಬಹುದು."
           }
         },
         "ko" : {
@@ -90516,131 +90516,131 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ക്ലൗഡിലുള്ള നിങ്ങളുടെ ലൈബ്രറി മാറ്റമില്ലാതെ തുടരും — നിങ്ങൾക്ക് പിന്നീട് സ്വാഗത സ്ക്രീനിൽ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം."
+            "value" : "ക്ലൗഡിലുള്ള നിങ്ങളുടെ ലൈബ്രറി മാറ്റമില്ലാതെ തുടരും. നിങ്ങൾക്ക് പിന്നീട് സ്വാഗത സ്ക്രീനിൽ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "क्लाउडमधील तुमची लायब्ररी अबाधित राहते — तुम्ही ती नंतर स्वागत स्क्रीनवरून पुनर्संचयित करू शकता."
+            "value" : "क्लाउडमधील तुमची लायब्ररी अबाधित राहते। तुम्ही ती नंतर स्वागत स्क्रीनवरून पुनर्संचयित करू शकता."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je bibliotheek in de cloud blijft ongewijzigd — je kunt deze later herstellen via het welkomstscherm."
+            "value" : "Je bibliotheek in de cloud blijft ongewijzigd. Je kunt deze later herstellen via het welkomstscherm."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਬਰਕਰਾਰ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਇਸਨੂੰ ਬਾਅਦ ਵਿੱਚ ਸੁਆਗਤ ਸਕ੍ਰੀਨ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।"
+            "value" : "ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਬਰਕਰਾਰ ਰਹਿੰਦੀ ਹੈ। ਤੁਸੀਂ ਇਸਨੂੰ ਬਾਅਦ ਵਿੱਚ ਸੁਆਗਤ ਸਕ੍ਰੀਨ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Twoja biblioteka w chmurze pozostaje nienaruszona — możesz ją później przywrócić z ekranu powitalnego."
+            "value" : "Twoja biblioteka w chmurze pozostaje nienaruszona. Możesz ją później przywrócić z ekranu powitalnego."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sua biblioteca na nuvem permanece intacta — você pode restaurá-la na tela de boas-vindas mais tarde."
+            "value" : "Sua biblioteca na nuvem permanece intacta. Você pode restaurá-la na tela de boas-vindas mais tarde."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "மேகத்தில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — பின்னர் வரவேற்பு திரையிலிருந்து அதை மீட்டெடுக்கலாம்."
+            "value" : "மேகத்தில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும். பின்னர் வரவேற்பு திரையிலிருந்து அதை மீட்டெடுக்கலாம்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "క్లౌడ్‌లోని మీ లైబ్రరీ అలాగే ఉంటుంది — తర్వాత స్వాగత స్క్రీన్ నుండి దీన్ని పునరుద్ధరించవచ్చు."
+            "value" : "క్లౌడ్‌లోని మీ లైబ్రరీ అలాగే ఉంటుంది. తర్వాత స్వాగత స్క్రీన్ నుండి దీన్ని పునరుద్ధరించవచ్చు."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "คลังของคุณในคลาวด์จะไม่ถูกแตะต้อง — คุณสามารถกู้คืนจากหน้าจอต้อนรับได้ในภายหลัง"
+            "value" : "คลังของคุณในคลาวด์จะไม่ถูกแตะต้อง คุณสามารถกู้คืนจากหน้าจอต้อนรับได้ในภายหลัง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buluttaki kitaplığınıza dokunulmaz — daha sonra karşılama ekranından geri yükleyebilirsiniz."
+            "value" : "Buluttaki kitaplığınıza dokunulmaz. Daha sonra karşılama ekranından geri yükleyebilirsiniz."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ваша бібліотека у хмарі залишається недоторканою — ви зможете відновити її з екрана привітання пізніше."
+            "value" : "Ваша бібліотека у хмарі залишається недоторканою. Ви зможете відновити її з екрана привітання пізніше."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے — آپ بعد میں خوش آمدید اسکرین سے اسے بحال کر سکتے ہیں۔"
+            "value" : "کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے۔ آپ بعد میں خوش آمدید اسکرین سے اسے بحال کر سکتے ہیں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thư viện của bạn trên đám mây vẫn được giữ nguyên — bạn có thể khôi phục nó từ màn hình chào mừng sau."
+            "value" : "Thư viện của bạn trên đám mây vẫn được giữ nguyên. Bạn có thể khôi phục nó từ màn hình chào mừng sau."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "云端的库不受影响——你可以稍后从欢迎屏幕恢复。"
+            "value" : "云端的库不受影响 () 你可以稍后从欢迎屏幕恢复。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "雲端中的資料庫不受影響——你可以稍後從歡迎畫面還原。"
+            "value" : "雲端中的資料庫不受影響 () 你可以稍後從歡迎畫面還原。"
           }
         }
       }
     },
-    "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access — keep it secret." : {
+    "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access — keep it secret."
+            "value" : "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret."
           }
         },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يستعيد رمز الاستعادة هذه المكتبة على جهاز جديد عندما لا يتوفر لديك جهاز آخر للموافقة عليه. أي شخص يملكه له وصول كامل — أبقِه سرًّا."
+            "value" : "يستعيد رمز الاستعادة هذه المكتبة على جهاز جديد عندما لا يتوفر لديك جهاز آخر للموافقة عليه. أي شخص يملكه له وصول كامل. أبقِه سرًّا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кодът ви за възстановяване възстановява тази библиотека на ново устройство, когато нямате друго устройство, което да го одобри. Всеки с него има пълен достъп — пазете го в тайна."
+            "value" : "Кодът ви за възстановяване възстановява тази библиотека на ново устройство, когато нямате друго устройство, което да го одобри. Всеки с него има пълен достъп. Пазете го в тайна."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "অনুমোদনের জন্য অন্য কোনো ডিভাইস না থাকলে আপনার পুনরুদ্ধার কোড নতুন ডিভাইসে এই লাইব্রেরি পুনরুদ্ধার করে। এটি যার কাছে আছে তার সম্পূর্ণ অ্যাক্সেস আছে — গোপন রাখুন।"
+            "value" : "অনুমোদনের জন্য অন্য কোনো ডিভাইস না থাকলে আপনার পুনরুদ্ধার কোড নতুন ডিভাইসে এই লাইব্রেরি পুনরুদ্ধার করে। এটি যার কাছে আছে তার সম্পূর্ণ অ্যাক্সেস আছে। গোপন রাখুন।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Váš obnovovací kód obnoví tuto knihovnu v novém zařízení, když nemáte žádné jiné zařízení, které by ho schválilo. Kdokoli s ním má plný přístup — udržujte ho v tajnosti."
+            "value" : "Váš obnovovací kód obnoví tuto knihovnu v novém zařízení, když nemáte žádné jiné zařízení, které by ho schválilo. Kdokoli s ním má plný přístup. Udržujte ho v tajnosti."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dein Wiederherstellungscode stellt diese Bibliothek auf einem neuen Gerät wieder her, wenn kein anderes Gerät zum Genehmigen verfügbar ist. Jeder damit hat vollen Zugriff — halte ihn geheim."
+            "value" : "Dein Wiederherstellungscode stellt diese Bibliothek auf einem neuen Gerät wieder her, wenn kein anderes Gerät zum Genehmigen verfügbar ist. Jeder damit hat vollen Zugriff. Halte ihn geheim."
           }
         },
         "es" : {
@@ -90652,49 +90652,49 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre code de récupération restaure cette bibliothèque sur un nouvel appareil quand aucun autre appareil n'est disponible pour l'approuver. Quiconque le possède a un accès complet — gardez-le secret."
+            "value" : "Votre code de récupération restaure cette bibliothèque sur un nouvel appareil quand aucun autre appareil n'est disponible pour l'approuver. Quiconque le possède a un accès complet. Gardez-le secret."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "બીજું કોઈ ડિવાઇસ મંજૂરી માટે ઉપલબ્ધ ન હોય ત્યારે તમારો પુનઃપ્રાપ્તિ કોડ નવા ડિવાઇસ પર આ લાઇબ્રેરી પુનઃસ્થાપિત કરે છે. તે ધરાવનાર કોઈપણને સંપૂર્ણ ઍક્સેસ મળે છે — ગુપ્ત રાખો."
+            "value" : "બીજું કોઈ ડિવાઇસ મંજૂરી માટે ઉપલબ્ધ ન હોય ત્યારે તમારો પુનઃપ્રાપ્તિ કોડ નવા ડિવાઇસ પર આ લાઇબ્રેરી પુનઃસ્થાપિત કરે છે. તે ધરાવનાર કોઈપણને સંપૂર્ણ ઍક્સેસ મળે છે. ગુપ્ત રાખો."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "קוד השחזור שלך משחזר ספרייה זו במכשיר חדש כשאין לך מכשיר אחר זמין לאשר אותו. לכל מי שיש אותו יש גישה מלאה — שמור אותו בסוד."
+            "value" : "קוד השחזור שלך משחזר ספרייה זו במכשיר חדש כשאין לך מכשיר אחר זמין לאשר אותו. לכל מי שיש אותו יש גישה מלאה. שמור אותו בסוד."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "जब स्वीकृति के लिए कोई दूसरा डिवाइस उपलब्ध न हो, तो आपका पुनर्प्राप्ति कोड नए डिवाइस पर यह लाइब्रेरी पुनर्स्थापित करता है. जिसके पास यह है, उसे पूरी पहुंच है — इसे गुप्त रखें."
+            "value" : "जब स्वीकृति के लिए कोई दूसरा डिवाइस उपलब्ध न हो, तो आपका पुनर्प्राप्ति कोड नए डिवाइस पर यह लाइब्रेरी पुनर्स्थापित करता है. जिसके पास यह है, उसे पूरी पहुंच है। इसे गुप्त रखें."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaš kôd za oporavak obnavlja ovu knjižnicu na novom uređaju kad nemate drugi uređaj koji bi ga odobrio. Svatko s njim ima puni pristup — čuvajte ga u tajnosti."
+            "value" : "Vaš kôd za oporavak obnavlja ovu knjižnicu na novom uređaju kad nemate drugi uređaj koji bi ga odobrio. Svatko s njim ima puni pristup. Čuvajte ga u tajnosti."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il tuo codice di recupero ripristina questa libreria su un nuovo dispositivo quando non hai altri dispositivi disponibili per approvarlo. Chiunque lo abbia ha pieno accesso — tienilo segreto."
+            "value" : "Il tuo codice di recupero ripristina questa libreria su un nuovo dispositivo quando non hai altri dispositivi disponibili per approvarlo. Chiunque lo abbia ha pieno accesso. Tienilo segreto."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "復元コードは、承認できる他のデバイスがないときに、新しいデバイスでこのライブラリを復元します。持っている人は誰でも完全にアクセスできます — 秘密にしてください。"
+            "value" : "復元コードは、承認できる他のデバイスがないときに、新しいデバイスでこのライブラリを復元します。持っている人は誰でも完全にアクセスできます。秘密にしてください。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಅನುಮೋದಿಸಲು ಬೇರೆ ಸಾಧನ ಲಭ್ಯವಿಲ್ಲದಾಗ ನಿಮ್ಮ ಮರುಪಡೆಯುವಿಕೆ ಕೋಡ್ ಹೊಸ ಸಾಧನದಲ್ಲಿ ಈ ಲೈಬ್ರರಿಯನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಅದು ಇರುವ ಯಾರಿಗಾದರೂ ಪೂರ್ಣ ಪ್ರವೇಶವಿದೆ — ರಹಸ್ಯವಾಗಿಡಿ."
+            "value" : "ಅನುಮೋದಿಸಲು ಬೇರೆ ಸಾಧನ ಲಭ್ಯವಿಲ್ಲದಾಗ ನಿಮ್ಮ ಮರುಪಡೆಯುವಿಕೆ ಕೋಡ್ ಹೊಸ ಸಾಧನದಲ್ಲಿ ಈ ಲೈಬ್ರರಿಯನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಅದು ಇರುವ ಯಾರಿಗಾದರೂ ಪೂರ್ಣ ಪ್ರವೇಶವಿದೆ. ರಹಸ್ಯವಾಗಿಡಿ."
           }
         },
         "ko" : {
@@ -90706,91 +90706,91 @@
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "അംഗീകരിക്കാൻ മറ്റൊരു ഉപകരണവും ലഭ്യമല്ലാത്തപ്പോൾ നിങ്ങളുടെ വീണ്ടെടുക്കൽ കോഡ് പുതിയ ഉപകരണത്തിൽ ഈ ലൈബ്രറി പുനഃസ്ഥാപിക്കുന്നു. അതുള്ള ആർക്കും പൂർണ്ണ ആക്സസ് ഉണ്ട് — രഹസ്യമായി സൂക്ഷിക്കുക."
+            "value" : "അംഗീകരിക്കാൻ മറ്റൊരു ഉപകരണവും ലഭ്യമല്ലാത്തപ്പോൾ നിങ്ങളുടെ വീണ്ടെടുക്കൽ കോഡ് പുതിയ ഉപകരണത്തിൽ ഈ ലൈബ്രറി പുനഃസ്ഥാപിക്കുന്നു. അതുള്ള ആർക്കും പൂർണ്ണ ആക്സസ് ഉണ്ട്. രഹസ്യമായി സൂക്ഷിക്കുക."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "मंजुरीसाठी दुसरे डिव्हाइस उपलब्ध नसताना तुमचा पुनर्प्राप्ती कोड नवीन डिव्हाइसवर ही लायब्ररी पुनर्संचयित करतो. तो असलेल्या कोणालाही पूर्ण प्रवेश मिळतो — गुप्त ठेवा."
+            "value" : "मंजुरीसाठी दुसरे डिव्हाइस उपलब्ध नसताना तुमचा पुनर्प्राप्ती कोड नवीन डिव्हाइसवर ही लायब्ररी पुनर्संचयित करतो. तो असलेल्या कोणालाही पूर्ण प्रवेश मिळतो। गुप्त ठेवा."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je herstelcode herstelt deze bibliotheek op een nieuw apparaat als je geen ander apparaat hebt om het goed te keuren. Iedereen ermee heeft volledige toegang — houd hem geheim."
+            "value" : "Je herstelcode herstelt deze bibliotheek op een nieuw apparaat als je geen ander apparaat hebt om het goed te keuren. Iedereen ermee heeft volledige toegang. Houd hem geheim."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਜਦੋਂ ਮਨਜ਼ੂਰੀ ਲਈ ਕੋਈ ਹੋਰ ਡਿਵਾਈਸ ਉਪਲਬਧ ਨਾ ਹੋਵੇ ਤਾਂ ਤੁਹਾਡਾ ਰਿਕਵਰੀ ਕੋਡ ਨਵੀਂ ਡਿਵਾਈਸ 'ਤੇ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਰੀਸਟੋਰ ਕਰਦਾ ਹੈ। ਜਿਸ ਕੋਲ ਇਹ ਹੈ, ਉਸ ਕੋਲ ਪੂਰੀ ਪਹੁੰਚ ਹੈ — ਗੁਪਤ ਰੱਖੋ।"
+            "value" : "ਜਦੋਂ ਮਨਜ਼ੂਰੀ ਲਈ ਕੋਈ ਹੋਰ ਡਿਵਾਈਸ ਉਪਲਬਧ ਨਾ ਹੋਵੇ ਤਾਂ ਤੁਹਾਡਾ ਰਿਕਵਰੀ ਕੋਡ ਨਵੀਂ ਡਿਵਾਈਸ 'ਤੇ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਰੀਸਟੋਰ ਕਰਦਾ ਹੈ। ਜਿਸ ਕੋਲ ਇਹ ਹੈ, ਉਸ ਕੋਲ ਪੂਰੀ ਪਹੁੰਚ ਹੈ। ਗੁਪਤ ਰੱਖੋ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Twój kod odzyskiwania przywraca tę bibliotekę na nowym urządzeniu, gdy nie masz innego urządzenia do zatwierdzenia. Każdy, kto go ma, ma pełny dostęp — trzymaj go w tajemnicy."
+            "value" : "Twój kod odzyskiwania przywraca tę bibliotekę na nowym urządzeniu, gdy nie masz innego urządzenia do zatwierdzenia. Każdy, kto go ma, ma pełny dostęp. Trzymaj go w tajemnicy."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seu código de recuperação restaura esta biblioteca em um dispositivo novo quando você não tem outro dispositivo disponível para aprová-lo. Qualquer pessoa com ele tem acesso total — mantenha-o em segredo."
+            "value" : "Seu código de recuperação restaura esta biblioteca em um dispositivo novo quando você não tem outro dispositivo disponível para aprová-lo. Qualquer pessoa com ele tem acesso total. Mantenha-o em segredo."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ஒப்புதலுக்கு வேறு சாதனம் இல்லாதபோது உங்கள் மீட்புக் குறியீடு புதிய சாதனத்தில் இந்த லைப்ரரியை மீட்டமைக்கிறது. அது உள்ள எவருக்கும் முழு அணுகல் உண்டு — ரகசியமாக வைத்திருங்கள்."
+            "value" : "ஒப்புதலுக்கு வேறு சாதனம் இல்லாதபோது உங்கள் மீட்புக் குறியீடு புதிய சாதனத்தில் இந்த லைப்ரரியை மீட்டமைக்கிறது. அது உள்ள எவருக்கும் முழு அணுகல் உண்டு. ரகசியமாக வைத்திருங்கள்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఆమోదించడానికి మరో పరికరం అందుబాటులో లేనప్పుడు మీ పునరుద్ధరణ కోడ్ కొత్త పరికరంలో ఈ లైబ్రరీని పునరుద్ధరిస్తుంది. అది ఉన్న ఎవరికైనా పూర్తి యాక్సెస్ ఉంటుంది — రహస్యంగా ఉంచండి."
+            "value" : "ఆమోదించడానికి మరో పరికరం అందుబాటులో లేనప్పుడు మీ పునరుద్ధరణ కోడ్ కొత్త పరికరంలో ఈ లైబ్రరీని పునరుద్ధరిస్తుంది. అది ఉన్న ఎవరికైనా పూర్తి యాక్సెస్ ఉంటుంది. రహస్యంగా ఉంచండి."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "รหัสกู้คืนของคุณจะกู้คืนคลังนี้บนอุปกรณ์ใหม่เมื่อคุณไม่มีอุปกรณ์อื่นไว้อนุมัติ ใครก็ตามที่มีรหัสนี้จะเข้าถึงได้ทั้งหมด — เก็บเป็นความลับ"
+            "value" : "รหัสกู้คืนของคุณจะกู้คืนคลังนี้บนอุปกรณ์ใหม่เมื่อคุณไม่มีอุปกรณ์อื่นไว้อนุมัติ ใครก็ตามที่มีรหัสนี้จะเข้าถึงได้ทั้งหมด เก็บเป็นความลับ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kurtarma kodun, onaylayacak başka bir cihazın olmadığında bu kitaplığı yeni bir cihazda geri yükler. Koda sahip olan herkes tam erişim kazanır — gizli tut."
+            "value" : "Kurtarma kodun, onaylayacak başka bir cihazın olmadığında bu kitaplığı yeni bir cihazda geri yükler. Koda sahip olan herkes tam erişim kazanır. Gizli tut."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ваш код відновлення відновлює цю бібліотеку на новому пристрої, коли немає іншого пристрою для схвалення. Будь-хто з ним має повний доступ — тримайте його в таємниці."
+            "value" : "Ваш код відновлення відновлює цю бібліотеку на новому пристрої, коли немає іншого пристрою для схвалення. Будь-хто з ним має повний доступ. Тримайте його в таємниці."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جب منظوری کے لیے کوئی اور آلہ دستیاب نہ ہو تو آپ کا بازیابی کوڈ نئے آلے پر یہ لائبریری بحال کرتا ہے۔ جس کے پاس یہ ہو اسے مکمل رسائی حاصل ہے — اسے خفیہ رکھیں۔"
+            "value" : "جب منظوری کے لیے کوئی اور آلہ دستیاب نہ ہو تو آپ کا بازیابی کوڈ نئے آلے پر یہ لائبریری بحال کرتا ہے۔ جس کے پاس یہ ہو اسے مکمل رسائی حاصل ہے۔ اسے خفیہ رکھیں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mã khôi phục của bạn khôi phục thư viện này trên thiết bị mới khi bạn không còn thiết bị nào khác để phê duyệt. Bất kỳ ai có mã đều có toàn quyền truy cập — hãy giữ bí mật."
+            "value" : "Mã khôi phục của bạn khôi phục thư viện này trên thiết bị mới khi bạn không còn thiết bị nào khác để phê duyệt. Bất kỳ ai có mã đều có toàn quyền truy cập. Hãy giữ bí mật."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当没有其他设备可用于批准时，恢复码可在新设备上恢复此资料库。任何拥有它的人都能完全访问——请保密。"
+            "value" : "当没有其他设备可用于批准时，恢复码可在新设备上恢复此资料库。任何拥有它的人都能完全访问 () 请保密。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "當沒有其他裝置可供核准時，還原碼可在新裝置上還原此資料庫。任何擁有它的人都能完整存取——請保密。"
+            "value" : "當沒有其他裝置可供核准時，還原碼可在新裝置上還原此資料庫。任何擁有它的人都能完整存取 () 請保密。"
           }
         }
       }
@@ -92705,13 +92705,13 @@
         }
       }
     },
-    "Couldn’t complete — will retry" : {
+    "Couldn’t complete. Will retry" : {
       "comment" : "Still-identifying row (no-answer phase): a run settled without a storable answer; retried on a later pass.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn’t complete — will retry"
+            "value" : "Couldn’t complete. Will retry"
           }
         },
         "es" : {
@@ -92723,175 +92723,175 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de terminer — nouvelle tentative prévue"
+            "value" : "Impossible de terminer. Nouvelle tentative prévue"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte nicht abgeschlossen werden – wird erneut versucht"
+            "value" : "Konnte nicht abgeschlossen werden. Wird erneut versucht"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível concluir — nova tentativa em breve"
+            "value" : "Não foi possível concluir. Nova tentativa em breve"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完了できませんでした — 再試行します"
+            "value" : "完了できませんでした。再試行します"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未能完成 — 将重试"
+            "value" : "未能完成。将重试"
           }
         },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّر الإكمال — ستتم إعادة المحاولة"
+            "value" : "تعذّر الإكمال. ستتم إعادة المحاولة"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא הצליח להשלים — ינוסה שוב"
+            "value" : "לא הצליח להשלים. ינוסה שוב"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося завершити — буде повторено"
+            "value" : "Не вдалося завершити. Буде повторено"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не успя да завърши — ще се опита отново"
+            "value" : "Не успя да завърши. Ще се опита отново"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie udało się ukończyć — spróbuje ponownie"
+            "value" : "Nie udało się ukończyć. Spróbuje ponownie"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodařilo se dokončit — zkusí to znovu"
+            "value" : "Nepodařilo se dokončit. Zkusí to znovu"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije uspjelo — pokušat će ponovno"
+            "value" : "Nije uspjelo. Pokušat će ponovno"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未能完成 — 將重試"
+            "value" : "未能完成。將重試"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile completare — verrà ritentato"
+            "value" : "Non è stato possibile completare. Verrà ritentato"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamamlanamadı — yeniden denenecek"
+            "value" : "Tamamlanamadı. Yeniden denenecek"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không thể hoàn tất — sẽ thử lại"
+            "value" : "Không thể hoàn tất. Sẽ thử lại"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon niet worden voltooid — wordt opnieuw geprobeerd"
+            "value" : "Kon niet worden voltooid. Wordt opnieuw geprobeerd"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूरा नहीं हो सका — फिर कोशिश की जाएगी"
+            "value" : "पूरा नहीं हो सका। फिर कोशिश की जाएगी"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "সম্পন্ন করা যায়নি — আবার চেষ্টা করা হবে"
+            "value" : "সম্পন্ন করা যায়নি। আবার চেষ্টা করা হবে"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "முடிக்க முடியவில்லை — மீண்டும் முயற்சிக்கப்படும்"
+            "value" : "முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கப்படும்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "పూర్తి కాలేదు — మళ్లీ ప్రయత్నిస్తుంది"
+            "value" : "పూర్తి కాలేదు. మళ్లీ ప్రయత్నిస్తుంది"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्ण होऊ शकले नाही — पुन्हा प्रयत्न केला जाईल"
+            "value" : "पूर्ण होऊ शकले नाही। पुन्हा प्रयत्न केला जाईल"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مکمل نہیں ہو سکا — دوبارہ کوشش کی جائے گی"
+            "value" : "مکمل نہیں ہو سکا۔ دوبارہ کوشش کی جائے گی"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "પૂર્ણ થઈ શક્યું નહીં — ફરી પ્રયત્ન કરવામાં આવશે"
+            "value" : "પૂર્ણ થઈ શક્યું નહીં. ફરી પ્રયત્ન કરવામાં આવશે"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ — ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುವುದು"
+            "value" : "ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುವುದು"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "പൂർത്തിയാക്കാനായില്ല — വീണ്ടും ശ്രമിക്കും"
+            "value" : "പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കും"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਪੂਰਾ ਨਹੀਂ ਹੋ ਸਕਿਆ — ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਜਾਵੇਗੀ"
+            "value" : "ਪੂਰਾ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਜਾਵੇਗੀ"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ไม่สามารถทำให้เสร็จได้ — จะลองใหม่อีกครั้ง"
+            "value" : "ไม่สามารถทำให้เสร็จได้ จะลองใหม่อีกครั้ง"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "완료하지 못함 — 다시 시도합니다"
+            "value" : "완료하지 못함. 다시 시도합니다"
           }
         }
       }

@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>không thể lấy bìa từ xa</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>đang lấy bìa…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>không thể tải hình ảnh của bản phát hành này</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Không có ảnh bìa — lượt nhập dùng bìa mặc định.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Không có ảnh bìa. Lượt nhập dùng bìa mặc định.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Không tìm thấy bìa từ xa</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Chọn một bìa hoặc để trống để dùng mặc định.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Tệp bản phát hành</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>không có kết quả khớp</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Token Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>kiểm tra lại</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs đã từ chối khóa này — hãy kiểm tra rồi lưu lại.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs đã từ chối khóa này. Hãy kiểm tra rồi lưu lại.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>xóa token</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>lưu token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>không thể lưu khóa — đã xảy ra lỗi.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>không thể lưu khóa. Đã xảy ra lỗi.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Token API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Đang xác thực…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Tạm dừng giữa các mặt</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>đang kiểm tra…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>đã cập nhật</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>đang tải xuống… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>phiên bản {version} đã sẵn sàng — khởi động lại để cập nhật</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>phiên bản {version} đã sẵn sàng. Khởi động lại để cập nhật</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Khởi động lại ngay</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>không thể kiểm tra bản cập nhật</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>khóa thư viện</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>khôi phục</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>mã khôi phục của bạn khôi phục thư viện này trên thiết bị mới khi bạn không có thiết bị nào khác để phê duyệt. bất kỳ ai có mã này đều có toàn quyền truy cập — hãy giữ bí mật.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>mã khôi phục của bạn khôi phục thư viện này trên thiết bị mới khi bạn không có thiết bị nào khác để phê duyệt. bất kỳ ai có mã này đều có toàn quyền truy cập. Hãy giữ bí mật.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>mã khôi phục</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>hiển thị mã khôi phục…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(không khả dụng — đồng bộ hóa đã kết nối chưa?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(không khả dụng: đồng bộ hóa đã kết nối chưa?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>kết nối S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>đang kết nối với S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>có thể duyệt — lưu không mã hóa</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>có thể duyệt: lưu không mã hóa</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>Lưu trữ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>không thể duyệt — mã hóa đầu cuối</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>không thể duyệt: mã hóa đầu cuối</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>ngắt kết nối</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} bấm ngắt kết nối lần nữa để xác nhận.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>đồng bộ ngay</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>thư viện của bạn</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>đã kết nối</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>đã lưu — chưa thể xác thực (ngoại tuyến). sẽ thử lại.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>đã lưu. Chưa thể xác thực (ngoại tuyến). sẽ thử lại.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>đang khởi tạo</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Đồng bộ: chưa kết nối</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>sẵn sàng</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Đồng bộ: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Đồng bộ: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>tải xuống</value></data>
   <data name="download.paused" xml:space="preserve"><value>đã tạm dừng</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>đã xếp hàng</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Sẵn sàng</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Đang chờ nhận dạng</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Đang nhận dạng…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Không hoàn tất được — sẽ thử lại</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Không hoàn tất được. Sẽ thử lại</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Lọc…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Thêm thư mục…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Chưa có gì ở đây</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# bản phát hành}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Tổng: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Xóa</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Xóa thư viện này và các tệp đã tải xuống của nó khỏi máy tính này. Thư viện của bạn trên đám mây vẫn còn nguyên vẹn — bạn có thể khôi phục từ đây sau.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Thư viện này chưa được đồng bộ hóa. Xóa thư viện sẽ xóa vĩnh viễn danh mục của nó — album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn sẽ không bị xóa.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Xóa thư viện này và các tệp đã tải xuống của nó khỏi máy tính này. Thư viện của bạn trên đám mây vẫn còn nguyên vẹn. Bạn có thể khôi phục từ đây sau.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Thư viện này chưa được đồng bộ hóa. Xóa thư viện sẽ xóa vĩnh viễn danh mục của nó. Album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn sẽ không bị xóa.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>xóa thư viện này khỏi máy tính này</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Thư viện của bạn trên đám mây vẫn còn nguyên vẹn — bạn có thể khôi phục từ màn hình chào mừng sau.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Thư viện của bạn trên đám mây vẫn còn nguyên vẹn. Bạn có thể khôi phục từ màn hình chào mừng sau.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Thư viện này chưa từng được đồng bộ hóa. Danh mục của nó sẽ bị xóa vĩnh viễn; các tệp âm thanh trong thư mục của bạn sẽ không bị xóa.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Một số thay đổi vẫn chưa tải lên xong và sẽ bị mất.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Nhấp lại vào nút để xác nhận.</value></data>

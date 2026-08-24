@@ -132,7 +132,7 @@
     <string name="settings_recovery_code_failed">Couldn\'t generate a recovery code.</string>
     <string name="settings_copy_recovery_code">Copy code</string>
     <string name="settings_remove_library">Remove this library from this device</string>
-    <string name="settings_remove_library_explanation">Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later.</string>
+    <string name="settings_remove_library_explanation">Removes this library and its downloaded files from this device. Your library in the cloud is untouched. You can re-pair this device later.</string>
     <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
     <string name="settings_remove_library_confirm_body">Your library in the cloud is untouched. You can re-pair this device later.</string>
     <string name="settings_remove">Remove</string>

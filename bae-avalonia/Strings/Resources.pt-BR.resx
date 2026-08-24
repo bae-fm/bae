@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>não foi possível buscar capas remotas</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>buscando capas…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>não foi possível carregar as imagens deste lançamento</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Nenhuma capa disponível — a importação usa a capa padrão.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Nenhuma capa disponível. A importação usa a capa padrão.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Nenhuma capa remota encontrada</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Escolha uma capa ou deixe sem selecionar para usar a padrão.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Arquivos do lançamento</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>sem correspondências</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Token do Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>verificar novamente</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>O Discogs rejeitou esta chave — verifique-a e salve novamente.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>O Discogs rejeitou esta chave. Verifique-a e salve novamente.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>remover token</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>salvar token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>não foi possível salvar a chave — algo deu errado.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>não foi possível salvar a chave. Algo deu errado.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Token de API do Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validando…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pausa entre lados</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>verificando…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>atualizado</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>baixando… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>a versão {version} está pronta — reinicie para atualizar</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>a versão {version} está pronta. Reinicie para atualizar</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Reiniciar agora</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>não foi possível verificar atualizações</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>bloquear biblioteca</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>recuperação</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>seu código de recuperação restaura esta biblioteca em um novo dispositivo quando você não tem outro dispositivo disponível para aprová-lo. qualquer pessoa com ele tem acesso total — mantenha-o secreto.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>seu código de recuperação restaura esta biblioteca em um novo dispositivo quando você não tem outro dispositivo disponível para aprová-lo. qualquer pessoa com ele tem acesso total. Mantenha-o secreto.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>código de recuperação</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>mostrar código de recuperação…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(indisponível — a sincronização está conectada?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(indisponível: a sincronização está conectada?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>conectar S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>conectando ao S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>navegável — armazenado sem criptografia</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>navegável: armazenado sem criptografia</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>armazenamento</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaco — criptografado de ponta a ponta</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>opaco: criptografado de ponta a ponta</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>desconectar</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} clique em desconectar novamente para confirmar.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>sincronizar agora</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>suas bibliotecas</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>conectado</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>salvo — ainda não foi possível validar (offline). tentaremos novamente.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>salvo. Ainda não foi possível validar (offline). tentaremos novamente.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>inicializando</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Sincronização: não conectada</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>pronto</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Sincronização: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Sincronização: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>downloads</value></data>
   <data name="download.paused" xml:space="preserve"><value>pausado</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>na fila</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Pronto</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Aguardando identificação</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identificando…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Não foi possível concluir — tentaremos novamente</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Não foi possível concluir. Tentaremos novamente</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrar…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Adicionar uma pasta…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Ainda não há nada aqui</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# lançamento} other {# lançamentos}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Remover</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Remove esta biblioteca e seus arquivos baixados deste computador. Sua biblioteca na nuvem permanece intacta — você poderá restaurá-la a partir daqui depois.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Esta biblioteca não está sincronizada. Removê-la excluirá permanentemente seu catálogo — álbuns, edições de metadados e histórico de reprodução. Os arquivos de áudio em suas pastas não serão excluídos.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Remove esta biblioteca e seus arquivos baixados deste computador. Sua biblioteca na nuvem permanece intacta. Você poderá restaurá-la a partir daqui depois.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Esta biblioteca não está sincronizada. Removê-la excluirá permanentemente seu catálogo. Álbuns, edições de metadados e histórico de reprodução. Os arquivos de áudio em suas pastas não serão excluídos.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>remover esta biblioteca deste computador</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Sua biblioteca na nuvem permanece intacta — você poderá restaurá-la a partir da tela de boas-vindas depois.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Sua biblioteca na nuvem permanece intacta. Você poderá restaurá-la a partir da tela de boas-vindas depois.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Esta biblioteca nunca foi sincronizada. Seu catálogo será excluído permanentemente; os arquivos de áudio em suas pastas não serão excluídos.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Algumas alterações ainda não terminaram de ser enviadas e serão perdidas.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Clique no botão novamente para confirmar.</value></data>

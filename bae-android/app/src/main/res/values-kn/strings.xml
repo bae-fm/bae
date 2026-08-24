@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">ಮರುಪಡೆಯುವ ಕೋಡ್ ಸೃಷ್ಟಿಸಲಾಗಲಿಲ್ಲ.</string>
     <string name="settings_copy_recovery_code">ಕೋಡ್ ನಕಲಿಸಿ</string>
     <string name="settings_remove_library">ಈ ಸಾಧನದಿಂದ ಈ ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಿ</string>
-    <string name="settings_remove_library_explanation">ಈ ಸಾಧನದಿಂದ ಈ ಗ್ರಂಥಾಲಯ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಬದಲಾಗುವುದಿಲ್ಲ — ನಂತರ ಈ ಸಾಧನವನ್ನು ಮತ್ತೆ ಜೋಡಿಸಬಹುದು.</string>
+    <string name="settings_remove_library_explanation">ಈ ಸಾಧನದಿಂದ ಈ ಗ್ರಂಥಾಲಯ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಬದಲಾಗುವುದಿಲ್ಲ. ನಂತರ ಈ ಸಾಧನವನ್ನು ಮತ್ತೆ ಜೋಡಿಸಬಹುದು.</string>
     <string name="settings_remove_library_confirm_title">ಈ ಸಾಧನದಿಂದ ಈ ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಬೇಕೇ?</string>
     <string name="settings_remove_library_confirm_body">ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಬದಲಾಗುವುದಿಲ್ಲ. ನಂತರ ಈ ಸಾಧನವನ್ನು ಮತ್ತೆ ಜೋಡಿಸಬಹುದು.</string>
     <string name="settings_remove">ತೆಗೆದುಹಾಕಿ</string>

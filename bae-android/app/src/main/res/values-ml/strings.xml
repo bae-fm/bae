@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">വീണ്ടെടുപ്പ് കോഡ് സൃഷ്ടിക്കാനായില്ല.</string>
     <string name="settings_copy_recovery_code">കോഡ് പകർത്തുക</string>
     <string name="settings_remove_library">ഈ ഉപകരണത്തിൽ നിന്ന് ഈ ലൈബ്രറി നീക്കംചെയ്യുക</string>
-    <string name="settings_remove_library_explanation">ഈ ഉപകരണത്തിൽ നിന്ന് ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും നീക്കംചെയ്യുന്നു. ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറിയിൽ മാറ്റമൊന്നുമില്ല — ഈ ഉപകരണം പിന്നീട് വീണ്ടും ജോടിയാക്കാം.</string>
+    <string name="settings_remove_library_explanation">ഈ ഉപകരണത്തിൽ നിന്ന് ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും നീക്കംചെയ്യുന്നു. ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറിയിൽ മാറ്റമൊന്നുമില്ല. ഈ ഉപകരണം പിന്നീട് വീണ്ടും ജോടിയാക്കാം.</string>
     <string name="settings_remove_library_confirm_title">ഈ ഉപകരണത്തിൽ നിന്ന് ഈ ലൈബ്രറി നീക്കംചെയ്യണോ?</string>
     <string name="settings_remove_library_confirm_body">ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറിയിൽ മാറ്റമൊന്നുമില്ല. ഈ ഉപകരണം പിന്നീട് വീണ്ടും ജോടിയാക്കാം.</string>
     <string name="settings_remove">നീക്കം ചെയ്യുക</string>

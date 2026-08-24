@@ -111,7 +111,7 @@ struct BaeApp: App {
     /// disambiguates which one the main window currently shows.
     private var windowTitle: String {
         if let name = appDelegate.appService?.libraryName, !name.isEmpty {
-            return String(localized: "\(name) — bae")
+            return String(localized: "\(name) - bae")
         }
         return "bae"
     }

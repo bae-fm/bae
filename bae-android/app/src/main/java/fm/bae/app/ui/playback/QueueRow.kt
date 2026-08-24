@@ -184,7 +184,7 @@ private fun QueueItemText(
                 if (item.albumTitle.isEmpty()) {
                     item.artist
                 } else {
-                    "${item.artist} — ${item.albumTitle}"
+                    "${item.artist}, ${item.albumTitle}"
                 },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

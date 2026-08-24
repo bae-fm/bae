@@ -151,7 +151,7 @@ struct SettingsView: View {
                         }
                     } footer: {
                         Text(
-                            "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access — keep it secret."
+                            "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret."
                         )
                     }
                 }
@@ -165,7 +165,7 @@ struct SettingsView: View {
                     }
                 } footer: {
                     Text(
-                        "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+                        "Removes this library and its downloaded files from this device. Your library in the cloud is untouched. You can re-pair this device later."
                     )
                 }
 

@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Impossibile generare un codice di recupero.</string>
     <string name="settings_copy_recovery_code">Copia codice</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
-    <string name="settings_remove_library_explanation">Rimuove questa libreria e i relativi file scaricati da questo dispositivo. La tua libreria nel cloud rimane intatta — potrai riabbinare questo dispositivo in seguito.</string>
+    <string name="settings_remove_library_explanation">Rimuove questa libreria e i relativi file scaricati da questo dispositivo. La tua libreria nel cloud rimane intatta. Potrai riabbinare questo dispositivo in seguito.</string>
     <string name="settings_remove_library_confirm_title">Rimuovere questa libreria da questo dispositivo?</string>
     <string name="settings_remove_library_confirm_body">La tua libreria nel cloud rimane intatta. Potrai riabbinare questo dispositivo in seguito.</string>
     <string name="settings_remove">Rimuovi</string>

@@ -35,7 +35,7 @@
     <string name="collapse">Zwiń</string>
     <string name="mute">Wycisz</string>
     <string name="unmute">Wyłącz wyciszenie</string>
-    <string name="now_playing_track_by_artist">Teraz odtwarzane, %1$s — %2$s</string>
+    <string name="now_playing_track_by_artist">Teraz odtwarzane, %1$s, %2$s</string>
     <string name="queue_clear">Wyczyść</string>
     <string name="queue_clear_up_next">Wyczyść „Następne w kolejce”</string>
     <string name="queue_clear_playing_from">Wyczyść źródło odtwarzania</string>
@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Nie udało się wygenerować kodu odzyskiwania.</string>
     <string name="settings_copy_recovery_code">Kopiuj kod</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
-    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę i pobrane pliki z tego urządzenia. Twoja biblioteka w chmurze pozostaje nienaruszona — możesz później ponownie sparować to urządzenie.</string>
+    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę i pobrane pliki z tego urządzenia. Twoja biblioteka w chmurze pozostaje nienaruszona. Możesz później ponownie sparować to urządzenie.</string>
     <string name="settings_remove_library_confirm_title">Usunąć tę bibliotekę z tego urządzenia?</string>
     <string name="settings_remove_library_confirm_body">Twoja biblioteka w chmurze pozostaje nienaruszona. Możesz później ponownie sparować to urządzenie.</string>
     <string name="settings_remove">Usuń</string>

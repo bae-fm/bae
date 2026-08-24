@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Wiederherstellungscode konnte nicht erstellt werden.</string>
     <string name="settings_copy_recovery_code">Code kopieren</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
-    <string name="settings_remove_library_explanation">Entfernt diese Bibliothek und ihre heruntergeladenen Dateien von diesem Gerät. Deine Bibliothek in der Cloud bleibt unberührt — du kannst dieses Gerät später erneut koppeln.</string>
+    <string name="settings_remove_library_explanation">Entfernt diese Bibliothek und ihre heruntergeladenen Dateien von diesem Gerät. Deine Bibliothek in der Cloud bleibt unberührt. Du kannst dieses Gerät später erneut koppeln.</string>
     <string name="settings_remove_library_confirm_title">Diese Bibliothek von diesem Gerät entfernen?</string>
     <string name="settings_remove_library_confirm_body">Deine Bibliothek in der Cloud bleibt unberührt. Du kannst dieses Gerät später erneut koppeln.</string>
     <string name="settings_remove">Entfernen</string>

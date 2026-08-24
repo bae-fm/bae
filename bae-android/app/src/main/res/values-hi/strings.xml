@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">पुनर्प्राप्ति कोड नहीं बनाया जा सका।</string>
     <string name="settings_copy_recovery_code">कोड कॉपी करें</string>
     <string name="settings_remove_library">इस लाइब्रेरी को इस डिवाइस से हटाएं</string>
-    <string name="settings_remove_library_explanation">इस लाइब्रेरी और इसकी डाउनलोड की गई फ़ाइलों को इस डिवाइस से हटाता है। क्लाउड में आपकी लाइब्रेरी अपरिवर्तित रहती है — आप बाद में इस डिवाइस को फिर से पेयर कर सकते हैं।</string>
+    <string name="settings_remove_library_explanation">इस लाइब्रेरी और इसकी डाउनलोड की गई फ़ाइलों को इस डिवाइस से हटाता है। क्लाउड में आपकी लाइब्रेरी अपरिवर्तित रहती है। आप बाद में इस डिवाइस को फिर से पेयर कर सकते हैं।</string>
     <string name="settings_remove_library_confirm_title">इस लाइब्रेरी को इस डिवाइस से हटाएं?</string>
     <string name="settings_remove_library_confirm_body">लाइब्रेरी आपका क्लाउड. डिवाइस.</string>
     <string name="settings_remove">हटाएं</string>

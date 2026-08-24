@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>রিমোট কভার আনা যায়নি</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>কভার আনা হচ্ছে…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>এই রিলিজের ছবি লোড করা যায়নি</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>কোনো কভার আর্ট উপলব্ধ নেই — আমদানি তার ডিফল্ট কভার ব্যবহার করে।</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>কোনো কভার আর্ট উপলব্ধ নেই। আমদানি তার ডিফল্ট কভার ব্যবহার করে।</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>কোনো রিমোট কভার পাওয়া যায়নি</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>একটি কভার বাছুন, অথবা ডিফল্ট ব্যবহার করতে অনির্বাচিত রাখুন।</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>রিলিজ ফাইল</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>কোনো মিল নেই</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs টোকেন</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>আবার পরীক্ষা করুন</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs এই কী প্রত্যাখ্যান করেছে — এটি পরীক্ষা করে আবার সংরক্ষণ করুন।</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs এই কী প্রত্যাখ্যান করেছে। এটি পরীক্ষা করে আবার সংরক্ষণ করুন।</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>টোকেন সরান</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>টোকেন সংরক্ষণ করুন</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>কী সংরক্ষণ করা যায়নি — কিছু ভুল হয়েছে।</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>কী সংরক্ষণ করা যায়নি। কিছু ভুল হয়েছে।</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API টোকেন</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>যাচাই করা হচ্ছে…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>সাইডের মাঝে বিরতি</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>পরীক্ষা করা হচ্ছে…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>হালনাগাদ</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>ডাউনলোড হচ্ছে… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>সংস্করণ {version} প্রস্তুত — আপডেট করতে পুনরায় চালু করুন</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>সংস্করণ {version} প্রস্তুত। আপডেট করতে পুনরায় চালু করুন</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>এখন পুনরায় চালু করুন</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>আপডেট পরীক্ষা করা যায়নি</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>লাইব্রেরি লক করুন</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>রিকভারি</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>অনুমোদনের জন্য অন্য কোনো ডিভাইস না থাকলে আপনার রিকভারি কোড নতুন ডিভাইসে এই লাইব্রেরি ফিরিয়ে আনে। এটি যার কাছে আছে, সে পূর্ণ অ্যাক্সেস পাবে — গোপন রাখুন।</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>অনুমোদনের জন্য অন্য কোনো ডিভাইস না থাকলে আপনার রিকভারি কোড নতুন ডিভাইসে এই লাইব্রেরি ফিরিয়ে আনে। এটি যার কাছে আছে, সে পূর্ণ অ্যাক্সেস পাবে। গোপন রাখুন।</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>রিকভারি কোড</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>রিকভারি কোড দেখান…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(অনুপলব্ধ — সিঙ্ক কি সংযুক্ত?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(অনুপলব্ধ: সিঙ্ক কি সংযুক্ত?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 সংযোগ করুন</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3-এ সংযোগ করা হচ্ছে…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>ব্রাউজযোগ্য — এনক্রিপ্ট না করে সংরক্ষিত</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ব্রাউজযোগ্য: এনক্রিপ্ট না করে সংরক্ষিত</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>স্টোরেজ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>অস্বচ্ছ — প্রান্ত-থেকে-প্রান্ত এনক্রিপ্ট করা</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>অস্বচ্ছ: প্রান্ত-থেকে-প্রান্ত এনক্রিপ্ট করা</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>সংযোগ বিচ্ছিন্ন করুন</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} নিশ্চিত করতে আবার সংযোগ বিচ্ছিন্ন করুন ক্লিক করুন।</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>এখন সিঙ্ক করুন</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>আপনার লাইব্রেরি</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>সংযুক্ত</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>সংরক্ষিত — এখনও যাচাই করা যায়নি (অফলাইন)। আবার চেষ্টা করা হবে।</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>সংরক্ষিত। এখনও যাচাই করা যায়নি (অফলাইন)। আবার চেষ্টা করা হবে।</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>শুরু করা হচ্ছে</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>সিঙ্ক: সংযুক্ত নয়</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>প্রস্তুত</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>সিঙ্ক: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>সিঙ্ক: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>ডাউনলোড</value></data>
   <data name="download.paused" xml:space="preserve"><value>বিরতিতে</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>সারিতে</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>প্রস্তুত</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>শনাক্তকরণের অপেক্ষায়</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>শনাক্ত করা হচ্ছে…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>সম্পূর্ণ করা যায়নি — আবার চেষ্টা করা হবে</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>সম্পূর্ণ করা যায়নি। আবার চেষ্টা করা হবে</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ফিল্টার…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ফোল্ডার যোগ করুন…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>এখানে এখনও কিছু নেই</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {#টি রিলিজ} other {#টি রিলিজ}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>মোট: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>সরান</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলো এই পিসি থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে এখান থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ — অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস — স্থায়ীভাবে মুছে যাবে। আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলো এই পিসি থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে। আপনি পরে এখান থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ (অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস) স্থায়ীভাবে মুছে যাবে। আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>এই লাইব্রেরিটি এই পিসি থেকে সরান</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে স্বাগত স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে। আপনি পরে স্বাগত স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি কখনও সিঙ্ক করা হয়নি। এর ক্যাটালগ স্থায়ীভাবে মুছে যাবে; আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>কিছু পরিবর্তন এখনও আপলোড শেষ হয়নি এবং সেগুলো হারিয়ে যাবে।</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>নিশ্চিত করতে বোতামটি আবার ক্লিক করুন।</value></data>

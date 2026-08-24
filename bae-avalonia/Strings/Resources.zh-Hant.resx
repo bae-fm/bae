@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>無法擷取遠端封面</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>正在擷取封面…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>無法載入此發行的影像</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>沒有可用封面 — 匯入會使用預設封面。</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>沒有可用封面。匯入會使用預設封面。</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>找不到遠端封面</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>選擇封面，或不選取以使用預設值。</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>發行檔案</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>沒有符合項目</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs 權杖</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>重新檢查</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs 拒絕此金鑰 — 請檢查後再次儲存。</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs 拒絕此金鑰。請檢查後再次儲存。</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>移除權杖</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>儲存權杖</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>無法儲存金鑰 — 發生錯誤。</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>無法儲存金鑰。發生錯誤。</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API 權杖</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>正在驗證…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面與面之間暫停</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>正在檢查…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>已是最新</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>正在下載… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>版本 {version} 已就緒 — 重新啟動以更新</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>版本 {version} 已就緒。重新啟動以更新</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>立即重新啟動</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>無法檢查更新</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>鎖定資料庫</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>復原</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>當你沒有其他可用裝置核准時，復原碼可在新裝置上還原此資料庫。任何持有它的人都能完整存取 — 請保密。</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>當你沒有其他可用裝置核准時，復原碼可在新裝置上還原此資料庫。任何持有它的人都能完整存取。請保密。</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>復原碼</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>顯示復原碼…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（無法使用 — 同步已連線嗎？）</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（無法使用：同步已連線嗎？）</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>連接 S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>正在連接 S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>可瀏覽 — 未加密儲存</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>可瀏覽：未加密儲存</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>儲存空間</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明 — 端對端加密</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明：端對端加密</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>中斷連線</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} 再次按下中斷連線以確認。</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>立即同步</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>你的資料庫</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>已連線</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>已儲存 — 尚無法驗證（離線）。將重試。</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>已儲存。尚無法驗證（離線）。將重試。</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>正在初始化</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>同步：未連線</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>就緒</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>同步: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>同步: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>下載</value></data>
   <data name="download.paused" xml:space="preserve"><value>已暫停</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>已加入佇列</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>就緒</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>等待識別</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>識別中…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>無法完成 — 將重試</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>無法完成。將重試</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>篩選…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>加入資料夾…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>這裡還沒有內容</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 個發行}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>總計：{size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>移除</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>從此電腦移除此資料庫及其已下載的檔案。雲端中的資料庫保持不變——您稍後可以從這裡還原它。</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此資料庫尚未同步。移除它將永久刪除其目錄——專輯、元資料編輯和播放紀錄。您資料夾中的音訊檔案不會被刪除。</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>從此電腦移除此資料庫及其已下載的檔案。雲端中的資料庫保持不變 () 您稍後可以從這裡還原它。</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此資料庫尚未同步。移除它將永久刪除其目錄 () 專輯、元資料編輯和播放紀錄。您資料夾中的音訊檔案不會被刪除。</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>從此電腦移除此資料庫</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>雲端中的資料庫保持不變——您稍後可以從歡迎畫面還原它。</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>雲端中的資料庫保持不變 () 您稍後可以從歡迎畫面還原它。</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>此資料庫從未同步過。其目錄將被永久刪除；您資料夾中的音訊檔案不會被刪除。</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>部分變更尚未上傳完成，將會遺失。</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>再次點擊按鈕以確認。</value></data>

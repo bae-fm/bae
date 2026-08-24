@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">ਰਿਕਵਰੀ ਕੋਡ ਬਣਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ।</string>
     <string name="settings_copy_recovery_code">ਕੋਡ ਕਾਪੀ ਕਰੋ</string>
     <string name="settings_remove_library">ਇਸ ਡਿਵਾਈਸ ਤੋਂ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਓ</string>
-    <string name="settings_remove_library_explanation">ਇਸ ਡਿਵਾਈਸ ਤੋਂ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫਾਈਲਾਂ ਹਟਾਉਂਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਅਣਛੁੱਤੀ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮੁੜ ਜੋੜ ਸਕਦੇ ਹੋ।</string>
+    <string name="settings_remove_library_explanation">ਇਸ ਡਿਵਾਈਸ ਤੋਂ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫਾਈਲਾਂ ਹਟਾਉਂਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਅਣਛੁੱਤੀ ਰਹਿੰਦੀ ਹੈ। ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮੁੜ ਜੋੜ ਸਕਦੇ ਹੋ।</string>
     <string name="settings_remove_library_confirm_title">ਇਸ ਡਿਵਾਈਸ ਤੋਂ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਉਣੀ ਹੈ?</string>
     <string name="settings_remove_library_confirm_body">ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਅਣਛੁੱਤੀ ਹੈ। ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮੁੜ ਜੋੜ ਸਕਦੇ ਹੋ।</string>
     <string name="settings_remove">ਹਟਾਓ</string>

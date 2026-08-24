@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">สร้างรหัสกู้คืนไม่ได้</string>
     <string name="settings_copy_recovery_code">คัดลอกรหัส</string>
     <string name="settings_remove_library">นำคลังนี้ออกจากอุปกรณ์นี้</string>
-    <string name="settings_remove_library_explanation">นำคลังนี้และไฟล์ที่ดาวน์โหลดไว้ออกจากอุปกรณ์นี้ คลังของคุณในคลาวด์จะไม่ถูกเปลี่ยนแปลง — คุณสามารถจับคู่อุปกรณ์นี้ใหม่ได้ภายหลัง</string>
+    <string name="settings_remove_library_explanation">นำคลังนี้และไฟล์ที่ดาวน์โหลดไว้ออกจากอุปกรณ์นี้ คลังของคุณในคลาวด์จะไม่ถูกเปลี่ยนแปลง คุณสามารถจับคู่อุปกรณ์นี้ใหม่ได้ภายหลัง</string>
     <string name="settings_remove_library_confirm_title">นำคลังนี้ออกจากอุปกรณ์นี้หรือไม่</string>
     <string name="settings_remove_library_confirm_body">คลังของคุณในคลาวด์จะไม่ถูกเปลี่ยนแปลง คุณสามารถจับคู่อุปกรณ์นี้ใหม่ได้ภายหลัง</string>
     <string name="settings_remove">ลบ</string>

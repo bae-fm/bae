@@ -11,7 +11,7 @@ extension BridgeIdentifyPhase {
         case .queued: String(localized: "Waiting to be identified")
         case .running: String(localized: "Identifying\u{2026}")
         case .noAnswer:
-            String(localized: "Couldn\u{2019}t complete \u{2014} will retry")
+            String(localized: "Couldn\u{2019}t complete. Will retry")
         }
     }
 }

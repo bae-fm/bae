@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Kan geen herstelcode genereren.</string>
     <string name="settings_copy_recovery_code">Code kopiëren</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
-    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek en de gedownloade bestanden van dit apparaat. Je bibliotheek in de cloud blijft ongewijzigd — je kunt dit apparaat later opnieuw koppelen.</string>
+    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek en de gedownloade bestanden van dit apparaat. Je bibliotheek in de cloud blijft ongewijzigd. Je kunt dit apparaat later opnieuw koppelen.</string>
     <string name="settings_remove_library_confirm_title">Deze bibliotheek van dit apparaat verwijderen?</string>
     <string name="settings_remove_library_confirm_body">Je bibliotheek in de cloud blijft ongewijzigd. Je kunt dit apparaat later opnieuw koppelen.</string>
     <string name="settings_remove">Verwijderen</string>

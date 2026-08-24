@@ -89,7 +89,7 @@ struct DiscogsSettingsTab: View {
                 if case .rejected = outcome {
                     saveError = String(
                         localized:
-                            "Discogs rejected this key — check it and save again."
+                            "Discogs rejected this key. Check it and save again."
                     )
                 }
                 // `.valid` / `.unvalidated` update the persisted status
@@ -174,7 +174,7 @@ struct DiscogsSettingsContent: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
-                        "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
+                        "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
                     )
                     Text(
                         "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above."
@@ -253,7 +253,7 @@ struct DiscogsSettingsContent: View {
                     Image(systemName: "exclamationmark.circle.fill")
                         .foregroundStyle(.orange)
                 }
-                Text("Saved — couldn't validate yet (offline). Will retry.")
+                Text("Saved. Couldn't validate yet (offline). Will retry.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -316,7 +316,7 @@ struct DiscogsSettingsContent: View {
             draft: .constant("bad-key"),
             status: .rejected,
             isValidating: false,
-            saveError: "Discogs rejected this key — check it and save again.",
+            saveError: "Discogs rejected this key. Check it and save again.",
             readError: nil,
             onSave: {},
             onRecheck: {},

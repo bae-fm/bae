@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">पुनर्प्राप्ती संकेत तयार करता आला नाही.</string>
     <string name="settings_copy_recovery_code">संकेत कॉपी करा</string>
     <string name="settings_remove_library">या डिव्हाइसवरून ही लायब्ररी काढा</string>
-    <string name="settings_remove_library_explanation">या डिव्हाइसवरून ही लायब्ररी आणि तिच्या डाउनलोड केलेल्या फाइल्स काढते. क्लाउडमधील तुमची लायब्ररी बदलली जात नाही — तुम्ही हे डिव्हाइस नंतर पुन्हा जोडू शकता.</string>
+    <string name="settings_remove_library_explanation">या डिव्हाइसवरून ही लायब्ररी आणि तिच्या डाउनलोड केलेल्या फाइल्स काढते. क्लाउडमधील तुमची लायब्ररी बदलली जात नाही। तुम्ही हे डिव्हाइस नंतर पुन्हा जोडू शकता.</string>
     <string name="settings_remove_library_confirm_title">या डिव्हाइसवरून ही लायब्ररी काढायची?</string>
     <string name="settings_remove_library_confirm_body">क्लाउडमधील तुमची लायब्ररी बदलली जात नाही. तुम्ही हे डिव्हाइस नंतर पुन्हा जोडू शकता.</string>
     <string name="settings_remove">काढा</string>

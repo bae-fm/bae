@@ -245,7 +245,7 @@ private fun TrackResultRow(
                 maxLines = 1,
             )
             Text(
-                text = "${track.artistName} — ${track.albumTitle}",
+                text = "${track.artistName}, ${track.albumTitle}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

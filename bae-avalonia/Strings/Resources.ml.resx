@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>ദൂരസ്ഥ കവറുകൾ എടുക്കാനായില്ല</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>കവറുകൾ എടുക്കുന്നു…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>ഈ പതിപ്പിന്റെ ചിത്രങ്ങൾ ലോഡ് ചെയ്യാനായില്ല</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>കവർ ആർട്ട് ലഭ്യമല്ല — ഇറക്കുമതി അതിന്റെ സ്ഥിര കവർ ഉപയോഗിക്കുന്നു.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>കവർ ആർട്ട് ലഭ്യമല്ല. ഇറക്കുമതി അതിന്റെ സ്ഥിര കവർ ഉപയോഗിക്കുന്നു.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>ദൂരസ്ഥ കവറുകൾ കണ്ടെത്തിയില്ല</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>ഒരു കവർ തിരഞ്ഞെടുക്കുക, അല്ലെങ്കിൽ സ്ഥിരത് ഉപയോഗിക്കാൻ തിരഞ്ഞെടുക്കാതെ വിടുക.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>പതിപ്പ് ഫയലുകൾ</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>പൊരുത്തങ്ങളില്ല</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ടോക്കൺ</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>വീണ്ടും പരിശോധിക്കുക</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ഈ കീ നിരസിച്ചു — അത് പരിശോധിച്ച് വീണ്ടും സംരക്ഷിക്കുക.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ഈ കീ നിരസിച്ചു. അത് പരിശോധിച്ച് വീണ്ടും സംരക്ഷിക്കുക.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>ടോക്കൺ നീക്കം ചെയ്യുക</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>ടോക്കൺ സംരക്ഷിക്കുക</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>കീ സംരക്ഷിക്കാനായില്ല — എന്തോ പിശക് സംഭവിച്ചു.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>കീ സംരക്ഷിക്കാനായില്ല. എന്തോ പിശക് സംഭവിച്ചു.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ടോക്കൺ</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>സാധൂകരിക്കുന്നു…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>പരിശോധിക്കുന്നു…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>കാലികം</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>ഡൗൺലോഡ് ചെയ്യുന്നു… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>പതിപ്പ് {version} തയ്യാറാണ് — അപ്‌ഡേറ്റ് ചെയ്യാൻ പുനരാരംഭിക്കുക</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>പതിപ്പ് {version} തയ്യാറാണ്. അപ്‌ഡേറ്റ് ചെയ്യാൻ പുനരാരംഭിക്കുക</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>ഇപ്പോൾ പുനരാരംഭിക്കുക</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ പരിശോധിക്കാനായില്ല</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ലൈബ്രറി ലോക്ക് ചെയ്യുക</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>വീണ്ടെടുപ്പ്</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>അംഗീകരിക്കാൻ മറ്റൊരു ഉപകരണം ലഭ്യമല്ലാത്തപ്പോൾ നിങ്ങളുടെ വീണ്ടെടുപ്പ് കോഡ് ഈ ശേഖരം പുതിയ ഉപകരണത്തിൽ പുനഃസ്ഥാപിക്കുന്നു. അത് ഉള്ള ഏവർക്കും പൂർണ്ണ പ്രവേശനമുണ്ട് — രഹസ്യമായി സൂക്ഷിക്കുക.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>അംഗീകരിക്കാൻ മറ്റൊരു ഉപകരണം ലഭ്യമല്ലാത്തപ്പോൾ നിങ്ങളുടെ വീണ്ടെടുപ്പ് കോഡ് ഈ ശേഖരം പുതിയ ഉപകരണത്തിൽ പുനഃസ്ഥാപിക്കുന്നു. അത് ഉള്ള ഏവർക്കും പൂർണ്ണ പ്രവേശനമുണ്ട്. രഹസ്യമായി സൂക്ഷിക്കുക.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>വീണ്ടെടുപ്പ് കോഡ്</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>വീണ്ടെടുപ്പ് കോഡ് കാണിക്കുക…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ലഭ്യമല്ല — സിങ്ക് ബന്ധിപ്പിച്ചിട്ടുണ്ടോ?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ലഭ്യമല്ല: സിങ്ക് ബന്ധിപ്പിച്ചിട്ടുണ്ടോ?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 ബന്ധിപ്പിക്കുക</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3-ലേക്ക് ബന്ധിപ്പിക്കുന്നു…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>ബ്രൗസ് ചെയ്യാം — എൻക്രിപ്റ്റ് ചെയ്യാതെ സൂക്ഷിച്ചിരിക്കുന്നു</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ബ്രൗസ് ചെയ്യാം: എൻക്രിപ്റ്റ് ചെയ്യാതെ സൂക്ഷിച്ചിരിക്കുന്നു</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>സംഭരണം</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>അസ്പഷ്ടം — അറ്റം മുതൽ അറ്റം വരെ എൻക്രിപ്റ്റ് ചെയ്തത്</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>അസ്പഷ്ടം: അറ്റം മുതൽ അറ്റം വരെ എൻക്രിപ്റ്റ് ചെയ്തത്</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>ബന്ധം വിച്ഛേദിക്കുക</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} സ്ഥിരീകരിക്കാൻ ബന്ധം വിച്ഛേദിക്കുക വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>ഇപ്പോൾ സിങ്ക് ചെയ്യുക</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>നിങ്ങളുടെ ശേഖരങ്ങൾ</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>ബന്ധിപ്പിച്ചു</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>സംരക്ഷിച്ചു — ഇതുവരെ സാധൂകരിക്കാനായില്ല (ഓഫ്‌ലൈൻ). വീണ്ടും ശ്രമിക്കും.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>സംരക്ഷിച്ചു. ഇതുവരെ സാധൂകരിക്കാനായില്ല (ഓഫ്‌ലൈൻ). വീണ്ടും ശ്രമിക്കും.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>ആരംഭിക്കുന്നു</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>സിങ്ക്: ബന്ധിപ്പിച്ചിട്ടില്ല</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>തയ്യാർ</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>സിങ്ക്: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>സിങ്ക്: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>ഡൗൺലോഡുകൾ</value></data>
   <data name="download.paused" xml:space="preserve"><value>താൽക്കാലികമായി നിർത്തി</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>നിരയിലാക്കി</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>തയ്യാർ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>തിരിച്ചറിയലിനായി കാത്തിരിക്കുന്നു</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>തിരിച്ചറിയുന്നു…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>പൂർത്തിയാക്കാനായില്ല — വീണ്ടും ശ്രമിക്കും</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കും</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ഫിൽട്ടർ…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ഫോൾഡർ ചേർക്കുക…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ഇവിടെ ഇതുവരെ ഒന്നുമില്ല</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# പതിപ്പ്} other {# പതിപ്പുകൾ}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>ആകെ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ പിസിയിൽ നിന്ന് നീക്കം ചെയ്യുന്നു. ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും — പിന്നീട് ഇവിടെ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ഈ ലൈബ്രറി സമന്വയിപ്പിച്ചിട്ടില്ല. ഇത് നീക്കം ചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് — ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം — ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാകില്ല.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ പിസിയിൽ നിന്ന് നീക്കം ചെയ്യുന്നു. ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും. പിന്നീട് ഇവിടെ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ഈ ലൈബ്രറി സമന്വയിപ്പിച്ചിട്ടില്ല. ഇത് നീക്കം ചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് (ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം) ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാകില്ല.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>ഈ ലൈബ്രറി ഈ പിസിയിൽ നിന്ന് നീക്കം ചെയ്യുക</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും — പിന്നീട് സ്വാഗത സ്ക്രീനിൽ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും. പിന്നീട് സ്വാഗത സ്ക്രീനിൽ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ഈ ലൈബ്രറി ഒരിക്കലും സമന്വയിപ്പിച്ചിട്ടില്ല. അതിന്റെ കാറ്റലോഗ് ശാശ്വതമായി ഇല്ലാതാകും; നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാകില്ല.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ചില മാറ്റങ്ങൾ ഇതുവരെ അപ്‌ലോഡ് പൂർത്തിയായിട്ടില്ല, അവ നഷ്ടപ്പെടും.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>സ്ഥിരീകരിക്കാൻ ബട്ടൺ വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>

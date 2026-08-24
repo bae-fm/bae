@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>uzak kapaklar alınamadı</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>kapaklar alınıyor…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>bu yayının görüntüleri yüklenemedi</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Kapak görseli yok — içe aktarım varsayılan kapağını kullanıyor.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Kapak görseli yok. Içe aktarım varsayılan kapağını kullanıyor.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Uzak kapak bulunamadı</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Bir kapak seçin veya varsayılanı kullanmak için seçmeden bırakın.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Yayın dosyaları</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>eşleşme yok</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs belirteci</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>yeniden denetle</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs bu anahtarı reddetti — kontrol edip yeniden kaydedin.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs bu anahtarı reddetti. Kontrol edip yeniden kaydedin.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>belirteci kaldır</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>belirteci kaydet</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>anahtar kaydedilemedi — bir sorun oluştu.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>anahtar kaydedilemedi. Bir sorun oluştu.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API belirteci</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Doğrulanıyor…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Yüzler arasında duraklat</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>denetleniyor…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>güncel</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>indiriliyor… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>sürüm {version} hazır — güncellemek için yeniden başlat</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>sürüm {version} hazır. Güncellemek için yeniden başlat</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Şimdi yeniden başlat</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>güncellemeler denetlenemedi</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>kitaplığı kilitle</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>kurtarma</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>onaylamak için başka cihazınız olmadığında kurtarma kodunuz bu kitaplığı yeni bir cihazda geri yükler. ona sahip olan herkes tam erişim sağlar — gizli tutun.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>onaylamak için başka cihazınız olmadığında kurtarma kodunuz bu kitaplığı yeni bir cihazda geri yükler. ona sahip olan herkes tam erişim sağlar. Gizli tutun.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>kurtarma kodu</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>kurtarma kodunu göster…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(kullanılamıyor — eşzamanlama bağlı mı?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(kullanılamıyor: eşzamanlama bağlı mı?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 bağlan</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3'e bağlanılıyor…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>göz atılabilir — şifresiz saklanır</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>göz atılabilir: şifresiz saklanır</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>Depolama</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opak — uçtan uca şifreli</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>opak: uçtan uca şifreli</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>bağlantıyı kes</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} onaylamak için bağlantıyı kes'e yeniden tıklayın.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>şimdi eşzamanla</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>kitaplıklarınız</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>bağlandı</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>kaydedildi — henüz doğrulanamadı (çevrimdışı). yeniden denenecek.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>kaydedildi. Henüz doğrulanamadı (çevrimdışı). yeniden denenecek.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>başlatılıyor</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Eşzamanlama: bağlı değil</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>hazır</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Eşzamanlama: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Eşzamanlama: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>indirmeler</value></data>
   <data name="download.paused" xml:space="preserve"><value>duraklatıldı</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>sırada</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Hazır</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Tanımlanmayı bekliyor</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Tanımlanıyor…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Tamamlanamadı — yeniden denenecek</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Tamamlanamadı. Yeniden denenecek</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrele…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Klasör Ekle…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Burada henüz bir şey yok</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# yayın} other {# yayın}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Toplam: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Kaldır</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Bu kitaplığı ve indirilen dosyalarını bu bilgisayardan kaldırır. Buluttaki kitaplığınız olduğu gibi kalır — daha sonra buradan geri yükleyebilirsiniz.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Bu kitaplık eşzamanlanmamış. Kaldırmak, kataloğunu — albümleri, üst veri düzenlemelerini ve çalma geçmişini — kalıcı olarak siler. Klasörlerinizdeki ses dosyaları silinmez.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Bu kitaplığı ve indirilen dosyalarını bu bilgisayardan kaldırır. Buluttaki kitaplığınız olduğu gibi kalır. Daha sonra buradan geri yükleyebilirsiniz.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Bu kitaplık eşzamanlanmamış. Kaldırmak, kataloğunu (albümleri, üst veri düzenlemelerini ve çalma geçmişini) kalıcı olarak siler. Klasörlerinizdeki ses dosyaları silinmez.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>bu kitaplığı bu bilgisayardan kaldır</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Buluttaki kitaplığınız olduğu gibi kalır — daha sonra karşılama ekranından geri yükleyebilirsiniz.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Buluttaki kitaplığınız olduğu gibi kalır. Daha sonra karşılama ekranından geri yükleyebilirsiniz.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Bu kitaplık hiç eşzamanlanmadı. Kataloğu kalıcı olarak silinecek; klasörlerinizdeki ses dosyaları silinmez.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Bazı değişikliklerin yüklenmesi tamamlanmadı ve kaybolacak.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Onaylamak için düğmeye tekrar tıklayın.</value></data>

@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>தொலை அட்டைகளைப் பெற முடியவில்லை</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>அட்டைகள் பெறப்படுகின்றன…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>இந்த வெளியீட்டின் படங்களை ஏற்ற முடியவில்லை</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>அட்டை கலை கிடைக்கவில்லை — இறக்குமதி அதன் இயல்புநிலை அட்டையைப் பயன்படுத்தும்.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>அட்டை கலை கிடைக்கவில்லை. இறக்குமதி அதன் இயல்புநிலை அட்டையைப் பயன்படுத்தும்.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>தொலை அட்டைகள் கிடைக்கவில்லை</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>ஒரு அட்டையைத் தேர்வு செய், அல்லது இயல்புநிலையைப் பயன்படுத்த தேர்வு செய்யாமல் விடு.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>வெளியீட்டு கோப்புகள்</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>பொருத்தங்கள் இல்லை</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs குறியீடு</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>மீண்டும் சரிபார்</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs இந்த விசையை நிராகரித்தது — சரிபார்த்து மீண்டும் சேமிக்கவும்.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs இந்த விசையை நிராகரித்தது. சரிபார்த்து மீண்டும் சேமிக்கவும்.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>குறியீட்டை நீக்கு</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>குறியீட்டை சேமி</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>விசையைச் சேமிக்க முடியவில்லை — ஏதோ தவறு ஏற்பட்டது.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>விசையைச் சேமிக்க முடியவில்லை. ஏதோ தவறு ஏற்பட்டது.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API குறியீடு</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>சரிபார்க்கப்படுகிறது…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>பக்கங்களுக்கு இடையில் இடைநிறுத்து</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>சரிபார்க்கிறது…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>புதுப்பித்த நிலையில்</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>பதிவிறக்குகிறது… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>பதிப்பு {version} தயார் — புதுப்பிக்க மீண்டும் தொடங்கவும்</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>பதிப்பு {version} தயார். புதுப்பிக்க மீண்டும் தொடங்கவும்</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>இப்போது மீண்டும் தொடங்கு</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>புதுப்பிப்புகளைச் சரிபார்க்க முடியவில்லை</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>நூலகத்தைப் பூட்டு</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>மீட்பு</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>ஒப்புதல் அளிக்க வேறு சாதனம் இல்லாதபோது, உங்கள் மீட்பு குறியீடு இந்த நூலகத்தை புதிய சாதனத்தில் மீட்டமைக்கும். அது உள்ள யாருக்கும் முழு அணுகல் இருக்கும் — அதை ரகசியமாக வைத்திருங்கள்.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ஒப்புதல் அளிக்க வேறு சாதனம் இல்லாதபோது, உங்கள் மீட்பு குறியீடு இந்த நூலகத்தை புதிய சாதனத்தில் மீட்டமைக்கும். அது உள்ள யாருக்கும் முழு அணுகல் இருக்கும். அதை ரகசியமாக வைத்திருங்கள்.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>மீட்பு குறியீடு</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>மீட்பு குறியீட்டை காட்டு…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(கிடைக்கவில்லை — ஒத்திசைவு இணைக்கப்பட்டுள்ளதா?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(கிடைக்கவில்லை: ஒத்திசைவு இணைக்கப்பட்டுள்ளதா?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 இணை</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3-க்கு இணைக்கிறது…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>உலாவக்கூடியது — குறியாக்கமின்றி சேமிக்கப்பட்டது</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>உலாவக்கூடியது: குறியாக்கமின்றி சேமிக்கப்பட்டது</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>சேமிப்பு</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>மறைநிலை — முனையிலிருந்து முனை வரை குறியாக்கப்பட்டது</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>மறைநிலை: முனையிலிருந்து முனை வரை குறியாக்கப்பட்டது</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>துண்டி</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} உறுதிப்படுத்த துண்டி என்பதை மீண்டும் கிளிக் செய்யவும்.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>இப்போது ஒத்திசை</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>உங்கள் நூலகங்கள்</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>இணைக்கப்பட்டது</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>சேமிக்கப்பட்டது — இன்னும் சரிபார்க்க முடியவில்லை (இணையமில்லை). மீண்டும் முயற்சிக்கும்.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>சேமிக்கப்பட்டது. இன்னும் சரிபார்க்க முடியவில்லை (இணையமில்லை). மீண்டும் முயற்சிக்கும்.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>தொடங்கப்படுகிறது</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>ஒத்திசைவு: இணைக்கப்படவில்லை</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>தயார்</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>ஒத்திசைவு: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>ஒத்திசைவு: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>பதிவிறக்கங்கள்</value></data>
   <data name="download.paused" xml:space="preserve"><value>இடைநிறுத்தப்பட்டது</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>வரிசையில்</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>தயார்</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>அடையாளம் காண காத்திருக்கிறது</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>முடிக்க முடியவில்லை — மீண்டும் முயற்சிக்கப்படும்</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கப்படும்</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>வடிகட்டு…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>கோப்புறையைச் சேர்…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>இங்கு இன்னும் எதுவும் இல்லை</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# வெளியீடு} other {# வெளியீடுகள்}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>மொத்தம்: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>அகற்று</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>இந்த நூலகத்தையும் அதன் பதிவிறக்கம் செய்யப்பட்ட கோப்புகளையும் இந்த பிசியிலிருந்து அகற்றுகிறது. மேகக்கணிப்பில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — நீங்கள் பின்னர் இங்கிருந்து அதை மீட்டெடுக்கலாம்.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>இந்த நூலகம் ஒத்திசைக்கப்படவில்லை. இதை அகற்றுவது அதன் பட்டியலை — ஆல்பங்கள், மேலான்ம தரவு திருத்தங்கள் மற்றும் இயக்க வரலாறு — நிரந்தரமாக நீக்கிவிடும். உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>இந்த நூலகத்தையும் அதன் பதிவிறக்கம் செய்யப்பட்ட கோப்புகளையும் இந்த பிசியிலிருந்து அகற்றுகிறது. மேகக்கணிப்பில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும். நீங்கள் பின்னர் இங்கிருந்து அதை மீட்டெடுக்கலாம்.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>இந்த நூலகம் ஒத்திசைக்கப்படவில்லை. இதை அகற்றுவது அதன் பட்டியலை (ஆல்பங்கள், மேலான்ம தரவு திருத்தங்கள் மற்றும் இயக்க வரலாறு) நிரந்தரமாக நீக்கிவிடும். உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>இந்த நூலகத்தை இந்த பிசியிலிருந்து அகற்று</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>மேகக்கணிப்பில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — நீங்கள் பின்னர் வரவேற்பு திரையிலிருந்து அதை மீட்டெடுக்கலாம்.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>மேகக்கணிப்பில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும். நீங்கள் பின்னர் வரவேற்பு திரையிலிருந்து அதை மீட்டெடுக்கலாம்.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>இந்த நூலகம் ஒருபோதும் ஒத்திசைக்கப்படவில்லை. அதன் பட்டியல் நிரந்தரமாக நீக்கப்படும்; உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>சில மாற்றங்கள் இன்னும் பதிவேற்றம் முடிக்கவில்லை, அவை இழக்கப்படும்.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>உறுதிப்படுத்த பொத்தானை மீண்டும் கிளிக் செய்யவும்.</value></data>

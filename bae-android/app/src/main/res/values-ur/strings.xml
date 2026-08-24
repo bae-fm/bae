@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">بازیابی رمز نہیں بن سکی۔</string>
     <string name="settings_copy_recovery_code">رمز نقل کریں</string>
     <string name="settings_remove_library">یہ لائبریری اس آلے سے ہٹائیں</string>
-    <string name="settings_remove_library_explanation">یہ اس لائبریری اور اس کی ڈاؤن لوڈ شدہ فائلوں کو اس آلے سے ہٹاتا ہے۔ کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے — آپ بعد میں اس آلے کو دوبارہ جوڑ سکتے ہیں۔</string>
+    <string name="settings_remove_library_explanation">یہ اس لائبریری اور اس کی ڈاؤن لوڈ شدہ فائلوں کو اس آلے سے ہٹاتا ہے۔ کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے۔ آپ بعد میں اس آلے کو دوبارہ جوڑ سکتے ہیں۔</string>
     <string name="settings_remove_library_confirm_title">یہ لائبریری اس آلے سے ہٹائیں؟</string>
     <string name="settings_remove_library_confirm_body">کلاؤڈ میں آپ کی لائبریری برقرار ہے۔ آپ بعد میں اس آلے کو دوبارہ جوڑ سکتے ہیں۔</string>
     <string name="settings_remove">ہٹائیں</string>

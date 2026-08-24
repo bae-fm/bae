@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Impossible de générer un code de récupération.</string>
     <string name="settings_copy_recovery_code">Copier le code</string>
     <string name="settings_remove_library">Supprimer cette bibliothèque de cet appareil</string>
-    <string name="settings_remove_library_explanation">Supprime cette bibliothèque et ses fichiers téléchargés de cet appareil. Votre bibliothèque dans le cloud n\'est pas touchée — vous pourrez réassocier cet appareil plus tard.</string>
+    <string name="settings_remove_library_explanation">Supprime cette bibliothèque et ses fichiers téléchargés de cet appareil. Votre bibliothèque dans le cloud n\'est pas touchée. Vous pourrez réassocier cet appareil plus tard.</string>
     <string name="settings_remove_library_confirm_title">Supprimer cette bibliothèque de cet appareil ?</string>
     <string name="settings_remove_library_confirm_body">Votre bibliothèque dans le cloud n\'est pas touchée. Vous pourrez réassocier cet appareil plus tard.</string>
     <string name="settings_remove">Supprimer</string>

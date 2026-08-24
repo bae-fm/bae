@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>nije moguće dohvatiti udaljene omote</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>dohvaćanje omota…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>nije moguće učitati slike ovog izdanja</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Nema dostupnog omota — uvoz koristi svoj zadani omot.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Nema dostupnog omota. Uvoz koristi svoj zadani omot.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Nisu pronađeni udaljeni omoti</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Odaberite omot ili ostavite neoznačeno za korištenje zadanog.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Datoteke izdanja</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>nema podudaranja</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>ponovno provjeri</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs je odbio ovaj ključ — provjerite ga i ponovno spremite.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs je odbio ovaj ključ. Provjerite ga i ponovno spremite.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>ukloni token</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>spremi token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>nije moguće spremiti ključ — nešto je pošlo po zlu.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>nije moguće spremiti ključ. Nešto je pošlo po zlu.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Provjera…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza između strana</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>provjeravam…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>ažurno</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>preuzimam… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>verzija {version} je spremna — ponovno pokreni za ažuriranje</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>verzija {version} je spremna. Ponovno pokreni za ažuriranje</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Ponovno pokreni sada</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>nije moguće provjeriti ažuriranja</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>zaključaj fonoteku</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>oporavak</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>vaš kod za oporavak vraća ovu fonoteku na novi uređaj kada nemate drugi uređaj dostupan za odobravanje. svatko tko ga ima ima puni pristup — čuvajte ga tajnim.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>vaš kod za oporavak vraća ovu fonoteku na novi uređaj kada nemate drugi uređaj dostupan za odobravanje. svatko tko ga ima ima puni pristup. Čuvajte ga tajnim.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>kod za oporavak</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>prikaži kod za oporavak…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(nedostupno — je li sinkronizacija povezana?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(nedostupno: je li sinkronizacija povezana?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>poveži S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>povezivanje s S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>pregledivo — pohranjeno bez šifriranja</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>pregledivo: pohranjeno bez šifriranja</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>pohrana</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>nečitljivo — šifrirano s kraja na kraj</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>nečitljivo: šifrirano s kraja na kraj</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>prekini vezu</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} kliknite prekini vezu ponovno za potvrdu.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>sinkroniziraj sada</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>vaše fonoteke</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>povezano</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>spremljeno — provjera još nije moguća (izvanmrežno). pokušat će ponovno.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>spremljeno. Provjera još nije moguća (izvanmrežno). pokušat će ponovno.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>inicijalizacija</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Sinkronizacija: nije povezano</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>spremno</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Sinkronizacija: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Sinkronizacija: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>preuzimanja</value></data>
   <data name="download.paused" xml:space="preserve"><value>pauzirano</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>u redu čekanja</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Spremno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeka identifikaciju</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifikacija…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Nije se moglo dovršiti — pokušat ćemo ponovno</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Nije se moglo dovršiti. Pokušat ćemo ponovno</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtriraj…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Dodaj mapu…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Ovdje još nema ničega</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# izdanje} few {# izdanja} other {# izdanja}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Ukupno: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Ukloni</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Uklanja ovu fonoteku i njezine preuzete datoteke s ovog računala. Vaša fonoteka u oblaku ostaje netaknuta — kasnije je možete obnoviti odavde.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ova fonoteka nije sinkronizirana. Njezinim uklanjanjem trajno se briše njezin katalog — albumi, izmjene metapodataka i povijest reprodukcije. Audiodatoteke u vašim mapama neće biti izbrisane.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Uklanja ovu fonoteku i njezine preuzete datoteke s ovog računala. Vaša fonoteka u oblaku ostaje netaknuta. Kasnije je možete obnoviti odavde.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ova fonoteka nije sinkronizirana. Njezinim uklanjanjem trajno se briše njezin katalog. Albumi, izmjene metapodataka i povijest reprodukcije. Audiodatoteke u vašim mapama neće biti izbrisane.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>ukloni ovu fonoteku s ovog računala</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Vaša fonoteka u oblaku ostaje netaknuta — kasnije je možete obnoviti s početnog zaslona.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Vaša fonoteka u oblaku ostaje netaknuta. Kasnije je možete obnoviti s početnog zaslona.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Ova fonoteka nikada nije bila sinkronizirana. Njezin katalog bit će trajno izbrisan; audiodatoteke u vašim mapama neće biti izbrisane.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Neke se promjene još nisu dovršile prijenos i bit će izgubljene.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Ponovno kliknite gumb za potvrdu.</value></data>

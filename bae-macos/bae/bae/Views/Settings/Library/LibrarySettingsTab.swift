@@ -187,12 +187,12 @@ struct LibrarySettingsTab: View {
         if configStore.config.hasCloudHome {
             return String(
                 localized:
-                    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched — you can restore it here later."
+                    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched. You can restore it here later."
             )
         }
         return String(
             localized:
-                "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted."
+                "This library isn't synced. Removing it permanently deletes its catalog: albums, metadata edits, and play history. Audio files in your folders aren't deleted."
         )
     }
 
@@ -307,7 +307,7 @@ private struct RecoveryCodeSection: View {
     var body: some View {
         Section("Recovery") {
             Text(
-                "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access — keep it secret."
+                "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

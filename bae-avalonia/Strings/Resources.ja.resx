@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>リモートカバーを取得できませんでした</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>カバーを取得中…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>このリリースの画像を読み込めませんでした</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>利用可能なカバーアートがありません — 取り込みはデフォルトのカバーを使用します。</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>利用可能なカバーアートがありません。取り込みはデフォルトのカバーを使用します。</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>リモートカバーが見つかりませんでした</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>カバーを選択するか、未選択のままにしてデフォルトを使用してください。</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>リリースファイル</value></data>
@@ -168,7 +168,7 @@
   <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogsがこのキーを拒否しました。確認してもう一度保存してください。</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>トークンを削除</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>トークンを保存</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>キーを保存できませんでした — 問題が発生しました。</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>キーを保存できませんでした。問題が発生しました。</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs APIトークン</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>検証中…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面の間で一時停止</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>確認中…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>最新です</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>ダウンロード中… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>バージョン {version} の準備ができました — 再起動して更新</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>バージョン {version} の準備ができました。再起動して更新</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>今すぐ再起動</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>アップデートを確認できませんでした</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ライブラリをロック</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>リカバリー</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>承認に使えるほかのデバイスがないとき、リカバリーコードでこのライブラリを新しいデバイスに復元できます。これを持つ人は誰でも完全にアクセスできます — 秘密にしてください。</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>承認に使えるほかのデバイスがないとき、リカバリーコードでこのライブラリを新しいデバイスに復元できます。これを持つ人は誰でも完全にアクセスできます。秘密にしてください。</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>リカバリーコード</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>リカバリーコードを表示…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（利用できません — 同期は接続されていますか？）</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（利用できません：同期は接続されていますか？）</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3に接続</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3に接続中…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>閲覧可能 — 暗号化せずに保存</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>閲覧可能：暗号化せずに保存</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>ストレージ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明 — エンドツーエンド暗号化</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明：エンドツーエンド暗号化</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>切断</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} 確認するにはもう一度切断をクリックしてください。</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>今すぐ同期</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>ライブラリ</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>接続済み</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>保存しました — まだ検証できません（オフライン）。再試行します。</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>保存しました。まだ検証できません（オフライン）。再試行します。</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>初期化中</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>同期: 未接続</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>準備完了</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>同期: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>同期: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>ダウンロード</value></data>
   <data name="download.paused" xml:space="preserve"><value>一時停止中</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>待機中</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>準備完了</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>識別待ち</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>識別中…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>完了できませんでした — 後で再試行します</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>完了できませんでした。後で再試行します</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>絞り込み…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>フォルダを追加…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>まだ何もありません</value></data>

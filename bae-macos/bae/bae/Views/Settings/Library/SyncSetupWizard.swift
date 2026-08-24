@@ -317,9 +317,9 @@ struct SyncSetupWizard: View {
     private var storageSection: some View {
         Section("Storage") {
             Picker("Storage", selection: $storage) {
-                Text("Opaque — end-to-end encrypted")
+                Text("Opaque: end-to-end encrypted")
                     .tag(BridgeHomeStorage.opaque)
-                Text("Browsable — stored unencrypted")
+                Text("Browsable: stored unencrypted")
                     .tag(BridgeHomeStorage.browsable)
             }
             .pickerStyle(.inline)

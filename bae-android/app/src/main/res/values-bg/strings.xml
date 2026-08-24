@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Не можа да бъде генериран код за възстановяване.</string>
     <string name="settings_copy_recovery_code">Копиране на кода</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
-    <string name="settings_remove_library_explanation">Премахва тази библиотека и изтеглените ѝ файлове от това устройство. Библиотеката ви в облака остава непокътната — можете да сдвоите това устройство отново по-късно.</string>
+    <string name="settings_remove_library_explanation">Премахва тази библиотека и изтеглените ѝ файлове от това устройство. Библиотеката ви в облака остава непокътната. Можете да сдвоите това устройство отново по-късно.</string>
     <string name="settings_remove_library_confirm_title">Премахване на тази библиотека от това устройство?</string>
     <string name="settings_remove_library_confirm_body">Библиотеката ви в облака остава непокътната. Можете да сдвоите това устройство отново по-късно.</string>
     <string name="settings_remove">Премахване</string>

@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>ದೂರಸ್ಥ ಮುಖಪುಟಗಳನ್ನು ತರಲಾಗಲಿಲ್ಲ</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>ಕವರ್‌ಗಳನ್ನು ತರುತ್ತಿದೆ…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>ಈ ಬಿಡುಗಡೆಯ ಚಿತ್ರಗಳು ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>ಕವರ್ ಚಿತ್ರ ಲಭ್ಯವಿಲ್ಲ — ಆಮದು ತನ್ನ ಡೀಫಾಲ್ಟ್ ಕವರ್ ಬಳಸುತ್ತದೆ.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>ಕವರ್ ಚಿತ್ರ ಲಭ್ಯವಿಲ್ಲ. ಆಮದು ತನ್ನ ಡೀಫಾಲ್ಟ್ ಕವರ್ ಬಳಸುತ್ತದೆ.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>ದೂರಸ್ಥ ಮುಖಪುಟಗಳು ಸಿಕ್ಕಿಲ್ಲ</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>ಕವರ್ ಆಯ್ಕೆಮಾಡಿ, ಅಥವಾ ಡೀಫಾಲ್ಟ್ ಬಳಸಲು ಆಯ್ಕೆಮಾಡದೆ ಬಿಡಿ.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಕಡತಗಳು</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆಗಳಿಲ್ಲ</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ಟೋಕನ್</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>ಮರುಪರಿಶೀಲಿಸಿ</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ಈ ಕೀ ತಿರಸ್ಕರಿಸಿದೆ — ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಉಳಿಸಿ.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ಈ ಕೀ ತಿರಸ್ಕರಿಸಿದೆ. ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಉಳಿಸಿ.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>ಟೋಕನ್ ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>ಟೋಕನ್ ಉಳಿಸಿ</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ಕೀ ಉಳಿಸಲಾಗಲಿಲ್ಲ — ಏನೋ ತಪ್ಪಾಗಿದೆ.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ಕೀ ಉಳಿಸಲಾಗಲಿಲ್ಲ. ಏನೋ ತಪ್ಪಾಗಿದೆ.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ಟೋಕನ್</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>ಮಾನ್ಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>ಅಪ್‌ಟುಡೇಟ್</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>ಡೌನ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>ಆವೃತ್ತಿ {version} ಸಿದ್ಧವಾಗಿದೆ — ನವೀಕರಿಸಲು ಮರುಪ್ರಾರಂಭಿಸಿ</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>ಆವೃತ್ತಿ {version} ಸಿದ್ಧವಾಗಿದೆ. ನವೀಕರಿಸಲು ಮರುಪ್ರಾರಂಭಿಸಿ</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>ಈಗ ಮರುಪ್ರಾರಂಭಿಸಿ</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>ನವೀಕರಣಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಮಾಡಿ</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>ಮರುಪಡೆಯುವಿಕೆ</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>ಅನುಮೋದಿಸಲು ಬೇರೆ ಸಾಧನ ಲಭ್ಯವಿಲ್ಲದಾಗ, ನಿಮ್ಮ ಮರುಪಡೆಯುವ ಕೋಡ್ ಈ ಲೈಬ್ರರಿಯನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಅದಿರುವ ಯಾರಿಗಾದರೂ ಪೂರ್ಣ ಪ್ರವೇಶವಿರುತ್ತದೆ — ಅದನ್ನು ರಹಸ್ಯವಾಗಿಡಿ.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ಅನುಮೋದಿಸಲು ಬೇರೆ ಸಾಧನ ಲಭ್ಯವಿಲ್ಲದಾಗ, ನಿಮ್ಮ ಮರುಪಡೆಯುವ ಕೋಡ್ ಈ ಲೈಬ್ರರಿಯನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಅದಿರುವ ಯಾರಿಗಾದರೂ ಪೂರ್ಣ ಪ್ರವೇಶವಿರುತ್ತದೆ. ಅದನ್ನು ರಹಸ್ಯವಾಗಿಡಿ.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>ಮರುಪಡೆಯುವ ಕೋಡ್</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>ಮರುಪಡೆಯುವ ಕೋಡ್ ತೋರಿಸಿ…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ಲಭ್ಯವಿಲ್ಲ — ಸಿಂಕ್ ಸಂಪರ್ಕಗೊಂಡಿದೆಯೇ?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ಲಭ್ಯವಿಲ್ಲ: ಸಿಂಕ್ ಸಂಪರ್ಕಗೊಂಡಿದೆಯೇ?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 ಸಂಪರ್ಕಿಸಿ</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3 ಗೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>ಬ್ರೌಸ್ ಮಾಡಬಹುದಾದುದು — ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡದೆ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ಬ್ರೌಸ್ ಮಾಡಬಹುದಾದುದು: ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡದೆ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>ಅಪಾರದರ್ಶಕ — ತುದಿಯಿಂದ ತುದಿಗೆ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಲಾಗಿದೆ</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>ಅಪಾರದರ್ಶಕ: ತುದಿಯಿಂದ ತುದಿಗೆ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಲಾಗಿದೆ</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} ದೃಢೀಕರಿಸಲು ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ ಅನ್ನು ಮತ್ತೆ ಕ್ಲಿಕ್ ಮಾಡಿ.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>ಈಗ ಸಿಂಕ್ ಮಾಡಿ</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿಗಳು</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>ಸಂಪರ್ಕಗೊಂಡಿದೆ</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>ಉಳಿಸಲಾಗಿದೆ — ಇನ್ನೂ ಮಾನ್ಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ (ಆಫ್‌ಲೈನ್). ಮರುಪ್ರಯತ್ನಿಸುತ್ತದೆ.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>ಉಳಿಸಲಾಗಿದೆ. ಇನ್ನೂ ಮಾನ್ಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ (ಆಫ್‌ಲೈನ್). ಮರುಪ್ರಯತ್ನಿಸುತ್ತದೆ.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>ಪ್ರಾರಂಭಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>ಸಿಂಕ್: ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>ಸಿಂಕ್: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>ಸಿಂಕ್: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>ಡೌನ್‌ಲೋಡ್‌ಗಳು</value></data>
   <data name="download.paused" xml:space="preserve"><value>ವಿರಾಮದಲ್ಲಿದೆ</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>ಸಾಲಿನಲ್ಲಿ ಇದೆ</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಗೆ ಕಾಯುತ್ತಿದೆ</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>ಪೂರ್ಣಗೊಳಿಸಲಾಗಲಿಲ್ಲ — ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುವುದು</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>ಪೂರ್ಣಗೊಳಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುವುದು</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ಫಿಲ್ಟರ್…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ಸೇರಿಸಿ…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ಇಲ್ಲಿ ಇನ್ನೂ ಏನೂ ಇಲ್ಲ</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# ಬಿಡುಗಡೆ} other {# ಬಿಡುಗಡೆಗಳು}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>ಒಟ್ಟು: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ಈ ಪಿಸಿಯಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿ ಹಾಗೆಯೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ನಂತರ ಇಲ್ಲಿಂದ ಅದನ್ನು ಪುನಃಸ್ಥಾಪಿಸಬಹುದು.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಸಿಂಕ್ ಆಗಿಲ್ಲ. ಇದನ್ನು ತೆಗೆದುಹಾಕುವುದರಿಂದ ಅದರ ಕ್ಯಾಟಲಾಗ್ — ಆಲ್ಬಮ್‌ಗಳು, ಮೆಟಾಡೇಟಾ ಬದಲಾವಣೆಗಳು ಮತ್ತು ಪ್ಲೇ ಇತಿಹಾಸ — ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಿಹೋಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲ್ಪಡುವುದಿಲ್ಲ.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ಈ ಪಿಸಿಯಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿ ಹಾಗೆಯೇ ಉಳಿಯುತ್ತದೆ. ನೀವು ನಂತರ ಇಲ್ಲಿಂದ ಅದನ್ನು ಪುನಃಸ್ಥಾಪಿಸಬಹುದು.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಸಿಂಕ್ ಆಗಿಲ್ಲ. ಇದನ್ನು ತೆಗೆದುಹಾಕುವುದರಿಂದ ಅದರ ಕ್ಯಾಟಲಾಗ್ (ಆಲ್ಬಮ್‌ಗಳು, ಮೆಟಾಡೇಟಾ ಬದಲಾವಣೆಗಳು ಮತ್ತು ಪ್ಲೇ ಇತಿಹಾಸ) ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಿಹೋಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲ್ಪಡುವುದಿಲ್ಲ.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿಯನ್ನು ಈ ಪಿಸಿಯಿಂದ ತೆಗೆದುಹಾಕಿ</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿ ಹಾಗೆಯೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ನಂತರ ಸ್ವಾಗತ ಪರದೆಯಿಂದ ಅದನ್ನು ಪುನಃಸ್ಥಾಪಿಸಬಹುದು.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿ ಹಾಗೆಯೇ ಉಳಿಯುತ್ತದೆ. ನೀವು ನಂತರ ಸ್ವಾಗತ ಪರದೆಯಿಂದ ಅದನ್ನು ಪುನಃಸ್ಥಾಪಿಸಬಹುದು.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಎಂದಿಗೂ ಸಿಂಕ್ ಆಗಿಲ್ಲ. ಅದರ ಕ್ಯಾಟಲಾಗ್ ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಿಹೋಗುತ್ತದೆ; ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲ್ಪಡುವುದಿಲ್ಲ.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ಕೆಲವು ಬದಲಾವಣೆಗಳು ಇನ್ನೂ ಅಪ್‌ಲೋಡ್ ಮುಗಿಸಿಲ್ಲ ಮತ್ತು ಕಳೆದುಹೋಗುತ್ತವೆ.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>ದೃಢೀಕರಿಸಲು ಬಟನ್ ಅನ್ನು ಮತ್ತೆ ಕ್ಲಿಕ್ ಮಾಡಿ.</value></data>

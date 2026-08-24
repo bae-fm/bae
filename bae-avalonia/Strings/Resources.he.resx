@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>לא ניתן לאחזר עטיפות מרוחקות</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>מאחזר עטיפות…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>לא ניתן לטעון את התמונות של המהדורה הזו</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>אין עטיפה זמינה — הייבוא משתמש בעטיפת ברירת המחדל שלו.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>אין עטיפה זמינה. הייבוא משתמש בעטיפת ברירת המחדל שלו.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>לא נמצאו עטיפות מרוחקות</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>בחרו עטיפה, או השאירו ללא בחירה כדי להשתמש בברירת המחדל.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>קבצי המהדורה</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>אין התאמות</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>אסימון Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>בדוק מחדש</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs דחה את המפתח הזה — בדקו אותו ושמרו שוב.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs דחה את המפתח הזה. בדקו אותו ושמרו שוב.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>הסר אסימון</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>שמור אסימון</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>לא ניתן לשמור את המפתח — משהו השתבש.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>לא ניתן לשמור את המפתח. משהו השתבש.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>אסימון API של Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>מאמת…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>השהיה בין צדדים</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>בודק…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>מעודכן</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>מוריד… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>גרסה {version} מוכנה — הפעל מחדש כדי לעדכן</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>גרסה {version} מוכנה. הפעל מחדש כדי לעדכן</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>הפעל מחדש עכשיו</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>לא ניתן היה לבדוק עדכונים</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>נעל ספרייה</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>שחזור</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>קוד השחזור שלך משחזר את הספרייה הזו במכשיר חדש כשאין לך מכשיר אחר זמין לאישור. לכל מי שיש אותו יש גישה מלאה — שמרו עליו סודי.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>קוד השחזור שלך משחזר את הספרייה הזו במכשיר חדש כשאין לך מכשיר אחר זמין לאישור. לכל מי שיש אותו יש גישה מלאה. שמרו עליו סודי.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>קוד שחזור</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>הצג קוד שחזור…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(לא זמין — האם הסנכרון מחובר?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(לא זמין: האם הסנכרון מחובר?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>התחבר ל-S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>מתחבר ל-S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>ניתן לעיון — מאוחסן ללא הצפנה</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ניתן לעיון: מאוחסן ללא הצפנה</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>אחסון</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>אטום — מוצפן מקצה לקצה</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>אטום: מוצפן מקצה לקצה</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>התנתק</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} לחצו שוב על התנתק כדי לאשר.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>סנכרן כעת</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>הספריות שלכם</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>מחובר</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>נשמר — לא ניתן לאמת עדיין (לא מקוון). ינסה שוב.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>נשמר. לא ניתן לאמת עדיין (לא מקוון). ינסה שוב.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>מאתחל</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>סנכרון: לא מחובר</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>מוכן</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>סנכרון: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>סנכרון: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>הורדות</value></data>
   <data name="download.paused" xml:space="preserve"><value>מושהה</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>בתור</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>מוכן</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ממתין לזיהוי</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>מזהה…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>לא הצליח להשלים — ננסה שוב</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>לא הצליח להשלים. ננסה שוב</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>סינון…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>הוספת תיקייה…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>אין כאן עדיין כלום</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {הוצאה #} two {# הוצאות} many {# הוצאות} other {# הוצאות}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>סה״כ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>הסרה</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>מסיר ספרייה זו ואת הקבצים שהורדו שלה ממחשב זה. הספרייה שלך בענן נשארת ללא פגע — תוכל לשחזר אותה מכאן מאוחר יותר.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ספרייה זו אינה מסונכרנת. הסרתה תמחק לצמיתות את הקטלוג שלה — אלבומים, עריכות מטא-נתונים והיסטוריית ניגון. קובצי השמע בתיקיות שלך לא יימחקו.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>מסיר ספרייה זו ואת הקבצים שהורדו שלה ממחשב זה. הספרייה שלך בענן נשארת ללא פגע. תוכל לשחזר אותה מכאן מאוחר יותר.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ספרייה זו אינה מסונכרנת. הסרתה תמחק לצמיתות את הקטלוג שלה. אלבומים, עריכות מטא-נתונים והיסטוריית ניגון. קובצי השמע בתיקיות שלך לא יימחקו.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>הסר ספרייה זו ממחשב זה</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>הספרייה שלך בענן נשארת ללא פגע — תוכל לשחזר אותה ממסך הפתיחה מאוחר יותר.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>הספרייה שלך בענן נשארת ללא פגע. תוכל לשחזר אותה ממסך הפתיחה מאוחר יותר.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ספרייה זו מעולם לא סונכרנה. הקטלוג שלה יימחק לצמיתות; קובצי השמע בתיקיות שלך לא יימחקו.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>חלק מהשינויים עדיין לא סיימו להעלות ויאבדו.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>לחץ שוב על הכפתור כדי לאשר.</value></data>

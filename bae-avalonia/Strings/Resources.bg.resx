@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>отдалечените обложки не могат да бъдат извлечени</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>извличане на обложки…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>изображенията на това издание не могат да бъдат заредени</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Няма налична обложка — внасянето използва обложката по подразбиране.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Няма налична обложка. Внасянето използва обложката по подразбиране.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Не са намерени отдалечени обложки</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Изберете обложка или оставете неизбрано, за да използвате тази по подразбиране.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Файлове на изданието</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>няма съвпадения</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs токен</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>повторна проверка</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs отхвърли този ключ — проверете го и запазете отново.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs отхвърли този ключ. Проверете го и запазете отново.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>премахване на токена</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>запазване на токена</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ключът не може да бъде запазен — нещо се обърка.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ключът не може да бъде запазен. Нещо се обърка.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API токен</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Потвърждаване…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза между страните</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>проверява се…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>актуално</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>изтегля се… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>версия {version} е готова — рестартирайте, за да обновите</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>версия {version} е готова. Рестартирайте, за да обновите</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Рестартиране сега</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>неуспешна проверка за актуализации</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>заключване на библиотеката</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>възстановяване</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>кодът ви за възстановяване възстановява тази библиотека на ново устройство, когато нямате друго устройство, с което да го одобрите. всеки с него има пълен достъп — пазете го в тайна.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>кодът ви за възстановяване възстановява тази библиотека на ново устройство, когато нямате друго устройство, с което да го одобрите. всеки с него има пълен достъп. Пазете го в тайна.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>код за възстановяване</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>показване на код за възстановяване…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(недостъпно — синхронизацията свързана ли е?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(недостъпно: синхронизацията свързана ли е?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>свързване с S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>свързване с S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>за преглед — съхранено нешифровано</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>за преглед: съхранено нешифровано</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>хранилище</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>непрозрачно — шифровано от край до край</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>непрозрачно: шифровано от край до край</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>прекъсване на връзката</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} щракнете отново върху „Прекъсване на връзката“ за потвърждение.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>синхронизиране сега</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>вашите библиотеки</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>свързано</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>запазено — все още не може да се потвърди (офлайн). ще се опита отново.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>запазено. Все още не може да се потвърди (офлайн). ще се опита отново.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>инициализиране</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Синхронизиране: не е свързано</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>готово</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Синхронизиране: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Синхронизиране: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>изтегляния</value></data>
   <data name="download.paused" xml:space="preserve"><value>на пауза</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>на опашка</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Готово</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Чака идентифициране</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Идентифициране…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Не успя да завърши — ще опита отново</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Не успя да завърши. Ще опита отново</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Филтриране…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Добавяне на папка…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Още няма нищо</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# издание} other {# издания}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Общо: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Премахване</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Премахва тази библиотека и изтеглените ѝ файлове от този компютър. Библиотеката ви в облака остава непокътната — можете да я възстановите оттук по-късно.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Тази библиотека не е синхронизирана. Премахването ѝ изтрива завинаги каталога ѝ — албуми, редакции на метаданни и история на възпроизвеждане. Аудио файловете в папките ви няма да бъдат изтрити.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Премахва тази библиотека и изтеглените ѝ файлове от този компютър. Библиотеката ви в облака остава непокътната. Можете да я възстановите оттук по-късно.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Тази библиотека не е синхронизирана. Премахването ѝ изтрива завинаги каталога ѝ. Албуми, редакции на метаданни и история на възпроизвеждане. Аудио файловете в папките ви няма да бъдат изтрити.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>премахване на тази библиотека от този компютър</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Библиотеката ви в облака остава непокътната — можете да я възстановите от началния екран по-късно.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Библиотеката ви в облака остава непокътната. Можете да я възстановите от началния екран по-късно.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Тази библиотека никога не е била синхронизирана. Каталогът ѝ ще бъде изтрит завинаги; аудио файловете в папките ви няма да бъдат изтрити.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Някои промени все още не са качени и ще бъдат загубени.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натиснете бутона отново, за да потвърдите.</value></data>

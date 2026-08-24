@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>దూరస్థ కవర్‌లను తెచ్చుకోలేకపోయింది</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>కవర్‌లు తెస్తోంది…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>ఈ విడుదల చిత్రాలను లోడ్ చేయలేకపోయింది</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>కవర్ ఆర్ట్ అందుబాటులో లేదు — దిగుమతి దాని డిఫాల్ట్ కవర్‌ను ఉపయోగిస్తుంది.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>కవర్ ఆర్ట్ అందుబాటులో లేదు. దిగుమతి దాని డిఫాల్ట్ కవర్‌ను ఉపయోగిస్తుంది.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>దూరస్థ కవర్‌లు కనబడలేదు</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>కవర్‌ను ఎంచుకోండి, లేదా డిఫాల్ట్ ఉపయోగించడానికి ఎంపిక చేయకుండా వదిలేయండి.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>విడుదల ఫైల్‌లు</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>సరిపోలికలు లేవు</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs టోకెన్</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>మళ్లీ తనిఖీ చేయి</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ఈ కీని తిరస్కరించింది — దాన్ని తనిఖీ చేసి మళ్లీ సేవ్ చేయండి.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ఈ కీని తిరస్కరించింది. దాన్ని తనిఖీ చేసి మళ్లీ సేవ్ చేయండి.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>టోకెన్ తీసివేయి</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>టోకెన్ సేవ్ చేయి</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>కీని సేవ్ చేయలేకపోయింది — ఏదో తప్పు జరిగింది.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>కీని సేవ్ చేయలేకపోయింది. ఏదో తప్పు జరిగింది.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API టోకెన్</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>ధృవీకరిస్తోంది…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>వైపుల మధ్య విరామం</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>తనిఖీ చేస్తోంది…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>తాజాగా ఉంది</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>డౌన్‌లోడ్ అవుతోంది… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>సంస్కరణ {version} సిద్ధంగా ఉంది — నవీకరించడానికి పునఃప్రారంభించండి</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>సంస్కరణ {version} సిద్ధంగా ఉంది. నవీకరించడానికి పునఃప్రారంభించండి</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>ఇప్పుడు పునఃప్రారంభించండి</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>నవీకరణల కోసం తనిఖీ చేయలేకపోయాం</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>లైబ్రరీని లాక్ చేయండి</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>రికవరీ</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>ఆమోదించడానికి మీ దగ్గర ఇతర పరికరం లేనప్పుడు, మీ రికవరీ కోడ్ ఈ లైబ్రరీని కొత్త పరికరంలో పునరుద్ధరిస్తుంది. అది ఉన్న ఎవరికైనా పూర్తి యాక్సెస్ ఉంటుంది — దాన్ని రహస్యంగా ఉంచండి.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ఆమోదించడానికి మీ దగ్గర ఇతర పరికరం లేనప్పుడు, మీ రికవరీ కోడ్ ఈ లైబ్రరీని కొత్త పరికరంలో పునరుద్ధరిస్తుంది. అది ఉన్న ఎవరికైనా పూర్తి యాక్సెస్ ఉంటుంది. దాన్ని రహస్యంగా ఉంచండి.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>రికవరీ కోడ్</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>రికవరీ కోడ్ చూపించు…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(అందుబాటులో లేదు — సింక్ కనెక్ట్ అయిందా?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(అందుబాటులో లేదు: సింక్ కనెక్ట్ అయిందా?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 కనెక్ట్ చేయి</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3కు కనెక్ట్ అవుతోంది…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>బ్రౌజ్ చేయదగినది — ఎన్‌క్రిప్ట్ చేయకుండా నిల్వ చేయబడింది</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>బ్రౌజ్ చేయదగినది: ఎన్‌క్రిప్ట్ చేయకుండా నిల్వ చేయబడింది</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>నిల్వ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>అపారదర్శకం — చివరి నుంచి చివరి వరకు గుప్తీకరించబడింది</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>అపారదర్శకం: చివరి నుంచి చివరి వరకు గుప్తీకరించబడింది</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>డిస్‌కనెక్ట్ చేయి</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} నిర్ధారించడానికి డిస్‌కనెక్ట్‌ను మళ్లీ క్లిక్ చేయండి.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>ఇప్పుడే సింక్ చేయండి</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>మీ లైబ్రరీలు</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>కనెక్ట్ అయింది</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>సేవ్ అయింది — ఇంకా ధృవీకరించలేకపోయింది (ఆఫ్‌లైన్). మళ్లీ ప్రయత్నిస్తుంది.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>సేవ్ అయింది. ఇంకా ధృవీకరించలేకపోయింది (ఆఫ్‌లైన్). మళ్లీ ప్రయత్నిస్తుంది.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>ప్రారంభిస్తోంది</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>సింక్: కనెక్ట్ కాలేదు</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>సిద్ధం</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>సింక్: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>సింక్: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>డౌన్‌లోడ్‌లు</value></data>
   <data name="download.paused" xml:space="preserve"><value>పాజ్ అయింది</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>క్యూలో ఉంది</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>సిద్ధం</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>గుర్తింపు కోసం వేచి ఉంది</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>గుర్తిస్తోంది…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>పూర్తి చేయలేకపోయాం — మళ్లీ ప్రయత్నిస్తాం</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>పూర్తి చేయలేకపోయాం. మళ్లీ ప్రయత్నిస్తాం</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>వడపోత…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ఫోల్డర్‌ను జోడించు…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ఇక్కడ ఇంకా ఏమీ లేదు</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# విడుదల} other {# విడుదలలు}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>మొత్తం: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>తీసివేయి</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ పీసీ నుండి తీసివేస్తుంది. క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది — మీరు తర్వాత దీన్ని ఇక్కడి నుండి పునరుద్ధరించవచ్చు.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ఈ లైబ్రరీ సింక్ చేయబడలేదు. దీన్ని తీసివేయడం వల్ల దాని కేటలాగ్ — ఆల్బమ్‌లు, మెటాడేటా మార్పులు మరియు ప్లే చరిత్ర — శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ పీసీ నుండి తీసివేస్తుంది. క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది. మీరు తర్వాత దీన్ని ఇక్కడి నుండి పునరుద్ధరించవచ్చు.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ఈ లైబ్రరీ సింక్ చేయబడలేదు. దీన్ని తీసివేయడం వల్ల దాని కేటలాగ్ (ఆల్బమ్‌లు, మెటాడేటా మార్పులు మరియు ప్లే చరిత్ర) శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>ఈ లైబ్రరీని ఈ పీసీ నుండి తీసివేయి</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది — మీరు తర్వాత స్వాగత స్క్రీన్ నుండి దీన్ని పునరుద్ధరించవచ్చు.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది. మీరు తర్వాత స్వాగత స్క్రీన్ నుండి దీన్ని పునరుద్ధరించవచ్చు.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ఈ లైబ్రరీ ఎప్పుడూ సింక్ చేయబడలేదు. దాని కేటలాగ్ శాశ్వతంగా తొలగించబడుతుంది; మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>కొన్ని మార్పులు ఇంకా అప్‌లోడ్ పూర్తి చేయలేదు, అవి పోతాయి.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>నిర్ధారించడానికి బటన్‌ను మళ్లీ క్లిక్ చేయండి.</value></data>

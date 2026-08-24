@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>nelze načíst vzdálené obaly</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>načítání obalů…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>nelze načíst obrázky tohoto vydání</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Není k dispozici žádný obal — import použije výchozí obal.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Není k dispozici žádný obal. Import použije výchozí obal.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Nenalezeny žádné vzdálené obaly</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Vyberte obal nebo ponechte bez výběru pro použití výchozího.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Soubory vydání</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>žádné shody</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Token Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>znovu ověřit</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs tento klíč odmítl — zkontrolujte jej a uložte znovu.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs tento klíč odmítl. Zkontrolujte jej a uložte znovu.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>odebrat token</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>uložit token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>nelze uložit klíč — došlo k chybě.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>nelze uložit klíč. Došlo k chybě.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>API token Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Ověřování…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza mezi stranami</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>kontroluje se…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>aktuální</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>stahuje se… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>verze {version} je připravena — restartujte pro aktualizaci</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>verze {version} je připravena. Restartujte pro aktualizaci</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Restartovat nyní</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>aktualizace se nepodařilo zkontrolovat</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>zamknout knihovnu</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>obnovení</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>váš kód pro obnovení obnoví tuto knihovnu na novém zařízení, když nemáte k dispozici žádné jiné zařízení pro schválení. každý, kdo ho má, má plný přístup — uchovejte ho v tajnosti.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>váš kód pro obnovení obnoví tuto knihovnu na novém zařízení, když nemáte k dispozici žádné jiné zařízení pro schválení. každý, kdo ho má, má plný přístup. Uchovejte ho v tajnosti.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>kód pro obnovení</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>zobrazit kód pro obnovení…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(nedostupné — je synchronizace připojená?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(nedostupné: je synchronizace připojená?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>připojit S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>připojování k S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>procházitelné — uloženo nešifrovaně</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>procházitelné: uloženo nešifrovaně</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>úložiště</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>neprůhledné — šifrované od konce ke konci</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>neprůhledné: šifrované od konce ke konci</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>odpojit</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} pro potvrzení klikněte na odpojit znovu.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>synchronizovat nyní</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>vaše knihovny</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>připojeno</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>uloženo — zatím nelze ověřit (offline). zkusí se znovu.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>uloženo. Zatím nelze ověřit (offline). zkusí se znovu.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>inicializace</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Synchronizace: nepřipojeno</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>připraveno</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Synchronizace: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Synchronizace: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>stahování</value></data>
   <data name="download.paused" xml:space="preserve"><value>pozastaveno</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>ve frontě</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Připraveno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeká na identifikaci</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifikace…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Nepodařilo se dokončit — zkusíme to znovu</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Nepodařilo se dokončit. Zkusíme to znovu</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrovat…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Přidat složku…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Zatím tu nic není</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# vydání} few {# vydání} many {# vydání} other {# vydání}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Celkem: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Odebrat</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Odebere tuto knihovnu a její stažené soubory z tohoto počítače. Vaše knihovna v cloudu zůstane nedotčena — později ji můžete odsud obnovit.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Tato knihovna není synchronizována. Jejím odebráním trvale smažete její katalog — alba, úpravy metadat a historii přehrávání. Zvukové soubory ve vašich složkách smazány nebudou.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Odebere tuto knihovnu a její stažené soubory z tohoto počítače. Vaše knihovna v cloudu zůstane nedotčena. Později ji můžete odsud obnovit.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Tato knihovna není synchronizována. Jejím odebráním trvale smažete její katalog. Alba, úpravy metadat a historii přehrávání. Zvukové soubory ve vašich složkách smazány nebudou.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>odebrat tuto knihovnu z tohoto počítače</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Vaše knihovna v cloudu zůstane nedotčena — později ji můžete obnovit z uvítací obrazovky.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Vaše knihovna v cloudu zůstane nedotčena. Později ji můžete obnovit z uvítací obrazovky.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Tato knihovna nebyla nikdy synchronizována. Její katalog bude trvale smazán; zvukové soubory ve vašich složkách smazány nebudou.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Některé změny se ještě nenahrály a budou ztraceny.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Potvrďte dalším kliknutím na tlačítko.</value></data>

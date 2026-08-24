@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>No cover art available. The import uses its default cover.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
   <data name="cover.refresh" xml:space="preserve"><value>Refresh</value></data>
@@ -166,10 +166,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key. Check it and save again.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key. Something went wrong.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause between sides</value></data>
@@ -186,20 +186,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>checking…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>up to date</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>downloading… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>version {version} is ready — restart to update</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>version {version} is ready. Restart to update</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Restart now</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>couldn't check for updates</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>lock library</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>recovery</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>your recovery code restores this library on a new device when you have no other device available to approve it. anyone with it has full access — keep it secret.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>your recovery code restores this library on a new device when you have no other device available to approve it. anyone with it has full access. Keep it secret.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>recovery code</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>show recovery code…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(unavailable — is sync connected?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(unavailable: is sync connected?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable: stored unencrypted</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>storage</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque: end-to-end encrypted</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>sync now</value></data>
@@ -243,11 +243,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved. Couldn't validate yet (offline). will retry.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Sync: not connected</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Sync: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Sync: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>downloads</value></data>
   <data name="download.paused" xml:space="preserve"><value>paused</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
@@ -414,7 +414,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Ready</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Waiting to be identified</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifying…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Couldn’t complete — will retry</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Couldn’t complete. Will retry</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filter…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Add a Folder…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Nothing here yet</value></data>
@@ -451,10 +451,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Remove</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Removes this library and its downloaded files from this PC. Your library in the cloud is untouched — you can restore it here later.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Removes this library and its downloaded files from this PC. Your library in the cloud is untouched. You can restore it here later.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>This library isn't synced. Removing it permanently deletes its catalog. Albums, metadata edits, and play history. Audio files in your folders aren't deleted.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>remove this library from this PC</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Your library in the cloud is untouched — you can restore it from the welcome screen later.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Your library in the cloud is untouched. You can restore it from the welcome screen later.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Some changes haven't finished uploading and will be lost.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Click the button again to confirm.</value></data>

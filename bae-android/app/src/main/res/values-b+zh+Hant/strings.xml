@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">無法產生復原碼。</string>
     <string name="settings_copy_recovery_code">複製代碼</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
-    <string name="settings_remove_library_explanation">從此裝置移除此資料庫及其已下載檔案。你在雲端的資料庫不會受影響 — 你可以稍後重新配對此裝置。</string>
+    <string name="settings_remove_library_explanation">從此裝置移除此資料庫及其已下載檔案。你在雲端的資料庫不會受影響。你可以稍後重新配對此裝置。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除此資料庫嗎？</string>
     <string name="settings_remove_library_confirm_body">資料庫 你的雲. 裝置.</string>
     <string name="settings_remove">移除</string>

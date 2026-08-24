@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>ਦੂਰਲੇ ਕਵਰ ਲਿਆਂਦੇ ਨਹੀਂ ਜਾ ਸਕੇ</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>ਕਵਰ ਲਿਆਂਦੇ ਜਾ ਰਹੇ ਹਨ…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>ਇਸ ਰਿਲੀਜ਼ ਦੇ ਚਿੱਤਰ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੇ</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>ਕੋਈ ਕਵਰ ਆਰਟ ਉਪਲਬਧ ਨਹੀਂ — ਆਯਾਤ ਆਪਣਾ ਡਿਫਾਲਟ ਕਵਰ ਵਰਤਦਾ ਹੈ।</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>ਕੋਈ ਕਵਰ ਆਰਟ ਉਪਲਬਧ ਨਹੀਂ। ਆਯਾਤ ਆਪਣਾ ਡਿਫਾਲਟ ਕਵਰ ਵਰਤਦਾ ਹੈ।</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>ਕੋਈ ਦੂਰਲਾ ਕਵਰ ਨਹੀਂ ਮਿਲਿਆ</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>ਕਵਰ ਚੁਣੋ, ਜਾਂ ਡਿਫਾਲਟ ਵਰਤਣ ਲਈ ਨਾ ਚੁਣੋ।</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>ਰਿਲੀਜ਼ ਫਾਈਲਾਂ</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>ਕੋਈ ਮੇਲ ਨਹੀਂ</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ਟੋਕਨ</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>ਮੁੜ ਜਾਂਚੋ</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ਨੇ ਇਹ ਕੁੰਜੀ ਰੱਦ ਕੀਤੀ — ਇਸਦੀ ਜਾਂਚ ਕਰੋ ਅਤੇ ਮੁੜ ਸੰਭਾਲੋ।</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ਨੇ ਇਹ ਕੁੰਜੀ ਰੱਦ ਕੀਤੀ। ਇਸਦੀ ਜਾਂਚ ਕਰੋ ਅਤੇ ਮੁੜ ਸੰਭਾਲੋ।</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>ਟੋਕਨ ਹਟਾਓ</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>ਟੋਕਨ ਸੰਭਾਲੋ</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ਕੁੰਜੀ ਸੰਭਾਲੀ ਨਹੀਂ ਜਾ ਸਕੀ — ਕੁਝ ਗੜਬੜ ਹੋਈ।</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ਕੁੰਜੀ ਸੰਭਾਲੀ ਨਹੀਂ ਜਾ ਸਕੀ। ਕੁਝ ਗੜਬੜ ਹੋਈ।</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ਟੋਕਨ</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>ਪਰਖਿਆ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>ਅੱਪ ਟੂ ਡੇਟ</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>ਡਾਊਨਲੋਡ ਹੋ ਰਿਹਾ ਹੈ… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>ਵਰਜ਼ਨ {version} ਤਿਆਰ ਹੈ — ਅੱਪਡੇਟ ਲਈ ਮੁੜ ਚਾਲੂ ਕਰੋ</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>ਵਰਜ਼ਨ {version} ਤਿਆਰ ਹੈ। ਅੱਪਡੇਟ ਲਈ ਮੁੜ ਚਾਲੂ ਕਰੋ</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>ਹੁਣੇ ਮੁੜ ਚਾਲੂ ਕਰੋ</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>ਅੱਪਡੇਟ ਦੀ ਜਾਂਚ ਨਹੀਂ ਹੋ ਸਕੀ</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਲਾਕ ਕਰੋ</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>ਰਿਕਵਰੀ</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>ਤੁਹਾਡਾ ਰਿਕਵਰੀ ਕੋਡ ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਮੁੜ-ਬਹਾਲ ਕਰਦਾ ਹੈ ਜਦੋਂ ਮਨਜ਼ੂਰੀ ਲਈ ਕੋਈ ਹੋਰ ਡਿਵਾਈਸ ਉਪਲਬਧ ਨਹੀਂ ਹੁੰਦਾ। ਜਿਸ ਕੋਲ ਇਹ ਹੈ ਉਸਨੂੰ ਪੂਰੀ ਪਹੁੰਚ ਹੈ — ਇਸਨੂੰ ਗੁਪਤ ਰੱਖੋ।</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ਤੁਹਾਡਾ ਰਿਕਵਰੀ ਕੋਡ ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਮੁੜ-ਬਹਾਲ ਕਰਦਾ ਹੈ ਜਦੋਂ ਮਨਜ਼ੂਰੀ ਲਈ ਕੋਈ ਹੋਰ ਡਿਵਾਈਸ ਉਪਲਬਧ ਨਹੀਂ ਹੁੰਦਾ। ਜਿਸ ਕੋਲ ਇਹ ਹੈ ਉਸਨੂੰ ਪੂਰੀ ਪਹੁੰਚ ਹੈ। ਇਸਨੂੰ ਗੁਪਤ ਰੱਖੋ।</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>ਰਿਕਵਰੀ ਕੋਡ</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>ਰਿਕਵਰੀ ਕੋਡ ਦਿਖਾਓ…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ਉਪਲਬਧ ਨਹੀਂ — ਕੀ ਸਿੰਕ ਜੁੜਿਆ ਹੈ?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ਉਪਲਬਧ ਨਹੀਂ: ਕੀ ਸਿੰਕ ਜੁੜਿਆ ਹੈ?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 ਨਾਲ ਜੁੜੋ</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>S3 ਨਾਲ ਜੁੜਿਆ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>ਬ੍ਰਾਊਜ਼ਯੋਗ — ਬਿਨਾਂ ਇਨਕ੍ਰਿਪਸ਼ਨ ਸਟੋਰ ਕੀਤਾ</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ਬ੍ਰਾਊਜ਼ਯੋਗ: ਬਿਨਾਂ ਇਨਕ੍ਰਿਪਸ਼ਨ ਸਟੋਰ ਕੀਤਾ</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>ਸਟੋਰੇਜ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>ਅਸਪਸ਼ਟ — ਸਿਰੇ-ਤੋਂ-ਸਿਰੇ ਤੱਕ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>ਅਸਪਸ਼ਟ: ਸਿਰੇ-ਤੋਂ-ਸਿਰੇ ਤੱਕ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>ਡਿਸਕਨੈਕਟ ਕਰੋ</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} ਪੁਸ਼ਟੀ ਲਈ ਡਿਸਕਨੈਕਟ ਮੁੜ ਕਲਿੱਕ ਕਰੋ।</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>ਹੁਣੇ ਸਿੰਕ ਕਰੋ</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>ਤੁਹਾਡੀਆਂ ਲਾਇਬ੍ਰੇਰੀਆਂ</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>ਜੁੜਿਆ ਹੋਇਆ</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>ਸੰਭਾਲਿਆ — ਹਾਲੇ ਪਰਖਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ (ਆਫਲਾਈਨ)। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਜਾਵੇਗੀ।</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>ਸੰਭਾਲਿਆ। ਹਾਲੇ ਪਰਖਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ (ਆਫਲਾਈਨ)। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਜਾਵੇਗੀ।</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>ਸ਼ੁਰੂ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>ਸਿੰਕ: ਜੁੜਿਆ ਨਹੀਂ</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>ਤਿਆਰ</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>ਸਿੰਕ: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>ਸਿੰਕ: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>ਡਾਊਨਲੋਡ</value></data>
   <data name="download.paused" xml:space="preserve"><value>ਰੁਕਿਆ</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>ਕਤਾਰ ਵਿੱਚ</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>ਤਿਆਰ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ਪਛਾਣ ਦੀ ਉਡੀਕ ਵਿੱਚ</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>ਪੂਰਾ ਨਹੀਂ ਹੋ ਸਕਿਆ — ਮੁੜ ਕੋਸ਼ਿਸ਼ ਹੋਵੇਗੀ</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>ਪੂਰਾ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਹੋਵੇਗੀ</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ਫਿਲਟਰ…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ਫੋਲਡਰ ਜੋੜੋ…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ਇੱਥੇ ਹਾਲੇ ਕੁਝ ਨਹੀਂ ਹੈ</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# ਰਿਲੀਜ਼} other {# ਰਿਲੀਜ਼ਾਂ}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>ਕੁੱਲ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>ਹਟਾਓ</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫਾਈਲਾਂ ਨੂੰ ਇਸ ਪੀਸੀ ਤੋਂ ਹਟਾਉਂਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਸੁਰੱਖਿਅਤ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਇੱਥੋਂ ਇਸਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਸਿੰਕ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਹਟਾਉਣ ਨਾਲ ਇਸਦਾ ਕੈਟਾਲਾਗ — ਐਲਬਮਾਂ, ਮੈਟਾਡੇਟਾ ਸੋਧਾਂ ਅਤੇ ਪਲੇ ਇਤਿਹਾਸ — ਸਥਾਈ ਤੌਰ 'ਤੇ ਮਿਟ ਜਾਵੇਗਾ। ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫਾਈਲਾਂ ਨਹੀਂ ਮਿਟਣਗੀਆਂ।</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫਾਈਲਾਂ ਨੂੰ ਇਸ ਪੀਸੀ ਤੋਂ ਹਟਾਉਂਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਸੁਰੱਖਿਅਤ ਰਹਿੰਦੀ ਹੈ। ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਇੱਥੋਂ ਇਸਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਸਿੰਕ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਹਟਾਉਣ ਨਾਲ ਇਸਦਾ ਕੈਟਾਲਾਗ (ਐਲਬਮਾਂ, ਮੈਟਾਡੇਟਾ ਸੋਧਾਂ ਅਤੇ ਪਲੇ ਇਤਿਹਾਸ) ਸਥਾਈ ਤੌਰ 'ਤੇ ਮਿਟ ਜਾਵੇਗਾ। ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫਾਈਲਾਂ ਨਹੀਂ ਮਿਟਣਗੀਆਂ।</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਇਸ ਪੀਸੀ ਤੋਂ ਹਟਾਓ</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਸੁਰੱਖਿਅਤ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਸੁਆਗਤ ਸਕ੍ਰੀਨ ਤੋਂ ਇਸਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਸੁਰੱਖਿਅਤ ਰਹਿੰਦੀ ਹੈ। ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਸੁਆਗਤ ਸਕ੍ਰੀਨ ਤੋਂ ਇਸਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਕਦੇ ਵੀ ਸਿੰਕ ਨਹੀਂ ਹੋਈ। ਇਸਦਾ ਕੈਟਾਲਾਗ ਸਥਾਈ ਤੌਰ 'ਤੇ ਮਿਟ ਜਾਵੇਗਾ; ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫਾਈਲਾਂ ਨਹੀਂ ਮਿਟਣਗੀਆਂ।</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ਕੁਝ ਬਦਲਾਅ ਅਜੇ ਅੱਪਲੋਡ ਹੋਣੇ ਬਾਕੀ ਹਨ ਅਤੇ ਗੁਆਚ ਜਾਣਗੇ।</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>ਪੁਸ਼ਟੀ ਕਰਨ ਲਈ ਬਟਨ ਨੂੰ ਦੁਬਾਰਾ ਕਲਿੱਕ ਕਰੋ।</value></data>

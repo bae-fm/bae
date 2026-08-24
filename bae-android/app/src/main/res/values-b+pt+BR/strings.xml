@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Não foi possível gerar um código de recuperação.</string>
     <string name="settings_copy_recovery_code">Copiar código</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
-    <string name="settings_remove_library_explanation">Remove esta biblioteca e seus arquivos baixados deste dispositivo. Sua biblioteca na nuvem permanece intacta — você pode parear este dispositivo novamente mais tarde.</string>
+    <string name="settings_remove_library_explanation">Remove esta biblioteca e seus arquivos baixados deste dispositivo. Sua biblioteca na nuvem permanece intacta. Você pode parear este dispositivo novamente mais tarde.</string>
     <string name="settings_remove_library_confirm_title">Remover esta biblioteca deste dispositivo?</string>
     <string name="settings_remove_library_confirm_body">Sua biblioteca na nuvem permanece intacta. Você pode parear este dispositivo novamente mais tarde.</string>
     <string name="settings_remove">Remover</string>

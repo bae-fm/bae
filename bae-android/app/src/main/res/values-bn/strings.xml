@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">রিকভারি কোড তৈরি করা যায়নি।</string>
     <string name="settings_copy_recovery_code">কোড কপি করুন</string>
     <string name="settings_remove_library">এই ডিভাইস থেকে এই লাইব্রেরি সরান</string>
-    <string name="settings_remove_library_explanation">এই ডিভাইস থেকে এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইল সরায়। ক্লাউডে আপনার লাইব্রেরি অপরিবর্তিত থাকে — পরে এই ডিভাইস আবার জোড়া লাগাতে পারবেন।</string>
+    <string name="settings_remove_library_explanation">এই ডিভাইস থেকে এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইল সরায়। ক্লাউডে আপনার লাইব্রেরি অপরিবর্তিত থাকে। পরে এই ডিভাইস আবার জোড়া লাগাতে পারবেন।</string>
     <string name="settings_remove_library_confirm_title">এই ডিভাইস থেকে এই লাইব্রেরি সরাবেন?</string>
     <string name="settings_remove_library_confirm_body">লাইব্রেরি আপনার ক্লাউড. ডিভাইস.</string>
     <string name="settings_remove">সরান</string>

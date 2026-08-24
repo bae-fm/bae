@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">تعذر إنشاء رمز استرداد.</string>
     <string name="settings_copy_recovery_code">نسخ الرمز</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
-    <string name="settings_remove_library_explanation">يزيل هذه المكتبة وملفاتها المنزّلة من هذا الجهاز. لن تتأثر مكتبتك في السحابة — يمكنك إعادة ربط هذا الجهاز لاحقًا.</string>
+    <string name="settings_remove_library_explanation">يزيل هذه المكتبة وملفاتها المنزّلة من هذا الجهاز. لن تتأثر مكتبتك في السحابة. يمكنك إعادة ربط هذا الجهاز لاحقًا.</string>
     <string name="settings_remove_library_confirm_title">إزالة هذه المكتبة من هذا الجهاز؟</string>
     <string name="settings_remove_library_confirm_body">لن تتأثر مكتبتك في السحابة. يمكنك إعادة ربط هذا الجهاز لاحقًا.</string>
     <string name="settings_remove">إزالة</string>

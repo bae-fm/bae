@@ -35,7 +35,7 @@
     <string name="collapse">Згорнути</string>
     <string name="mute">Вимкнути звук</string>
     <string name="unmute">Увімкнути звук</string>
-    <string name="now_playing_track_by_artist">Зараз відтворюється, %1$s — %2$s</string>
+    <string name="now_playing_track_by_artist">Зараз відтворюється, %1$s, %2$s</string>
     <string name="queue_clear">Очистити</string>
     <string name="queue_clear_up_next">Очистити „Далі в черзі“</string>
     <string name="queue_clear_playing_from">Очистити джерело відтворення</string>
@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Не вдалося створити код відновлення.</string>
     <string name="settings_copy_recovery_code">Копіювати код</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
-    <string name="settings_remove_library_explanation">Вилучає цю бібліотеку та її завантажені файли з цього пристрою. Ваша бібліотека в хмарі залишається незмінною — ви можете повторно підключити цей пристрій пізніше.</string>
+    <string name="settings_remove_library_explanation">Вилучає цю бібліотеку та її завантажені файли з цього пристрою. Ваша бібліотека в хмарі залишається незмінною. Ви можете повторно підключити цей пристрій пізніше.</string>
     <string name="settings_remove_library_confirm_title">Вилучити цю бібліотеку з цього пристрою?</string>
     <string name="settings_remove_library_confirm_body">Ваша бібліотека в хмарі залишається незмінною. Ви можете повторно підключити цей пристрій пізніше.</string>
     <string name="settings_remove">Видалити</string>

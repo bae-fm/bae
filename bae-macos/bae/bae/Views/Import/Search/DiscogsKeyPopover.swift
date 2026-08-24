@@ -11,7 +11,7 @@ struct DiscogsKeyPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(
-                "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more."
+                "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more."
             )
             .font(.callout)
             Text(

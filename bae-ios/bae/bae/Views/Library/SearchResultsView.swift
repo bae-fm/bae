@@ -160,7 +160,7 @@ private struct TrackResultRow: View {
                 Text(track.title)
                     .font(.body)
                     .lineLimit(1)
-                Text("\(track.artistName) \u{2014} \(track.albumTitle)")
+                Text("\(track.artistName), \(track.albumTitle)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

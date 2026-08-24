@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>не вдалося отримати віддалені обкладинки</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>отримання обкладинок…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>не вдалося завантажити зображення цього релізу</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Обкладинка недоступна — імпорт використовує типову обкладинку.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Обкладинка недоступна. Імпорт використовує типову обкладинку.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Віддалених обкладинок не знайдено</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Виберіть обкладинку або залиште без вибору, щоб використати типову.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Файли релізу</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>немає збігів</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Токен Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>перевірити знову</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs відхилив цей ключ — перевірте його та збережіть знову.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs відхилив цей ключ. Перевірте його та збережіть знову.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>вилучити токен</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>зберегти токен</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>не вдалося зберегти ключ — щось пішло не так.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>не вдалося зберегти ключ. Щось пішло не так.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Токен API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Перевірка…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>перевіряється…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>актуально</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>завантаження… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>версія {version} готова — перезапустіть, щоб оновити</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>версія {version} готова. Перезапустіть, щоб оновити</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Перезапустити зараз</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>не вдалося перевірити оновлення</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>заблокувати бібліотеку</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>відновлення</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>ваш код відновлення відновлює цю бібліотеку на новому пристрої, коли немає іншого пристрою, щоб схвалити його. будь-хто з ним має повний доступ — тримайте його в таємниці.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ваш код відновлення відновлює цю бібліотеку на новому пристрої, коли немає іншого пристрою, щоб схвалити його. будь-хто з ним має повний доступ. Тримайте його в таємниці.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>код відновлення</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>показати код відновлення…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(недоступно — синхронізацію підключено?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(недоступно: синхронізацію підключено?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>підключити S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>підключення до S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>доступне для перегляду — зберігається без шифрування</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>доступне для перегляду: зберігається без шифрування</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>сховище</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>непрозоре — наскрізне шифрування</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>непрозоре: наскрізне шифрування</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>відключити</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} натисніть «Відключити» ще раз для підтвердження.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>синхронізувати зараз</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>ваші бібліотеки</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>підключено</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>збережено — поки не вдалося підтвердити (офлайн). буде повторено.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>збережено. Поки не вдалося підтвердити (офлайн). буде повторено.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>ініціалізація</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Синхронізація: не підключено</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>готово</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Синхронізація: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Синхронізація: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>завантаження</value></data>
   <data name="download.paused" xml:space="preserve"><value>призупинено</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>у черзі</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Готово</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Очікує ідентифікації</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Ідентифікація…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Не вдалося завершити — спробуємо ще раз</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Не вдалося завершити. Спробуємо ще раз</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Фільтрувати…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Додати теку…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Тут поки нічого немає</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# реліз} few {# релізи} many {# релізів} other {# релізу}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Усього: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Вилучити</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Вилучає цю бібліотеку та її завантажені файли з цього комп'ютера. Ваша бібліотека в хмарі залишається недоторканою — пізніше ви зможете відновити її звідси.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ця бібліотека не синхронізована. Її вилучення остаточно видалить каталог — альбоми, редагування метаданих і історію відтворення. Аудіофайли у ваших папках не будуть видалені.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Вилучає цю бібліотеку та її завантажені файли з цього комп'ютера. Ваша бібліотека в хмарі залишається недоторканою. Пізніше ви зможете відновити її звідси.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ця бібліотека не синхронізована. Її вилучення остаточно видалить каталог. Альбоми, редагування метаданих і історію відтворення. Аудіофайли у ваших папках не будуть видалені.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>вилучити цю бібліотеку з цього комп'ютера</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Ваша бібліотека в хмарі залишається недоторканою — пізніше ви зможете відновити її з екрана привітання.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Ваша бібліотека в хмарі залишається недоторканою. Пізніше ви зможете відновити її з екрана привітання.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Ця бібліотека ніколи не синхронізувалася. Її каталог буде остаточно видалено; аудіофайли у ваших папках не будуть видалені.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Деякі зміни ще не завершили завантаження і будуть втрачені.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натисніть кнопку ще раз, щоб підтвердити.</value></data>

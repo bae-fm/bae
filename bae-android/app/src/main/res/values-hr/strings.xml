@@ -35,7 +35,7 @@
     <string name="collapse">Sažmi</string>
     <string name="mute">Utišaj</string>
     <string name="unmute">Uključi zvuk</string>
-    <string name="now_playing_track_by_artist">Trenutno svira, %1$s — izvođač %2$s</string>
+    <string name="now_playing_track_by_artist">Trenutno svira, %1$s, izvođač %2$s</string>
     <string name="queue_clear">Očisti</string>
     <string name="queue_clear_up_next">Očisti „Sljedeće na redu“</string>
     <string name="queue_clear_playing_from">Očisti izvor reprodukcije</string>
@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Nije moguće generirati kod za oporavak.</string>
     <string name="settings_copy_recovery_code">Kopiraj kod</string>
     <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
-    <string name="settings_remove_library_explanation">Uklanja ovu fonoteku i njezine preuzete datoteke s ovog uređaja. Vaša fonoteka u oblaku ostaje netaknuta — ovaj uređaj možete kasnije ponovno upariti.</string>
+    <string name="settings_remove_library_explanation">Uklanja ovu fonoteku i njezine preuzete datoteke s ovog uređaja. Vaša fonoteka u oblaku ostaje netaknuta. Ovaj uređaj možete kasnije ponovno upariti.</string>
     <string name="settings_remove_library_confirm_title">Ukloniti ovu fonoteku s ovog uređaja?</string>
     <string name="settings_remove_library_confirm_body">Vaša fonoteka u oblaku ostaje netaknuta. Ovaj uređaj možete kasnije ponovno upariti.</string>
     <string name="settings_remove">Ukloni</string>

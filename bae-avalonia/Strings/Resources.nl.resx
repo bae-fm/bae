@@ -41,7 +41,7 @@
   <data name="cover.fetch_failed" xml:space="preserve"><value>kan externe hoezen niet ophalen</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>hoezen ophalen…</value></data>
   <data name="cover.images_load_failed" xml:space="preserve"><value>kan de afbeeldingen van deze release niet laden</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>Geen hoes beschikbaar — de import gebruikt de standaardhoes.</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Geen hoes beschikbaar. De import gebruikt de standaardhoes.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>Geen externe hoezen gevonden</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Kies een hoes of laat niets geselecteerd om de standaard te gebruiken.</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Releasebestanden</value></data>
@@ -165,10 +165,10 @@
   <data name="search.no_matches" xml:space="preserve"><value>geen matches</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs-token</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>opnieuw controleren</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs heeft deze sleutel geweigerd — controleer deze en bewaar opnieuw.</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs heeft deze sleutel geweigerd. Controleer deze en bewaar opnieuw.</value></data>
   <data name="settings.discogs.remove" xml:space="preserve"><value>token verwijderen</value></data>
   <data name="settings.discogs.save" xml:space="preserve"><value>token bewaren</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>kan de sleutel niet bewaren — er is iets misgegaan.</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>kan de sleutel niet bewaren. Er is iets misgegaan.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API-token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Valideren…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauze tussen kanten</value></data>
@@ -185,20 +185,20 @@
   <data name="settings.updates.checking" xml:space="preserve"><value>bezig met controleren…</value></data>
   <data name="settings.updates.up_to_date" xml:space="preserve"><value>up-to-date</value></data>
   <data name="settings.updates.downloading" xml:space="preserve"><value>bezig met downloaden… {percent}%</value></data>
-  <data name="settings.updates.ready" xml:space="preserve"><value>versie {version} is klaar — herstart om bij te werken</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>versie {version} is klaar. Herstart om bij te werken</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Nu herstarten</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>kon niet op updates controleren</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>bibliotheek vergrendelen</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>herstel</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>je herstelcode herstelt deze bibliotheek op een nieuw apparaat wanneer je geen ander apparaat beschikbaar hebt om dit goed te keuren. iedereen die deze heeft, heeft volledige toegang — houd deze geheim.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>je herstelcode herstelt deze bibliotheek op een nieuw apparaat wanneer je geen ander apparaat beschikbaar hebt om dit goed te keuren. iedereen die deze heeft, heeft volledige toegang. Houd deze geheim.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>herstelcode</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>herstelcode tonen…</value></data>
-  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(niet beschikbaar — is synchronisatie verbonden?)</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(niet beschikbaar: is synchronisatie verbonden?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>S3 verbinden</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>verbinden met S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>doorzoekbaar — onversleuteld opgeslagen</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>doorzoekbaar: onversleuteld opgeslagen</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>Opslag</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>ondoorzichtig — end-to-end versleuteld</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>ondoorzichtig: end-to-end versleuteld</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>verbinding verbreken</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} klik opnieuw op verbinding verbreken om te bevestigen.</value></data>
   <data name="settings.sync.now" xml:space="preserve"><value>nu synchroniseren</value></data>
@@ -240,11 +240,11 @@
   <data name="welcome.your_libraries" xml:space="preserve"><value>je bibliotheken</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>verbonden</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>bewaard — kon nog niet valideren (offline). probeert opnieuw.</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>bewaard. Kon nog niet valideren (offline). probeert opnieuw.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>initialiseren</value></data>
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Synchronisatie: niet verbonden</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>gereed</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Synchronisatie: {provider}{account} — {state}</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Synchronisatie: {provider}{account}, {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>downloads</value></data>
   <data name="download.paused" xml:space="preserve"><value>gepauzeerd</value></data>
   <data name="download.state.queued" xml:space="preserve"><value>in wachtrij</value></data>
@@ -389,7 +389,7 @@
   <data name="import.row.ready" xml:space="preserve"><value>Gereed</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Wacht op identificatie</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identificeren…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Kon niet worden voltooid — wordt opnieuw geprobeerd</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Kon niet worden voltooid. Wordt opnieuw geprobeerd</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filteren…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Map toevoegen…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Hier is nog niets</value></data>
@@ -424,10 +424,10 @@
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Totaal: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Verwijderen</value></data>
-  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Verwijdert deze bibliotheek en de gedownloade bestanden ervan van deze pc. Je bibliotheek in de cloud blijft ongewijzigd — je kunt hem later vanaf hier herstellen.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Deze bibliotheek is niet gesynchroniseerd. Het verwijderen ervan wist de catalogus permanent — albums, metagegevenswijzigingen en afspeelgeschiedenis. Audiobestanden in je mappen worden niet verwijderd.</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Verwijdert deze bibliotheek en de gedownloade bestanden ervan van deze pc. Je bibliotheek in de cloud blijft ongewijzigd. Je kunt hem later vanaf hier herstellen.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Deze bibliotheek is niet gesynchroniseerd. Het verwijderen ervan wist de catalogus permanent. Albums, metagegevenswijzigingen en afspeelgeschiedenis. Audiobestanden in je mappen worden niet verwijderd.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>deze bibliotheek van deze pc verwijderen</value></data>
-  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Je bibliotheek in de cloud blijft ongewijzigd — je kunt hem later vanaf het welkomstscherm herstellen.</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Je bibliotheek in de cloud blijft ongewijzigd. Je kunt hem later vanaf het welkomstscherm herstellen.</value></data>
   <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Deze bibliotheek is nooit gesynchroniseerd. De catalogus wordt permanent verwijderd; audiobestanden in je mappen worden niet verwijderd.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Sommige wijzigingen zijn nog niet volledig geüpload en gaan verloren.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Klik opnieuw op de knop om te bevestigen.</value></data>

@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">Kurtarma kodu oluşturulamadı.</string>
     <string name="settings_copy_recovery_code">Kodu kopyala</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
-    <string name="settings_remove_library_explanation">Bu kitaplığı ve indirilen dosyalarını bu cihazdan kaldırır. Buluttaki kitaplığınıza dokunulmaz — bu cihazı daha sonra yeniden eşleyebilirsiniz.</string>
+    <string name="settings_remove_library_explanation">Bu kitaplığı ve indirilen dosyalarını bu cihazdan kaldırır. Buluttaki kitaplığınıza dokunulmaz. Bu cihazı daha sonra yeniden eşleyebilirsiniz.</string>
     <string name="settings_remove_library_confirm_title">Bu kitaplık bu cihazdan kaldırılsın mı?</string>
     <string name="settings_remove_library_confirm_body">Buluttaki kitaplığınıza dokunulmaz. Bu cihazı daha sonra yeniden eşleyebilirsiniz.</string>
     <string name="settings_remove">Kaldır</string>

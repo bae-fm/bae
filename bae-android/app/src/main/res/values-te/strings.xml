@@ -99,7 +99,7 @@
     <string name="settings_recovery_code_failed">రికవరీ కోడ్‌ను సృష్టించలేకపోయింది.</string>
     <string name="settings_copy_recovery_code">కోడ్‌ను కాపీ చేయి</string>
     <string name="settings_remove_library">ఈ పరికరం నుండి ఈ లైబ్రరీని తీసివేయండి</string>
-    <string name="settings_remove_library_explanation">ఈ పరికరం నుండి ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైల్‌లను తీసివేస్తుంది. క్లౌడ్‌లోని మీ లైబ్రరీ మారదు — మీరు తర్వాత ఈ పరికరాన్ని మళ్లీ జత చేయవచ్చు.</string>
+    <string name="settings_remove_library_explanation">ఈ పరికరం నుండి ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైల్‌లను తీసివేస్తుంది. క్లౌడ్‌లోని మీ లైబ్రరీ మారదు. మీరు తర్వాత ఈ పరికరాన్ని మళ్లీ జత చేయవచ్చు.</string>
     <string name="settings_remove_library_confirm_title">ఈ పరికరం నుండి ఈ లైబ్రరీని తీసివేయాలా?</string>
     <string name="settings_remove_library_confirm_body">క్లౌడ్‌లోని మీ లైబ్రరీ మారలేదు. మీరు తర్వాత ఈ పరికరాన్ని మళ్లీ జత చేయవచ్చు.</string>
     <string name="settings_remove">తీసివేయి</string>
