@@ -8,15 +8,15 @@
 //! the items inside the requested windows and nowhere else.
 
 use super::{
-    GroupHeaderRow, ImportListItem, ImportListOrder, ImportListView, ImportQueueSummary, PlacedRow,
-    ReadyRowRef,
+    GroupHeaderRow, ImportListItem, ImportListOrder, ImportListRequest, ImportListView,
+    ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
 use crate::import::folder_registry::candidate_relative_path;
 use crate::import::triage::{
-    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriagePlacement,
-    TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
+    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
+    TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
 use crate::import::types::IdentityPick;
 use crate::import::FolderReleaseDecisionKey;
@@ -52,13 +52,31 @@ struct OrderedEntry {
     group: Option<TriageGroup>,
     matches_filter: bool,
     item: ItemRef,
+    /// How a Done row sorts against its neighbours. `None` on every other tab,
+    /// which orders by path instead.
+    done_order: Option<DoneOrder>,
+}
+
+/// The Done tab's order: what the cloud is still doing with the release, then
+/// when it was imported, newest first.
+///
+/// Not the path: a folder that is in the library is finished, and what a person
+/// looks for there is the import they just ran and whatever is still going up
+/// behind it — neither of which the alphabet answers.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct DoneOrder {
+    upload_rank: u8,
+    /// Reversed so the newest import leads. A release with no recorded time
+    /// sorts last rather than first.
+    imported_at: std::cmp::Reverse<Option<i64>>,
 }
 
 pub(crate) fn flatten(
     rows: &ImportQueueRows,
-    view: &ImportListView,
-    runtime_facts: &BTreeMap<String, TriageRuntimeFacts>,
+    request: &ImportListRequest,
 ) -> Result<Flattened, LibraryError> {
+    let view = &request.view;
+    let runtime_facts = &request.runtime_facts;
     let idle = TriageRuntimeFacts::default();
     let mut placed = Vec::new();
     let mut counts = TriageTabCounts::default();
@@ -78,6 +96,7 @@ pub(crate) fn flatten(
                         [row.name.as_str(), row.display_path.as_str()],
                     ),
                     item: ItemRef::Invalid(index),
+                    done_order: None,
                 });
             }
             // A tentative candidate is a release approximation the scan found
@@ -110,6 +129,8 @@ pub(crate) fn flatten(
                     group: None,
                     matches_filter,
                     item: ItemRef::Candidate(placed.len()),
+                    done_order: (tab == TriageTab::Done)
+                        .then(|| done_order(rows, row, &triage_row, &request.upload_standing)),
                 });
                 placed.push(PlacedRow {
                     row: triage_row,
@@ -122,6 +143,13 @@ pub(crate) fn flatten(
     let grouped_roots = grouped_roots(rows);
     let combinable_roots = combinable_roots(rows);
     for entry in &mut ordered {
+        // A group header asks how the folder under it is read, and offers to
+        // read it the other way. Both are questions about a folder nobody has
+        // imported yet, so only a Pending row joins one; Done and Skipped are
+        // flat lists of releases whose reading is settled.
+        if entry.tab != TriageTab::Pending {
+            continue;
+        }
         entry.group = group_for(
             &entry.watched_folder_path,
             &entry.display_path,
@@ -136,16 +164,27 @@ pub(crate) fn flatten(
         .enumerate()
         .map(|(index, folder)| (folder.path.as_str(), index))
         .collect();
+    // Sort every tab's entries in one pass, tab first so each tab's run is
+    // contiguous and its own order is decided among its own rows. Which tab is
+    // being shown is the filter's business, further down.
     ordered.sort_by(|left, right| {
-        let by_root = root_order
-            .get(left.watched_folder_path.as_str())
-            .cmp(&root_order.get(right.watched_folder_path.as_str()));
-        let by_path = natord::compare_ignore_case(&left.display_path, &right.display_path);
-        let natural = by_root.then(by_path);
-        match view.order {
-            ImportListOrder::PathAscending => natural,
-            ImportListOrder::PathDescending => natural.reverse(),
-        }
+        tab_rank(left.tab).cmp(&tab_rank(right.tab)).then_with(|| {
+            match (&left.done_order, &right.done_order) {
+                (Some(left_done), Some(right_done)) => left_done.cmp(right_done),
+                _ => {
+                    let by_root = root_order
+                        .get(left.watched_folder_path.as_str())
+                        .cmp(&root_order.get(right.watched_folder_path.as_str()));
+                    let by_path =
+                        natord::compare_ignore_case(&left.display_path, &right.display_path);
+                    let natural = by_root.then(by_path);
+                    match view.order {
+                        ImportListOrder::PathAscending => natural,
+                        ImportListOrder::PathDescending => natural.reverse(),
+                    }
+                }
+            }
+        })
     });
 
     let summary = summarise(rows, &ordered, &placed, counts);
@@ -234,6 +273,41 @@ fn place_row(
         claim: picked.as_ref().map(IdentityPick::choice),
         picked,
     })
+}
+
+/// Which run of the sorted vector a tab's entries form. Only the grouping
+/// matters — each tab is filtered out on its own — but a stable one keeps the
+/// comparator a total order.
+fn tab_rank(tab: TriageTab) -> u8 {
+    match tab {
+        TriageTab::Pending => 0,
+        TriageTab::Done => 1,
+        TriageTab::Skipped => 2,
+    }
+}
+
+/// Where one Done row sorts: what the cloud is still doing with the release it
+/// became, then when that import happened.
+fn done_order(
+    rows: &ImportQueueRows,
+    row: &ScanCandidateListRow,
+    triage_row: &TriageRow,
+    upload_standing: &BTreeMap<String, UploadStanding>,
+) -> DoneOrder {
+    let release_id = match &triage_row.import_status {
+        Some(TriageImportStatus::Complete { release }) => Some(release.release_id.as_str()),
+        _ => None,
+    };
+    DoneOrder {
+        upload_rank: UploadStanding::rank(
+            release_id.and_then(|id| upload_standing.get(id).copied()),
+        ),
+        imported_at: std::cmp::Reverse(
+            row.content_hash
+                .as_deref()
+                .and_then(|hash| rows.imported_at.get(hash).copied()),
+        ),
+    }
 }
 
 /// The first path components that hold more than a flat row — a folder with a

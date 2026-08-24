@@ -154,6 +154,20 @@ fn release_pick(release_id: &str) -> IdentityPick {
     }
 }
 
+/// Mark `display_path`'s candidate imported as `release_id` at `imported_at`
+/// epoch milliseconds — what puts its row on Done.
+fn imported(rows: &mut ImportQueueRows, display_path: &str, release_id: &str, imported_at: i64) {
+    let hash = format!("hash-{display_path}");
+    rows.imported.insert(
+        hash.clone(),
+        ImportedRelease {
+            release_id: release_id.to_string(),
+            album_id: format!("album-{release_id}"),
+        },
+    );
+    rows.imported_at.insert(hash, imported_at);
+}
+
 fn view(tab: TriageTab) -> ImportListView {
     ImportListView {
         tab,
@@ -162,7 +176,15 @@ fn view(tab: TriageTab) -> ImportListView {
 }
 
 fn flattened(rows: &ImportQueueRows, view: &ImportListView) -> Flattened {
-    flatten(rows, view, &BTreeMap::new()).expect("the queue flattens")
+    flatten(rows, &request(view.clone())).expect("the queue flattens")
+}
+
+/// A request showing `view` with nothing running and nothing in the outbox.
+fn request(view: ImportListView) -> ImportListRequest {
+    ImportListRequest {
+        view,
+        ..ImportListRequest::default()
+    }
 }
 
 /// The item sequence, as one readable line per item.

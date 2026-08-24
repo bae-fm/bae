@@ -452,6 +452,7 @@ impl ImportServiceHandle {
             })
             .collect(),
             runtime_facts: crate::import::list::facts_of(&initial_runtime),
+            upload_standing: Default::default(),
         };
         let query = self.library_manager.subscribe_import_list(request.clone());
         let runtime = self.runtime.clone();
@@ -460,6 +461,7 @@ impl ImportServiceHandle {
             request,
             changes,
             move || runtime.all(),
+            self.library_manager.subscribe_outbox_values(),
             &self.runtime_handle,
         );
         loop {

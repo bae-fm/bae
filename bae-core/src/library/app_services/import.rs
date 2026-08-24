@@ -82,18 +82,20 @@ impl AppServices {
     /// The import list, reconfigurable by view and by window.
     ///
     /// The runtime stream is taken before the first read, so no change lands
-    /// between the two; the subscription then keeps the request's runtime
-    /// facts current on its own.
+    /// between the two; the subscription then keeps the request's runtime facts
+    /// and upload standing current on its own.
     pub fn subscribe_import_list(
         &self,
         view: ImportListView,
         runtime_handle: &tokio::runtime::Handle,
     ) -> ImportListSubscription {
         let (initial_runtime, changes) = self.subscribe_candidate_runtime();
+        let outbox = self.subscribe_outbox_values();
         let request = ImportListRequest {
             view,
             windows: crate::library::LibraryPageWindows::new(),
             runtime_facts: crate::import::list::facts_of(&initial_runtime),
+            upload_standing: upload_standing_of(&outbox),
         };
         let query = self.inner.manager.subscribe_import_list(request.clone());
         let import = self.inner.import.clone();
@@ -102,6 +104,7 @@ impl AppServices {
             request,
             changes,
             move || import.candidate_runtimes(),
+            outbox,
             runtime_handle,
         )
     }
@@ -118,6 +121,7 @@ impl AppServices {
                 view,
                 windows,
                 runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
+                upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
             })
             .await
     }
@@ -267,5 +271,18 @@ impl AppServices {
             }
         });
         rx
+    }
+}
+
+/// Where every release the outbox still holds work for stands, from the
+/// channel's current value. Nothing yet published, or a failed read, means the
+/// order starts with everything settled and corrects itself on the next
+/// snapshot.
+fn upload_standing_of(
+    outbox: &tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>>,
+) -> std::collections::BTreeMap<String, crate::import::list::UploadStanding> {
+    match &*outbox.borrow() {
+        Some(Ok(snapshot)) => crate::import::list::UploadStanding::of_outbox(snapshot),
+        Some(Err(_)) | None => std::collections::BTreeMap::new(),
     }
 }

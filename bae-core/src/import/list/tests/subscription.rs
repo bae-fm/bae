@@ -31,11 +31,16 @@ async fn subscription() -> (
     let (changes_tx, changes) = broadcast::channel(8);
     // Dropping the sender is what the merge task reads as "no more runtime
     // changes" — the same end it reaches when the import service shuts down.
+    // Nothing publishes an outbox snapshot here, and dropping the sender ends
+    // the upload-standing merge the way library shutdown does. These tests are
+    // about the runtime merge and the request round trip.
+    let (_outbox_tx, outbox) = tokio::sync::watch::channel(None);
     let subscription = ImportListSubscription::start(
         query,
         request,
         changes,
         HashMap::new,
+        outbox,
         &tokio::runtime::Handle::current(),
     );
     (subscription, changes_tx, tmp)

@@ -71,11 +71,63 @@ pub enum ImportListOrder {
     PathDescending,
 }
 
+/// Where an imported release's cloud upload stands, which is the Done tab's
+/// outer order: what is moving now, then what is waiting behind it, then what
+/// is settled.
+///
+/// A release with nothing outstanding is absent from the map rather than
+/// present and settled — the same shape `runtime_facts` uses, and for the same
+/// reason: the common case is empty.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UploadStanding {
+    /// Something is happening to this release's files right now — preparing,
+    /// transferring, publishing, unwinding a cancel, or retrying after a
+    /// failure. One bucket, because the row draws one arrow for all of them.
+    Working,
+    /// Admitted to the cloud queue with nothing happening yet.
+    Queued,
+}
+
+impl UploadStanding {
+    /// The Done tab's outer sort key. Settled — no entry at all — sorts last.
+    pub(crate) fn rank(standing: Option<Self>) -> u8 {
+        match standing {
+            Some(Self::Working) => 0,
+            Some(Self::Queued) => 1,
+            None => 2,
+        }
+    }
+
+    /// Where each release the cloud outbox still holds work for stands.
+    pub fn of_outbox(snapshot: &crate::library::OutboxSnapshot) -> BTreeMap<String, Self> {
+        use crate::library::UploadActivity;
+        snapshot
+            .upload_groups
+            .iter()
+            .filter_map(|group| {
+                let standing = match group.progress.activity()? {
+                    UploadActivity::Queued => Self::Queued,
+                    UploadActivity::Cancelling
+                    | UploadActivity::Publishing
+                    | UploadActivity::Uploading
+                    | UploadActivity::Preparing
+                    | UploadActivity::Retrying
+                    | UploadActivity::Prepared
+                    | UploadActivity::Uploaded => Self::Working,
+                };
+                Some((group.release_id.clone(), standing))
+            })
+            .collect()
+    }
+}
+
 /// Everything the list query is a function of.
 ///
-/// `runtime_facts` is filled in by [`ImportListSubscription`] from the
-/// candidate runtime, never by a caller: a claimed import and a running
-/// identification move a row between tabs, and neither is in a table.
+/// `runtime_facts` and `upload_standing` are filled in by
+/// [`ImportListSubscription`], never by a caller: a claimed import and a
+/// running identification move a row between tabs, an outstanding upload moves
+/// a Done row within its tab, and none of the three is in a table this query
+/// reads.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ImportListRequest {
     pub view: ImportListView,
@@ -83,6 +135,8 @@ pub struct ImportListRequest {
     /// Only the keys whose facts differ from the default, so an idle queue
     /// makes an empty map.
     pub runtime_facts: BTreeMap<String, TriageRuntimeFacts>,
+    /// Only the releases the cloud outbox still holds work for, by release id.
+    pub upload_standing: BTreeMap<String, UploadStanding>,
 }
 
 /// One item in the list, at one offset.

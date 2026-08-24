@@ -151,6 +151,7 @@ async fn request(tab: TriageTab) -> ImportListRequest {
         })
         .collect(),
         runtime_facts: Default::default(),
+        upload_standing: Default::default(),
     }
 }
 

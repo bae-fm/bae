@@ -295,7 +295,15 @@ fn a_claimed_import_places_the_row_as_importing() {
         },
     )]);
 
-    let flat = flatten(&rows, &view(TriageTab::Pending), &facts).expect("the queue flattens");
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Pending),
+            runtime_facts: facts,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
 
     assert_eq!(
         row_for(&flat, "Release").placement,
@@ -303,6 +311,82 @@ fn a_claimed_import_places_the_row_as_importing() {
     );
     assert_eq!(flat.summary.counts.pending, 1);
     assert!(flat.summary.ready.is_empty());
+}
+
+/// A group header asks how the folder under it is read, and offers to read it
+/// the other way. Neither question survives the import, so Done and Skipped are
+/// flat lists of releases and only Pending groups.
+#[test]
+fn only_pending_groups_its_rows() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Group/Release 1"), candidate("Group/Release 2")];
+    imported(&mut rows, "Group/Release 1", "rel-1", 100);
+    rows.skipped.insert((root(), "Group/Release 2".to_string()));
+
+    let pending = flattened(&rows, &view(TriageTab::Pending));
+    assert!(
+        pending.items.is_empty(),
+        "both rows left Pending: {:?}",
+        sequence(&rows, &pending)
+    );
+
+    let done = flattened(&rows, &view(TriageTab::Done));
+    assert_eq!(
+        sequence(&rows, &done),
+        vec!["candidate Group/Release 1".to_string()]
+    );
+
+    let skipped = flattened(&rows, &view(TriageTab::Skipped));
+    assert_eq!(
+        sequence(&rows, &skipped),
+        vec!["candidate Group/Release 2".to_string()]
+    );
+
+    assert!(
+        done.summary.group_keys.is_empty(),
+        "a folder whose rows are all past import has no header to retain state against"
+    );
+}
+
+/// Done is ordered by what the cloud is still doing, then by when the import
+/// happened — newest first. The path decides nothing: a folder in the library
+/// is finished, and the alphabet answers neither question.
+#[test]
+fn done_orders_by_upload_then_newest_import_first() {
+    let mut rows = queue();
+    rows.candidates = vec![
+        candidate("A settled old"),
+        candidate("B working"),
+        candidate("C settled new"),
+        candidate("D queued"),
+    ];
+    imported(&mut rows, "A settled old", "rel-settled-old", 100);
+    imported(&mut rows, "B working", "rel-working", 200);
+    imported(&mut rows, "C settled new", "rel-settled-new", 300);
+    imported(&mut rows, "D queued", "rel-queued", 400);
+
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Done),
+            upload_standing: BTreeMap::from([
+                ("rel-working".to_string(), UploadStanding::Working),
+                ("rel-queued".to_string(), UploadStanding::Queued),
+            ]),
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
+
+    assert_eq!(
+        sequence(&rows, &flat),
+        vec![
+            "candidate B working".to_string(),
+            "candidate D queued".to_string(),
+            "candidate C settled new".to_string(),
+            "candidate A settled old".to_string(),
+        ]
+    );
 }
 
 /// The failure is a row, so it survives the session that produced it: a
@@ -357,7 +441,15 @@ fn retrying_a_failed_import_moves_it_through_importing_to_done() {
         },
     )]);
 
-    let flat = flatten(&rows, &view(TriageTab::Pending), &running).expect("the queue flattens");
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Pending),
+            runtime_facts: running,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
     assert_eq!(
         row_for(&flat, "Release").placement,
         TriagePlacement::Importing
@@ -423,7 +515,15 @@ fn a_running_import_outranks_the_release_it_has_not_finished_writing() {
         },
     )]);
 
-    let flat = flatten(&rows, &view(TriageTab::Pending), &facts).expect("the queue flattens");
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Pending),
+            runtime_facts: facts,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
 
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Importing);
@@ -442,7 +542,15 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
         },
     )]);
 
-    let flat = flatten(&rows, &view(TriageTab::Pending), &facts).expect("the queue flattens");
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Pending),
+            runtime_facts: facts,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
 
     assert_eq!(
         row_for(&flat, "Release").placement,
@@ -655,7 +763,15 @@ fn a_pick_does_not_outrank_skipped_done_or_importing() {
             importing: true,
         },
     )]);
-    let flat = flatten(&rows, &view(TriageTab::Pending), &running).expect("the queue flattens");
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Pending),
+            runtime_facts: running,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
     assert_eq!(
         row_for(&flat, "Release").placement,
         TriagePlacement::Importing

@@ -351,18 +351,27 @@ internal sealed partial class ImportSectionView : UserControl
     // being watched.
     private MenuFlyout BuildListMenuFlyout()
     {
-        var az = new MenuItem
-        {
-            Header = (_import.SortOrder == CandidateSortOrder.NameAZ ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_az"),
-        };
-        az.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameAZ);
-        var za = new MenuItem
-        {
-            Header = (_import.SortOrder == CandidateSortOrder.NameZA ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_za"),
-        };
-        za.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameZA);
+        var items = new List<Control>();
 
-        var items = new List<Control> { az, za, new Separator() };
+        // The name order decides the tabs that are ordered by name. Done is
+        // ordered by what the cloud is still doing with each release and when
+        // it was imported, so on that tab there is nothing here to choose.
+        if (_import.ActiveTab != BridgeTriageTab.Done)
+        {
+            var az = new MenuItem
+            {
+                Header = (_import.SortOrder == CandidateSortOrder.NameAZ ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_az"),
+            };
+            az.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameAZ);
+            var za = new MenuItem
+            {
+                Header = (_import.SortOrder == CandidateSortOrder.NameZA ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_za"),
+            };
+            za.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameZA);
+            items.Add(az);
+            items.Add(za);
+            items.Add(new Separator());
+        }
 
         var add = new MenuItem { Header = Loc.Chrome("import.folder.add") };
         add.Click += async (_, _) => await AddFolder();

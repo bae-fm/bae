@@ -1,21 +1,24 @@
-//! The list's live query, with the runtime this process holds folded into its
-//! request.
+//! The list's live query, with what this process holds and no table does
+//! folded into its request.
 //!
-//! Two of the four facts a row's placement reads are not in a table: whether
-//! an import has claimed the candidate, and how far identification has got for
-//! one with no stored verdict. They live in
-//! [`CandidateRuntime`](crate::import::CandidateRuntime), so the subscription
-//! owns the merge — it keeps the current request, applies each runtime change
-//! that moves a placement, and hands the query a new request. The bridge and
-//! the UIs never see the runtime facts at all.
+//! Three such facts. Two of them place a row: whether an import has claimed
+//! the candidate, and how far identification has got for one with no stored
+//! verdict, both from
+//! [`CandidateRuntime`](crate::import::CandidateRuntime). The third orders one:
+//! where an imported release's cloud upload stands, from the outbox. The
+//! subscription owns both merges — it keeps the current request, applies each
+//! change that moves a row, and hands the query a new request. The bridge and
+//! the UIs never see any of it.
 
-use super::{ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView};
+use super::{
+    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView, UploadStanding,
+};
 use crate::import::triage::TriageRuntimeFacts;
 use crate::import::{CandidateRuntimeChange, CandidateRuntimeSnapshot};
-use crate::library::LibraryPageWindows;
+use crate::library::{LibraryPageWindows, OutboxSnapshot};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
@@ -74,19 +77,22 @@ pub struct ImportListSubscription {
     query: tokio::sync::Mutex<
         Option<coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>>,
     >,
-    runtime_task: Mutex<Option<tokio::task::AbortHandle>>,
+    merges: Mutex<Vec<tokio::task::AbortHandle>>,
 }
 
 impl ImportListSubscription {
-    /// Start the subscription and the runtime merge behind it.
+    /// Start the subscription and the two merges behind it.
     ///
-    /// `initial` must already carry the runtime facts the caller read before
-    /// it took `changes`, so no change lands between the two.
+    /// `initial` must already carry the runtime facts the caller read before it
+    /// took `changes`, so no change lands between the two. `outbox` needs no
+    /// such care: a watch channel always holds its current value, so the merge
+    /// reads it once before it waits.
     pub(crate) fn start(
         query: coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
         initial: ImportListRequest,
         changes: broadcast::Receiver<CandidateRuntimeChange>,
         reread: impl Fn() -> HashMap<String, CandidateRuntimeSnapshot> + Send + 'static,
+        outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
         let requests = Arc::new(Requests {
@@ -94,11 +100,18 @@ impl ImportListSubscription {
             current: Mutex::new(initial),
             cancellation: CancellationToken::new(),
         });
-        let task = runtime_handle.spawn(merge_runtime(requests.clone(), changes, reread));
+        let merges = vec![
+            runtime_handle
+                .spawn(merge_runtime(requests.clone(), changes, reread))
+                .abort_handle(),
+            runtime_handle
+                .spawn(merge_outbox(requests.clone(), outbox))
+                .abort_handle(),
+        ];
         Self {
             requests,
             query: tokio::sync::Mutex::new(Some(query)),
-            runtime_task: Mutex::new(Some(task.abort_handle())),
+            merges: Mutex::new(merges),
         }
     }
 
@@ -159,11 +172,11 @@ impl ImportListSubscription {
 
     fn stop(&self) {
         self.requests.cancel();
-        if let Some(task) = self
-            .runtime_task
+        for task in self
+            .merges
             .lock()
-            .expect("import list runtime task mutex poisoned")
-            .take()
+            .expect("import list merge task mutex poisoned")
+            .drain(..)
         {
             task.abort();
         }
@@ -247,4 +260,45 @@ pub(crate) fn facts_of(
         .map(|(key, runtime)| (key.clone(), TriageRuntimeFacts::of(runtime)))
         .filter(|(_, facts)| facts != &idle)
         .collect()
+}
+
+/// Keep the request's upload standing current with the cloud outbox.
+///
+/// Only the Done tab's order reads it, so a snapshot that moves no release
+/// between working, queued and settled reconfigures nothing — byte progress
+/// republishes the whole snapshot several times a second.
+///
+/// A failed outbox read says nothing about where an upload stands, so the order
+/// keeps what it had rather than reporting everything settled.
+async fn merge_outbox(
+    requests: Arc<Requests>,
+    mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+) {
+    loop {
+        let next = match &*outbox.borrow_and_update() {
+            Some(Ok(snapshot)) => Some(UploadStanding::of_outbox(snapshot)),
+            Some(Err(_)) | None => None,
+        };
+        if let Some(next) = next {
+            let moved = {
+                let mut current = requests
+                    .current
+                    .lock()
+                    .expect("import list request mutex poisoned");
+                let moved = current.upload_standing != next;
+                current.upload_standing = next;
+                moved
+            };
+            if moved && requests.update(|_| {}).is_err() {
+                return;
+            }
+        }
+        let changed = tokio::select! {
+            () = requests.cancellation.cancelled() => return,
+            changed = outbox.changed() => changed,
+        };
+        if changed.is_err() {
+            return;
+        }
+    }
 }

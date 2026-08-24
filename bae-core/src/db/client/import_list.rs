@@ -76,6 +76,11 @@ pub struct ImportQueueRows {
     pub skipped: HashSet<(String, String)>,
     /// The library release each imported content hash became.
     pub imported: HashMap<String, ImportedRelease>,
+    /// When each imported content hash's release was written, as Unix epoch
+    /// milliseconds — the Done tab's within-section order. Kept beside
+    /// `imported` rather than inside `ImportedRelease`: a row carries the
+    /// release its import became, not when the import happened.
+    pub imported_at: HashMap<String, i64>,
     /// The error the last import attempt left behind, by content hash. Read
     /// here rather than only in the pane because it is what a row's placement
     /// says on the next launch: without it a candidate whose import failed
@@ -117,8 +122,10 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         .collect();
 
     let mut imported: HashMap<String, ImportedRelease> = HashMap::new();
-    for (content_hash, release) in sql.query(
-        "SELECT content_hash, id, album_id FROM releases WHERE content_hash IS NOT NULL",
+    let mut imported_at: HashMap<String, i64> = HashMap::new();
+    for (content_hash, release, created_at) in sql.query(
+        "SELECT content_hash, id, album_id, created_at \
+         FROM releases WHERE content_hash IS NOT NULL",
         [],
         |row| {
             Ok((
@@ -127,6 +134,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
                     release_id: row.get(1)?,
                     album_id: row.get(2)?,
                 },
+                super::read::rfc3339_column(row, "created_at")?,
             ))
         },
     )? {
@@ -135,6 +143,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
                 "content hash {content_hash} names more than one imported release"
             )));
         }
+        imported_at.insert(content_hash, created_at.timestamp_millis());
     }
 
     let separated_folders: HashSet<(String, String)> = sql
@@ -188,6 +197,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         candidates,
         skipped,
         imported,
+        imported_at,
         failures,
         states,
         lead_statuses,
@@ -437,8 +447,7 @@ fn load_import_list_on(
     request: &ImportListRequest,
 ) -> Result<ImportListProjection, DbError> {
     let rows = load_import_queue_on(sql)?;
-    let flat = flatten(&rows, &request.view, &request.runtime_facts)
-        .map_err(|error| DbError::Message(error.to_string()))?;
+    let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
     let windows = request
         .windows
         .iter()

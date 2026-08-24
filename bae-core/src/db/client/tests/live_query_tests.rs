@@ -696,6 +696,7 @@ fn list_request(
             .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
             .collect(),
         runtime_facts: Default::default(),
+        upload_standing: Default::default(),
     }
 }
 

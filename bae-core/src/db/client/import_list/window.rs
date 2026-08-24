@@ -40,8 +40,14 @@ pub(super) fn materialise(
                 let placed = &flat.rows[*index];
                 let scanned = &rows.candidates[placed.index];
                 let mut row = placed.row.clone();
-                row.resolved_boundaries =
-                    resolved_boundaries(sql, &scanned.watched_folder_path, &scanned.path)?;
+                // A resolved boundary is the row's offer to read its folder
+                // the other way, which is a question about a folder nobody has
+                // imported yet. Past that point the reading is settled and the
+                // row is flat, so the read is not made at all.
+                if row.placement.tab() == crate::import::TriageTab::Pending {
+                    row.resolved_boundaries =
+                        resolved_boundaries(sql, &scanned.watched_folder_path, &scanned.path)?;
+                }
                 // A decided identity outranks the verdict's lead: a manual
                 // search settles a folder on a release the verdict never
                 // named. With nothing archived behind the pick the row leads
