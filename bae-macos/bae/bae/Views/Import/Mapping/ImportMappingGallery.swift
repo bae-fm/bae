@@ -47,9 +47,10 @@ struct ImportMappingGallery: View {
                 )
                 .frame(width: Self.tileSize, height: Self.tileSize)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(alignment: .topTrailing) {
+                .overlay(alignment: .bottomLeading) {
                     if let found {
-                        ImportEvidenceMark(signal: found.signal)
+                        ImportEvidenceChip(signal: found.signal, onImage: true)
+                            .padding(3)
                     }
                 }
                 Text(image.name)

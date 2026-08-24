@@ -31,38 +31,33 @@ enum ImportEvidence {
     }
 }
 
-/// The chip, where the row has room for words.
+/// The chip itself: the signal's own glyph and name.
+///
+/// `onImage` is for a thumbnail's corner, where the chip sits on a photograph
+/// rather than on the pane — it fills instead of tinting, so it reads against
+/// whatever is behind it, and gives up its label before it outgrows the tile.
 struct ImportEvidenceChip: View {
     let signal: BridgeEvidenceSignal
+    var onImage: Bool = false
+
+    private var fill: AnyShapeStyle {
+        onImage
+            ? AnyShapeStyle(Color.accentColor)
+            : AnyShapeStyle(Color.accentColor.opacity(0.15))
+    }
 
     var body: some View {
         let kind = ImportEvidence.kind(signal)
         HStack(spacing: 3) {
             Image(systemName: SignalBadgeStyle.icon(for: kind))
             Text(SignalBadgeStyle.label(for: kind))
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .font(.caption2.weight(.medium))
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 5)
         .padding(.vertical, 2)
-        .background(Color.accentColor.opacity(0.15), in: Capsule())
-        .foregroundStyle(Color.accentColor)
-    }
-}
-
-/// The same statement in a thumbnail's corner, where words would not fit.
-struct ImportEvidenceMark: View {
-    let signal: BridgeEvidenceSignal
-
-    var body: some View {
-        let icon = SignalBadgeStyle.icon(for: ImportEvidence.kind(signal))
-        Image(systemName: icon)
-            .font(.caption2.weight(.medium))
-            .foregroundStyle(.white)
-            .padding(3)
-            .background(
-                Color.accentColor,
-                in: RoundedRectangle(cornerRadius: 3)
-            )
-            .padding(2)
+        .background(fill, in: Capsule())
+        .foregroundStyle(onImage ? Color.white : Color.accentColor)
     }
 }
