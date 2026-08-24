@@ -663,11 +663,6 @@ internal sealed class ImportStore : IDisposable
     {
         switch (evt)
         {
-            case BridgeUiEvent.CandidateImportLoudnessProgress:
-                // The sidebar draws import progress as a percent and a step off
-                // the candidate-runtime signal; a per-track loudness fraction
-                // has no leaf in this UI to drive.
-                break;
             case BridgeUiEvent.CandidateSignalsUpdated:
                 // This UI surfaces no free text, catalog suggestions or
                 // scanning indicator — its search fields are typed, not

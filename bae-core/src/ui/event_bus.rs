@@ -92,20 +92,6 @@ impl UiEventBus {
                     Ok(event) => {
                         match event {
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::ImportLoudnessProgress {
-                                candidate_key,
-                                tracks_done,
-                                tracks_total,
-                                fraction,
-                            } => {
-                                bus.emit(UiBusEvent::CandidateImportLoudnessProgress {
-                                    key: candidate_key,
-                                    tracks_done,
-                                    tracks_total,
-                                    fraction,
-                                });
-                            }
-                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
                             ImportEvent::SignalsUpdated {
                                 candidate_key,
                                 signals,

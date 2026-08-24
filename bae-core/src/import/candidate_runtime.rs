@@ -335,8 +335,8 @@ impl CandidateRuntime {
                     .insert(candidate_key.clone(), signals.clone());
             }
             // Queue progress is a queue-wide number with no candidate to
-            // record it against, loudness ticks go straight to their leaf
-            // view, and the remaining scan events change rows, not runtime.
+            // record it against, and the remaining scan events change rows,
+            // not runtime.
             ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::CandidateSkipChanged { .. }
@@ -344,7 +344,6 @@ impl CandidateRuntime {
                 | ScanEvent::FolderScanStatusChanged { .. }
                 | ScanEvent::Finished,
             )
-            | ImportEvent::ImportLoudnessProgress { .. }
             | ImportEvent::QueueIdentifyProgress { .. } => {}
         }
     }

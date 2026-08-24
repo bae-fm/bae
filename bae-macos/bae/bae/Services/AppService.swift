@@ -216,7 +216,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
                 playbackPositionPublisher
             )
             .environment(\.previewProgressPublisher, previewProgressPublisher)
-            .environment(\.importLoudnessPublisher, importLoudnessPublisher)
             .environment(
                 \.candidateRuntimePublisher,
                 candidateRuntimePublisher
@@ -234,12 +233,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         AnyPublisher<PreviewProgressEvent, Never>
     {
         importStore.previewProgressSubject.eraseToAnyPublisher()
-    }
-
-    private var importLoudnessPublisher:
-        AnyPublisher<ImportLoudnessProgressEvent?, Never>
-    {
-        importStore.importLoudnessSubject.eraseToAnyPublisher()
     }
 
     private var candidateRuntimePublisher:

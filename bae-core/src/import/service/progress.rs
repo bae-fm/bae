@@ -1,7 +1,7 @@
 //! Import progress events.
 //!
-//! Thin emitters that publish `ImportProgress` / `ImportLoudnessProgress`
-//! onto the broadcast bus as the import advances through its phases.
+//! Thin emitters that publish `ImportProgress` onto the broadcast bus as the
+//! import advances through its phases.
 
 use crate::import::handle::send_event;
 use crate::import::types::{ImportPhase, ImportProgress};

@@ -375,18 +375,12 @@ fn extracted_signals_are_retained_without_publishing_a_runtime() {
     assert!(runtime.signals(key).is_none());
 }
 
-/// Loudness ticks and the queue's own count each have somewhere else to be —
-/// a leaf view, a header — so neither reaches here.
+/// The queue's own count belongs to the header, not to any one candidate, so it
+/// never reaches here.
 #[test]
-fn loudness_and_queue_progress_never_touch_the_runtime() {
+fn queue_progress_never_touches_the_runtime() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
-    runtime.record_event(&ImportEvent::ImportLoudnessProgress {
-        candidate_key: "/watch/a/rel1".to_string(),
-        tracks_done: 1,
-        tracks_total: 9,
-        fraction: Some(0.5),
-    });
     runtime.record_event(&ImportEvent::QueueIdentifyProgress {
         identified: 1,
         total: 9,

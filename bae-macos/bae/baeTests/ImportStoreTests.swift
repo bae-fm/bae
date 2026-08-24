@@ -341,34 +341,6 @@ struct ShownIdentifyStateTests {
     }
 }
 
-@Suite("Import loudness progress")
-struct ImportLoudnessProgressTests {
-    @MainActor
-    @Test("preserves unavailable fractions as indeterminate")
-    func preservesIndeterminateProgress() throws {
-        let store = ImportStore()
-        let handler = DesktopEventHandler(
-            importStore: store,
-            mediaControlService: MediaControlService()
-        )
-
-        handler.apply(
-            .candidateImportLoudnessProgress(
-                key: "candidate",
-                tracksDone: 1,
-                tracksTotal: 3,
-                fraction: nil
-            )
-        )
-
-        let event = try #require(store.importLoudnessSubject.value)
-        #expect(event.key == "candidate")
-        #expect(event.tracksDone == 1)
-        #expect(event.tracksTotal == 3)
-        #expect(event.fraction == nil)
-    }
-}
-
 @Suite("ImportStore sidebar covers")
 struct ImportStoreSidebarCoverTests {
     @MainActor

@@ -45,7 +45,6 @@ internal sealed class UiEventRouter
                     _showError(Loc.Chrome("error.title"), errorLine);
                 }
                 break;
-            case BridgeUiEvent.CandidateImportLoudnessProgress:
             case BridgeUiEvent.CandidateSignalsUpdated:
             case BridgeUiEvent.ImportQueueIdentifyProgress:
                 _importEvents(evt);

@@ -42,20 +42,6 @@ pub enum ImportEvent {
         candidate_key: String,
         progress: ImportProgress,
     },
-    /// Per-track loudness measurement progress for an importing candidate: a
-    /// high-frequency tick routed to a native leaf view, which draws the track
-    /// count and a live bar. Separate from `ImportProgress` so this cadence
-    /// bypasses the release/import progress subscribers — it carries the
-    /// candidate key, not a release or import id. The same pass reports its
-    /// coarse percent to the candidate row through `ImportProgress`.
-    ImportLoudnessProgress {
-        candidate_key: String,
-        tracks_done: u32,
-        tracks_total: u32,
-        /// Overall scan progress 0..1 when every track's frame count is known;
-        /// absent means the live measurement is indeterminate.
-        fraction: Option<f32>,
-    },
     /// Identify pipeline transitioned to a new state. Emitted by the
     /// `identify` module; carries the full state, which the signals toolbar
     /// (the interactive badge row) is a projection of.

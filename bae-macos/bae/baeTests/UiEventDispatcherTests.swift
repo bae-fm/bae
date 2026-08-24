@@ -69,8 +69,8 @@ struct UiEventDispatcherControlTests {
 @MainActor
 @Suite("UiEventDispatcher outcome policy", .serialized)
 struct UiEventDispatcherOutcomeTests {
-    @Test("preview and import-loudness events are unhandled")
-    func previewAndImportLoudnessAreUnhandled() {
+    @Test("the desktop import events are unhandled")
+    func desktopImportEventsAreUnhandled() {
         let appService = makeAppService()
         for event in unhandledEvents {
             #expect(
@@ -95,12 +95,7 @@ struct UiEventDispatcherOutcomeTests {
 // MARK: - Shared fixtures
 
 private let unhandledEvents: [BridgeUiEvent] = [
-    .candidateImportLoudnessProgress(
-        key: "k",
-        tracksDone: 0,
-        tracksTotal: 1,
-        fraction: 0
-    ),
+    .importQueueIdentifyProgress(identified: 0, total: 1),
 ]
 
 private let handledEvents: [BridgeUiEvent] = [

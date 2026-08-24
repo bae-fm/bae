@@ -7,13 +7,10 @@ import SwiftUI
 /// in the whole import is audio that will not decode, which core raises.
 struct ImportCommitControls {
     let unansweredCount: Int
-    /// Routes the loudness ticks to the leaf progress bar during the loudness
-    /// pass.
+    /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
     /// Where the candidate's import stands, as its row places it.
     let importStatus: BridgeTriageImportStatus?
-    /// How far the running import has got, when one is running.
-    let importInFlight: BridgeImportInFlight?
     let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
     let actions: ImportCommitActions
@@ -158,7 +155,6 @@ struct ImportReleaseHeader: View {
             }
             ImportConfirmationCardAction(
                 importStatus: commit.importStatus,
-                importInFlight: commit.importInFlight,
                 candidateKey: commit.candidateKey,
                 onConfirmImport: commit.actions.confirmImport,
                 onViewInLibrary: commit.actions.viewInLibrary,

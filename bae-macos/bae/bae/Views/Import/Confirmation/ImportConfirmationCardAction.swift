@@ -2,8 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The trailing action cell of the commit bar: the `Import` button before
-/// commit, live progress (a determinate loudness bar during the loudness pass,
-/// an indeterminate spinner + step label otherwise) while importing, a `Retry
+/// commit, the running import's step, percent and bar while importing, a `Retry
 /// Import` button on error, and the `Imported` / cloud-upload state once
 /// complete.
 ///
@@ -13,10 +12,7 @@ import SwiftUI
 struct ImportConfirmationCardAction: View {
     /// Where the candidate's import stands, as its row places it.
     let importStatus: BridgeTriageImportStatus?
-    /// How far the running import has got, when one is running.
-    let importInFlight: BridgeImportInFlight?
-    /// Routes the high-frequency loudness ticks to the leaf bar during the
-    /// measuring-loudness phase.
+    /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
     let onConfirmImport: () -> Void
     let onViewInLibrary: (String) -> Void
@@ -80,26 +76,12 @@ struct ImportConfirmationCardAction: View {
         else if let status = importStatus {
             switch status {
             case .importing:
-                VStack(alignment: .leading, spacing: 0) {
-                    // The step, how far through the whole import it is, and the
-                    // bar — the same component the candidate's row draws, off
-                    // the same signal, so the two surfaces cannot come to
-                    // disagree about one run.
-                    ImportProgressLine(key: candidateKey)
-                    // The loudness pass is the long pole, and the card has room
-                    // the row does not: under the line, its live per-track bar
-                    // says how far through that one step the run is. A finer
-                    // view of the current step, not a second opinion about the
-                    // import.
-                    if case .running(.measuringLoudness)? = importInFlight?
-                        .step
-                    {
-                        ImportLoudnessProgressRepresentable(key: candidateKey)
-                            .frame(height: 32)
-                            .padding(.top, 4)
-                    }
-                }
-                .frame(width: 200)
+                // The step, how far through the whole import it is, and the
+                // bar — the same component the candidate's row draws, off the
+                // same signal, so the two surfaces cannot come to disagree
+                // about one run.
+                ImportProgressLine(key: candidateKey)
+                    .frame(width: 200)
             case .error:
                 Button("Retry Import") { onConfirmImport() }
                     .buttonStyle(.borderedProminent)
@@ -118,7 +100,6 @@ struct ImportConfirmationCardAction: View {
     #Preview("Card action — ready") {
         ImportConfirmationCardAction(
             importStatus: nil,
-            importInFlight: nil,
             candidateKey: "preview-candidate",
             onConfirmImport: {},
             onViewInLibrary: { _ in },

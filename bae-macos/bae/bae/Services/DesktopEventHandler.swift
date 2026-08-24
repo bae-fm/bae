@@ -15,21 +15,6 @@ final class DesktopEventHandler {
 
     func apply(_ event: BridgeUiEvent) {
         switch event {
-        case .candidateImportLoudnessProgress(
-            let key,
-            let tracksDone,
-            let tracksTotal,
-            let fraction
-        ):
-            importStore.importLoudnessSubject.send(
-                ImportLoudnessProgressEvent(
-                    key: key,
-                    tracksDone: tracksDone,
-                    tracksTotal: tracksTotal,
-                    fraction: fraction.map(Double.init)
-                )
-            )
-
         case .candidateSignalsUpdated(let key, let signals):
             importStore.candidateSignalsSubject.send(
                 CandidateSignalsEvent(

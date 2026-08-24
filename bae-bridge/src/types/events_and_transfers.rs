@@ -48,16 +48,6 @@ pub enum BridgeUiEvent {
     },
 
     // ── Import live progress ───────────────────────────────────────
-    /// High-frequency loudness-measurement tick — the UI routes it to a native
-    /// leaf view (a determinate bar when `fraction` is available, labelled
-    /// "N / M"), not the coarse candidate row.
-    #[cfg(feature = "desktop")]
-    CandidateImportLoudnessProgress {
-        key: String,
-        tracks_done: u32,
-        tracks_total: u32,
-        fraction: Option<f32>,
-    },
     /// A candidate's extracted signals, as extraction settles each one. The UI
     /// routes it to the one form that reads them — the search pane's
     /// autocomplete pools and its scanning indicator — rather than to the

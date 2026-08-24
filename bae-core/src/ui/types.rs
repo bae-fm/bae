@@ -128,24 +128,12 @@ pub enum UiBusEvent {
     },
 
     // ── Import live progress ───────────────────────────────────────
-    /// High-frequency loudness-measurement tick — goes to a native leaf view, not
-    /// the @Observable store, so the sub-track cadence never churns the candidate
-    /// row. `key` routes it to the importing candidate's confirm pane; `fraction`
-    /// drives the determinate bar when available and `tracks_done`/`tracks_total`
-    /// label which track ("N / M").
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    CandidateImportLoudnessProgress {
-        key: String,
-        tracks_done: u32,
-        tracks_total: u32,
-        fraction: Option<f32>,
-    },
     /// A candidate's extracted signals, as extraction settles each one. Goes
     /// to the one form that reads them — the search pane's autocomplete pools
     /// and its scanning indicator — rather than to the candidate's runtime,
     /// which every row and both panes hold: OCR reports several times per
-    /// candidate and nothing else on screen changes with it. `key` routes it,
-    /// the way a loudness tick is routed.
+    /// candidate and nothing else on screen changes with it. `key` routes it to
+    /// that candidate's form.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     CandidateSignalsUpdated {
         key: String,

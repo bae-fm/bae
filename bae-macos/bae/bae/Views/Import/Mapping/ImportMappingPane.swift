@@ -95,7 +95,6 @@ struct ImportMappingPane: View {
             unansweredCount: mapping.unansweredCount,
             candidateKey: candidate.key,
             importStatus: candidate.row?.importStatus,
-            importInFlight: runtime?.import,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,

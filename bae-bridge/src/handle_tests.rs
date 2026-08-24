@@ -367,7 +367,7 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     ));
 }
 
-/// Extraction's snapshots cross whole, keyed the way a loudness tick is: the
+/// Extraction's snapshots cross whole, keyed by candidate: the
 /// form on the other side reads the text pools off the same value the run
 /// produced.
 #[cfg(feature = "desktop")]

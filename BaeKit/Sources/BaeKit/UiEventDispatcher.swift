@@ -38,8 +38,7 @@ public enum UiEventDispatcher {
             appService.showError(error)
 
         #if os(macOS)
-            case .candidateImportLoudnessProgress,
-                .candidateSignalsUpdated,
+            case .candidateSignalsUpdated,
                 .importQueueIdentifyProgress:
                 return .unhandled
         #endif

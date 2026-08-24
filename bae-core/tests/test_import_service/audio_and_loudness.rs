@@ -274,12 +274,13 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
     }
 }
 
-/// With every track length known, the loudness pass emits a continuous
-/// `fraction` (0 → 1) as it scans, ticking ~0.1s of audio at a time rather than
+/// With every track length known, the loudness pass reports a continuous
+/// percent (0 → 100) as it scans, moving ~0.1s of audio at a time rather than
 /// once per track, so the import UI bar advances during a track's measure span.
 #[tokio::test]
 async fn loudness_pass_emits_within_track_progress() {
     use bae_core::import::ImportEvent;
+    use bae_core::import::{ImportPhase, ImportProgress};
 
     support::tracing_init();
 
@@ -323,53 +324,34 @@ async fn loudness_pass_emits_within_track_progress() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let _ = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Drain the buffered events; keep the loudness ticks for our candidate in
+    // Drain the buffered events; keep our candidate's loudness percents in
     // arrival order.
-    let mut ticks: Vec<(u32, u32, Option<f32>)> = Vec::new();
+    let mut percents: Vec<u8> = Vec::new();
     while let Ok(event) = event_rx.try_recv() {
-        if let ImportEvent::ImportLoudnessProgress {
+        if let ImportEvent::ImportProgress {
             candidate_key,
-            tracks_done,
-            tracks_total,
-            fraction,
+            progress: ImportProgress::Progress { percent, phase, .. },
         } = event
         {
-            if candidate_key == "test" {
-                ticks.push((tracks_done, tracks_total, fraction));
+            if candidate_key == "test" && phase == ImportPhase::MeasuringLoudness {
+                percents.push(percent);
             }
         }
     }
 
-    // Three tracks measured ~0.1s at a time → many ticks, not one per track, so
-    // the bar creeps within each track instead of stepping. `fraction` is the
-    // overall scan progress: monotonic, starting at 0 and reaching exactly 1.0 so
-    // the bar always completes; total is constant; the last track-count is N/N.
+    // Three tracks measured ~0.1s at a time → far more moves than one per
+    // track, so the bar creeps within each track instead of stepping. The
+    // percent is the overall scan: monotonic, and reaching 100 so the bar always
+    // completes.
     assert!(
-        ticks.len() > 4,
-        "within-track measurement emits many ticks, not one per track: {} ticks",
-        ticks.len()
+        percents.len() > 4,
+        "within-track measurement moves the percent more than once per track: {percents:?}",
     );
     assert!(
-        ticks.iter().all(|(_, total, _)| *total == 3),
-        "every tick reports total=3: {ticks:?}"
+        percents.windows(2).all(|w| w[1] >= w[0]),
+        "the percent is monotonic non-decreasing: {percents:?}"
     );
-    let fractions: Vec<f32> = ticks
-        .iter()
-        .map(|(_, _, fraction)| {
-            fraction.expect("generated tracks provide determinate frame totals")
-        })
-        .collect();
-    assert!(
-        fractions.windows(2).all(|w| w[1] >= w[0]),
-        "fraction is monotonic non-decreasing: {fractions:?}"
-    );
-    assert_eq!(fractions.first().copied(), Some(0.0), "starts at 0");
-    assert_eq!(fractions.last().copied(), Some(1.0), "reaches exactly 1.0");
-    assert_eq!(
-        ticks.last().map(|(d, t, _)| (*d, *t)),
-        Some((3, 3)),
-        "final tick labels the last track N/N"
-    );
+    assert_eq!(percents.last().copied(), Some(100), "reaches exactly 100");
 }
 
 /// Interleaved-stereo 1 kHz sine at `amplitude` (fraction of full scale).
