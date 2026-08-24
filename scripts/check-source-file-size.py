@@ -17,7 +17,6 @@ INLINE_RUST_TEST_LIMIT = 1_000
 SOURCE_LINE_LIMIT_EXCEPTIONS = {
     "BaeKit/Sources/AppleHost/CloudKitService.swift": 1_209,
     "bae-core/src/db/client/release.rs": 1_140,
-    "bae-core/src/import/service/scanning.rs": 1_145,
     "bae-core/src/playback/service/runtime.rs": 1_209,
 }
 SOURCE_SUFFIXES = {

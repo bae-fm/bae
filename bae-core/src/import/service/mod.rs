@@ -36,7 +36,10 @@ mod reconcile;
 mod scanning;
 
 use folder_watcher::FolderWatchSnapshot;
+mod coordinator;
+mod volume;
 pub(crate) use folder_watcher::FolderWatcher;
+pub(crate) use volume::{directories_changed, directory_modified_at, volume_kind, VolumeKind};
 
 use format_prep::resolve_file_content_type;
 
@@ -434,6 +437,10 @@ pub(super) enum RootScanCause {
     WatchError,
     /// The periodic sweep.
     Timer,
+    /// The periodic check of a network folder found a directory that moved.
+    /// Such a folder has no watch worth the name, so this is the only thing
+    /// that notices a change made on the server or by another machine.
+    NetworkFolderMoved,
     /// Something a person did — naming which.
     Asked(&'static str),
 }
@@ -444,6 +451,9 @@ impl std::fmt::Display for RootScanCause {
             Self::FsChange(events) => write!(f, "filesystem change ({events})"),
             Self::WatchError => write!(f, "the folder watcher reported an error"),
             Self::Timer => write!(f, "the periodic sweep"),
+            Self::NetworkFolderMoved => {
+                write!(f, "the periodic check found a directory that moved")
+            }
             Self::Asked(what) => write!(f, "{what}"),
         }
     }

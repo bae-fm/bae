@@ -137,6 +137,29 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn record_folder_scan_directories(
+        &self,
+        watched_folder_path: &str,
+        directories: &[(String, i64)],
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .record_folder_scan_directories(watched_folder_path, directories)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_folder_scan_directories(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<Vec<(String, i64)>, LibraryError> {
+        Ok(self
+            .database
+            .load_folder_scan_directories(watched_folder_path)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn save_folder_scan_item(
         &self,
         watched_folder_path: &str,

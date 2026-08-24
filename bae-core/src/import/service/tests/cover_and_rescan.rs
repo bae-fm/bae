@@ -561,6 +561,74 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     assert_eq!(announced_candidates(&mut events), vec!["Artist - Two"]);
 }
 
+/// A completed pass records every directory it read and when it was last
+/// touched, and asked straight afterwards the recorded set says nothing moved.
+///
+/// That is what a folder on a network volume is re-read on instead of a walk:
+/// if the record were missing, incomplete, or read at a precision the
+/// filesystem does not keep, every check would claim a change and the walk
+/// would happen anyway.
+#[tokio::test]
+async fn a_pass_records_the_directories_it_read() {
+    let (service, tmp) = setup_import_service().await;
+    let root = tmp.path().join("watched");
+    let album = root.join("Artist - Album");
+    std::fs::create_dir_all(album.join("Artwork")).unwrap();
+    std::fs::write(album.join("01.flac"), flac()).unwrap();
+
+    let (event_tx, _events) = tokio::sync::broadcast::channel(256);
+    let folder_registry = Arc::new(Mutex::new(
+        crate::import::folder_registry::ImportFolderRegistry::default(),
+    ));
+    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
+    let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
+    service
+        .library_manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    folder_registry
+        .lock()
+        .unwrap()
+        .apply_added(root.to_string_lossy().into_owned());
+    ImportService::rescan_and_reconcile(
+        &root,
+        &event_tx,
+        &service.library_manager,
+        &folder_registry,
+        &Arc::new(tokio::sync::Mutex::new(())),
+        &folder_watcher,
+        &crate::import::folder_scanner::ScanCancellation::new(),
+    )
+    .await
+    .expect("the pass reads the folder");
+
+    let recorded = service
+        .library_manager
+        .load_folder_scan_directories(&root.to_string_lossy())
+        .await
+        .unwrap();
+    let mut paths: Vec<&str> = recorded.iter().map(|(path, _)| path.as_str()).collect();
+    paths.sort_unstable();
+    assert_eq!(
+        paths,
+        vec![
+            root.to_string_lossy().as_ref(),
+            album.to_string_lossy().as_ref(),
+            album.join("Artwork").to_string_lossy().as_ref(),
+        ]
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+    );
+    assert!(!super::directories_changed(&recorded));
+
+    // And a file written into one of them is a change the check reports.
+    std::fs::write(album.join("02.flac"), flac()).unwrap();
+    assert!(super::directories_changed(&recorded));
+}
+
 fn flac() -> Vec<u8> {
     std::fs::read(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),

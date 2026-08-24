@@ -643,6 +643,7 @@ async fn cancelling_a_panicked_folder_walk_surfaces_the_join_failure() {
     async fn panic_during_walk() -> (
         Result<(), crate::import::folder_scanner::FolderScanError>,
         HashSet<PathBuf>,
+        Option<Vec<(String, i64)>>,
     ) {
         panic!("folder walk panic");
     }

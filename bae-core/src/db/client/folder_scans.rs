@@ -254,6 +254,54 @@ impl Database {
         .await
     }
 
+    /// Record every directory a completed walk of `watched_folder_path` read,
+    /// with the mtime it had, replacing whatever the last walk recorded.
+    ///
+    /// An empty list clears the root: a walk that could not read some
+    /// directory's mtime records nothing rather than a partial picture, and a
+    /// root with nothing recorded is one the cheap check refuses to answer for.
+    pub async fn record_folder_scan_directories(
+        &self,
+        watched_folder_path: &str,
+        directories: &[(String, i64)],
+    ) -> Result<(), DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let directories = directories.to_vec();
+        self.call(move |sql| {
+            sql.execute(
+                "DELETE FROM folder_scan_directory WHERE watched_folder_path = ?",
+                [&watched_folder_path],
+            )?;
+            for (path, modified_at) in &directories {
+                sql.execute(
+                    "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
+                     VALUES (?, ?, ?)",
+                    params![watched_folder_path, path, modified_at],
+                )?;
+            }
+            Ok(())
+        })
+        .await
+    }
+
+    /// Every directory the last completed walk of this root recorded, with the
+    /// mtime it had. Empty when no walk has recorded any.
+    pub async fn load_folder_scan_directories(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        self.read(move |sql| {
+            Ok(sql.query(
+                "SELECT path, modified_at FROM folder_scan_directory \
+                 WHERE watched_folder_path = ?",
+                [watched_folder_path],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+            )?)
+        })
+        .await
+    }
+
     /// Finish one scan generation. Successful completion removes entries not
     /// observed in this generation and returns their keys; failure preserves
     /// them. `None` when `generation` is no longer the root's.

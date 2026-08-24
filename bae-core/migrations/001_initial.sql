@@ -910,6 +910,22 @@ CREATE TABLE IF NOT EXISTS scan_boundary (
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
 ) STRICT;
 
+-- Every directory a completed walk of this root read, and when it was last
+-- modified. What lets a folder on a network volume be asked "has anything
+-- moved?" without walking it: a directory's mtime changes when a file in it is
+-- added, removed or rewritten, and adding a folder changes its parent's.
+--
+-- Recorded only by a walk that could read the mtime of every directory it
+-- visited. A root with no rows here is a root nothing can be concluded about,
+-- and it is walked.
+CREATE TABLE IF NOT EXISTS folder_scan_directory (
+    watched_folder_path TEXT NOT NULL,
+    path                TEXT NOT NULL,
+    modified_at         INTEGER NOT NULL,
+    PRIMARY KEY (watched_folder_path, path),
+    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS scan_boundary_tree_row (
     watched_folder_path           TEXT NOT NULL,
     boundary_relative_folder_path TEXT NOT NULL,
