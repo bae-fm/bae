@@ -651,14 +651,12 @@ impl BridgeMappingImage {
             name,
             size,
             path,
-            is_cover,
         } = image;
         BridgeMappingImage {
             file_id,
             name,
             size,
             local_path: path.to_string_lossy().to_string(),
-            is_cover,
         }
     }
 
@@ -668,14 +666,12 @@ impl BridgeMappingImage {
             name,
             size,
             local_path,
-            is_cover,
         } = self;
         bae_core::import::MappingImage {
             file_id,
             name,
             size,
             path: std::path::PathBuf::from(local_path),
-            is_cover,
         }
     }
 }

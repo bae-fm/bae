@@ -48,15 +48,6 @@ struct ImportMappingGallery: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                // The one that leads the release says so under its own tile:
-                // which image is the cover is a fact about this folder, and
-                // the gallery is where it is visible.
-                Text(coreString("ui.import.becomes.cover"))
-                    .font(.caption2)
-                    .foregroundStyle(Theme.accent)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .opacity(image.isCover ? 1 : 0)
             }
             .frame(width: Self.tileSize, alignment: .top)
             .contentShape(Rectangle())

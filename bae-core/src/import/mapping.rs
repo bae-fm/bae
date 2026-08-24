@@ -90,8 +90,6 @@ pub struct MappingImage {
     pub size: u64,
     /// Absolute path — what a thumbnail and the lightbox read.
     pub path: PathBuf,
-    /// Whether this is the image that leads the release.
-    pub is_cover: bool,
 }
 
 /// One source unit, and the track committing makes of it.
@@ -372,7 +370,7 @@ pub fn mapping_table(
             // has to be picked to know it — the role says so on its own. The
             // folder is the release, so all of it is still carried.
             FileRole::Cover | FileRole::Artwork => {
-                images.push(mapping_image(entry, matches!(entry.role, FileRole::Cover)));
+                images.push(mapping_image(entry));
             }
             FileRole::Document => rows.push(carried(entry, MappingRole::Document)),
             FileRole::Other => rows.push(carried(entry, MappingRole::Other)),
@@ -534,13 +532,17 @@ fn carried(entry: &CandidateFile, role: MappingRole) -> MappingRow {
 }
 
 /// One of the folder's images, as the gallery carries it.
-fn mapping_image(entry: &CandidateFile, is_cover: bool) -> MappingImage {
+///
+/// Which image leads the release is not a property of the image: it is the
+/// cover choice, which the stored row answers first, then the picked release's
+/// own art, then the folder's images by name. The gallery lists what the folder
+/// has; the card shows what was chosen.
+fn mapping_image(entry: &CandidateFile) -> MappingImage {
     MappingImage {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.file_name.clone(),
         size: entry.file.size,
         path: entry.file.path.clone(),
-        is_cover,
     }
 }
 

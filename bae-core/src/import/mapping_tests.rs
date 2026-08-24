@@ -158,11 +158,6 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
         ],
         "the gallery preserves the scan's authoritative order"
     );
-    assert_eq!(
-        table.images.iter().filter(|image| image.is_cover).count(),
-        1,
-        "exactly one image leads the release"
-    );
     // A directory of images is not collapsed away from the gallery — its
     // files are in it, each with the path a thumbnail reads.
     assert!(table

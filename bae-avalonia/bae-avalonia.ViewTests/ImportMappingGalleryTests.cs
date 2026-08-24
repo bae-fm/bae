@@ -28,10 +28,6 @@ public sealed class ImportMappingGalleryTests
         var panel = Assert.IsType<WrapPanel>(gallery);
         var tiles = panel.Children.OfType<Button>().ToList();
         var thumbnails = panel.GetLogicalDescendants().OfType<Image>().ToList();
-        var coverMarkers = panel.GetLogicalDescendants().OfType<TextBlock>()
-            .Where(text => text.Text == Loc.Core("ui.import.becomes.cover"))
-            .ToList();
-
         Assert.Equal(HorizontalAlignment.Stretch, panel.HorizontalAlignment);
         Assert.All(tiles, tile => Assert.Equal(ImportMappingGallery.TileSize, tile.Width));
         Assert.All(thumbnails, image =>
@@ -40,8 +36,11 @@ public sealed class ImportMappingGalleryTests
             Assert.Equal(ImportMappingGallery.TileSize, image.Height);
         });
         Assert.Equal(new[] { "/folder/front.jpg", "/folder/back.jpg" }, loaded);
-        Assert.Equal(2, coverMarkers.Count);
-        Assert.Single(coverMarkers, marker => marker.Opacity == 1);
+        // The gallery lists what the folder has; which image leads the release
+        // is the cover choice, and the card is where that shows.
+        Assert.Equal(
+            new[] { "front.jpg", "back.jpg" },
+            panel.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
 
         tiles[1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -56,13 +55,11 @@ public sealed class ImportMappingGalleryTests
             FileId: "front.jpg",
             Name: "front.jpg",
             Size: 2048,
-            LocalPath: "/folder/front.jpg",
-            IsCover: true),
+            LocalPath: "/folder/front.jpg"),
         new BridgeMappingImage(
             FileId: "back.jpg",
             Name: "back.jpg",
             Size: 1024,
-            LocalPath: "/folder/back.jpg",
-            IsCover: false),
+            LocalPath: "/folder/back.jpg"),
     ];
 }

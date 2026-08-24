@@ -375,8 +375,6 @@ pub struct BridgeMappingImage {
     pub size: u64,
     /// Absolute path — what a thumbnail and the lightbox read.
     pub local_path: String,
-    /// Whether this is the image that leads the release.
-    pub is_cover: bool,
 }
 
 /// One row of the mapping table. Mirror of bae-core's `MappingRow`.

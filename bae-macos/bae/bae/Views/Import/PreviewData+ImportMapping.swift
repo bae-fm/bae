@@ -70,21 +70,19 @@
 
         /// The folder's images, as the gallery shows them.
         static let mappingImages: [BridgeMappingImage] = [
-            mappingImage(coverImage, isCover: true),
-            mappingImage(backImage, isCover: false),
-            mappingImage(scanImage, isCover: false),
+            mappingImage(coverImage),
+            mappingImage(backImage),
+            mappingImage(scanImage),
         ]
 
         private static func mappingImage(
             _ file: BridgeCandidateFile,
-            isCover: Bool
         ) -> BridgeMappingImage {
             BridgeMappingImage(
                 fileId: file.file.name,
                 name: file.file.fileName,
                 size: file.file.size,
                 localPath: file.file.localPath,
-                isCover: isCover
             )
         }
 

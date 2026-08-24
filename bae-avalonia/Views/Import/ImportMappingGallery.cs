@@ -70,19 +70,9 @@ internal sealed class ImportMappingGallery
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var cover = new TextBlock
-        {
-            Text = Loc.Core("ui.import.becomes.cover"),
-            FontSize = 11,
-            Opacity = image.IsCover ? 1 : 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-        cover[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
-
         var content = new StackPanel { Width = TileSize, Spacing = 3 };
         content.Children.Add(frame);
         content.Children.Add(name);
-        content.Children.Add(cover);
 
         var tile = new Button
         {
