@@ -86,6 +86,21 @@ pub(super) fn prune_other_generations(
     Ok(pruned)
 }
 
+/// Stamp an existing candidate row with `generation`, leaving its content
+/// alone, so the completion prune counts it as seen by this scan.
+pub(crate) fn touch_candidate(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    path: &str,
+    generation: i64,
+) -> Result<(), DbError> {
+    sql.execute(
+        "UPDATE scan_candidate SET generation = ? WHERE watched_folder_path = ? AND path = ?",
+        params![generation, watched_folder_path, path],
+    )?;
+    Ok(())
+}
+
 pub(super) fn insert_item(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,

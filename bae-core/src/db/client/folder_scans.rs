@@ -149,6 +149,27 @@ impl Database {
         }
         self.call(move |sql| {
             ensure_generation(sql, &watched_folder_path, generation)?;
+            // A re-walk rewrites every candidate it finds, and each one arrives
+            // tentative before it arrives valid — tentative meaning "seen
+            // before its enclosing folder was understood". A row that is
+            // already a settled release has been understood; sending it back
+            // through that window would take it out of the list and the tab
+            // counts until the valid write lands a moment later, which is the
+            // swing a viewer sees while a folder rescans. The stored row
+            // stands and only takes this generation's stamp, so the completion
+            // prune keeps it; the valid write that follows replaces it whole.
+            //
+            // A candidate this scan is seeing for the first time has nothing
+            // stored, so it still appears tentative — which is the only thing
+            // tentative is for. A row this scan decides is hidden after all is
+            // removed by the boundary that hides it, which supersedes by key
+            // and does not care which kind the row was.
+            if matches!(item, ScanItem::Discovered(_))
+                && read::candidate_is_valid(sql, &watched_folder_path, &entry_key)?
+            {
+                write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
+                return Ok(Some(Vec::new()));
+            }
             let stored = stored_entries(sql, &watched_folder_path)?;
             let keys: Vec<StoredEntryKey> = stored
                 .iter()

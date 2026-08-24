@@ -105,6 +105,24 @@ pub(crate) fn load_item_by_key(
 
 /// Every stored entry under one root, as the key it is addressed by and the
 /// row that holds it — what a superseding write deletes by.
+/// Whether the stored candidate at `path` is a settled release row — the kind
+/// the list draws and counts. `false` covers a tentative or invalid row and a
+/// path nothing is stored for.
+pub(crate) fn candidate_is_valid(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    path: &str,
+) -> Result<bool, DbError> {
+    let kind: Option<String> = sql
+        .query_row(
+            "SELECT kind FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
+            [watched_folder_path, path],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(kind.as_deref() == Some("valid"))
+}
+
 pub(crate) fn stored_entries(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,

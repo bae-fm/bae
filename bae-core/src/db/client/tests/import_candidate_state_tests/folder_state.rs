@@ -637,3 +637,93 @@ async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
     assert_eq!(first, 1);
     assert_eq!(second, 2);
 }
+
+/// A tentative candidate is a release approximation the scan found before it
+/// knew what enclosed it, and the list draws none of them. A re-walk sends
+/// every candidate through that state on its way back to valid, so a row that
+/// is already a settled release must not go back through it: it would leave
+/// the list and the tab counts until the valid write landed a moment later,
+/// which is the swing a viewer sees while a folder rescans.
+#[tokio::test]
+async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
+    use crate::import::folder_scanner::ScanItem;
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    let settled = scanned_candidate(root, "Album");
+    let ScanItem::Valid(candidate) = settled.clone() else {
+        panic!("the fixture is a valid candidate")
+    };
+    let tentative = ScanItem::Discovered(candidate);
+    db.add_watched_import_folder(root).await.unwrap();
+
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &settled)
+        .await
+        .unwrap()
+        .expect("the first scan stores the candidate");
+    db.finish_folder_scan(root, generation, None)
+        .await
+        .unwrap()
+        .expect("the first scan completes");
+
+    // The re-walk reaches the same folder again and reports it tentative first.
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &tentative)
+        .await
+        .unwrap()
+        .expect("the tentative write is accepted");
+    let midway = db.load_folder_scan_snapshots().await.unwrap();
+    assert_eq!(midway[0].items.len(), 1);
+    assert!(
+        matches!(midway[0].items[0], ScanItem::Valid(_)),
+        "the settled row stands through the re-walk, got {:?}",
+        midway[0].items[0]
+    );
+
+    // And the valid write that follows still replaces it whole.
+    db.save_folder_scan_item(root, generation, &settled)
+        .await
+        .unwrap()
+        .expect("the valid write is accepted");
+    db.finish_folder_scan(root, generation, None)
+        .await
+        .unwrap()
+        .expect("the re-walk completes");
+    let after = db.load_folder_scan_snapshots().await.unwrap();
+    assert_eq!(after[0].items.len(), 1);
+    assert!(matches!(after[0].items[0], ScanItem::Valid(_)));
+}
+
+/// The stamp the kept row takes is this generation's, so completing the scan
+/// does not prune the very row it just decided to keep.
+#[tokio::test]
+async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
+    use crate::import::folder_scanner::ScanItem;
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    let settled = scanned_candidate(root, "Album");
+    let ScanItem::Valid(candidate) = settled.clone() else {
+        panic!("the fixture is a valid candidate")
+    };
+    let tentative = ScanItem::Discovered(candidate);
+    db.add_watched_import_folder(root).await.unwrap();
+
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &settled).await.unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    // A re-walk that only ever reports it tentative — the valid write never
+    // arrives, because the scan ended first.
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &tentative).await.unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let after = db.load_folder_scan_snapshots().await.unwrap();
+    assert_eq!(
+        after[0].items.len(),
+        1,
+        "the kept row carries this generation, so the prune leaves it"
+    );
+}
