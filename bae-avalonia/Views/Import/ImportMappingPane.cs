@@ -363,6 +363,7 @@ internal sealed partial class ImportMappingPane : UserControl
             {
                 sections.Children.Add(new ImportMappingGallery(
                     mapping.Images,
+                    _candidate.FileEvidence,
                     (image, path) => _app.Images.Bind(
                         image, new ImageContent.LocalFile(path), ImageWidths.PickerTile),
                     actions.OpenImages).Build());
@@ -372,7 +373,8 @@ internal sealed partial class ImportMappingPane : UserControl
                 sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
                 () => _import.PreviewingPath,
                 actions,
-                _candidate.Detail!.Unprobed);
+                _candidate.Detail!.Unprobed,
+                _candidate.FileEvidence);
             var table = _table.Build();
             sections.Children.Add(_table.Title());
             sections.Children.Add(table);

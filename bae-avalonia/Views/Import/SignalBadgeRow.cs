@@ -33,29 +33,6 @@ internal static class SignalBadgeRow
         return badges;
     }
 
-    /// <summary>One accent chip stating a fact, with nothing to click — what
-    /// identified the picked release, beside it in the header.</summary>
-    public static Control Chip(string label)
-    {
-        var text = new TextBlock
-        {
-            Text = label,
-            FontSize = 11,
-            FontWeight = FontWeight.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
-        var chip = new Border
-        {
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(8, 2),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Child = text,
-        };
-        chip[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
-        return chip;
-    }
-
     private static Button RerunButton(Action onRerun)
     {
         var button = new Button

@@ -19,15 +19,18 @@ internal sealed class ImportMappingGallery
     internal const double TileSize = 96;
 
     private readonly IReadOnlyList<BridgeMappingImage> _images;
+    private readonly IReadOnlyList<BridgeFileEvidence> _evidence;
     private readonly Action<Image, string> _loadImage;
     private readonly Action<IReadOnlyList<BridgeMappingImage>, string> _openImages;
 
     internal ImportMappingGallery(
         IReadOnlyList<BridgeMappingImage> images,
+        IReadOnlyList<BridgeFileEvidence> evidence,
         Action<Image, string> loadImage,
         Action<IReadOnlyList<BridgeMappingImage>, string> openImages)
     {
         _images = images;
+        _evidence = evidence;
         _loadImage = loadImage;
         _openImages = openImages;
     }
@@ -54,13 +57,26 @@ internal sealed class ImportMappingGallery
             Height = TileSize,
             Stretch = Stretch.UniformToFill,
         };
+        // The mark sits over the picture, so the frame holds a stack rather
+        // than the image alone.
+        var stacked = new Panel();
+        stacked.Children.Add(thumbnail);
+        var found = ImportEvidence.Of(image.FileId, _evidence);
+        if (found is not null)
+        {
+            var mark = ImportEvidence.Chip(found, onImage: true);
+            mark.HorizontalAlignment = HorizontalAlignment.Left;
+            mark.VerticalAlignment = VerticalAlignment.Bottom;
+            mark.Margin = new Thickness(3);
+            stacked.Children.Add(mark);
+        }
         var frame = new Border
         {
             Width = TileSize,
             Height = TileSize,
             CornerRadius = new CornerRadius(4),
             ClipToBounds = true,
-            Child = thumbnail,
+            Child = stacked,
         };
         var name = new TextBlock
         {
@@ -84,6 +100,10 @@ internal sealed class ImportMappingGallery
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Content = content,
         };
+        if (found is not null)
+        {
+            ToolTip.SetTip(tile, ImportEvidence.HoverText(found));
+        }
         var path = image.LocalPath;
         tile.Click += (_, _) => _openImages(_images, path);
         _loadImage(thumbnail, path);

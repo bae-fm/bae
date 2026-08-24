@@ -34,6 +34,10 @@ internal sealed class ImportMappingTable
     // runs; every other length in the table is already stored.
     private readonly IReadOnlyList<BridgeAudioFile> _unprobed;
 
+    // What identified the release, by the file each piece was read off. The row
+    // for that file carries the chip.
+    private readonly IReadOnlyList<BridgeFileEvidence> _evidence;
+
     // The row hosts and the audio each one plays, in row order, so the accent on
     // the playing row moves without rebuilding the table under the fields the
     // user is typing in.
@@ -48,7 +52,8 @@ internal sealed class ImportMappingTable
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
         Func<string?> previewingPath,
         ImportMappingActions actions,
-        IReadOnlyList<BridgeAudioFile>? unprobed = null)
+        IReadOnlyList<BridgeAudioFile>? unprobed = null,
+        IReadOnlyList<BridgeFileEvidence>? evidence = null)
     {
         _table = table;
         _bindingOptions = bindingOptions;
@@ -56,6 +61,7 @@ internal sealed class ImportMappingTable
         _actions = actions;
         _audioChoices = table.AudioChoices();
         _unprobed = unprobed ?? Array.Empty<BridgeAudioFile>();
+        _evidence = evidence ?? Array.Empty<BridgeFileEvidence>();
     }
 
     internal Control Build()
@@ -432,6 +438,10 @@ internal sealed class ImportMappingTable
         {
             line.Children.Add(MeasuringSpinner());
         }
+        if (ImportEvidence.Of(file.FileId, _evidence) is { } found)
+        {
+            line.Children.Add(ImportEvidence.Chip(found));
+        }
         return line;
     }
 
@@ -611,6 +621,10 @@ internal sealed class ImportMappingTable
         {
             line.Children.Add(ImportPaneUi.Cell(
                 Loc.Bytes(checked((long)container.Size)), secondary: true));
+        }
+        if (ImportEvidence.Of(sheet.SheetId, _evidence) is { } found)
+        {
+            line.Children.Add(ImportEvidence.Chip(found));
         }
         Avalonia.Controls.Grid.SetColumn(line, 0);
         grid.Children.Add(line);

@@ -28,6 +28,35 @@ public sealed class ImportMappingTableTests
 
     // ── The table, rendered ──────────────────────────────────────────────────
 
+    // The sheet a disc ID was computed from wears the chip on its own row, and
+    // that row hovers to the sentence naming the ID. Nothing else does.
+    [AvaloniaFact]
+    public void TheSheetTheDiscIdCameFromSaysSo()
+    {
+        var evidence = new[]
+        {
+            new BridgeFileEvidence(
+                BridgeEvidenceSignal.DiscId,
+                Value: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-",
+                FileId: SheetId),
+        };
+        var table = Build(SheetTable(Disc(1)), evidence: evidence);
+
+        var chips = table
+            .GetLogicalDescendants()
+            .OfType<TextBlock>()
+            .Where(text => text.Text == Loc.Chrome("signal.kind.disc_id"))
+            .ToList();
+
+        var chip = Assert.Single(chips);
+        Assert.Equal(
+            Loc.Core(
+                "core.import.evidence.disc_id_from_file",
+                "value",
+                "XwqRcz4RhAqRTfhE5nRxRKF4iFY-"),
+            ToolTip.GetTip((Control)chip.Parent!));
+    }
+
     // Before a release is picked every audio row says so, in the same table and
     // the same columns a pick fills: there is no identify⇄confirm layout flip.
     [AvaloniaFact]
@@ -315,7 +344,8 @@ public sealed class ImportMappingTableTests
         BridgeMappingTable table,
         System.Action<string, BridgeSheetDisc>? setSheetDisc = null,
         System.Action<string, string>? openDocument = null,
-        System.Action<string>? preview = null) =>
+        System.Action<string>? preview = null,
+        BridgeFileEvidence[]? evidence = null) =>
         new ImportMappingTable(
             table,
             _ => Task.FromResult(new List<ImportSheetBindingOption>()),
@@ -331,7 +361,9 @@ public sealed class ImportMappingTableTests
                 EditTrack: _ => { },
                 ChooseFile: (_, _) => { },
                 Drop: _ => { },
-                Exclude: _ => { })).Build();
+                Exclude: _ => { }),
+            unprobed: null,
+            evidence: evidence).Build();
 
     /// <summary>The table's children: the column header, then one per rendered
     /// row — a sheet's own row and each of its entries. The table hangs inside

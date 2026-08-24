@@ -56,6 +56,12 @@ public sealed class ImportCandidate
     /// <summary>The picked release as its archived documents describe it.</summary>
     internal BridgeReleaseDetail? Release => Detail?.Release;
 
+    /// <summary>What identified the picked release, each entry naming the file
+    /// it was read off — the chip that file's gallery tile or table row
+    /// carries.</summary>
+    internal IReadOnlyList<BridgeFileEvidence> FileEvidence =>
+        Detail?.FileEvidence ?? System.Array.Empty<BridgeFileEvidence>();
+
     /// <summary>The metadata form: the pick's own values with whatever has been
     /// typed over them. Null while nothing is picked.</summary>
     internal BridgeRawReleaseEdit? Edit => Detail?.Edit;
