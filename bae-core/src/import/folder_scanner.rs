@@ -19,6 +19,7 @@ use std::sync::{
 };
 use tracing::{debug, info};
 
+mod boundary;
 mod candidates;
 mod categorize;
 mod files;
